@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiUrl } from '../api';
 
 export default function ProjectFormPage() {
   const navigate = useNavigate();
@@ -23,10 +24,11 @@ export default function ProjectFormPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    const res = await fetch(apiUrl('/api/project'), {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(form),
+});
           category: form.category,
           subCategory: form.subCategory,
           description: form.description,
