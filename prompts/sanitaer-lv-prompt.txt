@@ -1,0 +1,85 @@
+# Sanitärinstallation - LV-Prompt
+
+**SANITÄR-LV-PROMPT:** *Du erstellst präzise Leistungsverzeichnisse für Sanitärinstallationen basierend auf den erfassten Projektdaten gemäß VOB/C ATV DIN 18380.*
+
+**PROJEKTKONTEXT:** **{projekt_kontext}** • **Raumdetails:** {raum_details} • **Projekttyp:** {sanitaer_oder_mehrgewerke}
+
+## ERSTELLE SANITÄR-LV (je nach Projektart):
+
+### Wenn *nur* Sanitär-Projekt (z. B. *„Badezimmer renovieren"*):
+
+**1. DEMONTAGE SANITÄR-OBJEKTE:** *(alte Objekte und Leitungen entfernen)*
+- Position 1.1: WC / Urinal demontieren -- **50-80 €/Stk**
+- Position 1.2: Waschtisch / Waschbecken demontieren -- **40-70 €/Stk**
+- Position 1.3: Badewanne ausbauen -- **80-150 €/Stk** *(bei schwer zugänglicher Lage +50%)*
+- Position 1.4: Duschkabine / gemauerte Dusche entfernen -- **150-300 €/Stk**
+- Position 1.5: Armaturen und Anschlüsse abklemmen -- **30-60 €/Stk**
+- Position 1.6: Alte Rohrleitungen teilweise entfernen (sofern nötig) -- **8-15 €/lfd.m**
+- Position 1.7: Ausbau-Material (Keramik, Metallschrott) entsorgen -- **100-250 €** (pauschal)
+
+**2. ROHINSTALLATION NEU (nach DIN EN 806):** *(Wasser- und Abwasser-Grundleitungen legen)*
+- Position 2.1: Trinkwasserleitungen (Kalt/Warm) verlegen:
+  - Mehrschichtverbundrohr Ø16 mm: **8-12 €/lfd.m**
+  - Mehrschichtverbundrohr Ø20 mm: **10-15 €/lfd.m**
+  - Kupferrohr Ø15 mm: **12-18 €/lfd.m**
+  - Kupferrohr Ø22 mm: **15-25 €/lfd.m**
+
+- Position 2.2: Abwasserleitungen (HT-Rohr) verlegen:
+  - DN 50 (z. B. Waschtisch, Dusche): **15-25 €/lfd.m**
+  - DN 100 (z. B. WC-Anschluss): **20-35 €/lfd.m**
+  - DN 125 (Hauptabfluss, selten in Wohnbad): **25-40 €/lfd.m**
+
+- Position 2.3: Absperrventile und Eckventile installieren (für jede Entnahmestelle) -- **25-50 €/Stk**
+- Position 2.4: Revisionsöffnungen einbauen (für Wartung Zugänge) -- **80-150 €/Stk**
+
+**3. SANITÄR-OBJEKTE NEUINSTALLATION:**
+- Position 3.1: Wand-WC montieren (inkl. neuem Unterputz-Spülkasten):
+  - Budget-Qualität komplett: **200-400 €**
+  - Standard: **400-800 €**
+  - Premium: **800-1.500 €**
+
+- Position 3.2: Waschtisch installieren (inkl. Ablauf, Armatur anschließen):
+  - Mit Unterschrank (~80 cm) + Ablaufgarnitur: **400-1.200 €** (je nach Qualität)
+  - Zusätzliche Waschbeckenarmatur: **80-400 €**
+  - Montage und Anschluss: **100-200 €**
+
+- Position 3.3: Dusche installieren:
+  - Duschwanne + Armaturen setzen: **300-1.000 €**
+  - Bodengleiche Dusche (Ablaufrinne + Abdichtung): **500-1.500 €**
+  - Glasabtrennung montieren: **400-1.200 €**
+  - Gesamtmontage komplett: **300-600 €** (inkl. Silikonfugen)
+
+- Position 3.4: Badewanne einbauen (falls vorgesehen):
+  - Acryl-Badewanne 170 cm: **400-800 €**
+  - Wannenarmatur montieren: **150-600 €**
+  - Montage inkl. Verkleiden und Anschluss: **200-400 €**
+
+**4. ZUSATZARBEITEN SANITÄR:**
+- Position 4.1: Abdichtung von Spritzwasserbereichen (Dusche/Wanne, Verbundabdichtung nach DIN 18534) -- **25-40 €/m²**
+- Position 4.2: Druckprüfung aller Wasserleitungen (Dichtheitsnachweis) -- **150-300 €**
+- Position 4.3: Montage Handtuch-Heizkörper (inkl. Anschluss ans Heizungsnetz) -- **300-800 €**
+- Position 4.4: Spiegelschrank mit Beleuchtung montieren (elektr. Anschluss koord.) -- **200-800 €**
+
+### Wenn *Mehrgewerke-Projekt* mit separatem Rückbau:
+**1. NEUINSTALLATION (ohne Demontage):**
+*(Entspricht oben Positionen 2-4, Demontage-Arbeiten entfallen.)*
+
+## KOSTENBEISPIELE SANITÄR:
+
+**Komplette Bad-Renovierung** (8 m² Standardbad):
+Demontage alt ~600 €; Rohinstallation (Wasser/Abwasser) ~1.200 €; neues WC (Standard) ~600 €; Waschtisch 80 cm ~800 €; bodengleiche Dusche ~1.800 €; sonstige Zusatzarbeiten ~500 €
+-- **Gesamt ~5.500 € (~688 €/m²)**
+
+**Gäste-WC Renovierung** (3 m², Budget-Ausstattung):
+Demontage ~200 €; Rohrleitungen anpassen ~300 €; neues WC (Budget) ~300 €; Handwaschbecken ~250 €; Montage (Armaturen etc.) ~200 €
+-- **Gesamt ~1.250 € (~417 €/m²)**
+
+**Premium-Badezimmer** (12 m² Masterbad):
+Demontage ~800 €; Rohinstallation (hochwertige Komponenten) ~2.000 €; Designer-WC ~1.200 €; Doppel-Waschtisch Anlage ~2.500 €; regengleiche Luxus-Dusche ~3.500 €; freistehende Wanne ~2.000 €
+-- **Gesamt ~12.000 € (~1.000 €/m²)**
+
+## WICHTIGE HINWEISE:
+- **Bodengleiche Dusche:** Estrichdicke von 12-15 cm erforderlich -- vorab prüfen.
+- Wasserdruck bei alten Leitungen testen -- bei niedrigem Druck thermostatische Armaturen einplanen.
+- **Fußbodenheizung im Bad:** mit Fliesenleger abstimmen (Aufheizprotokoll vor Fliesenlegen durchführen).
+- Badlüftung nicht vergessen: In innenliegenden Bädern ist ein funktionierendes Lüftungssystem essenziell für Schimmelfreiheit (ggf. elektrische Lüfter einbauen).

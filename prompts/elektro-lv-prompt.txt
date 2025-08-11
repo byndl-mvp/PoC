@@ -1,0 +1,87 @@
+# Elektroinstallation - LV-Prompt
+
+**ELEKTRO-LV-PROMPT:** *Du erstellst detaillierte Leistungsverzeichnisse für Elektroinstallationen basierend auf den erfassten Projektdaten nach DIN VDE 0100.*
+
+**PROJEKTKONTEXT:** **{projekt_kontext}** • **Raumgröße/Gebäude:** {raumgroesse} • **Projekttyp:** {ein_oder_mehrgewerke}
+
+## ERSTELLE ELEKTRO-LV (je nach Projektart):
+
+### Wenn *nur* Elektro-Projekt (z. B. *„Elektrik komplett erneuern"*):
+
+**1. DEMONTAGE ALTANLAGEN:** *(elektrospezifische Rückbauarbeiten)*
+- Position 1.1: Alte Unterverteilungen / Sicherungskästen demontieren -- **80-150 €/Stk**
+- Position 1.2: Sichtbare Leitungen und Kabelkanäle entfernen (Aufputz) -- **3-6 €/lfd.m**
+- Position 1.3: Schalter, Steckdosen, Abzweigdosen ausbauen -- **5-15 €/Stk**
+- Position 1.4: Alte Beleuchtungskörper abbauen -- **20-50 €/Stk** *(inkl. Entsorgung Leuchtmittel)*
+- Position 1.5: Elektro-Altmaterial entsorgen (Kabelreste, Verteilungen) -- **100-300 €** (pauschal)
+
+**2. STROMKREIS-EINTEILUNG / VERTEILER:**
+- Position 2.1: Hauptverteilung / Zählerschrank erneuern (inkl. Zählerfeld, SLS) -- **300-800 €**
+- Position 2.2: Unterverteilung (Wohnung/Etage) neu installieren -- **200-500 €/Stk**
+- Position 2.3: FI-Schutzschalter (RCD) 30 mA einsetzen -- **80-150 €/Stk** (1× pro Stromkreisgruppe)
+- Position 2.4: LS-Schalter (Leitungsschutz) installieren -- **25-40 €/Stk** (je Endstromkreis)
+
+**3. LEITUNGSVERLEGUNG (inkl. Schlitze fräsen):**
+- Position 3.1: NYM-J 3×1,5 mm² Leitung verlegen (für Lichtkreise) -- **2-4 €/lfd.m**
+- Position 3.2: NYM-J 3×2,5 mm² verlegen (für Steckdosenkreise) -- **3-5 €/lfd.m**
+- Position 3.3: NYM-J 5×2,5 mm² verlegen (für Herdanschluss 400V) -- **8-12 €/lfd.m**
+- Position 3.4: Unterputz-Verlegung in Mauerwerk (inkl. Schlitz stemmen) -- **8-15 €/lfd.m** *(Aufpreis zu Leitungsverlegung)*
+
+**4. INSTALLATIONSGERÄTE SETZEN:**
+- Position 4.1: Standard-Steckdosen montieren (inkl. Gerät & Rahmen) -- **25-40 €/Stk**
+- Position 4.2: Lichtschalter montieren -- **20-35 €/Stk**
+- Position 4.3: Dimmer (LED-tauglich) einbauen -- **50-80 €/Stk**
+- Position 4.4: Feuchtraum-Steckdosen IP44/IP65 -- **35-60 €/Stk**
+
+**5. BELEUCHTUNG:**
+- Position 5.1: LED-Einbaustrahler setzen (inkl. Trafo) -- **40-80 €/Stk**
+- Position 5.2: Deckenauslass für Pendelleuchte vorbereiten -- **30-50 €/Stk**
+- Position 5.3: Wandauslass für Leuchte vorbereiten -- **35-60 €/Stk**
+
+**6. PRÜFUNG UND INBETRIEBNAHME:**
+- Position 6.1: VDE-Messprüfung aller Stromkreise + Prüfprotokoll -- **200-400 €**
+- Position 6.2: Abnahme durch Netzbetreiber / Elektriker-Meister -- **100-200 €**
+- Position 6.3: Dokumentation und Einweisung des Auftraggebers -- **100 €** (pauschal)
+
+### Wenn *Mehrgewerke*-Projekt (bereits separates Abbruch-LV vorhanden → nur Neuinstallation):
+**1. NEUINSTALLATION (ohne Demontage):**
+*(Entspricht Positionen 2-6 oben, Demontage-Arbeiten entfallen.)*
+
+## ZUSATZ-OPTIONEN FÜR MODERNE INSTALLATIONEN:
+
+### Smart-Home Erweiterung:
+- Position 7.1: KNX-Bus-System im Verteiler installieren -- **2.000-5.000 €**
+- Position 7.2: Smart-Schalter/Aktoren montieren -- **50-100 €/Stk**
+- Position 7.3: Zentrale Steuerungseinheit -- **800-2.000 €**
+- Position 7.4: WLAN-Verstärker/Access Points -- **100-300 €/Stk**
+
+### E-Mobilität Vorbereitung:
+- Position 8.1: Leerrohr vom Zählerplatz zur Garage/Carport -- **8-15 €/lfd.m**
+- Position 8.2: Wallbox-Anschluss 11 kW vorbereiten -- **300-600 €**
+- Position 8.3: Wallbox-Anschluss 22 kW (3-phasig) -- **500-1.000 €**
+- Position 8.4: Lastmanagement-System -- **800-1.500 €**
+
+### PV-Integration:
+- Position 9.1: DC-Leitungen vom Dach zum Wechselrichter -- **8-15 €/lfd.m**
+- Position 9.2: Wechselrichter-Montage und Anschluss -- **300-800 €**
+- Position 9.3: Einspeisemanagement im Zählerschrank -- **500-1.200 €**
+- Position 9.4: Batteriespeicher-Vorbereitung -- **400-1.000 €**
+
+## KOSTENBEISPIELE ELEKTRO:
+
+**Komplette Elektro-Installation erneuern** (Wohnung ~80 m²):
+Demontage alt ~800 €; neue Haupt-/Unterverteilung ~600 €; Leitungen verlegen ~2.400 €; Schalter & Steckdosen ~1.800 €; Beleuchtung ~1.200 €; Prüfung/Abnahme ~400 €
+-- **Gesamt ~7.200 € (~90 €/m²)**
+
+**Bad-Elektrik neu** (Badezimmer ~8 m², Feuchtraum-Anforderungen):
+Demontage Alt ~200 €; FI/RCD nachrüsten ~120 €; Feuchtraum-taugliche Neuinstallation ~800 €; IP44-Leuchten ~400 €; Prüfung ~150 €
+-- **Gesamt ~1.670 € (~209 €/m²)**
+
+**Smart-Home Grundausstattung (Zusatzkosten):**
+KNX-Bus-System im Verteiler: **+2.000-5.000 €**; Smart-Schalter/Aktoren: **+50-100 €/Stk**; Zentrale Steuerungseinheit: **+800-2.000 €**
+
+## WICHTIGE HINWEISE:
+- **Alu-Leitungen (Altbau vor ca. 1970):** komplette Erneuerung **zwingend**, +100% Kosten ggü. Teil-Erneuerung.
+- FI-Schutzschalter sind bei jeder Renovierung nachzurüsten (heute Pflicht nach DIN VDE).
+- Vorbereitung für E-Mobilität: Leerrohr vom Zählerplatz bis Garage/Carport vorsehen (ca. 200-500 € Zusatz).
+- Smart-Home-Systeme erfordern Planung **vor** der Kabelverlegung (nachträgliche Integration sehr teuer).

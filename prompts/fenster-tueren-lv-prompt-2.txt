@@ -1,0 +1,212 @@
+# Fenster und Außentüren - LV-Prompt
+
+**FENSTER-AUßENTÜREN-LV-PROMPT:** *Du erstellst detaillierte Leistungsverzeichnisse für Fenster und Außentüren basierend auf den erfassten Projektdaten nach EnEV/GEG.*
+
+**WICHTIG:** Dieses Gewerk umfasst nur Fenster und Außentüren. Innentüren und Innenfensterbänke gehören zum Tischler-Gewerk!
+
+**PROJEKTKONTEXT:** **{projekt_kontext}** • **Anzahl Fenster:** {anzahl_fenster} • **Anzahl Außentüren:** {anzahl_aussentueren}
+
+## ERSTELLE FENSTER-LV:
+
+### 1. DEMONTAGE ALTE FENSTER:
+- Position 1.1: Altes Fenster ausbauen (inkl. Rahmen zerschneiden, aus Maueröffnung lösen) -- **50-100 €/Stk** (normales Fenster)
+- Position 1.2: Entsorgung Alt-Fenster und Verglasung -- **15-30 €/m² Glasfläche**
+
+### 2. LIEFERUNG NEUE FENSTER:
+- Position 2.1: Kunststoff-Fenster liefern (weiß, 3-fach Verglasung Ug ~0.7): **250-400 €/m²** Fensterfläche
+- Position 2.2: Aufpreis für farbige Folierung (außen anthrazit o. Ä.): **+15-20%**
+- Position 2.3: Aufpreis Sicherheitsausstattung RC2 (Pilzkopfzapfen, VSG): **+80-150 €/Fenster**
+
+### 3. EINBAU NEUE FENSTER:
+- Position 3.1: Fenster einsetzen und justieren -- **30-80 €/Stk**
+- Position 3.2: Befestigung im Baukörper (Rahmendübel) -- **10-20 €/Stk**
+- Position 3.3: Anschlüsse abdichten (PU-Schaum innen, Kompriband außen) -- **5-10 €/lfd.m**
+- Position 3.4: Außenanschluss versiegeln (Dichtmasse/Silikon) -- **5-10 €/lfd.m**
+
+### 4. AUßENABSCHLUSS:
+- Position 4.1: Außen-Fensterbänke (Alu) liefern und einbauen inkl. Endkappen: **40-80 €/lfd.m**
+- Position 4.2: Laibungen außen ggf. verputzen/angleichen -- **10-20 €/lfd.m**
+
+### 5. ROLLLÄDEN / SONNENSCHUTZ (falls im Auftrag):
+- Position 5.1: Vorbau-Rollladen montieren: **150-300 €/Stk**
+- Position 5.2: Aufsatz-Rollladenkasten integrieren -- **100-200 €/Stk**
+- Position 5.3: Elektrischer Antrieb: **+100-300 €/Fenster**
+
+## ERSTELLE AUßENTÜREN-LV:
+
+### A. Haustür / Eingangstür:
+- Position A1: Alte Haustür ausbauen und entsorgen -- **150-300 €**
+- Position A2: Neue Haustür liefern (komplettes Türelement):
+  - Standard-Kunststoff-Haustür (Uw ~1.3): **1.000-2.000 €**
+  - Marken-Alu-Haustür (Uw ~0.8-1.0, RC2): **3.000-5.000 €**
+  - Aufpreis Seitenteil festverglast: **+500-1.000 €**
+- Position A3: Neue Haustür einbauen -- **300-600 €**
+- Position A4: Außenanschlüsse herstellen: **30-80 €/lfd.m**
+- Position A5: Schließzylinder einsetzen -- **30-100 €/Stk**
+
+### B. Terrassentür / Balkontür:
+- Position B1: Alte Terrassentür ausbauen -- **100-200 €/Stk**
+- Position B2: Neue Terrassentür liefern:
+  - Standard 2-flügelig 180×210 cm: **800-1.500 €**
+  - Hebe-Schiebetür groß: **2.000-4.000 €**
+- Position B3: Terrassentür einbauen -- **200-400 €**
+- Position B4: Schwellenanschluss an Terrasse/Balkon -- **50-150 €/lfd.m**
+
+## KOSTENBEISPIELE FENSTER UND AUßENTÜREN:
+
+**Standard-Kunststofffenster 1-flg 100×120 cm:**
+Ausbau+Entsorgung alt ~80 €; neues Fenster ~300 €; Einbau+Abdichtung ~100 €; Außenfensterbank ~50 €
+-- **~530 € pro Fenster**
+
+**Haustür Standard (Kunststoff):**
+Ausbau alt 200 €; neue Tür 1.500 €; Einbau+Anschluss 400 €
+-- **~2.100 € gesamt**
+
+**Haustür Premium (Alu, Seitenteil):**
+Ausbau 250 €; Tür 4.000 €; Seitenteil 800 €; Einbau+Anschluss 600 €
+-- **~5.650 €**
+
+## WICHTIGE HINWEISE:
+- **Maßaufnahme:** Vor Bestellung exakte Aufmaß nehmen, da Fertigung millimetergenau erfolgt.
+- Anschlussfugen nach RAL-Montagegrundsatz: „innen dichter als außen".
+- **GEG-Konformität:** Uw-Wert neuer Fenster muss ≤1,3 W/m²K sein.
+- **Förderung:** Evtl. BAFA/KfW-Förderung bei energetischer Gesamtsanierung.
+- Bei mehreren Fenstern ggf. Kran/Hebebühne für große Elemente einplanen.# Fenster und Außentüren - LV-Prompt
+
+**FENSTER-AUßENTÜREN-LV-PROMPT:** *Du erstellst detaillierte Leistungsverzeichnisse für Fenster und Außentüren basierend auf den erfassten Projektdaten nach EnEV/GEG.*
+
+**WICHTIG:** Dieses Gewerk umfasst nur Fenster und Außentüren. Innentüren und Innenfensterbänke gehören zum Tischler-Gewerk!
+
+**PROJEKTKONTEXT:** **{projekt_kontext}** • **Anzahl Fenster:** {anzahl_fenster} • **Anzahl Außentüren:** {anzahl_aussentueren}
+
+## ERSTELLE FENSTER-LV:
+
+### 1. DEMONTAGE ALTE FENSTER:
+- Position 1.1: Altes Fenster ausbauen (inkl. Rahmen zerschneiden, aus Maueröffnung lösen) -- **50-100 €/Stk** (normales Fenster)
+- Position 1.2: Entsorgung Alt-Fenster und Verglasung -- **15-30 €/m² Glasfläche**
+
+### 2. LIEFERUNG NEUE FENSTER:
+- Position 2.1: Kunststoff-Fenster liefern (weiß, 3-fach Verglasung Ug ~0.7): **250-400 €/m²** Fensterfläche
+- Position 2.2: Aufpreis für farbige Folierung (außen anthrazit o. Ä.): **+15-20%**
+- Position 2.3: Aufpreis Sicherheitsausstattung RC2 (Pilzkopfzapfen, VSG): **+80-150 €/Fenster**
+
+### 3. EINBAU NEUE FENSTER:
+- Position 3.1: Fenster einsetzen und justieren -- **30-80 €/Stk**
+- Position 3.2: Befestigung im Baukörper (Rahmendübel) -- **10-20 €/Stk**
+- Position 3.3: Anschlüsse abdichten (PU-Schaum innen, Kompriband außen) -- **5-10 €/lfd.m**
+- Position 3.4: Außenanschluss versiegeln (Dichtmasse/Silikon) -- **5-10 €/lfd.m**
+
+### 4. AUßENABSCHLUSS:
+- Position 4.1: Außen-Fensterbänke (Alu) liefern und einbauen inkl. Endkappen: **40-80 €/lfd.m**
+- Position 4.2: Laibungen außen ggf. verputzen/angleichen -- **10-20 €/lfd.m**
+
+### 5. ROLLLÄDEN / SONNENSCHUTZ (falls im Auftrag):
+- Position 5.1: Vorbau-Rollladen montieren: **150-300 €/Stk**
+- Position 5.2: Aufsatz-Rollladenkasten integrieren -- **100-200 €/Stk**
+- Position 5.3: Elektrischer Antrieb: **+100-300 €/Fenster**
+
+## ERSTELLE AUßENTÜREN-LV:
+
+### A. Haustür / Eingangstür:
+- Position A1: Alte Haustür ausbauen und entsorgen -- **150-300 €**
+- Position A2: Neue Haustür liefern (komplettes Türelement):
+  - Standard-Kunststoff-Haustür (Uw ~1.3): **1.000-2.000 €**
+  - Marken-Alu-Haustür (Uw ~0.8-1.0, RC2): **3.000-5.000 €**
+  - Aufpreis Seitenteil festverglast: **+500-1.000 €**
+- Position A3: Neue Haustür einbauen -- **300-600 €**
+- Position A4: Außenanschlüsse herstellen: **30-80 €/lfd.m**
+- Position A5: Schließzylinder einsetzen -- **30-100 €/Stk**
+
+### B. Terrassentür / Balkontür:
+- Position B1: Alte Terrassentür ausbauen -- **100-200 €/Stk**
+- Position B2: Neue Terrassentür liefern:
+  - Standard 2-flügelig 180×210 cm: **800-1.500 €**
+  - Hebe-Schiebetür groß: **2.000-4.000 €**
+- Position B3: Terrassentür einbauen -- **200-400 €**
+- Position B4: Schwellenanschluss an Terrasse/Balkon -- **50-150 €/lfd.m**
+
+## KOSTENBEISPIELE FENSTER UND AUßENTÜREN:
+
+**Standard-Kunststofffenster 1-flg 100×120 cm:**
+Ausbau+Entsorgung alt ~80 €; neues Fenster ~300 €; Einbau+Abdichtung ~100 €; Außenfensterbank ~50 €
+-- **~530 € pro Fenster**
+
+**Haustür Standard (Kunststoff):**
+Ausbau alt 200 €; neue Tür 1.500 €; Einbau+Anschluss 400 €
+-- **~2.100 € gesamt**
+
+**Haustür Premium (Alu, Seitenteil):**
+Ausbau 250 €; Tür 4.000 €; Seitenteil 800 €; Einbau+Anschluss 600 €
+-- **~5.650 €**
+
+## WICHTIGE HINWEISE:
+- **Maßaufnahme:** Vor Bestellung exakte Aufmaß nehmen, da Fertigung millimetergenau erfolgt.
+- Anschlussfugen nach RAL-Montagegrundsatz: „innen dichter als außen".
+- **GEG-Konformität:** Uw-Wert neuer Fenster muss ≤1,3 W/m²K sein.
+- **Förderung:** Evtl. BAFA/KfW-Förderung bei energetischer Gesamtsanierung.
+- Bei mehreren Fenstern ggf. Kran/Hebebühne für große Elemente einplanen. Fenster)
+- Position 1.2: Entsorgung Alt-Fenster und Verglasung -- **15-30 €/m² Glasfläche**
+
+### 2. LIEFERUNG NEUE FENSTER:
+- Position 2.1: Kunststoff-Fenster liefern (weiß, 3-fach Verglasung Ug ~0.7): **250-400 €/m²** Fensterfläche
+- Position 2.2: Aufpreis für farbige Folierung (außen anthrazit o. Ä.): **+15-20%**
+- Position 2.3: Aufpreis Sicherheitsausstattung RC2 (Pilzkopfzapfen, VSG): **+80-150 €/Fenster**
+
+### 3. EINBAU NEUE FENSTER:
+- Position 3.1: Fenster einsetzen und justieren -- **30-80 €/Stk**
+- Position 3.2: Befestigung im Baukörper (Rahmendübel) -- **10-20 €/Stk**
+- Position 3.3: Anschlüsse abdichten (PU-Schaum innen, Kompriband außen) -- **5-10 €/lfd.m**
+- Position 3.4: Außenanschluss versiegeln (Dichtmasse/Silikon) -- **5-10 €/lfd.m**
+
+### 4. INNEN- UND AUßENABSCHLUSS:
+- Position 4.1: Innen-Fensterbänke liefern und einbauen: **30-60 €/lfd.m**
+- Position 4.2: Außen-Fensterbänke (Alu) montieren: **40-80 €/lfd.m**
+- Position 4.3: Laibungen innen ggf. verputzen/angleichen -- **10-20 €/lfd.m**
+
+### 5. ROLLLÄDEN / SONNENSCHUTZ (falls im Auftrag):
+- Position 5.1: Vorbau-Rollladen montieren: **150-300 €/Stk**
+- Position 5.2: Aufsatz-Rollladenkasten integrieren -- **100-200 €/Stk**
+- Position 5.3: Elektrischer Antrieb: **+100-300 €/Fenster**
+
+## ERSTELLE TÜREN-LV:
+
+### A. Haustür / Außentür:
+- Position A1: Alte Haustür ausbauen und entsorgen -- **150-300 €**
+- Position A2: Neue Haustür liefern (komplettes Türelement):
+  - Standard-Kunststoff-Haustür (Uw ~1.3): **1.000-2.000 €**
+  - Marken-Alu-Haustür (Uw ~0.8-1.0, RC2): **3.000-5.000 €**
+  - Aufpreis Seitenteil festverglast: **+500-1.000 €**
+- Position A3: Neue Haustür einbauen -- **300-600 €**
+- Position A4: Innen- und Außenanschlüsse herstellen: **30-80 €/lfd.m**
+- Position A5: Schließzylinder einsetzen -- **30-100 €/Stk**
+
+### B. Innentüren:
+- Position B1: Alte Innentürblätter + Zargen ausbauen -- **40-80 €/Stk**
+- Position B2: Neue Türblätter + Zargen liefern:
+  - Einfache Röhrenspan-Tür weiß: **150-250 €/Stk**
+  - CPL-Dekor Standard: **200-350 €/Stk**
+  - Echtholzfurnier: **400-800 €/Stk**
+  - Glastür (ESG): **500-1000 €/Stk**
+- Position B3: Innentür einsetzen und justieren -- **50-100 €/Stk**
+- Position B4: Anschlagfugen schließen -- **5-10 €/lfd.m**
+- Position B5: Drückergarnitur montieren -- **20-50 €/Stk**
+
+## KOSTENBEISPIELE TÜREN:
+
+**Haustür Standard (Kunststoff):**
+Ausbau alt 200 €; neue Tür 1.500 €; Einbau+Anschluss 400 €
+-- **~2.100 € gesamt**
+
+**Haustür Premium (Alu, Seitenteil):**
+Ausbau 250 €; Tür 4.000 €; Seitenteil 800 €; Einbau+Anschluss 600 €
+-- **~5.650 €**
+
+**Innentür Standard weiß:**
+Ausbau 50 €; neue Tür 200 €; Einbau 60 €
+-- **~310 €** pro Tür
+
+## WICHTIGE HINWEISE:
+- **Maßaufnahme:** Vor Bestellung exakte Aufmaß nehmen, da Fertigung millimetergenau erfolgt.
+- Anschlussfugen nach RAL-Montagegrundsatz: „innen dichter als außen".
+- **Förderung:** Evtl. BAFA/KfW-Förderung für Fenstertausch bei energetischer Sanierung.
+- **Nachjustierung:** Holztüren brauchen ggf. Nachstellservice nach einer Saison.

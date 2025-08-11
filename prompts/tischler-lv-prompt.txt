@@ -1,0 +1,104 @@
+# Tischlerarbeiten - LV-Prompt
+
+**TISCHLER-LV-PROMPT:** *Du erstellst detaillierte Leistungsverzeichnisse für Tischlerarbeiten basierend auf den erfassten Projektdaten nach DIN 18040 und Schallschutzanforderungen.*
+
+**WICHTIG:** Dieses Gewerk umfasst Innentüren, Innenfensterbänke und Holzarbeiten im Innenbereich.
+
+**PROJEKTKONTEXT:** **{projekt_kontext}** • **Anzahl Innentüren:** {anzahl_innentueren} • **Innenfensterbänke:** {anzahl_fensterbanke}
+
+## ERSTELLE TISCHLER-LV:
+
+### 1. DEMONTAGE ALTE INNENTÜREN:
+- Position 1.1: Alte Innentürblätter + Zargen ausbauen -- **40-80 €/Stk** (inkl. Entsorgung)
+- Position 1.2: Türdrücker und Beschläge demontieren -- **10-20 €/Stk**
+- Position 1.3: Alte Innenfensterbänke entfernen -- **15-30 €/lfd.m**
+
+### 2. INNENTÜREN LIEFERUNG UND MONTAGE:
+- Position 2.1: Neue Innentürblätter + Zargen liefern:
+  - **Röhrenspan-Tür weiß** (inkl. Umfassungszarge): **150-250 €/Stk**
+  - **CPL-Dekor Standard** (Holzdekor, kratzfest): **200-350 €/Stk**
+  - **Vollspan-Tür** (besserer Schallschutz): **250-450 €/Stk**
+  - **Echtholzfurnier-Tür** (Eiche, Buche etc.): **400-800 €/Stk**
+  - **Massivholz-Tür** (hochwertig): **600-1.200 €/Stk**
+  - **Glastür ESG** (satiniert oder klar): **500-1.000 €/Stk**
+
+**Aufpreise Innentüren:**
+- Sondermaß (Altbau-Höhen): **+20%**
+- Schallschutztür (Rw 42dB mit Dichtungen): **+200 €**
+- Brandschutztür T30 (inkl. Selbstschließer): **+400 €**
+- Wohnungsabschlusstür (RC2 + Schallschutz): **+300-600 €**
+
+- Position 2.2: Innentür einsetzen und justieren -- **50-100 €/Stk** (inkl. Ausschäumen hinter Zarge)
+- Position 2.3: Anschlagfugen mit Acryl schließen (Zarge/Wand) -- **5-10 €/lfd.m** (meist ~15 € pro Tür)
+
+### 3. BESCHLÄGE UND DETAILS INNENTÜREN:
+- Position 3.1: Drückergarnitur montieren:
+  - **Standard Alu/Stahl** matt Griff -- **inklusive** (oft vormontiert)
+  - **Design-Garnitur Edelstahl** (separater Kauf) -- **20-50 €/Stk** (Montagekosten)
+  - **Premium-Garnitur** (Messing, Designerform): **50-150 €/Stk**
+
+- Position 3.2: Türschlösser einsetzen:
+  - Standard-Buntbartschloss: **inklusive**
+  - Profilzylinder-Schloss (abschließbar): **+30-80 €/Stk**
+  - Sicherheitsschloss (Wohnungseingang): **+80-200 €/Stk**
+
+- Position 3.3: Bodendichtung (absenkbar) für Schallschutztür einfräsen -- **40-80 €/Stk**
+- Position 3.4: Türzargendichtung für erhöhten Schallschutz -- **25-50 €/Stk**
+
+### 4. INNENFENSTERBÄNKE:
+- Position 4.1: Innenfensterbänke nach Material liefern und einbauen:
+  - **Holz** (Kiefer/Fichte lackiert): **30-50 €/lfd.m**
+  - **Holz Eiche/Buche** (massiv, geölt): **60-120 €/lfd.m**
+  - **Kunststoff weiß** (Standard): **20-35 €/lfd.m**
+  - **Kunststein/Agglo** (verschiedene Dekore): **50-100 €/lfd.m**
+  - **MDF foliert** (Holzoptik günstig): **25-45 €/lfd.m**
+
+- Position 4.2: Ausschnitte für Heizkörper-Rohre sägen -- **15-25 €/Ausschnitt**
+- Position 4.3: Kantenschutz/Abschlussleisten montieren -- **8-15 €/lfd.m**
+
+### 5. SONSTIGE HOLZARBEITEN:
+- Position 5.1: Holzvertäfelung/Wandverkleidung (falls gewünscht):
+  - **Profilholz Fichte** (Nut+Feder): **25-40 €/m²**
+  - **Echtholz-Paneele Eiche**: **60-120 €/m²**
+  - Montage inkl. Unterkonstruktion: **20-35 €/m²**
+
+- Position 5.2: Einbauschränke nach Maß (falls gewünscht):
+  - **Einfacher Einbauschrank** (MDF/Spanplatte): **200-400 €/lfd.m**
+  - **Hochwertiger Schrank** (Massivholz): **500-1.000 €/lfd.m**
+
+- Position 5.3: Holztreppen-Reparaturen (falls erforderlich):
+  - Stufen auswechseln: **50-150 €/Stufe**
+  - Geländer reparieren: **100-300 €/lfd.m**
+  - Treppe abschleifen + ölen: **25-45 €/m²**
+
+### 6. OBERFLÄCHENBEHANDLUNG:
+- Position 6.1: Holzoberflächen behandeln:
+  - **Ölen** (natürliche Optik): **8-15 €/m²**
+  - **Wachsen** (seidenmatt): **10-18 €/m²**
+  - **Lackieren** (glänzend, strapazierfähig): **12-25 €/m²**
+  - **Lasieren** (Holzstruktur sichtbar): **10-20 €/m²**
+
+## KOSTENBEISPIELE TISCHLERARBEITEN:
+
+**Innentüren-Erneuerung** (5 Stück Standard CPL-Dekor):
+Ausbau alte Türen ~250 €; neue Türen+Zargen ~1.250 €; Einbau ~300 €; Drückergarnituren ~100 €
+-- **Gesamt ~1.900 € (~380 €/Tür)**
+
+**Premium-Innentüren** (3 Stück Echtholzfurnier Eiche):
+Ausbau ~150 €; Türen+Zargen ~1.800 €; Einbau ~200 €; Design-Garnituren ~150 €
+-- **Gesamt ~2.300 € (~767 €/Tür)**
+
+**Innenfensterbänke** (8 Stück à 120 cm Holz Eiche):
+Alte Bänke entfernen ~180 €; neue Eichen-Fensterbänke ~720 €; Montage ~240 €
+-- **Gesamt ~1.140 € (~119 €/Stk)**
+
+**Wohnungsausstattung komplett** (6 Innentüren + 12 Fensterbänke + Holzvertäfelung 20m²):
+Innentüren (Standard) ~2.280 €; Fensterbänke Kunststein ~1.200 €; Holzvertäfelung ~1.300 €; Oberflächenbehandlung ~400 €
+-- **Gesamt ~5.180 €**
+
+## WICHTIGE HINWEISE:
+- **Normmaße vs. Sondermaße:** Altbau hat teils Sonderhöhen (z. B. 220 cm Türen) -- verlängerte Lieferzeit und Mehrkosten ~20%.
+- **Barrierefreiheit:** Türen zu barrierefreien Bädern mind. 90 cm lichte Breite (entspricht Tür 98,5 cm Rohbaubreite).
+- **Schallschutz:** Wohnungseingangstüren oft Brandschutz T30 + Schallschutz erforderlich.
+- **Holzarbeiten:** Massivholz braucht ggf. Nachstellservice nach einer Saison (Holz arbeitet).
+- **Koordination:** Enge Abstimmung mit Elektrikern bei Schrankbeleuchtung o.ä.
