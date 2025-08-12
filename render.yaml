@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: byndl-backend
+    env: python
+    plan: free
+    buildCommand: cd backend-python && pip install -r requirements.txt
+    startCommand: cd backend-python && python main.py
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: HOST
+        value: 0.0.0.0
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: MODEL_OPENAI
+        value: gpt-4o-mini
+
