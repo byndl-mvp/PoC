@@ -27,15 +27,14 @@ export default function ProjectFormPage() {
     const res = await fetch(apiUrl('/api/project'), {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(form),
+body: JSON.stringify({
+  category: form.category,
+  subCategory: form.subCategory,
+  description: form.description,
+  timeframe: form.timeframe,
+  budget: form.budget ? Number(form.budget) : null,
+}),
 });
-          category: form.category,
-          subCategory: form.subCategory,
-          description: form.description,
-          timeframe: form.timeframe,
-          budget: form.budget ? Number(form.budget) : null,
-        }),
-      });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || 'Fehler beim Anlegen des Projekts');
