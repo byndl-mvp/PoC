@@ -1,0 +1,75 @@
+# Gerüstbau - LV-Prompt
+
+**GERÜSTBAU-LV-PROMPT:** *Du erstellst präzise Leistungsverzeichnisse für Gerüstarbeiten basierend auf den erfassten Projektdaten.*
+
+**WICHTIG:** Gerüstbau-Leistungen **immer separat** ausschreiben! Gerüstbau ist eigenständiges Spezialgewerk.
+
+## ERSTELLE GERÜSTBAU-LV:
+
+### 1. PLANUNG UND GENEHMIGUNG:
+- Position 1.1: Statische Berechnung (Gerüsthöhe > 15 m) -- **300-800 €**
+- Position 1.2: Aufstellgenehmigung (öffentlicher Grund) -- **50-200 €**
+- Position 1.3: Baustellenbesichtigung und Aufmaß -- **100-300 €**
+
+### 2. GERÜSTAUFBAU (Standard-Arbeitsgerüst):
+- Position 2.1: Fassadengerüst (Arbeitsgerüst, ~0,6 m Belagbreite) stellen:
+  - bis 6 m Höhe: **8-12 €/m²** Gerüstfläche
+  - 6-12 m Höhe: **10-15 €/m²**
+  - 12-20 m Höhe: **15-25 €/m²**
+
+- Position 2.2: Beläge mit Geländer montieren -- **3-5 €/m²**
+- Position 2.3: Seitenschutz / Fangnetze anbringen -- **2-4 €/m²**
+- Position 2.4: Verankerungen am Gebäude anbringen -- **15-30 €** *pro Anker*
+
+***(Alternative) Vollschutz-Gerüst (Wetterschutz-Einhausung):***
+- Position 2.1: Vollschutz-Gerüst (ca. 1,2 m breite Arbeitsgänge) -- **18-28 €/m²**
+- Position 2.2: Wetterschutzplanen / Dach einziehen -- **8-15 €/m²**
+- Position 2.3: Komplette Einhausung errichten -- **15-25 €/m²**
+
+***(Alternative) Schwerlast-Gerüst (für WDVS/Klinker):***
+- Position 2.1: Verstärktes Gerüst (Belagbreite ~1,5 m) -- **20-35 €/m²**
+- Position 2.2: Verstärkte Belagböden / Doppelböden -- **5-8 €/m²**
+- Position 2.3: Zwischenlager-Ebenen für Material -- **3-6 €/m²**
+
+### 3. ZUSATZAUSRÜSTUNG:
+- Position 3.1: Material-Aufzug (Bauaufzug) am Gerüst montieren -- **150-300 €/Monat**
+- Position 3.2: Personenaufzug (Lastenaufzug) installieren -- **500-1.000 €/Monat**
+- Position 3.3: Arbeitsplattform verbreitern (z. B. auf 0,9-1,2 m) -- **+3-6 €/m²**
+- Position 3.4: Gerüst-Beleuchtungsanlage installieren -- **100-200 €/Monat**
+
+### 4. SCHUTZEINRICHTUNGEN:
+- Position 4.1: Schutzdach über Gehweg anbringen -- **25-40 €/m²**
+- Position 4.2: Fanggerüst (Auffangnetze, z. B. Dachfang) -- **15-25 €/m²**
+- Position 4.3: Staubschutznetze montieren -- **3-6 €/m²**
+- Position 4.4: Warnschilder und Absperrungen -- **50-150 €** (pauschal)
+
+### 5. NUTZUNG UND SERVICE:
+- Position 5.1: Gerüst-Miete (inklusive Wartung, pro Woche):
+  - Erste 4 Wochen: **1,5-3 €/m²/Woche**
+  - 5-12 Wochen: **1-2 €/m²/Woche**
+  - >12 Wochen: **0,5-1,5 €/m²/Woche**
+
+- Position 5.2: Regelmäßige Gerüstkontrolle (alle 14 Tage) -- **150-300 €** pro Kontrolle
+- Position 5.3: Gerüst-Umbau / Anpassungen während Bau -- **80-150 €/h**
+- Position 5.4: Reparaturen am Gerüst -- *nach Aufwand*
+
+### 6. ABBAU UND ENTSORGUNG:
+- Position 6.1: Gerüst fachgerecht demontieren -- **4-8 €/m²** (Gerüstfläche)
+- Position 6.2: Material-Transport / Rückführung -- **200-500 €** (pauschal)
+- Position 6.3: Reinigung der Aufstellfläche nach Abbau -- **100-200 €** (pauschal)
+
+## KOSTENBEISPIELE NACH OBJEKTGRÖSSE:
+
+**Einfamilienhaus** (Fassade 10×8 m, 8 m hoch → ~144 m² Gerüstfläche): 
+Aufbau Standardgerüst ~1.800 €; Verankerungen (ca. 12 Stk.) ~300 €; Miete 6 Wochen ~432 €; Abbau ~720 € 
+-- **Gesamt ~3.252 € (~23 €/m²)**
+
+**Mehrfamilienhaus** (Fassade 20×12 m, 12 m hoch → ~384 m² Gerüst): 
+Aufbau Gerüst ~5.760 €; Schutzdach für Gehweg ~800 €; Materialaufzug (4 Monate) ~600 €; Miete 16 Wochen ~2.304 €; Abbau ~1.920 € 
+-- **Gesamt ~11.384 € (~30 €/m²)**
+
+## Regionale Faktoren (Gerüstbau):
+- Großstädte (Ballungsräume): +15-25% (höhere Lohn- & Nebenkosten)
+- Ländliche Gebiete: Basis-Preise (keine Zuschläge)
+- Berg-/Hanglage oder schwierige Erreichbarkeit: +30-50%
+- Inseln / abgelegene Orte: +50-100% (Transportkosten hoch)

@@ -1,0 +1,55 @@
+{
+  "id": "lv_session_1754993908983_1bv6mp8vl_maler_1754993914132",
+  "sessionId": "session_1754993908983_1bv6mp8vl",
+  "tradeId": "maler",
+  "tradeName": "Malerarbeiten",
+  "projectData": {
+    "category": "Sanierung",
+    "subCategory": "Badsanierung",
+    "description": "Komplette Badsanierung mit neuen Sanitärobjekten, Fliesen, Elektrik und Malerarbeiten. Das Bad ist ca. 8m² groß und soll modern und hochwertig ausgestattet werden.",
+    "timeframe": "2-3 Monate",
+    "budget": "15000-20000 €"
+  },
+  "generatedAt": "2025-08-12T10:18:34.132Z",
+  "content": {
+    "tradeId": "maler",
+    "tradeName": "Malerarbeiten",
+    "chapters": [
+      {
+        "title": "1. DEMONTAGE UND VORBEREITUNG",
+        "positions": []
+      },
+      {
+        "title": "2. NEUINSTALLATION",
+        "positions": []
+      }
+    ],
+    "positions": []
+  },
+  "summary": {
+    "totalPositions": 0,
+    "nettoSumme": 0,
+    "catalogMatches": 0,
+    "assumptions": 0,
+    "chapters": [
+      {
+        "title": "1. DEMONTAGE UND VORBEREITUNG",
+        "positions": 0,
+        "summe": 0
+      },
+      {
+        "title": "2. NEUINSTALLATION",
+        "positions": 0,
+        "summe": 0
+      }
+    ],
+    "riskBuffer": null,
+    "riskBufferAmount": null,
+    "bruttoSumme": null
+  },
+  "metadata": {
+    "totalPositions": 0,
+    "answeredQuestions": 0,
+    "assumptions": []
+  }
+}

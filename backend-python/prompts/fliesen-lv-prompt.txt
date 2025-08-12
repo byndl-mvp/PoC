@@ -1,0 +1,76 @@
+# Fliesenarbeiten - LV-Prompt
+
+**FLIESEN-LV-PROMPT:** *Du erstellst detaillierte Leistungsverzeichnisse für Fliesenarbeiten basierend auf den erfassten Projektdaten nach VOB/C ATV DIN 18352.*
+
+**PROJEKTKONTEXT:** **{projekt_kontext}** • **Gesamt-Fliesenfläche:** {gesamtflaeche} • **Projekttyp:** {einzelgewerk_oder_mehrgewerke}
+
+## ERSTELLE FLIESEN-LV (je nach Projektart):
+
+### Wenn überschaubare Fliesenfläche (< ~50 m²), ohne separates Abbruch-LV:
+
+**1. ALTE FLIESEN ENTFERNEN (falls vorhanden):**
+- Position 1.1: Wandfliesen abschlagen/entfernen:
+  - Standard Keramikfliesen: **15-20 €/m²**
+  - Hartglasur oder Natursteinfliesen: **20-25 €/m²**
+
+- Position 1.2: Bodenfliesen aufnehmen:
+  - Normal verklebt (Dünnbett): **18-25 €/m²**
+  - Sehr fest (Dickbett, Epoxid): **25-30 €/m²**
+
+- Position 1.3: Fliesenkleber-Reste vom Untergrund entfernen -- **5-12 €/m²**
+- Position 1.4: Fliesenabfall entsorgen -- **80-150 €/t**
+- Position 1.5: Untergrund für Neuverlegung vorbereiten (Reinigung, Ausgleich) -- **8-15 €/m²**
+
+**2. UNTERGRUND-VORBEREITUNG:**
+- Position 2.1: Untergrund prüfen und ausgleichen (Spachteln bei Unebenheiten) -- **8-15 €/m²**
+- Position 2.2: Grundierung auf tragfähigen Untergrund aufbringen -- **2-4 €/m²**
+- Position 2.3: Abdichtung im Feuchtraum (Duschbereich, nach DIN 18534) -- **15-25 €/m²**
+- Position 2.4: Dichtbänder in Ecken und Anschlüssen einarbeiten -- **8-15 €/lfd.m**
+
+**3. FLIESENVERLEGUNG (Neu):**
+- Position 3.1: Fliesenmaterial + ~10% Verschnitt berechnen (Kosten entsprechend gewählter Qualität)
+
+- Position 3.2: Fliesenkleber auftragen (zahnspachteln):
+  - Standard Fliesenkleber: **3-5 €/m²**
+  - Flexkleber (für Fußbodenheizung): **5-8 €/m²**
+  - Naturstein-Kleber (weiß, schnellbindend): **6-10 €/m²**
+
+- Position 3.3: Fliesen verlegen nach gewähltem Muster:
+  - Gerade Verlegung: **25-35 €/m²**
+  - Diagonale Verlegung: **30-45 €/m²**
+  - Komplexe Muster (Verband, Mosaik etc.): **40-60 €/m²**
+
+- Position 3.4: Verfugen und Finish:
+  - Standard-Fugenmörtel: **5-8 €/m²**
+  - Epoxidharzfuge (pflegeleicht, chem. beständig): **8-15 €/m²**
+
+- Position 3.5: Silikonfugen an Anschlüssen/Ecken ziehen -- **8-15 €/lfd.m**
+- Position 3.6: Naturstein-Imprägnierung auftragen (falls Naturstein verlegt) -- **8-12 €/m²**
+
+### Wenn Mehrgewerke-Projekt mit separatem Abbruch-LV:
+**1. UNTERGRUNDVORBEREITUNG (ohne Fliesen entfernen):**
+*(Entspricht oben Position 2.1-2.4)*
+
+**2. FLIESENVERLEGUNG NEU:**
+*(Entspricht oben Position 3.1-3.6)*
+
+## KOSTENBEISPIELE FLIESEN:
+
+**Badezimmer (Wand+Boden ~25 m² Fliesen):**
+Fliesen entfernen ~500 €; Untergrund vorbereiten ~300 €; Abdichtung Dusche ~400 €; Fliesen Standard verlegen ~1.250 €; Verfugen ~200 €
+-- **Gesamt ~2.650 € (~106 €/m²)**
+
+**Küchen-Spritzschutz (Wand 8 m²):**
+Fliesen entfernen ~160 €; Untergrund vorbereiten ~80 €; Premium-Fliesen verlegen ~480 €; Verfugen ~80 €
+-- **Gesamt ~800 € (100 €/m²)**
+
+**Luxus-Bad (Wand+Boden ~40 m²):**
+Alte Fliesen raus ~800 €; Untergrund+Abdichtung ~600 €; Designer-Feinsteinzeug 80×80 cm ~4.000 € (Material inkl. Verschnitt); diagonale Verlegung ~1.800 €; Epoxid-Fuge ~600 €; Naturstein-Oberfläche imprägnieren ~320 €
+-- **Gesamt ~8.120 € (~203 €/m²)**
+
+## WICHTIGE HINWEISE:
+- **Fußbodenheizung:** Vor Fliesenverlegung Aufheizprotokoll durchführen (mind. 48h bei ~25 °C, dann abkühlen).
+- **Natursteinfliesen:** Immer Imprägnierung vorsehen, sonst Fleckenbildung möglich.
+- **Großformat-Fliesen:** Erfordern spezielles Handling (Schneidgeräte, Saugheber). Nicht jeder Fliesenleger hat XXL-Erfahrung.
+- **Feuchträume:** Abdichtung nach DIN 18534 ist zwingend (Duschbereiche, Badewannenumfeld), sonst Gewährleistung gefährdet.
+- **Fugenhärtung:** Frische Fugenmasse mind. 24 h schonen; vollständige Belastbarkeit erst nach ~7 Tagen.

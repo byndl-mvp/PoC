@@ -1,0 +1,288 @@
+{
+  "id": "lv_session_1754993414858_ylpyvpkqn_fliesen_1754993420473",
+  "sessionId": "session_1754993414858_ylpyvpkqn",
+  "tradeId": "fliesen",
+  "tradeName": "Fliesenarbeiten",
+  "projectData": {
+    "category": "Sanierung",
+    "subCategory": "Badsanierung",
+    "description": "Komplette Badsanierung mit neuen Sanitärobjekten, Fliesen und Elektrik",
+    "timeframe": "2-3 Monate",
+    "budget": "15000-20000"
+  },
+  "generatedAt": "2025-08-12T10:10:20.473Z",
+  "content": {
+    "tradeId": "fliesen",
+    "tradeName": "Fliesenarbeiten",
+    "chapters": [
+      {
+        "title": "1. DEMONTAGE UND VORBEREITUNG",
+        "positions": [
+          {
+            "positionNr": "1.1",
+            "kurztext": "- Standard Keramikfliesen",
+            "langtext": "- Standard Keramikfliesen",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          },
+          {
+            "positionNr": "1.2",
+            "kurztext": "- Hartglasur oder Natursteinfliesen",
+            "langtext": "- Hartglasur oder Natursteinfliesen",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          },
+          {
+            "positionNr": "1.3",
+            "kurztext": "- Normal verklebt",
+            "langtext": "- Normal verklebt (Dünnbett)",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          },
+          {
+            "positionNr": "1.4",
+            "kurztext": "- Sehr fest",
+            "langtext": "- Sehr fest (Dickbett, Epoxid)",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          }
+        ]
+      },
+      {
+        "title": "2. NEUINSTALLATION",
+        "positions": [
+          {
+            "positionNr": "1.5",
+            "kurztext": "Fliesenkleber-Reste vom Untergrund entfernen",
+            "langtext": "Fliesenkleber-Reste vom Untergrund entfernen",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          },
+          {
+            "positionNr": "2.1",
+            "kurztext": "Fliesenabfall entsorgen",
+            "langtext": "Fliesenabfall entsorgen",
+            "einheit": "t",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          },
+          {
+            "positionNr": "2.2",
+            "kurztext": "Untergrund für Neuverlegung vorbereiten",
+            "langtext": "Untergrund für Neuverlegung vorbereiten (Reinigung, Ausgleich)",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          },
+          {
+            "positionNr": "2.3",
+            "kurztext": "Untergrund prüfen und ausgleichen",
+            "langtext": "Untergrund prüfen und ausgleichen (Spachteln bei Unebenheiten)",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          },
+          {
+            "positionNr": "2.4",
+            "kurztext": "Grundierung auf tragfähigen Untergrund aufbringen",
+            "langtext": "Grundierung auf tragfähigen Untergrund aufbringen",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          },
+          {
+            "positionNr": "2.5",
+            "kurztext": "Abdichtung im Feuchtraum",
+            "langtext": "Abdichtung im Feuchtraum (Duschbereich, nach DIN 18534)",
+            "einheit": "m",
+            "menge": 1,
+            "hinweise": "Standardausführung"
+          }
+        ]
+      }
+    ],
+    "positions": [
+      {
+        "positionNr": "1.1",
+        "kurztext": "- Standard Keramikfliesen",
+        "langtext": "- Standard Keramikfliesen",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "1. DEMONTAGE UND VORBEREITUNG",
+        "ep": 17.5,
+        "minEP": 15,
+        "maxEP": 20,
+        "gp": 17.5,
+        "catalogMatch": true,
+        "catalogPosition": "standard_keramikflie"
+      },
+      {
+        "positionNr": "1.2",
+        "kurztext": "- Hartglasur oder Natursteinfliesen",
+        "langtext": "- Hartglasur oder Natursteinfliesen",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "1. DEMONTAGE UND VORBEREITUNG",
+        "ep": 22.5,
+        "minEP": 20,
+        "maxEP": 25,
+        "gp": 22.5,
+        "catalogMatch": true,
+        "catalogPosition": "hartglasur_oder_natu"
+      },
+      {
+        "positionNr": "1.3",
+        "kurztext": "- Normal verklebt",
+        "langtext": "- Normal verklebt (Dünnbett)",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "1. DEMONTAGE UND VORBEREITUNG",
+        "ep": 21.5,
+        "minEP": 18,
+        "maxEP": 25,
+        "gp": 21.5,
+        "catalogMatch": true,
+        "catalogPosition": "normal_verklebt_d_nn"
+      },
+      {
+        "positionNr": "1.4",
+        "kurztext": "- Sehr fest",
+        "langtext": "- Sehr fest (Dickbett, Epoxid)",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "1. DEMONTAGE UND VORBEREITUNG",
+        "ep": 27.5,
+        "minEP": 25,
+        "maxEP": 30,
+        "gp": 27.5,
+        "catalogMatch": true,
+        "catalogPosition": "sehr_fest_dickbett_e"
+      },
+      {
+        "positionNr": "1.5",
+        "kurztext": "Fliesenkleber-Reste vom Untergrund entfernen",
+        "langtext": "Fliesenkleber-Reste vom Untergrund entfernen",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "2. NEUINSTALLATION",
+        "ep": 8.5,
+        "minEP": 5,
+        "maxEP": 12,
+        "gp": 8.5,
+        "catalogMatch": true,
+        "catalogPosition": "1.3"
+      },
+      {
+        "positionNr": "2.1",
+        "kurztext": "Fliesenabfall entsorgen",
+        "langtext": "Fliesenabfall entsorgen",
+        "einheit": "t",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "2. NEUINSTALLATION",
+        "ep": 115,
+        "minEP": 80,
+        "maxEP": 150,
+        "gp": 115,
+        "catalogMatch": true,
+        "catalogPosition": "1.4"
+      },
+      {
+        "positionNr": "2.2",
+        "kurztext": "Untergrund für Neuverlegung vorbereiten",
+        "langtext": "Untergrund für Neuverlegung vorbereiten (Reinigung, Ausgleich)",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "2. NEUINSTALLATION",
+        "ep": 11.5,
+        "minEP": 8,
+        "maxEP": 15,
+        "gp": 11.5,
+        "catalogMatch": true,
+        "catalogPosition": "1.5"
+      },
+      {
+        "positionNr": "2.3",
+        "kurztext": "Untergrund prüfen und ausgleichen",
+        "langtext": "Untergrund prüfen und ausgleichen (Spachteln bei Unebenheiten)",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "2. NEUINSTALLATION",
+        "ep": 11.5,
+        "minEP": 8,
+        "maxEP": 15,
+        "gp": 11.5,
+        "catalogMatch": true,
+        "catalogPosition": "2.1"
+      },
+      {
+        "positionNr": "2.4",
+        "kurztext": "Grundierung auf tragfähigen Untergrund aufbringen",
+        "langtext": "Grundierung auf tragfähigen Untergrund aufbringen",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "2. NEUINSTALLATION",
+        "ep": 3,
+        "minEP": 2,
+        "maxEP": 4,
+        "gp": 3,
+        "catalogMatch": true,
+        "catalogPosition": "2.2"
+      },
+      {
+        "positionNr": "2.5",
+        "kurztext": "Abdichtung im Feuchtraum",
+        "langtext": "Abdichtung im Feuchtraum (Duschbereich, nach DIN 18534)",
+        "einheit": "m",
+        "menge": 1,
+        "hinweise": "Standardausführung",
+        "chapter": "2. NEUINSTALLATION",
+        "ep": 20,
+        "minEP": 15,
+        "maxEP": 25,
+        "gp": 20,
+        "catalogMatch": true,
+        "catalogPosition": "2.3"
+      }
+    ]
+  },
+  "summary": {
+    "totalPositions": 10,
+    "nettoSumme": 258.5,
+    "catalogMatches": 10,
+    "assumptions": 0,
+    "chapters": [
+      {
+        "title": "1. DEMONTAGE UND VORBEREITUNG",
+        "positions": 4,
+        "summe": 0
+      },
+      {
+        "title": "2. NEUINSTALLATION",
+        "positions": 6,
+        "summe": 0
+      }
+    ],
+    "riskBuffer": 0.05,
+    "riskBufferAmount": 12.925,
+    "bruttoSumme": 271.425
+  },
+  "metadata": {
+    "totalPositions": 10,
+    "answeredQuestions": 0,
+    "assumptions": []
+  }
+}
