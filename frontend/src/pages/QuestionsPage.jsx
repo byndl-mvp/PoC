@@ -16,7 +16,7 @@ export default function QuestionsPage() {
     async function fetchQuestions() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/questions/${tradeId}`);
+        const res = await fetch('https://poc-rvrj.onrender.com/api/questions/${tradeId}`);
         if (!res.ok) {
           const data = await res.json();
           throw new Error(data.message || 'Fehler beim Laden der Fragen');
