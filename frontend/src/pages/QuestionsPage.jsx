@@ -38,7 +38,7 @@ export default function QuestionsPage() {
     setSubmitting(true);
     try {
       const q = questions[current];
-      const res = await fetch('https://poc-rvrj.onrender.com/api/questions/${tradeId}`, {
+      const res = await fetch(`https://poc-rvrj.onrender.com/api/questions/${tradeId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId: q.id, answer: answerText, assumption }),
