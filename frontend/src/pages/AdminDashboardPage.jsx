@@ -31,7 +31,7 @@ export default function AdminDashboardPage() {
 
   async function selectProject(project) {
     try {
-      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/project/${project.id}`, {
+      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/projects/${id}`, { ... })
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
