@@ -13,7 +13,7 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
