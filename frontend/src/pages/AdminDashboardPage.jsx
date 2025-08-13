@@ -31,7 +31,7 @@ export default function AdminDashboardPage() {
 
   async function selectProject(project) {
     try {
-      const res = await fetch(`/api/admin/project/${project.id}`, {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/project/${project.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -49,7 +49,7 @@ export default function AdminDashboardPage() {
   async function updatePrompt(e) {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/prompts', {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/prompts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
