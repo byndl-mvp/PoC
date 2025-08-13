@@ -73,7 +73,7 @@ export default function QuestionsPage() {
         throw new Error(data.message || 'Fehler beim Generieren des LV');
       }
       // Check for next trade
-      const tradesRes = await fetch('https://poc-rvrj.onrender.com/api/trades/${projectId}`);
+      const tradesRes = await fetch(`https://poc-rvrj.onrender.com/api/trades/${projectId}`);
       if (!tradesRes.ok) {
         const data = await tradesRes.json();
         throw new Error(data.message || 'Fehler beim Abrufen der Gewerke');
