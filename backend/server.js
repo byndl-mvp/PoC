@@ -48,7 +48,7 @@ async function query(text, params) {
   }
 }
 
-});// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Helper functions
 //
 // The following helpers abstract away some common functionality such as
@@ -234,7 +234,9 @@ app.get('/trades', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch trades' });
   }
 });
-// ----- END trades routes -----  }// Create a new project
+// ----- END trades routes -----  
+
+// Create a new project
 app.post('/api/project', async (req, res) => {
   const { category, subCategory, description, timeframe, budget } = req.body;
   if (!category || !description) {
