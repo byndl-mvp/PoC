@@ -47,8 +47,35 @@ async function query(text, params) {
     client.release();
   }
 }
+// ---------------------------------------------------------
+// BYNDL API: Trades liefern (für Frontend & Tests)
+// GET /api/trades   -> JSON aus der Tabelle 'trades'
+// GET /trades       -> Alias, falls mal ohne /api aufgerufen wird
+// ---------------------------------------------------------
+app.get('/api/trades', async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT id, code, name FROM trades ORDER BY id'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Failed to fetch trades:', err);
+    res.status(500).json({ message: 'Failed to fetch trades' });
+  }
+});
 
-// ---------------------------------------------------------------------------
+// Alias ohne /api, falls das Frontend/Tests es so aufrufen
+app.get('/trades', async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT id, code, name FROM trades ORDER BY id'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Failed to fetch trades (alias):', err);
+    res.status(500).json({ message: 'Failed to fetch trades' });
+  }
+});// ---------------------------------------------------------------------------
 // Helper functions
 //
 // The following helpers abstract away some common functionality such as
