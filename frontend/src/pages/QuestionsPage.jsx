@@ -38,7 +38,7 @@ export default function QuestionsPage() {
     setSubmitting(true);
     try {
       const q = questions[current];
-      const res = await fetch(`/api/questions/${tradeId}`, {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/questions/${tradeId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId: q.id, answer: answerText, assumption }),
@@ -67,13 +67,13 @@ export default function QuestionsPage() {
   async function generateLvAndContinue() {
     try {
       // Generate LV for current trade
-      const res = await fetch(`/api/lv/${tradeId}`, { method: 'POST' });
+      const res = await fetch('https://poc-rvrj.onrender.com/api/lv/${tradeId}`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || 'Fehler beim Generieren des LV');
       }
       // Check for next trade
-      const tradesRes = await fetch(`/api/trades/${projectId}`);
+      const tradesRes = await fetch('https://poc-rvrj.onrender.com/api/trades/${projectId}`);
       if (!tradesRes.ok) {
         const data = await tradesRes.json();
         throw new Error(data.message || 'Fehler beim Abrufen der Gewerke');
