@@ -67,7 +67,7 @@ export default function QuestionsPage() {
   async function generateLvAndContinue() {
     try {
       // Generate LV for current trade
-      const res = await fetch('https://poc-rvrj.onrender.com/api/lv/${tradeId}`, { method: 'POST' });
+      const res = await fetch(`https://poc-rvrj.onrender.com/api/lv/${tradeId}`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || 'Fehler beim Generieren des LV');
