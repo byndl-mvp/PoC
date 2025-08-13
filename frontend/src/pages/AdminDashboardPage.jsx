@@ -12,7 +12,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function fetchProjects() {
       try {
-        const res = await fetch('/api/admin/projects', {
+        const res = await fetch('https://poc-rvrj.onrender.com/api/admin/projects', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
