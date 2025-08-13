@@ -11,7 +11,7 @@ export default function ResultPage() {
     async function fetchLvs() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/project/${projectId}/lv`);
+        const res = await fetch(`https://poc-rvrj.onrender.com/api/project/${projectId}/lv`);
         if (!res.ok) {
           const data = await res.json();
           throw new Error(data.message || 'Fehler beim Laden der LVs');
