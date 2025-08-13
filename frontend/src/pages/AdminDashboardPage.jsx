@@ -30,21 +30,30 @@ export default function AdminDashboardPage() {
   }, [token]);
 
   async function selectProject(project) {
-    try {
-      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/projects/${id}`, { ... })
+  try {
+    setLoading(true);
+
+    const res = await fetch(
+      `https://poc-rvrj.onrender.com/api/admin/projects/${project.id}`,
+      {
         headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Fehler beim Laden des Projekts');
       }
+    );
+
+    if (!res.ok) {
       const data = await res.json();
-      setSelectedProject(data.project);
-    } catch (err) {
-      console.error(err);
-      setMessage(err.message);
+      throw new Error(data.message || 'Fehler beim Laden des Projekts');
     }
+
+    const data = await res.json();
+    setSelectedProject(data);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
   }
+}
+
 
   async function updatePrompt(e) {
     e.preventDefault();
