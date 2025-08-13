@@ -193,7 +193,14 @@ function requireAdmin(req, res, next) {
 // Express app setup
 
 const app = express();
-app.use(cors());
+const allowedOrigins = ['https://byndl-poc.netlify.app', 'https://byndl.de'];
+app.use(require('cors')({ origin: allowedOrigins }));
+app.use(express.json());
+
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 app.use(bodyParser.json());
 
 // Health check
