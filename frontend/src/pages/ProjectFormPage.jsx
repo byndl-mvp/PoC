@@ -24,7 +24,7 @@ export default function ProjectFormPage() {
     setLoading(true);
     setError('');
     try {
-    const res = await fetch(apiUrl('/api/project'), {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/project', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({
