@@ -47,34 +47,7 @@ async function query(text, params) {
     client.release();
   }
 }
-// ---------------------------------------------------------
-// BYNDL API: Trades liefern (für Frontend & Tests)
-// GET /api/trades   -> JSON aus der Tabelle 'trades'
-// GET /trades       -> Alias, falls mal ohne /api aufgerufen wird
-// ---------------------------------------------------------
-app.get('/api/trades', async (req, res) => {
-  try {
-    const result = await query(
-      'SELECT id, code, name FROM trades ORDER BY id'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Failed to fetch trades:', err);
-    res.status(500).json({ message: 'Failed to fetch trades' });
-  }
-});
 
-// Alias ohne /api, falls das Frontend/Tests es so aufrufen
-app.get('/trades', async (req, res) => {
-  try {
-    const result = await query(
-      'SELECT id, code, name FROM trades ORDER BY id'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Failed to fetch trades (alias):', err);
-    res.status(500).json({ message: 'Failed to fetch trades' });
-  }
 });// ---------------------------------------------------------------------------
 // Helper functions
 //
@@ -234,8 +207,34 @@ app.use(bodyParser.json());
 app.get('/', (req, res) => {
   res.json({ message: 'BYNDL backend is up and running' });
 });
+// ---------------------------------------------------------
+// BYNDL API: Trades liefern (für Frontend & Tests)
+// GET /api/trades   -> JSON aus der Tabelle 'trades'
+// GET /trades       -> Alias, falls mal ohne /api aufgerufen wird
+// ---------------------------------------------------------
+app.get('/api/trades', async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT id, code, name FROM trades ORDER BY id'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Failed to fetch trades:', err);
+    res.status(500).json({ message: 'Failed to fetch trades' });
+  }
+});
 
-// Create a new project
+// Alias ohne /api, falls das Frontend/Tests es so aufrufen
+app.get('/trades', async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT id, code, name FROM trades ORDER BY id'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Failed to fetch trades (alias):', err);
+    res.status(500).json({ message: 'Failed to fetch trades' });
+  }// Create a new project
 app.post('/api/project', async (req, res) => {
   const { category, subCategory, description, timeframe, budget } = req.body;
   if (!category || !description) {
