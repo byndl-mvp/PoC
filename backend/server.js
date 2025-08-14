@@ -197,6 +197,13 @@ const allowedOrigins = ['https://byndl-poc.netlify.app', 'https://byndl.de'];
 app.use(require('cors')({ origin: allowedOrigins }));
 app.use(express.json());
 
+app.get('/__debug_routes', (req, res) => {
+  const routes = app._router.stack
+    .filter(r => r.route && r.route.path)
+    .map(r => `${Object.keys(r.route.methods).join(',').toUpperCase()} ${r.route.path}`);
+  res.json({ routes });
+});
+
 // ===== neue Trades-Route =====
 app.get('/api/trades', async (req, res) => {
   try {
