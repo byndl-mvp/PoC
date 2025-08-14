@@ -197,6 +197,22 @@ const allowedOrigins = ['https://byndl-poc.netlify.app', 'https://byndl.de'];
 app.use(require('cors')({ origin: allowedOrigins }));
 app.use(express.json());
 
+// ===== neue Trades-Route =====
+app.get('/api/trades', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT id, code, name
+      FROM trades
+      ORDER BY id
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Failed to fetch trades:', err);
+    res.status(500).json({ message: 'Failed to fetch trades' });
+  }
+});
+// ===== Ende neue Trades-Route =====
+
 app.get('/healthz', (req, res) => {
   res.status(200).json({ ok: true });
 });
