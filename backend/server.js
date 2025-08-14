@@ -208,6 +208,16 @@ app.get('/', (req, res) => {
   res.json({ message: 'BYNDL backend is up and running' });
 });
 
+// DB-Verbindungs-Test
+app.get('/api/dbping', async (req, res) => {
+  try {
+    const r = await query('SELECT 1 AS ok');
+    res.json({ ok: true, value: r.rows[0].ok });
+  } catch (e) {
+    console.error('DB ping fehlgeschlagen:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 // -------------------------------------------------------------
 // BYNDL API: Trades liefern (für Frontend & Tests)
 // -------------------------------------------------------------
