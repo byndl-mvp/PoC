@@ -193,6 +193,20 @@ function requireAdmin(req, res, next) {
 // Express app setup
 
 const app = express();
+
+app.get('/__info', (req, res) => {
+  const routes = (app._router?.stack || [])
+    .filter(r => r.route && r.route.path)
+    .map(r => `${Object.keys(r.route.methods).join(',').toUpperCase()} ${r.route.path}`);
+
+  res.json({
+    file: __filename,
+    cwd: process.cwd(),
+    routes,
+    commit: process.env.RENDER_GIT_COMMIT || process.env.RENDER_GIT_COMMIT_SHA || null
+  });
+});
+
 const allowedOrigins = ['https://byndl-poc.netlify.app', 'https://byndl.de'];
 app.use(require('cors')({ origin: allowedOrigins }));
 app.use(express.json());
