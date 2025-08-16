@@ -23,31 +23,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { Pool } = require('pg');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-
-// ---------------------------------------------------------------------------
-// Database setup
-//
-// All data related to projects, trades, questions, answers and LVs are stored
-// in a PostgreSQL database. The connection details are expected to be
-// provided via the DATABASE_URL environment variable. Using a pool ensures
-// connections are reused efficiently. See `db/schema.sql` for the schema.
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-});
-
-async function query(text, params) {
-  const client = await pool.connect();
-  try {
-    const res = await client.query(text, params);
-    return res;
-  } finally {
-    client.release();
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Helper functions
