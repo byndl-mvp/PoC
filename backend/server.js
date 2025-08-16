@@ -211,6 +211,41 @@ app.get('/api/trades', async (req, res) => {
 });
 // ===== Ende neue Trades-Route =====
 
+// ===== neue Prompts-Route =====
+app.get('/api/prompts', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT id, name, type, trade_id, created_at, updated_at
+      FROM prompts
+      ORDER BY trade_id NULLS FIRST, name
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Failed to fetch prompts:', err);
+    res.status(500).json({ message: 'Failed to fetch prompts' });
+  }
+});
+
+app.get('/api/prompts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await query(
+      `SELECT id, name, type, trade_id, content, created_at, updated_at
+       FROM prompts
+       WHERE id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Failed to fetch prompt:', err);
+    res.status(500).json({ message: 'Failed to fetch prompt' });
+  }
+});
+// ===== Ende neue Prompts-Route =====
+
 app.get('/healthz', (req, res) => {
   res.status(200).json({ ok: true });
 });
