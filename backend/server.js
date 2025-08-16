@@ -15,6 +15,7 @@
  * by default, so the server will not run until you perform `npm install`.
  */
 
+const { query } = require('./db.js');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
