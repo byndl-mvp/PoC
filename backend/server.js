@@ -312,13 +312,25 @@ app.post('/api/project', async (req, res) => {
     // Detect trades
     const trades = await detectTrades({ category, subCategory, description });
     // Insert trades into DB
-    for (const trade of trades) {
-      const tradeRes = await query(
-        'INSERT INTO trades (project_id, name) VALUES ($1, $2) RETURNING *',
-        [project.id, trade.name]
-      );
-      trade.id = tradeRes.rows[0].id;
-    }
+    
+ // Hole alle vorhandenen Gewerke
+const catRes = await query('SELECT id, name FROM trades');
+const catalog = catRes.rows;
+
+// Verknüpfe Projekt mit erkannten Gewerken
+for (const t of trades) {
+  const hit = catalog.find(c =>
+    c.name.toLowerCase().includes(String(t.name).toLowerCase())
+  );
+  if (!hit) continue;
+
+  await query(
+    `INSERT INTO project_trades (project_id, trade_id)
+     VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+    [project.id, hit.id]
+  );
+}
+    
     res.json({ projectId: project.id, trades });
   } catch (err) {
     console.error(err);
