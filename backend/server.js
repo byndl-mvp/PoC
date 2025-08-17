@@ -811,50 +811,44 @@ app.get("/test-anthropic", async (req, res) => {
   }
 });
 
-// Universelle Route: Projekt mit OpenAI oder Anthropic erstellen
-app.post("/api/projects/create", async (req, res) => {
+// --- Projekt anlegen (LLM-gestützt & mit Fallback) ---
+app.post('/api/projects/create', async (req, res) => {
   try {
-    const { promptName, userInput, provider } = req.body;
-
-    // 1. Prompt aus DB holen
-    const prompt = await getPromptByName(promptName);
-    if (!prompt) {
-      return res.status(404).json({ error: "Prompt nicht gefunden" });
+    const { category, subCategory, description, timeframe, budget } = req.body || {};
+    if (!category || !description) {
+      return res.status(400).json({ error: 'category and description are required' });
     }
 
-    let draft;
+    // 1) Projekt speichern
+    const pr = await query(
+      `INSERT INTO projects (category, sub_category, description, timeframe, budget)
+       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+      [category, subCategory || null, description, timeframe || null, budget || null]
+    );
+    const projectId = pr.rows[0].id;
 
-    // 2. Provider auswählen
-    if (provider === "openai") {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // oder gpt-4o für mehr Power
-        messages: [
-          { role: "system", content: prompt.text },
-          { role: "user", content: userInput || "Bitte starte die Projektanalyse." }
-        ],
-      });
-      draft = response.choices[0].message.content;
+    // 2) Gewerke ermitteln (nutzt detectTrades -> LLM + Keyword-Fallback)
+    const trades = await detectTrades({ category, subCategory, description });
 
-    } else if (provider === "anthropic") {
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-latest",
-        max_tokens: 500,
-        messages: [
-          { role: "system", content: prompt.text },
-          { role: "user", content: userInput || "Bitte starte die Projektanalyse." }
-        ],
-      });
-      draft = response.content[0].text;
+    // 3) Mit Stammtabelle 'trades' verknüpfen
+    const cat = await query(`SELECT id, name FROM trades`);
+    const catalog = cat.rows;
+    for (const t of trades) {
+      const hit = catalog.find(c =>
+        c.name.toLowerCase().includes(String(t.name).toLowerCase())
+      );
+      if (!hit) continue;
+      await query(
+        `INSERT INTO project_trades (project_id, trade_id)
+         VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+        [projectId, hit.id]
+      );
+    }
 
-    // 3. Ergebnis zurückgeben
-    res.json({
-      provider,
-      projectDraft: draft,
-    });
-
+    return res.json({ projectId, trades });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('create-project failed:', err);
+    return res.status(500).json({ error: err.message || 'Failed to create project' });
   }
 });
 
