@@ -36,6 +36,40 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// --- LLM mit Policy + Fallback (OpenAI <-> Anthropic) ---
+async function llmWithPolicy(purpose, messages) {
+  // 1) Zweck-basierte Präferenz: Analyse/Erkennung -> Claude, sonst OpenAI
+  const prefer = purpose === 'detect' ? 'anthropic' : 'openai';
+
+  const useOpenAI = async () => {
+    const r = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages, // [{ role: 'user', content: '...' }, ...]
+    });
+    return r.choices[0].message.content;
+  };
+
+  const useClaude = async () => {
+    const r = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-latest',
+      max_tokens: 800,
+      messages, // gleicher Aufbau wie oben (Anthropic akzeptiert String-Content)
+    });
+    return r.content[0].text;
+  };
+
+  try {
+    return prefer === 'anthropic' ? await useClaude() : await useOpenAI();
+  } catch (e1) {
+    // Fallback zum anderen Anbieter
+    try {
+      return prefer === 'anthropic' ? await useOpenAI() : await useClaude();
+    } catch (e2) {
+      throw new Error(`LLM failed: ${e1.message} / ${e2.message}`);
+    }
+  }
+}
+
 // --- LLM Helper (OpenAI / Anthropic) mit Fallback ---------------------------
 async function runWithFallback(primaryFn, fallbackFn, ctx = 'llm-task') {
   try {
