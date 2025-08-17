@@ -670,6 +670,57 @@ app.get("/test-anthropic", async (req, res) => {
   }
 });
 
+// Universelle Route: Projekt mit OpenAI oder Anthropic erstellen
+app.post("/api/projects/create", async (req, res) => {
+  try {
+    const { promptName, userInput, provider } = req.body;
+
+    // 1. Prompt aus DB holen
+    const prompt = await getPromptByName(promptName);
+    if (!prompt) {
+      return res.status(404).json({ error: "Prompt nicht gefunden" });
+    }
+
+    let draft;
+
+    // 2. Provider auswählen
+    if (provider === "openai") {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini", // oder gpt-4o für mehr Power
+        messages: [
+          { role: "system", content: prompt.text },
+          { role: "user", content: userInput || "Bitte starte die Projektanalyse." }
+        ],
+      });
+      draft = response.choices[0].message.content;
+
+    } else if (provider === "anthropic") {
+      const response = await anthropic.messages.create({
+        model: "claude-3-5-sonnet-latest",
+        max_tokens: 500,
+        messages: [
+          { role: "system", content: prompt.text },
+          { role: "user", content: userInput || "Bitte starte die Projektanalyse." }
+        ],
+      });
+      draft = response.content[0].text;
+
+    } else {
+      return res.status(400).json({ error: "Ungültiger Provider. Nutze 'openai' oder 'anthropic'." });
+    }
+
+    // 3. Ergebnis zurückgeben
+    res.json({
+      provider,
+      projectDraft: draft,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start the server
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
