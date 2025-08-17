@@ -32,6 +32,18 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 // reading prompts from disk, detecting trades based on user input, generating
 // questions and LVs via AI, and authenticating admin users.
 
+// --- Prompt aus der DB holen ---
+async function getPromptByName(name) {
+  const r = await query(
+    'SELECT content FROM prompts WHERE name = $1 LIMIT 1',
+    [name]
+  );
+  if (r.rows.length === 0) {
+    throw new Error(`Prompt '${name}' nicht gefunden`);
+  }
+  return r.rows[0].content;
+}
+
 /**
  * Load a prompt file from the prompts directory.
  *
@@ -62,9 +74,17 @@ function loadPrompt(filename) {
  */
 // 63–81: NEUE detectTrades-Funktion
 async function detectTrades(project) {
-  // (Optional) Master-Prompt laden – wird aktuell nur als Platzhalter genutzt
-  const masterPrompt = loadPrompt('master_prompt.txt');
-  const _input = `${masterPrompt}\n\nCategory: ${project.category} - ${project.subCategory}\nDescription: ${project.description}`;
+
+// Master-Prompt aus der DB holen
+let masterPrompt = '';
+try {
+  masterPrompt = await getPromptByName('master');
+} catch (e) {
+  console.warn('Master-Prompt nicht gefunden (DB):', e.message);
+}
+
+// Das ist die Nutzereingabe, die später ans LLM geht
+const _input = `${masterPrompt}\n\nCategory: ${project.category} – ${project.subCategory}\nDescription: ${project.description}`;
 
   // Volltext vorbereiten (Kategorie + Subkategorie + Beschreibung)
   const text = `${project.category} ${project.subCategory} ${project.description}`.toLowerCase();
