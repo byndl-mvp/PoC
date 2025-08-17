@@ -45,14 +45,16 @@ const anthropic = new Anthropic({
 
 // --- Prompt aus der DB holen ---
 async function getPromptByName(name) {
+  const key = name || 'master';  // Fallback auf 'master'
   const r = await query(
     'SELECT content FROM prompts WHERE name = $1 LIMIT 1',
-    [name]
+    [key]
   );
   if (r.rows.length === 0) {
-    throw new Error(`Prompt '${name}' nicht gefunden`);
+    // Kein Fehler werfen: leerer String erlaubt, damit die Route nicht 500 liefert
+    return '';
   }
-  return r.rows[0].content;
+  return r.rows[0].content || '';
 }
 
 /**
