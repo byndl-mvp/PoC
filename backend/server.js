@@ -25,6 +25,17 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+const OpenAI = require("openai");
+const Anthropic = require("@anthropic-ai/sdk");
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
 // ---------------------------------------------------------------------------
 // Helper functions
 //
