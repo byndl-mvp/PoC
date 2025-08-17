@@ -812,10 +812,6 @@ app.post("/api/projects/create", async (req, res) => {
       });
       draft = response.content[0].text;
 
-    } else {
-      return res.status(400).json({ error: "Ungültiger Provider. Nutze 'openai' oder 'anthropic'." });
-    }
-
     // 3. Ergebnis zurückgeben
     res.json({
       provider,
