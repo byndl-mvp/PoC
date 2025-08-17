@@ -36,6 +36,58 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// --- LLM Helper (OpenAI / Anthropic) mit Fallback ---------------------------
+async function runWithFallback(primaryFn, fallbackFn, ctx = 'llm-task') {
+  try {
+    return await primaryFn();
+  } catch (e) {
+    console.warn(`[${ctx}] Primary failed:`, e.message);
+    if (!fallbackFn) throw e;
+    return await fallbackFn();
+  }
+}
+
+// OpenAI Chat (vereinheitlichte Signatur)
+async function llmChatOpenAI(messages, model = 'gpt-4o-mini') {
+  const resp = await openai.chat.completions.create({ model, messages });
+  return resp.choices?.[0]?.message?.content || '';
+}
+
+// Anthropic Chat (vereinheitlichte Signatur)
+async function llmChatAnthropic(messages, model = 'claude-3-5-sonnet-latest') {
+  const resp = await anthropic.messages.create({ model, max_tokens: 8000, messages });
+  return resp.content?.[0]?.text || '';
+}
+
+/**
+ * Router-Policy pro Aufgabe:
+ *  - "questions"  -> Anthropic primär, OpenAI Fallback
+ *  - "lv"         -> OpenAI primär, Anthropic Fallback
+ *  - "generic"    -> OpenAI primär, Anthropic Fallback
+ */
+async function llmWithPolicy(task, messages) {
+  if (task === 'questions') {
+    return runWithFallback(
+      () => llmChatAnthropic(messages),
+      () => llmChatOpenAI(messages),
+      'questions'
+    );
+  }
+  if (task === 'lv') {
+    return runWithFallback(
+      () => llmChatOpenAI(messages),
+      () => llmChatAnthropic(messages),
+      'lv'
+    );
+  }
+  // default
+  return runWithFallback(
+    () => llmChatOpenAI(messages),
+    () => llmChatAnthropic(messages),
+    'generic'
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Helper functions
 //
