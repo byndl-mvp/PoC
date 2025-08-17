@@ -137,93 +137,149 @@ function loadPrompt(filename) {
  *                         and description fields.
  * @returns {Promise<Array<{ name: string }>>} Array of trade objects
  */
-// 63–81: NEUE detectTrades-Funktion
-async function detectTrades(project) {
 
-// Master-Prompt aus der DB holen
-let masterPrompt = '';
-try {
-  masterPrompt = await getPromptByName('master');
-} catch (e) {
-  console.warn('Master-Prompt nicht gefunden (DB):', e.message);
+// ===== LLM-basierte Gewerk-Erkennung mit Fallback =====
+async function detectTrades(project) {
+  // 0) Master-Prompt aus DB laden (optional, leer erlaubt)
+  let master = '';
+  try {
+    master = await getPromptByName('master');
+  } catch (_) {
+    // leer lassen, kein Fehler werfen
+  }
+
+  // 1) System + User Prompt vorbereiten (nur JSON erlauben!)
+  const system = `
+Du bist ein erfahrener Baukoordinator. Analysiere die Projektdaten und liefere NUR gültiges JSON.
+Erkenne die benötigten Gewerke und (optional) strukturierte Fakten.
+
+NUTZE AUSSCHLIESSLICH diese Codes (exact CASE):
+AUSS,BOD,DACH,ELEKT,ESTR,FASS,FEN,FLI,GER,HEI,MAL,ROH,SAN,SCHL,TIS,TRO,ABBR.
+
+JSON-Schema:
+{
+  "trades": [
+    {"code": "SAN", "name": "Sanitärinstallation"},
+    {"code": "ELEKT", "name": "Elektroinstallation"}
+  ],
+  "facts": {
+    "gebaeudetyp": "EFH | MFH | Wohnung | ...",
+    "baujahr": 1992,
+    "haustyp": "Massiv | Holz | ...",
+    "notizen": "optional"
+  }
+}
+Gib KEINEN Text außerhalb dieses JSON zurück.
+`.trim();
+
+  const user = `
+${master ? master + '\n\n' : ''}PROJEKT:
+Kategorie: ${project.category || '-'}
+Unterkategorie: ${project.subCategory || '-'}
+Beschreibung: ${project.description || '-'}
+Zeitplan: ${project.timeframe || '-'}
+Budget: ${project.budget ?? '-'}
+`.trim();
+
+  // 2) LLM mit Policy aufrufen (wir bevorzugen CLAUDE für Erkennung, fallback auf OpenAI)
+  let raw = '';
+  try {
+    raw = await llmWithPolicy('detect', [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ]);
+  } catch (e) {
+    console.warn('LLM detectTrades call failed:', e.message);
+  }
+
+  // 3) Versuche gültiges JSON zu parsen
+  let parsed = null;
+  if (raw) {
+    try {
+      // Wenn das Modell in Codeblöcken antwortet, alles Nicht-JSON wegschneiden
+      const jsonMatch = raw.match(/\{[\s\S]*\}$/);
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+    } catch (e) {
+      console.warn('detectTrades JSON parse failed, fallback to keywords:', e.message);
+    }
+  }
+
+  // 4) Wenn LLM brauchbar: auf DB-Namen mappen und zurückgeben
+  if (parsed && Array.isArray(parsed.trades) && parsed.trades.length > 0) {
+    // Code->DB-Name Mapping (identisch zu deinen Tabellennamen)
+    const mapTo = {
+      AUSS: 'Außenanlagen / GaLaBau',
+      BOD:  'Bodenbelagsarbeiten',
+      DACH: 'Dachdeckerarbeiten',
+      ELEKT:'Elektroinstallation',
+      ESTR: 'Estricharbeiten',
+      FASS: 'Fassadenbau / –sanierung',
+      FEN:  'Fenster & Türen',
+      FLI:  'Fliesen– und Plattenarbeiten',
+      GER:  'Gerüstbau',
+      HEI:  'Heizungsinstallation',
+      MAL:  'Maler– & Lackierarbeiten',
+      ROH:  'Rohbau / Mauer– & Betonarbeiten',
+      SAN:  'Sanitärinstallation',
+      SCHL: 'Schlosser– / Metallbau',
+      TIS:  'Tischler / Innenausbau',
+      TRO:  'Trockenbau',
+      ABBR: 'Abbruch / Entkernung'
+    };
+
+    // Nur Codes verwenden, die wir kennen; sonst versuchen den Namen zu matchen
+    const unique = new Set();
+    const trades = [];
+    for (const t of parsed.trades) {
+      if (t?.code && mapTo[t.code]) {
+        const name = mapTo[t.code];
+        if (!unique.has(name)) {
+          unique.add(name);
+          trades.push({ name });
+        }
+      } else if (t?.name) {
+        // Notfall: Name kommt vom Modell (z.B. "Sanitärinstallation") -> nehmen, wenn nicht doppelt
+        const name = String(t.name).trim();
+        if (name && !unique.has(name)) {
+          unique.add(name);
+          trades.push({ name });
+        }
+      }
+    }
+
+    if (trades.length > 0) {
+      // Optional: parsed.facts kannst du in der DB speichern, wenn du willst
+      return trades;
+    }
+  }
+
+  // 5) Fallback: Keyword-Erkennung (deine bisherige Logik)
+  return await detectTradesFallback(project);
 }
 
-// Das ist die Nutzereingabe, die später ans LLM geht
-const _input = `${masterPrompt}\n\nCategory: ${project.category} – ${project.subCategory}\nDescription: ${project.description}`;
-
-  // Volltext vorbereiten (Kategorie + Subkategorie + Beschreibung)
+async function detectTradesFallback(project) {
   const text = `${project.category} ${project.subCategory} ${project.description}`.toLowerCase();
 
-  // Synonyme/Laienbegriffe -> Gewerke-Code
   const syn = {
-    AUSS: [
-      'außenanlagen','aussenanlagen','galabau','garten','terrasse',
-      'pflaster','einfahrt','carport','wege','zaun','begrünung'
-    ],
-    BOD: [
-      'boden','bodenbelag','parkett','vinyl','laminat','teppich',
-      'dielen','bodenplatten','estrichboden'
-    ],
-    DACH: [
-      'dach','dachfenster','gaube','eindeckung','dachdecker',
-      'dachsanierung','dachdämmung','dachisolierung'
-    ],
-    ELEKT: [
-      'elektro','strom','steckdose','elektroinstallation','verteiler',
-      'kabel','beleuchtung','lichtschalter','sicherungskasten'
-    ],
-    ESTR: [
-      'estrich','estricharbeiten','estrichboden'
-    ],
-    FASS: [
-      'fassade','wdvs','außenputz','aussenputz','wärmedämmung',
-      'aussendämmung','fassadensanierung','putzfassade'
-    ],
-    FEN: [
-      'fenster','tür','türen','tueren','außentür','haustür',
-      'dachfenster','schiebetür','fenstertausch'
-    ],
-    FLI: [
-      'fliese','fliesen','platten','fliesenleger','fliesenspiegel'
-    ],
-    GER: [
-      'gerüst','geruest','gerüstbau','fassade','dach'
-    ],
-    HEI: [
-      'heizung','heizkörper','wärmepumpe','gastherme',
-      'heizungsinstallation','fußbodenheizung','fussbodenheizung'
-    ],
-    MAL: [
-      'maler','lack','anstrich','streichen','spachteln',
-      'tapete','innenputz','innenanstrich'
-    ],
-    ROH: [
-      'rohbau','mauer','beton','wanddurchbruch','statik',
-      'fundament','mauerwerk','tragwand'
-    ],
-    SAN: [
-      'sanitär','sanitaer','bad','wc','dusche','leitung',
-      'sanitärinstallation','waschbecken','toilette'
-    ],
-    SCHL: [
-      'schlosser','metallbau','geländer','handlauf','stahl',
-      'treppengeländer','türrahmen'
-    ],
-    TIS: [
-      'tischler','innenausbau','innentür','innentueren','möbel',
-      'einbau','schreiner','einbauschrank'
-    ],
-    TRO: [
-      'trockenbau','gk','rigips','vorsatzschale','abhangdecke',
-      'trennwand','leichtbauwand','deckenabhängung'
-    ],
-    ABBR: [
-      'abbruch','entkernung','rückbau','abriss','abrissarbeiten',
-      'mauer entfernen','boden rausreißen'
-    ]
+    AUSS: ['außenanlagen','aussenanlagen','galabau','garten','terrasse','pflaster','einfahrt','carport','wege','zaun','begrünung'],
+    BOD:  ['boden','bodenbelag','parkett','vinyl','laminat','teppich','dielen','bodenplatten','estrichboden'],
+    DACH: ['dach','dachfenster','gaube','eindeckung','dachdecker','dachsanierung','dachdämmung','dachisolierung'],
+    ELEKT:['elektro','strom','steckdose','elektroinstallation','verteiler','kabel','beleuchtung','lichtschalter','sicherungskasten'],
+    ESTR: ['estrich','estricharbeiten','estrichboden'],
+    FASS: ['fassade','wdvs','außenputz','aussenputz','wärmedämmung','aussendämmung','fassadensanierung','putzfassade'],
+    FEN:  ['fenster','tür','türen','tueren','außentür','haustür','dachfenster','schiebetür','fenstertausch'],
+    FLI:  ['fliese','fliesen','platten','fliesenleger','fliesenspiegel'],
+    GER:  ['gerüst','geruest','gerüstbau','fassade','dach'],
+    HEI:  ['heizung','heizkörper','wärmepumpe','gastherme','heizungsinstallation','fußbodenheizung','fussbodenheizung'],
+    MAL:  ['maler','lack','anstrich','streichen','spachteln','tapete','innenputz','innenanstrich'],
+    ROH:  ['rohbau','mauer','beton','wanddurchbruch','statik','fundament','mauerwerk','tragwand'],
+    SAN:  ['sanitär','sanitaer','bad','wc','dusche','leitung','sanitärinstallation','waschbecken','toilette'],
+    SCHL: ['schlosser','metallbau','geländer','handlauf','stahl','treppengeländer','türrahmen'],
+    TIS:  ['tischler','innenausbau','innentür','innentueren','möbel','einbau','schreiner','einbauschrank'],
+    TRO:  ['trockenbau','gk','rigips','vorsatzschale','abhangdecke','trennwand','leichtbauwand','deckenabhängung'],
+    ABBR: ['abbruch','entkernung','rückbau','abriss','abrissarbeiten','mauer entfernen','boden rausreißen']
   };
 
-  // Mapping: Gewerke-Code -> exakter Tabellenname (damit der spätere Abgleich sicher funktioniert)
   const mapTo = {
     AUSS: 'Außenanlagen / GaLaBau',
     BOD:  'Bodenbelagsarbeiten',
@@ -244,15 +300,12 @@ const _input = `${masterPrompt}\n\nCategory: ${project.category} – ${project.s
     ABBR: 'Abbruch / Entkernung'
   };
 
-  // Treffer ermitteln
   const hits = new Set();
   for (const [code, words] of Object.entries(syn)) {
     if (words.some(w => text.includes(w))) hits.add(code);
   }
-  // Fallback: wenigstens ein Gewerk
   if (hits.size === 0) hits.add('MAL');
 
-  // Rückgabe im Format: [{ name: '…exakter Tabellenname…' }]
   return Array.from(hits).map(code => ({ name: mapTo[code] }));
 }
 
