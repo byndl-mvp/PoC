@@ -641,6 +641,35 @@ app.get('/api/export/:projectId', (req, res) => {
   res.status(501).json({ message: 'PDF export is not implemented in this PoC.' });
 });
 
+// Test-Route für OpenAI
+app.get("/test-openai", async (req, res) => {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",   
+      messages: [{ role: "user", content: "Sag Hallo von OpenAI!" }],
+    });
+    res.json({ reply: response.choices[0].message.content });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Test-Route für Anthropic
+app.get("/test-anthropic", async (req, res) => {
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-latest",  
+      max_tokens: 50,
+      messages: [{ role: "user", content: "Sag Hallo von Claude!" }],
+    });
+    res.json({ reply: response.content[0].text });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start the server
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
