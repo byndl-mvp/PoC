@@ -447,25 +447,28 @@ Erstelle basierend auf dem Template einen angepassten Fragenkatalog als JSON.`;
  * Leistungsverzeichnis generieren
  */
 async function generateLV(tradeId, answers, projectContext = {}) {
-  // Lade LV-Prompt aus DB
-  const promptResult = await query(
-    `SELECT p.content, p.name as prompt_name, t.name, t.code 
-     FROM prompts p 
-     JOIN trades t ON t.id = p.trade_id 
-     WHERE p.trade_id = $1 AND p.type = 'lv' 
-     LIMIT 1`,
+  // Lade Trade-Info
+  const tradeResult = await query(
+    'SELECT name, code FROM trades WHERE id = $1',
     [tradeId]
   );
   
-  if (promptResult.rows.length === 0) {
+  if (tradeResult.rows.length === 0) {
+    throw new Error(`Trade ${tradeId} not found`);
+  }
+  
+  const { name: tradeName } = tradeResult.rows[0];
+  
+  // Lade LV-Prompt aus DB
+  const lvPrompt = await getPromptForTrade(tradeId, 'lv');
+  
+  if (!lvPrompt) {
     throw new Error(`No LV prompt found for trade ${tradeId}`);
   }
   
-  const { content: lvPrompt, name: tradeName } = promptResult.rows[0];
-  
   // System-Prompt für LV-Generierung
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse.
-Erstelle ein detailliertes LV für ${tradeName} basierend auf den gegebenen Antworten.
+Erstelle ein detailliertes LV für ${tradeName} basierend auf dem Template und den Antworten.
 
 FORMAT: Strukturiertes JSON mit Positionen:
 {
@@ -474,9 +477,9 @@ FORMAT: Strukturiertes JSON mit Positionen:
     {
       "pos": "01.01",
       "title": "Positionstitel",
-      "description": "Detaillierte Beschreibung",
+      "description": "Detaillierte Beschreibung gemäß VOB",
       "quantity": 1,
-      "unit": "Stk/m²/m/pauschal",
+      "unit": "Stk|m²|m|pauschal",
       "unitPrice": null,
       "totalPrice": null
     }
@@ -488,7 +491,8 @@ FORMAT: Strukturiertes JSON mit Positionen:
     `Frage: ${a.question}\nAntwort: ${a.answer}`
   ).join('\n\n');
 
-  const userPrompt = `${lvPrompt}
+  const userPrompt = `TEMPLATE:
+${lvPrompt}
 
 PROJEKT:
 ${projectContext.description || 'Keine Beschreibung'}
@@ -496,7 +500,7 @@ ${projectContext.description || 'Keine Beschreibung'}
 ANTWORTEN:
 ${answerSummary}
 
-Erstelle ein vollständiges Leistungsverzeichnis als JSON.`;
+Erstelle basierend auf Template und Antworten ein vollständiges Leistungsverzeichnis als JSON.`;
 
   try {
     const response = await llmWithPolicy('lv', [
