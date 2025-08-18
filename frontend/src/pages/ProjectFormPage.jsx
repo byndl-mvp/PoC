@@ -24,24 +24,27 @@ export default function ProjectFormPage() {
     setLoading(true);
     setError('');
     try {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/project', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({
-  category: form.category,
-  subCategory: form.subCategory,
-  description: form.description,
-  timeframe: form.timeframe,
-  budget: form.budget ? Number(form.budget) : null,
-}),
-});
+   const res = await fetch(apiUrl('/api/projects'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: form.category,
+          subCategory: form.subCategory,
+          description: form.description,
+          timeframe: form.timeframe,
+          budget: form.budget ? Number(form.budget) : null,
+        }),
+      });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || 'Fehler beim Anlegen des Projekts');
       }
       const data = await res.json();
-      const { projectId, trades } = data;
-      if (trades && trades.length > 0) {
+      const { project } = data;  // NEU: project object enthält alles
+      const projectId = project.id;
+      const trades = project.trades || [];
+      
+      if (trades.length > 0) {
         // Navigate to the first trade's questions
         navigate(`/project/${projectId}/trade/${trades[0].id}/questions`);
       } else {
