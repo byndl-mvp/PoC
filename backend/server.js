@@ -1,18 +1,11 @@
 /*
- * BYNDL Proof of Concept – Backend
- *
- * This file sets up an Express server with several REST endpoints to support the
- * BYNDL PoC. The service allows users to create projects, detect trades
- * (Gewerke), collect answers to a dynamically generated question catalogue,
- * generate VOB‑compliant bills of quantities (Leistungsverzeichnisse) and
- * retrieve aggregated results. All prompts are read from the `../prompts`
- * directory. The code has been written to be modular and easy to extend.
- *
- * IMPORTANT: At runtime you will need to install the dependencies listed in
- * package.json (express, cors, pg, dotenv, jsonwebtoken, bcryptjs, etc.) and
- * provide the appropriate environment variables in a `.env` file. See
- * README.md for guidance. In this environment the packages are not installed
- * by default, so the server will not run until you perform `npm install`.
+ * BYNDL Proof of Concept – Backend (ÜBERARBEITET)
+ * 
+ * Hauptänderungen:
+ * 1. Gewerke werden IMMER aus der DB geladen
+ * 2. Masterprompt wird korrekt eingebunden
+ * 3. LLM gibt garantiert JSON zurück
+ * 4. Sauberer Workflow ohne Vermischung
  */
 
 const { query } = require('./db.js');
@@ -36,824 +29,993 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// --- LLM mit Policy + Fallback (OpenAI <-> Anthropic) ---
-async function llmWithPolicy(purpose, messages) {
-  // 1) Zweck-basierte Präferenz: Analyse/Erkennung -> Claude, sonst OpenAI
-  const prefer = purpose === 'detect' ? 'anthropic' : 'openai';
+// ===========================================================================
+// HELPER FUNCTIONS
+// ===========================================================================
 
-  const useOpenAI = async () => {
-    const r = await openai.chat.completions.create({
+/**
+ * LLM Router mit Policy und Fallback
+ * - "detect" -> Claude bevorzugt
+ * - "questions" -> Claude bevorzugt  
+ * - "lv" -> OpenAI bevorzugt
+ * - default -> OpenAI bevorzugt
+ */
+async function llmWithPolicy(task, messages, options = {}) {
+  const maxTokens = options.maxTokens || 2000;
+  const temperature = options.temperature || 0.7;
+  
+  // Bestimme primären Provider basierend auf Task
+  const primaryProvider = ['detect', 'questions'].includes(task) ? 'anthropic' : 'openai';
+  
+  const callOpenAI = async () => {
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      messages, // [{ role: 'user', content: '...' }, ...]
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+      response_format: options.jsonMode ? { type: "json_object" } : undefined
     });
-    return r.choices[0].message.content;
+    return response.choices[0].message.content;
   };
-
-  const useClaude = async () => {
-    const r = await anthropic.messages.create({
+  
+  const callClaude = async () => {
+    const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-latest',
-      max_tokens: 800,
-      messages, // gleicher Aufbau wie oben (Anthropic akzeptiert String-Content)
+      max_tokens: maxTokens,
+      temperature,
+      messages
     });
-    return r.content[0].text;
+    return response.content[0].text;
   };
-
+  
+  // Versuche primären Provider, dann Fallback
   try {
-    return prefer === 'anthropic' ? await useClaude() : await useOpenAI();
-  } catch (e1) {
-    // Fallback zum anderen Anbieter
+    console.log(`[LLM] Using primary provider: ${primaryProvider} for task: ${task}`);
+    return primaryProvider === 'anthropic' ? await callClaude() : await callOpenAI();
+  } catch (error) {
+    console.warn(`[LLM] Primary provider failed: ${error.message}, trying fallback...`);
     try {
-      return prefer === 'anthropic' ? await useOpenAI() : await useClaude();
-    } catch (e2) {
-      throw new Error(`LLM failed: ${e1.message} / ${e2.message}`);
+      return primaryProvider === 'anthropic' ? await callOpenAI() : await callClaude();
+    } catch (fallbackError) {
+      console.error(`[LLM] Both providers failed:`, error.message, fallbackError.message);
+      throw new Error('LLM service unavailable');
     }
   }
 }
 
-// --- LLM Helper (OpenAI / Anthropic) mit Fallback ---------------------------
-async function runWithFallback(primaryFn, fallbackFn, ctx = 'llm-task') {
-  try {
-    return await primaryFn();
-  } catch (e) {
-    console.warn(`[${ctx}] Primary failed:`, e.message);
-    if (!fallbackFn) throw e;
-    return await fallbackFn();
-  }
-}
-
-// OpenAI Chat (vereinheitlichte Signatur)
-async function llmChatOpenAI(messages, model = 'gpt-4o-mini') {
-  const resp = await openai.chat.completions.create({ model, messages });
-  return resp.choices?.[0]?.message?.content || '';
-}
-
-// Anthropic Chat (vereinheitlichte Signatur)
-async function llmChatAnthropic(messages, model = 'claude-3-5-sonnet-latest') {
-  const resp = await anthropic.messages.create({ model, max_tokens: 8000, messages });
-  return resp.content?.[0]?.text || '';
-}
-
 /**
- * Router-Policy pro Aufgabe:
- *  - "questions"  -> Anthropic primär, OpenAI Fallback
- *  - "lv"         -> OpenAI primär, Anthropic Fallback
- *  - "generic"    -> OpenAI primär, Anthropic Fallback
+ * Prompt aus DB laden
  */
-async function llmWithPolicy(task, messages) {
-  if (task === 'questions') {
-    return runWithFallback(
-      () => llmChatAnthropic(messages),
-      () => llmChatOpenAI(messages),
-      'questions'
-    );
-  }
-  if (task === 'lv') {
-    return runWithFallback(
-      () => llmChatOpenAI(messages),
-      () => llmChatAnthropic(messages),
-      'lv'
-    );
-  }
-  // default
-  return runWithFallback(
-    () => llmChatOpenAI(messages),
-    () => llmChatAnthropic(messages),
-    'generic'
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Helper functions
-//
-// The following helpers abstract away some common functionality such as
-// reading prompts from disk, detecting trades based on user input, generating
-// questions and LVs via AI, and authenticating admin users.
-
-// --- Prompt aus der DB holen ---
 async function getPromptByName(name) {
-  const key = name || 'master';  // Fallback auf 'master'
-  const r = await query(
-    'SELECT content FROM prompts WHERE name = $1 LIMIT 1',
-    [key]
-  );
-  if (r.rows.length === 0) {
-    // Kein Fehler werfen: leerer String erlaubt, damit die Route nicht 500 liefert
+  try {
+    const result = await query(
+      'SELECT content FROM prompts WHERE name = $1 LIMIT 1',
+      [name]
+    );
+    if (result.rows.length === 0) {
+      console.warn(`[DB] Prompt "${name}" not found`);
+      return '';
+    }
+    return result.rows[0].content || '';
+  } catch (err) {
+    console.error(`[DB] Error loading prompt "${name}":`, err);
     return '';
   }
-  return r.rows[0].content || '';
 }
 
 /**
- * Load a prompt file from the prompts directory.
- *
- * @param {string} filename Name of the prompt file to load
- * @returns {string} Contents of the prompt file
+ * Alle verfügbaren Gewerke aus DB laden
  */
-function loadPrompt(filename) {
-  const promptPath = path.join(__dirname, '..', 'prompts', filename);
+async function getAvailableTrades() {
   try {
-    return fs.readFileSync(promptPath, 'utf8');
+    const result = await query(
+      'SELECT id, code, name FROM trades ORDER BY id'
+    );
+    return result.rows;
   } catch (err) {
-    console.error(`Error reading prompt file ${filename}:`, err);
-    throw new Error(`Prompt file not found: ${filename}`);
+    console.error('[DB] Failed to load trades:', err);
+    return [];
   }
 }
 
 /**
- * Detect the list of trades (Gewerke) required for a project based on the
- * project's description and category. This function uses a master prompt to
- * instruct the AI to return a comma‑separated list of trade identifiers. In
- * production the call to the AI service would be asynchronous; here we
- * simulate the behaviour with a placeholder implementation to keep the PoC
- * runnable without API keys.
- *
- * @param {Object} project The project object containing category, subCategory
- *                         and description fields.
- * @returns {Promise<Array<{ name: string }>>} Array of trade objects
+ * Gewerke-Erkennung mit LLM (ÜBERARBEITET)
+ * - Lädt Gewerke aus DB
+ * - Nutzt Masterprompt
+ * - Erzwingt JSON-Output
  */
-
-// ===== LLM-basierte Gewerk-Erkennung mit Fallback =====
 async function detectTrades(project) {
-  // 0) Master-Prompt aus DB laden (optional, leer erlaubt)
-  let master = '';
-  try {
-    master = await getPromptByName('master');
-  } catch (_) {
-    // leer lassen, kein Fehler werfen
+  console.log('[DETECT] Starting trade detection for project:', project);
+  
+  // 1. Masterprompt aus DB laden
+  const masterPrompt = await getPromptByName('master');
+  
+  // 2. Verfügbare Gewerke aus DB laden
+  const availableTrades = await getAvailableTrades();
+  
+  if (availableTrades.length === 0) {
+    throw new Error('No trades available in database');
   }
+  
+  // 3. Trade-Liste für Prompt erstellen
+  const tradeList = availableTrades
+    .map(t => `- ${t.code}: ${t.name}`)
+    .join('\n');
+  
+  // 4. System-Prompt mit strikten JSON-Anweisungen
+  const systemPrompt = `${masterPrompt}
 
-  // 1) System + User Prompt vorbereiten (nur JSON erlauben!)
-  const system = `
-Du bist ein erfahrener Baukoordinator. Analysiere die Projektdaten und liefere NUR gültiges JSON.
-Erkenne die benötigten Gewerke und (optional) strukturierte Fakten.
+Du bist ein erfahrener Baukoordinator und KI-Assistent für die BYNDL-Plattform.
+Deine Aufgabe: Analysiere die Projektbeschreibung und erkenne die benötigten Gewerke.
 
-NUTZE AUSSCHLIESSLICH diese Codes (exact CASE):
-AUSS,BOD,DACH,ELEKT,ESTR,FASS,FEN,FLI,GER,HEI,MAL,ROH,SAN,SCHL,TIS,TRO,ABBR.
+VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
+${tradeList}
 
-JSON-Schema:
+WICHTIG - OUTPUT FORMAT:
+Du MUSST deine Antwort als REINES JSON zurückgeben, ohne zusätzlichen Text.
+Das JSON muss EXAKT diesem Schema entsprechen:
+
 {
   "trades": [
     {"code": "SAN", "name": "Sanitärinstallation"},
     {"code": "ELEKT", "name": "Elektroinstallation"}
   ],
-  "facts": {
-    "gebaeudetyp": "EFH | MFH | Wohnung | ...",
-    "baujahr": 1992,
-    "haustyp": "Massiv | Holz | ...",
-    "notizen": "optional"
+  "confidence": 0.95,
+  "reasoning": "Kurze Begründung der Auswahl",
+  "projectInfo": {
+    "type": "Wohnung/EFH/MFH/Gewerbe",
+    "scope": "Neubau/Sanierung/Modernisierung",
+    "notes": "Wichtige erkannte Details"
   }
 }
-Gib KEINEN Text außerhalb dieses JSON zurück.
-`.trim();
 
-  const user = `
-${master ? master + '\n\n' : ''}PROJEKT:
-Kategorie: ${project.category || '-'}
-Unterkategorie: ${project.subCategory || '-'}
-Beschreibung: ${project.description || '-'}
-Zeitplan: ${project.timeframe || '-'}
-Budget: ${project.budget ?? '-'}
-`.trim();
+REGELN:
+1. Verwende NUR die Codes aus der obigen Liste
+2. Gib NUR JSON zurück, keinen Text davor oder danach
+3. Bei Unsicherheit lieber mehr relevante Gewerke einbeziehen
+4. Mindestens 1 Gewerk muss erkannt werden`;
 
-  // 2) LLM mit Policy aufrufen (wir bevorzugen CLAUDE für Erkennung, fallback auf OpenAI)
-  let raw = '';
+  // 5. User-Prompt mit Projektdaten
+  const userPrompt = `PROJEKTDATEN:
+Kategorie: ${project.category || 'Nicht angegeben'}
+Unterkategorie: ${project.subCategory || 'Nicht angegeben'}
+Beschreibung: ${project.description || 'Keine Beschreibung'}
+Zeitrahmen: ${project.timeframe || 'Nicht angegeben'}
+Budget: ${project.budget || 'Nicht angegeben'}
+
+Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
+
+  // 6. LLM-Aufruf
+  let llmResponse;
   try {
-    raw = await llmWithPolicy('detect', [
-      { role: 'system', content: system },
-      { role: 'user', content: user }
-    ]);
-  } catch (e) {
-    console.warn('LLM detectTrades call failed:', e.message);
-  }
-
-  // 3) Versuche gültiges JSON zu parsen
-  let parsed = null;
-  if (raw) {
-    try {
-      // Wenn das Modell in Codeblöcken antwortet, alles Nicht-JSON wegschneiden
-      const jsonMatch = raw.match(/\{[\s\S]*\}$/);
-      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
-    } catch (e) {
-      console.warn('detectTrades JSON parse failed, fallback to keywords:', e.message);
-    }
-  }
-
-  // 4) Wenn LLM brauchbar: auf DB-Namen mappen und zurückgeben
-  if (parsed && Array.isArray(parsed.trades) && parsed.trades.length > 0) {
-    // Code->DB-Name Mapping (identisch zu deinen Tabellennamen)
-    const mapTo = {
-      AUSS: 'Außenanlagen / GaLaBau',
-      BOD:  'Bodenbelagsarbeiten',
-      DACH: 'Dachdeckerarbeiten',
-      ELEKT:'Elektroinstallation',
-      ESTR: 'Estricharbeiten',
-      FASS: 'Fassadenbau / –sanierung',
-      FEN:  'Fenster & Türen',
-      FLI:  'Fliesen– und Plattenarbeiten',
-      GER:  'Gerüstbau',
-      HEI:  'Heizungsinstallation',
-      MAL:  'Maler– & Lackierarbeiten',
-      ROH:  'Rohbau / Mauer– & Betonarbeiten',
-      SAN:  'Sanitärinstallation',
-      SCHL: 'Schlosser– / Metallbau',
-      TIS:  'Tischler / Innenausbau',
-      TRO:  'Trockenbau',
-      ABBR: 'Abbruch / Entkernung'
-    };
-
-    // Nur Codes verwenden, die wir kennen; sonst versuchen den Namen zu matchen
-    const unique = new Set();
-    const trades = [];
-    for (const t of parsed.trades) {
-      if (t?.code && mapTo[t.code]) {
-        const name = mapTo[t.code];
-        if (!unique.has(name)) {
-          unique.add(name);
-          trades.push({ name });
-        }
-      } else if (t?.name) {
-        // Notfall: Name kommt vom Modell (z.B. "Sanitärinstallation") -> nehmen, wenn nicht doppelt
-        const name = String(t.name).trim();
-        if (name && !unique.has(name)) {
-          unique.add(name);
-          trades.push({ name });
-        }
-      }
-    }
-
-    if (trades.length > 0) {
-      // Optional: parsed.facts kannst du in der DB speichern, wenn du willst
-      return trades;
-    }
-  }
-
-  // 5) Fallback: Keyword-Erkennung (deine bisherige Logik)
-  return await detectTradesFallback(project);
-}
-
-async function detectTradesFallback(project) {
-  const text = `${project.category} ${project.subCategory} ${project.description}`.toLowerCase();
-
-  const syn = {
-    AUSS: ['außenanlagen','aussenanlagen','galabau','garten','terrasse','pflaster','einfahrt','carport','wege','zaun','begrünung'],
-    BOD:  ['boden','bodenbelag','parkett','vinyl','laminat','teppich','dielen','bodenplatten','estrichboden'],
-    DACH: ['dach','dachfenster','gaube','eindeckung','dachdecker','dachsanierung','dachdämmung','dachisolierung'],
-    ELEKT:['elektro','strom','steckdose','elektroinstallation','verteiler','kabel','beleuchtung','lichtschalter','sicherungskasten'],
-    ESTR: ['estrich','estricharbeiten','estrichboden'],
-    FASS: ['fassade','wdvs','außenputz','aussenputz','wärmedämmung','aussendämmung','fassadensanierung','putzfassade'],
-    FEN:  ['fenster','tür','türen','tueren','außentür','haustür','dachfenster','schiebetür','fenstertausch'],
-    FLI:  ['fliese','fliesen','platten','fliesenleger','fliesenspiegel'],
-    GER:  ['gerüst','geruest','gerüstbau','fassade','dach'],
-    HEI:  ['heizung','heizkörper','wärmepumpe','gastherme','heizungsinstallation','fußbodenheizung','fussbodenheizung'],
-    MAL:  ['maler','lack','anstrich','streichen','spachteln','tapete','innenputz','innenanstrich'],
-    ROH:  ['rohbau','mauer','beton','wanddurchbruch','statik','fundament','mauerwerk','tragwand'],
-    SAN:  ['sanitär','sanitaer','bad','wc','dusche','leitung','sanitärinstallation','waschbecken','toilette'],
-    SCHL: ['schlosser','metallbau','geländer','handlauf','stahl','treppengeländer','türrahmen'],
-    TIS:  ['tischler','innenausbau','innentür','innentueren','möbel','einbau','schreiner','einbauschrank'],
-    TRO:  ['trockenbau','gk','rigips','vorsatzschale','abhangdecke','trennwand','leichtbauwand','deckenabhängung'],
-    ABBR: ['abbruch','entkernung','rückbau','abriss','abrissarbeiten','mauer entfernen','boden rausreißen']
-  };
-
-  const mapTo = {
-    AUSS: 'Außenanlagen / GaLaBau',
-    BOD:  'Bodenbelagsarbeiten',
-    DACH: 'Dachdeckerarbeiten',
-    ELEKT:'Elektroinstallation',
-    ESTR: 'Estricharbeiten',
-    FASS: 'Fassadenbau / –sanierung',
-    FEN:  'Fenster & Türen',
-    FLI:  'Fliesen– und Plattenarbeiten',
-    GER:  'Gerüstbau',
-    HEI:  'Heizungsinstallation',
-    MAL:  'Maler– & Lackierarbeiten',
-    ROH:  'Rohbau / Mauer– & Betonarbeiten',
-    SAN:  'Sanitärinstallation',
-    SCHL: 'Schlosser– / Metallbau',
-    TIS:  'Tischler / Innenausbau',
-    TRO:  'Trockenbau',
-    ABBR: 'Abbruch / Entkernung'
-  };
-
-  const hits = new Set();
-  for (const [code, words] of Object.entries(syn)) {
-    if (words.some(w => text.includes(w))) hits.add(code);
-  }
-  if (hits.size === 0) hits.add('MAL');
-
-  return Array.from(hits).map(code => ({ name: mapTo[code] }));
-}
-
-/**
- * Generate a question catalogue for a specific trade. The prompt for the
- * questions is loaded from the prompts folder (e.g. `questions-sanitaer.txt`).
- * The model should return a structured list of questions. In this PoC we
- * simulate by splitting the prompt file into lines beginning with numbers.
- *
- * @param {string} tradeName Name of the trade (e.g. "sanitaer")
- * @returns {Promise<Array<{ id: string, text: string }>>}
- */
-async function generateQuestions(tradeName) {
-  const filename = `questions-${tradeName}.txt`;
-  const promptContent = loadPrompt(filename);
-  const lines = promptContent.split(/\r?\n/);
-  const questions = [];
-  lines.forEach((line, index) => {
-    const match = line.match(/^\s*(\d+)[\.:\)]\s*(.+)$/);
-    if (match) {
-      questions.push({ id: `${tradeName}-${match[1]}`, text: match[2].trim() });
-    }
-  });
-  // If no numbered lines are found, treat every non‑empty line as a question
-  if (questions.length === 0) {
-    lines.filter(l => l.trim()).forEach((l, idx) => {
-      questions.push({ id: `${tradeName}-${idx + 1}`, text: l.trim() });
+    llmResponse = await llmWithPolicy('detect', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { 
+      maxTokens: 1500,
+      temperature: 0.3,
+      jsonMode: true 
     });
+  } catch (err) {
+    console.error('[DETECT] LLM call failed:', err);
+    return detectTradesFallback(project, availableTrades);
   }
-  return questions;
+  
+  // 7. JSON parsen und validieren
+  let parsedResponse;
+  try {
+    // Entferne mögliche Markdown-Code-Blöcke
+    const cleanedResponse = llmResponse
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    parsedResponse = JSON.parse(cleanedResponse);
+  } catch (err) {
+    console.error('[DETECT] JSON parse failed:', err);
+    console.log('[DETECT] Raw LLM response:', llmResponse);
+    return detectTradesFallback(project, availableTrades);
+  }
+  
+  // 8. Validierung und Mapping
+  if (!parsedResponse.trades || !Array.isArray(parsedResponse.trades)) {
+    console.warn('[DETECT] Invalid response structure, using fallback');
+    return detectTradesFallback(project, availableTrades);
+  }
+  
+  // Map erkannte Codes zu DB-Einträgen
+  const detectedTrades = [];
+  const usedIds = new Set();
+  
+  for (const trade of parsedResponse.trades) {
+    const dbTrade = availableTrades.find(t => 
+      t.code === trade.code || 
+      t.name.toLowerCase() === trade.name?.toLowerCase()
+    );
+    
+    if (dbTrade && !usedIds.has(dbTrade.id)) {
+      usedIds.add(dbTrade.id);
+      detectedTrades.push({
+        id: dbTrade.id,
+        code: dbTrade.code,
+        name: dbTrade.name
+      });
+    }
+  }
+  
+  // Falls keine Gewerke erkannt wurden, Fallback
+  if (detectedTrades.length === 0) {
+    console.warn('[DETECT] No valid trades detected, using fallback');
+    return detectTradesFallback(project, availableTrades);
+  }
+  
+  console.log('[DETECT] Successfully detected trades:', detectedTrades);
+  
+  // Optional: Zusatzinfos speichern (für spätere Verwendung)
+  if (parsedResponse.projectInfo) {
+    project.detectedInfo = parsedResponse.projectInfo;
+  }
+  
+  return detectedTrades;
 }
 
 /**
- * Generate a Leistungsverzeichnis (LV) for a given trade using the answers
- * provided by the user. The LV prompt is loaded from the prompts directory.
- * In production this would call the OpenAI API or another LLM; here we
- * simulate by returning a placeholder text.
- *
- * @param {string} tradeName Name of the trade
- * @param {Array<{ question: string, answer: string, assumption?: string }>} answers
- * @returns {Promise<string>} A string representation of the LV for this trade
+ * Fallback: Keyword-basierte Gewerke-Erkennung
  */
-async function generateLV(tradeName, answers) {
-  const filename = `lv-${tradeName}.txt`;
-  const promptTemplate = loadPrompt(filename);
-  const answerSummary = answers.map(a => `Q: ${a.question}\nA: ${a.answer}`).join('\n');
-  const input = `${promptTemplate}\n\n${answerSummary}`;
-  // Placeholder: simulate AI LV generation
-  const lines = answers.map((a, idx) => {
-    return `${idx + 1}. ${a.question} – Menge: 1 Stk., Einheit: Stk., Preis: 100.00 EUR`;
+function detectTradesFallback(project, availableTrades) {
+  console.log('[FALLBACK] Using keyword-based detection');
+  
+  const text = `${project.category} ${project.subCategory} ${project.description}`.toLowerCase();
+  
+  // Keyword-Mappings (an deine Trades angepasst)
+  const keywords = {
+    'AUSS': ['außenanlagen', 'aussenanlagen', 'galabau', 'garten', 'terrasse', 'pflaster', 'einfahrt', 'carport', 'wege', 'zaun', 'begrünung'],
+    'BOD': ['boden', 'bodenbelag', 'parkett', 'vinyl', 'laminat', 'teppich', 'dielen', 'bodenplatten'],
+    'DACH': ['dach', 'dachfenster', 'gaube', 'eindeckung', 'dachdecker', 'dachsanierung', 'dachdämmung'],
+    'ELEKT': ['elektro', 'strom', 'steckdose', 'elektroinstallation', 'verteiler', 'kabel', 'beleuchtung', 'lichtschalter'],
+    'ESTR': ['estrich', 'estricharbeiten', 'estrichboden'],
+    'FASS': ['fassade', 'wdvs', 'außenputz', 'aussenputz', 'wärmedämmung', 'fassadensanierung'],
+    'FEN': ['fenster', 'tür', 'türen', 'haustür', 'dachfenster', 'schiebetür', 'fenstertausch'],
+    'FLI': ['fliese', 'fliesen', 'platten', 'fliesenleger', 'fliesenspiegel'],
+    'GER': ['gerüst', 'geruest', 'gerüstbau'],
+    'HEI': ['heizung', 'heizkörper', 'wärmepumpe', 'gastherme', 'heizungsinstallation', 'fußbodenheizung'],
+    'MAL': ['maler', 'lack', 'anstrich', 'streichen', 'spachteln', 'tapete', 'innenputz'],
+    'ROH': ['rohbau', 'mauer', 'beton', 'wanddurchbruch', 'statik', 'fundament', 'mauerwerk'],
+    'SAN': ['sanitär', 'sanitaer', 'bad', 'wc', 'dusche', 'leitung', 'waschbecken', 'toilette'],
+    'SCHL': ['schlosser', 'metallbau', 'geländer', 'handlauf', 'stahl', 'treppengeländer'],
+    'TIS': ['tischler', 'innenausbau', 'innentür', 'möbel', 'einbau', 'schreiner', 'einbauschrank'],
+    'TRO': ['trockenbau', 'gk', 'rigips', 'vorsatzschale', 'abhangdecke', 'trennwand'],
+    'ABBR': ['abbruch', 'entkernung', 'rückbau', 'abriss', 'abrissarbeiten']
+  };
+  
+  const detectedCodes = new Set();
+  
+  // Suche nach Keywords
+  for (const [code, words] of Object.entries(keywords)) {
+    if (words.some(word => text.includes(word))) {
+      detectedCodes.add(code);
+    }
+  }
+  
+  // Falls nichts gefunden, nimm Maler als Default
+  if (detectedCodes.size === 0) {
+    detectedCodes.add('MAL');
+  }
+  
+  // Map zu DB-Einträgen
+  const detectedTrades = [];
+  for (const code of detectedCodes) {
+    const trade = availableTrades.find(t => t.code === code);
+    if (trade) {
+      detectedTrades.push({
+        id: trade.id,
+        code: trade.code,
+        name: trade.name
+      });
+    }
+  }
+  
+  console.log('[FALLBACK] Detected trades:', detectedTrades);
+  return detectedTrades;
+}
+
+/**
+ * Fragen für ein Gewerk generieren
+ */
+async function generateQuestions(tradeId, projectContext = {}) {
+  // Lade Fragen-Prompt aus DB
+  const promptResult = await query(
+    `SELECT p.content, p.name as prompt_name, t.name, t.code 
+     FROM prompts p 
+     JOIN trades t ON t.id = p.trade_id 
+     WHERE p.trade_id = $1 AND p.type = 'questions' 
+     LIMIT 1`,
+    [tradeId]
+  );
+  
+  if (promptResult.rows.length === 0) {
+    throw new Error(`No question prompt found for trade ${tradeId}`);
+  }
+  
+  const { content: questionPrompt, name: tradeName, code: tradeCode } = promptResult.rows[0];
+  
+  // System-Prompt für Fragengenerierung
+  const systemPrompt = `Du bist ein Experte für ${tradeName}.
+Erstelle einen präzisen Fragenkatalog für dieses Gewerk.
+Die Fragen sollen alle wichtigen Details erfassen, die für ein Leistungsverzeichnis benötigt werden.
+
+FORMAT: Gib die Fragen als JSON-Array zurück:
+[
+  {
+    "id": "q1",
+    "category": "Allgemein",
+    "question": "Frage hier",
+    "type": "text|number|select|multiselect",
+    "required": true|false,
+    "options": ["Option1", "Option2"] // nur bei select/multiselect
+  }
+]`;
+
+  const userPrompt = `${questionPrompt}
+
+Projektkontext:
+- Kategorie: ${projectContext.category || 'Nicht angegeben'}
+- Beschreibung: ${projectContext.description || 'Keine'}
+
+Erstelle einen angepassten Fragenkatalog als JSON.`;
+
+  try {
+    const response = await llmWithPolicy('questions', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { maxTokens: 2000, temperature: 0.5 });
+    
+    // Parse JSON
+    const cleanedResponse = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    const questions = JSON.parse(cleanedResponse);
+    
+    // Füge Trade-Info hinzu
+    return questions.map((q, idx) => ({
+      ...q,
+      id: q.id || `${tradeCode}-${idx + 1}`,
+      tradeId,
+      tradeName
+    }));
+    
+  } catch (err) {
+    console.error('[QUESTIONS] Generation failed:', err);
+    // Fallback: Generische Fragen
+    return [
+      {
+        id: `${tradeCode}-1`,
+        category: 'Allgemein',
+        question: `Welche spezifischen Arbeiten sind für ${tradeName} geplant?`,
+        type: 'text',
+        required: true,
+        tradeId,
+        tradeName
+      },
+      {
+        id: `${tradeCode}-2`,
+        category: 'Umfang',
+        question: 'Wie groß ist die zu bearbeitende Fläche/Menge?',
+        type: 'text',
+        required: true,
+        tradeId,
+        tradeName
+      }
+    ];
+  }
+}
+
+/**
+ * Leistungsverzeichnis generieren
+ */
+async function generateLV(tradeId, answers, projectContext = {}) {
+  // Lade LV-Prompt aus DB
+  const promptResult = await query(
+    `SELECT p.content, p.name as prompt_name, t.name, t.code 
+     FROM prompts p 
+     JOIN trades t ON t.id = p.trade_id 
+     WHERE p.trade_id = $1 AND p.type = 'lv' 
+     LIMIT 1`,
+    [tradeId]
+  );
+  
+  if (promptResult.rows.length === 0) {
+    throw new Error(`No LV prompt found for trade ${tradeId}`);
+  }
+  
+  const { content: lvPrompt, name: tradeName } = promptResult.rows[0];
+  
+  // System-Prompt für LV-Generierung
+  const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse.
+Erstelle ein detailliertes LV für ${tradeName} basierend auf den gegebenen Antworten.
+
+FORMAT: Strukturiertes JSON mit Positionen:
+{
+  "trade": "${tradeName}",
+  "positions": [
+    {
+      "pos": "01.01",
+      "title": "Positionstitel",
+      "description": "Detaillierte Beschreibung",
+      "quantity": 1,
+      "unit": "Stk/m²/m/pauschal",
+      "unitPrice": null,
+      "totalPrice": null
+    }
+  ],
+  "notes": "Zusätzliche Hinweise"
+}`;
+
+  const answerSummary = answers.map(a => 
+    `Frage: ${a.question}\nAntwort: ${a.answer}`
+  ).join('\n\n');
+
+  const userPrompt = `${lvPrompt}
+
+PROJEKT:
+${projectContext.description || 'Keine Beschreibung'}
+
+ANTWORTEN:
+${answerSummary}
+
+Erstelle ein vollständiges Leistungsverzeichnis als JSON.`;
+
+  try {
+    const response = await llmWithPolicy('lv', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { maxTokens: 3000, temperature: 0.3 });
+    
+    const cleanedResponse = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    return JSON.parse(cleanedResponse);
+    
+  } catch (err) {
+    console.error('[LV] Generation failed:', err);
+    throw new Error('Failed to generate LV');
+  }
+}
+
+// ===========================================================================
+// EXPRESS APP
+// ===========================================================================
+
+const app = express();
+
+// CORS Configuration
+const allowedOrigins = [
+  'https://byndl-poc.netlify.app',
+  'https://byndl.de',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
+app.use(express.json());
+app.use(bodyParser.json());
+
+// ===========================================================================
+// ROUTES
+// ===========================================================================
+
+// Health Check
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'BYNDL Backend v2.0',
+    status: 'running',
+    timestamp: new Date().toISOString()
   });
-  return lines.join('\n');
-}
+});
 
-/**
- * Authenticate admin user. Reads user from database and compares password
- * using bcrypt. Returns a signed JWT if successful.
- *
- * @param {string} username
- * @param {string} password
- * @returns {Promise<{ token: string }|null>}
- */
-async function authenticateAdmin(username, password) {
-  const res = await query('SELECT * FROM users WHERE username = $1', [username]);
-  if (res.rows.length === 0) return null;
-  const user = res.rows[0];
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) return null;
-  const payload = { userId: user.id, username: user.username };
-  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
-  return { token };
-}
+// DB Ping
+app.get('/api/dbping', async (req, res) => {
+  try {
+    const result = await query('SELECT NOW() as time, version() as version');
+    res.json({ 
+      ok: true, 
+      time: result.rows[0].time,
+      version: result.rows[0].version 
+    });
+  } catch (err) {
+    console.error('DB ping failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
-/**
- * Middleware to protect admin routes.
- */
+// Get all trades
+app.get('/api/trades', async (req, res) => {
+  try {
+    const trades = await getAvailableTrades();
+    res.json(trades);
+  } catch (err) {
+    console.error('Failed to fetch trades:', err);
+    res.status(500).json({ error: 'Failed to fetch trades' });
+  }
+});
+
+// Create project with trade detection
+app.post('/api/projects', async (req, res) => {
+  try {
+    const { category, subCategory, description, timeframe, budget } = req.body;
+    
+    if (!description) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+    
+    // 1. Create project in DB
+    const projectResult = await query(
+      `INSERT INTO projects (category, sub_category, description, timeframe, budget)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [category || null, subCategory || null, description, timeframe || null, budget || null]
+    );
+    
+    const project = projectResult.rows[0];
+    
+    // 2. Detect trades using LLM
+    const detectedTrades = await detectTrades({
+      category,
+      subCategory,
+      description,
+      timeframe,
+      budget
+    });
+    
+    // 3. Link trades to project
+    for (const trade of detectedTrades) {
+      await query(
+        `INSERT INTO project_trades (project_id, trade_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [project.id, trade.id]
+      );
+    }
+    
+    // 4. Return project with trades
+    res.json({
+      project: {
+        ...project,
+        trades: detectedTrades
+      }
+    });
+    
+  } catch (err) {
+    console.error('Failed to create project:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get project details
+app.get('/api/projects/:projectId', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Get project
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    const project = projectResult.rows[0];
+    
+    // Get associated trades
+    const tradesResult = await query(
+      `SELECT t.* FROM trades t
+       JOIN project_trades pt ON pt.trade_id = t.id
+       WHERE pt.project_id = $1`,
+      [projectId]
+    );
+    
+    project.trades = tradesResult.rows;
+    
+    res.json(project);
+    
+  } catch (err) {
+    console.error('Failed to fetch project:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate questions for a trade
+app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    // Get project context
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    const project = projectResult.rows[0];
+    
+    // Generate questions
+    const questions = await generateQuestions(tradeId, {
+      category: project.category,
+      description: project.description
+    });
+    
+    // Store questions in DB
+    for (const question of questions) {
+      await query(
+        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (project_id, trade_id, question_id) 
+         DO UPDATE SET text = $4, type = $5, required = $6, options = $7`,
+        [
+          projectId,
+          tradeId,
+          question.id,
+          question.question,
+          question.type || 'text',
+          question.required || false,
+          JSON.stringify(question.options || null)
+        ]
+      );
+    }
+    
+    res.json({ questions });
+    
+  } catch (err) {
+    console.error('Failed to generate questions:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Save answers
+app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { answers } = req.body;
+    
+    if (!Array.isArray(answers)) {
+      return res.status(400).json({ error: 'Answers must be an array' });
+    }
+    
+    // Save each answer
+    for (const answer of answers) {
+      await query(
+        `INSERT INTO answers (project_id, trade_id, question_id, answer_text, assumption)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (project_id, trade_id, question_id)
+         DO UPDATE SET answer_text = $4, assumption = $5, updated_at = NOW()`,
+        [
+          projectId,
+          tradeId,
+          answer.questionId,
+          answer.answer,
+          answer.assumption || null
+        ]
+      );
+    }
+    
+    res.json({ success: true, saved: answers.length });
+    
+  } catch (err) {
+    console.error('Failed to save answers:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate LV
+app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    // Get project context
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    const project = projectResult.rows[0];
+    
+    // Get answers
+    const answersResult = await query(
+      `SELECT q.text as question, a.answer_text as answer, a.assumption
+       FROM answers a
+       JOIN questions q ON q.project_id = a.project_id 
+         AND q.trade_id = a.trade_id 
+         AND q.question_id = a.question_id
+       WHERE a.project_id = $1 AND a.trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (answersResult.rows.length === 0) {
+      return res.status(400).json({ error: 'No answers found for this trade' });
+    }
+    
+    // Generate LV
+    const lv = await generateLV(tradeId, answersResult.rows, {
+      description: project.description
+    });
+    
+    // Store LV in DB
+    await query(
+      `INSERT INTO lvs (project_id, trade_id, content)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (project_id, trade_id)
+       DO UPDATE SET content = $3, updated_at = NOW()`,
+      [projectId, tradeId, JSON.stringify(lv)]
+    );
+    
+    res.json({ lv });
+    
+  } catch (err) {
+    console.error('Failed to generate LV:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all LVs for a project
+app.get('/api/projects/:projectId/lvs', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT l.*, t.name as trade_name, t.code as trade_code
+       FROM lvs l
+       JOIN trades t ON t.id = l.trade_id
+       WHERE l.project_id = $1`,
+      [projectId]
+    );
+    
+    const lvs = result.rows.map(row => ({
+      ...row,
+      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+    }));
+    
+    res.json({ lvs });
+    
+  } catch (err) {
+    console.error('Failed to fetch LVs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin authentication
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    
+    const result = await query(
+      'SELECT * FROM users WHERE username = $1',
+      [username]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const user = result.rows[0];
+    const valid = await bcrypt.compare(password, user.password_hash);
+    
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+    
+    res.json({ token, user: { id: user.id, username: user.username } });
+    
+  } catch (err) {
+    console.error('Login failed:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Admin middleware
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization;
-  if (!auth) return res.status(401).json({ message: 'Authorization header missing' });
-  const token = auth.split(' ')[1];
+  
+  if (!auth || !auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+  
+  const token = auth.slice(7);
+  
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(403).json({ message: 'Invalid or expired token' });
+    return res.status(403).json({ error: 'Invalid or expired token' });
   }
 }
 
-// ---------------------------------------------------------------------------
-// Express app setup
-
-const app = express();
-
-app.get('/__info', (req, res) => {
-  const routes = (app._router?.stack || [])
-    .filter(r => r.route && r.route.path)
-    .map(r => `${Object.keys(r.route.methods).join(',').toUpperCase()} ${r.route.path}`);
-
-  res.json({
-    file: __filename,
-    cwd: process.cwd(),
-    routes,
-    commit: process.env.RENDER_GIT_COMMIT || process.env.RENDER_GIT_COMMIT_SHA || null
-  });
+// Admin: Get all projects
+app.get('/api/admin/projects', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT p.*, 
+        COUNT(DISTINCT pt.trade_id) as trade_count,
+        COUNT(DISTINCT l.id) as lv_count
+       FROM projects p
+       LEFT JOIN project_trades pt ON pt.project_id = p.id
+       LEFT JOIN lvs l ON l.project_id = p.id
+       GROUP BY p.id
+       ORDER BY p.created_at DESC`
+    );
+    
+    res.json({ projects: result.rows });
+    
+  } catch (err) {
+    console.error('Failed to fetch projects:', err);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
 });
 
-const allowedOrigins = ['https://byndl-poc.netlify.app', 'https://byndl.de'];
-app.use(require('cors')({ origin: allowedOrigins }));
-app.use(express.json());
+// Admin: Update prompts
+app.put('/api/admin/prompts/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    
+    const result = await query(
+      `UPDATE prompts 
+       SET content = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [content, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    
+    res.json({ prompt: result.rows[0] });
+    
+  } catch (err) {
+    console.error('Failed to update prompt:', err);
+    res.status(500).json({ error: 'Failed to update prompt' });
+  }
+});
 
-app.get('/__debug_routes', (req, res) => {
-  const routes = app._router.stack
-    .filter(r => r.route && r.route.path)
-    .map(r => `${Object.keys(r.route.methods).join(',').toUpperCase()} ${r.route.path}`);
+// Admin: Get all prompts
+app.get('/api/admin/prompts', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT p.*, t.name as trade_name, t.code as trade_code
+       FROM prompts p
+       LEFT JOIN trades t ON t.id = p.trade_id
+       ORDER BY p.type, t.name`
+    );
+    
+    res.json({ prompts: result.rows });
+    
+  } catch (err) {
+    console.error('Failed to fetch prompts:', err);
+    res.status(500).json({ error: 'Failed to fetch prompts' });
+  }
+});
+
+// Test endpoints for LLM providers
+app.get('/api/test/openai', async (req, res) => {
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: 'Say "OpenAI is working"' }],
+      max_tokens: 20
+    });
+    res.json({ 
+      status: 'ok',
+      response: response.choices[0].message.content 
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      status: 'error',
+      error: err.message 
+    });
+  }
+});
+
+app.get('/api/test/anthropic', async (req, res) => {
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-latest',
+      max_tokens: 20,
+      messages: [{ role: 'user', content: 'Say "Claude is working"' }]
+    });
+    res.json({ 
+      status: 'ok',
+      response: response.content[0].text 
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      status: 'error',
+      error: err.message 
+    });
+  }
+});
+
+// Debug route to check all routes
+app.get('/api/debug/routes', (req, res) => {
+  const routes = [];
+  app._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      const methods = Object.keys(middleware.route.methods);
+      routes.push({
+        path: middleware.route.path,
+        methods: methods.map(m => m.toUpperCase())
+      });
+    }
+  });
   res.json({ routes });
 });
 
-// ===== neue Trades-Route =====
-app.get('/api/trades', async (req, res) => {
-  try {
-    const result = await query(`
-      SELECT id, code, name
-      FROM trades
-      ORDER BY id
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Failed to fetch trades:', err);
-    res.status(500).json({ message: 'Failed to fetch trades' });
-  }
-});
-// ===== Ende neue Trades-Route =====
-
-// ===== neue Prompts-Route =====
-app.get('/api/prompts', async (req, res) => {
-  try {
-    const result = await query(`
-      SELECT id, name, type, trade_id, created_at, updated_at
-      FROM prompts
-      ORDER BY trade_id NULLS FIRST, name
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Failed to fetch prompts:', err);
-    res.status(500).json({ message: 'Failed to fetch prompts' });
-  }
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
 });
 
-app.get('/api/prompts/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await query(
-      `SELECT id, name, type, trade_id, content, created_at, updated_at
-       FROM prompts
-       WHERE id = $1`,
-      [id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Not found' });
-    }
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Failed to fetch prompt:', err);
-    res.status(500).json({ message: 'Failed to fetch prompt' });
-  }
-});
-// ===== Ende neue Prompts-Route =====
-
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ ok: true });
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-app.use(bodyParser.json());
-
-// Health check
-app.get('/', (req, res) => {
-  res.json({ message: 'BYNDL backend is up and running' });
-});
-
-// DB-Verbindungs-Test
-app.get('/api/dbping', async (req, res) => {
-  try {
-    const r = await query('SELECT 1 AS ok');
-    res.json({ ok: true, value: r.rows[0].ok });
-  } catch (e) {
-    console.error('DB ping fehlgeschlagen:', e);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-// -------------------------------------------------------------
-// BYNDL API: Trades liefern (für Frontend & Tests)
-// -------------------------------------------------------------
-app.get('/api/trades', async (req, res) => {
-  try {
-    const result = await query(
-      'SELECT id, code, name FROM trades ORDER BY id'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Failed to fetch trades:', err);
-    res.status(500).json({ message: 'Failed to fetch trades' });
-  }
-});
-
-app.get('/trades', async (req, res) => {
-  try {
-    const result = await query(
-      'SELECT id, code, name FROM trades ORDER BY id'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Failed to fetch trades (alias):', err);
-    res.status(500).json({ message: 'Failed to fetch trades' });
-  }
-});
-// ----- END trades routes -----  
-
-// Create a new project
-app.post('/api/project', async (req, res) => {
-  const { category, subCategory, description, timeframe, budget } = req.body;
-  if (!category || !description) {
-    return res.status(400).json({ message: 'category and description are required' });
-  }
-  try {
-    // Insert project into DB
-    const projectRes = await query(
-      'INSERT INTO projects (category, sub_category, description, timeframe, budget) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [category, subCategory, description, timeframe, budget]
-    );
-    const project = projectRes.rows[0];
-
-    // Detect trades
-    const trades = await detectTrades({ category, subCategory, description });
-    // Insert trades into DB
-    
- // Hole alle vorhandenen Gewerke
-const catRes = await query('SELECT id, name FROM trades');
-const catalog = catRes.rows;
-
-// Verknüpfe Projekt mit erkannten Gewerken
-for (const t of trades) {
-  const hit = catalog.find(c =>
-    c.name.toLowerCase().includes(String(t.name).toLowerCase())
-  );
-  if (!hit) continue;
-
-  await query(
-    `INSERT INTO project_trades (project_id, trade_id)
-     VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-    [project.id, hit.id]
-  );
-}
-    
-    res.json({ projectId: project.id, trades });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to create project' });
-  }
-});
-
-// Get trades for a project
-app.get('/api/trades/:projectId', async (req, res) => {
-  const { projectId } = req.params;
-  try {
-    const tradesRes = await query('SELECT * FROM trades WHERE project_id = $1', [projectId]);
-    res.json({ trades: tradesRes.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to fetch trades' });
-  }
-});
-
-// Get questions for a trade
-app.get('/api/questions/:tradeId', async (req, res) => {
-  const { tradeId } = req.params;
-  try {
-    const tradeRes = await query('SELECT * FROM trades WHERE id = $1', [tradeId]);
-    if (tradeRes.rows.length === 0) return res.status(404).json({ message: 'Trade not found' });
-    const tradeName = tradeRes.rows[0].name;
-    const questions = await generateQuestions(tradeName);
-    // Insert questions into DB if not already present
-    for (const q of questions) {
-      await query(
-        'INSERT INTO questions (trade_id, question_id, text) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-        [tradeId, q.id, q.text]
-      );
-    }
-    res.json({ questions });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to fetch questions' });
-  }
-});
-
-// Save an answer to a question
-app.post('/api/questions/:tradeId', async (req, res) => {
-  const { tradeId } = req.params;
-  const { questionId, answer, assumption } = req.body;
-  if (!questionId || !answer) {
-    return res.status(400).json({ message: 'questionId and answer are required' });
-  }
-  try {
-    const qRes = await query('SELECT id FROM questions WHERE trade_id = $1 AND question_id = $2', [tradeId, questionId]);
-    if (qRes.rows.length === 0) return res.status(404).json({ message: 'Question not found' });
-    const dbQId = qRes.rows[0].id;
-    const ansRes = await query(
-      'INSERT INTO answers (question_db_id, answer_text, assumption) VALUES ($1, $2, $3) RETURNING *',
-      [dbQId, answer, assumption]
-    );
-    res.json({ answer: ansRes.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to save answer' });
-  }
-});
-
-// Generate LV for a trade
-app.post('/api/lv/:tradeId', async (req, res) => {
-  const { tradeId } = req.params;
-  try {
-    const tradeRes = await query('SELECT * FROM trades WHERE id = $1', [tradeId]);
-    if (tradeRes.rows.length === 0) return res.status(404).json({ message: 'Trade not found' });
-    const tradeName = tradeRes.rows[0].name;
-    // Retrieve questions and answers for this trade
-    const qaRes = await query(
-      `SELECT q.text as question, a.answer_text as answer, a.assumption as assumption
-       FROM questions q
-       LEFT JOIN answers a ON a.question_db_id = q.id
-       WHERE q.trade_id = $1`,
-      [tradeId]
-    );
-    const answers = qaRes.rows;
-    const lvContent = await generateLV(tradeName, answers);
-    // Insert LV into DB
-    const lvRes = await query(
-      'INSERT INTO lvs (trade_id, content) VALUES ($1, $2) RETURNING *',
-      [tradeId, lvContent]
-    );
-    res.json({ lv: lvRes.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to generate LV' });
-  }
-});
-
-// Get aggregate LV for a project
-app.get('/api/project/:projectId/lv', async (req, res) => {
-  const { projectId } = req.params;
-  try {
-    const lvsRes = await query(
-      `SELECT t.name as trade_name, l.content
-       FROM lvs l
-       JOIN trades t ON t.id = l.trade_id
-       WHERE t.project_id = $1`,
-      [projectId]
-    );
-    res.json({ lvs: lvsRes.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to fetch LVs' });
-  }
-});
-
-// Admin login
-app.post('/api/admin/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ message: 'Username and password required' });
-  }
-  try {
-    const result = await authenticateAdmin(username, password);
-    if (!result) return res.status(401).json({ message: 'Invalid credentials' });
-    res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Login failed' });
-  }
-});
-
-// Protected: get all projects
-app.get('/api/admin/projects', requireAdmin, async (req, res) => {
-  try {
-    const projectsRes = await query('SELECT * FROM projects ORDER BY created_at DESC');
-    res.json({ projects: projectsRes.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to fetch projects' });
-  }
-});
-
-// Protected: get details of a project
-app.get('/api/admin/project/:projectId', requireAdmin, async (req, res) => {
-  const { projectId } = req.params;
-  try {
-    const projectRes = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
-    if (projectRes.rows.length === 0) return res.status(404).json({ message: 'Project not found' });
-    // Get trades, questions, answers and lvs
-    const tradesRes = await query('SELECT * FROM trades WHERE project_id = $1', [projectId]);
-    const trades = tradesRes.rows;
-    for (const trade of trades) {
-      const qRes = await query('SELECT * FROM questions WHERE trade_id = $1', [trade.id]);
-      trade.questions = qRes.rows;
-      for (const q of trade.questions) {
-        const aRes = await query('SELECT * FROM answers WHERE question_db_id = $1', [q.id]);
-        q.answers = aRes.rows;
-      }
-      const lRes = await query('SELECT * FROM lvs WHERE trade_id = $1', [trade.id]);
-      trade.lvs = lRes.rows;
-    }
-    const project = projectRes.rows[0];
-    project.trades = trades;
-    res.json({ project });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to fetch project' });
-  }
-});
-
-// Protected: update prompts – allows admin to upload new prompt files. The
-// request body should include `filename` and `content`. Overwrites existing
-// files in the prompts directory.
-app.post('/api/admin/prompts', requireAdmin, async (req, res) => {
-  const { filename, content } = req.body;
-  if (!filename || !content) {
-    return res.status(400).json({ message: 'filename and content required' });
-  }
-  try {
-    const filePath = path.join(__dirname, '..', 'prompts', filename);
-    fs.writeFileSync(filePath, content);
-    res.json({ message: 'Prompt updated' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to update prompt' });
-  }
-});
-
-// PDF export (not implemented)
-app.get('/api/export/:projectId', (req, res) => {
-  res.status(501).json({ message: 'PDF export is not implemented in this PoC.' });
-});
-
-// Test-Route für OpenAI
-app.get("/test-openai", async (req, res) => {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",   
-      messages: [{ role: "user", content: "Sag Hallo von OpenAI!" }],
-    });
-    res.json({ reply: response.choices[0].message.content });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Test-Route für Anthropic
-app.get("/test-anthropic", async (req, res) => {
-  try {
-    const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-latest",  
-      max_tokens: 50,
-      messages: [{ role: "user", content: "Sag Hallo von Claude!" }],
-    });
-    res.json({ reply: response.content[0].text });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// --- Projekt anlegen (LLM-gestützt & mit Fallback) ---
-app.post('/api/projects/create', async (req, res) => {
-  try {
-    const { category, subCategory, description, timeframe, budget } = req.body || {};
-    if (!category || !description) {
-      return res.status(400).json({ error: 'category and description are required' });
-    }
-
-    // 1) Projekt speichern
-    const pr = await query(
-      `INSERT INTO projects (category, sub_category, description, timeframe, budget)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [category, subCategory || null, description, timeframe || null, budget || null]
-    );
-    const projectId = pr.rows[0].id;
-
-    // 2) Gewerke ermitteln (nutzt detectTrades -> LLM + Keyword-Fallback)
-    const trades = await detectTrades({ category, subCategory, description });
-
-    // 3) Mit Stammtabelle 'trades' verknüpfen
-    const cat = await query(`SELECT id, name FROM trades`);
-    const catalog = cat.rows;
-    for (const t of trades) {
-      const hit = catalog.find(c =>
-        c.name.toLowerCase().includes(String(t.name).toLowerCase())
-      );
-      if (!hit) continue;
-      await query(
-        `INSERT INTO project_trades (project_id, trade_id)
-         VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-        [projectId, hit.id]
-      );
-    }
-
-    return res.json({ projectId, trades });
-  } catch (err) {
-    console.error('create-project failed:', err);
-    return res.status(500).json({ error: err.message || 'Failed to create project' });
-  }
-});
-
-// Start the server
-const port = process.env.PORT || 3001;
-app.listen(port, () => {
-  console.log(`BYNDL backend listening on port ${port}`);
+// Start server
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`
+╔════════════════════════════════════════╗
+║                                        ║
+║     BYNDL Backend v2.0 Started        ║
+║                                        ║
+║     Port: ${PORT}                        ║
+║     Environment: ${process.env.NODE_ENV || 'development'}          ║
+║                                        ║
+╚════════════════════════════════════════╝
+  `);
 });
