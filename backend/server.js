@@ -51,16 +51,16 @@ async function llmWithPolicy(task, messages, options = {}) {
   // Bestimme primären Provider basierend auf Task
   const primaryProvider = ['detect', 'questions'].includes(task) ? 'anthropic' : 'openai';
   
-  const callOpenAI = async () => {
-    const response = await openai.chat.completions.create({
-      model: MODEL_OPENAI,
-      messages,
-      temperature,
-      max_tokens: maxTokens,
-      response_format: options.jsonMode ? { type: "json_object" } : undefined
-    });
-    return response.choices[0].message.content;
-  };
+const callOpenAI = async () => {
+  const response = await openai.chat.completions.create({
+    model: MODEL_OPENAI,
+    messages,
+    temperature,
+    max_completion_tokens: maxTokens,  // <- HIER AUCH ÄNDERN!
+    response_format: options.jsonMode ? { type: "json_object" } : undefined
+  });
+  return response.choices[0].message.content;
+};
   
   const callClaude = async () => {
     const response = await anthropic.messages.create({
@@ -1011,13 +1011,14 @@ app.get('/__info', (req, res) => {
     }
   });
 });
+
 // Test-Route: OpenAI
 app.get('/test-openai', async (req, res) => {
   try {
     const response = await openai.chat.completions.create({
-      model: MODEL_OPENAI, // <- nutzt deine Konstante
+      model: MODEL_OPENAI,
       messages: [{ role: 'user', content: 'Sag Hallo von OpenAI!' }],
-      max_tokens: 50
+      max_completion_tokens: 50  // <- GEÄNDERT!
     });
     res.json({
       ok: true,
@@ -1034,8 +1035,8 @@ app.get('/test-openai', async (req, res) => {
 app.get('/test-anthropic', async (req, res) => {
   try {
     const response = await anthropic.messages.create({
-      model: MODEL_ANTHROPIC, // <- nutzt deine Konstante
-      max_tokens: 50,
+      model: MODEL_ANTHROPIC,
+      max_tokens: 50,  // <- Anthropic nutzt weiterhin max_tokens
       messages: [{ role: 'user', content: 'Sag Hallo von Claude!' }]
     });
     res.json({
