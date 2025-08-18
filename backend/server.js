@@ -1009,6 +1009,49 @@ app.use((err, req, res, next) => {
   });
 });
 
+// --------------------------------------------------
+// Test-Routen
+// --------------------------------------------------
+
+// Health-Check
+app.get('/healthz', (req, res) => {
+  res.json({ message: "BYNDL Backend v2.0", status: "running" });
+});
+
+// Infos über Environment
+app.get('/__info', (req, res) => {
+  res.json({
+    node: process.version,
+    env: {
+      OPENAI_MODEL: process.env.OPENAI_MODEL,
+      ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL,
+      DATABASE_URL: process.env.DATABASE_URL ? "✔️ gesetzt" : "❌ fehlt"
+    }
+  });
+});
+
+// Test-Route OpenAI
+app.get('/test-openai', async (req, res) => {
+  try {
+    const result = await callOpenAI("Sag nur: Hallo von OpenAI!");
+    res.json({ ok: true, model: process.env.OPENAI_MODEL, result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Test-Route Anthropic
+app.get('/test-anthropic', async (req, res) => {
+  try {
+    const result = await callAnthropic("Sag nur: Hallo von Anthropic!");
+    res.json({ ok: true, model: process.env.ANTHROPIC_MODEL, result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
