@@ -709,7 +709,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
           projectId,
           tradeId,
           question.id,
-          question.question,
+          question.question || question.text,  
           question.type || 'text',
           question.required || false,
           JSON.stringify(question.options || null)
