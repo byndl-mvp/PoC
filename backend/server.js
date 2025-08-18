@@ -29,6 +29,10 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// --- Modellnamen aus Umgebungsvariablen (mit sinnvollen Fallbacks) ---
+const MODEL_OPENAI = process.env.MODEL_OPENAI || 'gpt-4o-mini';
+const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest';
+
 // ===========================================================================
 // HELPER FUNCTIONS
 // ===========================================================================
@@ -49,7 +53,7 @@ async function llmWithPolicy(task, messages, options = {}) {
   
   const callOpenAI = async () => {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: MODEL_OPENAI,
       messages,
       temperature,
       max_tokens: maxTokens,
@@ -60,7 +64,7 @@ async function llmWithPolicy(task, messages, options = {}) {
   
   const callClaude = async () => {
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-latest',
+      model: MODEL_ANTHROPIC,
       max_tokens: maxTokens,
       temperature,
       messages
@@ -937,7 +941,7 @@ app.get('/api/admin/prompts', requireAdmin, async (req, res) => {
 app.get('/api/test/openai', async (req, res) => {
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: MODEL_OPENAI,
       messages: [{ role: 'user', content: 'Say "OpenAI is working"' }],
       max_tokens: 20
     });
@@ -956,7 +960,7 @@ app.get('/api/test/openai', async (req, res) => {
 app.get('/api/test/anthropic', async (req, res) => {
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-latest',
+      model: MODEL_ANTHROPIC,
       max_tokens: 20,
       messages: [{ role: 'user', content: 'Say "Claude is working"' }]
     });
