@@ -1012,28 +1012,6 @@ app.get('/__info', (req, res) => {
   });
 });
 
-// Test-Route OpenAI
-app.get('/test-openai', async (req, res) => {
-  try {
-    const result = await callOpenAI("Sag nur: Hallo von OpenAI!");
-    res.json({ ok: true, model: process.env.OPENAI_MODEL, result });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// Test-Route Anthropic
-app.get('/test-anthropic', async (req, res) => {
-  try {
-    const result = await callAnthropic("Sag nur: Hallo von Anthropic!");
-    res.json({ ok: true, model: process.env.ANTHROPIC_MODEL, result });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
