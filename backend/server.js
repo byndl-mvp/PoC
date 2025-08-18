@@ -725,6 +725,34 @@ for (const question of questions) {
   }
 });
 
+// Get questions for a trade in a project
+app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const result = await query(
+      `SELECT q.*, t.name as trade_name, t.code as trade_code
+       FROM questions q
+       JOIN trades t ON t.id = q.trade_id
+       WHERE q.project_id = $1 AND q.trade_id = $2
+       ORDER BY q.question_id`,
+      [projectId, tradeId]
+    );
+    
+    // Parse options if stored as JSON string
+    const questions = result.rows.map(q => ({
+      ...q,
+      options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null
+    }));
+    
+    res.json({ questions });
+    
+  } catch (err) {
+    console.error('Failed to fetch questions:', err);
+    res.status(500).json({ error: 'Failed to fetch questions' });
+  }
+});
+
 // Save answers
 app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) => {
   try {
