@@ -1011,6 +1011,43 @@ app.get('/__info', (req, res) => {
     }
   });
 });
+// Test-Route: OpenAI
+app.get('/test-openai', async (req, res) => {
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL_OPENAI, // <- nutzt deine Konstante
+      messages: [{ role: 'user', content: 'Sag Hallo von OpenAI!' }],
+      max_tokens: 50
+    });
+    res.json({
+      ok: true,
+      model: MODEL_OPENAI,
+      reply: response.choices?.[0]?.message?.content ?? null
+    });
+  } catch (err) {
+    console.error('test-openai:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Test-Route: Anthropic
+app.get('/test-anthropic', async (req, res) => {
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL_ANTHROPIC, // <- nutzt deine Konstante
+      max_tokens: 50,
+      messages: [{ role: 'user', content: 'Sag Hallo von Claude!' }]
+    });
+    res.json({
+      ok: true,
+      model: MODEL_ANTHROPIC,
+      reply: response.content?.[0]?.text ?? null
+    });
+  } catch (err) {
+    console.error('test-anthropic:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // 404 handler
 app.use((req, res) => {
