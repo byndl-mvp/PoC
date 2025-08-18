@@ -108,6 +108,28 @@ async function getPromptByName(name) {
 }
 
 /**
+ * Prompt für ein spezifisches Gewerk und Typ laden
+ */
+async function getPromptForTrade(tradeId, type) {
+  try {
+    const result = await query(
+      `SELECT content FROM prompts 
+       WHERE trade_id = $1 AND type = $2 
+       ORDER BY updated_at DESC LIMIT 1`,
+      [tradeId, type]
+    );
+    if (result.rows.length === 0) {
+      console.warn(`[DB] No ${type} prompt found for trade ${tradeId}`);
+      return '';
+    }
+    return result.rows[0].content || '';
+  } catch (err) {
+    console.error(`[DB] Error loading ${type} prompt for trade ${tradeId}:`, err);
+    return '';
+  }
+}
+
+/**
  * Alle verfügbaren Gewerke aus DB laden
  */
 async function getAvailableTrades() {
