@@ -698,24 +698,24 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       description: project.description
     });
     
-    // Store questions in DB
-    for (const question of questions) {
-      await query(
-        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (project_id, trade_id, question_id) 
-         DO UPDATE SET text = $4, type = $5, required = $6, options = $7`,
-        [
-          projectId,
-          tradeId,
-          question.id,
-          question.question || question.text,  
-          question.type || 'text',
-          question.required || false,
-          JSON.stringify(question.options || null)
-        ]
-      );
-    }
+// Store questions in DB with proper mapping
+for (const question of questions) {
+  await query(
+    `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (project_id, trade_id, question_id) 
+     DO UPDATE SET text = $4, type = $5, required = $6, options = $7`,
+    [
+      projectId,
+      tradeId,
+      question.id,
+      question.question || question.text,  // <- HIER DER FIX!
+      question.type || 'text',
+      question.required !== undefined ? question.required : false,
+      question.options ? JSON.stringify(question.options) : null
+    ]
+  );
+}
     
     res.json({ questions });
     
