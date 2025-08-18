@@ -349,46 +349,60 @@ function detectTradesFallback(project, availableTrades) {
  * Fragen für ein Gewerk generieren
  */
 async function generateQuestions(tradeId, projectContext = {}) {
-  // Lade Fragen-Prompt aus DB
-  const promptResult = await query(
-    `SELECT p.content, p.name as prompt_name, t.name, t.code 
-     FROM prompts p 
-     JOIN trades t ON t.id = p.trade_id 
-     WHERE p.trade_id = $1 AND p.type = 'questions' 
-     LIMIT 1`,
+  // Lade Trade-Info
+  const tradeResult = await query(
+    'SELECT name, code FROM trades WHERE id = $1',
     [tradeId]
   );
   
-  if (promptResult.rows.length === 0) {
-    throw new Error(`No question prompt found for trade ${tradeId}`);
+  if (tradeResult.rows.length === 0) {
+    throw new Error(`Trade ${tradeId} not found`);
   }
   
-  const { content: questionPrompt, name: tradeName, code: tradeCode } = promptResult.rows[0];
+  const { name: tradeName, code: tradeCode } = tradeResult.rows[0];
+  
+  // Lade Questions-Prompt aus DB
+  const questionPrompt = await getPromptForTrade(tradeId, 'questions');
+  
+  if (!questionPrompt) {
+    console.warn(`No questions prompt for trade ${tradeId}, using fallback`);
+    return [
+      {
+        id: `${tradeCode}-1`,
+        category: 'Allgemein',
+        question: `Welche spezifischen Arbeiten sind für ${tradeName} geplant?`,
+        type: 'text',
+        required: true,
+        tradeId,
+        tradeName
+      }
+    ];
+  }
   
   // System-Prompt für Fragengenerierung
   const systemPrompt = `Du bist ein Experte für ${tradeName}.
-Erstelle einen präzisen Fragenkatalog für dieses Gewerk.
-Die Fragen sollen alle wichtigen Details erfassen, die für ein Leistungsverzeichnis benötigt werden.
+Erstelle einen präzisen Fragenkatalog für dieses Gewerk basierend auf dem folgenden Template.
 
-FORMAT: Gib die Fragen als JSON-Array zurück:
+WICHTIG: Gib die Fragen als JSON-Array zurück:
 [
   {
     "id": "q1",
-    "category": "Allgemein",
-    "question": "Frage hier",
+    "category": "Kategorie",
+    "question": "Konkrete Frage",
     "type": "text|number|select|multiselect",
     "required": true|false,
     "options": ["Option1", "Option2"] // nur bei select/multiselect
   }
 ]`;
 
-  const userPrompt = `${questionPrompt}
+  const userPrompt = `TEMPLATE:
+${questionPrompt}
 
-Projektkontext:
+PROJEKTKONTEXT:
 - Kategorie: ${projectContext.category || 'Nicht angegeben'}
 - Beschreibung: ${projectContext.description || 'Keine'}
 
-Erstelle einen angepassten Fragenkatalog als JSON.`;
+Erstelle basierend auf dem Template einen angepassten Fragenkatalog als JSON.`;
 
   try {
     const response = await llmWithPolicy('questions', [
@@ -414,21 +428,12 @@ Erstelle einen angepassten Fragenkatalog als JSON.`;
     
   } catch (err) {
     console.error('[QUESTIONS] Generation failed:', err);
-    // Fallback: Generische Fragen
+    // Fallback
     return [
       {
         id: `${tradeCode}-1`,
         category: 'Allgemein',
         question: `Welche spezifischen Arbeiten sind für ${tradeName} geplant?`,
-        type: 'text',
-        required: true,
-        tradeId,
-        tradeName
-      },
-      {
-        id: `${tradeCode}-2`,
-        category: 'Umfang',
-        question: 'Wie groß ist die zu bearbeitende Fläche/Menge?',
         type: 'text',
         required: true,
         tradeId,
