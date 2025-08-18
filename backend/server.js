@@ -991,24 +991,6 @@ app.get('/api/debug/routes', (req, res) => {
   res.json({ routes });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Route not found',
-    path: req.path,
-    method: req.method
-  });
-});
-
-// Error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
-
 // --------------------------------------------------
 // Test-Routen
 // --------------------------------------------------
@@ -1050,6 +1032,24 @@ app.get('/test-anthropic', async (req, res) => {
     console.error(err);
     res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
 // Start server
