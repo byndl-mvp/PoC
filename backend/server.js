@@ -62,15 +62,23 @@ const callOpenAI = async () => {
   return response.choices[0].message.content;
 };
   
-  const callClaude = async () => {
-    const response = await anthropic.messages.create({
-      model: MODEL_ANTHROPIC,
-      max_tokens: maxTokens,
-      temperature,
-      messages
-    });
-    return response.content[0].text;
-  };
+const callClaude = async () => {
+  // system-Nachricht extrahieren
+  const systemMessage = messages.find(m => m.role === "system")?.content || "";
+
+  // alle anderen Messages (user/assistant) nehmen
+  const otherMessages = messages.filter(m => m.role !== "system");
+
+  const response = await anthropic.messages.create({
+    model: MODEL_ANTHROPIC,
+    max_tokens: maxTokens,
+    temperature,
+    system: systemMessage,   // 👈 hier extra Feld
+    messages: otherMessages, // 👈 nur user/assistant
+  });
+
+  return response.content[0].text;
+};
   
   // Versuche primären Provider, dann Fallback
   try {
