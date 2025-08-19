@@ -1162,6 +1162,67 @@ app.get('/test-anthropic', async (req, res) => {
   }
 });
 
+// --- DEBUG: LLM-Detect nur mit Masterprompt (ohne Keyword-Fallback)
+app.post('/api/debug/llm-detect', async (req, res) => {
+  try {
+    const { category, subCategory, description, timeframe, budget } = req.body || {};
+
+    // Masterprompt aus DB (wie in detectTrades)
+    let master = '';
+    try { master = await getPromptByName('master'); } catch (_) {}
+
+    const system = `
+Du bist ein erfahrener Baukoordinator. Analysiere die Projektdaten und liefere NUR gültiges JSON.
+Erkenne die benötigten Gewerke.
+
+NUTZE AUSSCHLIESSLICH diese Codes:
+AUSS,BOD,DACH,ELEKT,ESTR,FASS,FEN,FLI,GER,HEI,MAL,ROH,SAN,SCHL,TIS,TRO,ABBR.
+
+JSON-Schema:
+{
+  "trades": [
+    {"code": "SAN", "name": "Sanitärinstallation"}
+  ],
+  "facts": {}
+}
+Gib KEINEN Text außerhalb dieses JSON zurück.
+`.trim();
+
+    const user = `
+${master ? master + '\n\n' : ''}PROJEKT:
+Kategorie: ${category || '-'}
+Unterkategorie: ${subCategory || '-'}
+Beschreibung: ${description || '-'}
+Zeitplan: ${timeframe || '-'}
+Budget: ${budget ?? '-'}
+`.trim();
+
+    // LLM direkt aufrufen (Policy bevorzugt Anthropic für 'detect')
+    const raw = await llmWithPolicy('detect', [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ], { maxTokens: 800, temperature: 0 });
+
+    // Parsing versuchen (ohne Fallback!)
+    let parsed = null;
+    try {
+      const m = raw && raw.match(/\{[\s\S]*\}$/);
+      parsed = JSON.parse(m ? m[0] : raw);
+    } catch (e) {}
+
+    res.json({
+      ok: true,
+      providerHint: 'task=detect -> bevorzugt Anthropic (Fallback OpenAI)',
+      input: { category, subCategory, description, timeframe, budget },
+      raw,
+      parsed
+    });
+  } catch (err) {
+    console.error('DEBUG llm-detect failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
