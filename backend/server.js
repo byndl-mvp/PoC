@@ -1,11 +1,10 @@
 /*
- * BYNDL Proof of Concept – Backend (ÜBERARBEITET)
+ * BYNDL Proof of Concept – Backend (VOLLSTÄNDIG)
  * 
- * Hauptänderungen:
- * 1. Gewerke werden IMMER aus der DB geladen
- * 2. Masterprompt wird korrekt eingebunden
- * 3. LLM gibt garantiert JSON zurück
- * 4. Sauberer Workflow ohne Vermischung
+ * Änderungen:
+ * 1. LV-Route berücksichtigt jetzt Intake-Antworten
+ * 2. Neue Aggregations-Route /api/projects/:projectId/lv
+ * 3. Strict JSON in allen LLM-Aufrufen
  */
 
 const { query } = require('./db.js');
@@ -51,34 +50,34 @@ async function llmWithPolicy(task, messages, options = {}) {
   // Bestimme primären Provider basierend auf Task
   const primaryProvider = ['detect', 'questions'].includes(task) ? 'anthropic' : 'openai';
   
-const callOpenAI = async () => {
-  const response = await openai.chat.completions.create({
-    model: MODEL_OPENAI,
-    messages,
-    temperature,
-    max_completion_tokens: maxTokens,  // <- HIER AUCH ÄNDERN!
-    response_format: options.jsonMode ? { type: "json_object" } : undefined
-  });
-  return response.choices[0].message.content;
-};
+  const callOpenAI = async () => {
+    const response = await openai.chat.completions.create({
+      model: MODEL_OPENAI,
+      messages,
+      temperature,
+      max_completion_tokens: maxTokens,
+      response_format: options.jsonMode ? { type: "json_object" } : undefined
+    });
+    return response.choices[0].message.content;
+  };
   
-const callClaude = async () => {
-  // system-Nachricht extrahieren
-  const systemMessage = messages.find(m => m.role === "system")?.content || "";
+  const callClaude = async () => {
+    // system-Nachricht extrahieren
+    const systemMessage = messages.find(m => m.role === "system")?.content || "";
 
-  // alle anderen Messages (user/assistant) nehmen
-  const otherMessages = messages.filter(m => m.role !== "system");
+    // alle anderen Messages (user/assistant) nehmen
+    const otherMessages = messages.filter(m => m.role !== "system");
 
-  const response = await anthropic.messages.create({
-    model: MODEL_ANTHROPIC,
-    max_tokens: maxTokens,
-    temperature,
-    system: systemMessage,   // 👈 hier extra Feld
-    messages: otherMessages, // 👈 nur user/assistant
-  });
+    const response = await anthropic.messages.create({
+      model: MODEL_ANTHROPIC,
+      max_tokens: maxTokens,
+      temperature,
+      system: systemMessage,
+      messages: otherMessages,
+    });
 
-  return response.content[0].text;
-};
+    return response.content[0].text;
+  };
   
   // Versuche primären Provider, dann Fallback
   try {
@@ -153,10 +152,7 @@ async function getAvailableTrades() {
 }
 
 /**
- * Gewerke-Erkennung mit LLM (ÜBERARBEITET)
- * - Lädt Gewerke aus DB
- * - Nutzt Masterprompt
- * - Erzwingt JSON-Output
+ * Gewerke-Erkennung mit LLM
  */
 async function detectTrades(project) {
   console.log('[DETECT] Starting trade detection for project:', project);
@@ -186,7 +182,7 @@ VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
 ${tradeList}
 
 WICHTIG - OUTPUT FORMAT:
-Du MUSST deine Antwort als REINES JSON zurückgeben, ohne zusätzlichen Text.
+Gib NUR valides JSON zurück, keine Markdown-Codeblöcke, kein Text davor oder danach.
 Das JSON muss EXAKT diesem Schema entsprechen:
 
 {
@@ -201,13 +197,7 @@ Das JSON muss EXAKT diesem Schema entsprechen:
     "scope": "Neubau/Sanierung/Modernisierung",
     "notes": "Wichtige erkannte Details"
   }
-}
-
-REGELN:
-1. Verwende NUR die Codes aus der obigen Liste
-2. Gib NUR JSON zurück, keinen Text davor oder danach
-3. Bei Unsicherheit lieber mehr relevante Gewerke einbeziehen
-4. Mindestens 1 Gewerk muss erkannt werden`;
+}`;
 
   // 5. User-Prompt mit Projektdaten
   const userPrompt = `PROJEKTDATEN:
@@ -285,11 +275,6 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
   
   console.log('[DETECT] Successfully detected trades:', detectedTrades);
   
-  // Optional: Zusatzinfos speichern (für spätere Verwendung)
-  if (parsedResponse.projectInfo) {
-    project.detectedInfo = parsedResponse.projectInfo;
-  }
-  
   return detectedTrades;
 }
 
@@ -301,7 +286,7 @@ function detectTradesFallback(project, availableTrades) {
   
   const text = `${project.category} ${project.subCategory} ${project.description}`.toLowerCase();
   
-  // Keyword-Mappings (an deine Trades angepasst)
+  // Keyword-Mappings
   const keywords = {
     'AUSS': ['außenanlagen', 'aussenanlagen', 'galabau', 'garten', 'terrasse', 'pflaster', 'einfahrt', 'carport', 'wege', 'zaun', 'begrünung'],
     'BOD': ['boden', 'bodenbelag', 'parkett', 'vinyl', 'laminat', 'teppich', 'dielen', 'bodenplatten'],
@@ -387,11 +372,11 @@ async function generateQuestions(tradeId, projectContext = {}) {
     ];
   }
   
-  // System-Prompt für Fragengenerierung
+  // System-Prompt für Fragengenerierung mit Strict JSON
   const systemPrompt = `Du bist ein Experte für ${tradeName}.
 Erstelle einen präzisen Fragenkatalog für dieses Gewerk basierend auf dem folgenden Template.
 
-WICHTIG: Gib die Fragen als JSON-Array zurück:
+WICHTIG: Gib NUR valides JSON zurück, keine Markdown-Codeblöcke, kein Text davor oder danach:
 [
   {
     "id": "q1",
@@ -399,7 +384,7 @@ WICHTIG: Gib die Fragen als JSON-Array zurück:
     "question": "Konkrete Frage",
     "type": "text|number|select|multiselect",
     "required": true|false,
-    "options": ["Option1", "Option2"] // nur bei select/multiselect
+    "options": ["Option1", "Option2"]
   }
 ]`;
 
@@ -416,7 +401,7 @@ Erstelle basierend auf dem Template einen angepassten Fragenkatalog als JSON.`;
     const response = await llmWithPolicy('questions', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
-    ], { maxTokens: 2000, temperature: 0.5 });
+    ], { maxTokens: 2000, temperature: 0.5, jsonMode: true });
     
     // Parse JSON
     const cleanedResponse = response
@@ -448,84 +433,6 @@ Erstelle basierend auf dem Template einen angepassten Fragenkatalog als JSON.`;
         tradeName
       }
     ];
-  }
-}
-
-/**
- * Leistungsverzeichnis generieren
- */
-async function generateLV(tradeId, answers, projectContext = {}) {
-  // Lade Trade-Info
-  const tradeResult = await query(
-    'SELECT name, code FROM trades WHERE id = $1',
-    [tradeId]
-  );
-  
-  if (tradeResult.rows.length === 0) {
-    throw new Error(`Trade ${tradeId} not found`);
-  }
-  
-  const { name: tradeName } = tradeResult.rows[0];
-  
-  // Lade LV-Prompt aus DB
-  const lvPrompt = await getPromptForTrade(tradeId, 'lv');
-  
-  if (!lvPrompt) {
-    throw new Error(`No LV prompt found for trade ${tradeId}`);
-  }
-  
-  // System-Prompt für LV-Generierung
-  const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse.
-Erstelle ein detailliertes LV für ${tradeName} basierend auf dem Template und den Antworten.
-
-FORMAT: Strukturiertes JSON mit Positionen:
-{
-  "trade": "${tradeName}",
-  "positions": [
-    {
-      "pos": "01.01",
-      "title": "Positionstitel",
-      "description": "Detaillierte Beschreibung gemäß VOB",
-      "quantity": 1,
-      "unit": "Stk|m²|m|pauschal",
-      "unitPrice": null,
-      "totalPrice": null
-    }
-  ],
-  "notes": "Zusätzliche Hinweise"
-}`;
-
-  const answerSummary = answers.map(a => 
-    `Frage: ${a.question}\nAntwort: ${a.answer}`
-  ).join('\n\n');
-
-  const userPrompt = `TEMPLATE:
-${lvPrompt}
-
-PROJEKT:
-${projectContext.description || 'Keine Beschreibung'}
-
-ANTWORTEN:
-${answerSummary}
-
-Erstelle basierend auf Template und Antworten ein vollständiges Leistungsverzeichnis als JSON.`;
-
-  try {
-    const response = await llmWithPolicy('lv', [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], { maxTokens: 3000, temperature: 0.3 });
-    
-    const cleanedResponse = response
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-    
-    return JSON.parse(cleanedResponse);
-    
-  } catch (err) {
-    console.error('[LV] Generation failed:', err);
-    throw new Error('Failed to generate LV');
   }
 }
 
@@ -683,7 +590,122 @@ app.get('/api/projects/:projectId', async (req, res) => {
   }
 });
 
-// Generate questions for a trade
+// Intake: Generate master questions
+app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Projektkontext laden
+    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    const project = projectResult.rows[0];
+
+    // INT-Trade ermitteln
+    const intTrade = await query(`SELECT id FROM trades WHERE code = 'INT' LIMIT 1`);
+    if (intTrade.rows.length === 0) {
+      return res.status(500).json({ error: 'INT trade missing in DB' });
+    }
+    const tradeId = intTrade.rows[0].id;
+
+    // Fragen via vorhandener Logik generieren
+    const questions = await generateQuestions(tradeId, {
+      category: project.category,
+      description: project.description
+    });
+
+    // Fragen speichern mit korrektem Mapping
+    let saved = 0;
+    for (const q of questions) {
+      await query(
+        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (project_id, trade_id, question_id)
+         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
+        [
+          projectId,
+          tradeId,
+          q.id,
+          q.question || q.text,
+          q.type || 'text',
+          q.required ?? false,
+          q.options ? JSON.stringify(q.options) : null
+        ]
+      );
+      saved++;
+    }
+
+    res.json({ ok: true, tradeCode: 'INT', questions, saved });
+  } catch (err) {
+    console.error('intake/questions failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Intake: Summary with recommendations
+app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Projekt holen
+    const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    // INT-Trade-ID
+    const intTrade = (await query(`SELECT id FROM trades WHERE code='INT'`)).rows[0];
+    if (!intTrade) return res.status(500).json({ error: 'INT trade missing' });
+
+    // Intake-Antworten laden
+    const answers = (await query(
+      `SELECT question_id, answer_text
+       FROM answers
+       WHERE project_id=$1 AND trade_id=$2
+       ORDER BY question_id`,
+      [projectId, intTrade.id]
+    )).rows;
+
+    // Masterprompt holen
+    const master = await getPromptByName('master');
+
+    // System-Prompt mit Strict JSON
+    const system = `${master}
+
+Gib NUR valides JSON zurück, keine Markdown-Codeblöcke, kein Text davor oder danach:
+{
+  "recommendations": [ "..." ],
+  "risks": [ "..." ],
+  "missingInfo": [ "..." ],
+  "trades": [ { "code":"SAN","reason":"..." } ]
+}`;
+
+    const user = `Projekt:
+Kategorie: ${project.category}
+Beschreibung: ${project.description}
+
+Antworten Intake:
+${answers.map(a => `- ${a.question_id}: ${a.answer_text}`).join('\n')}`;
+
+    // LLM call
+    const raw = await llmWithPolicy('detect', [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ], { maxTokens: 1500, temperature: 0.3, jsonMode: true });
+
+    // Parse JSON
+    const cleanedResponse = raw
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+
+    res.json({ ok: true, summary: JSON.parse(cleanedResponse) });
+  } catch (err) {
+    console.error('intake/summary failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Generate questions for a specific trade
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
@@ -706,24 +728,24 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       description: project.description
     });
     
-// Store questions in DB with proper mapping
-for (const question of questions) {
-  await query(
-    `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (project_id, trade_id, question_id) 
-     DO UPDATE SET text = $4, type = $5, required = $6, options = $7`,
-    [
-      projectId,
-      tradeId,
-      question.id,
-      question.question || question.text,  // <- HIER DER FIX!
-      question.type || 'text',
-      question.required !== undefined ? question.required : false,
-      question.options ? JSON.stringify(question.options) : null
-    ]
-  );
-}
+    // Store questions in DB with proper mapping
+    for (const question of questions) {
+      await query(
+        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (project_id, trade_id, question_id) 
+         DO UPDATE SET text = $4, type = $5, required = $6, options = $7`,
+        [
+          projectId,
+          tradeId,
+          question.id,
+          question.question || question.text,
+          question.type || 'text',
+          question.required !== undefined ? question.required : false,
+          question.options ? JSON.stringify(question.options) : null
+        ]
+      );
+    }
     
     res.json({ questions });
     
@@ -761,120 +783,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
   }
 });
 
-// --------------------------------------------------------
-// Intake: allgemeine Fragen nach Master-Intake-Prompt
-// --------------------------------------------------------
-app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-
-    // Projektkontext laden
-    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
-    if (projectResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    const project = projectResult.rows[0];
-
-    // INT-Trade ermitteln
-    const intTrade = await query(`SELECT id FROM trades WHERE code = 'INT' LIMIT 1`);
-    if (intTrade.rows.length === 0) {
-      return res.status(500).json({ error: 'INT trade missing in DB' });
-    }
-    const tradeId = intTrade.rows[0].id;
-
-    // Fragen via vorhandener Logik generieren
-    const questions = await generateQuestions(tradeId, {
-      category: project.category,
-      description: project.description
-    });
-
-    // Fragen speichern
-    let saved = 0;
-    for (const q of questions) {
-      await query(
-        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (project_id, trade_id, question_id)
-         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
-        [
-          projectId,
-          tradeId,
-          q.id,
-          q.question || q.text,
-          q.type || 'text',
-          q.required ?? false,
-          q.options ? JSON.stringify(q.options) : null
-        ]
-      );
-      saved++;
-    }
-
-    res.json({ ok: true, tradeCode: 'INT', questions, saved });
-  } catch (err) {
-    console.error('intake/questions failed:', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// --------------------------------------------------------
-// Intake: Empfehlungen/ Hinweise + Gewerke-Liste
-// --------------------------------------------------------
-app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-
-    // Projekt holen
-    const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-
-    // INT-Trade-ID
-    const intTrade = (await query(`SELECT id FROM trades WHERE code='INT'`)).rows[0];
-    if (!intTrade) return res.status(500).json({ error: 'INT trade missing' });
-
-    // Intake-Antworten laden
-    const answers = (await query(
-      `SELECT question_id, answer_text
-       FROM answers
-       WHERE project_id=$1 AND trade_id=$2
-       ORDER BY question_id`,
-      [projectId, intTrade.id]
-    )).rows;
-
-    // Masterprompt holen
-    const master = await getPromptByName('master');
-
-    // System-Prompt bauen
-    const system = `${master}
-
-Gib NUR valides JSON zurück:
-{
-  "recommendations": [ "..." ],
-  "risks": [ "..." ],
-  "missingInfo": [ "..." ],
-  "trades": [ { "code":"SAN","reason":"..." } ]
-}`;
-
-    const user = `Projekt:
-Kategorie: ${project.category}
-Beschreibung: ${project.description}
-
-Antworten Intake:
-${answers.map(a => `- ${a.question_id}: ${a.answer_text}`).join('\n')}`;
-
-    // LLM call
-    const raw = await llmWithPolicy('detect', [
-      { role: 'system', content: system },
-      { role: 'user', content: user }
-    ], { maxTokens: 1500, temperature: 0.3, jsonMode: true });
-
-    res.json({ ok: true, summary: JSON.parse(raw) });
-  } catch (err) {
-    console.error('intake/summary failed:', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// Save answers
+// Save answers (works for both intake and trade-specific)
 app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
@@ -909,61 +818,148 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
   }
 });
 
-// Generate LV
+// ===========================================================================
+// NEUE/ÜBERARBEITETE LV ROUTES
+// ===========================================================================
+
+// Generate LV for a trade (ÜBERARBEITET - berücksichtigt jetzt Intake-Antworten)
 app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
-    
-    // Get project context
-    const projectResult = await query(
-      'SELECT * FROM projects WHERE id = $1',
-      [projectId]
-    );
-    
-    if (projectResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    
-    const project = projectResult.rows[0];
-    
-    // Get answers
-    const answersResult = await query(
-      `SELECT q.text as question, a.answer_text as answer, a.assumption
+
+    // 1) Projekt + Trade laden
+    const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
+    if (!trade) return res.status(404).json({ error: 'Trade not found' });
+
+    // 2) Antworten laden: Intake (INT) + Trade
+    const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
+    const answersInt = intTrade
+      ? (await query(
+          `SELECT q.text as question, a.answer_text as answer
+           FROM answers a
+           JOIN questions q ON q.project_id = a.project_id 
+             AND q.trade_id = a.trade_id 
+             AND q.question_id = a.question_id
+           WHERE a.project_id=$1 AND a.trade_id=$2
+           ORDER BY a.question_id`,
+          [projectId, intTrade.id]
+        )).rows
+      : [];
+
+    const answersTrade = (await query(
+      `SELECT q.text as question, a.answer_text as answer
        FROM answers a
        JOIN questions q ON q.project_id = a.project_id 
          AND q.trade_id = a.trade_id 
          AND q.question_id = a.question_id
-       WHERE a.project_id = $1 AND a.trade_id = $2`,
+       WHERE a.project_id=$1 AND a.trade_id=$2
+       ORDER BY a.question_id`,
       [projectId, tradeId]
-    );
-    
-    if (answersResult.rows.length === 0) {
-      return res.status(400).json({ error: 'No answers found for this trade' });
+    )).rows;
+
+    // 3) LV-Prompt laden
+    const lvPromptRow = (await query(
+      `SELECT content FROM prompts WHERE trade_id=$1 AND type='lv' ORDER BY updated_at DESC LIMIT 1`,
+      [tradeId]
+    )).rows[0];
+    if (!lvPromptRow) return res.status(400).json({ error: 'LV prompt missing for trade' });
+
+    // 4) System/User Prompts bauen mit Strict JSON
+    const system = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse.
+Gib NUR valides JSON zurück, keine Markdown-Codeblöcke, kein Text davor oder danach.
+Schema:
+{
+  "trade": "${trade.name}",
+  "positions": [
+    { 
+      "pos":"01.01", 
+      "title":"...", 
+      "description":"...", 
+      "quantity": 0, 
+      "unit":"m|m²|Stk|kg|pauschal", 
+      "unitPrice": null, 
+      "totalPrice": null 
     }
+  ],
+  "notes": "..."
+}`;
+
+    const user = `TEMPLATE:
+${lvPromptRow.content}
+
+PROJEKT:
+- Kategorie: ${project.category || '-'}
+- Beschreibung: ${project.description || '-'}
+- Zeitplan: ${project.timeframe || '-' }
+- Budget: ${project.budget ?? '-'}
+
+ANTWORTEN (INTAKE):
+${answersInt.map(a => `Frage: ${a.question}\nAntwort: ${a.answer}`).join('\n\n') || 'Keine Intake-Antworten'}
+
+ANTWORTEN (${trade.name}):
+${answersTrade.map(a => `Frage: ${a.question}\nAntwort: ${a.answer}`).join('\n\n') || 'Keine gewerkespezifischen Antworten'}
+
+Erzeuge ein vollständiges, VOB-konformes Leistungsverzeichnis für ${trade.name}.`;
+
+    // 5) LLM-Call
+    const raw = await llmWithPolicy('lv', [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ], { maxTokens: 2800, temperature: 0.2, jsonMode: true });
+
+    // Parse JSON
+    const cleanedResponse = raw
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
     
-    // Generate LV
-    const lv = await generateLV(tradeId, answersResult.rows, {
-      description: project.description
-    });
-    
-    // Store LV in DB
+    const lv = JSON.parse(cleanedResponse);
+
+    // 6) Speichern
     await query(
       `INSERT INTO lvs (project_id, trade_id, content)
-       VALUES ($1, $2, $3)
+       VALUES ($1,$2,$3)
        ON CONFLICT (project_id, trade_id)
-       DO UPDATE SET content = $3, updated_at = NOW()`,
-      [projectId, tradeId, JSON.stringify(lv)]
+       DO UPDATE SET content=$3, updated_at=NOW()`,
+      [projectId, tradeId, lv]
     );
-    
-    res.json({ lv });
-    
+
+    res.json({ ok: true, trade: { id: trade.id, code: trade.code, name: trade.name }, lv });
   } catch (err) {
-    console.error('Failed to generate LV:', err);
-    res.status(500).json({ error: err.message });
+    console.error('generate LV failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// Get all LVs for a project
+// NEU: Aggregate LV for a project
+app.get('/api/projects/:projectId/lv', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const rows = (await query(
+      `SELECT l.trade_id, t.code, t.name, l.content
+       FROM lvs l JOIN trades t ON t.id=l.trade_id
+       WHERE l.project_id=$1
+       ORDER BY t.name`,
+      [projectId]
+    )).rows;
+
+    // Parse content if stored as string
+    const lvs = rows.map(row => ({
+      ...row,
+      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+    }));
+
+    res.json({ ok: true, lvs });
+  } catch (err) {
+    console.error('aggregate LV failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Legacy: Get all LVs for a project (für Kompatibilität)
 app.get('/api/projects/:projectId/lvs', async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -988,6 +984,10 @@ app.get('/api/projects/:projectId/lvs', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ===========================================================================
+// ADMIN ROUTES
+// ===========================================================================
 
 // Admin authentication
 app.post('/api/admin/login', async (req, res) => {
@@ -1117,7 +1117,7 @@ app.get('/api/admin/prompts', requireAdmin, async (req, res) => {
   }
 });
 
-// Admin: Get all prompts with details
+// Get all prompts with details (public)
 app.get('/api/prompts', async (req, res) => {
   try {
     const result = await query(
@@ -1170,13 +1170,17 @@ app.get('/api/prompts/:id', async (req, res) => {
   }
 });
 
-// Test endpoints for LLM providers
+// ===========================================================================
+// TEST ENDPOINTS
+// ===========================================================================
+
+// Test OpenAI
 app.get('/api/test/openai', async (req, res) => {
   try {
     const response = await openai.chat.completions.create({
       model: MODEL_OPENAI,
       messages: [{ role: 'user', content: 'Say "OpenAI is working"' }],
-      max_tokens: 20
+      max_completion_tokens: 20
     });
     res.json({ 
       status: 'ok',
@@ -1190,6 +1194,7 @@ app.get('/api/test/openai', async (req, res) => {
   }
 });
 
+// Test Anthropic
 app.get('/api/test/anthropic', async (req, res) => {
   try {
     const response = await anthropic.messages.create({
@@ -1209,7 +1214,7 @@ app.get('/api/test/anthropic', async (req, res) => {
   }
 });
 
-// Debug route to check all routes
+// Debug: List all routes
 app.get('/api/debug/routes', (req, res) => {
   const routes = [];
   app._router.stack.forEach(middleware => {
@@ -1224,124 +1229,21 @@ app.get('/api/debug/routes', (req, res) => {
   res.json({ routes });
 });
 
-// --------------------------------------------------
-// Test-Routen
-// --------------------------------------------------
-
-// Health-Check
+// Health check
 app.get('/healthz', (req, res) => {
   res.json({ message: "BYNDL Backend v2.0", status: "running" });
 });
 
-// Infos über Environment
+// Environment info
 app.get('/__info', (req, res) => {
   res.json({
     node: process.version,
     env: {
-      OPENAI_MODEL: process.env.OPENAI_MODEL,
-      ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL,
+      OPENAI_MODEL: MODEL_OPENAI,
+      ANTHROPIC_MODEL: MODEL_ANTHROPIC,
       DATABASE_URL: process.env.DATABASE_URL ? "✔️ gesetzt" : "❌ fehlt"
     }
   });
-});
-
-// Test-Route: OpenAI
-app.get('/test-openai', async (req, res) => {
-  try {
-    const response = await openai.chat.completions.create({
-      model: MODEL_OPENAI,
-      messages: [{ role: 'user', content: 'Sag Hallo von OpenAI!' }],
-      max_completion_tokens: 50  // <- GEÄNDERT!
-    });
-    res.json({
-      ok: true,
-      model: MODEL_OPENAI,
-      reply: response.choices?.[0]?.message?.content ?? null
-    });
-  } catch (err) {
-    console.error('test-openai:', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// Test-Route: Anthropic
-app.get('/test-anthropic', async (req, res) => {
-  try {
-    const response = await anthropic.messages.create({
-      model: MODEL_ANTHROPIC,
-      max_tokens: 50,  // <- Anthropic nutzt weiterhin max_tokens
-      messages: [{ role: 'user', content: 'Sag Hallo von Claude!' }]
-    });
-    res.json({
-      ok: true,
-      model: MODEL_ANTHROPIC,
-      reply: response.content?.[0]?.text ?? null
-    });
-  } catch (err) {
-    console.error('test-anthropic:', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// --- DEBUG: LLM-Detect nur mit Masterprompt (ohne Keyword-Fallback)
-app.post('/api/debug/llm-detect', async (req, res) => {
-  try {
-    const { category, subCategory, description, timeframe, budget } = req.body || {};
-
-    // Masterprompt aus DB (wie in detectTrades)
-    let master = '';
-    try { master = await getPromptByName('master'); } catch (_) {}
-
-    const system = `
-Du bist ein erfahrener Baukoordinator. Analysiere die Projektdaten und liefere NUR gültiges JSON.
-Erkenne die benötigten Gewerke.
-
-NUTZE AUSSCHLIESSLICH diese Codes:
-AUSS,BOD,DACH,ELEKT,ESTR,FASS,FEN,FLI,GER,HEI,MAL,ROH,SAN,SCHL,TIS,TRO,ABBR.
-
-JSON-Schema:
-{
-  "trades": [
-    {"code": "SAN", "name": "Sanitärinstallation"}
-  ],
-  "facts": {}
-}
-Gib KEINEN Text außerhalb dieses JSON zurück.
-`.trim();
-
-    const user = `
-${master ? master + '\n\n' : ''}PROJEKT:
-Kategorie: ${category || '-'}
-Unterkategorie: ${subCategory || '-'}
-Beschreibung: ${description || '-'}
-Zeitplan: ${timeframe || '-'}
-Budget: ${budget ?? '-'}
-`.trim();
-
-    // LLM direkt aufrufen (Policy bevorzugt Anthropic für 'detect')
-    const raw = await llmWithPolicy('detect', [
-      { role: 'system', content: system },
-      { role: 'user', content: user }
-    ], { maxTokens: 800, temperature: 0 });
-
-    // Parsing versuchen (ohne Fallback!)
-    let parsed = null;
-    try {
-      const m = raw && raw.match(/\{[\s\S]*\}$/);
-      parsed = JSON.parse(m ? m[0] : raw);
-    } catch (e) {}
-
-    res.json({
-      ok: true,
-      providerHint: 'task=detect -> bevorzugt Anthropic (Fallback OpenAI)',
-      input: { category, subCategory, description, timeframe, budget },
-      raw,
-      parsed
-    });
-  } catch (err) {
-    console.error('DEBUG llm-detect failed:', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
 });
 
 // 404 handler
