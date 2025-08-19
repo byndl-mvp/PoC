@@ -753,6 +753,119 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
   }
 });
 
+// --------------------------------------------------------
+// Intake: allgemeine Fragen nach Master-Intake-Prompt
+// --------------------------------------------------------
+app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Projektkontext laden
+    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    const project = projectResult.rows[0];
+
+    // INT-Trade ermitteln
+    const intTrade = await query(`SELECT id FROM trades WHERE code = 'INT' LIMIT 1`);
+    if (intTrade.rows.length === 0) {
+      return res.status(500).json({ error: 'INT trade missing in DB' });
+    }
+    const tradeId = intTrade.rows[0].id;
+
+    // Fragen via vorhandener Logik generieren
+    const questions = await generateQuestions(tradeId, {
+      category: project.category,
+      description: project.description
+    });
+
+    // Fragen speichern
+    let saved = 0;
+    for (const q of questions) {
+      await query(
+        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (project_id, trade_id, question_id)
+         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
+        [
+          projectId,
+          tradeId,
+          q.id,
+          q.question || q.text,
+          q.type || 'text',
+          q.required ?? false,
+          q.options ? JSON.stringify(q.options) : null
+        ]
+      );
+      saved++;
+    }
+
+    res.json({ ok: true, tradeCode: 'INT', questions, saved });
+  } catch (err) {
+    console.error('intake/questions failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// --------------------------------------------------------
+// Intake: Empfehlungen/ Hinweise + Gewerke-Liste
+// --------------------------------------------------------
+app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Projekt holen
+    const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    // INT-Trade-ID
+    const intTrade = (await query(`SELECT id FROM trades WHERE code='INT'`)).rows[0];
+    if (!intTrade) return res.status(500).json({ error: 'INT trade missing' });
+
+    // Intake-Antworten laden
+    const answers = (await query(
+      `SELECT question_id, answer_text
+       FROM answers
+       WHERE project_id=$1 AND trade_id=$2
+       ORDER BY question_id`,
+      [projectId, intTrade.id]
+    )).rows;
+
+    // Masterprompt holen
+    const master = await getPromptByName('master');
+
+    // System-Prompt bauen
+    const system = `${master}
+
+Gib NUR valides JSON zurück:
+{
+  "recommendations": [ "..." ],
+  "risks": [ "..." ],
+  "missingInfo": [ "..." ],
+  "trades": [ { "code":"SAN","reason":"..." } ]
+}`;
+
+    const user = `Projekt:
+Kategorie: ${project.category}
+Beschreibung: ${project.description}
+
+Antworten Intake:
+${answers.map(a => `- ${a.question_id}: ${a.answer_text}`).join('\n')}`;
+
+    // LLM call
+    const raw = await llmWithPolicy('detect', [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ], { maxTokens: 1500, temperature: 0.3, jsonMode: true });
+
+    res.json({ ok: true, summary: JSON.parse(raw) });
+  } catch (err) {
+    console.error('intake/summary failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Save answers
 app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) => {
   try {
