@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { apiUrl } from '../api';
 
 export default function QuestionsPage() {
   const { projectId, tradeId } = useParams();
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState([]);
   const [current, setCurrent] = useState(0);
   const [answerText, setAnswerText] = useState('');
   const [assumption, setAssumption] = useState('');
@@ -13,16 +15,29 @@ export default function QuestionsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    async function fetchQuestions() {
+    async function fetchOrGenerateQuestions() {
       try {
         setLoading(true);
-        const res = await fetch(`https://poc-rvrj.onrender.com/api/questions/${tradeId}`);
+        
+        // Erst versuchen Fragen abzurufen
+        let res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`));
+        
+        // Wenn keine Fragen existieren, generiere sie
+        if (res.status === 404 || !res.ok) {
+          res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.message || 'Fehler beim Laden der Fragen');
+          throw new Error(data.error || 'Fehler beim Laden der Fragen');
         }
+        
         const data = await res.json();
         setQuestions(data.questions || []);
+        setAnswers([]); // Reset answers array
         setCurrent(0);
       } catch (err) {
         setError(err.message);
@@ -30,58 +45,87 @@ export default function QuestionsPage() {
         setLoading(false);
       }
     }
-    fetchQuestions();
-  }, [tradeId]);
+    fetchOrGenerateQuestions();
+  }, [projectId, tradeId]);
 
-  const handleSubmit = async () => {
+  const handleNext = () => {
     if (!questions[current]) return;
-    setSubmitting(true);
+    
+    // Speichere aktuelle Antwort im Array
+    const newAnswers = [...answers];
+    newAnswers[current] = {
+      questionId: questions[current].id,
+      answer: answerText,
+      assumption: assumption
+    };
+    setAnswers(newAnswers);
+    
+    // Reset input fields
+    setAnswerText('');
+    setAssumption('');
+    
+    if (current + 1 < questions.length) {
+      // Nächste Frage
+      setCurrent(current + 1);
+    } else {
+      // Alle Fragen beantwortet - speichere alle Antworten
+      saveAllAnswersAndContinue(newAnswers);
+    }
+  };
+
+  async function saveAllAnswersAndContinue(allAnswers) {
     try {
-      const q = questions[current];
-      const res = await fetch(`https://poc-rvrj.onrender.com/api/questions/${tradeId}`, {
+      setSubmitting(true);
+      
+      // Speichere alle Antworten auf einmal
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/answers`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: q.id, answer: answerText, assumption }),
+        body: JSON.stringify({ answers: allAnswers })
       });
+      
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || 'Fehler beim Speichern der Antwort');
+        throw new Error(data.error || 'Fehler beim Speichern der Antworten');
       }
-      // Reset input fields
-      setAnswerText('');
-      setAssumption('');
-      if (current + 1 < questions.length) {
-        setCurrent(current + 1);
-      } else {
-        // All questions answered – generate LV
-        await generateLvAndContinue();
-      }
+      
+      // Generiere LV
+      await generateLvAndContinue();
+      
     } catch (err) {
       console.error(err);
       setError(err.message);
     } finally {
       setSubmitting(false);
     }
-  };
+  }
 
   async function generateLvAndContinue() {
     try {
       // Generate LV for current trade
-      const res = await fetch(`https://poc-rvrj.onrender.com/api/lv/${tradeId}`, { method: 'POST' });
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || 'Fehler beim Generieren des LV');
+        throw new Error(data.error || 'Fehler beim Generieren des LV');
       }
-      // Check for next trade
-      const tradesRes = await fetch(`https://poc-rvrj.onrender.com/api/trades/${projectId}`);
-      if (!tradesRes.ok) {
-        const data = await tradesRes.json();
-        throw new Error(data.message || 'Fehler beim Abrufen der Gewerke');
+      
+      // Get project details to find next trade
+      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+      if (!projectRes.ok) {
+        const data = await projectRes.json();
+        throw new Error(data.error || 'Fehler beim Abrufen der Projektdaten');
       }
-      const tradeData = await tradesRes.json();
-      const trades = tradeData.trades || [];
+      
+      const projectData = await projectRes.json();
+      const trades = projectData.trades || [];
+      
       // Find index of current trade
       const idx = trades.findIndex((t) => String(t.id) === String(tradeId));
+      
       // Navigate to next trade if exists
       if (idx !== -1 && idx + 1 < trades.length) {
         const nextTrade = trades[idx + 1];
@@ -96,15 +140,19 @@ export default function QuestionsPage() {
     }
   }
 
-  if (loading) return <p>Lade Fragen …</p>;
-  if (error) return <p className="text-red-600">{error}</p>;
+  if (loading) return <p>Lade Fragen...</p>;
+  if (error) return <p className="text-red-600">Fehler: {error}</p>;
   if (!questions.length) return <p>Keine Fragen verfügbar.</p>;
+  
   const currentQ = questions[current];
+  
   return (
     <div className="max-w-xl mx-auto mt-8">
-      <h2 className="text-2xl font-bold mb-4">Frage {current + 1} von {questions.length}</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        Frage {current + 1} von {questions.length}
+      </h2>
       <div className="mb-4">
-        <p className="font-medium mb-2">{currentQ.text}</p>
+        <p className="font-medium mb-2">{currentQ.text || currentQ.question}</p>
         <textarea
           className="w-full border rounded px-3 py-2"
           rows={3}
@@ -124,11 +172,11 @@ export default function QuestionsPage() {
         />
       </div>
       <button
-        onClick={handleSubmit}
+        onClick={handleNext}
         disabled={submitting || !answerText.trim()}
         className="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 disabled:opacity-50"
       >
-        {current + 1 < questions.length ? 'Weiter' : 'Abschließen'}
+        {submitting ? 'Speichern...' : (current + 1 < questions.length ? 'Weiter' : 'Abschließen')}
       </button>
     </div>
   );
