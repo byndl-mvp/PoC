@@ -925,7 +925,8 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
       return res.status(500).json({ error: 'INT trade missing in DB' });
     }
     const tradeId = intTrade.rows[0].id;
-
+    await ensureProjectTrade(projectId, tradeId);
+    
     // Fragen via vorhandener Logik generieren
     const questions = await generateQuestions(tradeId, {
       category: project.category,
@@ -1084,6 +1085,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     }
     
     const project = projectResult.rows[0];
+    await ensureProjectTrade(projectId, tradeId);
     
     // Generate questions mit Intake-Kontext
     const questions = await generateQuestions(tradeId, {
