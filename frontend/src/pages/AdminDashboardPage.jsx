@@ -6,7 +6,8 @@ export default function AdminDashboardPage() {
   const [promptFile, setPromptFile] = useState('');
   const [promptContent, setPromptContent] = useState('');
   const [message, setMessage] = useState('');
-
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);  
   const token = localStorage.getItem('adminToken');
 
   useEffect(() => {
@@ -28,7 +29,10 @@ export default function AdminDashboardPage() {
     }
     if (token) fetchProjects();
   }, [token]);
-
+  
+if (loading) return <p>Lade Daten...</p>;
+if (error) return <p style={{ color: "red" }}>Fehler: {error}</p>;
+  
   async function selectProject(project) {
   try {
     setLoading(true);
@@ -53,7 +57,6 @@ export default function AdminDashboardPage() {
     setLoading(false);
   }
 }
-
 
   async function updatePrompt(e) {
     e.preventDefault();
