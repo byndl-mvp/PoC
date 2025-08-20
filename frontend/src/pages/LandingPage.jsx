@@ -15,21 +15,8 @@ export default function LandingPage() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
           <div className="text-center">
-            {/* Logo */}
-            <div className="flex justify-center mb-8">
-              <div className="relative">
-                <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-2xl">
-                  <svg className="w-20 h-20" viewBox="0 0 100 100" fill="none">
-                    <circle cx="50" cy="50" r="45" stroke="#1e40af" strokeWidth="2"/>
-                    <path d="M30 50 L50 30 L70 50 L50 70 Z" fill="#1e40af"/>
-                    <path d="M40 40 L60 40 L60 60 L40 60 Z" fill="#0891b2"/>
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Headline */}
-            <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4">
+            {/* Headline - ohne Logo, größerer Schriftzug */}
+            <h1 className="text-7xl lg:text-9xl font-bold text-white mb-4">
               byndl
             </h1>
             <p className="text-3xl lg:text-4xl text-teal-400 font-light mb-8">
