@@ -15,7 +15,7 @@ export default function QuestionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [tradeName, setTradeName] = useState('');
   const [tradeCode, setTradeCode] = useState('');
-  const [allTrades, setAllTrades] = useState([]);
+  const [projectTrades, setProjectTrades] = useState([]); // NUR die erkannten Gewerke
   const [currentTradeIndex, setCurrentTradeIndex] = useState(0);
 
   useEffect(() => {
@@ -26,39 +26,51 @@ export default function QuestionsPage() {
         
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
         
-        // 1. Lade Projektdetails für Trade-Übersicht
+        // 1. Lade Projektdetails und ERKANNTE Gewerke
         try {
           const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
           if (projectRes.ok) {
             const projectData = await projectRes.json();
             console.log('Project data loaded:', projectData);
             
-            const nonIntTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
-            setAllTrades(nonIntTrades);
+            // WICHTIG: Nur die tatsächlich erkannten Gewerke (ohne INT)
+            const detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
+            console.log('Detected trades for this project:', detectedTrades);
             
-            const currentIdx = nonIntTrades.findIndex(t => String(t.id) === String(tradeId));
+            setProjectTrades(detectedTrades);
+            
+            // Finde den Index des aktuellen Gewerks
+            const currentIdx = detectedTrades.findIndex(t => String(t.id) === String(tradeId));
             setCurrentTradeIndex(currentIdx);
             
-            // Finde aktuellen Trade für Namen
-            const currentTrade = nonIntTrades.find(t => String(t.id) === String(tradeId));
-            if (currentTrade) {
-              setTradeName(currentTrade.name);
-              setTradeCode(currentTrade.code);
+            // Prüfe ob das aktuelle Trade-ID überhaupt zu diesem Projekt gehört
+            const currentTrade = detectedTrades.find(t => String(t.id) === String(tradeId));
+            if (!currentTrade) {
+              throw new Error(`Gewerk ${tradeId} gehört nicht zu diesem Projekt`);
             }
+            
+            setTradeName(currentTrade.name);
+            setTradeCode(currentTrade.code);
+          } else {
+            throw new Error('Projekt konnte nicht geladen werden');
           }
         } catch (err) {
           console.error('Error loading project details:', err);
+          throw err;
         }
         
-        // 2. Generiere Fragen für dieses Gewerk
-        console.log(`Generating questions for trade ${tradeId}...`);
+        // 2. Generiere ADAPTIVE Fragen für dieses spezifische Gewerk
+        console.log(`Generating adaptive questions for trade ${tradeId} (${tradeCode})...`);
         
         const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({})
+          body: JSON.stringify({
+            // Sende zusätzlichen Kontext mit
+            includeIntakeContext: true
+          })
         });
         
         console.log('Generate response status:', generateRes.status);
@@ -69,24 +81,29 @@ export default function QuestionsPage() {
         }
         
         const data = await generateRes.json();
-        console.log('Questions generated:', data);
+        console.log('Adaptive questions generated:', data);
         
         if (!data.questions || data.questions.length === 0) {
           throw new Error('Keine Fragen wurden generiert');
         }
         
-        setQuestions(data.questions);
+        // Filtere und validiere die Fragen
+        const validQuestions = data.questions.filter(q => 
+          q.question || q.text || q.q
+        );
         
-        // Trade-Name aus Fragen setzen falls vorhanden
-        if (data.questions[0]?.tradeName) {
-          setTradeName(data.questions[0].tradeName);
+        if (validQuestions.length === 0) {
+          throw new Error('Keine gültigen Fragen erhalten');
         }
-        if (data.questions[0]?.trade_name) {
-          setTradeName(data.questions[0].trade_name);
-        }
+        
+        setQuestions(validQuestions);
+        
+        // Trade-Info aus Response
+        if (data.tradeName) setTradeName(data.tradeName);
+        if (data.tradeCode) setTradeCode(data.tradeCode);
         
         // Initialisiere Antworten-Array
-        setAnswers(new Array(data.questions.length).fill(null));
+        setAnswers(new Array(validQuestions.length).fill(null));
         setCurrent(0);
         
       } catch (err) {
@@ -198,13 +215,13 @@ export default function QuestionsPage() {
       
       console.log('LV generated successfully');
       
-      // Navigation zur nächsten Trade oder Ergebnis
-      if (currentTradeIndex !== -1 && currentTradeIndex + 1 < allTrades.length) {
-        const nextTrade = allTrades[currentTradeIndex + 1];
-        console.log('Navigating to next trade:', nextTrade);
+      // Navigation zur nächsten Trade NUR aus den erkannten Trades
+      if (currentTradeIndex !== -1 && currentTradeIndex + 1 < projectTrades.length) {
+        const nextTrade = projectTrades[currentTradeIndex + 1];
+        console.log('Navigating to next detected trade:', nextTrade);
         navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
       } else {
-        console.log('All trades complete, navigating to results');
+        console.log('All detected trades complete, navigating to results');
         navigate(`/project/${projectId}/result`);
       }
     } catch (err) {
@@ -220,7 +237,7 @@ export default function QuestionsPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
-          <p className="mt-4 text-white">Fragen werden vorbereitet...</p>
+          <p className="mt-4 text-white">Adaptive Fragen werden vorbereitet...</p>
         </div>
       </div>
     );
@@ -292,17 +309,17 @@ export default function QuestionsPage() {
           {tradeCode && (
             <p className="text-gray-400 text-sm">Gewerk-Code: {tradeCode}</p>
           )}
-          {allTrades.length > 0 && (
+          {projectTrades.length > 0 && (
             <p className="text-gray-300 mt-2">
-              Gewerk {currentTradeIndex + 1} von {allTrades.length}
+              Erkanntes Gewerk {currentTradeIndex + 1} von {projectTrades.length}
             </p>
           )}
         </div>
 
-        {/* Trade Progress */}
-        {allTrades.length > 1 && (
+        {/* Trade Progress - nur erkannte Gewerke */}
+        {projectTrades.length > 1 && (
           <div className="flex justify-center mb-8 space-x-2">
-            {allTrades.map((trade, idx) => (
+            {projectTrades.map((trade, idx) => (
               <div
                 key={trade.id}
                 className={`w-3 h-3 rounded-full transition-all ${
@@ -318,7 +335,7 @@ export default function QuestionsPage() {
           </div>
         )}
 
-        {/* Progress Bar */}
+        {/* Progress Bar für aktuelle Fragen */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-gray-400 mb-2">
             <span>Frage {current + 1} von {questions.length}</span>
@@ -341,7 +358,7 @@ export default function QuestionsPage() {
           )}
           
           <h2 className="text-2xl font-semibold text-white mb-6">
-            {currentQ.text || currentQ.question || 'Frage'}
+            {currentQ.text || currentQ.question || currentQ.q || 'Frage'}
           </h2>
           
           {/* Answer Input */}
@@ -405,7 +422,7 @@ export default function QuestionsPage() {
           
           <div className="text-center">
             <p className="text-gray-400 text-sm">
-              Schritt 2 von 3
+              Schritt 2 von 3 • Adaptive Befragung
             </p>
           </div>
           
@@ -428,10 +445,12 @@ export default function QuestionsPage() {
           </button>
         </div>
 
-        {/* Info */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-400 text-sm">
-            Nach Abschluss wird automatisch ein VOB-konformes Leistungsverzeichnis erstellt
+        {/* Info Box */}
+        <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+          <p className="text-blue-300 text-sm">
+            <strong>ℹ️ Adaptive Befragung:</strong> Die Fragen wurden basierend auf Ihren Intake-Antworten 
+            und dem spezifischen Gewerk angepasst. Nach Abschluss wird automatisch ein VOB-konformes 
+            Leistungsverzeichnis erstellt.
           </p>
         </div>
       </div>
