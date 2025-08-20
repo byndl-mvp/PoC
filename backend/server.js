@@ -870,6 +870,10 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
     // 4) System/User Prompts bauen mit Strict JSON
     const system = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse.
 Gib NUR valides JSON zurück, keine Markdown-Codeblöcke, kein Text davor oder danach.
+
+WICHTIG: Erstelle realistische Preise basierend auf aktuellen Marktpreisen!
+Die Einheitspreise sollen marktübliche Durchschnittswerte für ${trade.name} sein.
+
 Schema:
 {
   "trade": "${trade.name}",
@@ -877,14 +881,15 @@ Schema:
     { 
       "pos":"01.01", 
       "title":"...", 
-      "description":"...", 
+      "description":"VOB-konforme detaillierte Beschreibung...", 
       "quantity": 0, 
       "unit":"m|m²|Stk|kg|pauschal", 
-      "unitPrice": null, 
-      "totalPrice": null 
+      "unitPrice": 45.50,
+      "totalPrice": 455.00
     }
   ],
-  "notes": "..."
+  "totalSum": 0,
+  "notes": "Hinweise zu Ausführung, Normen, etc."
 }`;
 
     const user = `TEMPLATE:
@@ -902,6 +907,8 @@ ${answersInt.map(a => `Frage: ${a.question}\nAntwort: ${a.answer}`).join('\n\n')
 ANTWORTEN (${trade.name}):
 ${answersTrade.map(a => `Frage: ${a.question}\nAntwort: ${a.answer}`).join('\n\n') || 'Keine gewerkespezifischen Antworten'}
 
+WICHTIG: Verwende die Preise aus dem Template/Prompt, falls vorhanden. 
+Nur wenn keine Preise im Template sind, ermittle marktübliche Preise.
 Erzeuge ein vollständiges, VOB-konformes Leistungsverzeichnis für ${trade.name}.`;
 
     // 5) LLM-Call
@@ -1244,6 +1251,205 @@ app.get('/__info', (req, res) => {
       DATABASE_URL: process.env.DATABASE_URL ? "✔️ gesetzt" : "❌ fehlt"
     }
   });
+});
+
+// ===========================================================================
+// LV EXPORT ROUTES (Neu hinzugefügt)
+// ===========================================================================
+
+// Get LV with or without prices
+app.get('/api/projects/:projectId/trades/:tradeId/lv/export', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { withPrices } = req.query; // ?withPrices=true/false
+    
+    // LV aus DB laden
+    const result = await query(
+      `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id
+       JOIN projects p ON p.id = l.project_id
+       WHERE l.project_id = $1 AND l.trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+    
+    const { content, trade_name, trade_code, project_description } = result.rows[0];
+    const lv = typeof content === 'string' ? JSON.parse(content) : content;
+    
+    // Wenn ohne Preise, dann Preisfelder entfernen
+    if (withPrices === 'false') {
+      lv.positions = lv.positions.map(pos => ({
+        pos: pos.pos,
+        title: pos.title,
+        description: pos.description,
+        quantity: pos.quantity,
+        unit: pos.unit,
+        unitPrice: '________', // Platzhalter für handschriftliche Eintragung
+        totalPrice: '________'
+      }));
+      lv.exportType = 'Angebotsanfrage';
+      lv.note = 'Bitte tragen Sie Ihre Preise in die markierten Felder ein.';
+    } else {
+      lv.exportType = 'Kalkulation';
+    }
+    
+    res.json({
+      ok: true,
+      tradeName: trade_name,
+      tradeCode: trade_code,
+      projectDescription: project_description,
+      withPrices: withPrices !== 'false',
+      lv
+    });
+    
+  } catch (err) {
+    console.error('Export LV failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate PDF for LV (with or without prices)
+app.get('/api/projects/:projectId/trades/:tradeId/lv.pdf', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { withPrices } = req.query;
+    
+    // Hinweis: PDF-Generierung benötigt zusätzliche Libraries
+    // Beispiel-Implementation mit puppeteer oder pdfkit
+    
+    res.status(501).json({ 
+      error: 'PDF generation not yet implemented',
+      hint: 'Install puppeteer or pdfkit for PDF generation',
+      alternativeUrl: `/api/projects/${projectId}/trades/${tradeId}/lv/export?withPrices=${withPrices}`
+    });
+    
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Calculate prices for LV positions
+app.post('/api/projects/:projectId/trades/:tradeId/lv/calculate', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { calculations } = req.body; // Array of {positionId, unitPrice}
+    
+    // LV laden
+    const result = await query(
+      `SELECT content FROM lvs WHERE project_id = $1 AND trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+    
+    let lv = typeof result.rows[0].content === 'string' 
+      ? JSON.parse(result.rows[0].content) 
+      : result.rows[0].content;
+    
+    // Preise berechnen und aktualisieren
+    if (calculations && Array.isArray(calculations)) {
+      lv.positions = lv.positions.map(pos => {
+        const calc = calculations.find(c => c.positionId === pos.pos);
+        if (calc) {
+          return {
+            ...pos,
+            unitPrice: calc.unitPrice,
+            totalPrice: pos.quantity * calc.unitPrice
+          };
+        }
+        return pos;
+      });
+      
+      // Gesamtsumme berechnen
+      lv.totalSum = lv.positions.reduce((sum, pos) => 
+        sum + (pos.totalPrice || 0), 0
+      );
+    }
+    
+    // Aktualisiertes LV speichern
+    await query(
+      `UPDATE lvs SET content = $1, updated_at = NOW() 
+       WHERE project_id = $2 AND trade_id = $3`,
+      [JSON.stringify(lv), projectId, tradeId]
+    );
+    
+    res.json({ ok: true, lv });
+    
+  } catch (err) {
+    console.error('Calculate prices failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get project cost summary
+app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Alle LVs mit Preisen laden
+    const lvsResult = await query(
+      `SELECT l.content, t.name as trade_name, t.code as trade_code
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id
+       WHERE l.project_id = $1`,
+      [projectId]
+    );
+    
+    const summary = {
+      trades: [],
+      totalCost: 0,
+      pricesComplete: true
+    };
+    
+    for (const row of lvsResult.rows) {
+      const lv = typeof row.content === 'string' 
+        ? JSON.parse(row.content) 
+        : row.content;
+      
+      const tradeCost = lv.totalSum || 
+        (lv.positions || []).reduce((sum, pos) => 
+          sum + (pos.totalPrice || 0), 0
+        );
+      
+      summary.trades.push({
+        name: row.trade_name,
+        code: row.trade_code,
+        cost: tradeCost,
+        hasPrice: tradeCost > 0
+      });
+      
+      summary.totalCost += tradeCost;
+      
+      if (tradeCost === 0) {
+        summary.pricesComplete = false;
+      }
+    }
+    
+    // Zusätzliche Kostenposten (optional)
+    summary.additionalCosts = {
+      planningCosts: summary.totalCost * 0.10, // 10% Planungskosten
+      contingency: summary.totalCost * 0.05,    // 5% Unvorhergesehenes
+      vat: summary.totalCost * 0.19             // 19% MwSt
+    };
+    
+    summary.grandTotal = summary.totalCost + 
+      summary.additionalCosts.planningCosts +
+      summary.additionalCosts.contingency +
+      summary.additionalCosts.vat;
+    
+    res.json({ ok: true, summary });
+    
+  } catch (err) {
+    console.error('Cost summary failed:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 404 handler
