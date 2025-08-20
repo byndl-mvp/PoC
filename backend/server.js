@@ -44,6 +44,17 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
  * - "lv" -> OpenAI bevorzugt
  * - default -> OpenAI bevorzugt
  */
+
+// Stellt sicher, dass es einen Mapping-Eintrag project_id <-> trade_id gibt
+async function ensureProjectTrade(projectId, tradeId) {
+  await query(
+    `INSERT INTO project_trades (project_id, trade_id)
+     VALUES ($1, $2)
+     ON CONFLICT DO NOTHING`,
+    [projectId, tradeId]
+  );
+}
+
 async function llmWithPolicy(task, messages, options = {}) {
   const maxTokens = options.maxTokens || 2000;
   const temperature = options.temperature || 0.7;
