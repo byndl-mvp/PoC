@@ -1199,7 +1199,9 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
 
     const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
     if (!trade) return res.status(404).json({ error: 'Trade not found' });
-
+    
+    await ensureProjectTrade(projectId, tradeId);
+    
     // 2) Antworten laden: Intake (INT) + Trade
     const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
     const answersInt = intTrade
