@@ -24,7 +24,7 @@ export default function ProjectFormPage() {
     setLoading(true);
     setError('');
     try {
-   const res = await fetch(apiUrl('/api/projects'), {
+      const res = await fetch(apiUrl('/api/projects'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -40,17 +40,12 @@ export default function ProjectFormPage() {
         throw new Error(data.message || 'Fehler beim Anlegen des Projekts');
       }
       const data = await res.json();
-      const { project } = data;  // NEU: project object enthält alles
+      const { project } = data;
       const projectId = project.id;
-      const trades = project.trades || [];
       
-      if (trades.length > 0) {
-        // Navigate to the first trade's questions
-        navigate(`/project/${projectId}/trade/${trades[0].id}/questions`);
-      } else {
-        // No trades detected – navigate to result page
-        navigate(`/project/${projectId}/result`);
-      }
+      // WICHTIG: Navigiere IMMER zuerst zu Intake-Fragen!
+      navigate(`/project/${projectId}/intake`);
+      
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -76,6 +71,8 @@ export default function ProjectFormPage() {
             <option value="Umbau">Umbau</option>
             <option value="Neubau">Neubau</option>
             <option value="Sanierung">Sanierung</option>
+            <option value="Modernisierung">Modernisierung</option>
+            <option value="Anbau">Anbau</option>
           </select>
         </div>
         <div>
@@ -86,7 +83,7 @@ export default function ProjectFormPage() {
             value={form.subCategory}
             onChange={handleChange}
             className="w-full border rounded px-3 py-2"
-            placeholder="z.B. Badrenovierung"
+            placeholder="z.B. Badrenovierung, Dachsanierung, Küche"
           />
         </div>
         <div>
@@ -98,7 +95,7 @@ export default function ProjectFormPage() {
             required
             className="w-full border rounded px-3 py-2"
             rows={4}
-            placeholder="Beschreiben Sie Ihr Vorhaben"
+            placeholder="Beschreiben Sie Ihr Vorhaben möglichst detailliert..."
           />
         </div>
         <div>
@@ -111,9 +108,11 @@ export default function ProjectFormPage() {
           >
             <option value="">Keine Angabe</option>
             <option value="asap">So bald wie möglich</option>
+            <option value="1mon">Innerhalb 1 Monat</option>
             <option value="3mon">In 3 Monaten</option>
             <option value="6mon">In 6 Monaten</option>
             <option value="year">Innerhalb eines Jahres</option>
+            <option value="planning">Noch in Planung</option>
           </select>
         </div>
         <div>
@@ -124,16 +123,18 @@ export default function ProjectFormPage() {
             value={form.budget}
             onChange={handleChange}
             className="w-full border rounded px-3 py-2"
-            placeholder="in EUR"
+            placeholder="Ihr geplantes Budget in EUR"
+            min="0"
+            step="100"
           />
         </div>
         {error && <p className="text-red-600">{error}</p>}
         <button
           type="submit"
           disabled={loading}
-          className="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 disabled:opacity-50"
+          className="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 disabled:opacity-50 w-full"
         >
-          {loading ? 'Speichern…' : 'Projekt anlegen'}
+          {loading ? 'Projekt wird angelegt...' : 'Projekt anlegen und weiter →'}
         </button>
       </form>
     </div>
