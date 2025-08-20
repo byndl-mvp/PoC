@@ -694,26 +694,54 @@ app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
       [projectId, intTrade.id]
     )).rows;
 
+    // Verfügbare Gewerke laden für Validierung
+    const availableTrades = await getAvailableTrades();
+    const validCodes = availableTrades.map(t => t.code);
+
     // Masterprompt holen
     const master = await getPromptByName('master');
 
-    // System-Prompt mit Strict JSON
+    // System-Prompt mit Strict JSON und klaren Anweisungen
     const system = `${master}
 
-Gib NUR valides JSON zurück, keine Markdown-Codeblöcke, kein Text davor oder danach:
+WICHTIG: Unterscheide klar zwischen GEWERKEN und EMPFEHLUNGEN!
+
+VERFÜGBARE GEWERKE-CODES (NUR DIESE für "trades" verwenden):
+${availableTrades.map(t => `- ${t.code}: ${t.name}`).join('\n')}
+
+Gib NUR valides JSON zurück:
 {
-  "recommendations": [ "..." ],
-  "risks": [ "..." ],
-  "missingInfo": [ "..." ],
-  "trades": [ { "code":"SAN","reason":"..." } ]
-}`;
+  "recommendations": [ 
+    "Empfehlung für Gutachter/Statiker/Planer etc."
+  ],
+  "risks": [ 
+    "Identifizierte Risiken"
+  ],
+  "missingInfo": [ 
+    "Fehlende Informationen"
+  ],
+  "trades": [ 
+    { 
+      "code": "SAN",
+      "reason": "Begründung warum dieses GEWERK benötigt wird"
+    }
+  ]
+}
+
+REGELN:
+- "trades" darf NUR Codes aus der obigen Liste enthalten!
+- Gutachter, Statiker, Planer etc. gehören in "recommendations", NICHT in "trades"
+- Keine erfundenen Codes wie "GUT", "STAT", "PLAN" etc. in trades!`;
 
     const user = `Projekt:
 Kategorie: ${project.category}
 Beschreibung: ${project.description}
 
 Antworten Intake:
-${answers.map(a => `- ${a.question_id}: ${a.answer_text}`).join('\n')}`;
+${answers.map(a => `- ${a.question_id}: ${a.answer_text}`).join('\n')}
+
+Analysiere das Projekt und gib Empfehlungen. 
+Unterscheide dabei klar zwischen benötigten GEWERKEN (aus der Liste) und zusätzlichen EMPFEHLUNGEN (Gutachter etc.).`;
 
     // LLM call
     const raw = await llmWithPolicy('detect', [
@@ -727,7 +755,25 @@ ${answers.map(a => `- ${a.question_id}: ${a.answer_text}`).join('\n')}`;
       .replace(/```\n?/g, '')
       .trim();
 
-    res.json({ ok: true, summary: JSON.parse(cleanedResponse) });
+    const summary = JSON.parse(cleanedResponse);
+
+    // Validiere und filtere trades - nur gültige Codes
+    if (summary.trades && Array.isArray(summary.trades)) {
+      summary.trades = summary.trades.filter(t => {
+        const isValid = validCodes.includes(t.code);
+        if (!isValid) {
+          console.warn(`[INTAKE] Filtering out invalid trade code: ${t.code}`);
+          // Wenn es kein gültiger Trade ist, füge es zu recommendations hinzu
+          if (t.code === 'GUT' || t.reason?.toLowerCase().includes('gutachter')) {
+            summary.recommendations = summary.recommendations || [];
+            summary.recommendations.push(`Gutachter für ${t.reason || 'Schadensanalyse'}`);
+          }
+        }
+        return isValid;
+      });
+    }
+
+    res.json({ ok: true, summary });
   } catch (err) {
     console.error('intake/summary failed:', err);
     res.status(500).json({ ok: false, error: err.message });
