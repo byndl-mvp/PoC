@@ -115,7 +115,7 @@ export default function QuestionsPage() {
     }
     
     initialize();
-  }, [projectId, tradeId]);
+  }, [projectId, tradeId, navigate]); // Alle Dependencies hinzugefügt
 
   const handleNext = () => {
     if (!questions[current]) return;
