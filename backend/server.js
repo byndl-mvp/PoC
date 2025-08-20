@@ -339,7 +339,7 @@ function detectTradesFallback(project, availableTrades) {
 }
 
 /**
- * Fragen für ein Gewerk generieren
+ * Fragen für ein Gewerk generieren (mit Intake-Kontext)
  */
 async function generateQuestions(tradeId, projectContext = {}) {
   // Lade Trade-Info
@@ -372,16 +372,44 @@ async function generateQuestions(tradeId, projectContext = {}) {
     ];
   }
   
-  // System-Prompt für Fragengenerierung mit Strict JSON
-  const systemPrompt = `Du bist ein Experte für ${tradeName}.
-Erstelle einen präzisen Fragenkatalog für dieses Gewerk basierend auf dem folgenden Template.
+  // Lade Intake-Antworten falls vorhanden
+  let intakeContext = '';
+  if (projectContext.projectId) {
+    const intTrade = await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`);
+    if (intTrade.rows.length > 0) {
+      const intakeAnswers = await query(
+        `SELECT q.text as question, a.answer_text as answer
+         FROM answers a
+         JOIN questions q ON q.project_id = a.project_id 
+           AND q.trade_id = a.trade_id 
+           AND q.question_id = a.question_id
+         WHERE a.project_id = $1 AND a.trade_id = $2`,
+        [projectContext.projectId, intTrade.rows[0].id]
+      );
+      
+      if (intakeAnswers.rows.length > 0) {
+        intakeContext = `
+BEREITS BEANTWORTETE INTAKE-FRAGEN:
+${intakeAnswers.rows.map(a => `- ${a.question}: ${a.answer}`).join('\n')}
 
-WICHTIG: Gib NUR valides JSON zurück, keine Markdown-Codeblöcke, kein Text davor oder danach:
+WICHTIG: Stelle NUR Fragen zu Details, die aus den obigen Antworten noch nicht hervorgehen!
+Vermeide Dopplungen und frage nur nach gewerkespezifischen Details.`;
+      }
+    }
+  }
+  
+  // System-Prompt für adaptive Fragengenerierung
+  const systemPrompt = `Du bist ein Experte für ${tradeName}.
+Erstelle einen ADAPTIVEN Fragenkatalog für dieses Gewerk basierend auf dem Template.
+
+${intakeContext}
+
+WICHTIG: Gib NUR valides JSON zurück, keine Markdown-Codeblöcke:
 [
   {
     "id": "q1",
     "category": "Kategorie",
-    "question": "Konkrete Frage",
+    "question": "Konkrete, noch unbeantwortete Frage",
     "type": "text|number|select|multiselect",
     "required": true|false,
     "options": ["Option1", "Option2"]
@@ -395,7 +423,8 @@ PROJEKTKONTEXT:
 - Kategorie: ${projectContext.category || 'Nicht angegeben'}
 - Beschreibung: ${projectContext.description || 'Keine'}
 
-Erstelle basierend auf dem Template einen angepassten Fragenkatalog als JSON.`;
+Erstelle einen intelligenten, adaptiven Fragenkatalog.
+Berücksichtige bereits beantwortete Fragen und vermeide Redundanzen.`;
 
   try {
     const response = await llmWithPolicy('questions', [
@@ -722,10 +751,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const project = projectResult.rows[0];
     
-    // Generate questions
+    // Generate questions mit Intake-Kontext
     const questions = await generateQuestions(tradeId, {
       category: project.category,
-      description: project.description
+      description: project.description,
+      projectId: projectId  // NEU: für Intake-Antworten
     });
     
     // Store questions in DB with proper mapping
@@ -871,25 +901,31 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
     const system = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse.
 Gib NUR valides JSON zurück, keine Markdown-Codeblöcke, kein Text davor oder danach.
 
-WICHTIG: Erstelle realistische Preise basierend auf aktuellen Marktpreisen!
-Die Einheitspreise sollen marktübliche Durchschnittswerte für ${trade.name} sein.
+WICHTIG FÜR PREISE:
+1. Verwende IMMER die Preise aus dem Template/Prompt, wenn vorhanden
+2. Bei Preisspannen (z.B. "25-35 €/m²") wähle einen mittleren Wert
+3. Berechne totalPrice = quantity * unitPrice
+4. Runde Preise auf 2 Dezimalstellen
+5. NUR wenn keine Preise im Template: Ermittle marktübliche Preise
 
 Schema:
 {
   "trade": "${trade.name}",
   "positions": [
     { 
-      "pos":"01.01", 
-      "title":"...", 
-      "description":"VOB-konforme detaillierte Beschreibung...", 
-      "quantity": 0, 
-      "unit":"m|m²|Stk|kg|pauschal", 
-      "unitPrice": 45.50,
-      "totalPrice": 455.00
+      "pos": "01.01", 
+      "title": "Positionstitel", 
+      "description": "VOB-konforme detaillierte Beschreibung...", 
+      "quantity": 150.00, 
+      "unit": "m²", 
+      "unitPrice": 32.50,
+      "totalPrice": 4875.00
     }
   ],
   "totalSum": 0,
-  "notes": "Hinweise zu Ausführung, Normen, etc."
+  "notes": "Hinweise zu Ausführung, Normen, etc.",
+  "priceBase": "Template-Preise verwendet",
+  "priceDate": "${new Date().toISOString().split('T')[0]}"
 }`;
 
     const user = `TEMPLATE:
