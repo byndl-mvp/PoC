@@ -14,63 +14,96 @@ export default function QuestionsPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [tradeName, setTradeName] = useState('');
+  const [tradeCode, setTradeCode] = useState('');
   const [allTrades, setAllTrades] = useState([]);
   const [currentTradeIndex, setCurrentTradeIndex] = useState(0);
 
   useEffect(() => {
-    async function fetchOrGenerateQuestions() {
+    async function initialize() {
       try {
         setLoading(true);
+        setError('');
         
-        // Lade Projektdetails für Trade-Übersicht
-        const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-        if (projectRes.ok) {
-          const projectData = await projectRes.json();
-          const nonIntTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
-          setAllTrades(nonIntTrades);
-          const currentIdx = nonIntTrades.findIndex(t => String(t.id) === String(tradeId));
-          setCurrentTradeIndex(currentIdx);
+        console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
+        
+        // 1. Lade Projektdetails für Trade-Übersicht
+        try {
+          const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+          if (projectRes.ok) {
+            const projectData = await projectRes.json();
+            console.log('Project data loaded:', projectData);
+            
+            const nonIntTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
+            setAllTrades(nonIntTrades);
+            
+            const currentIdx = nonIntTrades.findIndex(t => String(t.id) === String(tradeId));
+            setCurrentTradeIndex(currentIdx);
+            
+            // Finde aktuellen Trade für Namen
+            const currentTrade = nonIntTrades.find(t => String(t.id) === String(tradeId));
+            if (currentTrade) {
+              setTradeName(currentTrade.name);
+              setTradeCode(currentTrade.code);
+            }
+          }
+        } catch (err) {
+          console.error('Error loading project details:', err);
         }
         
-        // Versuche Fragen abzurufen oder zu generieren
-        let res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`));
+        // 2. Generiere Fragen für dieses Gewerk
+        console.log(`Generating questions for trade ${tradeId}...`);
         
-        if (res.status === 404 || !res.ok) {
-          res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
+        const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({})
+        });
+        
+        console.log('Generate response status:', generateRes.status);
+        
+        if (!generateRes.ok) {
+          const errorData = await generateRes.json().catch(() => ({}));
+          throw new Error(errorData.error || `Fehler beim Generieren der Fragen (Status: ${generateRes.status})`);
         }
         
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Fehler beim Laden der Fragen');
+        const data = await generateRes.json();
+        console.log('Questions generated:', data);
+        
+        if (!data.questions || data.questions.length === 0) {
+          throw new Error('Keine Fragen wurden generiert');
         }
         
-        const data = await res.json();
-        setQuestions(data.questions || []);
+        setQuestions(data.questions);
         
-        // Setze Trade-Name
-        if (data.questions?.[0]?.tradeName) {
+        // Trade-Name aus Fragen setzen falls vorhanden
+        if (data.questions[0]?.tradeName) {
           setTradeName(data.questions[0].tradeName);
-        } else if (data.questions?.[0]?.trade_name) {
+        }
+        if (data.questions[0]?.trade_name) {
           setTradeName(data.questions[0].trade_name);
         }
         
-        setAnswers([]);
+        // Initialisiere Antworten-Array
+        setAnswers(new Array(data.questions.length).fill(null));
         setCurrent(0);
+        
       } catch (err) {
-        setError(err.message);
+        console.error('Error in initialization:', err);
+        setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
       } finally {
         setLoading(false);
       }
     }
-    fetchOrGenerateQuestions();
+    
+    initialize();
   }, [projectId, tradeId]);
 
   const handleNext = () => {
     if (!questions[current]) return;
     
+    // Speichere aktuelle Antwort
     const newAnswers = [...answers];
     newAnswers[current] = {
       questionId: questions[current].id || questions[current].question_id,
@@ -79,43 +112,70 @@ export default function QuestionsPage() {
     };
     setAnswers(newAnswers);
     
-    setAnswerText('');
-    setAssumption('');
-    
     if (current + 1 < questions.length) {
+      // Gehe zur nächsten Frage
       setCurrent(current + 1);
+      // Lade vorherige Antwort falls vorhanden
+      if (newAnswers[current + 1]) {
+        setAnswerText(newAnswers[current + 1].answer || '');
+        setAssumption(newAnswers[current + 1].assumption || '');
+      } else {
+        setAnswerText('');
+        setAssumption('');
+      }
     } else {
+      // Alle Fragen beantwortet - speichern und LV generieren
       saveAllAnswersAndContinue(newAnswers);
     }
   };
 
   const handlePrevious = () => {
     if (current > 0) {
+      // Speichere aktuelle Antwort bevor zurück
+      const newAnswers = [...answers];
+      newAnswers[current] = {
+        questionId: questions[current].id || questions[current].question_id,
+        answer: answerText,
+        assumption: assumption
+      };
+      setAnswers(newAnswers);
+      
+      // Gehe zur vorherigen Frage
       setCurrent(current - 1);
-      setAnswerText(answers[current - 1]?.answer || '');
-      setAssumption(answers[current - 1]?.assumption || '');
+      setAnswerText(newAnswers[current - 1]?.answer || '');
+      setAssumption(newAnswers[current - 1]?.assumption || '');
     }
   };
 
   async function saveAllAnswersAndContinue(allAnswers) {
     try {
       setSubmitting(true);
+      setError('');
       
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/answers`), {
+      // Filtere null-Werte und stelle sicher dass alle Antworten valide sind
+      const validAnswers = allAnswers.filter(a => a && a.answer);
+      
+      console.log('Saving answers:', validAnswers);
+      
+      // Speichere Antworten
+      const saveRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/answers`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: allAnswers })
+        body: JSON.stringify({ answers: validAnswers })
       });
       
-      if (!res.ok) {
-        const data = await res.json();
+      if (!saveRes.ok) {
+        const data = await saveRes.json().catch(() => ({}));
         throw new Error(data.error || 'Fehler beim Speichern der Antworten');
       }
       
+      console.log('Answers saved successfully');
+      
+      // Generiere LV
       await generateLvAndContinue();
       
     } catch (err) {
-      console.error(err);
+      console.error('Error saving answers:', err);
       setError(err.message);
       setSubmitting(false);
     }
@@ -123,60 +183,94 @@ export default function QuestionsPage() {
 
   async function generateLvAndContinue() {
     try {
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
+      console.log('Generating LV for trade:', tradeId);
+      
+      const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
       });
       
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Fehler beim Generieren des LV');
+      if (!lvRes.ok) {
+        const data = await lvRes.json().catch(() => ({}));
+        throw new Error(data.error || 'Fehler beim Generieren des Leistungsverzeichnisses');
       }
+      
+      console.log('LV generated successfully');
       
       // Navigation zur nächsten Trade oder Ergebnis
       if (currentTradeIndex !== -1 && currentTradeIndex + 1 < allTrades.length) {
         const nextTrade = allTrades[currentTradeIndex + 1];
+        console.log('Navigating to next trade:', nextTrade);
         navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
       } else {
+        console.log('All trades complete, navigating to results');
         navigate(`/project/${projectId}/result`);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error generating LV:', err);
       setError(err.message);
       setSubmitting(false);
     }
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-      <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
-        <p className="mt-4 text-white">Fragen werden vorbereitet...</p>
+  // Loading State
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
+          <p className="mt-4 text-white">Fragen werden vorbereitet...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
   
-  if (error) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-      <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-6 max-w-md">
-        <p className="text-red-200">Fehler: {error}</p>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-        >
-          Seite neu laden
-        </button>
+  // Error State
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-6 max-w-md text-center">
+          <h3 className="text-xl font-semibold text-red-300 mb-2">Fehler aufgetreten</h3>
+          <p className="text-red-200 mb-4">{error}</p>
+          <div className="flex gap-4 justify-center">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+            >
+              Seite neu laden
+            </button>
+            <button 
+              onClick={() => navigate(`/project/${projectId}/intake`)} 
+              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
+            >
+              Zurück zum Projekt
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
   
-  if (!questions.length) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-      <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-6">
-        <p className="text-yellow-200">Keine Fragen verfügbar</p>
+  // No Questions State
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-6 text-center">
+          <h3 className="text-xl font-semibold text-yellow-300 mb-2">Keine Fragen verfügbar</h3>
+          <p className="text-yellow-200 mb-4">
+            Für das Gewerk {tradeName || `(ID: ${tradeId})`} konnten keine Fragen generiert werden.
+          </p>
+          <button 
+            onClick={() => navigate(`/project/${projectId}/result`)} 
+            className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 transition-colors"
+          >
+            Zum Ergebnis
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
   
   const currentQ = questions[current];
   const progress = ((current + 1) / questions.length) * 100;
@@ -190,32 +284,35 @@ export default function QuestionsPage() {
       </div>
 
       <div className="relative max-w-3xl mx-auto px-4 py-12">
-        {/* Header mit Trade-Info */}
+        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
             {tradeName || 'Gewerkespezifische Fragen'}
           </h1>
+          {tradeCode && (
+            <p className="text-gray-400 text-sm">Gewerk-Code: {tradeCode}</p>
+          )}
           {allTrades.length > 0 && (
-            <p className="text-gray-300">
+            <p className="text-gray-300 mt-2">
               Gewerk {currentTradeIndex + 1} von {allTrades.length}
             </p>
           )}
         </div>
 
-        {/* Trade Progress Indicators */}
+        {/* Trade Progress */}
         {allTrades.length > 1 && (
           <div className="flex justify-center mb-8 space-x-2">
             {allTrades.map((trade, idx) => (
               <div
                 key={trade.id}
-                className={`w-3 h-3 rounded-full ${
+                className={`w-3 h-3 rounded-full transition-all ${
                   idx < currentTradeIndex
                     ? 'bg-teal-500'
                     : idx === currentTradeIndex
-                    ? 'bg-white'
+                    ? 'bg-white ring-2 ring-teal-400'
                     : 'bg-white/30'
                 }`}
-                title={trade.name}
+                title={`${trade.code} - ${trade.name}`}
               />
             ))}
           </div>
@@ -244,10 +341,10 @@ export default function QuestionsPage() {
           )}
           
           <h2 className="text-2xl font-semibold text-white mb-6">
-            {currentQ.text || currentQ.question}
+            {currentQ.text || currentQ.question || 'Frage'}
           </h2>
           
-          {/* Answer Input basierend auf Typ */}
+          {/* Answer Input */}
           {currentQ.type === 'select' && currentQ.options ? (
             <select
               className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -265,43 +362,19 @@ export default function QuestionsPage() {
               className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Ihre Antwort"
+              placeholder="Ihre Antwort..."
             />
-          ) : currentQ.type === 'multiselect' && currentQ.options ? (
-            <div className="space-y-2">
-              {currentQ.options.map((opt, idx) => (
-                <label key={idx} className="flex items-center text-white">
-                  <input
-                    type="checkbox"
-                    className="mr-3 w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
-                    value={opt}
-                    onChange={(e) => {
-                      const currentValues = answerText ? answerText.split(', ') : [];
-                      if (e.target.checked) {
-                        currentValues.push(opt);
-                      } else {
-                        const index = currentValues.indexOf(opt);
-                        if (index > -1) currentValues.splice(index, 1);
-                      }
-                      setAnswerText(currentValues.join(', '));
-                    }}
-                    checked={answerText.includes(opt)}
-                  />
-                  {opt}
-                </label>
-              ))}
-            </div>
           ) : (
             <textarea
               className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
               rows={4}
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Ihre Antwort"
+              placeholder="Ihre Antwort..."
             />
           )}
           
-          {/* Annahme-Feld */}
+          {/* Assumption Field */}
           <div className="mt-6">
             <label className="block text-gray-300 text-sm mb-2">
               Annahme (optional)
@@ -338,7 +411,7 @@ export default function QuestionsPage() {
           
           <button
             onClick={handleNext}
-            disabled={submitting || !answerText.trim()}
+            disabled={submitting || (!answerText.trim() && currentQ.required !== false)}
             className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
@@ -347,7 +420,7 @@ export default function QuestionsPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Speichern...
+                Wird gespeichert...
               </span>
             ) : (
               current + 1 < questions.length ? 'Weiter →' : 'Abschließen & LV generieren'
@@ -355,7 +428,7 @@ export default function QuestionsPage() {
           </button>
         </div>
 
-        {/* Info Text */}
+        {/* Info */}
         <div className="mt-8 text-center">
           <p className="text-gray-400 text-sm">
             Nach Abschluss wird automatisch ein VOB-konformes Leistungsverzeichnis erstellt
