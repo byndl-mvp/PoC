@@ -16,8 +16,6 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const PDFDocument = require('pdfkit');
-const fs = require('fs');
-const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const OpenAI = require("openai");
@@ -1672,13 +1670,6 @@ app.get('/api/projects/:projectId/trades/:tradeId/lv/export', async (req, res) =
     res.status(500).json({ error: err.message });
   }
 });
-
-// Generate PDF for LV (with or without prices)
-app.get('/api/projects/:projectId/trades/:tradeId/lv.pdf', async (req, res) => {
-  try {
-    const { projectId, tradeId } = req.params;
-    const { withPrices } = req.query;
-    
 
 // Generate PDF for LV (with or without prices)
 app.get('/api/projects/:projectId/trades/:tradeId/lv.pdf', async (req, res) => {
