@@ -51,39 +51,53 @@ export default function ResultPage() {
     }, 0);
   };
 
-  const handleExport = async (tradeId, withPrices = true) => {
-    try {
-      const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv/export?withPrices=${withPrices}`);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Export fehlgeschlagen');
-      
-      const data = await res.json();
-      
-      const blob = new Blob([JSON.stringify(data.lv, null, 2)], { type: 'application/json' });
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `LV_${data.tradeCode}_${withPrices ? 'mit' : 'ohne'}_Preise.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-      
-    } catch (err) {
-      alert('Export fehlgeschlagen: ' + err.message);
-    }
-  };
+const handleExportPDF = async (tradeId, withPrices = true) => {
+  try {
+    const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv.pdf?withPrices=${withPrices}`);
+    
+    // Öffne PDF in neuem Tab
+    window.open(url, '_blank');
+    
+  } catch (err) {
+    alert('PDF-Export fehlgeschlagen: ' + err.message);
+  }
+};
 
-  const handleExportAll = async () => {
-    try {
-      const withPrices = exportMode === 'with-prices';
-      for (const lv of lvs) {
-        await handleExport(lv.trade_id, withPrices);
-      }
-    } catch (err) {
-      alert('Export fehlgeschlagen: ' + err.message);
-    }
-  };
+const handleExportJSON = async (tradeId, withPrices = true) => {
+  try {
+    const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv/export?withPrices=${withPrices}`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Export fehlgeschlagen');
+    
+    const data = await res.json();
+    
+    const blob = new Blob([JSON.stringify(data.lv, null, 2)], { type: 'application/json' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `LV_${data.tradeCode}_${withPrices ? 'mit' : 'ohne'}_Preise.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadUrl);
+    
+  } catch (err) {
+    alert('JSON-Export fehlgeschlagen: ' + err.message);
+  }
+};
+
+const handleExportCompletePDF = async () => {
+  try {
+    const withPrices = exportMode === 'with-prices';
+    const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${withPrices}`);
+    
+    // Öffne PDF in neuem Tab
+    window.open(url, '_blank');
+    
+  } catch (err) {
+    alert('Gesamt-PDF-Export fehlgeschlagen: ' + err.message);
+  }
+};
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
@@ -155,11 +169,12 @@ export default function ResultPage() {
               onClick={handleExportAll}
               className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
             >
-              Alle LVs exportieren
-            </button>
-          </div>
-        </div>
-
+     <button
+  onClick={handleExportCompletePDF}
+  className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+>
+  Alle LVs als PDF exportieren
+</button>
         {/* LV Cards */}
         {lvs.length === 0 ? (
           <div className="text-center text-white">
@@ -179,21 +194,32 @@ export default function ResultPage() {
                       className="text-sm bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all"
                     >
                       {selectedLv === idx ? 'Schließen' : 'Details anzeigen'}
-                    </button>
-                    <button
-                      onClick={() => handleExport(lv.trade_id, true)}
-                      className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all"
-                    >
-                      Mit Preisen
-                    </button>
-                    <button
-                      onClick={() => handleExport(lv.trade_id, false)}
-                      className="text-sm bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-all"
-                    >
-                      Ohne Preise
-                    </button>
-                  </div>
-                </div>
+          <div className="flex gap-2">
+  <button
+    onClick={() => setSelectedLv(selectedLv === idx ? null : idx)}
+    className="text-sm bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all"
+  >
+    {selectedLv === idx ? 'Schließen' : 'Details anzeigen'}
+  </button>
+  <button
+    onClick={() => handleExportPDF(lv.trade_id, exportMode === 'with-prices')}
+    className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all flex items-center gap-1"
+  >
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    </svg>
+    PDF
+  </button>
+  <button
+    onClick={() => handleExportJSON(lv.trade_id, exportMode === 'with-prices')}
+    className="text-sm bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-all flex items-center gap-1"
+  >
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V2" />
+    </svg>
+    JSON
+  </button>
+</div>
                 
                 {/* Zusammenfassung immer sichtbar */}
                 <div className="px-6 py-4">
@@ -320,14 +346,13 @@ export default function ResultPage() {
             className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
           >
             📥 Als PDF speichern
-          </button>
           <button
-            onClick={() => {
-              const mailtoLink = `mailto:?subject=Leistungsverzeichnis&body=Bitte finden Sie anbei das Leistungsverzeichnis`;
-              window.location.href = mailtoLink;
-            }}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-          >
+  onClick={() => {
+    const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${exportMode === 'with-prices'}`);
+    window.open(url, '_blank');
+  }}
+  className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+>
             ✉️ Per E-Mail versenden
           </button>
         </div>
