@@ -251,10 +251,21 @@ async function detectTrades(project) {
   const systemPrompt = `${masterPrompt}
 
 Du bist ein erfahrener Baukoordinator für die BYNDL-Plattform.
-Analysiere die Projektbeschreibung und erkenne die benötigten Gewerke.
+Analysiere die Projektbeschreibung und erkenne NUR die tatsächlich benötigten Gewerke.
+
+WICHTIGE REGELN:
+1. Wähle NUR Gewerke die WIRKLICH benötigt werden
+2. Bei Dachsanierung: NUR "DACH" (Dachdecker macht Rückbau selbst)
+3. Bei Badsanierung: Typisch sind SAN, FLI, ELEKT (nicht automatisch alle)
+4. Qualität vor Quantität - lieber weniger aber die richtigen Gewerke
 
 VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
 ${tradeList}
+
+SPEZIELLE HINWEISE:
+- ABBR (Abbruch) NUR bei expliziter Erwähnung von Abbruch/Entkernung/Komplettrückbau
+- Dachdecker (DACH) führt kleine Rückbauarbeiten am Dach selbst aus
+- Nicht jedes Projekt braucht alle Gewerke!
 
 OUTPUT FORMAT (NUR valides JSON):
 {
