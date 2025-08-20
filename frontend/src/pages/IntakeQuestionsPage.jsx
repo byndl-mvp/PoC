@@ -75,8 +75,8 @@ export default function IntakeQuestionsPage() {
       
       // Finde INT Trade ID
       const intTradeRes = await fetch(apiUrl('/api/trades'));
-      const trades = await intTradeRes.json();
-      const intTrade = trades.find(t => t.code === 'INT');
+      const allTrades = await intTradeRes.json();
+      const intTrade = allTrades.find(t => t.code === 'INT');
       
       if (!intTrade) throw new Error('INT Trade nicht gefunden');
       
@@ -98,16 +98,28 @@ export default function IntakeQuestionsPage() {
         console.log('Intake Summary:', summary);
       }
       
+      // WICHTIG: Hole die aktuellen Projekt-Trades mit IDs!
+      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+      if (!projectRes.ok) throw new Error('Projekt konnte nicht geladen werden');
+      
+      const updatedProject = await projectRes.json();
+      console.log('Updated project with trades:', updatedProject);
+      
       // Weiter zu den Gewerkefragen
-      if (project?.trades?.length > 0) {
+      if (updatedProject?.trades?.length > 0) {
         // Filtere INT Trade raus
-        const tradesToProcess = project.trades.filter(t => t.code !== 'INT');
+        const tradesToProcess = updatedProject.trades.filter(t => t.code !== 'INT');
+        console.log('Trades to process:', tradesToProcess);
+        
         if (tradesToProcess.length > 0) {
+          console.log('Navigating to first trade:', tradesToProcess[0]);
           navigate(`/project/${projectId}/trade/${tradesToProcess[0].id}/questions`);
         } else {
+          console.log('No trades to process, going to results');
           navigate(`/project/${projectId}/result`);
         }
       } else {
+        console.log('No trades found, going to results');
         navigate(`/project/${projectId}/result`);
       }
       
