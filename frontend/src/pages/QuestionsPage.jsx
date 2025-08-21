@@ -25,9 +25,6 @@ export default function QuestionsPage() {
         setError('');
         
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
-        console.log('Project data loaded:', projectData);
-        console.log('NUMBER OF TRADES:', projectData.trades?.length);
-        console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
         
         // 1. Lade Projektdetails und ERKANNTE Gewerke
         try {
@@ -35,6 +32,8 @@ export default function QuestionsPage() {
           if (projectRes.ok) {
             const projectData = await projectRes.json();
             console.log('Project data loaded:', projectData);
+            console.log('NUMBER OF TRADES:', projectData.trades?.length);
+            console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
             
             // WICHTIG: Nur die tatsächlich erkannten Gewerke (ohne INT)
             const detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
@@ -118,7 +117,7 @@ export default function QuestionsPage() {
     }
     
     initialize();
-  }, [projectId, tradeId, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectId, tradeId, navigate]); // Alle Dependencies hinzugefügt
 
   const handleNext = () => {
     if (!questions[current]) return;
