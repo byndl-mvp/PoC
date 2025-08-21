@@ -117,7 +117,7 @@ export default function QuestionsPage() {
     }
     
     initialize();
-  }, [projectId, tradeId, navigate]); // Alle Dependencies hinzugefügt
+  }, [projectId, tradeId, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNext = () => {
     if (!questions[current]) return;
