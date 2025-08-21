@@ -25,6 +25,9 @@ export default function QuestionsPage() {
         setError('');
         
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
+        console.log('Project data loaded:', projectData);
+        console.log('NUMBER OF TRADES:', projectData.trades?.length);
+        console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
         
         // 1. Lade Projektdetails und ERKANNTE Gewerke
         try {
