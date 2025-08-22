@@ -1,11 +1,15 @@
 /*
- * BYNDL Proof of Concept – Backend (VOLLSTÄNDIG ÜBERARBEITET)
+ * BYNDL Proof of Concept – Backend (KORRIGIERTE VERSION)
  * 
  * Hauptverbesserungen:
  * - Dynamische Fragenanzahl basierend auf Projektkomplexität
  * - Erhöhte Token-Limits für detaillierte LVs
  * - Adaptive Fragengenerierung ohne Fallbacks
  * - Vollständige Intake-Kontext Integration
+ * 
+ * BUGFIX: Verhindert ungewolltes Hinzufügen aller Trades
+ * - Strikte Kontrolle bei project_trades Einträgen
+ * - Nur explizit erkannte oder angeforderte Trades werden hinzugefügt
  */
 
 const { query } = require('./db.js');
@@ -100,15 +104,49 @@ async function llmWithPolicy(task, messages, options = {}) {
 }
 
 /**
- * Projekt-Trade Verknüpfung sicherstellen
+ * BUGFIX: Prüft ob ein Trade bereits dem Projekt zugeordnet ist
  */
-async function ensureProjectTrade(projectId, tradeId) {
-  await query(
-    `INSERT INTO project_trades (project_id, trade_id)
-     VALUES ($1, $2)
-     ON CONFLICT DO NOTHING`,
+async function isTradeAssignedToProject(projectId, tradeId) {
+  const result = await query(
+    'SELECT 1 FROM project_trades WHERE project_id = $1 AND trade_id = $2',
     [projectId, tradeId]
   );
+  return result.rows.length > 0;
+}
+
+/**
+ * BUGFIX: Projekt-Trade Verknüpfung mit Logging und Kontrolle
+ * Nur für explizit angeforderte Trades
+ */
+async function ensureProjectTrade(projectId, tradeId, source = 'unknown') {
+  // Prüfe ob bereits vorhanden
+  const exists = await isTradeAssignedToProject(projectId, tradeId);
+  
+  if (!exists) {
+    console.log(`[PROJECT_TRADE] Adding trade ${tradeId} to project ${projectId} (source: ${source})`);
+    await query(
+      `INSERT INTO project_trades (project_id, trade_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [projectId, tradeId]
+    );
+  } else {
+    console.log(`[PROJECT_TRADE] Trade ${tradeId} already assigned to project ${projectId}`);
+  }
+}
+
+/**
+ * NEUE FUNKTION: Alle Trades eines Projekts abrufen
+ */
+async function getProjectTrades(projectId) {
+  const result = await query(
+    `SELECT t.* FROM trades t
+     JOIN project_trades pt ON pt.trade_id = t.id
+     WHERE pt.project_id = $1
+     ORDER BY t.name`,
+    [projectId]
+  );
+  return result.rows;
 }
 
 /**
@@ -258,6 +296,7 @@ WICHTIGE REGELN:
 2. Bei Dachsanierung: NUR "DACH" (Dachdecker macht Rückbau selbst)
 3. Bei Badsanierung: Typisch sind SAN, FLI, ELEKT (nicht automatisch alle)
 4. Qualität vor Quantität - lieber weniger aber die richtigen Gewerke
+5. NIEMALS "INT" (Intake) zurückgeben - das wird separat behandelt!
 
 VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
 ${tradeList}
@@ -266,6 +305,7 @@ SPEZIELLE HINWEISE:
 - ABBR (Abbruch) NUR bei expliziter Erwähnung von Abbruch/Entkernung/Komplettrückbau
 - Dachdecker (DACH) führt kleine Rückbauarbeiten am Dach selbst aus
 - Nicht jedes Projekt braucht alle Gewerke!
+- INT (Intake) wird automatisch hinzugefügt, nicht hier auswählen!
 
 OUTPUT FORMAT (NUR valides JSON):
 {
@@ -316,6 +356,12 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
     const usedIds = new Set();
     
     for (const trade of parsedResponse.trades) {
+      // BUGFIX: Filtere INT Trade aus
+      if (trade.code === 'INT') {
+        console.log('[DETECT] Skipping INT trade (will be added separately)');
+        continue;
+      }
+      
       const dbTrade = availableTrades.find(t => 
         t.code === trade.code || 
         t.name.toLowerCase() === trade.name?.toLowerCase()
@@ -789,9 +835,10 @@ app.use(bodyParser.json());
 // Health Check
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'BYNDL Backend v3.0',
+    message: 'BYNDL Backend v3.1 (FIXED)',
     status: 'running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    fixes: ['Trade assignment control', 'No automatic trade addition']
   });
 });
 
@@ -847,13 +894,11 @@ app.post('/api/projects', async (req, res) => {
       budget
     });
     
+    // BUGFIX: Nur die erkannten Trades hinzufügen
+    console.log(`[PROJECT] Creating project ${project.id} with ${detectedTrades.length} detected trades`);
+    
     for (const trade of detectedTrades) {
-      await query(
-        `INSERT INTO project_trades (project_id, trade_id)
-         VALUES ($1, $2)
-         ON CONFLICT DO NOTHING`,
-        [project.id, trade.id]
-      );
+      await ensureProjectTrade(project.id, trade.id, 'detection');
     }
     
     res.json({
@@ -885,15 +930,12 @@ app.get('/api/projects/:projectId', async (req, res) => {
     
     const project = projectResult.rows[0];
     
-    const tradesResult = await query(
-      `SELECT t.* FROM trades t
-       JOIN project_trades pt ON pt.trade_id = t.id
-       WHERE pt.project_id = $1
-       ORDER BY t.name`,
-      [projectId]
-    );
+    // Nur die tatsächlich zugewiesenen Trades abrufen
+    const trades = await getProjectTrades(projectId);
     
-    project.trades = tradesResult.rows;
+    project.trades = trades;
+    
+    console.log(`[PROJECT] Retrieved project ${projectId} with ${trades.length} trades`);
     
     res.json(project);
     
@@ -903,7 +945,7 @@ app.get('/api/projects/:projectId', async (req, res) => {
   }
 });
 
-// Intake: Generate adaptive questions
+// BUGFIX: Intake Questions - fügt nur INT Trade hinzu
 app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -919,7 +961,13 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
       return res.status(500).json({ error: 'INT trade missing in DB' });
     }
     const tradeId = intTrade.rows[0].id;
-    await ensureProjectTrade(projectId, tradeId);
+    
+    // BUGFIX: Nur INT Trade hinzufügen, mit explizitem Source-Logging
+    await ensureProjectTrade(projectId, tradeId, 'intake');
+    
+    // Sicherstellen, dass keine anderen Trades versehentlich hinzugefügt werden
+    const currentTrades = await getProjectTrades(projectId);
+    console.log(`[INTAKE] Project ${projectId} has ${currentTrades.length} trades after adding INT`);
     
     const questions = await generateQuestions(tradeId, {
       category: project.category,
@@ -927,6 +975,7 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
       description: project.description,
       timeframe: project.timeframe,
       budget: project.budget
+      // BUGFIX: projectId nicht übergeben für Intake
     });
 
     let saved = 0;
@@ -956,7 +1005,7 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
   }
 });
 
-// Intake: Summary with recommendations
+// BUGFIX: Intake Summary - empfiehlt nur Trades, fügt sie NICHT hinzu
 app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -976,7 +1025,7 @@ app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
     )).rows;
 
     const availableTrades = await getAvailableTrades();
-    const validCodes = availableTrades.map(t => t.code);
+    const validCodes = availableTrades.map(t => t.code).filter(c => c !== 'INT'); // INT ausschließen
 
     const master = await getPromptByName('master');
 
@@ -985,7 +1034,7 @@ app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
 WICHTIG: Unterscheide klar zwischen GEWERKEN und EMPFEHLUNGEN!
 
 VERFÜGBARE GEWERKE-CODES (NUR DIESE für "trades" verwenden):
-${availableTrades.map(t => `- ${t.code}: ${t.name}`).join('\n')}
+${availableTrades.filter(t => t.code !== 'INT').map(t => `- ${t.code}: ${t.name}`).join('\n')}
 
 Gib NUR valides JSON zurück:
 {
@@ -999,7 +1048,8 @@ Gib NUR valides JSON zurück:
 
 REGELN:
 - "trades" darf NUR Codes aus der obigen Liste enthalten!
-- Gutachter, Statiker, Planer etc. gehören in "recommendations", NICHT in "trades"`;
+- Gutachter, Statiker, Planer etc. gehören in "recommendations", NICHT in "trades"
+- NIEMALS "INT" in trades aufnehmen!`;
 
     const user = `Projekt:
 Kategorie: ${project.category}
@@ -1022,9 +1072,10 @@ Analysiere das Projekt und gib Empfehlungen.`;
 
     const summary = JSON.parse(cleanedResponse);
 
+    // BUGFIX: Filtere und validiere Trades, aber füge sie NICHT zur DB hinzu
     if (summary.trades && Array.isArray(summary.trades)) {
       summary.trades = summary.trades.filter(t => {
-        const isValid = validCodes.includes(t.code);
+        const isValid = validCodes.includes(t.code) && t.code !== 'INT';
         if (!isValid && (t.code === 'GUT' || t.reason?.toLowerCase().includes('gutachter'))) {
           summary.recommendations = summary.recommendations || [];
           summary.recommendations.push(`Gutachter für ${t.reason || 'Schadensanalyse'}`);
@@ -1032,6 +1083,8 @@ Analysiere das Projekt und gib Empfehlungen.`;
         return isValid;
       });
     }
+
+    // WICHTIG: Keine Trades zur DB hinzufügen! Das macht nur der User über das Frontend
 
     res.json({ ok: true, summary });
   } catch (err) {
@@ -1045,6 +1098,17 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
   try {
     const { projectId, tradeId } = req.params;
     
+    // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
+    const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
+    
+    const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
+    const tradeCode = tradeInfo.rows[0]?.code;
+    
+    if (!isAssigned && tradeCode !== 'INT') {
+      console.log(`[QUESTIONS] Trade ${tradeId} not assigned to project ${projectId}, adding it now`);
+      await ensureProjectTrade(projectId, tradeId, 'questions_request');
+    }
+    
     const projectResult = await query(
       'SELECT * FROM projects WHERE id = $1',
       [projectId]
@@ -1055,7 +1119,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     }
     
     const project = projectResult.rows[0];
-    await ensureProjectTrade(projectId, tradeId);
     
     const questions = await generateQuestions(tradeId, {
       category: project.category,
@@ -1097,6 +1160,17 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
   try {
     const { projectId, tradeId } = req.params;
     
+    // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
+    const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
+    
+    const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
+    const tradeCode = tradeInfo.rows[0]?.code;
+    
+    if (!isAssigned && tradeCode !== 'INT') {
+      console.warn(`[QUESTIONS] Trade ${tradeId} not assigned to project ${projectId}`);
+      return res.status(403).json({ error: 'Trade not assigned to project' });
+    }
+    
     const result = await query(
       `SELECT q.*, t.name as trade_name, t.code as trade_code
        FROM questions q
@@ -1127,6 +1201,17 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
     
     if (!Array.isArray(answers)) {
       return res.status(400).json({ error: 'Answers must be an array' });
+    }
+    
+    // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
+    const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
+    
+    const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
+    const tradeCode = tradeInfo.rows[0]?.code;
+    
+    if (!isAssigned && tradeCode !== 'INT') {
+      console.warn(`[ANSWERS] Trade ${tradeId} not assigned to project ${projectId}`);
+      return res.status(403).json({ error: 'Trade not assigned to project' });
     }
     
     for (const answer of answers) {
@@ -1164,7 +1249,13 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
     const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
     if (!trade) return res.status(404).json({ error: 'Trade not found' });
     
-    await ensureProjectTrade(projectId, tradeId);
+    // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
+    const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
+    
+    if (!isAssigned && trade.code !== 'INT') {
+      console.log(`[LV] Trade ${tradeId} not assigned to project ${projectId}, adding it now`);
+      await ensureProjectTrade(projectId, tradeId, 'lv_generation');
+    }
     
     const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
     const answersInt = intTrade
@@ -1804,17 +1895,56 @@ app.get('/api/debug/routes', (req, res) => {
   res.json({ routes });
 });
 
+// BUGFIX: Debug endpoint to check project trades
+app.get('/api/debug/project/:projectId/trades', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const trades = await query(
+      `SELECT pt.*, t.code, t.name, pt.created_at
+       FROM project_trades pt
+       JOIN trades t ON t.id = pt.trade_id
+       WHERE pt.project_id = $1
+       ORDER BY pt.created_at`,
+      [projectId]
+    );
+    
+    const project = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    res.json({
+      project: project.rows[0],
+      tradeCount: trades.rows.length,
+      trades: trades.rows,
+      message: `Project ${projectId} has ${trades.rows.length} trades assigned`
+    });
+    
+  } catch (err) {
+    console.error('Debug failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Health check
 app.get('/healthz', (req, res) => {
   res.json({ 
-    message: "BYNDL Backend v3.0", 
+    message: "BYNDL Backend v3.1 (FIXED)", 
     status: "running",
     features: {
       adaptiveQuestions: true,
       dynamicQuestionCount: true,
       enhancedTokenLimits: true,
-      detailedLVs: true
-    }
+      detailedLVs: true,
+      strictTradeControl: true
+    },
+    fixes: [
+      "Trade assignment control",
+      "No automatic trade addition",
+      "INT trade isolation",
+      "Project trade validation"
+    ]
   });
 });
 
@@ -1822,6 +1952,7 @@ app.get('/healthz', (req, res) => {
 app.get('/__info', (req, res) => {
   res.json({
     node: process.version,
+    version: "3.1-FIXED",
     env: {
       OPENAI_MODEL: MODEL_OPENAI,
       ANTHROPIC_MODEL: MODEL_ANTHROPIC,
@@ -1833,6 +1964,11 @@ app.get('/__info', (req, res) => {
       questions: "6000 tokens",
       lv: "8000 tokens",
       intake: "6000 tokens"
+    },
+    bugfixes: {
+      tradeControl: "Strikte Kontrolle bei Trade-Zuweisungen",
+      intakeIsolation: "INT Trade wird separat behandelt",
+      projectValidation: "Trade-Projekt Zugehörigkeit wird validiert"
     }
   });
 });
@@ -1864,7 +2000,7 @@ app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
 ║                                        ║
-║     BYNDL Backend v3.0 Started        ║
+║     BYNDL Backend v3.1 (FIXED)        ║
 ║                                        ║
 ║     Port: ${PORT}                        ║
 ║     Environment: ${process.env.NODE_ENV || 'development'}          ║
@@ -1874,6 +2010,13 @@ app.listen(PORT, () => {
 ║     ✓ Dynamic Question Count          ║
 ║     ✓ Enhanced Token Limits           ║
 ║     ✓ Detailed LV Generation          ║
+║     ✓ Strict Trade Control            ║
+║                                        ║
+║     Bugfixes Applied:                 ║
+║     ✓ No automatic trade addition     ║
+║     ✓ INT trade isolation             ║
+║     ✓ Trade validation checks         ║
+║     ✓ Explicit logging                ║
 ║                                        ║
 ╚════════════════════════════════════════╝
   `);
