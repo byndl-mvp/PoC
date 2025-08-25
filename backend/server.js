@@ -390,8 +390,8 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
   }
 }
 
-/**
- * Adaptive Fragengenerierung ohne Fallback
+ /**
+ * Intelligente, adaptive Fragengenerierung für Laien
  */
 async function generateQuestions(tradeId, projectContext = {}) {
   const tradeResult = await query(
@@ -437,84 +437,80 @@ ${intakeAnswers.rows.map(a => `- ${a.question}: ${a.answer}`).join('\n')}
 
 WICHTIG: 
 - Stelle NUR noch unbeantwortete, gewerkespezifische Fragen
-- Vermeide jegliche Dopplungen
-- Passe die Fragenanzahl an die Projektkomplexität an`;
+- Vermeide jegliche Dopplungen`;
       }
     }
   }
   
-  const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
-  const questionGuideline = getQuestionCountGuideline(projectComplexity, isIntake);
+  // Intelligente Fragenanzahl basierend auf Gewerk
+  const questionRange = getIntelligentQuestionRange(tradeName, projectContext);
   
-  const systemPrompt = `Du bist ein Experte für ${tradeName}.
-${isIntake ? 'Erstelle einen umfassenden INTAKE-Fragenkatalog für die vollständige Projekterfassung.' : 
-`Erstelle einen ADAPTIVEN Fragenkatalog für das Gewerk ${tradeName}.`}
+  const systemPrompt = `Du bist ein erfahrener ${tradeName}-Experte und hilfst einem LAIEN bei der Projektplanung.
+
+DEINE AUFGABE:
+Erstelle ${questionRange} VERSTÄNDLICHE Fragen für ein präzises, nachtragsfreies Leistungsverzeichnis.
+
+KRITISCHE REGELN:
+
+1. LAIENGERECHTE FORMULIERUNG:
+   - Jede Frage MUSS für Nicht-Handwerker verständlich sein
+   - Erkläre Fachbegriffe in 1-2 einfachen Sätzen
+   - Gib konkrete Empfehlungen und Richtwerte
+   - Nutze Alltagssprache statt Fachjargon
+
+2. MESSBARE ANGABEN ERFRAGEN:
+   IMMER EXPLIZIT erfragen:
+   - Raummaße: Länge x Breite x Höhe in Metern
+   - Flächen: Wand-, Boden-, Deckenflächen in m²
+   - Stückzahlen: Fenster, Türen, Steckdosen etc.
+   - "Ich bin unsicher" MUSS als Antwortmöglichkeit bei Mengen gegeben sein
+
+   INTELLIGENT SCHÄTZEN bei:
+   - Kabellängen → basierend auf Raumgröße (Formel: 2×(L+B)+2×H)×1.3
+   - Rohrleitungen → basierend auf Raumabständen
+   - Materialverbräuche → basierend auf Flächen
+
+3. FRAGESTRUKTUR:
+   {
+     "id": "eindeutige-id",
+     "category": "Themenbereich",
+     "question": "Die eigentliche Frage?",
+     "explanation": "1-2 Sätze Erklärung warum das wichtig ist.",
+     "recommendation": "Empfehlung oder Richtwert.",
+     "type": "text|number|select|multiselect",
+     "required": true|false,
+     "allowUnsure": true,
+     "options": ["Option1", "Option2", "Ich bin unsicher"],
+     "unit": "m²|m|Stück|m³",
+     "hint": "Zusätzlicher Hilfetext"
+   }
+
+4. INTELLIGENTE FRAGENANZAHL für ${tradeName}:
+   ${questionRange}
+   Stelle NUR Fragen die WIRKLICH relevant sind!
+
+5. BEISPIELE für ${tradeName}:
+${getSmartTradeExamples(tradeName)}
 
 ${intakeContext}
 
-FRAGENANZAHL-VORGABE:
-- Projektkomplexität: ${projectComplexity}
-- Erstelle ${questionGuideline} relevante Fragen
-- Qualität vor Quantität, aber sei VOLLSTÄNDIG
-- Decke ALLE wichtigen Aspekte ab
+OUTPUT: NUR valides JSON Array, keine Markdown-Codeblöcke!`;
 
-KATEGORIEN DIE ABGEDECKT WERDEN MÜSSEN:
-${isIntake ? 
-`- Projektziele und genaue Anforderungen
-- Detaillierte Bestandssituation
-- Budget und Finanzierung
-- Zeitplanung und Meilensteine
-- Qualitätsanforderungen und Standards
-- Besondere Wünsche und Präferenzen
-- Rechtliche/Bauliche Rahmenbedingungen
-- Zugänglichkeit und Logistik
-- Eigenleistungen
-- Nachbarschaft und Umfeld` :
-`- Detaillierter Arbeitsumfang
-- Materialspezifikationen und Qualität
-- Ausführungsdetails und Technik
-- Qualitätsstandards und Normen
-- Besondere projektspezifische Anforderungen
-- Schnittstellen zu anderen Gewerken
-- Baustellenbedingungen
-- Zeitliche Anforderungen`}
+  const userPrompt = `AUFGABE: Generiere ${questionRange} laienverständliche Fragen.
 
-OUTPUT (NUR valides JSON, keine Markdown):
-[
-  {
-    "id": "eindeutige_id",
-    "category": "Kategorie",
-    "question": "Präzise, verständliche Frage",
-    "type": "text|number|select|multiselect",
-    "required": true|false,
-    "options": ["Option1", "Option2"],
-    "hint": "Hilfetext für den Nutzer"
-  }
-]`;
-
-  const userPrompt = `AUFGABE:
-Generiere basierend auf dem Template einen vollständigen, adaptiven Fragenkatalog.
-
-TEMPLATE:
+GEWERK-TEMPLATE:
 ${questionPrompt}
 
 PROJEKTKONTEXT:
-- Kategorie: ${projectContext.category || 'Nicht angegeben'}
-- Unterkategorie: ${projectContext.subCategory || 'Nicht angegeben'}
-- Beschreibung: ${projectContext.description || 'Keine'}
-- Zeitrahmen: ${projectContext.timeframe || 'Nicht angegeben'}
-- Budget: ${projectContext.budget || 'Nicht angegeben'}
-- Komplexität: ${projectComplexity}
+- Kategorie: ${projectContext.category || 'Renovierung'}
+- Beschreibung: ${projectContext.description || 'Standardprojekt'}
+- Komplexität: ${determineProjectComplexity(projectContext, answeredQuestions)}
 
-${isIntake ? 
-'Erstelle einen VOLLSTÄNDIGEN Intake-Fragenkatalog der ALLE wichtigen Projektaspekte erfasst.' :
-`Erstelle einen UMFASSENDEN Fragenkatalog für ${tradeName} der ALLE relevanten technischen Details abfragt.`}
-
-Die Fragen müssen:
-1. Vollständig und projektrelevant sein
-2. Verständlich für Laien formuliert sein
-3. Alle notwendigen Details für ein präzises LV erfassen
-4. An die Projektkomplexität angepasst sein (${questionGuideline} Fragen)`;
+WICHTIG: 
+- ALLE Fragen müssen für Laien verständlich sein
+- Bei Mengenangaben IMMER "Ich bin unsicher" ermöglichen
+- Gib konkrete Empfehlungen und Richtwerte
+- Erkläre jeden Fachbegriff`;
 
   try {
     const response = await llmWithPolicy(isIntake ? 'intake' : 'questions', [
@@ -522,7 +518,7 @@ Die Fragen müssen:
       { role: 'user', content: userPrompt }
     ], { 
       maxTokens: 6000,
-      temperature: 0.6,
+      temperature: 0.4, // Etwas kreativer für bessere Erklärungen
       jsonMode: true 
     });
     
@@ -531,11 +527,14 @@ Die Fragen müssen:
       .replace(/```\n?/g, '')
       .trim();
     
-    const questions = JSON.parse(cleanedResponse);
+    let questions = JSON.parse(cleanedResponse);
     
     if (!Array.isArray(questions) || questions.length === 0) {
       throw new Error('Invalid question format received');
     }
+    
+    // Validiere und verbessere Fragen
+    questions = validateAndEnhanceQuestions(questions, tradeName, tradeCode);
     
     const processedQuestions = questions.map((q, idx) => ({
       ...q,
@@ -543,17 +542,207 @@ Die Fragen müssen:
       question: q.question || q.text || q.q,
       type: q.type || 'text',
       required: q.required !== undefined ? q.required : true,
+      allowUnsure: q.allowUnsure !== false, // Default: true für Flexibilität
+      explanation: q.explanation || generateDefaultExplanation(q.question),
+      recommendation: q.recommendation || generateDefaultRecommendation(q.question, tradeName),
       tradeId,
       tradeName
     }));
     
-    console.log(`[QUESTIONS] Generated ${processedQuestions.length} adaptive questions for ${tradeName}`);
+    console.log(`[QUESTIONS] Generated ${processedQuestions.length} intelligent questions for ${tradeName}`);
     return processedQuestions;
     
   } catch (err) {
     console.error('[QUESTIONS] Generation failed:', err);
     throw new Error(`Fragengenerierung für ${tradeName} fehlgeschlagen`);
   }
+}
+
+/**
+ * Intelligente Bestimmung der Fragenanzahl basierend auf Gewerk
+ */
+function getIntelligentQuestionRange(tradeName, projectContext) {
+  const tradeComplexity = {
+    // Einfache Gewerke (5-10 Fragen)
+    'Malerarbeiten': '6-10',
+    
+    // Mittlere Komplexität (8-15 Fragen)
+    'Bodenbelagsarbeiten': '8-12',
+    'Fliesenarbeiten': '12-15',
+    'Trockenbau': '8-12',
+    'Fenster-Außentüren': '10-15',
+    
+    // Hohe Komplexität (12-20 Fragen)
+    'Elektroinstallation': '18-22',
+    'Sanitärinstallation': '18-22',
+    'Heizung': '15-20',
+    'Fassade': '12-15',
+    
+    // Sehr hohe Komplexität (15-25 Fragen)
+    'Rohbau': '15-25',
+    'Dacharbeiten': '15-25',
+    'Abbruch': '8-15',
+    
+    // Spezialgewerke
+    'Schlosser': '10-15',
+    'Tischler': '10-14',
+    'Estrich': '6-10',
+    'Gerüstbau': '8-12'
+  };
+  
+  // Basis-Range oder Default
+  let range = tradeComplexity[tradeName] || '8-12';
+  
+  // Anpassung bei komplexen Projekten
+  if (projectContext.description?.length > 200 || 
+      projectContext.category?.includes('Komplett') ||
+      projectContext.category?.includes('Kernsanierung')) {
+    const [min, max] = range.split('-').map(n => parseInt(n.trim()));
+    range = `${min + 2}-${max + 3}`;
+  }
+  
+  return range + ' präzise, notwendige Fragen';
+}
+
+/**
+ * Gewerkspezifische Beispiele für Laien
+ */
+function getSmartTradeExamples(tradeName) {
+  const examples = {
+    'Malerarbeiten': `
+{
+  "question": "Wie groß sind die Räume, die gestrichen werden sollen?",
+  "explanation": "Messen Sie Länge × Breite × Höhe. Dies hilft uns, die Wandfläche zu berechnen.",
+  "recommendation": "Ein typisches Wohnzimmer hat etwa 20-30 m² Bodenfläche und 2,5m Höhe.",
+  "type": "text",
+  "allowUnsure": true
+},
+{
+  "question": "Welcher Zustand haben die Wände aktuell?",
+  "explanation": "Schauen Sie nach Rissen, abblätternder Farbe oder Feuchtigkeit.",
+  "type": "select",
+  "options": ["Gut - nur kleine Gebrauchsspuren", "Mittel - einige Risse/Flecken", "Schlecht - viele Schäden", "Ich bin unsicher"]
+}`,
+
+    'Elektroinstallation': `
+{
+  "question": "Wie viele Steckdosen möchten Sie pro Raum?",
+  "explanation": "Überlegen Sie, wo Sie Geräte anschließen möchten. Standard sind 4-6 Steckdosen pro Zimmer.",
+  "recommendation": "Wohnzimmer: 8-10, Schlafzimmer: 6-8, Küche: 10-12 Steckdosen",
+  "type": "number",
+  "allowUnsure": true,
+  "unit": "Stück"
+}`,
+
+    'Sanitärinstallation': `
+{
+  "question": "Welche Sanitärobjekte sollen installiert werden?",
+  "explanation": "Wählen Sie alle zutreffenden aus. Standard bedeutet normale Qualität, Premium ist hochwertiger.",
+  "type": "multiselect",
+  "options": ["WC Standard", "WC Premium", "Waschbecken", "Dusche", "Badewanne", "Ich bin unsicher"]
+}`,
+
+    'Bodenbelagsarbeiten': `
+{
+  "question": "Wie groß ist die zu verlegende Bodenfläche?",
+  "explanation": "Messen Sie Länge × Breite jedes Raumes und addieren Sie die Flächen.",
+  "recommendation": "Beispiel: Wohnzimmer 5m × 4m = 20m², Schlafzimmer 4m × 3m = 12m², Gesamt = 32m²",
+  "type": "number",
+  "allowUnsure": true,
+  "unit": "m²"
+}`
+  };
+  
+  return examples[tradeName] || `Laienverständliche Fragen mit Erklärungen für ${tradeName}`;
+}
+
+/**
+ * Validiere und verbessere generierte Fragen
+ */
+function validateAndEnhanceQuestions(questions, tradeName, tradeCode) {
+  if (!Array.isArray(questions)) return [];
+  
+  // Stelle sicher, dass Grundfragen vorhanden sind
+  const hasRoomSize = questions.some(q => 
+    q.question?.toLowerCase().includes('raum') || 
+    q.question?.toLowerCase().includes('größe') ||
+    q.question?.toLowerCase().includes('fläche')
+  );
+  
+  if (!hasRoomSize && tradeName !== 'Gerüstbau') {
+    questions.unshift({
+      id: `${tradeCode}-size`,
+      category: "Grundlagen",
+      question: "Wie groß ist der Arbeitsbereich?",
+      explanation: "Geben Sie die Maße der betroffenen Räume oder Flächen an. Bei Unsicherheit wählen Sie 'Ich bin unsicher'.",
+      recommendation: "Messen Sie Länge × Breite × Höhe in Metern",
+      type: "text",
+      required: true,
+      allowUnsure: true
+    });
+  }
+  
+  // Füge "Unsicher"-Option zu allen relevanten Fragen
+  return questions.map(q => {
+    // Bei Mengenfragen immer Unsicher-Option
+    if (q.type === 'number' || 
+        q.question?.toLowerCase().includes('wie viel') || 
+        q.question?.toLowerCase().includes('wie groß') ||
+        q.question?.toLowerCase().includes('wie viele')) {
+      q.allowUnsure = true;
+    }
+    
+    // Bei Select-Fragen Unsicher-Option hinzufügen
+    if (q.type === 'select' && q.options && !q.options.includes('Ich bin unsicher')) {
+      q.options.push('Ich bin unsicher');
+    }
+    
+    // Stelle sicher, dass Erklärungen vorhanden sind
+    if (!q.explanation) {
+      q.explanation = generateDefaultExplanation(q.question);
+    }
+    
+    return q;
+  });
+}
+
+/**
+ * Generiere Standard-Erklärung falls keine vorhanden
+ */
+function generateDefaultExplanation(question) {
+  if (!question) return "Diese Information hilft uns bei der präzisen Kalkulation.";
+  
+  if (question.includes('Fläche') || question.includes('m²')) {
+    return "Messen Sie die Länge und Breite des Bereichs und multiplizieren Sie beide Werte. Bei mehreren Räumen addieren Sie die Einzelflächen.";
+  }
+  if (question.includes('Anzahl') || question.includes('wie viele')) {
+    return "Zählen Sie alle betroffenen Elemente. Bei Unsicherheit ist das kein Problem - wählen Sie einfach 'Ich bin unsicher'.";
+  }
+  if (question.includes('Zustand')) {
+    return "Beschreiben Sie den aktuellen Zustand so gut Sie können. Dies hilft uns, notwendige Vorarbeiten einzuplanen.";
+  }
+  if (question.includes('Qualität')) {
+    return "Die Qualitätsstufe beeinflusst Material und Ausführung. Standard ist für normale Anforderungen ausreichend.";
+  }
+  return "Diese Information hilft uns, ein präzises Angebot zu erstellen.";
+}
+
+/**
+ * Generiere Standard-Empfehlung
+ */
+function generateDefaultRecommendation(question, tradeName) {
+  if (!question) return null;
+  
+  if (question.includes('Qualität')) {
+    return "Standard-Qualität reicht für normale Wohnräume. Premium lohnt sich bei besonderen Ansprüchen oder stark beanspruchten Bereichen.";
+  }
+  if (question.includes('Steckdosen')) {
+    return "Moderne Haushalte benötigen mehr Steckdosen als früher. Planen Sie lieber zu viele als zu wenige ein.";
+  }
+  if (question.includes('Farbe') || question.includes('Anstrich')) {
+    return "Helle Farben lassen Räume größer wirken. Bei stark beanspruchten Wänden empfiehlt sich abwaschbare Farbe.";
+  }
+  return null;
 }
 
 /**
