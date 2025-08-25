@@ -1109,6 +1109,41 @@ Analysiere das Projekt und gib Empfehlungen.`;
   }
 });
 
+app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { confirmedTrades } = req.body;
+    
+    if (!Array.isArray(confirmedTrades) || confirmedTrades.length === 0) {
+      return res.status(400).json({ error: 'Keine Gewerke ausgewählt' });
+    }
+    
+    // Lösche alle bisherigen Trade-Zuordnungen (außer INT)
+    await query(
+      `DELETE FROM project_trades 
+       WHERE project_id = $1 
+       AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')`,
+      [projectId]
+    );
+    
+    // Füge die bestätigten Trades hinzu
+    for (const tradeId of confirmedTrades) {
+      await ensureProjectTrade(projectId, tradeId, 'user_confirmed');
+    }
+    
+    console.log(`[TRADES] User confirmed ${confirmedTrades.length} trades for project ${projectId}`);
+    
+    res.json({ 
+      success: true, 
+      confirmedCount: confirmedTrades.length 
+    });
+    
+  } catch (err) {
+    console.error('Failed to confirm trades:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Generate adaptive questions for a specific trade
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
