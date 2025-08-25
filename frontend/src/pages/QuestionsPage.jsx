@@ -23,7 +23,8 @@ export default function QuestionsPage() {
       try {
         setLoading(true);
         setError('');
-        
+        setSubmitting(false);  // <-- HIER EINFÜGEN
+       
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
         
         // 1. Lade Projektdetails und ERKANNTE Gewerke
