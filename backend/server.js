@@ -752,6 +752,220 @@ function generateDefaultRecommendation(question, tradeName) {
 }
 
 /**
+ * Erweiterte Validierung - arbeitet mit tatsächlichen Trade-Codes aus dem LV
+ */
+function validateLV(lv, answers) {
+  const problems = [];
+  const warnings = [];
+  
+  if (!lv.positions || !Array.isArray(lv.positions)) {
+    problems.push('Keine Positionen im LV gefunden');
+    return { valid: false, problems, warnings };
+  }
+  
+  // Hole den Trade-Code aus dem LV
+  const tradeCode = lv.tradeCode;
+  
+  lv.positions.forEach((pos, index) => {
+    // Prüfe ob Menge in Antworten vorkommt
+    const hasMatchingAnswer = answers.some(a => {
+      const answer = a.answer?.toString().toLowerCase();
+      const quantity = pos.quantity?.toString();
+      
+      if (answer?.includes(quantity)) return true;
+      if (answer === 'ich bin unsicher' && pos.notes?.includes('Annahme')) return true;
+      if (pos.unit && answer?.includes(pos.unit.toLowerCase())) return true;
+      
+      return false;
+    });
+    
+    if (!hasMatchingAnswer && !pos.assumption) {
+      problems.push(`Position ${pos.pos || index + 1} "${pos.title}": Menge ${pos.quantity} ${pos.unit} hat keine entsprechende Antwort`);
+    }
+    
+    // Warnung bei verdächtigen Keywords
+    const suspiciousKeywords = ['Asbest', 'Schadstoff', 'PCB', 'KMF', 'PAK', 'Blei', 'Teer'];
+    suspiciousKeywords.forEach(keyword => {
+      if (pos.title?.includes(keyword) || pos.description?.includes(keyword)) {
+        const mentioned = answers.some(a => 
+          a.answer?.toLowerCase().includes(keyword.toLowerCase())
+        );
+        if (!mentioned) {
+          problems.push(`Position ${pos.pos}: ${keyword} ohne entsprechende Angabe!`);
+        }
+      }
+    });
+    
+    // Plausibilitätsprüfung basierend auf Trade-Code
+    const priceRanges = getPriceRangesForTrade(tradeCode);
+    
+    if (priceRanges && pos.unitPrice && pos.unit) {
+      const range = priceRanges[pos.unit];
+      if (range) {
+        if (pos.unitPrice < range.min) {
+          warnings.push(`Position ${pos.pos}: Preis ${pos.unitPrice}€/${pos.unit} ungewöhnlich niedrig (erwartet: ${range.min}-${range.max}€)`);
+        }
+        if (pos.unitPrice > range.max) {
+          warnings.push(`Position ${pos.pos}: Preis ${pos.unitPrice}€/${pos.unit} ungewöhnlich hoch (erwartet: ${range.min}-${range.max}€)`);
+        }
+      }
+    }
+    
+    // Mengenvalidierung
+    if (pos.quantity) {
+      const mengenChecks = {
+        'm²': { max: 10000, warn: 1000 },
+        'm³': { max: 5000, warn: 500 },
+        'm': { max: 10000, warn: 1000 },
+        'Stück': { max: 10000, warn: 1000 },
+        't': { max: 1000, warn: 100 },
+        'kg': { max: 100000, warn: 10000 }
+      };
+      
+      const check = mengenChecks[pos.unit];
+      if (check) {
+        if (pos.quantity > check.max) {
+          problems.push(`Position ${pos.pos}: ${pos.quantity} ${pos.unit} überschreitet Maximum`);
+        } else if (pos.quantity > check.warn) {
+          warnings.push(`Position ${pos.pos}: ${pos.quantity} ${pos.unit} erscheint sehr groß`);
+        }
+      }
+      
+      if (pos.quantity <= 0) {
+        problems.push(`Position ${pos.pos}: Ungültige Menge ${pos.quantity}`);
+      }
+    }
+  });
+  
+  // Prüfe Gesamtsumme
+  const calculatedSum = lv.positions.reduce((sum, pos) => {
+    return sum + (pos.totalPrice || (pos.quantity * pos.unitPrice) || 0);
+  }, 0);
+  
+  const difference = Math.abs(calculatedSum - (lv.totalSum || 0));
+  if (difference > 0.01) {
+    warnings.push(`Gesamtsumme weicht ab: Berechnet ${calculatedSum.toFixed(2)}€, angegeben ${lv.totalSum?.toFixed(2)}€`);
+  }
+  
+  // Statistik
+  const stats = {
+    totalPositions: lv.positions.length,
+    positionsWithAssumptions: lv.positions.filter(p => p.assumption).length,
+    positionsWithoutPrice: lv.positions.filter(p => !p.unitPrice).length,
+    averagePrice: calculatedSum / lv.positions.length,
+    confidence: problems.length === 0 ? 100 : Math.max(0, 100 - (problems.length * 10))
+  };
+  
+  return {
+    valid: problems.length === 0,
+    problems,
+    warnings,
+    stats,
+    recommendation: problems.length > 0 
+      ? 'LV sollte überarbeitet werden'
+      : warnings.length > 0
+      ? 'LV ist valide, aber bitte Warnungen prüfen'
+      : 'LV ist vollständig valide'
+  };
+}
+
+/**
+ * Gibt Preisspannen für einen Trade-Code zurück
+ */
+function getPriceRangesForTrade(tradeCode) {
+  const ranges = {
+    'MAL': {
+      'm²': { min: 5, max: 50 },
+      'm': { min: 3, max: 25 },
+      'Stück': { min: 50, max: 500 }
+    },
+    'BOD': {
+      'm²': { min: 20, max: 200 },
+      'm': { min: 5, max: 30 },
+      'psch': { min: 500, max: 5000 }
+    },
+    'FLI': {
+      'm²': { min: 30, max: 150 },
+      'm': { min: 15, max: 60 },
+      'Stück': { min: 100, max: 1000 }
+    },
+    'TRO': {
+      'm²': { min: 25, max: 80 },
+      'm': { min: 15, max: 50 },
+      'Stück': { min: 50, max: 200 }
+    },
+    'ELEKT': {
+      'Stück': { min: 30, max: 150 },
+      'm': { min: 5, max: 50 },
+      'psch': { min: 500, max: 10000 }
+    },
+    'SAN': {
+      'Stück': { min: 200, max: 2000 },
+      'm': { min: 20, max: 150 },
+      'psch': { min: 1000, max: 15000 }
+    },
+    'HEI': {
+      'Stück': { min: 300, max: 1500 },
+      'm': { min: 15, max: 100 },
+      'psch': { min: 2000, max: 30000 }
+    },
+    'FEN': {
+      'Stück': { min: 300, max: 1500 },
+      'm²': { min: 150, max: 800 },
+      'psch': { min: 500, max: 5000 }
+    },
+    'TIS': {
+      'Stück': { min: 500, max: 3000 },
+      'm²': { min: 200, max: 1200 },
+      'm': { min: 50, max: 300 }
+    },
+    'DACH': {
+      'm²': { min: 50, max: 300 },
+      'm': { min: 30, max: 150 },
+      'Stück': { min: 100, max: 500 }
+    },
+    'FASS': {
+      'm²': { min: 40, max: 250 },
+      'm': { min: 20, max: 100 },
+      'psch': { min: 2000, max: 50000 }
+    },
+    'ROH': {
+      'm³': { min: 150, max: 500 },
+      'm²': { min: 80, max: 300 },
+      't': { min: 50, max: 200 }
+    },
+    'ESTR': {
+      'm²': { min: 15, max: 60 },
+      'm³': { min: 150, max: 400 },
+      'psch': { min: 500, max: 10000 }
+    },
+    'SCHL': {
+      'm': { min: 100, max: 500 },
+      'Stück': { min: 200, max: 2000 },
+      'kg': { min: 15, max: 50 }
+    },
+    'AUSS': {
+      'm²': { min: 20, max: 150 },
+      'm': { min: 30, max: 200 },
+      'Stück': { min: 50, max: 500 }
+    },
+    'GER': {
+      'm²': { min: 8, max: 25 },
+      'Wo': { min: 50, max: 200 },
+      'psch': { min: 500, max: 10000 }
+    },
+    'ABBR': {
+      'm³': { min: 30, max: 200 },
+      'm²': { min: 20, max: 150 },
+      't': { min: 50, max: 300 },
+      'psch': { min: 1000, max: 50000 }
+    }
+  };
+  
+  return ranges[tradeCode] || null;
+}
+
+/**
  * PDF Generation für LV
  */
 function formatCurrency(amount) {
