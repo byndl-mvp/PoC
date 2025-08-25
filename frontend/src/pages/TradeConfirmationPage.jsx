@@ -7,33 +7,76 @@ export default function TradeConfirmationPage() {
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [detectedTrades, setDetectedTrades] = useState([]);
+  const [recommendedTrades, setRecommendedTrades] = useState([]);
   const [allTrades, setAllTrades] = useState([]);
   const [selectedTrades, setSelectedTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [intakeSummary, setIntakeSummary] = useState(null);
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
         
-        // Lade Projektdetails mit erkannten Gewerken
+        // 1. Lade Projektdetails mit initial erkannten Gewerken
         const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
         if (!projectRes.ok) throw new Error('Projekt nicht gefunden');
         const projectData = await projectRes.json();
         setProject(projectData);
         
-        // Erkannte Gewerke (ohne INT)
-        const detected = (projectData.trades || []).filter(t => t.code !== 'INT');
-        setDetectedTrades(detected);
-        setSelectedTrades(detected.map(t => t.id));
+        // Initial erkannte Gewerke (ohne INT)
+        const initialDetected = (projectData.trades || []).filter(t => t.code !== 'INT');
         
-        // Lade alle verfügbaren Gewerke
+        // 2. Lade Intake-Summary für bessere Gewerke-Empfehlungen
+        let finalRecommendations = [];
+        try {
+          const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
+          if (summaryRes.ok) {
+            const summaryData = await summaryRes.json();
+            setIntakeSummary(summaryData.summary);
+            
+            // Nutze die KI-Empfehlungen basierend auf Intake-Antworten
+            if (summaryData.summary?.trades && Array.isArray(summaryData.summary.trades)) {
+              finalRecommendations = summaryData.summary.trades;
+            }
+          }
+        } catch (err) {
+          console.log('Keine Intake-Summary verfügbar, nutze initial erkannte Gewerke');
+        }
+        
+        // 3. Lade alle verfügbaren Gewerke
         const tradesRes = await fetch(apiUrl('/api/trades'));
         const allTradesData = await tradesRes.json();
-        // Filtere INT und bereits erkannte raus
+        
+        // 4. Kombiniere initial erkannte und KI-empfohlene Gewerke
+        const combinedTrades = [...initialDetected];
+        
+        // Füge KI-empfohlene Gewerke hinzu (wenn nicht schon vorhanden)
+        for (const rec of finalRecommendations) {
+          const tradeToadd = allTradesData.find(t => t.code === rec.code);
+          if (tradeToadd && !combinedTrades.some(t => t.id === tradeToadd.id)) {
+            combinedTrades.push({
+              ...tradeToadd,
+              recommended: true,
+              reason: rec.reason
+            });
+          }
+        }
+        
+        // Markiere initial erkannte vs. KI-empfohlene
+        const markedTrades = combinedTrades.map(trade => ({
+          ...trade,
+          source: trade.recommended ? 'ki-empfohlen' : 'initial-erkannt'
+        }));
+        
+        setDetectedTrades(markedTrades);
+        setRecommendedTrades(finalRecommendations);
+        setSelectedTrades(markedTrades.map(t => t.id));
+        
+        // Verfügbare Trades (ohne INT und bereits erkannte/empfohlene)
         const availableTrades = allTradesData.filter(t => 
-          t.code !== 'INT' && !detected.some(d => d.id === t.id)
+          t.code !== 'INT' && !markedTrades.some(d => d.id === t.id)
         );
         setAllTrades(availableTrades);
         
@@ -62,8 +105,8 @@ export default function TradeConfirmationPage() {
     
     const trade = allTrades.find(t => t.id === parseInt(tradeId));
     if (trade) {
-      // Füge zu erkannten Trades hinzu
-      setDetectedTrades(prev => [...prev, trade]);
+      // Füge zu erkannten Trades hinzu (als manuell hinzugefügt markiert)
+      setDetectedTrades(prev => [...prev, { ...trade, source: 'manuell' }]);
       setSelectedTrades(prev => [...prev, trade.id]);
       // Entferne aus verfügbaren Trades
       setAllTrades(prev => prev.filter(t => t.id !== trade.id));
@@ -90,8 +133,13 @@ export default function TradeConfirmationPage() {
       
       if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
       
-      // Weiter zum Intake
-      navigate(`/project/${projectId}/intake`);
+      // Weiter zum ersten Gewerk für spezifische Fragen
+      const confirmedTradesData = detectedTrades.filter(t => selectedTrades.includes(t.id));
+      if (confirmedTradesData.length > 0) {
+        navigate(`/project/${projectId}/trade/${confirmedTradesData[0].id}/questions`);
+      } else {
+        navigate(`/project/${projectId}/result`);
+      }
       
     } catch (err) {
       setError(err.message);
@@ -103,7 +151,7 @@ export default function TradeConfirmationPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
-        <p className="mt-4 text-white">Lade Gewerke...</p>
+        <p className="mt-4 text-white">Analysiere Intake-Antworten...</p>
       </div>
     </div>
   );
@@ -131,7 +179,7 @@ export default function TradeConfirmationPage() {
             Gewerke-Auswahl bestätigen
           </h1>
           <p className="text-gray-300">
-            Wir haben folgende Gewerke für Ihr Projekt erkannt. 
+            Basierend auf Ihren Angaben empfehlen wir folgende Gewerke.
             Sie können die Auswahl anpassen.
           </p>
         </div>
@@ -145,19 +193,48 @@ export default function TradeConfirmationPage() {
           </div>
         )}
 
-        {/* Detected Trades */}
+        {/* KI-Empfehlungen Info */}
+        {intakeSummary && (intakeSummary.recommendations || intakeSummary.risks) && (
+          <div className="bg-yellow-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-yellow-500/30">
+            <h3 className="text-yellow-300 font-semibold mb-3">
+              💡 Zusätzliche Empfehlungen basierend auf Ihren Angaben:
+            </h3>
+            {intakeSummary.recommendations && intakeSummary.recommendations.length > 0 && (
+              <div className="mb-3">
+                <p className="text-gray-300 text-sm mb-2">Empfohlene Experten:</p>
+                <ul className="list-disc list-inside text-gray-400 text-sm">
+                  {intakeSummary.recommendations.map((rec, idx) => (
+                    <li key={idx}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {intakeSummary.risks && intakeSummary.risks.length > 0 && (
+              <div>
+                <p className="text-gray-300 text-sm mb-2">Zu beachten:</p>
+                <ul className="list-disc list-inside text-gray-400 text-sm">
+                  {intakeSummary.risks.map((risk, idx) => (
+                    <li key={idx}>{risk}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Detected/Recommended Trades */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white/20">
           <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
             <span className="text-teal-400 mr-2">✓</span>
-            Automatisch erkannte Gewerke
+            Empfohlene Gewerke
           </h3>
           
           {detectedTrades.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-3">
+            <div className="space-y-3">
               {detectedTrades.map(trade => (
                 <label
                   key={trade.id}
-                  className={`flex items-center p-3 rounded-lg cursor-pointer transition-all ${
+                  className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
                     selectedTrades.includes(trade.id)
                       ? 'bg-teal-500/20 border border-teal-500/50'
                       : 'bg-white/5 border border-white/20 opacity-60'
@@ -167,17 +244,32 @@ export default function TradeConfirmationPage() {
                     type="checkbox"
                     checked={selectedTrades.includes(trade.id)}
                     onChange={() => toggleTrade(trade.id)}
-                    className="mr-3 w-5 h-5 text-teal-500 bg-white/10 border-white/30 rounded focus:ring-teal-500"
+                    className="mt-1 mr-3 w-5 h-5 text-teal-500 bg-white/10 border-white/30 rounded focus:ring-teal-500"
                   />
-                  <div>
-                    <span className="text-white font-medium">{trade.name}</span>
-                    <span className="text-gray-400 text-sm ml-2">({trade.code})</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">{trade.name}</span>
+                      <span className="text-gray-400 text-sm">({trade.code})</span>
+                      {trade.source === 'ki-empfohlen' && (
+                        <span className="bg-teal-500/20 text-teal-300 text-xs px-2 py-1 rounded">
+                          KI-Empfehlung
+                        </span>
+                      )}
+                      {trade.source === 'manuell' && (
+                        <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded">
+                          Manuell
+                        </span>
+                      )}
+                    </div>
+                    {trade.reason && (
+                      <p className="text-gray-400 text-sm mt-1">{trade.reason}</p>
+                    )}
                   </div>
                 </label>
               ))}
             </div>
           ) : (
-            <p className="text-gray-400">Keine Gewerke automatisch erkannt</p>
+            <p className="text-gray-400">Keine Gewerke erkannt</p>
           )}
         </div>
 
@@ -222,7 +314,10 @@ export default function TradeConfirmationPage() {
             </div>
             <div className="text-right">
               <p className="text-gray-400 text-sm">Geschätzte Bearbeitungszeit:</p>
-              <p className="text-white">~{selectedTrades.length * 3} Minuten</p>
+              <p className="text-white">~{selectedTrades.length * 2} Minuten</p>
+              <p className="text-gray-400 text-xs mt-1">
+                (ca. {Math.ceil(selectedTrades.length * 8 / 4)} Fragen pro Gewerk)
+              </p>
             </div>
           </div>
         </div>
@@ -230,10 +325,10 @@ export default function TradeConfirmationPage() {
         {/* Action Buttons */}
         <div className="flex justify-between items-center">
           <button
-            onClick={() => navigate(`/`)}
+            onClick={() => navigate(`/project/${projectId}/intake`)}
             className="px-6 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all duration-200"
           >
-            ← Zurück
+            ← Zurück zu Intake
           </button>
           
           <button
@@ -258,8 +353,8 @@ export default function TradeConfirmationPage() {
         {/* Info Box */}
         <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <p className="text-blue-300 text-sm">
-            <strong>ℹ️ Hinweis:</strong> Im nächsten Schritt werden allgemeine Projektfragen gestellt, 
-            danach folgen spezifische Fragen zu jedem ausgewählten Gewerk.
+            <strong>ℹ️ Hinweis:</strong> Als nächstes werden detaillierte Fragen zu jedem ausgewählten Gewerk gestellt,
+            um ein präzises Leistungsverzeichnis erstellen zu können.
           </p>
         </div>
       </div>
