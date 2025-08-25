@@ -1,11 +1,12 @@
 /*
- * BYNDL Proof of Concept – Backend (KORRIGIERTE VERSION)
+ * BYNDL Proof of Concept – Backend (VERBESSERTE VERSION)
  * 
  * Hauptverbesserungen:
- * - Dynamische Fragenanzahl basierend auf Projektkomplexität
- * - Erhöhte Token-Limits für detaillierte LVs
- * - Adaptive Fragengenerierung ohne Fallbacks
- * - Vollständige Intake-Kontext Integration
+ * - Intelligente, laiengerechte Fragengenerierung
+ * - "Ich bin unsicher" Option bei allen Mengenangaben
+ * - Strikte LV-Bindung an vorhandene Antworten
+ * - Transparente Dokumentation von Annahmen
+ * - Adaptive Fragenanzahl je nach Gewerk
  * 
  * BUGFIX: Verhindert ungewolltes Hinzufügen aller Trades
  * - Strikte Kontrolle bei project_trades Einträgen
@@ -390,7 +391,7 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
   }
 }
 
- /**
+/**
  * Intelligente, adaptive Fragengenerierung für Laien
  */
 async function generateQuestions(tradeId, projectContext = {}) {
@@ -565,29 +566,34 @@ function getIntelligentQuestionRange(tradeName, projectContext) {
   const tradeComplexity = {
     // Einfache Gewerke (5-10 Fragen)
     'Malerarbeiten': '6-10',
+    'Tapezierarbeiten': '5-8',
+    'Reinigung': '4-6',
     
     // Mittlere Komplexität (8-15 Fragen)
     'Bodenbelagsarbeiten': '8-12',
-    'Fliesenarbeiten': '12-15',
+    'Fliesenarbeiten': '10-14',
     'Trockenbau': '8-12',
-    'Fenster-Außentüren': '10-15',
+    'Fenster-Außentüren': '6-10',
+    'Türen': '6-10',
     
     // Hohe Komplexität (12-20 Fragen)
-    'Elektroinstallation': '18-22',
-    'Sanitärinstallation': '18-22',
-    'Heizung': '15-20',
-    'Fassade': '12-15',
+    'Elektroinstallation': '12-18',
+    'Sanitärinstallation': '12-18',
+    'Heizung': '10-16',
+    'Dämmung/Fassade': '10-15',
+    'Fassade': '10-15',
     
     // Sehr hohe Komplexität (15-25 Fragen)
-    'Rohbau': '15-25',
-    'Dacharbeiten': '15-25',
+    'Rohbau': '15-20',
+    'Dacharbeiten': '12-18',
     'Abbruch': '8-15',
     
     // Spezialgewerke
-    'Schlosser': '10-15',
+    'Schlosser': '8-12',
     'Tischler': '10-14',
     'Estrich': '6-10',
-    'Gerüstbau': '8-12'
+    'Gerüstbau': '5-8',
+    'Außenanlagen': '10-15'
   };
   
   // Basis-Range oder Default
@@ -1024,10 +1030,15 @@ app.use(bodyParser.json());
 // Health Check
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'BYNDL Backend v3.1 (FIXED)',
+    message: 'BYNDL Backend v3.2 (ENHANCED)',
     status: 'running',
     timestamp: new Date().toISOString(),
-    fixes: ['Trade assignment control', 'No automatic trade addition']
+    features: [
+      'Intelligente Fragengenerierung für Laien',
+      'Ich bin unsicher Option',
+      'Strikte LV-Bindung an Antworten',
+      'Transparente Annahmen-Dokumentation'
+    ]
   });
 });
 
@@ -1478,94 +1489,124 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
   }
 });
 
-// Generate detailed LV for a trade
+// Generate detailed LV for a trade - VERBESSERTE VERSION
 app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
 
     const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
-    if (!project) return res.status(404).json({ error: 'Project not found' });
+   if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
-    if (!trade) return res.status(404).json({ error: 'Trade not found' });
-    
-    // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
-    const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
-    
-    if (!isAssigned && trade.code !== 'INT') {
-      console.log(`[LV] Trade ${tradeId} not assigned to project ${projectId}, adding it now`);
-      await ensureProjectTrade(projectId, tradeId, 'lv_generation');
-    }
-    
-    const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
-    const answersInt = intTrade
-      ? (await query(
-          `SELECT q.text as question, a.answer_text as answer, a.assumption
-           FROM answers a
-           JOIN questions q ON q.project_id = a.project_id 
-             AND q.trade_id = a.trade_id 
-             AND q.question_id = a.question_id
-           WHERE a.project_id=$1 AND a.trade_id=$2
-           ORDER BY a.question_id`,
-          [projectId, intTrade.id]
-        )).rows
-      : [];
+   const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
+   if (!trade) return res.status(404).json({ error: 'Trade not found' });
+   
+   // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
+   const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
+   
+   if (!isAssigned && trade.code !== 'INT') {
+     console.log(`[LV] Trade ${tradeId} not assigned to project ${projectId}, adding it now`);
+     await ensureProjectTrade(projectId, tradeId, 'lv_generation');
+   }
+   
+   const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
+   const answersInt = intTrade
+     ? (await query(
+         `SELECT q.text as question, a.answer_text as answer, a.assumption
+          FROM answers a
+          JOIN questions q ON q.project_id = a.project_id 
+            AND q.trade_id = a.trade_id 
+            AND q.question_id = a.question_id
+          WHERE a.project_id=$1 AND a.trade_id=$2
+          ORDER BY a.question_id`,
+         [projectId, intTrade.id]
+       )).rows
+     : [];
 
-    const answersTrade = (await query(
-      `SELECT q.text as question, a.answer_text as answer, a.assumption
-       FROM answers a
-       JOIN questions q ON q.project_id = a.project_id 
-         AND q.trade_id = a.trade_id 
-         AND q.question_id = a.question_id
-       WHERE a.project_id=$1 AND a.trade_id=$2
-       ORDER BY a.question_id`,
-      [projectId, tradeId]
-    )).rows;
+   const answersTrade = (await query(
+     `SELECT q.text as question, a.answer_text as answer, a.assumption
+      FROM answers a
+      JOIN questions q ON q.project_id = a.project_id 
+        AND q.trade_id = a.trade_id 
+        AND q.question_id = a.question_id
+      WHERE a.project_id=$1 AND a.trade_id=$2
+      ORDER BY a.question_id`,
+     [projectId, tradeId]
+   )).rows;
 
-    const lvPromptRow = (await query(
-      `SELECT content FROM prompts WHERE trade_id=$1 AND type='lv' ORDER BY updated_at DESC LIMIT 1`,
-      [tradeId]
-    )).rows[0];
-    if (!lvPromptRow) return res.status(400).json({ error: 'LV prompt missing for trade' });
+   const lvPromptRow = (await query(
+     `SELECT content FROM prompts WHERE trade_id=$1 AND type='lv' ORDER BY updated_at DESC LIMIT 1`,
+     [tradeId]
+   )).rows[0];
+   if (!lvPromptRow) return res.status(400).json({ error: 'LV prompt missing for trade' });
 
-    const system = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 20+ Jahren Erfahrung.
+   // VERBESSERTER SYSTEM-PROMPT MIT STRIKTER ANTWORTBINDUNG
+   const system = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 20+ Jahren Erfahrung.
 Erstelle ein VOLLSTÄNDIGES und DETAILLIERTES Leistungsverzeichnis für ${trade.name}.
 
-ANFORDERUNGEN:
-1. VOLLSTÄNDIGKEIT: Alle notwendigen Positionen (10-30 je nach Projektumfang)
-2. VOB-KONFORMITÄT: Jede Position VOB/C-konform beschrieben
-3. DETAILTIEFE: Ausführliche Leistungsbeschreibungen (2-3 Sätze minimum)
-4. PREISGENAUIGKEIT: Realistische marktübliche Preise (Stand 2024/2025)
-5. MENGENERMITTLUNG: Plausible Mengen basierend auf Projektangaben
+KRITISCHE REGEL: 
+Du darfst NUR Positionen erstellen für die du EXPLIZITE ANTWORTEN hast!
+
+UMGANG MIT UNSICHEREN ANGABEN:
+- Bei "Ich bin unsicher" → Nutze branchenübliche Standardwerte
+- Dokumentiere ALLE Annahmen im Feld "notes" der Position
+- Standardwerte:
+ * Raumhöhe: 2,5m (Altbau: 3m, Neubau: 2,4m)
+ * Wandfläche: (2×Länge + 2×Breite) × Höhe
+ * Kabellängen: (2×(L+B)+2×H)×1,3 Sicherheitsfaktor
+ * Rohrleitungen: Raumdiagonale × 1,5
+ * Verschnitt Fliesen/Parkett: +10%
+ * Farbbedarf: 150ml/m² pro Anstrich
+ * Spachtelmasse: 1kg/m² bei schlechtem Untergrund
+
+VERBOTEN:
+- KEINE erfundenen Mengen ohne Grundlage
+- KEINE Positionen ohne entsprechende Frage/Antwort
+- KEIN Asbest/Schadstoffe wenn nicht explizit erwähnt
+- KEINE Standardannahmen ohne Kennzeichnung
+
+FÜR JEDE POSITION PRÜFE:
+1. Gibt es eine Antwort mit konkreter Menge? → Wenn NEIN und keine "unsicher" Antwort, Position weglassen
+2. Wurde explizit danach gefragt? → Wenn NEIN, Position weglassen
+3. Bei "Ich bin unsicher" → Standardwert verwenden UND in notes dokumentieren
+
+BEISPIEL für korrekte Verarbeitung:
+Antwort: "Wandfläche: 45m²" 
+→ Position: "Wände streichen 45m²"
+
+Antwort: "Wandfläche: Ich bin unsicher, Raum ist etwa 4x5m"
+→ Position: "Wände streichen 50m²" 
+→ notes: "Annahme: 4x5m Raum, 2,5m Höhe = 50m² Wandfläche"
 
 OUTPUT FORMAT (NUR valides JSON):
 {
-  "trade": "${trade.name}",
-  "tradeCode": "${trade.code}",
-  "projectType": "Neubau/Sanierung/Modernisierung",
-  "positions": [
-    { 
-      "pos": "01.01.001", 
-      "title": "Präziser Positionstitel", 
-      "description": "Detaillierte VOB-konforme Leistungsbeschreibung mit allen relevanten Angaben zu Material, Ausführung, Qualität, Normen. Inklusive aller Nebenleistungen gemäß VOB/C.", 
-      "quantity": 150.00, 
-      "unit": "m²/m/Stk/psch", 
-      "unitPrice": 45.50,
-      "totalPrice": 6825.00,
-      "notes": "Optionale Hinweise"
-    }
-  ],
-  "totalSum": 0,
-  "additionalNotes": "Wichtige Hinweise zur Ausführung",
-  "includedServices": ["Eingeschlossene Nebenleistungen"],
-  "excludedServices": ["Nicht enthaltene Leistungen"],
-  "standards": ["Relevante DIN-Normen"],
-  "priceBase": "Preisbasis und Gültigkeit",
-  "priceDate": "${new Date().toISOString().split('T')[0]}",
-  "executionTime": "Geschätzte Ausführungsdauer"
+ "trade": "${trade.name}",
+ "tradeCode": "${trade.code}",
+ "projectType": "Neubau/Sanierung/Modernisierung",
+ "positions": [
+   { 
+     "pos": "01.01.001", 
+     "title": "Präziser Positionstitel", 
+     "description": "Detaillierte VOB-konforme Leistungsbeschreibung...", 
+     "quantity": 150.00, 
+     "unit": "m²/m/Stk/psch", 
+     "unitPrice": 45.50,
+     "totalPrice": 6825.00,
+     "notes": "Bei 'unsicher': Annahme dokumentieren",
+     "assumption": true // true wenn Wert geschätzt wurde
+   }
+ ],
+ "totalSum": 0,
+ "assumptions": ["Liste aller getroffenen Annahmen"],
+ "missingInfo": ["Fehlende Informationen die nicht geschätzt werden konnten"],
+ "additionalNotes": "Wichtige Hinweise",
+ "includedServices": ["Eingeschlossene Nebenleistungen"],
+ "excludedServices": ["Nicht enthaltene Leistungen"],
+ "standards": ["Relevante DIN-Normen"],
+ "priceDate": "${new Date().toISOString().split('T')[0]}"
 }`;
 
-    const user = `GEWERK-TEMPLATE:
+   // VERBESSERTER USER-PROMPT
+   const user = `GEWERK-TEMPLATE:
 ${lvPromptRow.content}
 
 PROJEKTDATEN:
@@ -1576,315 +1617,375 @@ PROJEKTDATEN:
 
 INTAKE-ANTWORTEN:
 ${answersInt.length > 0 ? answersInt.map(a => 
-  `Frage: ${a.question}
-Antwort: ${a.answer}
+ `Frage: ${a.question}
+Antwort: ${a.answer}${a.answer === 'Ich bin unsicher' ? ' [→ STANDARDWERT VERWENDEN & DOKUMENTIEREN]' : ''}
 ${a.assumption ? `Annahme: ${a.assumption}` : ''}`
 ).join('\n\n') : 'Keine Intake-Informationen'}
 
 GEWERKESPEZIFISCHE ANTWORTEN (${trade.name}):
 ${answersTrade.length > 0 ? answersTrade.map(a => 
-  `Frage: ${a.question}
-Antwort: ${a.answer}
+ `Frage: ${a.question}
+Antwort: ${a.answer}${a.answer === 'Ich bin unsicher' ? ' [→ STANDARDWERT VERWENDEN & DOKUMENTIEREN]' : ''}
 ${a.assumption ? `Annahme: ${a.assumption}` : ''}`
 ).join('\n\n') : 'Keine gewerkespezifischen Antworten'}
 
-Erstelle ein VOLLSTÄNDIGES LV mit ALLEN notwendigen Positionen.
-Das LV soll direkt als Ausschreibungsunterlage verwendbar sein!`;
+WICHTIG:
+1. Erstelle NUR Positionen für die obigen Antworten
+2. Bei "Ich bin unsicher" → Verwende Standardwerte und dokumentiere dies transparent
+3. KEINE Positionen ohne entsprechende Antwort erfinden
+4. Alle Annahmen müssen im "notes" Feld stehen`;
 
-    const raw = await llmWithPolicy('lv', [
-      { role: 'system', content: system },
-      { role: 'user', content: user }
-    ], { 
-      maxTokens: 8000,
-      temperature: 0.3,
-      jsonMode: true 
-    });
+   const raw = await llmWithPolicy('lv', [
+     { role: 'system', content: system },
+     { role: 'user', content: user }
+   ], { 
+     maxTokens: 8000,
+     temperature: 0.3,
+     jsonMode: true 
+   });
 
-    let lv;
-    try {
-      const cleanedResponse = raw
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
-      
-      lv = JSON.parse(cleanedResponse);
-      
-      if (lv.positions && Array.isArray(lv.positions)) {
-        let calculatedSum = 0;
-        lv.positions = lv.positions.map(pos => {
-          if (!pos.totalPrice && pos.quantity && pos.unitPrice) {
-            pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-          }
-          calculatedSum += pos.totalPrice || 0;
-          return pos;
-        });
-        lv.totalSum = Math.round(calculatedSum * 100) / 100;
-        
-        lv.statistics = {
-          positionCount: lv.positions.length,
-          averagePositionValue: Math.round((lv.totalSum / lv.positions.length) * 100) / 100,
-          minPosition: Math.min(...lv.positions.map(p => p.totalPrice || 0)),
-          maxPosition: Math.max(...lv.positions.map(p => p.totalPrice || 0))
-        };
-      }
-      
-    } catch (parseError) {
-      console.error('[LV] JSON parse error:', parseError);
-      lv = {
-        trade: trade.name,
-        tradeCode: trade.code,
-        positions: [{
-          pos: "01.01",
-          title: "LV-Generierung fehlgeschlagen",
-          description: "Bitte kontaktieren Sie den Support",
-          quantity: 1,
-          unit: "psch",
-          unitPrice: 0,
-          totalPrice: 0
-        }],
-        totalSum: 0,
-        error: "Parse error"
-      };
-    }
+   let lv;
+   try {
+     const cleanedResponse = raw
+       .replace(/```json\n?/g, '')
+       .replace(/```\n?/g, '')
+       .trim();
+     
+     lv = JSON.parse(cleanedResponse);
+     
+     // VALIDIERUNG UND VERBESSERUNG DES LV
+     if (lv.positions && Array.isArray(lv.positions)) {
+       // Markiere Positionen mit Annahmen
+       const allAnswers = [...answersInt, ...answersTrade];
+       
+       lv.positions = lv.positions.map(pos => {
+         // Prüfe ob Position auf "unsicher" basiert
+         const unsureAnswer = allAnswers.find(a => 
+           a.answer === 'Ich bin unsicher' && 
+           (pos.title.toLowerCase().includes(a.question.substring(0, 20).toLowerCase()) ||
+            pos.notes?.includes('Annahme'))
+         );
+         
+         if (unsureAnswer) {
+           pos.assumption = true;
+           if (!pos.notes) {
+             pos.notes = 'Standardwerte verwendet (Nutzer war unsicher)';
+           }
+         }
+         
+         // Berechne Gesamtpreis
+         if (!pos.totalPrice && pos.quantity && pos.unitPrice) {
+           pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+         }
+         
+         return pos;
+       });
+       
+       // Sammle alle Annahmen
+       const assumptions = lv.positions
+         .filter(p => p.assumption)
+         .map(p => `${p.title}: ${p.notes || 'Standardwert'}`);
+       
+       if (assumptions.length > 0) {
+         lv.assumptions = [...new Set(assumptions)];
+       }
+       
+       // Berechne finale Summe
+       let calculatedSum = 0;
+       lv.positions.forEach(pos => {
+         calculatedSum += pos.totalPrice || 0;
+       });
+       lv.totalSum = Math.round(calculatedSum * 100) / 100;
+       
+       // Füge Statistiken hinzu
+       lv.statistics = {
+         positionCount: lv.positions.length,
+         assumptionCount: lv.positions.filter(p => p.assumption).length,
+         averagePositionValue: Math.round((lv.totalSum / lv.positions.length) * 100) / 100,
+         confidenceLevel: Math.round((lv.positions.filter(p => !p.assumption).length / lv.positions.length) * 100) + '%',
+         minPosition: Math.min(...lv.positions.map(p => p.totalPrice || 0)),
+         maxPosition: Math.max(...lv.positions.map(p => p.totalPrice || 0))
+       };
+       
+       console.log(`[LV] Validated: ${lv.statistics.assumptionCount}/${lv.positions.length} positions with assumptions`);
+     }
+     
+   } catch (parseError) {
+     console.error('[LV] JSON parse error:', parseError);
+     lv = {
+       trade: trade.name,
+       tradeCode: trade.code,
+       positions: [{
+         pos: "01.01",
+         title: "LV-Generierung fehlgeschlagen",
+         description: "Bitte kontaktieren Sie den Support",
+         quantity: 1,
+         unit: "psch",
+         unitPrice: 0,
+         totalPrice: 0
+       }],
+       totalSum: 0,
+       error: "Parse error"
+     };
+   }
 
-    const lvWithMeta = {
-      ...lv,
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        projectId: projectId,
-        tradeId: tradeId,
-        intakeAnswersCount: answersInt.length,
-        tradeAnswersCount: answersTrade.length,
-        positionsCount: lv.positions?.length || 0,
-        totalValue: lv.totalSum || 0
-      }
-    };
+   const lvWithMeta = {
+     ...lv,
+     metadata: {
+       generatedAt: new Date().toISOString(),
+       projectId: projectId,
+       tradeId: tradeId,
+       intakeAnswersCount: answersInt.length,
+       tradeAnswersCount: answersTrade.length,
+       positionsCount: lv.positions?.length || 0,
+       totalValue: lv.totalSum || 0,
+       hasAssumptions: lv.statistics?.assumptionCount > 0,
+       confidenceLevel: lv.statistics?.confidenceLevel || '0%'
+     }
+   };
 
-    await query(
-      `INSERT INTO lvs (project_id, trade_id, content)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (project_id, trade_id)
-       DO UPDATE SET content=$3, updated_at=NOW()`,
-      [projectId, tradeId, lvWithMeta]
-    );
+   await query(
+     `INSERT INTO lvs (project_id, trade_id, content)
+      VALUES ($1,$2,$3)
+      ON CONFLICT (project_id, trade_id)
+      DO UPDATE SET content=$3, updated_at=NOW()`,
+     [projectId, tradeId, lvWithMeta]
+   );
 
-    console.log(`[LV] Generated for ${trade.name}: ${lv.positions?.length || 0} positions, Total: €${lv.totalSum || 0}`);
+   console.log(`[LV] Generated for ${trade.name}: ${lv.positions?.length || 0} positions, Total: €${lv.totalSum || 0}`);
 
-    res.json({ 
-      ok: true, 
-      trade: { id: trade.id, code: trade.code, name: trade.name }, 
-      lv: lvWithMeta
-    });
-    
-  } catch (err) {
-    console.error('Generate LV failed:', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+   res.json({ 
+     ok: true, 
+     trade: { id: trade.id, code: trade.code, name: trade.name }, 
+     lv: lvWithMeta
+   });
+   
+ } catch (err) {
+   console.error('Generate LV failed:', err);
+   res.status(500).json({ ok: false, error: err.message });
+ }
 });
 
 // Get aggregated LVs for a project
 app.get('/api/projects/:projectId/lv', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    const rows = (await query(
-      `SELECT l.trade_id, t.code, t.name, l.content
-       FROM lvs l JOIN trades t ON t.id=l.trade_id
-       WHERE l.project_id=$1
-       ORDER BY t.name`,
-      [projectId]
-    )).rows;
+ try {
+   const { projectId } = req.params;
+   const rows = (await query(
+     `SELECT l.trade_id, t.code, t.name, l.content
+      FROM lvs l JOIN trades t ON t.id=l.trade_id
+      WHERE l.project_id=$1
+      ORDER BY t.name`,
+     [projectId]
+   )).rows;
 
-    const lvs = rows.map(row => ({
-      ...row,
-      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
-    }));
+   const lvs = rows.map(row => ({
+     ...row,
+     content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+   }));
 
-    res.json({ ok: true, lvs });
-  } catch (err) {
-    console.error('aggregate LV failed:', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+   res.json({ ok: true, lvs });
+ } catch (err) {
+   console.error('aggregate LV failed:', err);
+   res.status(500).json({ ok: false, error: err.message });
+ }
 });
 
 // Get all LVs for a project (legacy)
 app.get('/api/projects/:projectId/lvs', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    const result = await query(
-      `SELECT l.*, t.name as trade_name, t.code as trade_code
-       FROM lvs l
-       JOIN trades t ON t.id = l.trade_id
-       WHERE l.project_id = $1`,
-      [projectId]
-    );
-    
-    const lvs = result.rows.map(row => ({
-      ...row,
-      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
-    }));
-    
-    res.json({ lvs });
-    
-  } catch (err) {
-    console.error('Failed to fetch LVs:', err);
-    res.status(500).json({ error: err.message });
-  }
+ try {
+   const { projectId } = req.params;
+   
+   const result = await query(
+     `SELECT l.*, t.name as trade_name, t.code as trade_code
+      FROM lvs l
+      JOIN trades t ON t.id = l.trade_id
+      WHERE l.project_id = $1`,
+     [projectId]
+   );
+   
+   const lvs = result.rows.map(row => ({
+     ...row,
+     content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+   }));
+   
+   res.json({ lvs });
+   
+ } catch (err) {
+   console.error('Failed to fetch LVs:', err);
+   res.status(500).json({ error: err.message });
+ }
 });
 
 // Export LV with or without prices
 app.get('/api/projects/:projectId/trades/:tradeId/lv/export', async (req, res) => {
-  try {
-    const { projectId, tradeId } = req.params;
-    const { withPrices } = req.query;
-    
-    const result = await query(
-      `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
-       FROM lvs l 
-       JOIN trades t ON t.id = l.trade_id
-       JOIN projects p ON p.id = l.project_id
-       WHERE l.project_id = $1 AND l.trade_id = $2`,
-      [projectId, tradeId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'LV not found' });
-    }
-    
-    const { content, trade_name, trade_code, project_description } = result.rows[0];
-    const lv = typeof content === 'string' ? JSON.parse(content) : content;
-    
-    if (withPrices === 'false') {
-      lv.positions = lv.positions.map(pos => ({
-        pos: pos.pos,
-        title: pos.title,
-        description: pos.description,
-        quantity: pos.quantity,
-        unit: pos.unit,
-        unitPrice: '________',
-        totalPrice: '________'
-      }));
-      lv.exportType = 'Angebotsanfrage';
-      lv.note = 'Bitte tragen Sie Ihre Preise in die markierten Felder ein.';
-    } else {
-      lv.exportType = 'Kalkulation';
-    }
-    
-    res.json({
-      ok: true,
-      tradeName: trade_name,
-      tradeCode: trade_code,
-      projectDescription: project_description,
-      withPrices: withPrices !== 'false',
-      lv
-    });
-    
-  } catch (err) {
-    console.error('Export LV failed:', err);
-    res.status(500).json({ error: err.message });
-  }
+ try {
+   const { projectId, tradeId } = req.params;
+   const { withPrices } = req.query;
+   
+   const result = await query(
+     `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
+      FROM lvs l 
+      JOIN trades t ON t.id = l.trade_id
+      JOIN projects p ON p.id = l.project_id
+      WHERE l.project_id = $1 AND l.trade_id = $2`,
+     [projectId, tradeId]
+   );
+   
+   if (result.rows.length === 0) {
+     return res.status(404).json({ error: 'LV not found' });
+   }
+   
+   const { content, trade_name, trade_code, project_description } = result.rows[0];
+   const lv = typeof content === 'string' ? JSON.parse(content) : content;
+   
+   if (withPrices === 'false') {
+     lv.positions = lv.positions.map(pos => ({
+       pos: pos.pos,
+       title: pos.title,
+       description: pos.description,
+       quantity: pos.quantity,
+       unit: pos.unit,
+       unitPrice: '________',
+       totalPrice: '________'
+     }));
+     lv.exportType = 'Angebotsanfrage';
+     lv.note = 'Bitte tragen Sie Ihre Preise in die markierten Felder ein.';
+   } else {
+     lv.exportType = 'Kalkulation';
+   }
+   
+   res.json({
+     ok: true,
+     tradeName: trade_name,
+     tradeCode: trade_code,
+     projectDescription: project_description,
+     withPrices: withPrices !== 'false',
+     lv
+   });
+   
+ } catch (err) {
+   console.error('Export LV failed:', err);
+   res.status(500).json({ error: err.message });
+ }
 });
 
 // Generate PDF for LV
 app.get('/api/projects/:projectId/trades/:tradeId/lv.pdf', async (req, res) => {
-  try {
-    const { projectId, tradeId } = req.params;
-    const { withPrices } = req.query;
-    
-    const result = await query(
-      `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
-       FROM lvs l 
-       JOIN trades t ON t.id = l.trade_id
-       JOIN projects p ON p.id = l.project_id
-       WHERE l.project_id = $1 AND l.trade_id = $2`,
-      [projectId, tradeId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'LV not found' });
-    }
-    
-    const { content, trade_name, trade_code, project_description } = result.rows[0];
-    const lv = typeof content === 'string' ? JSON.parse(content) : content;
-    
-    const pdfBuffer = await generateLVPDF(
-      lv,
-      trade_name,
-      trade_code,
-      project_description,
-      withPrices !== 'false'
-    );
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="LV_${trade_code}_${withPrices !== 'false' ? 'mit' : 'ohne'}_Preise.pdf"`);
-    res.send(pdfBuffer);
-    
-  } catch (err) {
-    console.error('PDF generation failed:', err);
-    res.status(500).json({ error: err.message });
-  }
+ try {
+   const { projectId, tradeId } = req.params;
+   const { withPrices } = req.query;
+   
+   const result = await query(
+     `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
+      FROM lvs l 
+      JOIN trades t ON t.id = l.trade_id
+      JOIN projects p ON p.id = l.project_id
+      WHERE l.project_id = $1 AND l.trade_id = $2`,
+     [projectId, tradeId]
+   );
+   
+   if (result.rows.length === 0) {
+     return res.status(404).json({ error: 'LV not found' });
+   }
+   
+   const { content, trade_name, trade_code, project_description } = result.rows[0];
+   const lv = typeof content === 'string' ? JSON.parse(content) : content;
+   
+   const pdfBuffer = await generateLVPDF(
+     lv,
+     trade_name,
+     trade_code,
+     project_description,
+     withPrices !== 'false'
+   );
+   
+   res.setHeader('Content-Type', 'application/pdf');
+   res.setHeader('Content-Disposition', `attachment; filename="LV_${trade_code}_${withPrices !== 'false' ? 'mit' : 'ohne'}_Preise.pdf"`);
+   res.send(pdfBuffer);
+   
+ } catch (err) {
+   console.error('PDF generation failed:', err);
+   res.status(500).json({ error: err.message });
+ }
 });
 
 // Get project cost summary
 app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    const lvsResult = await query(
-      `SELECT l.content, t.name as trade_name, t.code as trade_code
-       FROM lvs l 
-       JOIN trades t ON t.id = l.trade_id
-       WHERE l.project_id = $1`,
-      [projectId]
-    );
-    
-    const summary = {
-      trades: [],
-      totalCost: 0,
-      pricesComplete: true
-    };
-    
-    for (const row of lvsResult.rows) {
-      const lv = typeof row.content === 'string' 
-        ? JSON.parse(row.content) 
-        : row.content;
-      
-      const tradeCost = lv.totalSum || 
-        (lv.positions || []).reduce((sum, pos) => 
-          sum + (pos.totalPrice || 0), 0
-        );
-      
-      summary.trades.push({
-        name: row.trade_name,
-        code: row.trade_code,
-        cost: tradeCost,
-        hasPrice: tradeCost > 0
-      });
-      
-      summary.totalCost += tradeCost;
-      
-      if (tradeCost === 0) {
-        summary.pricesComplete = false;
-      }
-    }
-    
-    summary.additionalCosts = {
-      planningCosts: summary.totalCost * 0.10,
-      contingency: summary.totalCost * 0.05,
-      vat: summary.totalCost * 0.19
-    };
-    
-    summary.grandTotal = summary.totalCost + 
-      summary.additionalCosts.planningCosts +
-      summary.additionalCosts.contingency +
-      summary.additionalCosts.vat;
-    
-    res.json({ ok: true, summary });
-    
-  } catch (err) {
-    console.error('Cost summary failed:', err);
-    res.status(500).json({ error: err.message });
-  }
+ try {
+   const { projectId } = req.params;
+   
+   const lvsResult = await query(
+     `SELECT l.content, t.name as trade_name, t.code as trade_code
+      FROM lvs l 
+      JOIN trades t ON t.id = l.trade_id
+      WHERE l.project_id = $1`,
+     [projectId]
+   );
+   
+   const summary = {
+     trades: [],
+     totalCost: 0,
+     pricesComplete: true,
+     totalAssumptions: 0,
+     averageConfidence: 0
+   };
+   
+   let totalConfidence = 0;
+   let tradeCount = 0;
+   
+   for (const row of lvsResult.rows) {
+     const lv = typeof row.content === 'string' 
+       ? JSON.parse(row.content) 
+       : row.content;
+     
+     const tradeCost = lv.totalSum || 
+       (lv.positions || []).reduce((sum, pos) => 
+         sum + (pos.totalPrice || 0), 0
+       );
+     
+     const assumptionCount = lv.statistics?.assumptionCount || 0;
+     const confidence = parseInt(lv.statistics?.confidenceLevel || '0');
+     
+     summary.trades.push({
+       name: row.trade_name,
+       code: row.trade_code,
+       cost: tradeCost,
+       hasPrice: tradeCost > 0,
+       assumptionCount: assumptionCount,
+       confidence: confidence + '%'
+     });
+     
+     summary.totalCost += tradeCost;
+     summary.totalAssumptions += assumptionCount;
+     totalConfidence += confidence;
+     tradeCount++;
+     
+     if (tradeCost === 0) {
+       summary.pricesComplete = false;
+     }
+   }
+   
+   summary.averageConfidence = tradeCount > 0 
+     ? Math.round(totalConfidence / tradeCount) + '%'
+     : '0%';
+   
+   summary.additionalCosts = {
+     planningCosts: summary.totalCost * 0.10,
+     contingency: summary.totalCost * 0.05,
+     vat: summary.totalCost * 0.19
+   };
+   
+   summary.grandTotal = summary.totalCost + 
+     summary.additionalCosts.planningCosts +
+     summary.additionalCosts.contingency +
+     summary.additionalCosts.vat;
+   
+   res.json({ ok: true, summary });
+   
+ } catch (err) {
+   console.error('Cost summary failed:', err);
+   res.status(500).json({ error: err.message });
+ }
 });
 
 // ===========================================================================
@@ -1893,130 +1994,130 @@ app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
 
 // Admin authentication
 app.post('/api/admin/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
-    }
-    
-    const result = await query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    
-    const user = result.rows[0];
-    const valid = await bcrypt.compare(password, user.password_hash);
-    
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
-    
-    res.json({ token, user: { id: user.id, username: user.username } });
-    
-  } catch (err) {
-    console.error('Login failed:', err);
-    res.status(500).json({ error: 'Login failed' });
-  }
+ try {
+   const { username, password } = req.body;
+   
+   if (!username || !password) {
+     return res.status(400).json({ error: 'Username and password required' });
+   }
+   
+   const result = await query(
+     'SELECT * FROM users WHERE username = $1',
+     [username]
+   );
+   
+   if (result.rows.length === 0) {
+     return res.status(401).json({ error: 'Invalid credentials' });
+   }
+   
+   const user = result.rows[0];
+   const valid = await bcrypt.compare(password, user.password_hash);
+   
+   if (!valid) {
+     return res.status(401).json({ error: 'Invalid credentials' });
+   }
+   
+   const token = jwt.sign(
+     { userId: user.id, username: user.username },
+     process.env.JWT_SECRET,
+     { expiresIn: '8h' }
+   );
+   
+   res.json({ token, user: { id: user.id, username: user.username } });
+   
+ } catch (err) {
+   console.error('Login failed:', err);
+   res.status(500).json({ error: 'Login failed' });
+ }
 });
 
 // Admin middleware
 function requireAdmin(req, res, next) {
-  const auth = req.headers.authorization;
-  
-  if (!auth || !auth.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authorization required' });
-  }
-  
-  const token = auth.slice(7);
-  
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(403).json({ error: 'Invalid or expired token' });
-  }
+ const auth = req.headers.authorization;
+ 
+ if (!auth || !auth.startsWith('Bearer ')) {
+   return res.status(401).json({ error: 'Authorization required' });
+ }
+ 
+ const token = auth.slice(7);
+ 
+ try {
+   const decoded = jwt.verify(token, process.env.JWT_SECRET);
+   req.user = decoded;
+   next();
+ } catch (err) {
+   return res.status(403).json({ error: 'Invalid or expired token' });
+ }
 }
 
 // Admin: Get all projects
 app.get('/api/admin/projects', requireAdmin, async (req, res) => {
-  try {
-    const result = await query(
-      `SELECT p.*, 
-        COUNT(DISTINCT pt.trade_id) as trade_count,
-        COUNT(DISTINCT l.id) as lv_count
-       FROM projects p
-       LEFT JOIN project_trades pt ON pt.project_id = p.id
-       LEFT JOIN lvs l ON l.project_id = p.id
-       GROUP BY p.id
-       ORDER BY p.created_at DESC`
-    );
-    
-    res.json({ projects: result.rows });
-    
-  } catch (err) {
-    console.error('Failed to fetch projects:', err);
-    res.status(500).json({ error: 'Failed to fetch projects' });
-  }
+ try {
+   const result = await query(
+     `SELECT p.*, 
+       COUNT(DISTINCT pt.trade_id) as trade_count,
+       COUNT(DISTINCT l.id) as lv_count
+      FROM projects p
+      LEFT JOIN project_trades pt ON pt.project_id = p.id
+      LEFT JOIN lvs l ON l.project_id = p.id
+      GROUP BY p.id
+      ORDER BY p.created_at DESC`
+   );
+   
+   res.json({ projects: result.rows });
+   
+ } catch (err) {
+   console.error('Failed to fetch projects:', err);
+   res.status(500).json({ error: 'Failed to fetch projects' });
+ }
 });
 
 // Admin: Get all prompts
 app.get('/api/admin/prompts', requireAdmin, async (req, res) => {
-  try {
-    const result = await query(
-      `SELECT p.*, t.name as trade_name, t.code as trade_code
-       FROM prompts p
-       LEFT JOIN trades t ON t.id = p.trade_id
-       ORDER BY p.type, t.name`
-    );
-    
-    res.json({ prompts: result.rows });
-    
-  } catch (err) {
-    console.error('Failed to fetch prompts:', err);
-    res.status(500).json({ error: 'Failed to fetch prompts' });
-  }
+ try {
+   const result = await query(
+     `SELECT p.*, t.name as trade_name, t.code as trade_code
+      FROM prompts p
+      LEFT JOIN trades t ON t.id = p.trade_id
+      ORDER BY p.type, t.name`
+   );
+   
+   res.json({ prompts: result.rows });
+   
+ } catch (err) {
+   console.error('Failed to fetch prompts:', err);
+   res.status(500).json({ error: 'Failed to fetch prompts' });
+ }
 });
 
 // Admin: Update prompt
 app.put('/api/admin/prompts/:id', requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { content } = req.body;
-    
-    if (!content) {
-      return res.status(400).json({ error: 'Content is required' });
-    }
-    
-    const result = await query(
-      `UPDATE prompts 
-       SET content = $1, updated_at = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [content, id]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Prompt not found' });
-    }
-    
-    res.json({ prompt: result.rows[0] });
-    
-  } catch (err) {
-    console.error('Failed to update prompt:', err);
-    res.status(500).json({ error: 'Failed to update prompt' });
-  }
+ try {
+   const { id } = req.params;
+   const { content } = req.body;
+   
+   if (!content) {
+     return res.status(400).json({ error: 'Content is required' });
+   }
+   
+   const result = await query(
+     `UPDATE prompts 
+      SET content = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *`,
+     [content, id]
+   );
+   
+   if (result.rows.length === 0) {
+     return res.status(404).json({ error: 'Prompt not found' });
+   }
+   
+   res.json({ prompt: result.rows[0] });
+   
+ } catch (err) {
+   console.error('Failed to update prompt:', err);
+   res.status(500).json({ error: 'Failed to update prompt' });
+ }
 });
 
 // ===========================================================================
@@ -2025,55 +2126,55 @@ app.put('/api/admin/prompts/:id', requireAdmin, async (req, res) => {
 
 // Get all prompts with details (public)
 app.get('/api/prompts', async (req, res) => {
-  try {
-    const result = await query(
-      `SELECT p.id, p.name, p.type, p.trade_id,
-              t.name as trade_name, t.code as trade_code,
-              LENGTH(p.content) as content_length,
-              p.updated_at
-       FROM prompts p
-       LEFT JOIN trades t ON t.id = p.trade_id
-       ORDER BY p.type, t.name`
-    );
-    
-    res.json({ 
-      prompts: result.rows,
-      stats: {
-        total: result.rows.length,
-        master: result.rows.filter(p => p.type === 'master').length,
-        questions: result.rows.filter(p => p.type === 'questions').length,
-        lv: result.rows.filter(p => p.type === 'lv').length
-      }
-    });
-    
-  } catch (err) {
-    console.error('Failed to fetch prompts:', err);
-    res.status(500).json({ error: 'Failed to fetch prompts' });
-  }
+ try {
+   const result = await query(
+     `SELECT p.id, p.name, p.type, p.trade_id,
+             t.name as trade_name, t.code as trade_code,
+             LENGTH(p.content) as content_length,
+             p.updated_at
+      FROM prompts p
+      LEFT JOIN trades t ON t.id = p.trade_id
+      ORDER BY p.type, t.name`
+   );
+   
+   res.json({ 
+     prompts: result.rows,
+     stats: {
+       total: result.rows.length,
+       master: result.rows.filter(p => p.type === 'master').length,
+       questions: result.rows.filter(p => p.type === 'questions').length,
+       lv: result.rows.filter(p => p.type === 'lv').length
+     }
+   });
+   
+ } catch (err) {
+   console.error('Failed to fetch prompts:', err);
+   res.status(500).json({ error: 'Failed to fetch prompts' });
+ }
 });
 
 // Get single prompt with content
 app.get('/api/prompts/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await query(
-      `SELECT p.*, t.name as trade_name, t.code as trade_code
-       FROM prompts p
-       LEFT JOIN trades t ON t.id = p.trade_id
-       WHERE p.id = $1`,
-      [id]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Prompt not found' });
-    }
-    
-    res.json(result.rows[0]);
-    
-  } catch (err) {
-    console.error('Failed to fetch prompt:', err);
-    res.status(500).json({ error: 'Failed to fetch prompt' });
-  }
+ try {
+   const { id } = req.params;
+   const result = await query(
+     `SELECT p.*, t.name as trade_name, t.code as trade_code
+      FROM prompts p
+      LEFT JOIN trades t ON t.id = p.trade_id
+      WHERE p.id = $1`,
+     [id]
+   );
+   
+   if (result.rows.length === 0) {
+     return res.status(404).json({ error: 'Prompt not found' });
+   }
+   
+   res.json(result.rows[0]);
+   
+ } catch (err) {
+   console.error('Failed to fetch prompt:', err);
+   res.status(500).json({ error: 'Failed to fetch prompt' });
+ }
 });
 
 // ===========================================================================
@@ -2082,153 +2183,161 @@ app.get('/api/prompts/:id', async (req, res) => {
 
 // Test OpenAI
 app.get('/api/test/openai', async (req, res) => {
-  try {
-    const response = await openai.chat.completions.create({
-      model: MODEL_OPENAI,
-      messages: [{ role: 'user', content: 'Say "OpenAI is working"' }],
-      max_completion_tokens: 20
-    });
-    res.json({ 
-      status: 'ok',
-      response: response.choices[0].message.content 
-    });
-  } catch (err) {
-    res.status(500).json({ 
-      status: 'error',
-      error: err.message 
-    });
-  }
+ try {
+   const response = await openai.chat.completions.create({
+     model: MODEL_OPENAI,
+     messages: [{ role: 'user', content: 'Say "OpenAI is working"' }],
+     max_completion_tokens: 20
+   });
+   res.json({ 
+     status: 'ok',
+     response: response.choices[0].message.content 
+   });
+ } catch (err) {
+   res.status(500).json({ 
+     status: 'error',
+     error: err.message 
+   });
+ }
 });
 
 // Test Anthropic
 app.get('/api/test/anthropic', async (req, res) => {
-  try {
-    const response = await anthropic.messages.create({
-      model: MODEL_ANTHROPIC,
-      max_tokens: 20,
-      messages: [{ role: 'user', content: 'Say "Claude is working"' }]
-    });
-    res.json({ 
-      status: 'ok',
-      response: response.content[0].text 
-    });
-  } catch (err) {
-    res.status(500).json({ 
-      status: 'error',
-      error: err.message 
-    });
-  }
+ try {
+   const response = await anthropic.messages.create({
+     model: MODEL_ANTHROPIC,
+     max_tokens: 20,
+     messages: [{ role: 'user', content: 'Say "Claude is working"' }]
+   });
+   res.json({ 
+     status: 'ok',
+     response: response.content[0].text 
+   });
+ } catch (err) {
+   res.status(500).json({ 
+     status: 'error',
+     error: err.message 
+   });
+ }
 });
 
 // Debug: List all routes
 app.get('/api/debug/routes', (req, res) => {
-  const routes = [];
-  app._router.stack.forEach(middleware => {
-    if (middleware.route) {
-      const methods = Object.keys(middleware.route.methods);
-      routes.push({
-        path: middleware.route.path,
-        methods: methods.map(m => m.toUpperCase())
-      });
-    }
-  });
-  res.json({ routes });
+ const routes = [];
+ app._router.stack.forEach(middleware => {
+   if (middleware.route) {
+     const methods = Object.keys(middleware.route.methods);
+     routes.push({
+       path: middleware.route.path,
+       methods: methods.map(m => m.toUpperCase())
+     });
+   }
+ });
+ res.json({ routes });
 });
 
 // BUGFIX: Debug endpoint to check project trades
 app.get('/api/debug/project/:projectId/trades', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    const trades = await query(
-      `SELECT pt.*, t.code, t.name, pt.created_at
-       FROM project_trades pt
-       JOIN trades t ON t.id = pt.trade_id
-       WHERE pt.project_id = $1
-       ORDER BY pt.created_at`,
-      [projectId]
-    );
-    
-    const project = await query(
-      'SELECT * FROM projects WHERE id = $1',
-      [projectId]
-    );
-    
-    res.json({
-      project: project.rows[0],
-      tradeCount: trades.rows.length,
-      trades: trades.rows,
-      message: `Project ${projectId} has ${trades.rows.length} trades assigned`
-    });
-    
-  } catch (err) {
-    console.error('Debug failed:', err);
-    res.status(500).json({ error: err.message });
-  }
+ try {
+   const { projectId } = req.params;
+   
+   const trades = await query(
+     `SELECT pt.*, t.code, t.name, pt.created_at
+      FROM project_trades pt
+      JOIN trades t ON t.id = pt.trade_id
+      WHERE pt.project_id = $1
+      ORDER BY pt.created_at`,
+     [projectId]
+   );
+   
+   const project = await query(
+     'SELECT * FROM projects WHERE id = $1',
+     [projectId]
+   );
+   
+   res.json({
+     project: project.rows[0],
+     tradeCount: trades.rows.length,
+     trades: trades.rows,
+     message: `Project ${projectId} has ${trades.rows.length} trades assigned`
+   });
+   
+ } catch (err) {
+   console.error('Debug failed:', err);
+   res.status(500).json({ error: err.message });
+ }
 });
 
 // Health check
 app.get('/healthz', (req, res) => {
-  res.json({ 
-    message: "BYNDL Backend v3.1 (FIXED)", 
-    status: "running",
-    features: {
-      adaptiveQuestions: true,
-      dynamicQuestionCount: true,
-      enhancedTokenLimits: true,
-      detailedLVs: true,
-      strictTradeControl: true
-    },
-    fixes: [
-      "Trade assignment control",
-      "No automatic trade addition",
-      "INT trade isolation",
-      "Project trade validation"
-    ]
-  });
+ res.json({ 
+   message: "BYNDL Backend v3.2 (ENHANCED)", 
+   status: "running",
+   features: {
+     intelligentQuestions: true,
+     laienSupport: true,
+     unsicherOption: true,
+     strictLVBinding: true,
+     assumptionTracking: true,
+     adaptiveQuestionCount: true,
+     enhancedTokenLimits: true,
+     detailedLVs: true,
+     strictTradeControl: true
+   },
+   improvements: [
+     "Laiengerechte Fragengenerierung",
+     "Ich bin unsicher Option überall",
+     "Strikte LV-Antwortbindung",
+     "Transparente Annahmen-Dokumentation",
+     "Intelligente Fragenanzahl je Gewerk",
+     "Validierung und Confidence-Level"
+   ]
+ });
 });
 
 // Environment info
 app.get('/__info', (req, res) => {
-  res.json({
-    node: process.version,
-    version: "3.1-FIXED",
-    env: {
-      OPENAI_MODEL: MODEL_OPENAI,
-      ANTHROPIC_MODEL: MODEL_ANTHROPIC,
-      DATABASE_URL: process.env.DATABASE_URL ? "✔️ gesetzt" : "❌ fehlt",
-      JWT_SECRET: process.env.JWT_SECRET ? "✔️ gesetzt" : "❌ fehlt"
-    },
-    limits: {
-      detect: "2500 tokens",
-      questions: "6000 tokens",
-      lv: "8000 tokens",
-      intake: "6000 tokens"
-    },
-    bugfixes: {
-      tradeControl: "Strikte Kontrolle bei Trade-Zuweisungen",
-      intakeIsolation: "INT Trade wird separat behandelt",
-      projectValidation: "Trade-Projekt Zugehörigkeit wird validiert"
-    }
-  });
+ res.json({
+   node: process.version,
+   version: "3.2-ENHANCED",
+   env: {
+     OPENAI_MODEL: MODEL_OPENAI,
+     ANTHROPIC_MODEL: MODEL_ANTHROPIC,
+     DATABASE_URL: process.env.DATABASE_URL ? "✔️ gesetzt" : "❌ fehlt",
+     JWT_SECRET: process.env.JWT_SECRET ? "✔️ gesetzt" : "❌ fehlt"
+   },
+   limits: {
+     detect: "2500 tokens",
+     questions: "6000 tokens",
+     lv: "8000 tokens",
+     intake: "6000 tokens"
+   },
+   enhancements: {
+     questions: "Laiengerecht mit Erklärungen",
+     answers: "Ich bin unsicher Option",
+     lv: "Strikte Antwortbindung",
+     assumptions: "Transparent dokumentiert",
+     confidence: "Statistiken und Confidence-Level"
+   }
+ });
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Route not found',
-    path: req.path,
-    method: req.method
-  });
+ res.status(404).json({ 
+   error: 'Route not found',
+   path: req.path,
+   method: req.method
+ });
 });
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
+ console.error('Unhandled error:', err);
+ res.status(500).json({ 
+   error: 'Internal server error',
+   message: process.env.NODE_ENV === 'development' ? err.message : undefined
+ });
 });
 
 // ===========================================================================
@@ -2237,27 +2346,32 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`
+ console.log(`
 ╔════════════════════════════════════════╗
 ║                                        ║
-║     BYNDL Backend v3.1 (FIXED)        ║
+║     BYNDL Backend v3.2 (ENHANCED)     ║
 ║                                        ║
 ║     Port: ${PORT}                        ║
 ║     Environment: ${process.env.NODE_ENV || 'development'}          ║
 ║                                        ║
 ║     Features:                          ║
-║     ✓ Adaptive Question Generation    ║
-║     ✓ Dynamic Question Count          ║
+║     ✓ Intelligente Fragengenerierung  ║
+║     ✓ Laiengerechte Formulierungen    ║
+║     ✓ "Ich bin unsicher" Option       ║
+║     ✓ Strikte LV-Antwortbindung       ║
+║     ✓ Transparente Annahmen           ║
+║     ✓ Adaptive Fragenanzahl           ║
 ║     ✓ Enhanced Token Limits           ║
-║     ✓ Detailed LV Generation          ║
-║     ✓ Strict Trade Control            ║
+║     ✓ Confidence Level Tracking       ║
 ║                                        ║
-║     Bugfixes Applied:                 ║
-║     ✓ No automatic trade addition     ║
-║     ✓ INT trade isolation             ║
-║     ✓ Trade validation checks         ║
-║     ✓ Explicit logging                ║
+║     Improvements Applied:              ║
+║     ✓ Fragen für Laien verständlich   ║
+║     ✓ Empfehlungen & Richtwerte       ║
+║     ✓ Unsicher-Option bei Mengen      ║
+║     ✓ LV nur aus Antworten            ║
+║     ✓ Annahmen dokumentiert           ║
+║     ✓ Statistiken & Validierung       ║
 ║                                        ║
 ╚════════════════════════════════════════╝
-  `);
+ `);
 });
