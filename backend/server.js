@@ -997,8 +997,24 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
       );
       saved++;
     }
+       
+    const detected = Array.isArray(req.body?.detectedTrades)
+         ? req.body.detectedTrades.filter(c => c && c !== 'INT')
+         : [];
 
-    res.json({ ok: true, tradeCode: 'INT', questions, saved });
+       if (detected.length > 0) {
+         for (const code of detected) {
+           const tRes = await query(`SELECT id FROM trades WHERE code = $1 LIMIT 1`, [code]);
+           if (tRes.rows.length === 0) continue;
+           
+           const tId = tRes.rows[0].id;
+           await ensureProjectTrade(projectId, tId);
+           
+           console.log(`[INTAKE] Added detected trade ${code} to project ${projectId}`);
+         }
+       }
+
+    res.json({ ok: true, tradeCode: 'INT', questions, saved, detectedTrades: detected });
   } catch (err) {
     console.error('intake/questions failed:', err);
     res.status(500).json({ ok: false, error: err.message });
