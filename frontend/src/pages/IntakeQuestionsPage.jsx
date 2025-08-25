@@ -106,17 +106,9 @@ export default function IntakeQuestionsPage() {
       
       const updatedProject = await projectRes.json();
       
-      if (updatedProject?.trades?.length > 0) {
-        const tradesToProcess = updatedProject.trades.filter(t => t.code !== 'INT');
-        
-        if (tradesToProcess.length > 0) {
-          navigate(`/project/${projectId}/trade/${tradesToProcess[0].id}/questions`);
-        } else {
-          navigate(`/project/${projectId}/result`);
-        }
-      } else {
-        navigate(`/project/${projectId}/result`);
-      }
+   // NEU - immer zur Gewerke-Bestätigung nach dem Intake:
+      
+      navigate(`/project/${projectId}/trades`);
       
     } catch (err) {
       console.error(err);
