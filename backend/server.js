@@ -515,7 +515,8 @@ async function generateQuestions(tradeId, projectContext = {}) {
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
   
   if (!questionPrompt) {
-    throw new Error(`No question prompt available for ${tradeName}`);
+    console.warn(`[QUESTIONS] No prompt found for ${tradeName}, using default template`);
+    // Fallback auf Standard-Template
   }
   
   // Intake-Kontext für Gewerke-Fragen laden
@@ -559,129 +560,204 @@ ${isIntake ?
 
 ${intakeContext}
 
-KRITISCHE ANFORDERUNGEN:
+ANFORDERUNGEN:
+1. Erstelle GENAU ${targetQuestionCount} Fragen
+2. Jede Frage muss konkrete Mengen, Maße oder Details erfassen
+3. Erkläre jede Frage laienverständlich mit 1-2 Sätzen
+4. Bei Maßen immer "unsicher" als Option anbieten
 
-1. FRAGENANZAHL: Erstelle GENAU ${targetQuestionCount} Fragen
-   - Nicht weniger, nicht mehr!
-   - Jede Frage muss einen konkreten Mehrwert für die LV-Erstellung bieten
-
-2. MENGENERFASSUNG (ABSOLUT KRITISCH):
-   - Frage IMMER nach konkreten Maßen: Länge, Breite, Höhe
-   - Erfasse ALLE Flächen einzeln (Wände, Decken, Böden)
-   - Bei Unsicherheit: Ermögliche "unsicher" als Antwort
-   - Frage nach Anzahl von Elementen (Steckdosen, Heizkörper, etc.)
-
-3. LAIENVERSTÄNDLICHKEIT:
-   - Jede Frage mit 1-2 erklärenden Sätzen
-   - Beispiele und typische Werte angeben
-   - Fachbegriffe vermeiden oder erklären
-
-4. FRAGETYPEN PRIORISIERUNG:
-   ${isIntake ? 
-   `- Raumanzahl und -größen (PFLICHT)
-    - Gebäudemaße (L×B×H)
-    - Bestandssituation
-    - Zugänglichkeit
-    - Besondere Anforderungen` :
-   `- Exakte Arbeitsflächen/-längen
-    - Materialspezifikationen
-    - Mengen von Bauteilen
-    - Ausführungsdetails
-    - Anschlusssituationen`}
-
-5. ANTWORTOPTIONEN:
-   - Bei Maßen: Immer "unsicher" als Option
-   - Bei Materialien: Gängige Optionen vorgeben
-   - Bei Ja/Nein: Zusätzlich "weiß nicht"
-
-OUTPUT (NUR valides JSON):
+OUTPUT FORMAT - NUR VALIDES JSON-ARRAY, KEINE ANDEREN ZEICHEN:
 [
   {
-    "id": "${tradeCode}-01",
-    "category": "Maße und Mengen|Material|Ausführung|Bestand",
-    "question": "Wie groß ist die zu bearbeitende Fläche?",
-    "explanation": "Bitte messen Sie die Länge und Breite des Raumes. Bei mehreren Räumen addieren Sie die Flächen. Typisch für ein Wohnzimmer sind 20-30 m².",
-    "type": "number|text|select|multiselect",
-    "required": true,
-    "unit": "m²|m|Stk|kg",
-    "options": ["Option1", "Option2", "unsicher"],
-    "defaultValue": null,
-    "validationRule": "min:0,max:10000"
+    "id": "string",
+    "category": "string",
+    "question": "string",
+    "explanation": "string",
+    "type": "text oder number oder select",
+    "required": boolean,
+    "unit": "string oder null",
+    "options": array oder null
   }
-]`;
+]
 
-  const userPrompt = `GEWERK: ${tradeName} (${tradeCode})
-ZIEL-FRAGENANZAHL: ${targetQuestionCount} Fragen
+WICHTIG: Gib NUR das JSON-Array zurück, keine weiteren Erklärungen!`;
 
-TEMPLATE:
-${questionPrompt}
+  const userPrompt = `Erstelle ${targetQuestionCount} Fragen für ${tradeName} (${tradeCode}).
 
-PROJEKTKONTEXT:
+${questionPrompt ? `Basis-Template:\n${questionPrompt.substring(0, 500)}...\n` : ''}
+
+Projektkontext:
 - Kategorie: ${projectContext.category || 'Nicht angegeben'}
 - Beschreibung: ${projectContext.description || 'Keine'}
 - Budget: ${projectContext.budget || 'Nicht angegeben'}
-- Komplexität: ${projectComplexity}
 
-${isIntake ? 
-`Erstelle ${targetQuestionCount} ALLGEMEINE Intake-Fragen zur Projekterfassung.` :
-`Erstelle ${targetQuestionCount} SPEZIFISCHE Fragen für ${tradeName}.
-FOKUS: Konkrete Mengen, Maße und Ausführungsdetails!`}
-
-WICHTIG: 
-- Frage EXPLIZIT nach allen Maßen und Mengen
-- Ermögliche IMMER "unsicher" bei kritischen Angaben
-- Erkläre jede Frage für Laien verständlich`;
+Gib NUR ein JSON-Array mit ${targetQuestionCount} Fragen zurück.`;
 
   try {
+    console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
+    
     const response = await llmWithPolicy(isIntake ? 'intake' : 'questions', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
       maxTokens: 8000,
       temperature: 0.5,
-      jsonMode: true 
+      jsonMode: false // Wichtig: jsonMode kann problematisch sein
     });
     
-    const cleanedResponse = response
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
+    // Aggressivere Bereinigung
+    let cleanedResponse = response
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .replace(/^[^[]*(\[[\s\S]*\])[^]]*$/, '$1') // Extrahiere nur das Array
       .trim();
     
-    const questions = JSON.parse(cleanedResponse);
+    // Debug-Ausgabe
+    console.log(`[QUESTIONS] Raw response length: ${response.length}`);
+    console.log(`[QUESTIONS] Cleaned response starts with: ${cleanedResponse.substring(0, 100)}`);
     
-    if (!Array.isArray(questions) || questions.length === 0) {
-      throw new Error('Invalid question format received');
+    let questions;
+    try {
+      questions = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('[QUESTIONS] Parse error, attempting recovery:', parseError.message);
+      
+      // Versuche das JSON zu reparieren
+      try {
+        // Entferne alles vor dem ersten [ und nach dem letzten ]
+        const match = cleanedResponse.match(/\[[\s\S]*\]/);
+        if (match) {
+          questions = JSON.parse(match[0]);
+        } else {
+          throw new Error('No valid JSON array found in response');
+        }
+      } catch (recoveryError) {
+        console.error('[QUESTIONS] Recovery failed:', recoveryError);
+        // Fallback: Erstelle minimale Fragen
+        console.log('[QUESTIONS] Using fallback questions');
+        questions = generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
+      }
+    }
+    
+    if (!Array.isArray(questions)) {
+      console.error('[QUESTIONS] Response is not an array, using fallback');
+      questions = generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
+    }
+    
+    if (questions.length === 0) {
+      console.error('[QUESTIONS] Empty questions array, using fallback');
+      questions = generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
     }
     
     // Post-Processing der Fragen
-    const processedQuestions = questions.map((q, idx) => ({
+    const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) => ({
       id: q.id || `${tradeCode}-${String(idx + 1).padStart(2, '0')}`,
       category: q.category || 'Allgemein',
-      question: q.question || q.text || q.q,
+      question: q.question || q.text || q.q || `Frage ${idx + 1}`,
       explanation: q.explanation || q.hint || '',
       type: q.type || 'text',
       required: q.required !== undefined ? q.required : true,
       unit: q.unit || null,
-      options: q.options || null,
+      options: Array.isArray(q.options) ? q.options : null,
       defaultValue: q.defaultValue || null,
       validationRule: q.validationRule || null,
       tradeId,
       tradeName
     }));
     
-    console.log(`[QUESTIONS] Generated ${processedQuestions.length} questions for ${tradeName} (target: ${targetQuestionCount})`);
-    
-    // Warnung wenn Anzahl stark abweicht
-    if (Math.abs(processedQuestions.length - targetQuestionCount) > 3) {
-      console.warn(`[QUESTIONS] Warning: Generated ${processedQuestions.length} questions, target was ${targetQuestionCount}`);
-    }
+    console.log(`[QUESTIONS] Successfully generated ${processedQuestions.length} questions for ${tradeName}`);
     
     return processedQuestions;
     
   } catch (err) {
     console.error('[QUESTIONS] Generation failed:', err);
-    throw new Error(`Fragengenerierung für ${tradeName} fehlgeschlagen`);
+    console.log('[QUESTIONS] Using fallback questions due to error');
+    return generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
   }
+}
+
+/**
+ * Fallback-Fragen wenn LLM versagt
+ */
+function generateFallbackQuestions(tradeCode, tradeName, count) {
+  const baseQuestions = {
+    'INT': [
+      {
+        id: 'INT-01',
+        category: 'Projektumfang',
+        question: 'Was ist der Umfang Ihres Projekts?',
+        explanation: 'Beschreiben Sie kurz, was Sie renovieren oder bauen möchten.',
+        type: 'text',
+        required: true
+      },
+      {
+        id: 'INT-02',
+        category: 'Maße',
+        question: 'Wie groß ist die Gesamtfläche?',
+        explanation: 'Geben Sie die Quadratmeter an oder wählen Sie "unsicher".',
+        type: 'number',
+        unit: 'm²',
+        required: true,
+        options: ['unsicher']
+      },
+      {
+        id: 'INT-03',
+        category: 'Zeitrahmen',
+        question: 'Wann soll das Projekt starten?',
+        explanation: 'Geben Sie einen gewünschten Starttermin an.',
+        type: 'text',
+        required: false
+      }
+    ],
+    'DEFAULT': [
+      {
+        id: `${tradeCode}-01`,
+        category: 'Arbeitsumfang',
+        question: `Welche ${tradeName}-Arbeiten sind erforderlich?`,
+        explanation: 'Beschreiben Sie die gewünschten Arbeiten.',
+        type: 'text',
+        required: true
+      },
+      {
+        id: `${tradeCode}-02`,
+        category: 'Fläche',
+        question: 'Wie groß ist die zu bearbeitende Fläche?',
+        explanation: 'Geben Sie die Quadratmeter an oder wählen Sie "unsicher".',
+        type: 'number',
+        unit: 'm²',
+        required: true,
+        options: ['unsicher']
+      },
+      {
+        id: `${tradeCode}-03`,
+        category: 'Material',
+        question: 'Haben Sie Materialwünsche?',
+        explanation: 'Falls ja, beschreiben Sie diese bitte.',
+        type: 'text',
+        required: false
+      }
+    ]
+  };
+  
+  const questions = baseQuestions[tradeCode] || baseQuestions['DEFAULT'];
+  
+  // Erweitere auf gewünschte Anzahl
+  while (questions.length < count) {
+    questions.push({
+      id: `${tradeCode}-${String(questions.length + 1).padStart(2, '0')}`,
+      category: 'Details',
+      question: `Zusätzliche Information ${questions.length - 2}`,
+      explanation: 'Gibt es weitere wichtige Details?',
+      type: 'text',
+      required: false
+    });
+  }
+  
+  return questions.slice(0, count).map(q => ({
+    ...q,
+    tradeId: null,
+    tradeName
+  }));
 }
 
 /**
