@@ -7,7 +7,6 @@ export default function TradeConfirmationPage() {
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [detectedTrades, setDetectedTrades] = useState([]);
-  const [recommendedTrades, setRecommendedTrades] = useState([]);
   const [allTrades, setAllTrades] = useState([]);
   const [selectedTrades, setSelectedTrades] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +70,6 @@ export default function TradeConfirmationPage() {
         }));
         
         setDetectedTrades(markedTrades);
-        setRecommendedTrades(finalRecommendations);
         setSelectedTrades(markedTrades.map(t => t.id));
         
         // Verfügbare Trades (ohne INT und bereits erkannte/empfohlene)
