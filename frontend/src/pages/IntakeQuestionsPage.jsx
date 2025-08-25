@@ -25,9 +25,13 @@ export default function IntakeQuestionsPage() {
         setProject(projectData);
         
         const res = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    // Sende die erkannten Trades mit
+    detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
+  })
+});
         
         if (!res.ok) {
           const data = await res.json();
