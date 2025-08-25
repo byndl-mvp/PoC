@@ -122,6 +122,9 @@ export default function QuestionsPage() {
 }, [projectId, tradeId]);
   
   const handleNext = () => {
+    console.log('handleNext called, submitting=', submitting);
+    console.log('current=', current, 'questions.length=', questions.length);
+    
     if (!questions[current]) return;
     
     // Speichere aktuelle Antwort
@@ -169,8 +172,10 @@ export default function QuestionsPage() {
   };
 
   async function saveAllAnswersAndContinue(allAnswers) {
+    console.log('saveAllAnswersAndContinue called');
     try {
       setSubmitting(true);
+      console.log('submitting set to true');
       setError('');
       
       // Filtere null-Werte und stelle sicher dass alle Antworten valide sind
@@ -203,6 +208,7 @@ export default function QuestionsPage() {
   }
 
   async function generateLvAndContinue() {
+    console.log('generateLvAndContinue called');
     try {
       console.log('Generating LV for trade:', tradeId);
       
