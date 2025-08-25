@@ -117,7 +117,7 @@ export default function QuestionsPage() {
     }
     
     initialize();
-  }, [projectId, tradeId, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectId, tradeId]); // tradeId sorgt für Reload bei URL-Änderung
 
   const handleNext = () => {
     if (!questions[current]) return;
