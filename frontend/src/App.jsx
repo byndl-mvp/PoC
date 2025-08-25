@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import ProjectFormPage from './pages/ProjectFormPage';
 import IntakeQuestionsPage from './pages/IntakeQuestionsPage';
+import TradeConfirmationPage from './pages/TradeConfirmationPage';
 import QuestionsPage from './pages/QuestionsPage';
 import ResultPage from './pages/ResultPage';
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -51,6 +52,7 @@ function App() {
             
             {/* Project Flow */}
             <Route path="/project/:projectId/intake" element={<IntakeQuestionsPage />} />
+            <Route path="/project/:projectId/trades" element={<TradeConfirmationPage />} />
             <Route path="/project/:projectId/trade/:tradeId/questions" element={<QuestionsPage />} />
             <Route path="/project/:projectId/result" element={<ResultPage />} />
             
