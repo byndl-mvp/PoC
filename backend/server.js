@@ -1,16 +1,13 @@
 /*
- * BYNDL Proof of Concept – Backend (VERBESSERTE VERSION)
+ * BYNDL Proof of Concept – Backend v4.0
  * 
- * Hauptverbesserungen:
- * - Intelligente, laiengerechte Fragengenerierung
- * - "Ich bin unsicher" Option bei allen Mengenangaben
- * - Strikte LV-Bindung an vorhandene Antworten
- * - Transparente Dokumentation von Annahmen
- * - Adaptive Fragenanzahl je nach Gewerk
- * 
- * BUGFIX: Verhindert ungewolltes Hinzufügen aller Trades
- * - Strikte Kontrolle bei project_trades Einträgen
- * - Nur explizit erkannte oder angeforderte Trades werden hinzugefügt
+ * HAUPTVERBESSERUNGEN:
+ * - Intelligente Fragenanzahl basierend auf Gewerke-Komplexität
+ * - Detaillierte Mengenerfassung mit Validierung
+ * - Keine erfundenen LV-Positionen - nur explizit erfragte
+ * - Laienverständliche Fragen mit Erläuterungen
+ * - Intelligente Schätzlogik bei unsicheren Angaben
+ * - Realistische Preiskalkulationen
  */
 
 const { query } = require('./db.js');
@@ -40,6 +37,43 @@ const MODEL_OPENAI = process.env.MODEL_OPENAI || 'gpt-4o-mini';
 const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest';
 
 // ===========================================================================
+// GEWERKE-KOMPLEXITÄT DEFINITIONEN (KORREKTE CODES)
+// ===========================================================================
+
+const TRADE_COMPLEXITY = {
+  // Sehr komplexe Gewerke (25-40 Fragen)
+  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
+  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
+  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
+  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 35 },
+  'ROH': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 35 },
+  
+  // Komplexe Gewerke (20-30 Fragen)
+  'TIS': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
+  'FEN': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
+  'FASS': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
+  'SCHL': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 28 },
+  
+  // Mittlere Komplexität (15-25 Fragen)
+  'FLI': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
+  'ESTR': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
+  'TRO': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
+  'BOD': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
+  'AUSS': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
+  
+  // Einfache Gewerke (8-15 Fragen)
+  'MAL': { complexity: 'EINFACH', minQuestions: 8, maxQuestions: 15 },
+  'GER': { complexity: 'EINFACH', minQuestions: 8, maxQuestions: 12 },
+  'ABBR': { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15 },
+  
+  // Intake ist speziell (15-20 Fragen)
+  'INT': { complexity: 'INTAKE', minQuestions: 15, maxQuestions: 20 }
+};
+
+// Fallback für nicht definierte Gewerke
+const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 };
+
+// ===========================================================================
 // HELPER FUNCTIONS
 // ===========================================================================
 
@@ -47,20 +81,21 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
  * Erweiterte LLM-Policy mit maximalen Token-Limits
  */
 async function llmWithPolicy(task, messages, options = {}) {
-  // Maximale Token-Limits für detaillierte Outputs
   const defaultMaxTokens = {
-    'detect': 2500,      // Präzise Gewerke-Erkennung
-    'questions': 6000,   // 20-40+ detaillierte Fragen
-    'lv': 8000,          // Sehr detaillierte LVs
-    'intake': 6000,      // Umfassende Intake-Befragung
-    'summary': 4000      // Detaillierte Zusammenfassungen
+    'detect': 3000,      
+    'questions': 8000,   // Für bis zu 40+ detaillierte Fragen
+    'lv': 10000,         // Für sehr detaillierte LVs
+    'intake': 6000,      // Für 15-20 Intake-Fragen
+    'summary': 4000,
+    'validation': 3000   // Für Antwort-Validierung
   };
   
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
-  const temperature = options.temperature !== undefined ? options.temperature : 0.6;
+  const temperature = options.temperature !== undefined ? options.temperature : 0.4;
   
-  // Bestimme primären Provider
-  const primaryProvider = ['detect', 'questions', 'intake'].includes(task) ? 'anthropic' : 'openai';
+  const primaryProvider = ['detect', 'questions', 'intake', 'validation'].includes(task) 
+    ? 'anthropic' 
+    : 'openai';
   
   const callOpenAI = async () => {
     const useJsonMode = options.jsonMode && maxTokens <= 4096;
@@ -105,7 +140,152 @@ async function llmWithPolicy(task, messages, options = {}) {
 }
 
 /**
- * BUGFIX: Prüft ob ein Trade bereits dem Projekt zugeordnet ist
+ * Intelligente Antwort-Validierung und Schätzung
+ */
+async function validateAndEstimateAnswers(answers, tradeCode, projectContext) {
+  const systemPrompt = `Du bist ein erfahrener Bausachverständiger mit 20+ Jahren Erfahrung.
+Deine Aufgabe: Validiere Nutzerantworten und erstelle realistische Schätzungen für unsichere Angaben.
+
+WICHTIGE REGELN:
+1. Prüfe die Plausibilität aller Mengenangaben
+2. Bei "unsicher" oder fehlenden kritischen Angaben: Erstelle realistische Schätzungen basierend auf:
+   - Typischen Werten für ähnliche Projekte
+   - Ableitungen aus anderen Angaben (z.B. Raumgröße → Kabellänge)
+   - Branchenüblichen Standards
+3. Berechne abgeleitete Werte intelligent:
+   - Kabellängen: ca. 15-20m pro Raum + Steigungen
+   - Rohrleitungen: Direkte Wege + 20% Zuschlag
+   - Materialmengen: Flächen × Erfahrungswerte
+4. Dokumentiere ALLE Annahmen transparent
+
+OUTPUT (NUR valides JSON):
+{
+  "validated": [
+    {
+      "questionId": "string",
+      "originalAnswer": "string oder null",
+      "validatedValue": "number",
+      "unit": "m²/m/Stk/kg/l",
+      "assumption": "Detaillierte Erklärung der Schätzgrundlage",
+      "confidence": 0.5-1.0
+    }
+  ],
+  "derivedValues": {
+    "totalArea": "number",
+    "perimeter": "number",
+    "volume": "number",
+    "additionalMetrics": {}
+  },
+  "warnings": ["Liste von Hinweisen auf unrealistische oder fehlende Angaben"]
+}`;
+
+  const userPrompt = `Gewerk: ${tradeCode}
+Projektkontext: ${JSON.stringify(projectContext)}
+Nutzerantworten: ${JSON.stringify(answers)}
+
+Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
+
+  try {
+    const response = await llmWithPolicy('validation', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { maxTokens: 3000, temperature: 0.3, jsonMode: true });
+    
+    const cleanedResponse = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    return JSON.parse(cleanedResponse);
+  } catch (err) {
+    console.error('[VALIDATION] Failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Gewerke-spezifische Fragenanzahl ermitteln
+ */
+function getTradeQuestionCount(tradeCode, projectComplexity) {
+  const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
+  
+  // Basis-Fragenanzahl
+  let baseCount = (tradeConfig.minQuestions + tradeConfig.maxQuestions) / 2;
+  
+  // Anpassung basierend auf Projektkomplexität
+  const complexityMultiplier = {
+    'SEHR_HOCH': 1.3,
+    'HOCH': 1.15,
+    'MITTEL': 1.0,
+    'NIEDRIG': 0.85,
+    'EINFACH': 0.7
+  };
+  
+  const multiplier = complexityMultiplier[projectComplexity] || 1.0;
+  let adjustedCount = Math.round(baseCount * multiplier);
+  
+  // Sicherstellen dass wir in den Grenzen bleiben
+  adjustedCount = Math.max(tradeConfig.minQuestions, adjustedCount);
+  adjustedCount = Math.min(tradeConfig.maxQuestions, adjustedCount);
+  
+  console.log(`[QUESTIONS] Trade ${tradeCode}: ${adjustedCount} questions (complexity: ${projectComplexity})`);
+  
+  return adjustedCount;
+}
+
+/**
+ * Projektkomplexität bestimmen
+ */
+function determineProjectComplexity(projectContext, intakeAnswers = []) {
+  let complexityScore = 0;
+  
+  // Budget-basierte Komplexität
+  if (projectContext.budget) {
+    const budgetStr = projectContext.budget.toLowerCase();
+    if (budgetStr.includes('500000') || budgetStr.includes('500k')) complexityScore += 5;
+    else if (budgetStr.includes('200000') || budgetStr.includes('200k')) complexityScore += 4;
+    else if (budgetStr.includes('100000') || budgetStr.includes('100k')) complexityScore += 3;
+    else if (budgetStr.includes('50000') || budgetStr.includes('50k')) complexityScore += 2;
+    else if (budgetStr.includes('20000') || budgetStr.includes('20k')) complexityScore += 1;
+  }
+  
+  // Beschreibungslänge und Komplexität
+  if (projectContext.description) {
+    const wordCount = projectContext.description.split(' ').length;
+    if (wordCount > 150) complexityScore += 3;
+    else if (wordCount > 100) complexityScore += 2;
+    else if (wordCount > 50) complexityScore += 1;
+    
+    // Spezielle Keywords
+    const complexKeywords = ['kernsanierung', 'denkmalschutz', 'komplett', 'statik', 'energetisch'];
+    const description = projectContext.description.toLowerCase();
+    complexKeywords.forEach(keyword => {
+      if (description.includes(keyword)) complexityScore += 1;
+    });
+  }
+  
+  // Kategorie-basierte Komplexität
+  if (projectContext.category) {
+    const category = projectContext.category.toLowerCase();
+    if (category.includes('neubau') || category.includes('kernsanierung')) complexityScore += 3;
+    else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 2;
+    else if (category.includes('renovierung') || category.includes('modernisierung')) complexityScore += 1;
+  }
+  
+  // Intake-Antworten Komplexität
+  if (intakeAnswers.length > 15) complexityScore += 2;
+  else if (intakeAnswers.length > 10) complexityScore += 1;
+  
+  // Klassifizierung
+  if (complexityScore >= 10) return 'SEHR_HOCH';
+  if (complexityScore >= 7) return 'HOCH';
+  if (complexityScore >= 4) return 'MITTEL';
+  if (complexityScore >= 2) return 'NIEDRIG';
+  return 'EINFACH';
+}
+
+/**
+ * Trade-Zuordnung prüfen
  */
 async function isTradeAssignedToProject(projectId, tradeId) {
   const result = await query(
@@ -116,11 +296,9 @@ async function isTradeAssignedToProject(projectId, tradeId) {
 }
 
 /**
- * BUGFIX: Projekt-Trade Verknüpfung mit Logging und Kontrolle
- * Nur für explizit angeforderte Trades
+ * Projekt-Trade Verknüpfung
  */
 async function ensureProjectTrade(projectId, tradeId, source = 'unknown') {
-  // Prüfe ob bereits vorhanden
   const exists = await isTradeAssignedToProject(projectId, tradeId);
   
   if (!exists) {
@@ -131,13 +309,11 @@ async function ensureProjectTrade(projectId, tradeId, source = 'unknown') {
        ON CONFLICT DO NOTHING`,
       [projectId, tradeId]
     );
-  } else {
-    console.log(`[PROJECT_TRADE] Trade ${tradeId} already assigned to project ${projectId}`);
   }
 }
 
 /**
- * NEUE FUNKTION: Alle Trades eines Projekts abrufen
+ * Alle Trades eines Projekts abrufen
  */
 async function getProjectTrades(projectId) {
   const result = await query(
@@ -208,69 +384,6 @@ async function getAvailableTrades() {
 }
 
 /**
- * Projektkomplexität bestimmen
- */
-function determineProjectComplexity(projectContext, intakeAnswers = []) {
-  let complexityScore = 0;
-  
-  // Budget-basierte Komplexität
-  if (projectContext.budget) {
-    const budgetStr = projectContext.budget.toLowerCase();
-    if (budgetStr.includes('100000') || budgetStr.includes('100k')) complexityScore += 3;
-    else if (budgetStr.includes('50000') || budgetStr.includes('50k')) complexityScore += 2;
-    else if (budgetStr.includes('20000') || budgetStr.includes('20k')) complexityScore += 1;
-  }
-  
-  // Beschreibungslänge
-  if (projectContext.description) {
-    const wordCount = projectContext.description.split(' ').length;
-    if (wordCount > 100) complexityScore += 2;
-    else if (wordCount > 50) complexityScore += 1;
-  }
-  
-  // Kategorie-basierte Komplexität
-  if (projectContext.category) {
-    const category = projectContext.category.toLowerCase();
-    if (category.includes('neubau') || category.includes('kernsanierung')) complexityScore += 3;
-    else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 2;
-    else if (category.includes('renovierung') || category.includes('modernisierung')) complexityScore += 1;
-  }
-  
-  // Zeitrahmen
-  if (projectContext.timeframe) {
-    const timeframe = projectContext.timeframe.toLowerCase();
-    if (timeframe.includes('sofort') || timeframe.includes('dringend')) complexityScore += 1;
-    if (timeframe.includes('jahr') || timeframe.includes('monate')) complexityScore += 1;
-  }
-  
-  // Intake-Antworten Komplexität
-  if (intakeAnswers.length > 15) complexityScore += 2;
-  else if (intakeAnswers.length > 10) complexityScore += 1;
-  
-  // Klassifizierung
-  if (complexityScore >= 7) return 'SEHR_HOCH';
-  if (complexityScore >= 5) return 'HOCH';
-  if (complexityScore >= 3) return 'MITTEL';
-  if (complexityScore >= 1) return 'NIEDRIG';
-  return 'EINFACH';
-}
-
-/**
- * Fragenanzahl-Richtlinie
- */
-function getQuestionCountGuideline(complexity, isIntake) {
-  const guidelines = {
-    'SEHR_HOCH': isIntake ? '25-35' : '20-30',
-    'HOCH': isIntake ? '20-30' : '15-25',
-    'MITTEL': isIntake ? '15-25' : '10-20',
-    'NIEDRIG': isIntake ? '12-20' : '8-15',
-    'EINFACH': isIntake ? '10-15' : '5-10'
-  };
-  
-  return guidelines[complexity] || (isIntake ? '15-25' : '10-20');
-}
-
-/**
  * Gewerke-Erkennung mit LLM
  */
 async function detectTrades(project) {
@@ -284,6 +397,7 @@ async function detectTrades(project) {
   }
   
   const tradeList = availableTrades
+    .filter(t => t.code !== 'INT') // INT wird separat behandelt
     .map(t => `- ${t.code}: ${t.name}`)
     .join('\n');
   
@@ -297,16 +411,10 @@ WICHTIGE REGELN:
 2. Bei Dachsanierung: NUR "DACH" (Dachdecker macht Rückbau selbst)
 3. Bei Badsanierung: Typisch sind SAN, FLI, ELEKT (nicht automatisch alle)
 4. Qualität vor Quantität - lieber weniger aber die richtigen Gewerke
-5. NIEMALS "INT" (Intake) zurückgeben - das wird separat behandelt!
+5. NIEMALS "INT" zurückgeben - das wird separat behandelt!
 
 VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
 ${tradeList}
-
-SPEZIELLE HINWEISE:
-- ABBR (Abbruch) NUR bei expliziter Erwähnung von Abbruch/Entkernung/Komplettrückbau
-- Dachdecker (DACH) führt kleine Rückbauarbeiten am Dach selbst aus
-- Nicht jedes Projekt braucht alle Gewerke!
-- INT (Intake) wird automatisch hinzugefügt, nicht hier auswählen!
 
 OUTPUT FORMAT (NUR valides JSON):
 {
@@ -319,7 +427,8 @@ OUTPUT FORMAT (NUR valides JSON):
   "projectInfo": {
     "type": "Wohnung/EFH/MFH/Gewerbe",
     "scope": "Neubau/Sanierung/Modernisierung",
-    "notes": "Wichtige erkannte Details"
+    "estimatedDuration": "4-6 Wochen",
+    "criticalTrades": ["SAN", "ELEKT"]
   }
 }`;
 
@@ -337,7 +446,7 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 2500,
+      maxTokens: 3000,
       temperature: 0.3,
       jsonMode: true 
     });
@@ -357,11 +466,7 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
     const usedIds = new Set();
     
     for (const trade of parsedResponse.trades) {
-      // BUGFIX: Filtere INT Trade aus
-      if (trade.code === 'INT') {
-        console.log('[DETECT] Skipping INT trade (will be added separately)');
-        continue;
-      }
+      if (trade.code === 'INT') continue; // Skip INT
       
       const dbTrade = availableTrades.find(t => 
         t.code === trade.code || 
@@ -392,7 +497,7 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
 }
 
 /**
- * Intelligente, adaptive Fragengenerierung für Laien
+ * Intelligente Fragengenerierung mit Mengenerfassung
  */
 async function generateQuestions(tradeId, projectContext = {}) {
   const tradeResult = await query(
@@ -413,7 +518,7 @@ async function generateQuestions(tradeId, projectContext = {}) {
     throw new Error(`No question prompt available for ${tradeName}`);
   }
   
-  // Lade Intake-Kontext für Gewerke-Fragen
+  // Intake-Kontext für Gewerke-Fragen laden
   let intakeContext = '';
   let answeredQuestions = [];
   
@@ -438,88 +543,102 @@ ${intakeAnswers.rows.map(a => `- ${a.question}: ${a.answer}`).join('\n')}
 
 WICHTIG: 
 - Stelle NUR noch unbeantwortete, gewerkespezifische Fragen
+- Fokussiere auf KONKRETE MENGEN und MASSE
 - Vermeide jegliche Dopplungen`;
       }
     }
   }
   
-  // Intelligente Fragenanzahl basierend auf Gewerk
-  const questionRange = getIntelligentQuestionRange(tradeName, projectContext);
+  const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
+  const targetQuestionCount = getTradeQuestionCount(tradeCode, projectComplexity);
   
-  const systemPrompt = `Du bist ein erfahrener ${tradeName}-Experte und hilfst einem LAIEN bei der Projektplanung.
-
-DEINE AUFGABE:
-Erstelle ${questionRange} VERSTÄNDLICHE Fragen für ein präzises, nachtragsfreies Leistungsverzeichnis.
-
-KRITISCHE REGELN:
-
-1. LAIENGERECHTE FORMULIERUNG:
-   - Jede Frage MUSS für Nicht-Handwerker verständlich sein
-   - Erkläre Fachbegriffe in 1-2 einfachen Sätzen
-   - Gib konkrete Empfehlungen und Richtwerte
-   - Nutze Alltagssprache statt Fachjargon
-
-2. MESSBARE ANGABEN ERFRAGEN:
-   IMMER EXPLIZIT erfragen:
-   - Raummaße: Länge x Breite x Höhe in Metern
-   - Flächen: Wand-, Boden-, Deckenflächen in m²
-   - Stückzahlen: Fenster, Türen, Steckdosen etc.
-   - "Ich bin unsicher" MUSS als Antwortmöglichkeit bei Mengen gegeben sein
-
-   INTELLIGENT SCHÄTZEN bei:
-   - Kabellängen → basierend auf Raumgröße (Formel: 2×(L+B)+2×H)×1.3
-   - Rohrleitungen → basierend auf Raumabständen
-   - Materialverbräuche → basierend auf Flächen
-
-3. FRAGESTRUKTUR:
-   {
-     "id": "eindeutige-id",
-     "category": "Themenbereich",
-     "question": "Die eigentliche Frage?",
-     "explanation": "1-2 Sätze Erklärung warum das wichtig ist.",
-     "recommendation": "Empfehlung oder Richtwert.",
-     "type": "text|number|select|multiselect",
-     "required": true|false,
-     "allowUnsure": true,
-     "options": ["Option1", "Option2", "Ich bin unsicher"],
-     "unit": "m²|m|Stück|m³",
-     "hint": "Zusätzlicher Hilfetext"
-   }
-
-4. INTELLIGENTE FRAGENANZAHL für ${tradeName}:
-   ${questionRange}
-   Stelle NUR Fragen die WIRKLICH relevant sind!
-
-5. BEISPIELE für ${tradeName}:
-${getSmartTradeExamples(tradeName)}
+  const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
+${isIntake ? 
+'Erstelle einen präzisen INTAKE-Fragenkatalog für die vollständige Projekterfassung.' : 
+`Erstelle einen DETAILLIERTEN Fragenkatalog für das Gewerk ${tradeName}.`}
 
 ${intakeContext}
 
-OUTPUT: NUR valides JSON Array, keine Markdown-Codeblöcke!`;
+KRITISCHE ANFORDERUNGEN:
 
-  const userPrompt = `AUFGABE: Generiere ${questionRange} laienverständliche Fragen.
+1. FRAGENANZAHL: Erstelle GENAU ${targetQuestionCount} Fragen
+   - Nicht weniger, nicht mehr!
+   - Jede Frage muss einen konkreten Mehrwert für die LV-Erstellung bieten
 
-GEWERK-TEMPLATE:
+2. MENGENERFASSUNG (ABSOLUT KRITISCH):
+   - Frage IMMER nach konkreten Maßen: Länge, Breite, Höhe
+   - Erfasse ALLE Flächen einzeln (Wände, Decken, Böden)
+   - Bei Unsicherheit: Ermögliche "unsicher" als Antwort
+   - Frage nach Anzahl von Elementen (Steckdosen, Heizkörper, etc.)
+
+3. LAIENVERSTÄNDLICHKEIT:
+   - Jede Frage mit 1-2 erklärenden Sätzen
+   - Beispiele und typische Werte angeben
+   - Fachbegriffe vermeiden oder erklären
+
+4. FRAGETYPEN PRIORISIERUNG:
+   ${isIntake ? 
+   `- Raumanzahl und -größen (PFLICHT)
+    - Gebäudemaße (L×B×H)
+    - Bestandssituation
+    - Zugänglichkeit
+    - Besondere Anforderungen` :
+   `- Exakte Arbeitsflächen/-längen
+    - Materialspezifikationen
+    - Mengen von Bauteilen
+    - Ausführungsdetails
+    - Anschlusssituationen`}
+
+5. ANTWORTOPTIONEN:
+   - Bei Maßen: Immer "unsicher" als Option
+   - Bei Materialien: Gängige Optionen vorgeben
+   - Bei Ja/Nein: Zusätzlich "weiß nicht"
+
+OUTPUT (NUR valides JSON):
+[
+  {
+    "id": "${tradeCode}-01",
+    "category": "Maße und Mengen|Material|Ausführung|Bestand",
+    "question": "Wie groß ist die zu bearbeitende Fläche?",
+    "explanation": "Bitte messen Sie die Länge und Breite des Raumes. Bei mehreren Räumen addieren Sie die Flächen. Typisch für ein Wohnzimmer sind 20-30 m².",
+    "type": "number|text|select|multiselect",
+    "required": true,
+    "unit": "m²|m|Stk|kg",
+    "options": ["Option1", "Option2", "unsicher"],
+    "defaultValue": null,
+    "validationRule": "min:0,max:10000"
+  }
+]`;
+
+  const userPrompt = `GEWERK: ${tradeName} (${tradeCode})
+ZIEL-FRAGENANZAHL: ${targetQuestionCount} Fragen
+
+TEMPLATE:
 ${questionPrompt}
 
 PROJEKTKONTEXT:
-- Kategorie: ${projectContext.category || 'Renovierung'}
-- Beschreibung: ${projectContext.description || 'Standardprojekt'}
-- Komplexität: ${determineProjectComplexity(projectContext, answeredQuestions)}
+- Kategorie: ${projectContext.category || 'Nicht angegeben'}
+- Beschreibung: ${projectContext.description || 'Keine'}
+- Budget: ${projectContext.budget || 'Nicht angegeben'}
+- Komplexität: ${projectComplexity}
+
+${isIntake ? 
+`Erstelle ${targetQuestionCount} ALLGEMEINE Intake-Fragen zur Projekterfassung.` :
+`Erstelle ${targetQuestionCount} SPEZIFISCHE Fragen für ${tradeName}.
+FOKUS: Konkrete Mengen, Maße und Ausführungsdetails!`}
 
 WICHTIG: 
-- ALLE Fragen müssen für Laien verständlich sein
-- Bei Mengenangaben IMMER "Ich bin unsicher" ermöglichen
-- Gib konkrete Empfehlungen und Richtwerte
-- Erkläre jeden Fachbegriff`;
+- Frage EXPLIZIT nach allen Maßen und Mengen
+- Ermögliche IMMER "unsicher" bei kritischen Angaben
+- Erkläre jede Frage für Laien verständlich`;
 
   try {
     const response = await llmWithPolicy(isIntake ? 'intake' : 'questions', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 6000,
-      temperature: 0.4, // Etwas kreativer für bessere Erklärungen
+      maxTokens: 8000,
+      temperature: 0.5,
       jsonMode: true 
     });
     
@@ -528,29 +647,35 @@ WICHTIG:
       .replace(/```\n?/g, '')
       .trim();
     
-    let questions = JSON.parse(cleanedResponse);
+    const questions = JSON.parse(cleanedResponse);
     
     if (!Array.isArray(questions) || questions.length === 0) {
       throw new Error('Invalid question format received');
     }
     
-    // Validiere und verbessere Fragen
-    questions = validateAndEnhanceQuestions(questions, tradeName, tradeCode);
-    
+    // Post-Processing der Fragen
     const processedQuestions = questions.map((q, idx) => ({
-      ...q,
-      id: q.id || `${tradeCode}-${idx + 1}`,
+      id: q.id || `${tradeCode}-${String(idx + 1).padStart(2, '0')}`,
+      category: q.category || 'Allgemein',
       question: q.question || q.text || q.q,
+      explanation: q.explanation || q.hint || '',
       type: q.type || 'text',
       required: q.required !== undefined ? q.required : true,
-      allowUnsure: q.allowUnsure !== false, // Default: true für Flexibilität
-      explanation: q.explanation || generateDefaultExplanation(q.question),
-      recommendation: q.recommendation || generateDefaultRecommendation(q.question, tradeName),
+      unit: q.unit || null,
+      options: q.options || null,
+      defaultValue: q.defaultValue || null,
+      validationRule: q.validationRule || null,
       tradeId,
       tradeName
     }));
     
-    console.log(`[QUESTIONS] Generated ${processedQuestions.length} intelligent questions for ${tradeName}`);
+    console.log(`[QUESTIONS] Generated ${processedQuestions.length} questions for ${tradeName} (target: ${targetQuestionCount})`);
+    
+    // Warnung wenn Anzahl stark abweicht
+    if (Math.abs(processedQuestions.length - targetQuestionCount) > 3) {
+      console.warn(`[QUESTIONS] Warning: Generated ${processedQuestions.length} questions, target was ${targetQuestionCount}`);
+    }
+    
     return processedQuestions;
     
   } catch (err) {
@@ -560,409 +685,204 @@ WICHTIG:
 }
 
 /**
- * Intelligente Bestimmung der Fragenanzahl basierend auf Gewerk
+ * Realistische LV-Generierung basierend auf erfassten Daten
  */
-function getIntelligentQuestionRange(tradeName, projectContext) {
-  const tradeComplexity = {
-    // Einfache Gewerke (5-10 Fragen)
-    'Malerarbeiten': '6-10',
-    'Tapezierarbeiten': '5-8',
-    'Reinigung': '4-6',
-    
-    // Mittlere Komplexität (8-15 Fragen)
-    'Bodenbelagsarbeiten': '8-12',
-    'Fliesenarbeiten': '10-14',
-    'Trockenbau': '8-12',
-    'Fenster-Außentüren': '6-10',
-    'Türen': '6-10',
-    
-    // Hohe Komplexität (12-20 Fragen)
-    'Elektroinstallation': '12-18',
-    'Sanitärinstallation': '12-18',
-    'Heizung': '10-16',
-    'Dämmung/Fassade': '10-15',
-    'Fassade': '10-15',
-    
-    // Sehr hohe Komplexität (15-25 Fragen)
-    'Rohbau': '15-20',
-    'Dacharbeiten': '12-18',
-    'Abbruch': '8-15',
-    
-    // Spezialgewerke
-    'Schlosser': '8-12',
-    'Tischler': '10-14',
-    'Estrich': '6-10',
-    'Gerüstbau': '5-8',
-    'Außenanlagen': '10-15'
-  };
-  
-  // Basis-Range oder Default
-  let range = tradeComplexity[tradeName] || '8-12';
-  
-  // Anpassung bei komplexen Projekten
-  if (projectContext.description?.length > 200 || 
-      projectContext.category?.includes('Komplett') ||
-      projectContext.category?.includes('Kernsanierung')) {
-    const [min, max] = range.split('-').map(n => parseInt(n.trim()));
-    range = `${min + 2}-${max + 3}`;
-  }
-  
-  return range + ' präzise, notwendige Fragen';
-}
+async function generateDetailedLV(projectId, tradeId) {
+  const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
+  if (!project) throw new Error('Project not found');
 
-/**
- * Gewerkspezifische Beispiele für Laien
- */
-function getSmartTradeExamples(tradeName) {
-  const examples = {
-    'Malerarbeiten': `
-{
-  "question": "Wie groß sind die Räume, die gestrichen werden sollen?",
-  "explanation": "Messen Sie Länge × Breite × Höhe. Dies hilft uns, die Wandfläche zu berechnen.",
-  "recommendation": "Ein typisches Wohnzimmer hat etwa 20-30 m² Bodenfläche und 2,5m Höhe.",
-  "type": "text",
-  "allowUnsure": true
-},
-{
-  "question": "Welcher Zustand haben die Wände aktuell?",
-  "explanation": "Schauen Sie nach Rissen, abblätternder Farbe oder Feuchtigkeit.",
-  "type": "select",
-  "options": ["Gut - nur kleine Gebrauchsspuren", "Mittel - einige Risse/Flecken", "Schlecht - viele Schäden", "Ich bin unsicher"]
-}`,
+  const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
+  if (!trade) throw new Error('Trade not found');
 
-    'Elektroinstallation': `
-{
-  "question": "Wie viele Steckdosen möchten Sie pro Raum?",
-  "explanation": "Überlegen Sie, wo Sie Geräte anschließen möchten. Standard sind 4-6 Steckdosen pro Zimmer.",
-  "recommendation": "Wohnzimmer: 8-10, Schlafzimmer: 6-8, Küche: 10-12 Steckdosen",
-  "type": "number",
-  "allowUnsure": true,
-  "unit": "Stück"
-}`,
+  // Lade alle relevanten Antworten
+  const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
+  const intakeAnswers = intTrade
+    ? (await query(
+        `SELECT q.text as question, q.question_id, a.answer_text as answer, a.assumption
+         FROM answers a
+         JOIN questions q ON q.project_id = a.project_id 
+           AND q.trade_id = a.trade_id 
+           AND q.question_id = a.question_id
+         WHERE a.project_id=$1 AND a.trade_id=$2
+         ORDER BY q.question_id`,
+        [projectId, intTrade.id]
+      )).rows
+    : [];
 
-    'Sanitärinstallation': `
-{
-  "question": "Welche Sanitärobjekte sollen installiert werden?",
-  "explanation": "Wählen Sie alle zutreffenden aus. Standard bedeutet normale Qualität, Premium ist hochwertiger.",
-  "type": "multiselect",
-  "options": ["WC Standard", "WC Premium", "Waschbecken", "Dusche", "Badewanne", "Ich bin unsicher"]
-}`,
+  const tradeAnswers = (await query(
+    `SELECT q.text as question, q.question_id, q.unit, a.answer_text as answer, a.assumption
+     FROM answers a
+     JOIN questions q ON q.project_id = a.project_id 
+       AND q.trade_id = a.trade_id 
+       AND q.question_id = a.question_id
+     WHERE a.project_id=$1 AND a.trade_id=$2
+     ORDER BY q.question_id`,
+    [projectId, tradeId]
+  )).rows;
 
-    'Bodenbelagsarbeiten': `
-{
-  "question": "Wie groß ist die zu verlegende Bodenfläche?",
-  "explanation": "Messen Sie Länge × Breite jedes Raumes und addieren Sie die Flächen.",
-  "recommendation": "Beispiel: Wohnzimmer 5m × 4m = 20m², Schlafzimmer 4m × 3m = 12m², Gesamt = 32m²",
-  "type": "number",
-  "allowUnsure": true,
-  "unit": "m²"
-}`
-  };
-  
-  return examples[tradeName] || `Laienverständliche Fragen mit Erklärungen für ${tradeName}`;
-}
-
-/**
- * Validiere und verbessere generierte Fragen
- */
-function validateAndEnhanceQuestions(questions, tradeName, tradeCode) {
-  if (!Array.isArray(questions)) return [];
-  
-  // Stelle sicher, dass Grundfragen vorhanden sind
-  const hasRoomSize = questions.some(q => 
-    q.question?.toLowerCase().includes('raum') || 
-    q.question?.toLowerCase().includes('größe') ||
-    q.question?.toLowerCase().includes('fläche')
+  // Validiere und schätze fehlende Werte
+  const validationResult = await validateAndEstimateAnswers(
+    tradeAnswers,
+    trade.code,
+    {
+      category: project.category,
+      description: project.description,
+      intakeAnswers
+    }
   );
-  
-  if (!hasRoomSize && tradeName !== 'Gerüstbau') {
-    questions.unshift({
-      id: `${tradeCode}-size`,
-      category: "Grundlagen",
-      question: "Wie groß ist der Arbeitsbereich?",
-      explanation: "Geben Sie die Maße der betroffenen Räume oder Flächen an. Bei Unsicherheit wählen Sie 'Ich bin unsicher'.",
-      recommendation: "Messen Sie Länge × Breite × Höhe in Metern",
-      type: "text",
-      required: true,
-      allowUnsure: true
+
+  const lvPrompt = await getPromptForTrade(tradeId, 'lv');
+  if (!lvPrompt) throw new Error('LV prompt missing for trade');
+
+  const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
+Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
+
+KRITISCHE ANFORDERUNGEN:
+
+1. NUR ERFRAGTE POSITIONEN:
+   - Erstelle NUR Positionen für explizit erfragte und beantwortete Leistungen
+   - KEINE erfundenen Positionen oder Annahmen
+   - Wenn eine Leistung nicht erfragt wurde, darf sie NICHT im LV erscheinen
+
+2. MENGENERMITTLUNG:
+   - Verwende NUR die validierten Mengen aus den Antworten
+   - Bei geschätzten Werten: Kennzeichne dies in den Notes
+   - Plausibilitätsprüfung aller Mengen
+
+3. PREISKALKULATION (2024/2025):
+   - Realistische Marktpreise
+   - Regionale Unterschiede berücksichtigen
+   - Inkl. aller Nebenleistungen gem. VOB/C
+
+4. VOLLSTÄNDIGKEIT:
+   - Anzahl Positionen abhängig von Projektumfang
+   - Kleine Projekte: 5-10 Positionen
+   - Mittlere Projekte: 10-20 Positionen
+   - Große Projekte: 20-40 Positionen
+
+OUTPUT FORMAT (NUR valides JSON):
+{
+  "trade": "${trade.name}",
+  "tradeCode": "${trade.code}",
+  "projectType": "string",
+  "dataQuality": {
+    "measuredValues": 15,
+    "estimatedValues": 3,
+    "confidence": 0.85
+  },
+  "positions": [
+    { 
+      "pos": "01.01.001",
+      "title": "Präziser Positionstitel",
+      "description": "Detaillierte VOB-konforme Beschreibung mit Material, Ausführung, Qualität, Normen. Min. 2-3 Sätze.",
+      "quantity": 150.00,
+      "unit": "m²",
+      "unitPrice": 45.50,
+      "totalPrice": 6825.00,
+      "priceBase": "Marktpreis 2024 inkl. Nebenleistungen",
+      "dataSource": "measured|estimated|assumed",
+      "notes": "Hinweise zu Annahmen"
+    }
+  ],
+  "totalSum": 0,
+  "additionalNotes": "Wichtige Ausführungshinweise",
+  "assumptions": ["Liste aller getroffenen Annahmen"],
+  "excludedServices": ["Explizit nicht enthaltene Leistungen"],
+  "priceDate": "${new Date().toISOString().split('T')[0]}",
+  "validUntil": "3 Monate",
+  "executionTime": "Geschätzte Ausführungsdauer"
+}`;
+
+  const userPrompt = `GEWERK: ${trade.name} (${trade.code})
+
+LV-TEMPLATE:
+${lvPrompt}
+
+PROJEKTDATEN:
+${JSON.stringify(project, null, 2)}
+
+INTAKE-ANTWORTEN (${intakeAnswers.length} Antworten):
+${intakeAnswers.map(a => 
+  `[${a.question_id}] ${a.question}
+  Antwort: ${a.answer}${a.assumption ? `\n  Annahme: ${a.assumption}` : ''}`
+).join('\n\n')}
+
+GEWERK-SPEZIFISCHE ANTWORTEN (${tradeAnswers.length} Antworten):
+${tradeAnswers.map(a => 
+  `[${a.question_id}] ${a.question}${a.unit ? ` (${a.unit})` : ''}
+  Antwort: ${a.answer}${a.assumption ? `\n  Annahme: ${a.assumption}` : ''}`
+).join('\n\n')}
+
+VALIDIERTE WERTE:
+${validationResult ? JSON.stringify(validationResult, null, 2) : 'Keine Validierung verfügbar'}
+
+WICHTIG:
+1. Erstelle NUR Positionen für explizit erfragte Leistungen
+2. Verwende die validierten Mengen
+3. Realistische Preise (Stand 2024/2025)
+4. Dokumentiere alle Annahmen transparent`;
+
+  try {
+    const response = await llmWithPolicy('lv', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { 
+      maxTokens: 10000,
+      temperature: 0.3,
+      jsonMode: true 
     });
-  }
-  
-  // Füge "Unsicher"-Option zu allen relevanten Fragen
-  return questions.map(q => {
-    // Bei Mengenfragen immer Unsicher-Option
-    if (q.type === 'number' || 
-        q.question?.toLowerCase().includes('wie viel') || 
-        q.question?.toLowerCase().includes('wie groß') ||
-        q.question?.toLowerCase().includes('wie viele')) {
-      q.allowUnsure = true;
-    }
-    
-    // Bei Select-Fragen Unsicher-Option hinzufügen
-    if (q.type === 'select' && q.options && !q.options.includes('Ich bin unsicher')) {
-      q.options.push('Ich bin unsicher');
-    }
-    
-    // Stelle sicher, dass Erklärungen vorhanden sind
-    if (!q.explanation) {
-      q.explanation = generateDefaultExplanation(q.question);
-    }
-    
-    return q;
-  });
-}
 
-/**
- * Generiere Standard-Erklärung falls keine vorhanden
- */
-function generateDefaultExplanation(question) {
-  if (!question) return "Diese Information hilft uns bei der präzisen Kalkulation.";
-  
-  if (question.includes('Fläche') || question.includes('m²')) {
-    return "Messen Sie die Länge und Breite des Bereichs und multiplizieren Sie beide Werte. Bei mehreren Räumen addieren Sie die Einzelflächen.";
-  }
-  if (question.includes('Anzahl') || question.includes('wie viele')) {
-    return "Zählen Sie alle betroffenen Elemente. Bei Unsicherheit ist das kein Problem - wählen Sie einfach 'Ich bin unsicher'.";
-  }
-  if (question.includes('Zustand')) {
-    return "Beschreiben Sie den aktuellen Zustand so gut Sie können. Dies hilft uns, notwendige Vorarbeiten einzuplanen.";
-  }
-  if (question.includes('Qualität')) {
-    return "Die Qualitätsstufe beeinflusst Material und Ausführung. Standard ist für normale Anforderungen ausreichend.";
-  }
-  return "Diese Information hilft uns, ein präzises Angebot zu erstellen.";
-}
-
-/**
- * Generiere Standard-Empfehlung
- */
-function generateDefaultRecommendation(question, tradeName) {
-  if (!question) return null;
-  
-  if (question.includes('Qualität')) {
-    return "Standard-Qualität reicht für normale Wohnräume. Premium lohnt sich bei besonderen Ansprüchen oder stark beanspruchten Bereichen.";
-  }
-  if (question.includes('Steckdosen')) {
-    return "Moderne Haushalte benötigen mehr Steckdosen als früher. Planen Sie lieber zu viele als zu wenige ein.";
-  }
-  if (question.includes('Farbe') || question.includes('Anstrich')) {
-    return "Helle Farben lassen Räume größer wirken. Bei stark beanspruchten Wänden empfiehlt sich abwaschbare Farbe.";
-  }
-  return null;
-}
-
-/**
- * Erweiterte Validierung - arbeitet mit tatsächlichen Trade-Codes aus dem LV
- */
-function validateLV(lv, answers) {
-  const problems = [];
-  const warnings = [];
-  
-  if (!lv.positions || !Array.isArray(lv.positions)) {
-    problems.push('Keine Positionen im LV gefunden');
-    return { valid: false, problems, warnings };
-  }
-  
-  // Hole den Trade-Code aus dem LV
-  const tradeCode = lv.tradeCode;
-  
-  lv.positions.forEach((pos, index) => {
-    // Prüfe ob Menge in Antworten vorkommt
-    const hasMatchingAnswer = answers.some(a => {
-      const answer = a.answer?.toString().toLowerCase();
-      const quantity = pos.quantity?.toString();
+    const cleanedResponse = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    const lv = JSON.parse(cleanedResponse);
+    
+    // Post-Processing
+    if (lv.positions && Array.isArray(lv.positions)) {
+      let calculatedSum = 0;
+      lv.positions = lv.positions.map(pos => {
+        if (!pos.totalPrice && pos.quantity && pos.unitPrice) {
+          pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        }
+        calculatedSum += pos.totalPrice || 0;
+        return pos;
+      });
+      lv.totalSum = Math.round(calculatedSum * 100) / 100;
       
-      if (answer?.includes(quantity)) return true;
-      if (answer === 'ich bin unsicher' && pos.notes?.includes('Annahme')) return true;
-      if (pos.unit && answer?.includes(pos.unit.toLowerCase())) return true;
-      
-      return false;
-    });
-    
-    if (!hasMatchingAnswer && !pos.assumption) {
-      problems.push(`Position ${pos.pos || index + 1} "${pos.title}": Menge ${pos.quantity} ${pos.unit} hat keine entsprechende Antwort`);
-    }
-    
-    // Warnung bei verdächtigen Keywords
-    const suspiciousKeywords = ['Asbest', 'Schadstoff', 'PCB', 'KMF', 'PAK', 'Blei', 'Teer'];
-    suspiciousKeywords.forEach(keyword => {
-      if (pos.title?.includes(keyword) || pos.description?.includes(keyword)) {
-        const mentioned = answers.some(a => 
-          a.answer?.toLowerCase().includes(keyword.toLowerCase())
-        );
-        if (!mentioned) {
-          problems.push(`Position ${pos.pos}: ${keyword} ohne entsprechende Angabe!`);
-        }
-      }
-    });
-    
-    // Plausibilitätsprüfung basierend auf Trade-Code
-    const priceRanges = getPriceRangesForTrade(tradeCode);
-    
-    if (priceRanges && pos.unitPrice && pos.unit) {
-      const range = priceRanges[pos.unit];
-      if (range) {
-        if (pos.unitPrice < range.min) {
-          warnings.push(`Position ${pos.pos}: Preis ${pos.unitPrice}€/${pos.unit} ungewöhnlich niedrig (erwartet: ${range.min}-${range.max}€)`);
-        }
-        if (pos.unitPrice > range.max) {
-          warnings.push(`Position ${pos.pos}: Preis ${pos.unitPrice}€/${pos.unit} ungewöhnlich hoch (erwartet: ${range.min}-${range.max}€)`);
-        }
-      }
-    }
-    
-    // Mengenvalidierung
-    if (pos.quantity) {
-      const mengenChecks = {
-        'm²': { max: 10000, warn: 1000 },
-        'm³': { max: 5000, warn: 500 },
-        'm': { max: 10000, warn: 1000 },
-        'Stück': { max: 10000, warn: 1000 },
-        't': { max: 1000, warn: 100 },
-        'kg': { max: 100000, warn: 10000 }
+      // Statistiken
+      lv.statistics = {
+        positionCount: lv.positions.length,
+        averagePositionValue: Math.round((lv.totalSum / lv.positions.length) * 100) / 100,
+        minPosition: Math.min(...lv.positions.map(p => p.totalPrice || 0)),
+        maxPosition: Math.max(...lv.positions.map(p => p.totalPrice || 0)),
+        measuredPositions: lv.positions.filter(p => p.dataSource === 'measured').length,
+        estimatedPositions: lv.positions.filter(p => p.dataSource === 'estimated').length
       };
-      
-      const check = mengenChecks[pos.unit];
-      if (check) {
-        if (pos.quantity > check.max) {
-          problems.push(`Position ${pos.pos}: ${pos.quantity} ${pos.unit} überschreitet Maximum`);
-        } else if (pos.quantity > check.warn) {
-          warnings.push(`Position ${pos.pos}: ${pos.quantity} ${pos.unit} erscheint sehr groß`);
-        }
-      }
-      
-      if (pos.quantity <= 0) {
-        problems.push(`Position ${pos.pos}: Ungültige Menge ${pos.quantity}`);
-      }
     }
-  });
-  
-  // Prüfe Gesamtsumme
-  const calculatedSum = lv.positions.reduce((sum, pos) => {
-    return sum + (pos.totalPrice || (pos.quantity * pos.unitPrice) || 0);
-  }, 0);
-  
-  const difference = Math.abs(calculatedSum - (lv.totalSum || 0));
-  if (difference > 0.01) {
-    warnings.push(`Gesamtsumme weicht ab: Berechnet ${calculatedSum.toFixed(2)}€, angegeben ${lv.totalSum?.toFixed(2)}€`);
+    
+    // Metadaten
+    const lvWithMeta = {
+      ...lv,
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        projectId,
+        tradeId,
+        intakeAnswersCount: intakeAnswers.length,
+        tradeAnswersCount: tradeAnswers.length,
+        positionsCount: lv.positions?.length || 0,
+        totalValue: lv.totalSum || 0,
+        dataQuality: lv.dataQuality || { confidence: 0.5 }
+      }
+    };
+    
+    return lvWithMeta;
+    
+  } catch (err) {
+    console.error('[LV] Generation failed:', err);
+    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen`);
   }
-  
-  // Statistik
-  const stats = {
-    totalPositions: lv.positions.length,
-    positionsWithAssumptions: lv.positions.filter(p => p.assumption).length,
-    positionsWithoutPrice: lv.positions.filter(p => !p.unitPrice).length,
-    averagePrice: calculatedSum / lv.positions.length,
-    confidence: problems.length === 0 ? 100 : Math.max(0, 100 - (problems.length * 10))
-  };
-  
-  return {
-    valid: problems.length === 0,
-    problems,
-    warnings,
-    stats,
-    recommendation: problems.length > 0 
-      ? 'LV sollte überarbeitet werden'
-      : warnings.length > 0
-      ? 'LV ist valide, aber bitte Warnungen prüfen'
-      : 'LV ist vollständig valide'
-  };
-}
-
-/**
- * Gibt Preisspannen für einen Trade-Code zurück
- */
-function getPriceRangesForTrade(tradeCode) {
-  const ranges = {
-    'MAL': {
-      'm²': { min: 5, max: 50 },
-      'm': { min: 3, max: 25 },
-      'Stück': { min: 50, max: 500 }
-    },
-    'BOD': {
-      'm²': { min: 20, max: 200 },
-      'm': { min: 5, max: 30 },
-      'psch': { min: 500, max: 5000 }
-    },
-    'FLI': {
-      'm²': { min: 30, max: 150 },
-      'm': { min: 15, max: 60 },
-      'Stück': { min: 100, max: 1000 }
-    },
-    'TRO': {
-      'm²': { min: 25, max: 80 },
-      'm': { min: 15, max: 50 },
-      'Stück': { min: 50, max: 200 }
-    },
-    'ELEKT': {
-      'Stück': { min: 30, max: 150 },
-      'm': { min: 5, max: 50 },
-      'psch': { min: 500, max: 10000 }
-    },
-    'SAN': {
-      'Stück': { min: 200, max: 2000 },
-      'm': { min: 20, max: 150 },
-      'psch': { min: 1000, max: 15000 }
-    },
-    'HEI': {
-      'Stück': { min: 300, max: 1500 },
-      'm': { min: 15, max: 100 },
-      'psch': { min: 2000, max: 30000 }
-    },
-    'FEN': {
-      'Stück': { min: 300, max: 1500 },
-      'm²': { min: 150, max: 800 },
-      'psch': { min: 500, max: 5000 }
-    },
-    'TIS': {
-      'Stück': { min: 500, max: 3000 },
-      'm²': { min: 200, max: 1200 },
-      'm': { min: 50, max: 300 }
-    },
-    'DACH': {
-      'm²': { min: 50, max: 300 },
-      'm': { min: 30, max: 150 },
-      'Stück': { min: 100, max: 500 }
-    },
-    'FASS': {
-      'm²': { min: 40, max: 250 },
-      'm': { min: 20, max: 100 },
-      'psch': { min: 2000, max: 50000 }
-    },
-    'ROH': {
-      'm³': { min: 150, max: 500 },
-      'm²': { min: 80, max: 300 },
-      't': { min: 50, max: 200 }
-    },
-    'ESTR': {
-      'm²': { min: 15, max: 60 },
-      'm³': { min: 150, max: 400 },
-      'psch': { min: 500, max: 10000 }
-    },
-    'SCHL': {
-      'm': { min: 100, max: 500 },
-      'Stück': { min: 200, max: 2000 },
-      'kg': { min: 15, max: 50 }
-    },
-    'AUSS': {
-      'm²': { min: 20, max: 150 },
-      'm': { min: 30, max: 200 },
-      'Stück': { min: 50, max: 500 }
-    },
-    'GER': {
-      'm²': { min: 8, max: 25 },
-      'Wo': { min: 50, max: 200 },
-      'psch': { min: 500, max: 10000 }
-    },
-    'ABBR': {
-      'm³': { min: 30, max: 200 },
-      'm²': { min: 20, max: 150 },
-      't': { min: 50, max: 300 },
-      'psch': { min: 1000, max: 50000 }
-    }
-  };
-  
-  return ranges[tradeCode] || null;
 }
 
 /**
@@ -1028,6 +948,15 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
            month: 'long',
            day: 'numeric'
          }));
+      
+      // Datenqualität anzeigen
+      if (lv.dataQuality) {
+        doc.moveDown(0.5);
+        doc.font('Helvetica-Bold')
+           .text('Datenqualität: ', { continued: true })
+           .font('Helvetica')
+           .text(`${Math.round(lv.dataQuality.confidence * 100)}% Konfidenz`);
+      }
       
       doc.moveDown(1);
       
@@ -1123,10 +1052,6 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
           if (withPrices && pos.totalPrice) {
             doc.text(formatCurrency(pos.totalPrice), col6, yPosition, { width: 70, align: 'right' });
             totalSum += pos.totalPrice;
-          } else if (withPrices && pos.quantity && pos.unitPrice) {
-            const total = pos.quantity * pos.unitPrice;
-            doc.text(formatCurrency(total), col6, yPosition, { width: 70, align: 'right' });
-            totalSum += total;
           } else {
             doc.text('________', col6, yPosition, { width: 70, align: 'right' });
           }
@@ -1136,6 +1061,15 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
             doc.fontSize(8)
                .fillColor('#666666')
                .text(pos.description, col2, yPosition, { width: 400 });
+            
+            // Datenquelle anzeigen
+            if (pos.dataSource && pos.dataSource !== 'measured') {
+              const sourceText = pos.dataSource === 'estimated' ? '(geschätzt)' : '(angenommen)';
+              doc.fontSize(7)
+                 .fillColor('#FF6600')
+                 .text(sourceText, col2 + 350, yPosition);
+            }
+            
             yPosition += doc.heightOfString(pos.description, { width: 400 });
             doc.fontSize(9)
                .fillColor('black');
@@ -1194,6 +1128,29 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
            .text('________', col6, yPosition, { width: 70, align: 'right' });
       }
       
+      // Annahmen anzeigen
+      if (lv.assumptions && lv.assumptions.length > 0) {
+        yPosition += 40;
+        
+        if (yPosition > 650) {
+          doc.addPage();
+          yPosition = 50;
+        }
+        
+        doc.fontSize(10)
+           .font('Helvetica-Bold')
+           .text('Annahmen und Hinweise:', 50, yPosition);
+        
+        yPosition += 15;
+        doc.fontSize(8)
+           .font('Helvetica');
+        
+        lv.assumptions.forEach(assumption => {
+          doc.text(`• ${assumption}`, 60, yPosition, { width: 485 });
+          yPosition += doc.heightOfString(assumption, { width: 485 }) + 5;
+        });
+      }
+      
       // Footer
       doc.fontSize(8)
          .font('Helvetica')
@@ -1244,14 +1201,15 @@ app.use(bodyParser.json());
 // Health Check
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'BYNDL Backend v3.2 (ENHANCED)',
+    message: 'BYNDL Backend v4.0',
     status: 'running',
     timestamp: new Date().toISOString(),
     features: [
-      'Intelligente Fragengenerierung für Laien',
-      'Ich bin unsicher Option',
-      'Strikte LV-Bindung an Antworten',
-      'Transparente Annahmen-Dokumentation'
+      'Intelligente Fragenanzahl nach Gewerke-Komplexität',
+      'Detaillierte Mengenerfassung',
+      'Realistische LV-Generierung',
+      'Laienverständliche Fragen',
+      'Intelligente Schätzlogik'
     ]
   });
 });
@@ -1275,7 +1233,14 @@ app.get('/api/dbping', async (req, res) => {
 app.get('/api/trades', async (req, res) => {
   try {
     const trades = await getAvailableTrades();
-    res.json(trades);
+    
+    // Füge Komplexitätsinformationen hinzu
+    const tradesWithComplexity = trades.map(trade => ({
+      ...trade,
+      complexity: TRADE_COMPLEXITY[trade.code] || DEFAULT_COMPLEXITY
+    }));
+    
+    res.json(tradesWithComplexity);
   } catch (err) {
     console.error('Failed to fetch trades:', err);
     res.status(500).json({ error: 'Failed to fetch trades' });
@@ -1308,7 +1273,7 @@ app.post('/api/projects', async (req, res) => {
       budget
     });
     
-    // BUGFIX: Nur die erkannten Trades hinzufügen
+    // Nur erkannte Trades hinzufügen
     console.log(`[PROJECT] Creating project ${project.id} with ${detectedTrades.length} detected trades`);
     
     for (const trade of detectedTrades) {
@@ -1318,7 +1283,8 @@ app.post('/api/projects', async (req, res) => {
     res.json({
       project: {
         ...project,
-        trades: detectedTrades
+        trades: detectedTrades,
+        complexity: determineProjectComplexity(project)
       }
     });
     
@@ -1343,13 +1309,12 @@ app.get('/api/projects/:projectId', async (req, res) => {
     }
     
     const project = projectResult.rows[0];
-    
-    // Nur die tatsächlich zugewiesenen Trades abrufen
     const trades = await getProjectTrades(projectId);
     
     project.trades = trades;
+    project.complexity = determineProjectComplexity(project);
     
-    console.log(`[PROJECT] Retrieved project ${projectId} with ${trades.length} trades`);
+    console.log(`[PROJECT] Retrieved project ${projectId} with ${trades.length} trades, complexity: ${project.complexity}`);
     
     res.json(project);
     
@@ -1359,7 +1324,7 @@ app.get('/api/projects/:projectId', async (req, res) => {
   }
 });
 
-// BUGFIX: Intake Questions - fügt nur INT Trade hinzu
+// Generate Intake Questions
 app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -1376,12 +1341,7 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
     }
     const tradeId = intTrade.rows[0].id;
     
-    // BUGFIX: Nur INT Trade hinzufügen, mit explizitem Source-Logging
     await ensureProjectTrade(projectId, tradeId, 'intake');
-    
-    // Sicherstellen, dass keine anderen Trades versehentlich hinzugefügt werden
-    const currentTrades = await getProjectTrades(projectId);
-    console.log(`[INTAKE] Project ${projectId} has ${currentTrades.length} trades after adding INT`);
     
     const questions = await generateQuestions(tradeId, {
       category: project.category,
@@ -1389,9 +1349,9 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
       description: project.description,
       timeframe: project.timeframe,
       budget: project.budget
-      // BUGFIX: projectId nicht übergeben für Intake
     });
 
+    // Speichere Fragen mit erweiterten Feldern
     let saved = 0;
     for (const q of questions) {
       await query(
@@ -1411,31 +1371,21 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
       );
       saved++;
     }
-       
-    const detected = Array.isArray(req.body?.detectedTrades)
-         ? req.body.detectedTrades.filter(c => c && c !== 'INT')
-         : [];
 
-       if (detected.length > 0) {
-         for (const code of detected) {
-           const tRes = await query(`SELECT id FROM trades WHERE code = $1 LIMIT 1`, [code]);
-           if (tRes.rows.length === 0) continue;
-           
-           const tId = tRes.rows[0].id;
-           await ensureProjectTrade(projectId, tId);
-           
-           console.log(`[INTAKE] Added detected trade ${code} to project ${projectId}`);
-         }
-       }
-
-    res.json({ ok: true, tradeCode: 'INT', questions, saved, detectedTrades: detected });
+    res.json({ 
+      ok: true, 
+      tradeCode: 'INT', 
+      questions, 
+      saved,
+      targetCount: getTradeQuestionCount('INT', determineProjectComplexity(project))
+    });
   } catch (err) {
     console.error('intake/questions failed:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// BUGFIX: Intake Summary - empfiehlt nur Trades, fügt sie NICHT hinzu
+// Intake Summary
 app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -1447,48 +1397,55 @@ app.get('/api/projects/:projectId/intake/summary', async (req, res) => {
     if (!intTrade) return res.status(500).json({ error: 'INT trade missing' });
 
     const answers = (await query(
-      `SELECT question_id, answer_text
-       FROM answers
-       WHERE project_id=$1 AND trade_id=$2
-       ORDER BY question_id`,
+      `SELECT q.text as question, a.answer_text as answer
+       FROM answers a
+       JOIN questions q ON q.project_id = a.project_id 
+         AND q.trade_id = a.trade_id 
+         AND q.question_id = a.question_id
+       WHERE a.project_id=$1 AND a.trade_id=$2
+       ORDER BY q.question_id`,
       [projectId, intTrade.id]
     )).rows;
 
     const availableTrades = await getAvailableTrades();
-    const validCodes = availableTrades.map(t => t.code).filter(c => c !== 'INT'); // INT ausschließen
+    const validCodes = availableTrades.map(t => t.code).filter(c => c !== 'INT');
 
     const master = await getPromptByName('master');
 
     const system = `${master}
 
-WICHTIG: Unterscheide klar zwischen GEWERKEN und EMPFEHLUNGEN!
+Analysiere die Intake-Antworten und empfehle die benötigten Gewerke.
 
-VERFÜGBARE GEWERKE-CODES (NUR DIESE für "trades" verwenden):
+VERFÜGBARE GEWERKE (NUR DIESE für "trades"):
 ${availableTrades.filter(t => t.code !== 'INT').map(t => `- ${t.code}: ${t.name}`).join('\n')}
 
-Gib NUR valides JSON zurück:
+OUTPUT (NUR valides JSON):
 {
-  "recommendations": ["Empfehlung für Gutachter/Statiker/Planer etc."],
-  "risks": ["Identifizierte Risiken"],
-  "missingInfo": ["Fehlende Informationen"],
+  "recommendations": ["Empfehlungen für zusätzliche Experten"],
+  "risks": ["Identifizierte Projektrisiken"],
+  "missingInfo": ["Fehlende wichtige Informationen"],
   "trades": [
-    {"code": "SAN", "reason": "Begründung warum dieses GEWERK benötigt wird"}
-  ]
-}
-
-REGELN:
-- "trades" darf NUR Codes aus der obigen Liste enthalten!
-- Gutachter, Statiker, Planer etc. gehören in "recommendations", NICHT in "trades"
-- NIEMALS "INT" in trades aufnehmen!`;
+    {
+      "code": "SAN",
+      "reason": "Begründung warum dieses Gewerk benötigt wird",
+      "priority": "hoch|mittel|niedrig",
+      "estimatedQuestions": 25
+    }
+  ],
+  "projectCharacteristics": {
+    "complexity": "SEHR_HOCH|HOCH|MITTEL|NIEDRIG|EINFACH",
+    "estimatedDuration": "4-6 Wochen",
+    "criticalPath": ["SAN", "ELEKT"]
+  }
+}`;
 
     const user = `Projekt:
-Kategorie: ${project.category}
-Beschreibung: ${project.description}
+${JSON.stringify(project, null, 2)}
 
-Antworten Intake:
-${answers.map(a => `- ${a.question_id}: ${a.answer_text}`).join('\n')}
+Intake-Antworten (${answers.length}):
+${answers.map(a => `- ${a.question}: ${a.answer}`).join('\n')}
 
-Analysiere das Projekt und gib Empfehlungen.`;
+Analysiere und empfehle benötigte Gewerke.`;
 
     const raw = await llmWithPolicy('summary', [
       { role: 'system', content: system },
@@ -1502,19 +1459,17 @@ Analysiere das Projekt und gib Empfehlungen.`;
 
     const summary = JSON.parse(cleanedResponse);
 
-    // BUGFIX: Filtere und validiere Trades, aber füge sie NICHT zur DB hinzu
+    // Filtere und validiere Trades
     if (summary.trades && Array.isArray(summary.trades)) {
-      summary.trades = summary.trades.filter(t => {
-        const isValid = validCodes.includes(t.code) && t.code !== 'INT';
-        if (!isValid && (t.code === 'GUT' || t.reason?.toLowerCase().includes('gutachter'))) {
-          summary.recommendations = summary.recommendations || [];
-          summary.recommendations.push(`Gutachter für ${t.reason || 'Schadensanalyse'}`);
-        }
-        return isValid;
-      });
+      summary.trades = summary.trades.filter(t => validCodes.includes(t.code));
+      
+      // Füge geschätzte Fragenanzahl hinzu
+      summary.trades = summary.trades.map(t => ({
+        ...t,
+        estimatedQuestions: t.estimatedQuestions || 
+          getTradeQuestionCount(t.code, summary.projectCharacteristics?.complexity || 'MITTEL')
+      }));
     }
-
-    // WICHTIG: Keine Trades zur DB hinzufügen! Das macht nur der User über das Frontend
 
     res.json({ ok: true, summary });
   } catch (err) {
@@ -1523,6 +1478,7 @@ Analysiere das Projekt und gib Empfehlungen.`;
   }
 });
 
+// Confirm trades for project
 app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -1563,7 +1519,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
   try {
     const { projectId, tradeId } = req.params;
     
-    // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
     
     const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
@@ -1594,6 +1549,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       projectId: projectId
     });
     
+    // Speichere erweiterte Fragen
     for (const question of questions) {
       await query(
         `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
@@ -1610,9 +1566,43 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
           question.options ? JSON.stringify(question.options) : null
         ]
       );
+      
+      // Speichere zusätzliche Metadaten (falls vorhanden)
+      if (question.explanation || question.unit || question.validationRule) {
+        await query(
+          `UPDATE questions 
+           SET metadata = jsonb_build_object(
+             'explanation', $1,
+             'unit', $2,
+             'validationRule', $3,
+             'category', $4
+           )
+           WHERE project_id = $5 AND trade_id = $6 AND question_id = $7`,
+          [
+            question.explanation || null,
+            question.unit || null,
+            question.validationRule || null,
+            question.category || null,
+            projectId,
+            tradeId,
+            question.id
+          ]
+        ).catch(err => {
+          // Falls metadata-Spalte nicht existiert, ignorieren
+          console.log('[QUESTIONS] Metadata column might not exist, skipping');
+        });
+      }
     }
     
-    res.json({ questions });
+    const complexity = determineProjectComplexity(project);
+    const targetCount = getTradeQuestionCount(tradeCode, complexity);
+    
+    res.json({ 
+      questions,
+      targetCount,
+      actualCount: questions.length,
+      complexity
+    });
     
   } catch (err) {
     console.error('Failed to generate questions:', err);
@@ -1625,7 +1615,6 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
   try {
     const { projectId, tradeId } = req.params;
     
-    // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
     
     const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
@@ -1647,7 +1636,8 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
     
     const questions = result.rows.map(q => ({
       ...q,
-      options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null
+      options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null,
+      metadata: q.metadata || {}
     }));
     
     res.json({ questions });
@@ -1658,7 +1648,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
   }
 });
 
-// Save answers
+// Save answers with validation
 app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
@@ -1668,7 +1658,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
       return res.status(400).json({ error: 'Answers must be an array' });
     }
     
-    // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
     
     const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
@@ -1679,7 +1668,24 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
       return res.status(403).json({ error: 'Trade not assigned to project' });
     }
     
+    // Speichere Antworten mit Annahmen
+    const savedAnswers = [];
     for (const answer of answers) {
+      // Prüfe ob "unsicher" angegeben wurde
+      const isUncertain = answer.answer === 'unsicher' || 
+                         answer.answer?.toLowerCase?.() === 'unsicher' ||
+                         answer.answer?.toLowerCase?.()?.includes('weiß nicht');
+      
+      let assumption = answer.assumption || null;
+      let finalAnswer = answer.answer;
+      
+      // Bei Unsicherheit: Schätzung generieren
+      if (isUncertain) {
+        assumption = 'Nutzer war unsicher - Standardwert angenommen';
+        // Hier könnte eine intelligente Schätzung erfolgen
+        finalAnswer = 'Standardannahme getroffen';
+      }
+      
       await query(
         `INSERT INTO answers (project_id, trade_id, question_id, answer_text, assumption)
          VALUES ($1, $2, $3, $4, $5)
@@ -1689,13 +1695,23 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
           projectId,
           tradeId,
           answer.questionId,
-          answer.answer,
-          answer.assumption || null
+          finalAnswer,
+          assumption
         ]
       );
+      
+      savedAnswers.push({
+        questionId: answer.questionId,
+        answer: finalAnswer,
+        assumption
+      });
     }
     
-    res.json({ success: true, saved: answers.length });
+    res.json({ 
+      success: true, 
+      saved: savedAnswers.length,
+      answers: savedAnswers
+    });
     
   } catch (err) {
     console.error('Failed to save answers:', err);
@@ -1703,717 +1719,289 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
   }
 });
 
-/**
- * Erweiterte Validierung - arbeitet mit tatsächlichen Trade-Codes aus dem LV
- */
-function validateLV(lv, answers) {
-  const problems = [];
-  const warnings = [];
-  
-  if (!lv.positions || !Array.isArray(lv.positions)) {
-    problems.push('Keine Positionen im LV gefunden');
-    return { valid: false, problems, warnings };
-  }
-  
-  // Hole den Trade-Code aus dem LV
-  const tradeCode = lv.tradeCode;
-  
-  lv.positions.forEach((pos, index) => {
-    // Prüfe ob Menge in Antworten vorkommt
-    const hasMatchingAnswer = answers.some(a => {
-      const answer = a.answer?.toString().toLowerCase();
-      const quantity = pos.quantity?.toString();
-      
-      if (answer?.includes(quantity)) return true;
-      if (answer === 'ich bin unsicher' && pos.notes?.includes('Annahme')) return true;
-      if (pos.unit && answer?.includes(pos.unit.toLowerCase())) return true;
-      
-      return false;
-    });
-    
-    if (!hasMatchingAnswer && !pos.assumption) {
-      problems.push(`Position ${pos.pos || index + 1} "${pos.title}": Menge ${pos.quantity} ${pos.unit} hat keine entsprechende Antwort`);
-    }
-    
-    // Warnung bei verdächtigen Keywords
-    const suspiciousKeywords = ['Asbest', 'Schadstoff', 'PCB', 'KMF', 'PAK', 'Blei', 'Teer'];
-    suspiciousKeywords.forEach(keyword => {
-      if (pos.title?.includes(keyword) || pos.description?.includes(keyword)) {
-        const mentioned = answers.some(a => 
-          a.answer?.toLowerCase().includes(keyword.toLowerCase())
-        );
-        if (!mentioned) {
-          problems.push(`Position ${pos.pos}: ${keyword} ohne entsprechende Angabe!`);
-        }
-      }
-    });
-    
-    // Plausibilitätsprüfung basierend auf Trade-Code
-    const priceRanges = getPriceRangesForTrade(tradeCode);
-    
-    if (priceRanges && pos.unitPrice && pos.unit) {
-      const range = priceRanges[pos.unit];
-      if (range) {
-        if (pos.unitPrice < range.min) {
-          warnings.push(`Position ${pos.pos}: Preis ${pos.unitPrice}€/${pos.unit} ungewöhnlich niedrig (erwartet: ${range.min}-${range.max}€)`);
-        }
-        if (pos.unitPrice > range.max) {
-          warnings.push(`Position ${pos.pos}: Preis ${pos.unitPrice}€/${pos.unit} ungewöhnlich hoch (erwartet: ${range.min}-${range.max}€)`);
-        }
-      }
-    }
-    
-    // Mengenvalidierung
-    if (pos.quantity) {
-      const mengenChecks = {
-        'm²': { max: 10000, warn: 1000 },
-        'm³': { max: 5000, warn: 500 },
-        'm': { max: 10000, warn: 1000 },
-        'Stück': { max: 10000, warn: 1000 },
-        't': { max: 1000, warn: 100 },
-        'kg': { max: 100000, warn: 10000 }
-      };
-      
-      const check = mengenChecks[pos.unit];
-      if (check) {
-        if (pos.quantity > check.max) {
-          problems.push(`Position ${pos.pos}: ${pos.quantity} ${pos.unit} überschreitet Maximum`);
-        } else if (pos.quantity > check.warn) {
-          warnings.push(`Position ${pos.pos}: ${pos.quantity} ${pos.unit} erscheint sehr groß`);
-        }
-      }
-      
-      if (pos.quantity <= 0) {
-        problems.push(`Position ${pos.pos}: Ungültige Menge ${pos.quantity}`);
-      }
-    }
-  });
-  
-  // Prüfe Gesamtsumme
-  const calculatedSum = lv.positions.reduce((sum, pos) => {
-    return sum + (pos.totalPrice || (pos.quantity * pos.unitPrice) || 0);
-  }, 0);
-  
-  const difference = Math.abs(calculatedSum - (lv.totalSum || 0));
-  if (difference > 0.01) {
-    warnings.push(`Gesamtsumme weicht ab: Berechnet ${calculatedSum.toFixed(2)}€, angegeben ${lv.totalSum?.toFixed(2)}€`);
-  }
-  
-  // Statistik
-  const stats = {
-    totalPositions: lv.positions.length,
-    positionsWithAssumptions: lv.positions.filter(p => p.assumption).length,
-    positionsWithoutPrice: lv.positions.filter(p => !p.unitPrice).length,
-    averagePrice: calculatedSum / lv.positions.length,
-    confidence: problems.length === 0 ? 100 : Math.max(0, 100 - (problems.length * 10))
-  };
-  
-  return {
-    valid: problems.length === 0,
-    problems,
-    warnings,
-    stats,
-    recommendation: problems.length > 0 
-      ? 'LV sollte überarbeitet werden'
-      : warnings.length > 0
-      ? 'LV ist valide, aber bitte Warnungen prüfen'
-      : 'LV ist vollständig valide'
-  };
-}
-
-/**
- * Gibt Preisspannen für einen Trade-Code zurück
- */
-function getPriceRangesForTrade(tradeCode) {
-  const ranges = {
-    'MAL': {
-      'm²': { min: 5, max: 50 },
-      'm': { min: 3, max: 25 },
-      'Stück': { min: 50, max: 500 }
-    },
-    'BOD': {
-      'm²': { min: 20, max: 200 },
-      'm': { min: 5, max: 30 },
-      'psch': { min: 500, max: 5000 }
-    },
-    'FLI': {
-      'm²': { min: 30, max: 150 },
-      'm': { min: 15, max: 60 },
-      'Stück': { min: 100, max: 1000 }
-    },
-    'TRO': {
-      'm²': { min: 25, max: 80 },
-      'm': { min: 15, max: 50 },
-      'Stück': { min: 50, max: 200 }
-    },
-    'ELEKT': {
-      'Stück': { min: 30, max: 150 },
-      'm': { min: 5, max: 50 },
-      'psch': { min: 500, max: 10000 }
-    },
-    'SAN': {
-      'Stück': { min: 200, max: 2000 },
-      'm': { min: 20, max: 150 },
-      'psch': { min: 1000, max: 15000 }
-    },
-    'HEI': {
-      'Stück': { min: 300, max: 1500 },
-      'm': { min: 15, max: 100 },
-      'psch': { min: 2000, max: 30000 }
-    },
-    'FEN': {
-      'Stück': { min: 300, max: 1500 },
-      'm²': { min: 150, max: 800 },
-      'psch': { min: 500, max: 5000 }
-    },
-    'TIS': {
-      'Stück': { min: 500, max: 3000 },
-      'm²': { min: 200, max: 1200 },
-      'm': { min: 50, max: 300 }
-    },
-    'DACH': {
-      'm²': { min: 50, max: 300 },
-      'm': { min: 30, max: 150 },
-      'Stück': { min: 100, max: 500 }
-    },
-    'FASS': {
-      'm²': { min: 40, max: 250 },
-      'm': { min: 20, max: 100 },
-      'psch': { min: 2000, max: 50000 }
-    },
-    'ROH': {
-      'm³': { min: 150, max: 500 },
-      'm²': { min: 80, max: 300 },
-      't': { min: 50, max: 200 }
-    },
-    'ESTR': {
-      'm²': { min: 15, max: 60 },
-      'm³': { min: 150, max: 400 },
-      'psch': { min: 500, max: 10000 }
-    },
-    'SCHL': {
-      'm': { min: 100, max: 500 },
-      'Stück': { min: 200, max: 2000 },
-      'kg': { min: 15, max: 50 }
-    },
-    'AUSS': {
-      'm²': { min: 20, max: 150 },
-      'm': { min: 30, max: 200 },
-      'Stück': { min: 50, max: 500 }
-    },
-    'GER': {
-      'm²': { min: 8, max: 25 },
-      'Wo': { min: 50, max: 200 },
-      'psch': { min: 500, max: 10000 }
-    },
-    'ABBR': {
-      'm³': { min: 30, max: 200 },
-      'm²': { min: 20, max: 150 },
-      't': { min: 50, max: 300 },
-      'psch': { min: 1000, max: 50000 }
-    }
-  };
-  
-  return ranges[tradeCode] || null;
-}
-
-// Generate detailed LV for a trade - VERBESSERTE VERSION
+// Generate detailed LV for a trade
 app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
-
-    const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
-   if (!project) return res.status(404).json({ error: 'Project not found' });
-
-   const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
-   if (!trade) return res.status(404).json({ error: 'Trade not found' });
-   
-   // BUGFIX: Prüfe ob Trade dem Projekt zugeordnet ist
-   const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
-   
-   if (!isAssigned && trade.code !== 'INT') {
-     console.log(`[LV] Trade ${tradeId} not assigned to project ${projectId}, adding it now`);
-     await ensureProjectTrade(projectId, tradeId, 'lv_generation');
-   }
-   
-   const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
-   const answersInt = intTrade
-     ? (await query(
-         `SELECT q.text as question, a.answer_text as answer, a.assumption
-          FROM answers a
-          JOIN questions q ON q.project_id = a.project_id 
-            AND q.trade_id = a.trade_id 
-            AND q.question_id = a.question_id
-          WHERE a.project_id=$1 AND a.trade_id=$2
-          ORDER BY a.question_id`,
-         [projectId, intTrade.id]
-       )).rows
-     : [];
-
-   const answersTrade = (await query(
-     `SELECT q.text as question, a.answer_text as answer, a.assumption
-      FROM answers a
-      JOIN questions q ON q.project_id = a.project_id 
-        AND q.trade_id = a.trade_id 
-        AND q.question_id = a.question_id
-      WHERE a.project_id=$1 AND a.trade_id=$2
-      ORDER BY a.question_id`,
-     [projectId, tradeId]
-   )).rows;
-
-   const lvPromptRow = (await query(
-     `SELECT content FROM prompts WHERE trade_id=$1 AND type='lv' ORDER BY updated_at DESC LIMIT 1`,
-     [tradeId]
-   )).rows[0];
-   if (!lvPromptRow) return res.status(400).json({ error: 'LV prompt missing for trade' });
-
-   // VERBESSERTER SYSTEM-PROMPT MIT STRIKTER ANTWORTBINDUNG
-   const system = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 20+ Jahren Erfahrung.
-Erstelle ein VOLLSTÄNDIGES und DETAILLIERTES Leistungsverzeichnis für ${trade.name}.
-
-KRITISCHE REGEL: 
-Du darfst NUR Positionen erstellen für die du EXPLIZITE ANTWORTEN hast!
-
-UMGANG MIT UNSICHEREN ANGABEN:
-- Bei "Ich bin unsicher" → Nutze branchenübliche Standardwerte
-- Dokumentiere ALLE Annahmen im Feld "notes" der Position
-- Standardwerte:
- * Raumhöhe: 2,5m (Altbau: 3m, Neubau: 2,4m)
- * Wandfläche: (2×Länge + 2×Breite) × Höhe
- * Kabellängen: (2×(L+B)+2×H)×1,3 Sicherheitsfaktor
- * Rohrleitungen: Raumdiagonale × 1,5
- * Verschnitt Fliesen/Parkett: +10%
- * Farbbedarf: 150ml/m² pro Anstrich
- * Spachtelmasse: 1kg/m² bei schlechtem Untergrund
-
-VERBOTEN:
-- KEINE erfundenen Mengen ohne Grundlage
-- KEINE Positionen ohne entsprechende Frage/Antwort
-- KEIN Asbest/Schadstoffe wenn nicht explizit erwähnt
-- KEINE Standardannahmen ohne Kennzeichnung
-
-FÜR JEDE POSITION PRÜFE:
-1. Gibt es eine Antwort mit konkreter Menge? → Wenn NEIN und keine "unsicher" Antwort, Position weglassen
-2. Wurde explizit danach gefragt? → Wenn NEIN, Position weglassen
-3. Bei "Ich bin unsicher" → Standardwert verwenden UND in notes dokumentieren
-
-BEISPIEL für korrekte Verarbeitung:
-Antwort: "Wandfläche: 45m²" 
-→ Position: "Wände streichen 45m²"
-
-Antwort: "Wandfläche: Ich bin unsicher, Raum ist etwa 4x5m"
-→ Position: "Wände streichen 50m²" 
-→ notes: "Annahme: 4x5m Raum, 2,5m Höhe = 50m² Wandfläche"
-
-OUTPUT FORMAT (NUR valides JSON):
-{
- "trade": "${trade.name}",
- "tradeCode": "${trade.code}",
- "projectType": "Neubau/Sanierung/Modernisierung",
- "positions": [
-   { 
-     "pos": "01.01.001", 
-     "title": "Präziser Positionstitel", 
-     "description": "Detaillierte VOB-konforme Leistungsbeschreibung...", 
-     "quantity": 150.00, 
-     "unit": "m²/m/Stk/psch", 
-     "unitPrice": 45.50,
-     "totalPrice": 6825.00,
-     "notes": "Bei 'unsicher': Annahme dokumentieren",
-     "assumption": true // true wenn Wert geschätzt wurde
-   }
- ],
- "totalSum": 0,
- "assumptions": ["Liste aller getroffenen Annahmen"],
- "missingInfo": ["Fehlende Informationen die nicht geschätzt werden konnten"],
- "additionalNotes": "Wichtige Hinweise",
- "includedServices": ["Eingeschlossene Nebenleistungen"],
- "excludedServices": ["Nicht enthaltene Leistungen"],
- "standards": ["Relevante DIN-Normen"],
- "priceDate": "${new Date().toISOString().split('T')[0]}"
-}`;
-
-   // VERBESSERTER USER-PROMPT
-   const user = `GEWERK-TEMPLATE:
-${lvPromptRow.content}
-
-PROJEKTDATEN:
-- Kategorie: ${project.category || 'Nicht spezifiziert'}
-- Beschreibung: ${project.description || 'Keine'}
-- Zeitplan: ${project.timeframe || 'Flexibel'}
-- Budget: ${project.budget || 'Nicht spezifiziert'}
-
-INTAKE-ANTWORTEN:
-${answersInt.length > 0 ? answersInt.map(a => 
- `Frage: ${a.question}
-Antwort: ${a.answer}${a.answer === 'Ich bin unsicher' ? ' [→ STANDARDWERT VERWENDEN & DOKUMENTIEREN]' : ''}
-${a.assumption ? `Annahme: ${a.assumption}` : ''}`
-).join('\n\n') : 'Keine Intake-Informationen'}
-
-GEWERKESPEZIFISCHE ANTWORTEN (${trade.name}):
-${answersTrade.length > 0 ? answersTrade.map(a => 
- `Frage: ${a.question}
-Antwort: ${a.answer}${a.answer === 'Ich bin unsicher' ? ' [→ STANDARDWERT VERWENDEN & DOKUMENTIEREN]' : ''}
-${a.assumption ? `Annahme: ${a.assumption}` : ''}`
-).join('\n\n') : 'Keine gewerkespezifischen Antworten'}
-
-WICHTIG:
-1. Erstelle NUR Positionen für die obigen Antworten
-2. Bei "Ich bin unsicher" → Verwende Standardwerte und dokumentiere dies transparent
-3. KEINE Positionen ohne entsprechende Antwort erfinden
-4. Alle Annahmen müssen im "notes" Feld stehen`;
-
-   const raw = await llmWithPolicy('lv', [
-     { role: 'system', content: system },
-     { role: 'user', content: user }
-   ], { 
-     maxTokens: 8000,
-     temperature: 0.3,
-     jsonMode: true 
-   });
-
-   let lv;
-   try {
-     const cleanedResponse = raw
-       .replace(/```json\n?/g, '')
-       .replace(/```\n?/g, '')
-       .trim();
-     
-     lv = JSON.parse(cleanedResponse);
-     
-     // VALIDIERUNG UND VERBESSERUNG DES LV
-     if (lv.positions && Array.isArray(lv.positions)) {
-       // Markiere Positionen mit Annahmen
-       const allAnswers = [...answersInt, ...answersTrade];
-       
-       lv.positions = lv.positions.map(pos => {
-         // Prüfe ob Position auf "unsicher" basiert
-         const unsureAnswer = allAnswers.find(a => 
-           a.answer === 'Ich bin unsicher' && 
-           (pos.title.toLowerCase().includes(a.question.substring(0, 20).toLowerCase()) ||
-            pos.notes?.includes('Annahme'))
-         );
-         
-         if (unsureAnswer) {
-           pos.assumption = true;
-           if (!pos.notes) {
-             pos.notes = 'Standardwerte verwendet (Nutzer war unsicher)';
-           }
-         }
-         
-         // Berechne Gesamtpreis
-         if (!pos.totalPrice && pos.quantity && pos.unitPrice) {
-           pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-         }
-         
-         return pos;
-       });
-       
-       // Sammle alle Annahmen
-       const assumptions = lv.positions
-         .filter(p => p.assumption)
-         .map(p => `${p.title}: ${p.notes || 'Standardwert'}`);
-       
-       if (assumptions.length > 0) {
-         lv.assumptions = [...new Set(assumptions)];
-       }
-       
-       // Berechne finale Summe
-       let calculatedSum = 0;
-       lv.positions.forEach(pos => {
-         calculatedSum += pos.totalPrice || 0;
-       });
-       lv.totalSum = Math.round(calculatedSum * 100) / 100;
-       
-       // Füge Statistiken hinzu
-       lv.statistics = {
-         positionCount: lv.positions.length,
-         assumptionCount: lv.positions.filter(p => p.assumption).length,
-         averagePositionValue: Math.round((lv.totalSum / lv.positions.length) * 100) / 100,
-         confidenceLevel: Math.round((lv.positions.filter(p => !p.assumption).length / lv.positions.length) * 100) + '%',
-         minPosition: Math.min(...lv.positions.map(p => p.totalPrice || 0)),
-         maxPosition: Math.max(...lv.positions.map(p => p.totalPrice || 0))
-       };
-       
-       console.log(`[LV] Validated: ${lv.statistics.assumptionCount}/${lv.positions.length} positions with assumptions`);
-     }
-     
-   } catch (parseError) {
-     console.error('[LV] JSON parse error:', parseError);
-     lv = {
-       trade: trade.name,
-       tradeCode: trade.code,
-       positions: [{
-         pos: "01.01",
-         title: "LV-Generierung fehlgeschlagen",
-         description: "Bitte kontaktieren Sie den Support",
-         quantity: 1,
-         unit: "psch",
-         unitPrice: 0,
-         totalPrice: 0
-       }],
-       totalSum: 0,
-       error: "Parse error"
-     };
-   }
-
-   const lvWithMeta = {
-     ...lv,
-     metadata: {
-       generatedAt: new Date().toISOString(),
-       projectId: projectId,
-       tradeId: tradeId,
-       intakeAnswersCount: answersInt.length,
-       tradeAnswersCount: answersTrade.length,
-       positionsCount: lv.positions?.length || 0,
-       totalValue: lv.totalSum || 0,
-       hasAssumptions: lv.statistics?.assumptionCount > 0,
-       confidenceLevel: lv.statistics?.confidenceLevel || '0%'
-     }
-   };
-
-   await query(
-     `INSERT INTO lvs (project_id, trade_id, content)
-      VALUES ($1,$2,$3)
-      ON CONFLICT (project_id, trade_id)
-      DO UPDATE SET content=$3, updated_at=NOW()`,
-     [projectId, tradeId, lvWithMeta]
-   );
-
-   console.log(`[LV] Generated for ${trade.name}: ${lv.positions?.length || 0} positions, Total: €${lv.totalSum || 0}`);
-
-   res.json({ 
-     ok: true, 
-     trade: { id: trade.id, code: trade.code, name: trade.name }, 
-     lv: lvWithMeta
-   });
-   
- } catch (err) {
-   console.error('Generate LV failed:', err);
-   res.status(500).json({ ok: false, error: err.message });
- }
+    
+    const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
+    
+    const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
+    const tradeCode = tradeInfo.rows[0]?.code;
+    
+    if (!isAssigned && tradeCode !== 'INT') {
+      console.log(`[LV] Trade ${tradeId} not assigned to project ${projectId}, adding it now`);
+      await ensureProjectTrade(projectId, tradeId, 'lv_generation');
+    }
+    
+    // Generiere detailliertes LV
+    const lv = await generateDetailedLV(projectId, tradeId);
+    
+    // Speichere LV in DB
+    await query(
+      `INSERT INTO lvs (project_id, trade_id, content)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (project_id, trade_id)
+       DO UPDATE SET content=$3, updated_at=NOW()`,
+      [projectId, tradeId, lv]
+    );
+    
+    console.log(`[LV] Generated for trade ${tradeId}: ${lv.positions?.length || 0} positions, Total: €${lv.totalSum || 0}`);
+    
+    res.json({ 
+      ok: true, 
+      trade: { 
+        id: tradeId, 
+        code: tradeCode, 
+        name: tradeInfo.rows[0]?.name 
+      }, 
+      lv
+    });
+    
+  } catch (err) {
+    console.error('Generate LV failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // Get aggregated LVs for a project
 app.get('/api/projects/:projectId/lv', async (req, res) => {
- try {
-   const { projectId } = req.params;
-   const rows = (await query(
-     `SELECT l.trade_id, t.code, t.name, l.content
-      FROM lvs l JOIN trades t ON t.id=l.trade_id
-      WHERE l.project_id=$1
-      ORDER BY t.name`,
-     [projectId]
-   )).rows;
+  try {
+    const { projectId } = req.params;
+    const rows = (await query(
+      `SELECT l.trade_id, t.code, t.name, l.content
+       FROM lvs l JOIN trades t ON t.id=l.trade_id
+       WHERE l.project_id=$1
+       ORDER BY t.name`,
+      [projectId]
+    )).rows;
 
-   const lvs = rows.map(row => ({
-     ...row,
-     content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
-   }));
-
-   res.json({ ok: true, lvs });
- } catch (err) {
-   console.error('aggregate LV failed:', err);
-   res.status(500).json({ ok: false, error: err.message });
- }
+    const lvs = rows.map(row => ({
+      ...row,
+      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+    }));
+    
+    // Berechne Gesamtstatistiken
+    const totalSum = lvs.reduce((sum, lv) => sum + (lv.content.totalSum || 0), 0);
+    const totalPositions = lvs.reduce((sum, lv) => sum + (lv.content.positions?.length || 0), 0);
+    
+    res.json({ 
+      ok: true, 
+      lvs,
+      summary: {
+        totalTrades: lvs.length,
+        totalPositions,
+        totalSum,
+        vat: totalSum * 0.19,
+        grandTotal: totalSum * 1.19
+      }
+    });
+  } catch (err) {
+    console.error('aggregate LV failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
-// Get all LVs for a project (legacy)
+// Get all LVs for a project
 app.get('/api/projects/:projectId/lvs', async (req, res) => {
- try {
-   const { projectId } = req.params;
-   
-   const result = await query(
-     `SELECT l.*, t.name as trade_name, t.code as trade_code
-      FROM lvs l
-      JOIN trades t ON t.id = l.trade_id
-      WHERE l.project_id = $1`,
-     [projectId]
-   );
-   
-   const lvs = result.rows.map(row => ({
-     ...row,
-     content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
-   }));
-   
-   res.json({ lvs });
-   
- } catch (err) {
-   console.error('Failed to fetch LVs:', err);
-   res.status(500).json({ error: err.message });
- }
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT l.*, t.name as trade_name, t.code as trade_code
+       FROM lvs l
+       JOIN trades t ON t.id = l.trade_id
+       WHERE l.project_id = $1`,
+      [projectId]
+    );
+    
+    const lvs = result.rows.map(row => ({
+      ...row,
+      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+    }));
+    
+    res.json({ lvs });
+    
+  } catch (err) {
+    console.error('Failed to fetch LVs:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Export LV with or without prices
 app.get('/api/projects/:projectId/trades/:tradeId/lv/export', async (req, res) => {
- try {
-   const { projectId, tradeId } = req.params;
-   const { withPrices } = req.query;
-   
-   const result = await query(
-     `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
-      FROM lvs l 
-      JOIN trades t ON t.id = l.trade_id
-      JOIN projects p ON p.id = l.project_id
-      WHERE l.project_id = $1 AND l.trade_id = $2`,
-     [projectId, tradeId]
-   );
-   
-   if (result.rows.length === 0) {
-     return res.status(404).json({ error: 'LV not found' });
-   }
-   
-   const { content, trade_name, trade_code, project_description } = result.rows[0];
-   const lv = typeof content === 'string' ? JSON.parse(content) : content;
-   
-   if (withPrices === 'false') {
-     lv.positions = lv.positions.map(pos => ({
-       pos: pos.pos,
-       title: pos.title,
-       description: pos.description,
-       quantity: pos.quantity,
-       unit: pos.unit,
-       unitPrice: '________',
-       totalPrice: '________'
-     }));
-     lv.exportType = 'Angebotsanfrage';
-     lv.note = 'Bitte tragen Sie Ihre Preise in die markierten Felder ein.';
-   } else {
-     lv.exportType = 'Kalkulation';
-   }
-   
-   res.json({
-     ok: true,
-     tradeName: trade_name,
-     tradeCode: trade_code,
-     projectDescription: project_description,
-     withPrices: withPrices !== 'false',
-     lv
-   });
-   
- } catch (err) {
-   console.error('Export LV failed:', err);
-   res.status(500).json({ error: err.message });
- }
+  try {
+    const { projectId, tradeId } = req.params;
+    const { withPrices } = req.query;
+    
+    const result = await query(
+      `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id
+       JOIN projects p ON p.id = l.project_id
+       WHERE l.project_id = $1 AND l.trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+    
+    const { content, trade_name, trade_code, project_description } = result.rows[0];
+    const lv = typeof content === 'string' ? JSON.parse(content) : content;
+    
+    if (withPrices === 'false') {
+      lv.positions = lv.positions.map(pos => ({
+        ...pos,
+        unitPrice: '________',
+        totalPrice: '________'
+      }));
+      lv.exportType = 'Angebotsanfrage';
+      lv.note = 'Bitte tragen Sie Ihre Preise in die markierten Felder ein.';
+    } else {
+      lv.exportType = 'Kalkulation';
+    }
+    
+    res.json({
+      ok: true,
+      tradeName: trade_name,
+      tradeCode: trade_code,
+      projectDescription: project_description,
+      withPrices: withPrices !== 'false',
+      lv
+    });
+    
+  } catch (err) {
+    console.error('Export LV failed:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Generate PDF for LV
 app.get('/api/projects/:projectId/trades/:tradeId/lv.pdf', async (req, res) => {
- try {
-   const { projectId, tradeId } = req.params;
-   const { withPrices } = req.query;
-   
-   const result = await query(
-     `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
-      FROM lvs l 
-      JOIN trades t ON t.id = l.trade_id
-      JOIN projects p ON p.id = l.project_id
-      WHERE l.project_id = $1 AND l.trade_id = $2`,
-     [projectId, tradeId]
-   );
-   
-   if (result.rows.length === 0) {
-     return res.status(404).json({ error: 'LV not found' });
-   }
-   
-   const { content, trade_name, trade_code, project_description } = result.rows[0];
-   const lv = typeof content === 'string' ? JSON.parse(content) : content;
-   
-   const pdfBuffer = await generateLVPDF(
-     lv,
-     trade_name,
-     trade_code,
-     project_description,
-     withPrices !== 'false'
-   );
-   
-   res.setHeader('Content-Type', 'application/pdf');
-   res.setHeader('Content-Disposition', `attachment; filename="LV_${trade_code}_${withPrices !== 'false' ? 'mit' : 'ohne'}_Preise.pdf"`);
-   res.send(pdfBuffer);
-   
- } catch (err) {
-   console.error('PDF generation failed:', err);
-   res.status(500).json({ error: err.message });
- }
+  try {
+    const { projectId, tradeId } = req.params;
+    const { withPrices } = req.query;
+    
+    const result = await query(
+      `SELECT l.content, t.name as trade_name, t.code as trade_code, p.description as project_description
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id
+       JOIN projects p ON p.id = l.project_id
+       WHERE l.project_id = $1 AND l.trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+    
+    const { content, trade_name, trade_code, project_description } = result.rows[0];
+    const lv = typeof content === 'string' ? JSON.parse(content) : content;
+    
+    const pdfBuffer = await generateLVPDF(
+      lv,
+      trade_name,
+      trade_code,
+      project_description,
+      withPrices !== 'false'
+    );
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="LV_${trade_code}_${withPrices !== 'false' ? 'mit' : 'ohne'}_Preise.pdf"`);
+    res.send(pdfBuffer);
+    
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get project cost summary
 app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
- try {
-   const { projectId } = req.params;
-   
-   const lvsResult = await query(
-     `SELECT l.content, t.name as trade_name, t.code as trade_code
-      FROM lvs l 
-      JOIN trades t ON t.id = l.trade_id
-      WHERE l.project_id = $1`,
-     [projectId]
-   );
-   
-   const summary = {
-     trades: [],
-     totalCost: 0,
-     pricesComplete: true,
-     totalAssumptions: 0,
-     averageConfidence: 0
-   };
-   
-   let totalConfidence = 0;
-   let tradeCount = 0;
-   
-   for (const row of lvsResult.rows) {
-     const lv = typeof row.content === 'string' 
-       ? JSON.parse(row.content) 
-       : row.content;
-     
-     const tradeCost = lv.totalSum || 
-       (lv.positions || []).reduce((sum, pos) => 
-         sum + (pos.totalPrice || 0), 0
-       );
-     
-     const assumptionCount = lv.statistics?.assumptionCount || 0;
-     const confidence = parseInt(lv.statistics?.confidenceLevel || '0');
-     
-     summary.trades.push({
-       name: row.trade_name,
-       code: row.trade_code,
-       cost: tradeCost,
-       hasPrice: tradeCost > 0,
-       assumptionCount: assumptionCount,
-       confidence: confidence + '%'
-     });
-     
-     summary.totalCost += tradeCost;
-     summary.totalAssumptions += assumptionCount;
-     totalConfidence += confidence;
-     tradeCount++;
-     
-     if (tradeCost === 0) {
-       summary.pricesComplete = false;
-     }
-   }
-   
-   summary.averageConfidence = tradeCount > 0 
-     ? Math.round(totalConfidence / tradeCount) + '%'
-     : '0%';
-   
-   summary.additionalCosts = {
-     planningCosts: summary.totalCost * 0.10,
-     contingency: summary.totalCost * 0.05,
-     vat: summary.totalCost * 0.19
-   };
-   
-   summary.grandTotal = summary.totalCost + 
-     summary.additionalCosts.planningCosts +
-     summary.additionalCosts.contingency +
-     summary.additionalCosts.vat;
-   
-   res.json({ ok: true, summary });
-   
- } catch (err) {
-   console.error('Cost summary failed:', err);
-   res.status(500).json({ error: err.message });
- }
+  try {
+    const { projectId } = req.params;
+    
+    const lvsResult = await query(
+      `SELECT l.content, t.name as trade_name, t.code as trade_code
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id
+       WHERE l.project_id = $1`,
+      [projectId]
+    );
+    
+    const summary = {
+      trades: [],
+      totalCost: 0,
+      pricesComplete: true,
+      dataQuality: {
+        measured: 0,
+        estimated: 0,
+        assumed: 0
+      }
+    };
+    
+    for (const row of lvsResult.rows) {
+      const lv = typeof row.content === 'string' 
+        ? JSON.parse(row.content) 
+        : row.content;
+      
+      const tradeCost = lv.totalSum || 
+        (lv.positions || []).reduce((sum, pos) => 
+          sum + (pos.totalPrice || 0), 0
+        );
+      
+      // Zähle Datenqualität
+      if (lv.positions) {
+        lv.positions.forEach(pos => {
+          if (pos.dataSource === 'measured') summary.dataQuality.measured++;
+          else if (pos.dataSource === 'estimated') summary.dataQuality.estimated++;
+          else summary.dataQuality.assumed++;
+        });
+      }
+      
+      summary.trades.push({
+        name: row.trade_name,
+        code: row.trade_code,
+        cost: tradeCost,
+        hasPrice: tradeCost > 0,
+        positionCount: lv.positions?.length || 0,
+        confidence: lv.dataQuality?.confidence || 0.5
+      });
+      
+      summary.totalCost += tradeCost;
+      
+      if (tradeCost === 0) {
+        summary.pricesComplete = false;
+      }
+    }
+    
+    // Berechne Gesamtdatenqualität
+    const totalPositions = summary.dataQuality.measured + 
+                          summary.dataQuality.estimated + 
+                          summary.dataQuality.assumed;
+    
+    summary.dataQuality.confidence = totalPositions > 0
+      ? (summary.dataQuality.measured / totalPositions)
+      : 0;
+    
+    summary.additionalCosts = {
+      planningCosts: summary.totalCost * 0.10,
+      contingency: summary.totalCost * 0.05,
+      vat: summary.totalCost * 0.19
+    };
+    
+    summary.grandTotal = summary.totalCost + 
+      summary.additionalCosts.planningCosts +
+      summary.additionalCosts.contingency +
+      summary.additionalCosts.vat;
+    
+    res.json({ ok: true, summary });
+    
+  } catch (err) {
+    console.error('Cost summary failed:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ===========================================================================
@@ -2422,350 +2010,428 @@ app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
 
 // Admin authentication
 app.post('/api/admin/login', async (req, res) => {
- try {
-   const { username, password } = req.body;
-   
-   if (!username || !password) {
-     return res.status(400).json({ error: 'Username and password required' });
-   }
-   
-   const result = await query(
-     'SELECT * FROM users WHERE username = $1',
-     [username]
-   );
-   
-   if (result.rows.length === 0) {
-     return res.status(401).json({ error: 'Invalid credentials' });
-   }
-   
-   const user = result.rows[0];
-   const valid = await bcrypt.compare(password, user.password_hash);
-   
-   if (!valid) {
-     return res.status(401).json({ error: 'Invalid credentials' });
-   }
-   
-   const token = jwt.sign(
-     { userId: user.id, username: user.username },
-     process.env.JWT_SECRET,
-     { expiresIn: '8h' }
-   );
-   
-   res.json({ token, user: { id: user.id, username: user.username } });
-   
- } catch (err) {
-   console.error('Login failed:', err);
-   res.status(500).json({ error: 'Login failed' });
- }
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    
+    const result = await query(
+      'SELECT * FROM users WHERE username = $1',
+      [username]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const user = result.rows[0];
+    const valid = await bcrypt.compare(password, user.password_hash);
+    
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+    
+    res.json({ token, user: { id: user.id, username: user.username } });
+    
+  } catch (err) {
+    console.error('Login failed:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
 });
 
 // Admin middleware
 function requireAdmin(req, res, next) {
- const auth = req.headers.authorization;
- 
- if (!auth || !auth.startsWith('Bearer ')) {
-   return res.status(401).json({ error: 'Authorization required' });
- }
- 
- const token = auth.slice(7);
- 
- try {
-   const decoded = jwt.verify(token, process.env.JWT_SECRET);
-   req.user = decoded;
-   next();
- } catch (err) {
-   return res.status(403).json({ error: 'Invalid or expired token' });
- }
+  const auth = req.headers.authorization;
+  
+  if (!auth || !auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+  
+  const token = auth.slice(7);
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
 }
 
-// Admin: Get all projects
+// Admin: Get all projects with statistics
 app.get('/api/admin/projects', requireAdmin, async (req, res) => {
- try {
-   const result = await query(
-     `SELECT p.*, 
-       COUNT(DISTINCT pt.trade_id) as trade_count,
-       COUNT(DISTINCT l.id) as lv_count
-      FROM projects p
-      LEFT JOIN project_trades pt ON pt.project_id = p.id
-      LEFT JOIN lvs l ON l.project_id = p.id
-      GROUP BY p.id
-      ORDER BY p.created_at DESC`
-   );
-   
-   res.json({ projects: result.rows });
-   
- } catch (err) {
-   console.error('Failed to fetch projects:', err);
-   res.status(500).json({ error: 'Failed to fetch projects' });
- }
+  try {
+    const result = await query(
+      `SELECT p.*, 
+        COUNT(DISTINCT pt.trade_id) as trade_count,
+        COUNT(DISTINCT l.id) as lv_count,
+        COUNT(DISTINCT q.question_id) as question_count,
+        COUNT(DISTINCT a.question_id) as answer_count
+       FROM projects p
+       LEFT JOIN project_trades pt ON pt.project_id = p.id
+       LEFT JOIN lvs l ON l.project_id = p.id
+       LEFT JOIN questions q ON q.project_id = p.id
+       LEFT JOIN answers a ON a.project_id = p.id
+       GROUP BY p.id
+       ORDER BY p.created_at DESC`
+    );
+    
+    const projects = result.rows.map(p => ({
+      ...p,
+      complexity: determineProjectComplexity(p),
+      completeness: p.question_count > 0 
+        ? Math.round((p.answer_count / p.question_count) * 100)
+        : 0
+    }));
+    
+    res.json({ projects });
+    
+  } catch (err) {
+    console.error('Failed to fetch projects:', err);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+// Admin: Get project statistics
+app.get('/api/admin/statistics', requireAdmin, async (req, res) => {
+  try {
+    const stats = {};
+    
+    // Projekt-Statistiken
+    const projectStats = await query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as last_week,
+        COUNT(CASE WHEN created_at > NOW() - INTERVAL '30 days' THEN 1 END) as last_month
+      FROM projects
+    `);
+    stats.projects = projectStats.rows[0];
+    
+    // LV-Statistiken
+    const lvStats = await query(`
+      SELECT 
+        COUNT(*) as total,
+        AVG((content->>'totalSum')::numeric) as avg_value,
+        SUM((content->>'totalSum')::numeric) as total_value
+      FROM lvs
+    `);
+    stats.lvs = lvStats.rows[0];
+    
+    // Gewerke-Statistiken
+    const tradeStats = await query(`
+      SELECT t.code, t.name, COUNT(pt.project_id) as usage_count
+      FROM trades t
+      LEFT JOIN project_trades pt ON pt.trade_id = t.id
+      GROUP BY t.id, t.code, t.name
+      ORDER BY usage_count DESC
+    `);
+    stats.tradeUsage = tradeStats.rows;
+    
+    // Fragen-Statistiken
+    const questionStats = await query(`
+      SELECT 
+        COUNT(DISTINCT q.question_id) as total_questions,
+        COUNT(DISTINCT a.question_id) as answered_questions,
+        AVG(q_count.count) as avg_questions_per_project
+      FROM questions q
+      LEFT JOIN answers a ON a.project_id = q.project_id 
+        AND a.trade_id = q.trade_id 
+        AND a.question_id = q.question_id
+      CROSS JOIN (
+        SELECT project_id, COUNT(*) as count 
+        FROM questions 
+        GROUP BY project_id
+      ) q_count
+    `);
+    stats.questions = questionStats.rows[0];
+    
+    res.json({ stats });
+    
+  } catch (err) {
+    console.error('Failed to fetch statistics:', err);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
 });
 
 // Admin: Get all prompts
 app.get('/api/admin/prompts', requireAdmin, async (req, res) => {
- try {
-   const result = await query(
-     `SELECT p.*, t.name as trade_name, t.code as trade_code
-      FROM prompts p
-      LEFT JOIN trades t ON t.id = p.trade_id
-      ORDER BY p.type, t.name`
-   );
-   
-   res.json({ prompts: result.rows });
-   
- } catch (err) {
-   console.error('Failed to fetch prompts:', err);
-   res.status(500).json({ error: 'Failed to fetch prompts' });
- }
+  try {
+    const result = await query(
+      `SELECT p.*, t.name as trade_name, t.code as trade_code
+       FROM prompts p
+       LEFT JOIN trades t ON t.id = p.trade_id
+       ORDER BY p.type, t.name`
+    );
+    
+    res.json({ prompts: result.rows });
+    
+  } catch (err) {
+    console.error('Failed to fetch prompts:', err);
+    res.status(500).json({ error: 'Failed to fetch prompts' });
+  }
 });
 
 // Admin: Update prompt
 app.put('/api/admin/prompts/:id', requireAdmin, async (req, res) => {
- try {
-   const { id } = req.params;
-   const { content } = req.body;
-   
-   if (!content) {
-     return res.status(400).json({ error: 'Content is required' });
-   }
-   
-   const result = await query(
-     `UPDATE prompts 
-      SET content = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING *`,
-     [content, id]
-   );
-   
-   if (result.rows.length === 0) {
-     return res.status(404).json({ error: 'Prompt not found' });
-   }
-   
-   res.json({ prompt: result.rows[0] });
-   
- } catch (err) {
-   console.error('Failed to update prompt:', err);
-   res.status(500).json({ error: 'Failed to update prompt' });
- }
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    
+    const result = await query(
+      `UPDATE prompts 
+       SET content = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [content, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    
+    res.json({ prompt: result.rows[0] });
+    
+  } catch (err) {
+    console.error('Failed to update prompt:', err);
+    res.status(500).json({ error: 'Failed to update prompt' });
+  }
 });
 
 // ===========================================================================
 // PUBLIC PROMPT ROUTES
 // ===========================================================================
 
-// Get all prompts with details (public)
+// Get all prompts with details
 app.get('/api/prompts', async (req, res) => {
- try {
-   const result = await query(
-     `SELECT p.id, p.name, p.type, p.trade_id,
-             t.name as trade_name, t.code as trade_code,
-             LENGTH(p.content) as content_length,
-             p.updated_at
-      FROM prompts p
-      LEFT JOIN trades t ON t.id = p.trade_id
-      ORDER BY p.type, t.name`
-   );
-   
-   res.json({ 
-     prompts: result.rows,
-     stats: {
-       total: result.rows.length,
-       master: result.rows.filter(p => p.type === 'master').length,
-       questions: result.rows.filter(p => p.type === 'questions').length,
-       lv: result.rows.filter(p => p.type === 'lv').length
-     }
-   });
-   
- } catch (err) {
-   console.error('Failed to fetch prompts:', err);
-   res.status(500).json({ error: 'Failed to fetch prompts' });
- }
+  try {
+    const result = await query(
+      `SELECT p.id, p.name, p.type, p.trade_id,
+              t.name as trade_name, t.code as trade_code,
+              LENGTH(p.content) as content_length,
+              p.updated_at
+       FROM prompts p
+       LEFT JOIN trades t ON t.id = p.trade_id
+       ORDER BY p.type, t.name`
+    );
+    
+    res.json({ 
+      prompts: result.rows,
+      stats: {
+        total: result.rows.length,
+        master: result.rows.filter(p => p.type === 'master').length,
+        questions: result.rows.filter(p => p.type === 'questions').length,
+        lv: result.rows.filter(p => p.type === 'lv').length
+      }
+    });
+    
+  } catch (err) {
+    console.error('Failed to fetch prompts:', err);
+    res.status(500).json({ error: 'Failed to fetch prompts' });
+  }
 });
 
 // Get single prompt with content
 app.get('/api/prompts/:id', async (req, res) => {
- try {
-   const { id } = req.params;
-   const result = await query(
-     `SELECT p.*, t.name as trade_name, t.code as trade_code
-      FROM prompts p
-      LEFT JOIN trades t ON t.id = p.trade_id
-      WHERE p.id = $1`,
-     [id]
-   );
-   
-   if (result.rows.length === 0) {
-     return res.status(404).json({ error: 'Prompt not found' });
-   }
-   
-   res.json(result.rows[0]);
-   
- } catch (err) {
-   console.error('Failed to fetch prompt:', err);
-   res.status(500).json({ error: 'Failed to fetch prompt' });
- }
+  try {
+    const { id } = req.params;
+    const result = await query(
+      `SELECT p.*, t.name as trade_name, t.code as trade_code
+       FROM prompts p
+       LEFT JOIN trades t ON t.id = p.trade_id
+       WHERE p.id = $1`,
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    
+    res.json(result.rows[0]);
+    
+  } catch (err) {
+    console.error('Failed to fetch prompt:', err);
+    res.status(500).json({ error: 'Failed to fetch prompt' });
+  }
 });
 
 // ===========================================================================
-// TEST ENDPOINTS
+// TEST & DEBUG ENDPOINTS
 // ===========================================================================
 
 // Test OpenAI
 app.get('/api/test/openai', async (req, res) => {
- try {
-   const response = await openai.chat.completions.create({
-     model: MODEL_OPENAI,
-     messages: [{ role: 'user', content: 'Say "OpenAI is working"' }],
-     max_completion_tokens: 20
-   });
-   res.json({ 
-     status: 'ok',
-     response: response.choices[0].message.content 
-   });
- } catch (err) {
-   res.status(500).json({ 
-     status: 'error',
-     error: err.message 
-   });
- }
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL_OPENAI,
+      messages: [{ role: 'user', content: 'Say "OpenAI is working"' }],
+      max_completion_tokens: 20
+    });
+    res.json({ 
+      status: 'ok',
+      response: response.choices[0].message.content 
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      status: 'error',
+      error: err.message 
+    });
+  }
 });
 
 // Test Anthropic
 app.get('/api/test/anthropic', async (req, res) => {
- try {
-   const response = await anthropic.messages.create({
-     model: MODEL_ANTHROPIC,
-     max_tokens: 20,
-     messages: [{ role: 'user', content: 'Say "Claude is working"' }]
-   });
-   res.json({ 
-     status: 'ok',
-     response: response.content[0].text 
-   });
- } catch (err) {
-   res.status(500).json({ 
-     status: 'error',
-     error: err.message 
-   });
- }
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL_ANTHROPIC,
+      max_tokens: 20,
+      messages: [{ role: 'user', content: 'Say "Claude is working"' }]
+    });
+    res.json({ 
+      status: 'ok',
+      response: response.content[0].text 
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      status: 'error',
+      error: err.message 
+    });
+  }
+});
+
+// Debug: Project trade details
+app.get('/api/debug/project/:projectId/trades', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const trades = await query(
+      `SELECT pt.*, t.code, t.name, pt.created_at,
+              COUNT(q.question_id) as question_count,
+              COUNT(a.question_id) as answer_count
+       FROM project_trades pt
+       JOIN trades t ON t.id = pt.trade_id
+       LEFT JOIN questions q ON q.project_id = pt.project_id AND q.trade_id = pt.trade_id
+       LEFT JOIN answers a ON a.project_id = pt.project_id AND a.trade_id = pt.trade_id
+       WHERE pt.project_id = $1
+       GROUP BY pt.project_id, pt.trade_id, t.id, t.code, t.name, pt.created_at
+       ORDER BY pt.created_at`,
+      [projectId]
+    );
+    
+    const project = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    res.json({
+      project: project.rows[0],
+      complexity: determineProjectComplexity(project.rows[0]),
+      tradeCount: trades.rows.length,
+      trades: trades.rows.map(t => ({
+        ...t,
+        targetQuestions: getTradeQuestionCount(
+          t.code, 
+          determineProjectComplexity(project.rows[0])
+        ),
+        completeness: t.question_count > 0 
+          ? Math.round((t.answer_count / t.question_count) * 100)
+          : 0
+      }))
+    });
+    
+  } catch (err) {
+    console.error('Debug failed:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Debug: List all routes
 app.get('/api/debug/routes', (req, res) => {
- const routes = [];
- app._router.stack.forEach(middleware => {
-   if (middleware.route) {
-     const methods = Object.keys(middleware.route.methods);
-     routes.push({
-       path: middleware.route.path,
-       methods: methods.map(m => m.toUpperCase())
-     });
-   }
- });
- res.json({ routes });
-});
-
-// BUGFIX: Debug endpoint to check project trades
-app.get('/api/debug/project/:projectId/trades', async (req, res) => {
- try {
-   const { projectId } = req.params;
-   
-   const trades = await query(
-     `SELECT pt.*, t.code, t.name, pt.created_at
-      FROM project_trades pt
-      JOIN trades t ON t.id = pt.trade_id
-      WHERE pt.project_id = $1
-      ORDER BY pt.created_at`,
-     [projectId]
-   );
-   
-   const project = await query(
-     'SELECT * FROM projects WHERE id = $1',
-     [projectId]
-   );
-   
-   res.json({
-     project: project.rows[0],
-     tradeCount: trades.rows.length,
-     trades: trades.rows,
-     message: `Project ${projectId} has ${trades.rows.length} trades assigned`
-   });
-   
- } catch (err) {
-   console.error('Debug failed:', err);
-   res.status(500).json({ error: err.message });
- }
+  const routes = [];
+  app._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      const methods = Object.keys(middleware.route.methods);
+      routes.push({
+        path: middleware.route.path,
+        methods: methods.map(m => m.toUpperCase())
+      });
+    }
+  });
+  res.json({ routes });
 });
 
 // Health check
 app.get('/healthz', (req, res) => {
- res.json({ 
-   message: "BYNDL Backend v3.2 (ENHANCED)", 
-   status: "running",
-   features: {
-     intelligentQuestions: true,
-     laienSupport: true,
-     unsicherOption: true,
-     strictLVBinding: true,
-     assumptionTracking: true,
-     adaptiveQuestionCount: true,
-     enhancedTokenLimits: true,
-     detailedLVs: true,
-     strictTradeControl: true
-   },
-   improvements: [
-     "Laiengerechte Fragengenerierung",
-     "Ich bin unsicher Option überall",
-     "Strikte LV-Antwortbindung",
-     "Transparente Annahmen-Dokumentation",
-     "Intelligente Fragenanzahl je Gewerk",
-     "Validierung und Confidence-Level"
-   ]
- });
+  res.json({ 
+    message: "BYNDL Backend v4.0", 
+    status: "running",
+    features: {
+      intelligentQuestions: true,
+      adaptiveQuestionCount: true,
+      detailedMeasurements: true,
+      realisticPricing: true,
+      uncertaintyHandling: true,
+      dataValidation: true
+    },
+    tradeComplexity: Object.keys(TRADE_COMPLEXITY).length + ' trades configured'
+  });
 });
 
 // Environment info
 app.get('/__info', (req, res) => {
- res.json({
-   node: process.version,
-   version: "3.2-ENHANCED",
-   env: {
-     OPENAI_MODEL: MODEL_OPENAI,
-     ANTHROPIC_MODEL: MODEL_ANTHROPIC,
-     DATABASE_URL: process.env.DATABASE_URL ? "✔️ gesetzt" : "❌ fehlt",
-     JWT_SECRET: process.env.JWT_SECRET ? "✔️ gesetzt" : "❌ fehlt"
-   },
-   limits: {
-     detect: "2500 tokens",
-     questions: "6000 tokens",
-     lv: "8000 tokens",
-     intake: "6000 tokens"
-   },
-   enhancements: {
-     questions: "Laiengerecht mit Erklärungen",
-     answers: "Ich bin unsicher Option",
-     lv: "Strikte Antwortbindung",
-     assumptions: "Transparent dokumentiert",
-     confidence: "Statistiken und Confidence-Level"
-   }
- });
+  res.json({
+    node: process.version,
+    version: "4.0",
+    env: {
+      OPENAI_MODEL: MODEL_OPENAI,
+      ANTHROPIC_MODEL: MODEL_ANTHROPIC,
+      DATABASE_URL: process.env.DATABASE_URL ? "✔️ gesetzt" : "❌ fehlt",
+      JWT_SECRET: process.env.JWT_SECRET ? "✔️ gesetzt" : "❌ fehlt"
+    },
+    limits: {
+      detect: "3000 tokens",
+      questions: "8000 tokens",
+      lv: "10000 tokens",
+      intake: "6000 tokens",
+      validation: "3000 tokens"
+    },
+    features: {
+      tradeBasedQuestions: "8-40 Fragen je nach Gewerk",
+      measurementFocus: "Explizite Mengenerfassung",
+      uncertaintyHandling: "Intelligente Schätzungen",
+      dataQuality: "Tracking von Datenquellen",
+      realisticPricing: "Marktpreise 2024/2025"
+    }
+  });
 });
 
 // 404 handler
 app.use((req, res) => {
- res.status(404).json({ 
-   error: 'Route not found',
-   path: req.path,
-   method: req.method
- });
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
 });
 
 // Error handler
 app.use((err, req, res, next) => {
- console.error('Unhandled error:', err);
- res.status(500).json({ 
-   error: 'Internal server error',
-   message: process.env.NODE_ENV === 'development' ? err.message : undefined
- });
+  console.error('Unhandled error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
 // ===========================================================================
@@ -2774,32 +2440,30 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
- console.log(`
+  console.log(`
 ╔════════════════════════════════════════╗
 ║                                        ║
-║     BYNDL Backend v3.2 (ENHANCED)     ║
+║     BYNDL Backend v4.0                 ║
+║     Intelligente LV-Erstellung         ║
 ║                                        ║
 ║     Port: ${PORT}                        ║
 ║     Environment: ${process.env.NODE_ENV || 'development'}          ║
 ║                                        ║
 ║     Features:                          ║
-║     ✓ Intelligente Fragengenerierung  ║
-║     ✓ Laiengerechte Formulierungen    ║
-║     ✓ "Ich bin unsicher" Option       ║
-║     ✓ Strikte LV-Antwortbindung       ║
-║     ✓ Transparente Annahmen           ║
 ║     ✓ Adaptive Fragenanzahl           ║
-║     ✓ Enhanced Token Limits           ║
-║     ✓ Confidence Level Tracking       ║
+║       (8-40 Fragen je nach Gewerk)    ║
+║     ✓ Detaillierte Mengenerfassung    ║
+║     ✓ Laienverständliche Fragen       ║
+║     ✓ Intelligente Schätzlogik        ║
+║     ✓ Realistische Preiskalkulation   ║
+║     ✓ Datenqualitäts-Tracking         ║
 ║                                        ║
-║     Improvements Applied:              ║
-║     ✓ Fragen für Laien verständlich   ║
-║     ✓ Empfehlungen & Richtwerte       ║
-║     ✓ Unsicher-Option bei Mengen      ║
-║     ✓ LV nur aus Antworten            ║
-║     ✓ Annahmen dokumentiert           ║
-║     ✓ Statistiken & Validierung       ║
+║     Gewerke-Komplexität:               ║
+║     • Sehr hoch: DACH, ELEKT, SAN     ║
+║     • Hoch: TIS, FEN, FASS            ║
+║     • Mittel: FLI, ESTR, TRO          ║
+║     • Einfach: MAL, GER, ABBR         ║
 ║                                        ║
 ╚════════════════════════════════════════╝
- `);
+  `);
 });
