@@ -104,8 +104,6 @@ export default function IntakeQuestionsPage() {
       const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
       if (!projectRes.ok) throw new Error('Projekt konnte nicht geladen werden');
       
-      const updatedProject = await projectRes.json();
-      
    // NEU - immer zur Gewerke-Bestätigung nach dem Intake:
       
       navigate(`/project/${projectId}/trades`);
