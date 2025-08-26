@@ -1605,13 +1605,21 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
       );
       saved++;
     }
+    
+    // Berechne die intelligente Fragenanzahl für die Response
+    const intelligentCount = getIntelligentQuestionCount('INT', {
+      category: project.category,
+      description: project.description,
+      budget: project.budget
+    }, []);
 
     res.json({ 
       ok: true, 
       tradeCode: 'INT', 
       questions, 
       saved,
-      targetCount: getTradeQuestionCount('INT', determineProjectComplexity(project))
+      targetCount: intelligentCount.count,
+      completeness: intelligentCount.completeness
     });
   } catch (err) {
     console.error('intake/questions failed:', err);
@@ -1874,14 +1882,14 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       }
     }
     
-    const complexity = determineProjectComplexity(project);
-    const targetCount = getTradeQuestionCount(tradeCode, complexity);
+    const intelligentCount = getIntelligentQuestionCount(tradeCode, project, []);
     
     res.json({ 
       questions,
-      targetCount,
+      targetCount: intelligentCount.count,
       actualCount: questions.length,
-      complexity
+      completeness: intelligentCount.completeness,
+      missingInfo: intelligentCount.missingInfo
     });
     
   } catch (err) {
@@ -2618,16 +2626,22 @@ app.get('/api/debug/project/:projectId/trades', async (req, res) => {
       project: project.rows[0],
       complexity: determineProjectComplexity(project.rows[0]),
       tradeCount: trades.rows.length,
-      trades: trades.rows.map(t => ({
-        ...t,
-        targetQuestions: getTradeQuestionCount(
+      trades: trades.rows.map(t => {
+        const intelligentCount = getIntelligentQuestionCount(
           t.code, 
-          determineProjectComplexity(project.rows[0])
-        ),
-        completeness: t.question_count > 0 
-          ? Math.round((t.answer_count / t.question_count) * 100)
-          : 0
-      }))
+          project.rows[0],
+          [] // Keine Intake-Antworten im Debug-Modus
+        );
+        return {
+          ...t,
+          targetQuestions: intelligentCount.count,
+          informationCompleteness: intelligentCount.completeness,
+          missingInfo: intelligentCount.missingInfo,
+          completeness: t.question_count > 0 
+            ? Math.round((t.answer_count / t.question_count) * 100)
+            : 0
+        };
+      })
     });
     
   } catch (err) {
