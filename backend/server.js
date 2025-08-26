@@ -251,7 +251,7 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
 
 /**
  * Intelligente, dynamische Fragenanzahl-Ermittlung
- * Analysiert vorhandene Informationen und passt die Fragenanzahl entsprechend an
+ * VERBESSERT: Realistischere Bewertung der vorhandenen Informationen
  */
 function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = []) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
@@ -272,39 +272,81 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
     const desc = projectContext.description.toLowerCase();
     const wordCount = desc.split(' ').length;
     
-    // Detaillierte Beschreibung reduziert Fragenbedarf
-    if (wordCount > 200) informationCompleteness += 30;
-    else if (wordCount > 100) informationCompleteness += 20;
-    else if (wordCount > 50) informationCompleteness += 10;
+    // REALISTISCHERE Bewertung der Beschreibung
+    if (wordCount > 100) informationCompleteness += 20;
+    else if (wordCount > 50) informationCompleteness += 15;
+    else if (wordCount > 20) informationCompleteness += 10;
+    else informationCompleteness += 5;
     
-    // Prüfe auf spezifische Informationen
-    if (desc.match(/\d+\s*(m²|qm|quadratmeter)/)) informationCompleteness += 15; // Flächenangaben
-    if (desc.match(/\d+\s*(m|meter|cm)/)) informationCompleteness += 10; // Längenangaben
-    if (desc.match(/\d+\s*(zimmer|räume)/)) informationCompleteness += 10; // Raumanzahl
-    if (desc.includes('material') || desc.includes('ausführung')) informationCompleteness += 10;
-    if (desc.includes('bestand') || desc.includes('vorhanden')) informationCompleteness += 10;
-    
-    // Gewerke-spezifische Prüfungen
+    // Gewerke-spezifische Prüfungen mit höherer Gewichtung
     switch(tradeCode) {
-      case 'DACH':
-        if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Dachfläche');
-        if (!desc.includes('dachform') && !desc.includes('sattel') && !desc.includes('flach')) {
-          missingCriticalInfo.push('Dachform');
+      case 'MAL': // Malerarbeiten
+        if (desc.match(/\d+\s*(m²|qm|quadratmeter)/)) {
+          informationCompleteness += 40; // Fläche ist kritisch!
+        } else {
+          missingCriticalInfo.push('Flächenangabe');
+        }
+        if (desc.includes('zimmer') || desc.includes('raum') || desc.includes('wohnung')) {
+          informationCompleteness += 20;
+        }
+        if (desc.includes('weiß') || desc.includes('farbe') || desc.includes('farbton')) {
+          informationCompleteness += 20;
+        }
+        // Bei "Zimmer streichen" ist oft schon genug Info da
+        if (desc.includes('zimmer') && desc.includes('streichen')) {
+          informationCompleteness += 30;
         }
         break;
+        
+      case 'DACH':
+        if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Dachfläche');
+        else informationCompleteness += 30;
+        if (!desc.includes('dachform') && !desc.includes('sattel') && !desc.includes('flach')) {
+          missingCriticalInfo.push('Dachform');
+        } else {
+          informationCompleteness += 20;
+        }
+        break;
+        
       case 'ELEKT':
         if (!desc.match(/\d+\s*(steckdose|schalter|dose)/)) missingCriticalInfo.push('Anzahl Elektropunkte');
+        else informationCompleteness += 25;
         if (!desc.includes('verteiler') && !desc.includes('sicherung')) missingCriticalInfo.push('Verteilerinfo');
+        else informationCompleteness += 15;
         break;
-      case 'MAL':
-        if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Zu streichende Flächen');
+        
+      case 'FLI': // Fliesenarbeiten
+        if (desc.match(/\d+\s*(m²|qm)/)) informationCompleteness += 35;
+        else missingCriticalInfo.push('Fliesenfläche');
+        if (desc.includes('bad') || desc.includes('küche')) informationCompleteness += 20;
+        break;
+        
+      case 'SAN': // Sanitär
+        if (desc.includes('bad') || desc.includes('wc') || desc.includes('dusche')) {
+          informationCompleteness += 25;
+        }
+        if (!desc.includes('austausch') && !desc.includes('erneuer') && !desc.includes('neu')) {
+          missingCriticalInfo.push('Umfang der Arbeiten');
+        }
+        break;
+        
+      case 'GER': // Gerüstbau
+        if (desc.match(/\d+\s*(m|meter)/)) informationCompleteness += 40;
+        else missingCriticalInfo.push('Gebäudehöhe');
+        if (desc.includes('einfamilienhaus') || desc.includes('efh')) informationCompleteness += 30;
         break;
     }
+    
+    // Allgemeine hilfreiche Informationen
+    if (desc.match(/\d+\s*(zimmer|räume)/)) informationCompleteness += 15;
+    if (desc.includes('altbau') || desc.includes('neubau')) informationCompleteness += 10;
+    if (desc.includes('komplett') || desc.includes('gesamt')) informationCompleteness += 10;
   }
   
-  // Prüfe Intake-Antworten
+  // Prüfe Intake-Antworten (haben mehr Gewicht)
   if (intakeAnswers.length > 0) {
-    informationCompleteness += Math.min(30, intakeAnswers.length * 2);
+    // Jede beantwortete Intake-Frage erhöht die Vollständigkeit
+    informationCompleteness += Math.min(40, intakeAnswers.length * 3);
     
     // Prüfe auf konkrete Mengenangaben in Antworten
     const hasNumbers = intakeAnswers.filter(a => 
@@ -318,28 +360,73 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
     informationCompleteness += 10;
   }
   
+  // Kategorie kann auch helfen
+  if (projectContext.category) {
+    const cat = projectContext.category.toLowerCase();
+    if (cat.includes('renovierung') || cat.includes('sanierung')) {
+      informationCompleteness += 5;
+    }
+  }
+  
   // Berechne finale Fragenanzahl
   informationCompleteness = Math.min(100, informationCompleteness);
   
-  // Je mehr Info vorhanden, desto weniger Fragen nötig
-  const reductionFactor = informationCompleteness / 100;
-  const reducedQuestions = baseRange.max * (1 - reductionFactor * 0.7); // Max 70% Reduktion
+  // VERBESSERTE Reduktionslogik
+  let targetCount;
   
-  // Aber: Kritische fehlende Infos erhöhen Fragenbedarf
-  const criticalInfoPenalty = missingCriticalInfo.length * 2;
+  if (baseRange.complexity === 'EINFACH') {
+    // Einfache Gewerke brauchen weniger Fragen
+    if (informationCompleteness >= 70) {
+      targetCount = baseRange.min; // Minimum
+    } else if (informationCompleteness >= 50) {
+      targetCount = Math.round(baseRange.min + 2);
+    } else if (informationCompleteness >= 30) {
+      targetCount = Math.round((baseRange.min + baseRange.max) / 2);
+    } else {
+      targetCount = baseRange.max - 2;
+    }
+  } else if (baseRange.complexity === 'SEHR_HOCH' || baseRange.complexity === 'HOCH') {
+    // Komplexe Gewerke brauchen mehr Details
+    if (informationCompleteness >= 80) {
+      targetCount = Math.round(baseRange.min + 5);
+    } else if (informationCompleteness >= 60) {
+      targetCount = Math.round((baseRange.min + baseRange.max) / 2);
+    } else if (informationCompleteness >= 40) {
+      targetCount = Math.round(baseRange.max - 5);
+    } else {
+      targetCount = baseRange.max;
+    }
+  } else {
+    // Mittlere Komplexität
+    if (informationCompleteness >= 70) {
+      targetCount = baseRange.min + 2;
+    } else if (informationCompleteness >= 40) {
+      targetCount = Math.round((baseRange.min + baseRange.max) / 2);
+    } else {
+      targetCount = baseRange.max - 3;
+    }
+  }
   
-  let targetCount = Math.round(reducedQuestions + criticalInfoPenalty);
+  // Kritische fehlende Infos erhöhen Fragenbedarf
+  targetCount += missingCriticalInfo.length * 2;
   
-  // Mindestfragen für kritische Informationen
-  const minimumQuestions = tradeCode === 'INT' ? 10 : 
-                          baseRange.complexity === 'SEHR_HOCH' ? 15 :
-                          baseRange.complexity === 'HOCH' ? 12 :
-                          baseRange.complexity === 'MITTEL' ? 8 :
-                          5;
-  
-  // Sicherstellen dass wir sinnvolle Grenzen einhalten
-  targetCount = Math.max(minimumQuestions, targetCount);
+  // Sicherstellen dass wir in sinnvollen Grenzen bleiben
+  targetCount = Math.max(baseRange.min, targetCount);
   targetCount = Math.min(baseRange.max, targetCount);
+  
+  // SPEZIALFALL: Sehr einfache Projekte
+  if (projectContext.description) {
+    const desc = projectContext.description.toLowerCase();
+    // "Zimmer streichen" oder ähnlich einfache Aufgaben
+    if ((desc.includes('zimmer') || desc.includes('raum')) && 
+        (desc.includes('streichen') || desc.includes('malen')) &&
+        tradeCode === 'MAL') {
+      targetCount = Math.min(targetCount, 12); // Maximal 12 Fragen
+      if (desc.match(/\d+\s*(m²|qm)/)) {
+        targetCount = Math.min(targetCount, 8); // Mit Flächenangabe nur 8 Fragen
+      }
+    }
+  }
   
   console.log(`[QUESTIONS] Intelligent count for ${tradeCode}:`);
   console.log(`  -> Information completeness: ${informationCompleteness}%`);
@@ -694,28 +781,35 @@ ANFORDERUNGEN:
    - Keine redundanten Fragen zu bereits bekannten Informationen
    - Fokus auf fehlende kritische Daten
 
-2. MENGENERFASSUNG wo noch unklar:
-   - Nur nach Maßen fragen, die nicht genannt wurden
-   - Bei Unsicherheit: "unsicher" als Option
+2. MENGENERFASSUNG mit EINHEITEN:
+   - Bei type:"number" MUSS die Einheit IN DER FRAGE stehen!
+   - Beispiel: "Wie groß ist die zu streichende Fläche in m²?"
+   - NICHT: "Wie groß ist die zu streichende Fläche?" mit unit:"m²" separat
+   - Bei Unsicherheit: "unsicher" als Option in options Array
 
 3. LAIENVERSTÄNDLICH:
    - 1-2 erklärende Sätze pro Frage
-   - Beispiele nur wo nötig
+   - Klare Einheiten-Angaben
 
 OUTPUT (NUR valides JSON-Array):
 [
   {
     "id": "string",
     "category": "string",
-    "question": "string",
-    "explanation": "string",
+    "question": "Frage MIT EINHEIT bei Zahlen (z.B. 'Wie viele m² sollen gestrichen werden?')",
+    "explanation": "Erklärung für Laien",
     "type": "text|number|select",
     "required": boolean,
-    "unit": "string oder null",
-    "options": array oder null,
+    "unit": null,
+    "options": ["unsicher"] bei kritischen Maßen,
     "priority": "hoch|mittel|niedrig"
   }
-]`;
+]
+
+WICHTIG BEI NUMBER-TYPE:
+- Einheit IMMER in die Frage integrieren
+- unit-Feld auf null setzen (wird nicht von UI angezeigt)
+- options: ["unsicher"] für Ausweichmöglichkeit`;
 
   const userPrompt = `Erstelle ${targetQuestionCount} INTELLIGENTE Fragen für ${tradeName}.
 
