@@ -1564,29 +1564,74 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
       return res.status(400).json({ error: 'Keine Gewerke ausgewählt' });
     }
     
-    // Lösche alle bisherigen Trade-Zuordnungen (außer INT)
-    await query(
-      `DELETE FROM project_trades 
-       WHERE project_id = $1 
-       AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')`,
-      [projectId]
-    );
+    // Start transaction for data consistency
+    await query('BEGIN');
     
-    // Füge die bestätigten Trades hinzu
-    for (const tradeId of confirmedTrades) {
-      await ensureProjectTrade(projectId, tradeId, 'user_confirmed');
+    try {
+      // Erst die abhängigen Daten löschen (Fragen und Antworten der zu entfernenden Trades)
+      await query(
+        `DELETE FROM answers 
+         WHERE project_id = $1 
+         AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')
+         AND trade_id NOT IN (SELECT unnest($2::int[]))`,
+        [projectId, confirmedTrades]
+      );
+      
+      await query(
+        `DELETE FROM questions 
+         WHERE project_id = $1 
+         AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')
+         AND trade_id NOT IN (SELECT unnest($2::int[]))`,
+        [projectId, confirmedTrades]
+      );
+      
+      await query(
+        `DELETE FROM lvs 
+         WHERE project_id = $1 
+         AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')
+         AND trade_id NOT IN (SELECT unnest($2::int[]))`,
+        [projectId, confirmedTrades]
+      );
+      
+      // Jetzt die Trade-Zuordnungen löschen
+      await query(
+        `DELETE FROM project_trades 
+         WHERE project_id = $1 
+         AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')`,
+        [projectId]
+      );
+      
+      // Füge die bestätigten Trades hinzu
+      for (const tradeId of confirmedTrades) {
+        await query(
+          `INSERT INTO project_trades (project_id, trade_id)
+           VALUES ($1, $2)
+           ON CONFLICT DO NOTHING`,
+          [projectId, tradeId]
+        );
+      }
+      
+      await query('COMMIT');
+      
+      console.log(`[TRADES] User confirmed ${confirmedTrades.length} trades for project ${projectId}`);
+      
+      res.json({ 
+        success: true, 
+        confirmedCount: confirmedTrades.length,
+        message: 'Gewerke erfolgreich bestätigt'
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
     }
-    
-    console.log(`[TRADES] User confirmed ${confirmedTrades.length} trades for project ${projectId}`);
-    
-    res.json({ 
-      success: true, 
-      confirmedCount: confirmedTrades.length 
-    });
     
   } catch (err) {
     console.error('Failed to confirm trades:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ 
+      error: 'Fehler beim Bestätigen der Gewerke',
+      details: err.message 
+    });
   }
 });
 
