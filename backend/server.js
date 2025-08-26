@@ -42,11 +42,11 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
 
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
-  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 30 },
-  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 30 },
-  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 30 },
-  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 30 },
-  'ROH': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
+  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
+  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
+  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
+  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 35 },
+  'ROH': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 35 },
   
   // Komplexe Gewerke (20-30 Fragen)
   'TIS': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
@@ -421,9 +421,9 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
     if ((desc.includes('zimmer') || desc.includes('raum')) && 
         (desc.includes('streichen') || desc.includes('malen')) &&
         tradeCode === 'MAL') {
-      targetCount = Math.min(targetCount, 12); // Maximal 12 Fragen
+      targetCount = Math.min(targetCount, 8); // Maximal 8 Fragen
       if (desc.match(/\d+\s*(m²|qm)/)) {
-        targetCount = Math.min(targetCount, 8); // Mit Flächenangabe nur 8 Fragen
+        targetCount = Math.min(targetCount, 5); // Mit Flächenangabe nur 5 Fragen
       }
     }
   }
@@ -764,71 +764,79 @@ WICHTIG:
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
-'Erstelle einen INTELLIGENTEN Intake-Fragenkatalog.' : 
+'Erstelle einen verständlichen Fragenkatalog für die allgemeine Projekterfassung.' : 
 `Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}.`}
 
 ${intakeContext}
 
-WICHTIG - INTELLIGENTE FRAGENANZAHL:
-- Ziel: ${targetQuestionCount} Fragen (basierend auf ${intelligentCount.completeness}% Informationsvollständigkeit)
-- Fehlende kritische Infos: ${intelligentCount.missingInfo.join(', ') || 'keine'}
-- Stelle NUR Fragen zu FEHLENDEN Informationen
-- Wenn bereits viele Details vorhanden sind, stelle WENIGER Fragen
-- Fokussiere auf KALKULATIONSRELEVANTE Lücken
+KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 
-ANFORDERUNGEN:
-1. INTELLIGENZ: Stelle ${targetQuestionCount} GEZIELTE Fragen
-   - Keine redundanten Fragen zu bereits bekannten Informationen
-   - Fokus auf fehlende kritische Daten
+1. FACHBEGRIFFE ERKLÄREN:
+   - Bei Fachbegriffen IMMER eine Erklärung in der "explanation" 
+   - Beispiel: "Ortgang" → Erklärung: "Der seitliche Dachabschluss am Giebel"
+   - Beispiel: "Unterkonstruktion" → Erklärung: "Das Traggerüst unter der sichtbaren Oberfläche"
 
-2. MENGENERFASSUNG mit EINHEITEN:
-   - Bei type:"number" MUSS die Einheit IN DER FRAGE stehen!
-   - Beispiel: "Wie groß ist die zu streichende Fläche in m²?"
-   - NICHT: "Wie groß ist die zu streichende Fläche?" mit unit:"m²" separat
-   - Bei Unsicherheit: "unsicher" als Option in options Array
+2. MESSANLEITUNGEN BEI KOMPLEXEN MASSEN:
+   - Erkläre WIE gemessen wird
+   - Beispiel: "Kranreichweite" → "Abstand vom Kranstandort zum entferntesten Arbeitspunkt"
+   - Bei unklaren Mengen: IMMER "unsicher/weiß nicht" als Option
 
-3. LAIENVERSTÄNDLICH:
-   - 1-2 erklärende Sätze pro Frage
-   - Klare Einheiten-Angaben
+3. KEINE FRAGEN DIE LAIEN NICHT BEANTWORTEN KÖNNEN:
+   - NICHT fragen nach: Arbeitsdauer, Kranreichweite, Kubikmeter Schutt, Lastberechnungen
+   - NICHT fragen nach: Anzahl Lagen Abdichtung (außer bei Reparatur bekannt)
+   - Stattdessen: Sinnvolle Annahmen treffen und in LV einarbeiten
+
+4. INTELLIGENTE ANNAHMEN STATT DOPPELFRAGEN:
+   - Wenn nach Dachfläche gefragt → Abdichtungsfläche = Dachfläche + 5%
+   - Wenn nach Wandfläche gefragt → Deckenfläche aus Raumgröße ableiten
+   - Annahmen klar kommunizieren: "Wir gehen von X aus, basierend auf Y"
+
+5. PROJEKTKONTEXT BEACHTEN:
+   - Bei "Fassadensanierung" + Gewerk "MAL" → Fragen zu AUSSENanstrich
+   - Bei "Badsanierung" + Gewerk "MAL" → Fragen zu feuchtraumgeeigneter Farbe
+   - ERSTE FRAGE bei manuell hinzugefügtem Gewerk: "Welche Arbeiten sollen in diesem Gewerk ausgeführt werden?"
+
+FRAGENANZAHL: ${targetQuestionCount} Fragen
+- Vollständigkeit: ${intelligentCount.completeness}%
+- Fehlende Info: ${intelligentCount.missingInfo.join(', ') || 'keine'}
+- Bei hoher Vollständigkeit: WENIGER Fragen stellen als vorgegeben!
 
 OUTPUT (NUR valides JSON-Array):
 [
   {
     "id": "string",
-    "category": "string",
-    "question": "Frage MIT EINHEIT bei Zahlen (z.B. 'Wie viele m² sollen gestrichen werden?')",
-    "explanation": "Erklärung für Laien",
+    "category": "string", 
+    "question": "Verständliche Frage MIT EINHEIT bei Zahlen",
+    "explanation": "PFLICHT bei Fachbegriffen! Erkläre was gemeint ist und wie gemessen wird",
     "type": "text|number|select",
     "required": boolean,
     "unit": null,
-    "options": ["unsicher"] bei kritischen Maßen,
-    "priority": "hoch|mittel|niedrig"
+    "options": ["unsicher/weiß nicht"] bei schwierigen Fragen,
+    "defaultAssumption": "Falls 'unsicher': Diese Annahme wird getroffen"
   }
-]
+]`;
 
-WICHTIG BEI NUMBER-TYPE:
-- Einheit IMMER in die Frage integrieren
-- unit-Feld auf null setzen (wird nicht von UI angezeigt)
-- options: ["unsicher"] für Ausweichmöglichkeit`;
+  const userPrompt = `Erstelle ${targetQuestionCount} LAIENVERSTÄNDLICHE Fragen für ${tradeName}.
 
-  const userPrompt = `Erstelle ${targetQuestionCount} INTELLIGENTE Fragen für ${tradeName}.
+PROJEKTKONTEXT:
+- Beschreibung: ${projectContext.description || 'Keine'}
+- Kategorie: ${projectContext.category || 'Nicht angegeben'}
+- Vollständigkeit: ${intelligentCount.completeness}%
 
-BEREITS VORHANDENE INFORMATIONEN:
-- Projektbeschreibung: ${projectContext.description || 'Keine'}
-- Informationsvollständigkeit: ${intelligentCount.completeness}%
-- Bereits beantwortet: ${answeredQuestions.length} Intake-Fragen
+${projectContext.isManuallyAdded ? 
+`WICHTIG: Dieses Gewerk wurde MANUELL hinzugefügt!
+ERSTE FRAGE MUSS SEIN: "Welche ${tradeName}-Arbeiten sollen im Rahmen der ${projectContext.category || 'Arbeiten'} ausgeführt werden?"` : ''}
 
-FEHLENDE KRITISCHE INFORMATIONEN:
-${intelligentCount.missingInfo.length > 0 ? 
-  intelligentCount.missingInfo.map(info => `- ${info}`).join('\n') : 
-  '- Keine kritischen Lücken identifiziert'}
+FEHLENDE INFOS: ${intelligentCount.missingInfo.join(', ') || 'keine'}
 
-${questionPrompt ? `Basis-Template:\n${questionPrompt.substring(0, 500)}...\n` : ''}
+${questionPrompt ? `Template-Basis:\n${questionPrompt.substring(0, 300)}...\n` : ''}
 
-WICHTIG: 
-- Frage NUR nach dem, was noch FEHLT für eine präzise Kalkulation
-- Wenn genug Info vorhanden ist, stelle nur die WICHTIGSTEN ${targetQuestionCount} Fragen
-- Priorisiere kalkulationsrelevante Informationen`;
+BEACHTE:
+- Fachbegriffe MÜSSEN erklärt werden
+- Keine Fragen die Laien nicht beantworten können  
+- Bei Mengen/Maßen: "unsicher" Option anbieten
+- Sinnvolle Annahmen statt Detailfragen
+- Wenn Info vorhanden: WENIGER Fragen stellen!`;
 
   try {
     console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
@@ -1164,7 +1172,7 @@ WICHTIG:
     
     const lv = JSON.parse(cleanedResponse);
     
-    // Post-Processing
+    // Post-Processing und Stundenlohnarbeiten hinzufügen
     if (lv.positions && Array.isArray(lv.positions)) {
       let calculatedSum = 0;
       lv.positions = lv.positions.map(pos => {
@@ -1174,6 +1182,40 @@ WICHTIG:
         calculatedSum += pos.totalPrice || 0;
         return pos;
       });
+      
+      // Stundenlohnarbeiten hinzufügen
+      const stundenSätze = {
+        'MAL': { stunden: 5, satz: 45, bezeichnung: 'Maler/Lackierer' },
+        'GER': { stunden: 5, satz: 35, bezeichnung: 'Gerüstbauer' },
+        'ESTR': { stunden: 5, satz: 50, bezeichnung: 'Estrichleger' },
+        'FLI': { stunden: 8, satz: 55, bezeichnung: 'Fliesenleger' },
+        'DACH': { stunden: 15, satz: 65, bezeichnung: 'Dachdecker' },
+        'ELEKT': { stunden: 12, satz: 70, bezeichnung: 'Elektriker' },
+        'SAN': { stunden: 15, satz: 75, bezeichnung: 'Sanitärinstallateur' },
+        'HEI': { stunden: 12, satz: 75, bezeichnung: 'Heizungsbauer' },
+        'TIS': { stunden: 10, satz: 60, bezeichnung: 'Tischler' },
+        'FEN': { stunden: 8, satz: 60, bezeichnung: 'Fensterbauer' },
+        'DEFAULT': { stunden: 8, satz: 55, bezeichnung: 'Handwerker' }
+      };
+      
+      const stundenConfig = stundenSätze[trade.code] || stundenSätze['DEFAULT'];
+      
+      // Füge Stundenlohnposition hinzu
+      const stundenlohnPos = {
+        pos: `${lv.positions.length + 1}.00`,
+        title: `Stundenlohnarbeiten ${stundenConfig.bezeichnung}`,
+        description: `Zusätzliche Arbeiten auf Stundenlohnbasis für unvorhergesehene oder kleinteilige Leistungen, die nicht im LV erfasst sind. Abrechnung nach tatsächlichem Aufwand.`,
+        quantity: stundenConfig.stunden,
+        unit: 'Std',
+        unitPrice: stundenConfig.satz,
+        totalPrice: stundenConfig.stunden * stundenConfig.satz,
+        dataSource: 'standard',
+        notes: 'Pauschal einkalkuliert für Zusatzarbeiten'
+      };
+      
+      lv.positions.push(stundenlohnPos);
+      calculatedSum += stundenlohnPos.totalPrice;
+      
       lv.totalSum = Math.round(calculatedSum * 100) / 100;
       
       // Statistiken
@@ -1183,7 +1225,8 @@ WICHTIG:
         minPosition: Math.min(...lv.positions.map(p => p.totalPrice || 0)),
         maxPosition: Math.max(...lv.positions.map(p => p.totalPrice || 0)),
         measuredPositions: lv.positions.filter(p => p.dataSource === 'measured').length,
-        estimatedPositions: lv.positions.filter(p => p.dataSource === 'estimated').length
+        estimatedPositions: lv.positions.filter(p => p.dataSource === 'estimated').length,
+        hasStundenlohn: true
       };
     }
     
@@ -2207,11 +2250,13 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
+    const { isManuallyAdded } = req.body; // Flag vom Frontend
     
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
     
-    const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
+    const tradeInfo = await query('SELECT code, name FROM trades WHERE id = $1', [tradeId]);
     const tradeCode = tradeInfo.rows[0]?.code;
+    const tradeName = tradeInfo.rows[0]?.name;
     
     if (!isAssigned && tradeCode !== 'INT') {
       console.log(`[QUESTIONS] Trade ${tradeId} not assigned to project ${projectId}, adding it now`);
@@ -2229,18 +2274,21 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const project = projectResult.rows[0];
     
-    const questions = await generateQuestions(tradeId, {
+    // Markiere wenn Gewerk manuell hinzugefügt wurde
+    const projectContext = {
       category: project.category,
       subCategory: project.sub_category,
       description: project.description,
       timeframe: project.timeframe,
       budget: project.budget,
-      projectId: projectId
-    });
+      projectId: projectId,
+      isManuallyAdded: isManuallyAdded || false // Wichtig für kontextbezogene erste Frage
+    };
     
-    // Speichere erweiterte Fragen
+    const questions = await generateQuestions(tradeId, projectContext);
+    
+    // Speichere nur die existierenden Basis-Spalten
     for (const question of questions) {
-      // Speichere nur die existierenden Basis-Spalten
       await query(
         `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -2265,7 +2313,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       targetCount: intelligentCount.count,
       actualCount: questions.length,
       completeness: intelligentCount.completeness,
-      missingInfo: intelligentCount.missingInfo
+      missingInfo: intelligentCount.missingInfo,
+      tradeName: tradeName
     });
     
   } catch (err) {
@@ -2624,6 +2673,173 @@ app.get('/api/projects/:projectId/lv-complete.pdf', async (req, res) => {
     
   } catch (err) {
     console.error('Complete PDF generation failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update LV (für Editierung im Frontend)
+app.put('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { positions } = req.body;
+    
+    // Hole aktuelles LV
+    const currentLV = await query(
+      'SELECT content FROM lvs WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (currentLV.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+    
+    let lv = typeof currentLV.rows[0].content === 'string' 
+      ? JSON.parse(currentLV.rows[0].content) 
+      : currentLV.rows[0].content;
+    
+    // Update Positionen
+    lv.positions = positions;
+    
+    // Neuberechnung der Summe
+    let totalSum = 0;
+    lv.positions = lv.positions.map((pos, idx) => {
+      // Stelle sicher dass Positionsnummer vorhanden ist
+      if (!pos.pos) {
+        pos.pos = `${idx + 1}.00`;
+      }
+      
+      // Berechne Gesamtpreis wenn nötig
+      if (pos.quantity && pos.unitPrice && !pos.totalPrice) {
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      }
+      
+      totalSum += pos.totalPrice || 0;
+      return pos;
+    });
+    
+    lv.totalSum = Math.round(totalSum * 100) / 100;
+    lv.lastModified = new Date().toISOString();
+    lv.modifiedBy = 'user';
+    
+    // Speichere aktualisiertes LV
+    await query(
+      `UPDATE lvs 
+       SET content = $1, updated_at = NOW()
+       WHERE project_id = $2 AND trade_id = $3`,
+      [lv, projectId, tradeId]
+    );
+    
+    res.json({ 
+      ok: true, 
+      message: 'LV erfolgreich aktualisiert',
+      lv 
+    });
+    
+  } catch (err) {
+    console.error('Failed to update LV:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Einzelne Position hinzufügen
+app.post('/api/projects/:projectId/trades/:tradeId/lv/position', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const newPosition = req.body;
+    
+    const currentLV = await query(
+      'SELECT content FROM lvs WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (currentLV.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+    
+    let lv = typeof currentLV.rows[0].content === 'string' 
+      ? JSON.parse(currentLV.rows[0].content) 
+      : currentLV.rows[0].content;
+    
+    // Füge neue Position hinzu
+    const nextPos = lv.positions.length + 1;
+    newPosition.pos = newPosition.pos || `${nextPos}.00`;
+    
+    if (newPosition.quantity && newPosition.unitPrice) {
+      newPosition.totalPrice = Math.round(newPosition.quantity * newPosition.unitPrice * 100) / 100;
+    }
+    
+    lv.positions.push(newPosition);
+    
+    // Neuberechnung
+    lv.totalSum = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+    lv.lastModified = new Date().toISOString();
+    
+    await query(
+      `UPDATE lvs 
+       SET content = $1, updated_at = NOW()
+       WHERE project_id = $2 AND trade_id = $3`,
+      [lv, projectId, tradeId]
+    );
+    
+    res.json({ 
+      ok: true, 
+      message: 'Position hinzugefügt',
+      position: newPosition,
+      totalSum: lv.totalSum
+    });
+    
+  } catch (err) {
+    console.error('Failed to add position:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Position löschen
+app.delete('/api/projects/:projectId/trades/:tradeId/lv/position/:positionId', async (req, res) => {
+  try {
+    const { projectId, tradeId, positionId } = req.params;
+    
+    const currentLV = await query(
+      'SELECT content FROM lvs WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (currentLV.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+    
+    let lv = typeof currentLV.rows[0].content === 'string' 
+      ? JSON.parse(currentLV.rows[0].content) 
+      : currentLV.rows[0].content;
+    
+    // Entferne Position
+    lv.positions = lv.positions.filter(pos => pos.pos !== positionId);
+    
+    // Neuberechnung
+    lv.totalSum = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+    lv.lastModified = new Date().toISOString();
+    
+    // Nummeriere Positionen neu
+    lv.positions = lv.positions.map((pos, idx) => {
+      pos.pos = `${idx + 1}.00`;
+      return pos;
+    });
+    
+    await query(
+      `UPDATE lvs 
+       SET content = $1, updated_at = NOW()
+       WHERE project_id = $2 AND trade_id = $3`,
+      [lv, projectId, tradeId]
+    );
+    
+    res.json({ 
+      ok: true, 
+      message: 'Position gelöscht',
+      totalSum: lv.totalSum
+    });
+    
+  } catch (err) {
+    console.error('Failed to delete position:', err);
     res.status(500).json({ error: err.message });
   }
 });
