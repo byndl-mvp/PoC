@@ -78,16 +78,16 @@ const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 15, maxQuestion
 // ===========================================================================
 
 /**
- * Erweiterte LLM-Policy mit maximalen Token-Limits
+ * Erweiterte LLM-Policy mit robuster Fehlerbehandlung
  */
 async function llmWithPolicy(task, messages, options = {}) {
   const defaultMaxTokens = {
     'detect': 3000,      
-    'questions': 8000,   // Für bis zu 40+ detaillierte Fragen
-    'lv': 10000,         // Für sehr detaillierte LVs
-    'intake': 6000,      // Für 15-20 Intake-Fragen
+    'questions': 8000,   
+    'lv': 10000,         
+    'intake': 6000,      
     'summary': 4000,
-    'validation': 3000   // Für Antwort-Validierung
+    'validation': 3000   
   };
   
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
@@ -98,45 +98,91 @@ async function llmWithPolicy(task, messages, options = {}) {
     : 'openai';
   
   const callOpenAI = async () => {
-    const useJsonMode = options.jsonMode && maxTokens <= 4096;
-    
-    const response = await openai.chat.completions.create({
-      model: MODEL_OPENAI,
-      messages,
-      temperature,
-      max_completion_tokens: Math.min(maxTokens, 16384),
-      response_format: useJsonMode ? { type: "json_object" } : undefined
-    });
-    return response.choices[0].message.content;
+    try {
+      const useJsonMode = options.jsonMode && maxTokens <= 4096;
+      
+      const response = await openai.chat.completions.create({
+        model: MODEL_OPENAI,
+        messages,
+        temperature,
+        max_completion_tokens: Math.min(maxTokens, 16384),
+        response_format: useJsonMode ? { type: "json_object" } : undefined
+      });
+      return response.choices[0].message.content;
+    } catch (error) {
+      console.error('[LLM] OpenAI error:', error.status || error.message);
+      throw error;
+    }
   };
   
   const callClaude = async () => {
-    const systemMessage = messages.find(m => m.role === "system")?.content || "";
-    const otherMessages = messages.filter(m => m.role !== "system");
+    try {
+      const systemMessage = messages.find(m => m.role === "system")?.content || "";
+      const otherMessages = messages.filter(m => m.role !== "system");
 
-    const response = await anthropic.messages.create({
-      model: MODEL_ANTHROPIC,
-      max_tokens: Math.min(maxTokens, 8192),
-      temperature,
-      system: systemMessage,
-      messages: otherMessages,
-    });
+      const response = await anthropic.messages.create({
+        model: MODEL_ANTHROPIC,
+        max_tokens: Math.min(maxTokens, 8192),
+        temperature,
+        system: systemMessage,
+        messages: otherMessages,
+      });
 
-    return response.content[0].text;
+      return response.content[0].text;
+    } catch (error) {
+      console.error('[LLM] Anthropic error:', error.status || error.message);
+      throw error;
+    }
   };
   
+  let result = null;
+  let lastError = null;
+  
+  // Try primary provider
   try {
-    console.log(`[LLM] Task: ${task} | Provider: ${primaryProvider} | Tokens: ${maxTokens}`);
-    return primaryProvider === 'anthropic' ? await callClaude() : await callOpenAI();
-  } catch (error) {
-    console.warn(`[LLM] Primary provider failed: ${error.message}, trying fallback...`);
+    console.log(`[LLM] Task: ${task} | Trying primary: ${primaryProvider} | Tokens: ${maxTokens}`);
+    
+    if (primaryProvider === 'anthropic') {
+      result = await callClaude();
+    } else {
+      result = await callOpenAI();
+    }
+    
+    console.log(`[LLM] Success with primary ${primaryProvider}`);
+    return result;
+    
+  } catch (primaryError) {
+    lastError = primaryError;
+    console.warn(`[LLM] Primary ${primaryProvider} failed with status ${primaryError.status || 'unknown'}`);
+    
+    // Try fallback provider
+    const fallbackProvider = primaryProvider === 'anthropic' ? 'openai' : 'anthropic';
+    
     try {
-      return primaryProvider === 'anthropic' ? await callOpenAI() : await callClaude();
+      console.log(`[LLM] Trying fallback: ${fallbackProvider}`);
+      
+      if (fallbackProvider === 'openai') {
+        result = await callOpenAI();
+      } else {
+        result = await callClaude();
+      }
+      
+      console.log(`[LLM] Success with fallback ${fallbackProvider}`);
+      return result;
+      
     } catch (fallbackError) {
-      console.error(`[LLM] Both providers failed:`, error.message, fallbackError.message);
-      throw new Error('LLM service unavailable');
+      console.error(`[LLM] Fallback ${fallbackProvider} also failed with status ${fallbackError.status || 'unknown'}`);
+      lastError = fallbackError;
     }
   }
+  
+  // Both failed - last resort for questions
+  if (task === 'questions' || task === 'intake') {
+    console.log('[LLM] Both providers failed, using emergency fallback questions');
+    return '[]'; // Will trigger fallback questions
+  }
+  
+  throw new Error(`All LLM providers unavailable. Last error: ${lastError?.message || 'Unknown error'}`);
 }
 
 /**
