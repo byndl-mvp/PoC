@@ -204,33 +204,108 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
 }
 
 /**
- * Gewerke-spezifische Fragenanzahl ermitteln
+ * Intelligente, dynamische Fragenanzahl-Ermittlung
+ * Analysiert vorhandene Informationen und passt die Fragenanzahl entsprechend an
  */
-function getTradeQuestionCount(tradeCode, projectComplexity) {
+function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = []) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
   
-  // Basis-Fragenanzahl
-  let baseCount = (tradeConfig.minQuestions + tradeConfig.maxQuestions) / 2;
-  
-  // Anpassung basierend auf Projektkomplexität
-  const complexityMultiplier = {
-    'SEHR_HOCH': 1.3,
-    'HOCH': 1.15,
-    'MITTEL': 1.0,
-    'NIEDRIG': 0.85,
-    'EINFACH': 0.7
+  // Basis-Range für das Gewerk
+  const baseRange = {
+    min: tradeConfig.minQuestions,
+    max: tradeConfig.maxQuestions,
+    complexity: tradeConfig.complexity
   };
   
-  const multiplier = complexityMultiplier[projectComplexity] || 1.0;
-  let adjustedCount = Math.round(baseCount * multiplier);
+  // Analysiere wie viel Information bereits vorhanden ist
+  let informationCompleteness = 0;
+  let missingCriticalInfo = [];
   
-  // Sicherstellen dass wir in den Grenzen bleiben
-  adjustedCount = Math.max(tradeConfig.minQuestions, adjustedCount);
-  adjustedCount = Math.min(tradeConfig.maxQuestions, adjustedCount);
+  // Prüfe Projektbeschreibung
+  if (projectContext.description) {
+    const desc = projectContext.description.toLowerCase();
+    const wordCount = desc.split(' ').length;
+    
+    // Detaillierte Beschreibung reduziert Fragenbedarf
+    if (wordCount > 200) informationCompleteness += 30;
+    else if (wordCount > 100) informationCompleteness += 20;
+    else if (wordCount > 50) informationCompleteness += 10;
+    
+    // Prüfe auf spezifische Informationen
+    if (desc.match(/\d+\s*(m²|qm|quadratmeter)/)) informationCompleteness += 15; // Flächenangaben
+    if (desc.match(/\d+\s*(m|meter|cm)/)) informationCompleteness += 10; // Längenangaben
+    if (desc.match(/\d+\s*(zimmer|räume)/)) informationCompleteness += 10; // Raumanzahl
+    if (desc.includes('material') || desc.includes('ausführung')) informationCompleteness += 10;
+    if (desc.includes('bestand') || desc.includes('vorhanden')) informationCompleteness += 10;
+    
+    // Gewerke-spezifische Prüfungen
+    switch(tradeCode) {
+      case 'DACH':
+        if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Dachfläche');
+        if (!desc.includes('dachform') && !desc.includes('sattel') && !desc.includes('flach')) {
+          missingCriticalInfo.push('Dachform');
+        }
+        break;
+      case 'ELEKT':
+        if (!desc.match(/\d+\s*(steckdose|schalter|dose)/)) missingCriticalInfo.push('Anzahl Elektropunkte');
+        if (!desc.includes('verteiler') && !desc.includes('sicherung')) missingCriticalInfo.push('Verteilerinfo');
+        break;
+      case 'MAL':
+        if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Zu streichende Flächen');
+        break;
+    }
+  }
   
-  console.log(`[QUESTIONS] Trade ${tradeCode}: ${adjustedCount} questions (complexity: ${projectComplexity})`);
+  // Prüfe Intake-Antworten
+  if (intakeAnswers.length > 0) {
+    informationCompleteness += Math.min(30, intakeAnswers.length * 2);
+    
+    // Prüfe auf konkrete Mengenangaben in Antworten
+    const hasNumbers = intakeAnswers.filter(a => 
+      a.answer && a.answer.match(/\d+/)
+    ).length;
+    informationCompleteness += Math.min(20, hasNumbers * 5);
+  }
   
-  return adjustedCount;
+  // Budget gibt Aufschluss über Projektumfang
+  if (projectContext.budget && !projectContext.budget.includes('unsicher')) {
+    informationCompleteness += 10;
+  }
+  
+  // Berechne finale Fragenanzahl
+  informationCompleteness = Math.min(100, informationCompleteness);
+  
+  // Je mehr Info vorhanden, desto weniger Fragen nötig
+  const reductionFactor = informationCompleteness / 100;
+  const reducedQuestions = baseRange.max * (1 - reductionFactor * 0.7); // Max 70% Reduktion
+  
+  // Aber: Kritische fehlende Infos erhöhen Fragenbedarf
+  const criticalInfoPenalty = missingCriticalInfo.length * 2;
+  
+  let targetCount = Math.round(reducedQuestions + criticalInfoPenalty);
+  
+  // Mindestfragen für kritische Informationen
+  const minimumQuestions = tradeCode === 'INT' ? 10 : 
+                          baseRange.complexity === 'SEHR_HOCH' ? 15 :
+                          baseRange.complexity === 'HOCH' ? 12 :
+                          baseRange.complexity === 'MITTEL' ? 8 :
+                          5;
+  
+  // Sicherstellen dass wir sinnvolle Grenzen einhalten
+  targetCount = Math.max(minimumQuestions, targetCount);
+  targetCount = Math.min(baseRange.max, targetCount);
+  
+  console.log(`[QUESTIONS] Intelligent count for ${tradeCode}:`);
+  console.log(`  -> Information completeness: ${informationCompleteness}%`);
+  console.log(`  -> Missing critical info: ${missingCriticalInfo.join(', ') || 'none'}`);
+  console.log(`  -> Base range: ${baseRange.min}-${baseRange.max}`);
+  console.log(`  -> Target questions: ${targetCount}`);
+  
+  return {
+    count: targetCount,
+    completeness: informationCompleteness,
+    missingInfo: missingCriticalInfo
+  };
 }
 
 /**
@@ -551,47 +626,69 @@ WICHTIG:
   }
   
   const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
-  const targetQuestionCount = getTradeQuestionCount(tradeCode, projectComplexity);
+  const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, answeredQuestions);
+  const targetQuestionCount = intelligentCount.count;
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
-'Erstelle einen präzisen INTAKE-Fragenkatalog für die vollständige Projekterfassung.' : 
-`Erstelle einen DETAILLIERTEN Fragenkatalog für das Gewerk ${tradeName}.`}
+'Erstelle einen INTELLIGENTEN Intake-Fragenkatalog.' : 
+`Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}.`}
 
 ${intakeContext}
 
-ANFORDERUNGEN:
-1. Erstelle GENAU ${targetQuestionCount} Fragen
-2. Jede Frage muss konkrete Mengen, Maße oder Details erfassen
-3. Erkläre jede Frage laienverständlich mit 1-2 Sätzen
-4. Bei Maßen immer "unsicher" als Option anbieten
+WICHTIG - INTELLIGENTE FRAGENANZAHL:
+- Ziel: ${targetQuestionCount} Fragen (basierend auf ${intelligentCount.completeness}% Informationsvollständigkeit)
+- Fehlende kritische Infos: ${intelligentCount.missingInfo.join(', ') || 'keine'}
+- Stelle NUR Fragen zu FEHLENDEN Informationen
+- Wenn bereits viele Details vorhanden sind, stelle WENIGER Fragen
+- Fokussiere auf KALKULATIONSRELEVANTE Lücken
 
-OUTPUT FORMAT - NUR VALIDES JSON-ARRAY, KEINE ANDEREN ZEICHEN:
+ANFORDERUNGEN:
+1. INTELLIGENZ: Stelle ${targetQuestionCount} GEZIELTE Fragen
+   - Keine redundanten Fragen zu bereits bekannten Informationen
+   - Fokus auf fehlende kritische Daten
+
+2. MENGENERFASSUNG wo noch unklar:
+   - Nur nach Maßen fragen, die nicht genannt wurden
+   - Bei Unsicherheit: "unsicher" als Option
+
+3. LAIENVERSTÄNDLICH:
+   - 1-2 erklärende Sätze pro Frage
+   - Beispiele nur wo nötig
+
+OUTPUT (NUR valides JSON-Array):
 [
   {
     "id": "string",
     "category": "string",
     "question": "string",
     "explanation": "string",
-    "type": "text oder number oder select",
+    "type": "text|number|select",
     "required": boolean,
     "unit": "string oder null",
-    "options": array oder null
+    "options": array oder null,
+    "priority": "hoch|mittel|niedrig"
   }
-]
+]`;
 
-WICHTIG: Gib NUR das JSON-Array zurück, keine weiteren Erklärungen!`;
+  const userPrompt = `Erstelle ${targetQuestionCount} INTELLIGENTE Fragen für ${tradeName}.
 
-  const userPrompt = `Erstelle ${targetQuestionCount} Fragen für ${tradeName} (${tradeCode}).
+BEREITS VORHANDENE INFORMATIONEN:
+- Projektbeschreibung: ${projectContext.description || 'Keine'}
+- Informationsvollständigkeit: ${intelligentCount.completeness}%
+- Bereits beantwortet: ${answeredQuestions.length} Intake-Fragen
+
+FEHLENDE KRITISCHE INFORMATIONEN:
+${intelligentCount.missingInfo.length > 0 ? 
+  intelligentCount.missingInfo.map(info => `- ${info}`).join('\n') : 
+  '- Keine kritischen Lücken identifiziert'}
 
 ${questionPrompt ? `Basis-Template:\n${questionPrompt.substring(0, 500)}...\n` : ''}
 
-Projektkontext:
-- Kategorie: ${projectContext.category || 'Nicht angegeben'}
-- Beschreibung: ${projectContext.description || 'Keine'}
-- Budget: ${projectContext.budget || 'Nicht angegeben'}
-
-Gib NUR ein JSON-Array mit ${targetQuestionCount} Fragen zurück.`;
+WICHTIG: 
+- Frage NUR nach dem, was noch FEHLT für eine präzise Kalkulation
+- Wenn genug Info vorhanden ist, stelle nur die WICHTIGSTEN ${targetQuestionCount} Fragen
+- Priorisiere kalkulationsrelevante Informationen`;
 
   try {
     console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
@@ -786,7 +883,22 @@ async function generateDetailedLV(projectId, tradeId) {
     : [];
 
   const tradeAnswers = (await query(
-    `SELECT q.text as question, q.question_id, q.unit, a.answer_text as answer, a.assumption
+    `SELECT 
+       q.text as question, 
+       q.question_id, 
+       COALESCE(
+         q.metadata->>'unit',
+         CASE 
+           WHEN q.text ILIKE '%m²%' OR q.text ILIKE '%quadratmeter%' THEN 'm²'
+           WHEN q.text ILIKE '%meter%' OR q.text ILIKE '% m %' THEN 'm'
+           WHEN q.text ILIKE '%stück%' OR q.text ILIKE '%anzahl%' THEN 'Stk'
+           WHEN q.text ILIKE '%stunde%' THEN 'h'
+           WHEN q.text ILIKE '%kilogramm%' OR q.text ILIKE '% kg %' THEN 'kg'
+           ELSE NULL
+         END
+       ) as unit,
+       a.answer_text as answer, 
+       a.assumption
      FROM answers a
      JOIN questions q ON q.project_id = a.project_id 
        AND q.trade_id = a.trade_id 
@@ -1672,6 +1784,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     // Speichere erweiterte Fragen
     for (const question of questions) {
+      // Versuche zuerst die Basis-Spalten zu speichern
       await query(
         `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -1688,30 +1801,30 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
         ]
       );
       
-      // Speichere zusätzliche Metadaten (falls vorhanden)
-      if (question.explanation || question.unit || question.validationRule) {
+      // Speichere erweiterte Metadaten in metadata-Spalte falls vorhanden
+      const metadata = {
+        explanation: question.explanation || null,
+        unit: question.unit || null,
+        validationRule: question.validationRule || null,
+        category: question.category || null
+      };
+      
+      // Prüfe ob metadata-Spalte existiert und update sie
+      try {
         await query(
           `UPDATE questions 
-           SET metadata = jsonb_build_object(
-             'explanation', $1,
-             'unit', $2,
-             'validationRule', $3,
-             'category', $4
-           )
-           WHERE project_id = $5 AND trade_id = $6 AND question_id = $7`,
+           SET metadata = $1::jsonb
+           WHERE project_id = $2 AND trade_id = $3 AND question_id = $4`,
           [
-            question.explanation || null,
-            question.unit || null,
-            question.validationRule || null,
-            question.category || null,
+            JSON.stringify(metadata),
             projectId,
             tradeId,
             question.id
           ]
-        ).catch(err => {
-          // Falls metadata-Spalte nicht existiert, ignorieren
-          console.log('[QUESTIONS] Metadata column might not exist, skipping');
-        });
+        );
+      } catch (metaErr) {
+        // Falls metadata-Spalte nicht existiert, ignorieren wir den Fehler
+        console.log('[QUESTIONS] Metadata column might not exist, unit info stored in metadata:', metadata.unit);
       }
     }
     
