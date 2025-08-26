@@ -5,6 +5,7 @@ import { apiUrl } from '../api';
 export default function IntakeQuestionsPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const [loadingMessage, setLoadingMessage] = useState('Allgemeine Projektfragen werden vorbereitet...');
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -107,15 +108,19 @@ export default function IntakeQuestionsPage() {
    // NEU - immer zur Gewerke-Bestätigung nach dem Intake:
       
       navigate(`/project/${projectId}/trades`);
+    if (loading) return (
+  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+    <div className="text-center">
+      {/* Fortschrittsbalken statt Sanduhr */}
+      <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
+        <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
+             style={{ width: '60%' }} />
+      </div>
+      <p className="mt-4 text-white">Allgemeine Projektfragen werden vorbereitet...</p>
+    </div>
+  </div>
+);
       
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
       <div className="text-center">
