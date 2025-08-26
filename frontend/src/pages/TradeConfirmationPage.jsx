@@ -10,13 +10,16 @@ export default function TradeConfirmationPage() {
   const [allTrades, setAllTrades] = useState([]);
   const [selectedTrades, setSelectedTrades] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Analysiere Projektdaten...');
   const [error, setError] = useState('');
   const [intakeSummary, setIntakeSummary] = useState(null);
+  const [addingTrade, setAddingTrade] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
+        setLoadingMessage('Lade Projektdetails...');
         
         // 1. Lade Projektdetails mit initial erkannten Gewerken
         const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
@@ -28,6 +31,7 @@ export default function TradeConfirmationPage() {
         const initialDetected = (projectData.trades || []).filter(t => t.code !== 'INT');
         
         // 2. Lade Intake-Summary für bessere Gewerke-Empfehlungen
+        setLoadingMessage('Analysiere Ihre Antworten...');
         let finalRecommendations = [];
         try {
           const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
@@ -41,7 +45,7 @@ export default function TradeConfirmationPage() {
             }
           }
         } catch (err) {
-          console.log('Keine Intake-Summary verfügbar, nutze initial erkannte Gewerke');
+          console.log('Keine Zusammenfassung verfügbar, nutze initial erkannte Gewerke');
         }
         
         // 3. Lade alle verfügbaren Gewerke
@@ -66,7 +70,8 @@ export default function TradeConfirmationPage() {
         // Markiere initial erkannte vs. KI-empfohlene
         const markedTrades = combinedTrades.map(trade => ({
           ...trade,
-          source: trade.recommended ? 'ki-empfohlen' : 'initial-erkannt'
+          source: trade.recommended ? 'ki-empfohlen' : 'initial-erkannt',
+          isManuallyAdded: false
         }));
         
         setDetectedTrades(markedTrades);
@@ -98,16 +103,26 @@ export default function TradeConfirmationPage() {
     });
   };
 
-  const addTrade = (tradeId) => {
+  const addTrade = async (tradeId) => {
     if (!tradeId) return;
     
     const trade = allTrades.find(t => t.id === parseInt(tradeId));
     if (trade) {
+      setAddingTrade(true);
+      
       // Füge zu erkannten Trades hinzu (als manuell hinzugefügt markiert)
-      setDetectedTrades(prev => [...prev, { ...trade, source: 'manuell' }]);
+      const manualTrade = { 
+        ...trade, 
+        source: 'manuell',
+        isManuallyAdded: true  // Wichtig für kontextbezogene Fragen
+      };
+      
+      setDetectedTrades(prev => [...prev, manualTrade]);
       setSelectedTrades(prev => [...prev, trade.id]);
       // Entferne aus verfügbaren Trades
       setAllTrades(prev => prev.filter(t => t.id !== trade.id));
+      
+      setAddingTrade(false);
     }
   };
 
@@ -119,6 +134,7 @@ export default function TradeConfirmationPage() {
     
     try {
       setLoading(true);
+      setLoadingMessage('Speichere Gewerkeauswahl...');
       
       // Speichere die ausgewählten Gewerke
       const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
@@ -134,6 +150,15 @@ export default function TradeConfirmationPage() {
       // Weiter zum ersten Gewerk für spezifische Fragen
       const confirmedTradesData = detectedTrades.filter(t => selectedTrades.includes(t.id));
       if (confirmedTradesData.length > 0) {
+        // Speichere Info über manuell hinzugefügte Gewerke in sessionStorage
+        const manuallyAddedTrades = confirmedTradesData
+          .filter(t => t.isManuallyAdded)
+          .map(t => t.id);
+        
+        if (manuallyAddedTrades.length > 0) {
+          sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
+        }
+        
         navigate(`/project/${projectId}/trade/${confirmedTradesData[0].id}/questions`);
       } else {
         navigate(`/project/${projectId}/result`);
@@ -148,8 +173,11 @@ export default function TradeConfirmationPage() {
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
       <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
-        <p className="mt-4 text-white">Analysiere Intake-Antworten...</p>
+        <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
+          <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
+               style={{ width: '75%' }} />
+        </div>
+        <p className="mt-4 text-white">{loadingMessage}</p>
       </div>
     </div>
   );
@@ -255,7 +283,7 @@ export default function TradeConfirmationPage() {
                       )}
                       {trade.source === 'manuell' && (
                         <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded">
-                          Manuell
+                          Manuell hinzugefügt
                         </span>
                       )}
                     </div>
@@ -285,6 +313,7 @@ export default function TradeConfirmationPage() {
                   addTrade(e.target.value);
                   e.target.value = '';
                 }}
+                disabled={addingTrade}
                 className="flex-1 bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 defaultValue=""
               >
@@ -299,6 +328,9 @@ export default function TradeConfirmationPage() {
           ) : (
             <p className="text-gray-400">Alle verfügbaren Gewerke wurden bereits hinzugefügt</p>
           )}
+          <p className="text-blue-300 text-xs mt-2">
+            ℹ️ Bei manuell hinzugefügten Gewerken wird die erste Frage den Arbeitsumfang erfassen.
+          </p>
         </div>
 
         {/* Summary */}
@@ -314,7 +346,7 @@ export default function TradeConfirmationPage() {
               <p className="text-gray-400 text-sm">Geschätzte Bearbeitungszeit:</p>
               <p className="text-white">~{selectedTrades.length * 2} Minuten</p>
               <p className="text-gray-400 text-xs mt-1">
-                (ca. {Math.ceil(selectedTrades.length * 8 / 4)} Fragen pro Gewerk)
+                (Angepasste Fragenanzahl pro Gewerk)
               </p>
             </div>
           </div>
@@ -326,7 +358,7 @@ export default function TradeConfirmationPage() {
             onClick={() => navigate(`/project/${projectId}/intake`)}
             className="px-6 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all duration-200"
           >
-            ← Zurück zu Intake
+            ← Zurück zu Projektfragen
           </button>
           
           <button
@@ -351,8 +383,8 @@ export default function TradeConfirmationPage() {
         {/* Info Box */}
         <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <p className="text-blue-300 text-sm">
-            <strong>ℹ️ Hinweis:</strong> Als nächstes werden detaillierte Fragen zu jedem ausgewählten Gewerk gestellt,
-            um ein präzises Leistungsverzeichnis erstellen zu können.
+            <strong>ℹ️ Hinweis:</strong> Als nächstes werden detaillierte Fragen zu jedem ausgewählten Gewerk gestellt.
+            Die Fragen sind auf Laien ausgerichtet und enthalten Erklärungen zu Fachbegriffen.
           </p>
         </div>
       </div>
