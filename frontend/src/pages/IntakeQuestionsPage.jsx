@@ -5,7 +5,6 @@ import { apiUrl } from '../api';
 export default function IntakeQuestionsPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const [loadingMessage, setLoadingMessage] = useState('Allgemeine Projektfragen werden vorbereitet...');
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -26,17 +25,16 @@ export default function IntakeQuestionsPage() {
         setProject(projectData);
         
         const res = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`), {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    // Sende die erkannten Trades mit
-    detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
-  })
-});
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
+          })
+        });
         
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || 'Fehler beim Generieren der Intake-Fragen');
+          throw new Error(data.error || 'Fehler beim Generieren der allgemeinen Projektfragen');
         }
         
         const data = await res.json();
@@ -84,7 +82,7 @@ export default function IntakeQuestionsPage() {
       const allTrades = await intTradeRes.json();
       const intTrade = allTrades.find(t => t.code === 'INT');
       
-      if (!intTrade) throw new Error('INT Trade nicht gefunden');
+      if (!intTrade) throw new Error('Allgemeine Projektaufnahme nicht gefunden');
       
       const validAnswers = allAnswers.filter(a => a.answer && a.answer.trim());
       
@@ -99,33 +97,31 @@ export default function IntakeQuestionsPage() {
       const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
       if (summaryRes.ok) {
         const summary = await summaryRes.json();
-        console.log('Intake Summary:', summary);
+        console.log('Projekt-Zusammenfassung:', summary);
       }
       
       const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
       if (!projectRes.ok) throw new Error('Projekt konnte nicht geladen werden');
       
-   // NEU - immer zur Gewerke-Bestätigung nach dem Intake:
-      
       navigate(`/project/${projectId}/trades`);
-    if (loading) return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-    <div className="text-center">
-      {/* Fortschrittsbalken statt Sanduhr */}
-      <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
-        <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
-             style={{ width: '60%' }} />
-      </div>
-      <p className="mt-4 text-white">Allgemeine Projektfragen werden vorbereitet...</p>
-    </div>
-  </div>
-);
       
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Loading State mit Fortschrittsbalken
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
       <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
-        <p className="mt-4 text-white">Fragen werden vorbereitet...</p>
+        <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
+          <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
+               style={{ width: '60%' }} />
+        </div>
+        <p className="mt-4 text-white">Allgemeine Projektfragen werden vorbereitet...</p>
       </div>
     </div>
   );
@@ -140,7 +136,7 @@ export default function IntakeQuestionsPage() {
 
   if (!questions.length) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-      <p className="text-white">Keine Intake-Fragen verfügbar.</p>
+      <p className="text-white">Keine allgemeinen Projektfragen verfügbar.</p>
     </div>
   );
   
@@ -191,6 +187,15 @@ export default function IntakeQuestionsPage() {
           <h2 className="text-2xl font-semibold text-white mb-6">
             {currentQ.text || currentQ.question}
           </h2>
+
+          {/* Explanation wenn vorhanden */}
+          {currentQ.explanation && (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
+              <p className="text-blue-200 text-sm">
+                <strong>ℹ️ Hinweis:</strong> {currentQ.explanation}
+              </p>
+            </div>
+          )}
           
           {currentQ.type === 'select' && currentQ.options ? (
             <select
@@ -204,13 +209,23 @@ export default function IntakeQuestionsPage() {
               ))}
             </select>
           ) : currentQ.type === 'number' ? (
-            <input
-              type="number"
-              className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Ihre Antwort"
-            />
+            <div>
+              <input
+                type="number"
+                className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                value={answerText}
+                onChange={(e) => setAnswerText(e.target.value)}
+                placeholder="Ihre Antwort"
+              />
+              {currentQ.options?.includes('unsicher') && (
+                <button
+                  onClick={() => setAnswerText('unsicher')}
+                  className="mt-2 text-sm text-teal-400 hover:text-teal-300"
+                >
+                  Ich bin unsicher / weiß nicht
+                </button>
+              )}
+            </div>
           ) : (
             <textarea
               className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
