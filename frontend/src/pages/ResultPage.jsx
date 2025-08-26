@@ -10,6 +10,8 @@ export default function ResultPage() {
   const [costSummary, setCostSummary] = useState(null);
   const [exportMode, setExportMode] = useState('with-prices');
   const [selectedLv, setSelectedLv] = useState(null);
+  const [editingPosition, setEditingPosition] = useState(null);
+  const [editedValues, setEditedValues] = useState({});
 
   useEffect(() => {
     async function fetchData() {
@@ -39,6 +41,66 @@ export default function ResultPage() {
     }
     fetchData();
   }, [projectId]);
+
+  const handleEditPosition = (lvIndex, posIndex, field, value) => {
+    const key = `${lvIndex}-${posIndex}-${field}`;
+    setEditedValues(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleSavePosition = async (lvIndex, posIndex) => {
+    const lv = lvs[lvIndex];
+    const position = lv.content.positions[posIndex];
+    const key = `${lvIndex}-${posIndex}`;
+    
+    const updatedPosition = {
+      ...position,
+      title: editedValues[`${key}-title`] || position.title,
+      quantity: parseFloat(editedValues[`${key}-quantity`]) || position.quantity,
+      unitPrice: parseFloat(editedValues[`${key}-unitPrice`]) || position.unitPrice,
+      description: editedValues[`${key}-description`] || position.description
+    };
+    
+    updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
+    
+    // Update im Backend
+    const updatedPositions = [...lv.content.positions];
+    updatedPositions[posIndex] = updatedPosition;
+    
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ positions: updatedPositions })
+    });
+    
+    if (res.ok) {
+      const newLvs = [...lvs];
+      newLvs[lvIndex].content.positions = updatedPositions;
+      setLvs(newLvs);
+      setEditingPosition(null);
+      setEditedValues({});
+    }
+  };
+
+  const handleDeletePosition = async (lvIndex, posIndex) => {
+    if (!window.confirm('Position wirklich löschen?')) return;
+    
+    const lv = lvs[lvIndex];
+    const position = lv.content.positions[posIndex];
+    
+    const res = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/position/${position.pos}`),
+      { method: 'DELETE' }
+    );
+    
+    if (res.ok) {
+      const newLvs = [...lvs];
+      newLvs[lvIndex].content.positions.splice(posIndex, 1);
+      setLvs(newLvs);
+    }
+  };
 
   const calculateTotal = (lv) => {
     if (!lv.content || !lv.content.positions) return 0;
@@ -240,6 +302,7 @@ export default function ResultPage() {
                             <th className="text-left p-3 font-medium">Einheit</th>
                             <th className="text-right p-3 font-medium">EP (€)</th>
                             <th className="text-right p-3 font-medium">GP (€)</th>
+                            <th className="text-center p-3 font-medium">Aktionen</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -247,21 +310,88 @@ export default function ResultPage() {
                             <tr key={pidx} className="border-t border-white/10 hover:bg-white/5">
                               <td className="p-3">{pos.pos || `${idx+1}.${pidx+1}`}</td>
                               <td className="p-3">
-                                <div className="font-medium">{pos.title}</div>
-                                {pos.description && (
-                                  <div className="text-xs text-gray-400 mt-1">
-                                    {pos.description.substring(0, 100)}
-                                    {pos.description.length > 100 && '...'}
+                                {editingPosition === `${idx}-${pidx}` ? (
+                                  <input
+                                    type="text"
+                                    className="bg-white/20 border border-white/30 rounded px-2 py-1 text-white w-full"
+                                    defaultValue={pos.title}
+                                    onChange={(e) => handleEditPosition(idx, pidx, 'title', e.target.value)}
+                                  />
+                                ) : (
+                                  <div>
+                                    <div className="font-medium">{pos.title}</div>
+                                    {pos.description && (
+                                      <div className="text-xs text-gray-400 mt-1">
+                                        {pos.description.substring(0, 100)}
+                                        {pos.description.length > 100 && '...'}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </td>
-                              <td className="text-right p-3">{pos.quantity?.toFixed(2) || '-'}</td>
+                              <td className="text-right p-3">
+                                {editingPosition === `${idx}-${pidx}` ? (
+                                  <input
+                                    type="number"
+                                    className="bg-white/20 border border-white/30 rounded px-2 py-1 text-white w-20"
+                                    defaultValue={pos.quantity}
+                                    onChange={(e) => handleEditPosition(idx, pidx, 'quantity', e.target.value)}
+                                  />
+                                ) : (
+                                  pos.quantity?.toFixed(2) || '-'
+                                )}
+                              </td>
                               <td className="p-3">{pos.unit || '-'}</td>
                               <td className="text-right p-3">
-                                {pos.unitPrice ? pos.unitPrice.toFixed(2) : '-'}
+                                {editingPosition === `${idx}-${pidx}` ? (
+                                  <input
+                                    type="number"
+                                    className="bg-white/20 border border-white/30 rounded px-2 py-1 text-white w-20"
+                                    defaultValue={pos.unitPrice}
+                                    onChange={(e) => handleEditPosition(idx, pidx, 'unitPrice', e.target.value)}
+                                  />
+                                ) : (
+                                  pos.unitPrice ? pos.unitPrice.toFixed(2) : '-'
+                                )}
                               </td>
                               <td className="text-right p-3 font-medium text-teal-400">
                                 {pos.totalPrice ? pos.totalPrice.toFixed(2) : '-'}
+                              </td>
+                              <td className="p-3 text-center">
+                                {editingPosition === `${idx}-${pidx}` ? (
+                                  <div className="flex gap-2 justify-center">
+                                    <button
+                                      onClick={() => handleSavePosition(idx, pidx)}
+                                      className="text-green-400 hover:text-green-300"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingPosition(null);
+                                        setEditedValues({});
+                                      }}
+                                      className="text-red-400 hover:text-red-300"
+                                    >
+                                      ✗
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex gap-2 justify-center">
+                                    <button
+                                      onClick={() => setEditingPosition(`${idx}-${pidx}`)}
+                                      className="text-blue-400 hover:text-blue-300"
+                                    >
+                                      ✎
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeletePosition(idx, pidx)}
+                                      className="text-red-400 hover:text-red-300"
+                                    >
+                                      🗑
+                                    </button>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -333,7 +463,7 @@ export default function ResultPage() {
             onClick={() => window.print()}
             className="px-8 py-4 bg-white/10 backdrop-blur border border-white/30 text-white rounded-lg hover:bg-white/20 transition-all"
           >
-            📄 Drucken
+            🖨 Drucken
           </button>
           <button
             onClick={() => {
@@ -342,7 +472,7 @@ export default function ResultPage() {
             }}
             className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
           >
-            📥 Als PDF speichern
+            💾 Als PDF speichern
           </button>
           <button
             onClick={() => {
