@@ -1491,46 +1491,6 @@ function generateCompleteLVPDF(project, lvs, withPrices = true) {
   });
 }
         
-              // Header wiederholen
-              doc.fontSize(10)
-                 .font('Helvetica-Bold');
-              doc.text('Pos.', col1, yPosition);
-              doc.text('Bezeichnung', col2, yPosition);
-              doc.text('Menge', col3, yPosition);
-              doc.text('Einheit', col4, yPosition);
-              doc.text('EP (€)', col5, yPosition);
-              doc.text('GP (€)', col6, yPosition);
-              
-              doc.moveTo(col1, yPosition + 15)
-                 .lineTo(545, yPosition + 15)
-                 .stroke();
-              
-              yPosition += 25;
-              doc.font('Helvetica')
-                 .fontSize(9);
-            }
-            
-            doc.text(pos.pos || '-', col1, yPosition, { width: 30 });
-            
-            const titleHeight = doc.heightOfString(pos.title || '', { width: 150 });
-            doc.text(pos.title || 'Keine Bezeichnung', col2, yPosition, { width: 150 });
-            
-            doc.text(pos.quantity?.toString() || '-', col3, yPosition, { width: 50, align: 'right' });
-            doc.text(pos.unit || '-', col4, yPosition, { width: 50 });
-            
-            if (withPrices && pos.unitPrice) {
-              doc.text(formatCurrency(pos.unitPrice), col5, yPosition, { width: 70, align: 'right' });
-              doc.text(formatCurrency(pos.totalPrice || 0), col6, yPosition, { width: 70, align: 'right' });
-              tradeSum += pos.totalPrice || 0;
-            } else {
-              doc.text('________', col5, yPosition, { width: 70, align: 'right' });
-              doc.text('________', col6, yPosition, { width: 70, align: 'right' });
-            }
-            
-            yPosition += Math.max(titleHeight, 15) + 5;
-          }
-        }
-        
         // Gewerk-Summe
         yPosition += 10;
         doc.moveTo(col5 - 10, yPosition)
