@@ -903,21 +903,22 @@ BEACHTE:
       questions = generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
     }
     
-    // Post-Processing der Fragen
-    const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) => ({
-      id: q.id || `${tradeCode}-${String(idx + 1).padStart(2, '0')}`,
-      category: q.category || 'Allgemein',
-      question: q.question || q.text || q.q || `Frage ${idx + 1}`,
-      explanation: q.explanation || q.hint || '',
-      type: q.type || 'text',
-      required: q.required !== undefined ? q.required : true,
-      unit: q.unit || null,
-      options: Array.isArray(q.options) ? q.options : null,
-      defaultValue: q.defaultValue || null,
-      validationRule: q.validationRule || null,
-      tradeId,
-      tradeName
-    }));
+    // NEU - füge multiSelect hinzu:
+const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) => ({
+  id: q.id || `${tradeCode}-${String(idx + 1).padStart(2, '0')}`,
+  category: q.category || 'Allgemein',
+  question: q.question || q.text || q.q || `Frage ${idx + 1}`,
+  explanation: q.explanation || q.hint || '',
+  type: q.type || 'text',
+  multiSelect: q.multiSelect || false,  // NEU: Mehrfachauswahl-Flag
+  required: q.required !== undefined ? q.required : true,
+  unit: q.unit || null,
+  options: Array.isArray(q.options) ? q.options : null,
+  defaultValue: q.defaultValue || null,
+  validationRule: q.validationRule || null,
+  tradeId,
+  tradeName
+}));
     
     console.log(`[QUESTIONS] Successfully generated ${processedQuestions.length} questions for ${tradeName}`);
     
@@ -2363,24 +2364,27 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const questions = await generateQuestions(tradeId, projectContext);
     
-    // Speichere nur die existierenden Basis-Spalten
-    for (const question of questions) {
-      await query(
-        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (project_id, trade_id, question_id) 
-         DO UPDATE SET text = $4, type = $5, required = $6, options = $7`,
-        [
-          projectId,
-          tradeId,
-          question.id,
-          question.question || question.text,
-          question.type || 'text',
-          question.required !== undefined ? question.required : false,
-          question.options ? JSON.stringify(question.options) : null
-        ]
-      );
-    }
+    // NEU - erweitere options um multiSelect:
+for (const question of questions) {
+  await query(
+    `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (project_id, trade_id, question_id) 
+     DO UPDATE SET text = $4, type = $5, required = $6, options = $7`,
+    [
+      projectId,
+      tradeId,
+      question.id,
+      question.question || question.text,
+      question.multiSelect ? 'multiselect' : (question.type || 'text'),  // NEU: multiselect als type
+      question.required !== undefined ? question.required : false,
+      question.options ? JSON.stringify({
+        values: question.options,
+        multiSelect: question.multiSelect || false
+      }) : null
+    ]
+  );
+}
     
     const intelligentCount = getIntelligentQuestionCount(tradeCode, project, []);
     
