@@ -932,17 +932,14 @@ async function generateDetailedLV(projectId, tradeId) {
     `SELECT 
        q.text as question, 
        q.question_id, 
-       COALESCE(
-         q.metadata->>'unit',
-         CASE 
-           WHEN q.text ILIKE '%m²%' OR q.text ILIKE '%quadratmeter%' THEN 'm²'
-           WHEN q.text ILIKE '%meter%' OR q.text ILIKE '% m %' THEN 'm'
-           WHEN q.text ILIKE '%stück%' OR q.text ILIKE '%anzahl%' THEN 'Stk'
-           WHEN q.text ILIKE '%stunde%' THEN 'h'
-           WHEN q.text ILIKE '%kilogramm%' OR q.text ILIKE '% kg %' THEN 'kg'
-           ELSE NULL
-         END
-       ) as unit,
+       CASE 
+         WHEN q.text ILIKE '%m²%' OR q.text ILIKE '%quadratmeter%' THEN 'm²'
+         WHEN q.text ILIKE '%meter%' OR q.text ILIKE '% m %' THEN 'm'
+         WHEN q.text ILIKE '%stück%' OR q.text ILIKE '%anzahl%' THEN 'Stk'
+         WHEN q.text ILIKE '%stunde%' THEN 'h'
+         WHEN q.text ILIKE '%kilogramm%' OR q.text ILIKE '% kg %' THEN 'kg'
+         ELSE NULL
+       END as unit,
        a.answer_text as answer, 
        a.assumption
      FROM answers a
@@ -1838,7 +1835,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     // Speichere erweiterte Fragen
     for (const question of questions) {
-      // Versuche zuerst die Basis-Spalten zu speichern
+      // Speichere nur die existierenden Basis-Spalten
       await query(
         `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -1854,32 +1851,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
           question.options ? JSON.stringify(question.options) : null
         ]
       );
-      
-      // Speichere erweiterte Metadaten in metadata-Spalte falls vorhanden
-      const metadata = {
-        explanation: question.explanation || null,
-        unit: question.unit || null,
-        validationRule: question.validationRule || null,
-        category: question.category || null
-      };
-      
-      // Prüfe ob metadata-Spalte existiert und update sie
-      try {
-        await query(
-          `UPDATE questions 
-           SET metadata = $1::jsonb
-           WHERE project_id = $2 AND trade_id = $3 AND question_id = $4`,
-          [
-            JSON.stringify(metadata),
-            projectId,
-            tradeId,
-            question.id
-          ]
-        );
-      } catch (metaErr) {
-        // Falls metadata-Spalte nicht existiert, ignorieren wir den Fehler
-        console.log('[QUESTIONS] Metadata column might not exist, unit info stored in metadata:', metadata.unit);
-      }
     }
     
     const intelligentCount = getIntelligentQuestionCount(tradeCode, project, []);
@@ -1924,8 +1895,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
     
     const questions = result.rows.map(q => ({
       ...q,
-      options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null,
-      metadata: q.metadata || {}
+      options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null
     }));
     
     res.json({ questions });
