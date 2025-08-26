@@ -1117,6 +1117,317 @@ WICHTIG:
 }
 
 /**
+ * PDF Generation für komplettes Projekt-LV
+ */
+function generateCompleteLVPDF(project, lvs, withPrices = true) {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({
+        size: 'A4',
+        margins: { top: 50, bottom: 50, left: 50, right: 50 }
+      });
+
+      const chunks = [];
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+
+      // Titelseite
+      doc.fontSize(24)
+         .font('Helvetica-Bold')
+         .text('GESAMT-LEISTUNGSVERZEICHNIS', { align: 'center' });
+      
+      doc.moveDown(0.5);
+      
+      doc.fontSize(16)
+         .font('Helvetica')
+         .fillColor('#666666')
+         .text(withPrices ? 'Komplette Kalkulation' : 'Angebotsanfrage', { align: 'center' });
+      
+      doc.moveDown(2);
+      
+      // Projektinfo
+      doc.fontSize(14)
+         .fillColor('black')
+         .font('Helvetica-Bold')
+         .text('Projekt:', { continued: false });
+      
+      doc.fontSize(12)
+         .font('Helvetica')
+         .text(project.description || 'Keine Beschreibung vorhanden');
+      
+      if (project.category) {
+        doc.moveDown(0.5);
+        doc.font('Helvetica-Bold')
+           .text('Kategorie: ', { continued: true })
+           .font('Helvetica')
+           .text(project.category);
+      }
+      
+      if (project.budget) {
+        doc.font('Helvetica-Bold')
+           .text('Budget: ', { continued: true })
+           .font('Helvetica')
+           .text(project.budget);
+      }
+      
+      doc.moveDown(1);
+      
+      doc.font('Helvetica-Bold')
+         .text('Datum: ', { continued: true })
+         .font('Helvetica')
+         .text(new Date().toLocaleDateString('de-DE', {
+           year: 'numeric',
+           month: 'long',
+           day: 'numeric'
+         }));
+      
+      // Inhaltsverzeichnis
+      doc.moveDown(2);
+      doc.fontSize(14)
+         .font('Helvetica-Bold')
+         .text('ENTHALTENE GEWERKE:', { underline: true });
+      
+      doc.moveDown(0.5);
+      doc.fontSize(11)
+         .font('Helvetica');
+      
+      let grandTotal = 0;
+      const tradeSummaries = [];
+      
+      // Berechne Summen für Übersicht
+      for (const row of lvs) {
+        const lv = typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
+        const tradeTotal = lv.totalSum || 0;
+        grandTotal += tradeTotal;
+        tradeSummaries.push({
+          code: row.trade_code,
+          name: row.trade_name,
+          total: tradeTotal
+        });
+        
+        doc.text(`• ${row.trade_code} - ${row.trade_name}: ${withPrices ? formatCurrency(tradeTotal) : '________'}`, { indent: 20 });
+      }
+      
+      if (withPrices) {
+        doc.moveDown(1);
+        doc.fontSize(12)
+           .font('Helvetica-Bold')
+           .text(`Gesamtsumme (netto): ${formatCurrency(grandTotal)}`);
+        doc.text(`MwSt. (19%): ${formatCurrency(grandTotal * 0.19)}`);
+        doc.text(`Gesamtsumme (brutto): ${formatCurrency(grandTotal * 1.19)}`);
+      }
+      
+      // Neue Seite für erstes Gewerk
+      doc.addPage();
+      
+      // Einzelne Gewerke
+      for (let i = 0; i < lvs.length; i++) {
+        const row = lvs[i];
+        const lv = typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
+        
+        if (i > 0) {
+          doc.addPage();
+        }
+        
+        // Gewerk-Header
+        doc.fontSize(18)
+           .font('Helvetica-Bold')
+           .text(`GEWERK: ${row.trade_code} - ${row.trade_name}`, { align: 'center' });
+        
+        doc.moveDown(1);
+        
+        // Positionen-Tabelle
+        doc.fontSize(12)
+           .font('Helvetica-Bold')
+           .text('POSITIONEN:', { underline: true });
+        
+        doc.moveDown(0.5);
+        
+        const tableTop = doc.y;
+        const col1 = 50;  
+        const col2 = 90;  
+        const col3 = 250; 
+        const col4 = 310; 
+        const col5 = 370; 
+        const col6 = 450; 
+        
+        doc.fontSize(10)
+           .font('Helvetica-Bold');
+        
+        doc.text('Pos.', col1, tableTop);
+        doc.text('Bezeichnung', col2, tableTop);
+        doc.text('Menge', col3, tableTop);
+        doc.text('Einheit', col4, tableTop);
+        doc.text('EP (€)', col5, tableTop);
+        doc.text('GP (€)', col6, tableTop);
+        
+        doc.moveTo(col1, tableTop + 15)
+           .lineTo(545, tableTop + 15)
+           .stroke();
+        
+        let yPosition = tableTop + 25;
+        let tradeSum = 0;
+        
+        doc.font('Helvetica')
+           .fontSize(9);
+        
+        if (lv.positions && Array.isArray(lv.positions)) {
+          for (const pos of lv.positions) {
+            if (yPosition > 700) {
+              doc.addPage();
+              yPosition = 50;
+              
+              // Header wiederholen
+              doc.fontSize(10)
+                 .font('Helvetica-Bold');
+              doc.text('Pos.', col1, yPosition);
+              doc.text('Bezeichnung', col2, yPosition);
+              doc.text('Menge', col3, yPosition);
+              doc.text('Einheit', col4, yPosition);
+              doc.text('EP (€)', col5, yPosition);
+              doc.text('GP (€)', col6, yPosition);
+              
+              doc.moveTo(col1, yPosition + 15)
+                 .lineTo(545, yPosition + 15)
+                 .stroke();
+              
+              yPosition += 25;
+              doc.font('Helvetica')
+                 .fontSize(9);
+            }
+            
+            doc.text(pos.pos || '-', col1, yPosition, { width: 30 });
+            
+            const titleHeight = doc.heightOfString(pos.title || '', { width: 150 });
+            doc.text(pos.title || 'Keine Bezeichnung', col2, yPosition, { width: 150 });
+            
+            doc.text(pos.quantity?.toString() || '-', col3, yPosition, { width: 50, align: 'right' });
+            doc.text(pos.unit || '-', col4, yPosition, { width: 50 });
+            
+            if (withPrices && pos.unitPrice) {
+              doc.text(formatCurrency(pos.unitPrice), col5, yPosition, { width: 70, align: 'right' });
+              doc.text(formatCurrency(pos.totalPrice || 0), col6, yPosition, { width: 70, align: 'right' });
+              tradeSum += pos.totalPrice || 0;
+            } else {
+              doc.text('________', col5, yPosition, { width: 70, align: 'right' });
+              doc.text('________', col6, yPosition, { width: 70, align: 'right' });
+            }
+            
+            yPosition += Math.max(titleHeight, 15) + 5;
+          }
+        }
+        
+        // Gewerk-Summe
+        yPosition += 10;
+        doc.moveTo(col5 - 10, yPosition)
+           .lineTo(545, yPosition)
+           .stroke();
+        
+        yPosition += 10;
+        doc.fontSize(10)
+           .font('Helvetica-Bold')
+           .text(`Summe ${row.trade_code}:`, col5 - 80, yPosition)
+           .text(withPrices ? formatCurrency(tradeSum) : '________', col6, yPosition, { width: 70, align: 'right' });
+      }
+      
+      // Abschlussseite mit Zusammenfassung
+      doc.addPage();
+      
+      doc.fontSize(18)
+         .font('Helvetica-Bold')
+         .text('KOSTENZUSAMMENFASSUNG', { align: 'center' });
+      
+      doc.moveDown(2);
+      
+      // Gewerke-Übersicht
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('Einzelkosten der Gewerke:');
+      
+      doc.moveDown(0.5);
+      doc.fontSize(11)
+         .font('Helvetica');
+      
+      for (const trade of tradeSummaries) {
+        doc.text(`${trade.code} - ${trade.name}:`, 70, doc.y)
+           .text(withPrices ? formatCurrency(trade.total) : '________', 400, doc.y - 11, { width: 100, align: 'right' });
+      }
+      
+      doc.moveDown(1);
+      doc.moveTo(70, doc.y)
+         .lineTo(500, doc.y)
+         .stroke();
+      
+      doc.moveDown(0.5);
+      
+      if (withPrices) {
+        doc.fontSize(12)
+           .font('Helvetica-Bold')
+           .text('Nettosumme:', 70, doc.y)
+           .text(formatCurrency(grandTotal), 400, doc.y - 12, { width: 100, align: 'right' });
+        
+        doc.moveDown(0.5);
+        
+        const planningCosts = grandTotal * 0.10;
+        const contingency = grandTotal * 0.05;
+        const subtotal = grandTotal + planningCosts + contingency;
+        const vat = subtotal * 0.19;
+        const finalTotal = subtotal + vat;
+        
+        doc.fontSize(11)
+           .font('Helvetica')
+           .text('Planungskosten (10%):', 70, doc.y)
+           .text(formatCurrency(planningCosts), 400, doc.y - 11, { width: 100, align: 'right' });
+        
+        doc.text('Unvorhergesehenes (5%):', 70, doc.y)
+           .text(formatCurrency(contingency), 400, doc.y - 11, { width: 100, align: 'right' });
+        
+        doc.moveDown(0.5);
+        doc.font('Helvetica-Bold')
+           .text('Zwischensumme:', 70, doc.y)
+           .text(formatCurrency(subtotal), 400, doc.y - 11, { width: 100, align: 'right' });
+        
+        doc.moveDown(0.5);
+        doc.font('Helvetica')
+           .text('MwSt. (19%):', 70, doc.y)
+           .text(formatCurrency(vat), 400, doc.y - 11, { width: 100, align: 'right' });
+        
+        doc.moveDown(0.5);
+        doc.moveTo(70, doc.y)
+           .lineTo(500, doc.y)
+           .stroke();
+        doc.moveTo(70, doc.y + 2)
+           .lineTo(500, doc.y + 2)
+           .stroke();
+        
+        doc.moveDown(0.5);
+        doc.fontSize(14)
+           .font('Helvetica-Bold')
+           .text('GESAMTSUMME:', 70, doc.y)
+           .text(formatCurrency(finalTotal), 380, doc.y - 14, { width: 120, align: 'right' });
+      } else {
+        doc.fontSize(12)
+           .font('Helvetica-Bold')
+           .text('Gesamtsumme:', 70, doc.y)
+           .text('________', 400, doc.y - 12, { width: 100, align: 'right' });
+      }
+      
+      // Footer
+      doc.fontSize(8)
+         .font('Helvetica')
+         .fillColor('#666666')
+         .text('Alle Preise verstehen sich inklusive aller Nebenleistungen gemäß VOB/C.', 50, 750)
+         .text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} mit BYNDL`, 50, 765);
+      
+      doc.end();
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
  * PDF Generation für LV
  */
 function formatCurrency(amount) {
@@ -2171,6 +2482,54 @@ app.get('/api/projects/:projectId/trades/:tradeId/lv.pdf', async (req, res) => {
     
   } catch (err) {
     console.error('PDF generation failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate complete PDF with all LVs for a project
+app.get('/api/projects/:projectId/lv-complete.pdf', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { withPrices } = req.query;
+    
+    // Hole Projektdaten und alle LVs
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    const project = projectResult.rows[0];
+    
+    const lvsResult = await query(
+      `SELECT l.content, t.name as trade_name, t.code as trade_code
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id
+       WHERE l.project_id = $1
+       ORDER BY t.name`,
+      [projectId]
+    );
+    
+    if (lvsResult.rows.length === 0) {
+      return res.status(404).json({ error: 'No LVs found for this project' });
+    }
+    
+    // Erstelle komplettes PDF
+    const pdfBuffer = await generateCompleteLVPDF(
+      project,
+      lvsResult.rows,
+      withPrices !== 'false'
+    );
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Projekt_${projectId}_Komplett_LV_${withPrices !== 'false' ? 'mit' : 'ohne'}_Preise.pdf"`);
+    res.send(pdfBuffer);
+    
+  } catch (err) {
+    console.error('Complete PDF generation failed:', err);
     res.status(500).json({ error: err.message });
   }
 });
