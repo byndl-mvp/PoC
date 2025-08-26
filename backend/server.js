@@ -771,27 +771,36 @@ ${intakeContext}
 
 KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 
-1. FACHBEGRIFFE ERKLÄREN:
+1. MASSEINHEITEN IMMER IM FRAGENTEXT ANGEBEN:
+   - Bei Zahlenfragen IMMER die Einheit direkt im Text: "Wie groß ist die Fläche in m²?"
+   - Niemals nur "Wie groß ist die Fläche?" ohne Einheit
+   - Gängige Einheiten: m² (Quadratmeter), m (Meter), cm, mm, m³ (Kubikmeter), Stück, kg
+   - Die Einheit MUSS im Fragentext stehen, nicht nur im unit-Feld
+
+2. MEHRFACHAUSWAHL ERMÖGLICHEN:
+   - Bei Fragen wo mehrere Antworten sinnvoll sind: "multiSelect": true setzen   
+   
+3. FACHBEGRIFFE ERKLÄREN:
    - Bei Fachbegriffen IMMER eine Erklärung in der "explanation" 
    - Beispiel: "Ortgang" → Erklärung: "Der seitliche Dachabschluss am Giebel"
    - Beispiel: "Unterkonstruktion" → Erklärung: "Das Traggerüst unter der sichtbaren Oberfläche"
 
-2. MESSANLEITUNGEN BEI KOMPLEXEN MASSEN:
+4. MESSANLEITUNGEN BEI KOMPLEXEN MASSEN:
    - Erkläre WIE gemessen wird
    - Beispiel: "Kranreichweite" → "Abstand vom Kranstandort zum entferntesten Arbeitspunkt"
    - Bei unklaren Mengen: IMMER "unsicher/weiß nicht" als Option
 
-3. KEINE FRAGEN DIE LAIEN NICHT BEANTWORTEN KÖNNEN:
+5. KEINE FRAGEN DIE LAIEN NICHT BEANTWORTEN KÖNNEN:
    - NICHT fragen nach: Arbeitsdauer, Kranreichweite, Kubikmeter Schutt, Lastberechnungen
    - NICHT fragen nach: Anzahl Lagen Abdichtung (außer bei Reparatur bekannt)
    - Stattdessen: Sinnvolle Annahmen treffen und in LV einarbeiten
 
-4. INTELLIGENTE ANNAHMEN STATT DOPPELFRAGEN:
+6. INTELLIGENTE ANNAHMEN STATT DOPPELFRAGEN:
    - Wenn nach Dachfläche gefragt → Abdichtungsfläche = Dachfläche + 5%
    - Wenn nach Wandfläche gefragt → Deckenfläche aus Raumgröße ableiten
    - Annahmen klar kommunizieren: "Wir gehen von X aus, basierend auf Y"
 
-5. PROJEKTKONTEXT BEACHTEN:
+7. PROJEKTKONTEXT BEACHTEN:
    - Bei "Fassadensanierung" + Gewerk "MAL" → Fragen zu AUSSENanstrich
    - Bei "Badsanierung" + Gewerk "MAL" → Fragen zu feuchtraumgeeigneter Farbe
    - ERSTE FRAGE bei manuell hinzugefügtem Gewerk: "Welche Arbeiten sollen in diesem Gewerk ausgeführt werden?"
