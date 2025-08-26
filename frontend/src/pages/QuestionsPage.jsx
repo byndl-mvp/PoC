@@ -18,12 +18,25 @@ export default function QuestionsPage() {
   const [projectTrades, setProjectTrades] = useState([]); // NUR die erkannten Gewerke
   const [currentTradeIndex, setCurrentTradeIndex] = useState(0);
 
+  // Skip-Button Funktion
+  const handleSkipTrade = async () => {
+    if (window.confirm('Möchten Sie die Fragen für dieses Gewerk überspringen?')) {
+      // Navigiere zum nächsten Gewerk oder Ergebnis
+      if (currentTradeIndex !== -1 && currentTradeIndex + 1 < projectTrades.length) {
+        const nextTrade = projectTrades[currentTradeIndex + 1];
+        navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
+      } else {
+        navigate(`/project/${projectId}/result`);
+      }
+    }
+  };
+
   useEffect(() => {
     async function initialize() {
       try {
         setLoading(true);
         setError('');
-        setSubmitting(false);  // <-- HIER EINFÜGEN
+        setSubmitting(false);
        
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
         
@@ -241,13 +254,16 @@ export default function QuestionsPage() {
     }
   }
 
-  // Loading State
+  // Loading State mit Fortschrittsbalken
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
-          <p className="mt-4 text-white">Adaptive Fragen werden vorbereitet...</p>
+          <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
+            <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
+                 style={{ width: '75%' }} />
+          </div>
+          <p className="mt-4 text-white">Gewerkespezifische Fragen werden vorbereitet...</p>
         </div>
       </div>
     );
@@ -371,6 +387,15 @@ export default function QuestionsPage() {
             {currentQ.text || currentQ.question || currentQ.q || 'Frage'}
           </h2>
           
+          {/* Explanation anzeigen wenn vorhanden */}
+          {currentQ.explanation && (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mt-4 mb-4">
+              <p className="text-blue-200 text-sm">
+                <strong>ℹ️ Hinweis:</strong> {currentQ.explanation}
+              </p>
+            </div>
+          )}
+          
           {/* Answer Input */}
           {currentQ.type === 'select' && currentQ.options ? (
             <select
@@ -384,13 +409,23 @@ export default function QuestionsPage() {
               ))}
             </select>
           ) : currentQ.type === 'number' ? (
-            <input
-              type="number"
-              className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Ihre Antwort..."
-            />
+            <div>
+              <input
+                type="number"
+                className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                value={answerText}
+                onChange={(e) => setAnswerText(e.target.value)}
+                placeholder="Ihre Antwort..."
+              />
+              {currentQ.options?.includes('unsicher') && (
+                <button
+                  onClick={() => setAnswerText('unsicher')}
+                  className="mt-2 text-sm text-teal-400 hover:text-teal-300"
+                >
+                  Ich bin unsicher / weiß nicht
+                </button>
+              )}
+            </div>
           ) : (
             <textarea
               className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -420,7 +455,7 @@ export default function QuestionsPage() {
           )}
         </div>
 
-        {/* Navigation */}
+        {/* Navigation mit Skip-Button */}
         <div className="flex justify-between items-center">
           <button
             onClick={handlePrevious}
@@ -430,11 +465,12 @@ export default function QuestionsPage() {
             ← Zurück
           </button>
           
-          <div className="text-center">
-            <p className="text-gray-400 text-sm">
-              Schritt 2 von 3 • Adaptive Befragung
-            </p>
-          </div>
+          <button
+            onClick={handleSkipTrade}
+            className="text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            Gewerk überspringen →
+          </button>
           
           <button
             onClick={handleNext}
