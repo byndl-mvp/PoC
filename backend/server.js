@@ -2116,13 +2116,23 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
     
     await ensureProjectTrade(projectId, tradeId, 'intake');
     
-    const questions = await generateQuestions(tradeId, {
-      category: project.category,
-      subCategory: project.sub_category,
-      description: project.description,
-      timeframe: project.timeframe,
-      budget: project.budget
-    });
+    let questions;
+try {
+  questions = await generateQuestions(tradeId, {
+    category: project.category,
+    subCategory: project.sub_category,
+    description: project.description,
+    timeframe: project.timeframe,
+    budget: project.budget
+  });
+} catch (err) {
+  console.error('[INTAKE] generateQuestions error:', err);
+  questions = []; // Fallback zu leerem Array
+}
+
+if (!questions) {
+  questions = []; // Falls undefined zurückgegeben wurde
+}
     
 // Parse questions wenn es ein String ist
 if (typeof questions === 'string') {
