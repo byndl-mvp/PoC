@@ -12,6 +12,14 @@ export default function ResultPage() {
   const [selectedLv, setSelectedLv] = useState(null);
   const [editingPosition, setEditingPosition] = useState(null);
   const [editedValues, setEditedValues] = useState({});
+  const [addingPosition, setAddingPosition] = useState(null);
+  const [newPosition, setNewPosition] = useState({
+    title: '',
+    description: '',
+    quantity: 1,
+    unit: 'Stk',
+    unitPrice: 0
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -99,6 +107,42 @@ export default function ResultPage() {
       const newLvs = [...lvs];
       newLvs[lvIndex].content.positions.splice(posIndex, 1);
       setLvs(newLvs);
+    }
+  };
+
+  const handleAddPosition = async (lvIndex) => {
+    const lv = lvs[lvIndex];
+    
+    if (!newPosition.title) {
+      alert('Bitte geben Sie eine Bezeichnung ein');
+      return;
+    }
+    
+    const res = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/position`),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPosition)
+      }
+    );
+    
+    if (res.ok) {
+      const data = await res.json();
+      // Refresh LVs
+      const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
+      if (lvRes.ok) {
+        const lvData = await lvRes.json();
+        setLvs(lvData.lvs || []);
+      }
+      setAddingPosition(null);
+      setNewPosition({
+        title: '',
+        description: '',
+        quantity: 1,
+        unit: 'Stk',
+        unitPrice: 0
+      });
     }
   };
 
@@ -364,7 +408,7 @@ export default function ResultPage() {
                                       onClick={() => handleSavePosition(idx, pidx)}
                                       className="text-green-400 hover:text-green-300"
                                     >
-                                      ✓
+                                      ✔
                                     </button>
                                     <button
                                       onClick={() => {
@@ -397,6 +441,81 @@ export default function ResultPage() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                    
+                    {/* Button zum Hinzufügen einer Position */}
+                    <div className="mt-4">
+                      {addingPosition !== idx ? (
+                        <button
+                          onClick={() => setAddingPosition(idx)}
+                          className="w-full py-2 bg-green-600/20 border border-green-500/50 text-green-400 rounded-lg hover:bg-green-600/30 transition-all"
+                        >
+                          + Position hinzufügen
+                        </button>
+                      ) : (
+                        <div className="bg-white/10 rounded-lg p-4 space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="text"
+                              placeholder="Bezeichnung *"
+                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                              value={newPosition.title}
+                              onChange={(e) => setNewPosition({...newPosition, title: e.target.value})}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Einheit"
+                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                              value={newPosition.unit}
+                              onChange={(e) => setNewPosition({...newPosition, unit: e.target.value})}
+                            />
+                            <input
+                              type="number"
+                              placeholder="Menge"
+                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                              value={newPosition.quantity}
+                              onChange={(e) => setNewPosition({...newPosition, quantity: parseFloat(e.target.value) || 1})}
+                            />
+                            <input
+                              type="number"
+                              placeholder="Einzelpreis (€)"
+                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                              value={newPosition.unitPrice}
+                              onChange={(e) => setNewPosition({...newPosition, unitPrice: parseFloat(e.target.value) || 0})}
+                            />
+                          </div>
+                          <textarea
+                            placeholder="Beschreibung (optional)"
+                            className="w-full bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                            rows="2"
+                            value={newPosition.description}
+                            onChange={(e) => setNewPosition({...newPosition, description: e.target.value})}
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => handleAddPosition(idx)}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                            >
+                              Speichern
+                            </button>
+                            <button
+                              onClick={() => {
+                                setAddingPosition(null);
+                                setNewPosition({
+                                  title: '',
+                                  description: '',
+                                  quantity: 1,
+                                  unit: 'Stk',
+                                  unitPrice: 0
+                                });
+                              }}
+                              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all"
+                            >
+                              Abbrechen
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     {lv.content.notes && (
