@@ -766,6 +766,7 @@ let forceContextQuestion = false;
 if (projectContext.isManuallyAdded) {
   forceContextQuestion = true;
   targetQuestionCount = Math.max(5, targetQuestionCount); // Mindestens 10 Fragen bei manuellen Gewerken
+  } 
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
