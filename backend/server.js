@@ -1414,6 +1414,7 @@ function generateCompleteLVPDF(project, lvs, withPrices = true) {
         
         let yPosition = tableTop + 25;
         let tradeSum = 0;
+        let totalSum = 0;
         
         doc.font('Helvetica')
            .fontSize(9);
