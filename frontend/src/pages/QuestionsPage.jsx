@@ -494,7 +494,7 @@ export default function QuestionsPage() {
         {/* Info Box */}
         <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <p className="text-blue-300 text-sm">
-            <strong>ℹ️ Adaptive Befragung:</strong> Die Fragen wurden basierend auf Ihren Intake-Antworten 
+            <strong>ℹ️ Adaptive Befragung:</strong> Die Fragen wurden basierend auf Ihren Antworten 
             und dem spezifischen Gewerk angepasst. Nach Abschluss wird automatisch ein VOB-konformes 
             Leistungsverzeichnis erstellt.
           </p>
