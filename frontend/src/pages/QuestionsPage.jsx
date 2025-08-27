@@ -77,7 +77,9 @@ export default function QuestionsPage() {
         
         // 2. Generiere ADAPTIVE Fragen für dieses spezifische Gewerk
         console.log(`Generating adaptive questions for trade ${tradeId} (${tradeCode})...`);
-        
+        // Prüfe ob dieses Gewerk manuell hinzugefügt wurde
+        const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
+        const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
         const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
           method: 'POST',
           headers: { 
@@ -85,7 +87,8 @@ export default function QuestionsPage() {
           },
           body: JSON.stringify({
             // Sende zusätzlichen Kontext mit
-            includeIntakeContext: true
+            includeIntakeContext: true,
+            isManuallyAdded: isManuallyAdded  // NEU: Flag mitschicken
           })
         });
         
