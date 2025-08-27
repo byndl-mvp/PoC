@@ -2370,9 +2370,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
   try {
     const { projectId, tradeId } = req.params;
     const { isManuallyAdded } = req.body; // Flag vom Frontend
-    
+    console.log('[DEBUG] isManuallyAdded received from frontend:', isManuallyAdded);
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
-    
     const tradeInfo = await query('SELECT code, name FROM trades WHERE id = $1', [tradeId]);
     const tradeCode = tradeInfo.rows[0]?.code;
     const tradeName = tradeInfo.rows[0]?.name;
@@ -2403,7 +2402,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       projectId: projectId,
       isManuallyAdded: isManuallyAdded || false // Wichtig für kontextbezogene erste Frage
     };
-    
+    console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
     const questions = await generateQuestions(tradeId, projectContext);
     
     // NEU - erweitere options um multiSelect:
