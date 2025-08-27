@@ -942,7 +942,6 @@ const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) 
     return generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
   }
 }
-} // beendet die Funktion generateQuestions
 
 /**
  * Fallback-Fragen wenn LLM versagt
