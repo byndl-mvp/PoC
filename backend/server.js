@@ -2800,32 +2800,51 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv/position', async (req, res
       ? JSON.parse(currentLV.rows[0].content) 
       : currentLV.rows[0].content;
     
-    // Füge neue Position hinzu
-    const nextPos = lv.positions.length + 1;
-    newPosition.pos = newPosition.pos || `${nextPos}.00`;
-    
-    if (newPosition.quantity && newPosition.unitPrice) {
-      newPosition.totalPrice = Math.round(newPosition.quantity * newPosition.unitPrice * 100) / 100;
+    // Stelle sicher dass positions Array existiert
+    if (!lv.positions || !Array.isArray(lv.positions)) {
+      lv.positions = [];
     }
     
-    lv.positions.push(newPosition);
+    // Füge neue Position hinzu mit Standardwerten
+    const nextPos = lv.positions.length + 1;
+    const positionToAdd = {
+      pos: newPosition.pos || `${nextPos}.00`,
+      title: newPosition.title || 'Neue Position',
+      description: newPosition.description || '',
+      quantity: parseFloat(newPosition.quantity) || 1,
+      unit: newPosition.unit || 'Stk',
+      unitPrice: parseFloat(newPosition.unitPrice) || 0,
+      totalPrice: 0,
+      dataSource: 'manual',
+      notes: 'Manuell hinzugefügt'
+    };
+    
+    // Berechne totalPrice
+    positionToAdd.totalPrice = Math.round(
+      positionToAdd.quantity * positionToAdd.unitPrice * 100
+    ) / 100;
+    
+    lv.positions.push(positionToAdd);
     
     // Neuberechnung
     lv.totalSum = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
     lv.lastModified = new Date().toISOString();
     
+    // WICHTIG: JSON.stringify() beim Speichern!
     await query(
       `UPDATE lvs 
        SET content = $1, updated_at = NOW()
        WHERE project_id = $2 AND trade_id = $3`,
-      [lv, projectId, tradeId]
+      [JSON.stringify(lv), projectId, tradeId]
     );
     
     res.json({ 
-      ok: true, 
+      ok: true,
+      success: true,
       message: 'Position hinzugefügt',
-      position: newPosition,
-      totalSum: lv.totalSum
+      position: positionToAdd,
+      totalSum: lv.totalSum,
+      lv
     });
     
   } catch (err) {
