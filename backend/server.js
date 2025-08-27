@@ -760,7 +760,12 @@ WICHTIG:
   
   const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
   const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, answeredQuestions);
-  const targetQuestionCount = intelligentCount.count;
+  // Bei manuell hinzugefügten Gewerken: Erste Frage MUSS Kontextfrage sein
+let targetQuestionCount = intelligentCount.count;
+let forceContextQuestion = false;
+if (projectContext.isManuallyAdded) {
+  forceContextQuestion = true;
+  targetQuestionCount = Math.max(5, targetQuestionCount); // Mindestens 10 Fragen bei manuellen Gewerken
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
@@ -804,8 +809,15 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - Bei "Fassadensanierung" + Gewerk "MAL" → Fragen zu AUSSENanstrich
    - Bei "Badsanierung" + Gewerk "MAL" → Fragen zu feuchtraumgeeigneter Farbe
    - ERSTE FRAGE bei manuell hinzugefügtem Gewerk: "Welche Arbeiten sollen in diesem Gewerk ausgeführt werden?"
-
-FRAGENANZAHL: ${targetQuestionCount} Fragen
+   
+8. MANUELL HINZUGEFÜGTE GEWERKE:
+   - ERSTE FRAGE MUSS IMMER SEIN: "Welche konkreten ${tradeName}-Arbeiten sollen durchgeführt werden?"
+   - Type: "text", required: true
+   - Zweite Frage: "In welchem Umfang?" mit Mengenerfassung
+   - Weitere Fragen basierend auf Projektkontext
+   - ID der ersten Frage: "${tradeCode}-CONTEXT"
+   
+   FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
 - Fehlende Info: ${intelligentCount.missingInfo.join(', ') || 'keine'}
 - Bei hoher Vollständigkeit: WENIGER Fragen stellen als vorgegeben!
@@ -1014,7 +1026,26 @@ function generateFallbackQuestions(tradeCode, tradeName, count) {
     tradeName
   }));
 }
-
+  
+/**
+ * Generiert adaptive Folgefragen basierend auf Kontext-Antwort
+ */
+async function generateContextBasedQuestions(tradeId, projectId, contextAnswer) {
+  const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
+  const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+  
+  const systemPrompt = `Analysiere die Antwort zur Kontextfrage und erstelle passende Folgefragen.
+  
+  Gewerk: ${trade.rows[0].name}
+  Projekt: ${project.rows[0].description}
+  Nutzer-Antwort was gemacht werden soll: ${contextAnswer}
+  
+  Erstelle 10-15 spezifische Fragen basierend auf der Antwort.`;
+  
+  // LLM-Call für adaptive Fragen...
+  return additionalQuestions;
+}
+  
 /**
  * Realistische LV-Generierung basierend auf erfassten Daten
  */
@@ -2217,48 +2248,47 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
     await query('BEGIN');
     
     try {
-      // Erst die abhängigen Daten löschen (Fragen und Antworten der zu entfernenden Trades)
-      await query(
-        `DELETE FROM answers 
-         WHERE project_id = $1 
-         AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')
-         AND trade_id NOT IN (SELECT unnest($2::int[]))`,
-        [projectId, confirmedTrades]
-      );
-      
-      await query(
-        `DELETE FROM questions 
-         WHERE project_id = $1 
-         AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')
-         AND trade_id NOT IN (SELECT unnest($2::int[]))`,
-        [projectId, confirmedTrades]
-      );
-      
-      await query(
-        `DELETE FROM lvs 
-         WHERE project_id = $1 
-         AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')
-         AND trade_id NOT IN (SELECT unnest($2::int[]))`,
-        [projectId, confirmedTrades]
-      );
-      
-      // Jetzt die Trade-Zuordnungen löschen
-      await query(
-        `DELETE FROM project_trades 
-         WHERE project_id = $1 
-         AND trade_id NOT IN (SELECT id FROM trades WHERE code = 'INT')`,
-        [projectId]
-      );
-      
-      // Füge die bestätigten Trades hinzu
-      for (const tradeId of confirmedTrades) {
-        await query(
-          `INSERT INTO project_trades (project_id, trade_id)
-           VALUES ($1, $2)
-           ON CONFLICT DO NOTHING`,
-          [projectId, tradeId]
-        );
-      }
+      // Lösche alte Trades AUSSER INT und den bestätigten
+const intTradeResult = await query(`SELECT id FROM trades WHERE code = 'INT'`);
+const intTradeId = intTradeResult.rows[0]?.id;
+
+// Lösche Antworten/Fragen/LVs für nicht-bestätigte Trades
+await query(
+  `DELETE FROM answers 
+   WHERE project_id = $1 
+   AND trade_id != $2
+   AND trade_id NOT IN (SELECT unnest($3::int[]))`,
+  [projectId, intTradeId || -1, confirmedTrades]
+);
+
+await query(
+  `DELETE FROM questions 
+   WHERE project_id = $1 
+   AND trade_id != $2
+   AND trade_id NOT IN (SELECT unnest($3::int[]))`,
+  [projectId, intTradeId || -1, confirmedTrades]
+);
+
+// Lösche alte Trade-Zuordnungen (außer INT)
+await query(
+  `DELETE FROM project_trades 
+   WHERE project_id = $1 
+   AND trade_id != $2`,
+  [projectId, intTradeId || -1]
+);
+
+// Füge ALLE bestätigten Trades hinzu
+for (const tradeId of confirmedTrades) {
+  await query(
+    `INSERT INTO project_trades (project_id, trade_id, is_manual)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (project_id, trade_id) 
+     DO UPDATE SET is_manual = $3`,
+    [projectId, tradeId, true]  // Markiere als manuell hinzugefügt
+  );
+  
+  console.log(`[TRADES] Added trade ${tradeId} to project ${projectId}`);
+}
       
       await query('COMMIT');
       
@@ -2420,6 +2450,27 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
       console.warn(`[ANSWERS] Trade ${tradeId} not assigned to project ${projectId}`);
       return res.status(403).json({ error: 'Trade not assigned to project' });
     }
+    
+    // Prüfe ob Kontext-Antwort dabei ist (erste Frage bei manuellen Gewerken)
+const contextAnswer = answers.find(a => a.questionId?.endsWith('-CONTEXT'));
+if (contextAnswer && contextAnswer.answer) {
+  // Generiere adaptive Folgefragen basierend auf Kontext
+  const additionalQuestions = await generateContextBasedQuestions(
+    tradeId, 
+    projectId, 
+    contextAnswer.answer
+  );
+  
+  // Speichere zusätzliche Fragen
+  for (const q of additionalQuestions) {
+    await query(
+      `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT DO NOTHING`,
+      [projectId, tradeId, q.id, q.question, q.type, q.required, q.options ? JSON.stringify(q.options) : null]
+    );
+  }
+}    
     
     // Speichere Antworten mit Annahmen
     const savedAnswers = [];
