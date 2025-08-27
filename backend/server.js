@@ -1034,16 +1034,40 @@ async function generateContextBasedQuestions(tradeId, projectId, contextAnswer) 
   const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
   const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
   
-  const systemPrompt = `Analysiere die Antwort zur Kontextfrage und erstelle passende Folgefragen.
+  const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
+Der Nutzer hat angegeben: "${contextAnswer}"
+
+Erstelle 10-15 spezifische Folgefragen basierend auf dieser Antwort.
+
+OUTPUT als JSON-Array:
+[
+  {
+    "id": "string",
+    "question": "Spezifische Frage",
+    "type": "text|number|select",
+    "required": true/false,
+    "unit": null oder "m²/m/Stk"
+  }
+]`;
   
-  Gewerk: ${trade.rows[0].name}
-  Projekt: ${project.rows[0].description}
-  Nutzer-Antwort was gemacht werden soll: ${contextAnswer}
-  
-  Erstelle 10-15 spezifische Fragen basierend auf der Antwort.`;
-  
-  // LLM-Call für adaptive Fragen...
-  return additionalQuestions;
+  try {
+    const response = await llmWithPolicy('questions', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Erstelle Folgefragen für diese Arbeiten: ${contextAnswer}` }
+    ], { maxTokens: 3000, temperature: 0.5 });
+    
+    const cleaned = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    const questions = JSON.parse(cleaned);
+    return Array.isArray(questions) ? questions : [];
+    
+  } catch (err) {
+    console.error('[CONTEXT] Failed to generate adaptive questions:', err);
+    return [];
+  }
 }
   
 /**
