@@ -128,7 +128,6 @@ export default function ResultPage() {
     );
     
     if (res.ok) {
-      const data = await res.json();
       // Refresh LVs
       const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
       if (lvRes.ok) {
