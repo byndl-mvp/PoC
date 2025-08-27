@@ -150,19 +150,20 @@ export default function TradeConfirmationPage() {
       // Weiter zum ersten Gewerk für spezifische Fragen
       const confirmedTradesData = detectedTrades.filter(t => selectedTrades.includes(t.id));
       if (confirmedTradesData.length > 0) {
-        // Speichere Info über manuell hinzugefügte Gewerke in sessionStorage
-        const manuallyAddedTrades = confirmedTradesData
-          .filter(t => t.isManuallyAdded)
-          .map(t => t.id);
         
-        if (manuallyAddedTrades.length > 0) {
-          sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
-        }
-        
-        navigate(`/project/${projectId}/trade/${confirmedTradesData[0].id}/questions`);
-      } else {
-        navigate(`/project/${projectId}/result`);
-      }
+  // Speichere Info über manuell hinzugefügte Gewerke in sessionStorage
+  const manuallyAddedTrades = confirmedTradesData
+    .filter(t => t.isManuallyAdded)
+    .map(t => t.id);
+  
+  if (manuallyAddedTrades.length > 0) {
+    sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
+  }
+  
+  navigate(`/project/${projectId}/trade/${confirmedTradesData[0].id}/questions`);
+} else {
+  navigate(`/project/${projectId}/result`);
+}
       
     } catch (err) {
       setError(err.message);
