@@ -2123,7 +2123,23 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
       timeframe: project.timeframe,
       budget: project.budget
     });
+    
+// Parse questions wenn es ein String ist
+if (typeof questions === 'string') {
+  try {
+    questions = JSON.parse(questions);
+  } catch (e) {
+    console.error('[INTAKE] Failed to parse questions:', e);
+    return res.status(500).json({ error: 'Fehler beim Generieren der Fragen' });
+  }
+}
 
+// Stelle sicher dass es ein Array ist
+if (!Array.isArray(questions)) {
+  console.error('[INTAKE] Questions is not an array:', typeof questions);
+  return res.status(500).json({ error: 'Fehler beim Generieren der Fragen' });
+}
+    
     // Speichere Fragen mit erweiterten Feldern
     let saved = 0;
     for (const q of questions) {
