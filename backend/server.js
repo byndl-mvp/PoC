@@ -2127,11 +2127,11 @@ try {
   });
 } catch (err) {
   console.error('[INTAKE] generateQuestions error:', err);
-  questions = []; // Fallback zu leerem Array
-}
-
-if (!questions) {
-  questions = []; // Falls undefined zurückgegeben wurde
+  // Nicht leeres Array zurückgeben, sondern Fehler werfen!
+  return res.status(500).json({ 
+    error: 'Fehler beim Generieren der Intake-Fragen',
+    details: err.message 
+  });
 }
     
 // Parse questions wenn es ein String ist
