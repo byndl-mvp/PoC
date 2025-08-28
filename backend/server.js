@@ -2573,6 +2573,76 @@ if (contextAnswer && contextAnswer.answer) {
   }
 });
 
+// Generate adaptive follow-up questions based on context answer
+app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { contextAnswer } = req.body;
+    
+    const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
+    const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    
+    if (!contextAnswer) {
+      return res.status(400).json({ error: 'Kontextantwort fehlt' });
+    }
+    
+    const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
+Der Nutzer hat für manuell hinzugefügtes Gewerk angegeben: "${contextAnswer}"
+
+Erstelle 15-25 SPEZIFISCHE Folgefragen basierend auf dieser Antwort.
+Die Fragen MÜSSEN sich auf die genannten Arbeiten beziehen.
+
+OUTPUT als JSON-Array:
+[
+  {
+    "id": "${trade.rows[0].code}-01",
+    "category": "string",
+    "question": "Spezifische Frage mit Einheit",
+    "explanation": "Erklärung bei Fachbegriffen",
+    "type": "text|number|select",
+    "required": true/false,
+    "unit": "m²/m/Stk",
+    "options": null oder ["Option1", "Option2"]
+  }
+]`;
+    
+    const userPrompt = `Projekt: ${project.rows[0].description}
+Gewählte Arbeiten: ${contextAnswer}
+
+Erstelle detaillierte Folgefragen für diese spezifischen Arbeiten.`;
+    
+    const response = await llmWithPolicy('questions', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { maxTokens: 4000, temperature: 0.5 });
+    
+    const cleanedResponse = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    const questions = JSON.parse(cleanedResponse);
+    
+    // Speichere die neuen Fragen
+    for (const q of questions) {
+      await query(
+        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (project_id, trade_id, question_id)
+         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
+        [projectId, tradeId, q.id, q.question, q.type || 'text', q.required ?? true, 
+         q.options ? JSON.stringify(q.options) : null]
+      );
+    }
+    
+    res.json({ questions, count: questions.length });
+    
+  } catch (err) {
+    console.error('Context questions generation failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Generate detailed LV for a trade
 app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
   try {
