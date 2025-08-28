@@ -80,6 +80,12 @@ export default function QuestionsPage() {
         // Prüfe ob dieses Gewerk manuell hinzugefügt wurde
         const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
         const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
+        
+        console.log('sessionStorage content:', sessionStorage.getItem('manuallyAddedTrades'));
+        console.log('Current tradeId:', tradeId);
+        console.log('Parsed manual trades:', manuallyAddedTrades);
+        console.log('Is manually added?:', isManuallyAdded);        
+        
         const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
           method: 'POST',
           headers: { 
