@@ -896,7 +896,7 @@ WICHTIG - VERMEIDE REDUNDANZEN:
 - Entsorgung: Zentral in EINEM Gewerk erfragen
 
 OUTPUT als JSON-Array mit genau ${targetQuestionCount} Fragen.
-Jede Frage muss einen klaren Mehrwert für die LV-Erstellung bieten!`;
+Jede Frage muss einen klaren Mehrwert für die LV-Erstellung bieten!
    
   FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
