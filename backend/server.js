@@ -1469,84 +1469,83 @@ function generateCompleteLVPDF(project, lvs, withPrices = true) {
            .stroke();
         
         let yPosition = tableTop + 25;
-        let tradeSum = 0;
-        let totalSum = 0;
+        let tradeSum = 0; // FIX: Initialisierung der Gewerk-Summe
         
         doc.font('Helvetica')
            .fontSize(9);
         
         if (lv && lv.positions && Array.isArray(lv.positions)) {
-  lv.positions.forEach((pos, index) => {
-    // Prüfe Seitenumbruch VOR dem Schreiben
-    if (yPosition > 680) {  // Früher umbrechen für mehr Sicherheit
-      doc.addPage();
-      yPosition = 50;
-      
-      // Header wiederholen
-      doc.fontSize(10)
-         .font('Helvetica-Bold');
-      doc.text('Pos.', col1, yPosition);
-      doc.text('Bezeichnung', col2, yPosition);
-      doc.text('Menge', col3, yPosition);
-      doc.text('Einheit', col4, yPosition);
-      doc.text('EP (€)', col5, yPosition);
-      doc.text('GP (€)', col6, yPosition);
-      
-      doc.moveTo(col1, yPosition + 15)
-         .lineTo(545, yPosition + 15)
-         .stroke();
-      
-      yPosition += 25;
-      doc.font('Helvetica')
-         .fontSize(9);
-    }
-    
-    // Position
-    doc.text(pos.pos || `${index + 1}`, col1, yPosition, { width: 35 });
-    
-    // Titel mit Höhenberechnung
-    const titleHeight = doc.heightOfString(pos.title || '', { width: 150 });
-    doc.text(pos.title || 'Keine Bezeichnung', col2, yPosition, { width: 150 });
-    
-    // Andere Spalten auf gleicher Höhe
-    doc.text(pos.quantity?.toString() || '-', col3, yPosition, { width: 50, align: 'right' });
-    doc.text(pos.unit || '-', col4, yPosition, { width: 50 });
-    
-    if (withPrices && pos.unitPrice) {
-      doc.text(formatCurrency(pos.unitPrice), col5, yPosition, { width: 70, align: 'right' });
-      doc.text(formatCurrency(pos.totalPrice || 0), col6, yPosition, { width: 70, align: 'right' });
-      totalSum += pos.totalPrice || 0;
-    } else {
-      doc.text('________', col5, yPosition, { width: 70, align: 'right' });
-      doc.text('________', col6, yPosition, { width: 70, align: 'right' });
-    }
-    
-    // Zeilenhöhe basierend auf Titel
-    yPosition += Math.max(titleHeight, 20) + 5;
-    
-    // Beschreibung mit Abstandsprüfung
-    if (pos.description) {
-      const descHeight = doc.heightOfString(pos.description, { width: 400 });
-      
-      // Prüfe ob Beschreibung auf Seite passt
-      if (yPosition + descHeight > 680) {
-        doc.addPage();
-        yPosition = 50;
-      }
-      
-      doc.fontSize(8)
-         .fillColor('#666666')
-         .text(pos.description, col2, yPosition, { width: 400 });
-      
-      yPosition += descHeight + 10; // Extra Abstand nach Beschreibung
-      
-      doc.fontSize(9)
-         .fillColor('black');
-    } else {
-      yPosition += 8; // Kleinerer Abstand ohne Beschreibung
-    }
-  });
-}
+          lv.positions.forEach((pos, index) => {
+            // Prüfe Seitenumbruch VOR dem Schreiben
+            if (yPosition > 680) {  // Früher umbrechen für mehr Sicherheit
+              doc.addPage();
+              yPosition = 50;
+              
+              // Header wiederholen
+              doc.fontSize(10)
+                 .font('Helvetica-Bold');
+              doc.text('Pos.', col1, yPosition);
+              doc.text('Bezeichnung', col2, yPosition);
+              doc.text('Menge', col3, yPosition);
+              doc.text('Einheit', col4, yPosition);
+              doc.text('EP (€)', col5, yPosition);
+              doc.text('GP (€)', col6, yPosition);
+              
+              doc.moveTo(col1, yPosition + 15)
+                 .lineTo(545, yPosition + 15)
+                 .stroke();
+              
+              yPosition += 25;
+              doc.font('Helvetica')
+                 .fontSize(9);
+            }
+            
+            // Position
+            doc.text(pos.pos || `${index + 1}`, col1, yPosition, { width: 35 });
+            
+            // Titel mit Höhenberechnung
+            const titleHeight = doc.heightOfString(pos.title || '', { width: 150 });
+            doc.text(pos.title || 'Keine Bezeichnung', col2, yPosition, { width: 150 });
+            
+            // Andere Spalten auf gleicher Höhe
+            doc.text(pos.quantity?.toString() || '-', col3, yPosition, { width: 50, align: 'right' });
+            doc.text(pos.unit || '-', col4, yPosition, { width: 50 });
+            
+            if (withPrices && pos.unitPrice) {
+              doc.text(formatCurrency(pos.unitPrice), col5, yPosition, { width: 70, align: 'right' });
+              doc.text(formatCurrency(pos.totalPrice || 0), col6, yPosition, { width: 70, align: 'right' });
+              tradeSum += pos.totalPrice || 0; // FIX: Berechnung der Gewerk-Summe
+            } else {
+              doc.text('________', col5, yPosition, { width: 70, align: 'right' });
+              doc.text('________', col6, yPosition, { width: 70, align: 'right' });
+            }
+            
+            // Zeilenhöhe basierend auf Titel
+            yPosition += Math.max(titleHeight, 20) + 5;
+            
+            // Beschreibung mit Abstandsprüfung
+            if (pos.description) {
+              const descHeight = doc.heightOfString(pos.description, { width: 400 });
+              
+              // Prüfe ob Beschreibung auf Seite passt
+              if (yPosition + descHeight > 680) {
+                doc.addPage();
+                yPosition = 50;
+              }
+              
+              doc.fontSize(8)
+                 .fillColor('#666666')
+                 .text(pos.description, col2, yPosition, { width: 400 });
+              
+              yPosition += descHeight + 10; // Extra Abstand nach Beschreibung
+              
+              doc.fontSize(9)
+                 .fillColor('black');
+            } else {
+              yPosition += 8; // Kleinerer Abstand ohne Beschreibung
+            }
+          });
+        }
         
         // Gewerk-Summe
         yPosition += 10;
@@ -1558,7 +1557,7 @@ function generateCompleteLVPDF(project, lvs, withPrices = true) {
         doc.fontSize(10)
            .font('Helvetica-Bold')
            .text(`Summe ${row.trade_code}:`, col5 - 80, yPosition)
-           .text(withPrices ? formatCurrency(tradeSum) : '________', col6, yPosition, { width: 70, align: 'right' });
+           .text(withPrices ? formatCurrency(tradeSum) : '________', col6, yPosition, { width: 70, align: 'right' }); // FIX: Verwendung der berechneten Summe
       }
       
       // Abschlussseite mit Zusammenfassung
@@ -1829,21 +1828,26 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
             doc.text('________', col6, yPosition, { width: 70, align: 'right' });
           }
           
+          // Beschreibung und Datenquelle
           if (pos.description) {
             yPosition += Math.max(titleHeight, 15);
             doc.fontSize(8)
                .fillColor('#666666')
                .text(pos.description, col2, yPosition, { width: 400 });
             
-            // Datenquelle anzeigen
+            const descHeight = doc.heightOfString(pos.description, { width: 400 });
+            yPosition += descHeight;
+            
+            // FIX: Datenquelle UNTER der Beschreibung anzeigen
             if (pos.dataSource && pos.dataSource !== 'measured') {
               const sourceText = pos.dataSource === 'estimated' ? '(geschätzt)' : '(angenommen)';
+              yPosition += 2; // Kleine Lücke
               doc.fontSize(7)
                  .fillColor('#FF6600')
-                 .text(sourceText, col2 + 350, yPosition);
+                 .text(sourceText, col2, yPosition);
+              yPosition += 10; // Abstand nach Label
             }
             
-            yPosition += doc.heightOfString(pos.description, { width: 400 });
             doc.fontSize(9)
                .fillColor('black');
           } else {
