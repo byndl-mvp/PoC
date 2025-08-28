@@ -159,7 +159,7 @@ setProjectTrades(detectedTrades);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [projectId, tradeId]);
   
-  const handleNext = () => {
+  const handleNext = async () => {
     console.log('handleNext called, submitting=', submitting);
     console.log('current=', current, 'questions.length=', questions.length);
     
