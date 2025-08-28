@@ -220,6 +220,27 @@ if (current === 0 && isManualTrade && questions[current].id?.endsWith('-CONTEXT'
     }
   };
 
+  const handleSkipQuestion = () => {
+  // Speichere "übersprungen" als Antwort
+  const newAnswers = [...answers];
+  newAnswers[current] = {
+    questionId: questions[current].id || questions[current].question_id,
+    answer: 'Übersprungen',
+    assumption: 'Vom Nutzer übersprungen'
+  };
+  setAnswers(newAnswers);
+  
+  if (current + 1 < questions.length) {
+    // Gehe zur nächsten Frage
+    setCurrent(current + 1);
+    setAnswerText('');
+    setAssumption('');
+  } else {
+    // Letzte Frage - speichern und weiter
+    saveAllAnswersAndContinue(newAnswers);
+  }
+};
+  
   const handlePrevious = () => {
     if (current > 0) {
       // Speichere aktuelle Antwort bevor zurück
@@ -524,6 +545,14 @@ if (current === 0 && isManualTrade && questions[current].id?.endsWith('-CONTEXT'
             className="text-sm text-gray-400 hover:text-white transition-colors"
           >
             Gewerk überspringen →
+          </button>
+
+          <button
+           onClick={handleSkipQuestion}
+           className="text-sm text-gray-400 hover:text-white transition-colors"
+           disabled={submitting}
+          >
+           Frage überspringen →
           </button>
           
           <button
