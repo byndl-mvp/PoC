@@ -53,17 +53,18 @@ export default function QuestionsPage() {
             let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
 
             // Manuell hinzugefügte Trades aus sessionStorage ergänzen
-            const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
-            if (manuallyAddedTradeIds.length > 0) {
-            for (const manualId of manuallyAddedTradeIds) {
-            if (!detectedTrades.find(t => t.id === manualId)) {
-           
-              // Trade fehlt - füge Platzhalter hinzu
-            detectedTrades.push({
-            id: manualId,
-        name: `Trade ${manualId}`,
-        code: `MANUAL_${manualId}`
-      });
+const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
+if (manuallyAddedTradeIds.length > 0) {
+  // Hole die vollständigen Trade-Informationen vom Backend
+  const tradesResponse = await fetch(apiUrl('/api/trades'));
+  const allTrades = await tradesResponse.json();
+  
+  for (const manualId of manuallyAddedTradeIds) {
+    if (!detectedTrades.find(t => t.id === manualId)) {
+      const fullTradeInfo = allTrades.find(t => t.id === manualId);
+      if (fullTradeInfo) {
+        detectedTrades.push(fullTradeInfo);
+      }
     }
   }
 }
