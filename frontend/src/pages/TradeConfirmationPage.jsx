@@ -166,7 +166,8 @@ export default function TradeConfirmationPage() {
     sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
   }
   
-  navigate(`/project/${projectId}/trade/${confirmedTradesData[0].id}/questions`);
+  const sortedTrades = [...confirmedTradesData].sort((a, b) => a.id - b.id);
+navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
 } else {
   navigate(`/project/${projectId}/result`);
 }
