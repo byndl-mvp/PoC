@@ -1155,9 +1155,9 @@ KRITISCHE ANFORDERUNGEN:
 
 4. VOLLSTÄNDIGKEIT:
    - Anzahl Positionen abhängig von Projektumfang
-   - Kleine Projekte: 5-10 Positionen
-   - Mittlere Projekte: 10-20 Positionen
-   - Große Projekte: 20-40 Positionen
+   - Kleine Projekte: 8-15 Positionen
+   - Mittlere Projekte: 16-25 Positionen
+   - Große Projekte: 25-50 Positionen
 
 OUTPUT FORMAT (NUR valides JSON):
 {
