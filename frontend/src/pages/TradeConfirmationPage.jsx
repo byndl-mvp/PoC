@@ -117,6 +117,8 @@ export default function TradeConfirmationPage() {
         isManuallyAdded: true  // Wichtig für kontextbezogene Fragen
       };
       
+      console.log('Adding manual trade:', trade.id, 'with flag:', manualTrade.isManuallyAdded);
+      
       setDetectedTrades(prev => [...prev, manualTrade]);
       setSelectedTrades(prev => [...prev, trade.id]);
       // Entferne aus verfügbaren Trades
@@ -155,7 +157,11 @@ export default function TradeConfirmationPage() {
   const manuallyAddedTrades = confirmedTradesData
     .filter(t => t.isManuallyAdded)
     .map(t => t.id);
-  
+
+  console.log('Confirmed trades:', confirmedTradesData);
+  console.log('Filtering for manual trades...');
+  console.log('Manual trades found:', manuallyAddedTrades);
+        
   if (manuallyAddedTrades.length > 0) {
     sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
   }
