@@ -145,6 +145,11 @@ export default function ResultPage() {
     }
   };
 
+  // Automatische Neuberechnung der Gesamtsumme
+const recalculateTotals = (positions) => {
+  return positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+};
+  
   const calculateTotal = (lv) => {
     if (!lv.content || !lv.content.positions) return 0;
     return lv.content.positions.reduce((sum, pos) => {
