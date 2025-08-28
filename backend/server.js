@@ -1159,6 +1159,20 @@ KRITISCHE ANFORDERUNGEN:
    - Mittlere Projekte: 16-25 Positionen
    - Große Projekte: 25-50 Positionen
 
+5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
+   - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
+   - Wanddurchbruch: NUR im beauftragten Hauptgewerk (Rohbau ODER Abbruch, nie beide)
+   - Gerüstbau: Wenn als eigenes Gewerk -> KEINE Gerüstpositionen in anderen Gewerken
+   - Elektro-/Sanitärschlitze: NUR im jeweiligen Fachgewerk, nicht im Rohbau
+   - Entsorgung: Pro Material nur in EINEM Gewerk ausschreiben
+   - Bei Überschneidungsgefahr: Leistung dem primär verantwortlichen Gewerk zuordnen
+   
+6. GEWERKE-HIERARCHIE (bei Konflikten):
+   1. Spezialisierte Gewerke haben Vorrang (z.B. Gerüstbau vor Fassade)
+   2. Abbruch vor Neubau
+   3. Rohbau vor Ausbau
+   4. Hauptleistung vor Nebenleistung
+   
 OUTPUT FORMAT (NUR valides JSON):
 {
   "trade": "${trade.name}",
@@ -1192,6 +1206,48 @@ OUTPUT FORMAT (NUR valides JSON):
   "executionTime": "Geschätzte Ausführungsdauer"
 }`;
 
+// Cross-Check Funktion zur Duplikatsprüfung
+async function checkForDuplicatePositions(projectId, currentTradeId, positions) {
+  const otherLVs = await query(
+    `SELECT t.name as trade_name, t.code as trade_code, l.content 
+     FROM lv_documents l 
+     JOIN trades t ON l.trade_id = t.id 
+     WHERE l.project_id = $1 AND l.trade_id != $2`,
+    [projectId, currentTradeId]
+  );
+  
+  const duplicates = [];
+  const criticalKeywords = [
+    'Wanddurchbruch', 'Durchbruch', 
+    'Gerüst', 'Arbeitsgerüst', 'Fassadengerüst',
+    'Container', 'Baustelleneinrichtung',
+    'Entsorgung', 'Abtransport', 'Abfuhr'
+  ];
+  
+  for (const pos of positions) {
+    for (const lv of otherLVs.rows) {
+      const otherContent = JSON.parse(lv.content);
+      if (!otherContent.positions) continue;
+      
+      for (const otherPos of otherContent.positions) {
+        for (const keyword of criticalKeywords) {
+          if (pos.title?.toLowerCase().includes(keyword.toLowerCase()) && 
+              otherPos.title?.toLowerCase().includes(keyword.toLowerCase())) {
+            duplicates.push({
+              position: pos.title,
+              foundIn: lv.trade_name,
+              tradeCode: lv.trade_code,
+              keyword: keyword
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  return duplicates;
+}  
+  
   const userPrompt = `GEWERK: ${trade.name} (${trade.code})
 
 LV-TEMPLATE:
@@ -1231,12 +1287,53 @@ WICHTIG:
       jsonMode: true 
     });
 
-    const cleanedResponse = response
+const cleanedResponse = response
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
     
-    const lv = JSON.parse(cleanedResponse);
+    const lv = JSON.parse(cleanedResponse);    
+    
+    // Duplikatsprüfung durchführen
+const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
+
+if (duplicates.length > 0) {
+  console.log(`Warnung: ${duplicates.length} potenzielle Duplikate gefunden für ${trade.name}`);
+  
+  // Prüfe ob spezialisierte Gewerke vorhanden sind
+  const specializedTrades = await query(
+    `SELECT code FROM trades t 
+     JOIN project_trades pt ON t.id = pt.trade_id 
+     WHERE pt.project_id = $1 AND t.code IN ('GERÜST', 'ABBR', 'ENTSO')`,
+    [projectId]
+  );
+  
+  const hasGerüstbau = specializedTrades.rows.some(t => t.code === 'GERÜST');
+  const hasAbbruch = specializedTrades.rows.some(t => t.code === 'ABBR');
+  
+  // Filtere Duplikate basierend auf Gewerke-Hierarchie
+  lv.positions = lv.positions.filter(pos => {
+    // Entferne Gerüstpositionen wenn Gerüstbau-Gewerk existiert
+    if (hasGerüstbau && trade.code !== 'GERÜST' && 
+        pos.title?.toLowerCase().includes('gerüst')) {
+      console.log(`Entferne Gerüstposition aus ${trade.code}`);
+      return false;
+    }
+    
+    // Entferne Wanddurchbruch aus Rohbau wenn Abbruch existiert
+    if (hasAbbruch && trade.code === 'ROH' && 
+        pos.title?.toLowerCase().includes('durchbruch')) {
+      console.log(`Entferne Durchbruch aus Rohbau (gehört zu Abbruch)`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // Füge Hinweis zu Notes hinzu
+  if (!lv.notes) lv.notes = '';
+  lv.notes += '\n\nGewerkeabgrenzung beachtet - Duplikate wurden entfernt.';
+}
     
     // Post-Processing und Stundenlohnarbeiten hinzufügen
     if (lv.positions && Array.isArray(lv.positions)) {
