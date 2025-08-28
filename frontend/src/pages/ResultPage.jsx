@@ -90,6 +90,13 @@ export default function ResultPage() {
       setLvs(newLvs);
       setEditingPosition(null);
       setEditedValues({});
+
+      // FIX: Kostenzusammenfassung neu laden
+    const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
+    if (summaryRes.ok) {
+      const summaryData = await summaryRes.json();
+      setCostSummary(summaryData.summary);
+      }
     }
   };
 
@@ -107,7 +114,15 @@ export default function ResultPage() {
     if (res.ok) {
       const newLvs = [...lvs];
       newLvs[lvIndex].content.positions.splice(posIndex, 1);
+      newLvs[lvIndex].content.totalSum = recalculateTotals(newLvs[lvIndex].content.positions);
       setLvs(newLvs);
+
+      // FIX: Kostenzusammenfassung neu laden
+    const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
+    if (summaryRes.ok) {
+      const summaryData = await summaryRes.json();
+      setCostSummary(summaryData.summary);
+      }
     }
   };
 
