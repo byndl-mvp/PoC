@@ -775,53 +775,135 @@ ${isIntake ?
 
 ${intakeContext}
 
-KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
+KRITISCHE REGELN FÜR BAULICH PRÄZISE & LAIENVERSTÄNDLICHE FRAGEN:
 
-1. MASSEINHEITEN IMMER IM FRAGENTEXT ANGEBEN:
-   - Bei Zahlenfragen IMMER die Einheit direkt im Text: "Wie groß ist die Fläche in m²?"
-   - Niemals nur "Wie groß ist die Fläche?" ohne Einheit
-   - Gängige Einheiten: m² (Quadratmeter), m (Meter), cm, mm, m³ (Kubikmeter), Stück, kg
-   - Die Einheit MUSS im Fragentext stehen, nicht nur im unit-Feld
+1. MASSEINHEITEN & MESSANLEITUNGEN:
+   - Bei Zahlenfragen IMMER Einheit im Text: "Wie groß ist die Fläche in m²?"
+   - Messanleitung mitliefern: "Länge x Breite des Raums"
+   - Bei Höhen: "Vom Boden bis zur Decke gemessen"
+   - Bei Umfängen: "Alle Wandlängen addiert"
+   - Gängige Einheiten mit Erklärung: 
+     * m² = Quadratmeter (Länge × Breite)
+     * lfm/m = laufende Meter (nur die Länge)
+     * Stk = Stück (Anzahl)
 
-2. MEHRFACHAUSWAHL ERMÖGLICHEN:
-   - Bei Fragen wo mehrere Antworten sinnvoll sind: "multiSelect": true setzen   
-   
-3. FACHBEGRIFFE ERKLÄREN:
-   - Bei Fachbegriffen IMMER eine Erklärung in der "explanation" 
-   - Beispiel: "Ortgang" → Erklärung: "Der seitliche Dachabschluss am Giebel"
-   - Beispiel: "Unterkonstruktion" → Erklärung: "Das Traggerüst unter der sichtbaren Oberfläche"
+2. INTELLIGENTE FRAGENLOGIK:
+   - Bereits erfasste Daten NIEMALS erneut abfragen
+   - Aus vorhandenen Daten ableiten:
+     * Raumhöhe vorhanden → Wandfläche = Umfang × Höhe
+     * Grundfläche vorhanden → Deckenfläche = Grundfläche
+     * Außenwandfläche → Fassadenfläche = Außenwand - Fenster/Türen
+   - Redundanzen vermeiden: Frage NUR was wirklich fehlt
 
-4. MESSANLEITUNGEN BEI KOMPLEXEN MASSEN:
-   - Erkläre WIE gemessen wird
-   - Beispiel: "Kranreichweite" → "Abstand vom Kranstandort zum entferntesten Arbeitspunkt"
-   - Bei unklaren Mengen: IMMER "unsicher/weiß nicht" als Option
+3. GEWERKEÜBERGREIFENDE SCHNITTSTELLEN:
+   - VOR jeder Frage prüfen: "Wurde das schon in anderem Gewerk erfragt?"
+   - Kritische Schnittstellen explizit klären:
+     * Wer stellt Gerüst? (NUR wenn Gerüstbau nicht gewählt)
+     * Wer macht Durchbrüche? (NUR einmal fragen)
+     * Wer entsorgt was? (Material dem Verursacher-Gewerk zuordnen)
+   - Bei Überschneidungen: "Dies wird üblicherweise vom [Gewerk] erledigt"
 
-5. KEINE FRAGEN DIE LAIEN NICHT BEANTWORTEN KÖNNEN:
-   - NICHT fragen nach: Arbeitsdauer, Kranreichweite, Kubikmeter Schutt, Lastberechnungen
-   - NICHT fragen nach: Anzahl Lagen Abdichtung (außer bei Reparatur bekannt)
-   - Stattdessen: Sinnvolle Annahmen treffen und in LV einarbeiten
+4. PROJEKTKONTEXT-SPEZIFISCHE FRAGEN:
+   - Analysiere Projektbeschreibung für Kontext:
+     * "Kellersanierung" → Feuchteschutz-Fragen
+     * "Dachgeschossausbau" → Dämmung/Brandschutz-Fragen
+     * "Altbau" → Denkmalschutz/Bestandsschutz-Fragen
+   - Anpassung an Gebäudetyp:
+     * EFH: Privatnutzung, einfache Ausführung
+     * MFH: Brandschutz, Schallschutz wichtiger
+     * Gewerbe: Nutzlasten, Sicherheitsvorschriften
 
-6. INTELLIGENTE ANNAHMEN STATT DOPPELFRAGEN:
-   - Wenn nach Dachfläche gefragt → Abdichtungsfläche = Dachfläche + 5%
-   - Wenn nach Wandfläche gefragt → Deckenfläche aus Raumgröße ableiten
-   - Annahmen klar kommunizieren: "Wir gehen von X aus, basierend auf Y"
+5. BAUABLAUF & ABHÄNGIGKEITEN:
+   - Chronologie beachten:
+     * Erst Abbruch, dann Rohbau
+     * Erst Rohinstallation, dann Putz
+     * Erst Estrich, dann Bodenbelag
+   - Abhängigkeiten erkennen:
+     * Elektro braucht Schlitze → Frage nach Wandmaterial
+     * Fliesen brauchen ebenen Untergrund → Frage nach Zustand
+     * Fenster braucht Maueröffnung → Frage nach Wandstärke
 
-7. PROJEKTKONTEXT BEACHTEN:
-   - Bei "Fassadensanierung" + Gewerk "MAL" → Fragen zu AUSSENanstrich
-   - Bei "Badsanierung" + Gewerk "MAL" → Fragen zu feuchtraumgeeigneter Farbe
-   - ERSTE FRAGE bei manuell hinzugefügtem Gewerk: "Welche Arbeiten sollen in diesem Gewerk ausgeführt werden?"
-   
-8. MANUELL HINZUGEFÜGTE GEWERKE:
-   - ERSTE FRAGE MUSS IMMER SEIN: "Welche konkreten ${tradeName}-Arbeiten sollen durchgeführt werden?"
-   - Type: "text", required: true
-   - Zweite Frage: "In welchem Umfang?" mit Mengenerfassung
-   - Weitere Fragen basierend auf Projektkontext
-   - ID der ersten Frage: "${tradeCode}-CONTEXT"
+6. MATERIAL & AUSFÜHRUNGSDETAILS:
+   - Materialfragen mit Auswahlhilfe:
+     * "Welches Material haben die Wände?" 
+       Options: ["Beton", "Ziegel", "Kalksandstein", "Gipskarton", "Fachwerk", "unsicher"]
+     * Explanation: "Klopftest: Hohl = Gipskarton, Massiv = Stein/Beton"
+   - Ausführungsstandards erfragen:
+     * "Welcher Standard?" ["Einfach", "Mittel", "Gehoben"]
+     * Mit Beispielen: "Einfach = Baumarkt, Mittel = Fachhandel, Gehoben = Premium"
+
+7. MANUELL HINZUGEFÜGTE GEWERKE:
+   - ERSTE FRAGE (ID: ${trade.code}-CONTEXT):
+     * "Welche konkreten ${trade.name}-Arbeiten sollen durchgeführt werden?"
+     * "Bitte beschreiben Sie möglichst genau, was gemacht werden soll"
+     * type: "text", required: true, multiline: true
+   - ZWEITE FRAGE: Umfang/Menge basierend auf erster Antwort
+   - FOLGENDE FRAGEN: Adaptiv basierend auf Kontext-Antwort generieren
+
+8. UNSICHER-OPTIONEN & ANNAHMEN:
+   - Bei schwer schätzbaren Werten IMMER "unsicher" anbieten
+   - Annahmen transparent machen:
+     * "Falls unsicher: Wir kalkulieren mit Standardwerten"
+     * "Übliche Werte: Raumhöhe 2,50m, Wandstärke 24cm"
+   - Validierung anbieten:
+     * "Möchten Sie die Standardannahme verwenden?"
+
+9. VERMEIDUNG VON LAIEN-ÜBERFORDERUNG:
+   - NICHT fragen nach:
+     * Technischen Details (U-Wert, Lastberechnung, Bewehrung)
+     * Zeitschätzungen (Arbeitsstunden, Trocknungszeiten)
+     * Fachspezifischen Mengen (m³ Beton, kg Bewehrung)
+   - STATTDESSEN:
+     * Sichtbare/messbare Größen erfragen
+     * Aus diesen technische Werte ableiten
+
+10. QUALITÄTSSICHERUNG DER FRAGEN:
+    - Jede Frage muss:
+      * Eindeutig formuliert sein
+      * Messbar/beantwortbar für Laien
+      * Relevant für Kalkulation
+      * Nicht redundant zu anderen Fragen
+    - Reihenfolge:
+      * Vom Groben zum Detail
+      * Vom Wichtigen zum Optionalen
+      * Logische Abhängigkeiten beachten
+
+11. ADAPTIVE FRAGENMENGE:
+    - Vollständigkeit ${intelligentCount.completeness}%:
+      * >80%: Nur ${Math.floor(targetQuestionCount * 0.6)} Fragen
+      * 50-80%: ${Math.floor(targetQuestionCount * 0.8)} Fragen  
+      * <50%: ${targetQuestionCount} Fragen
+    - Qualität vor Quantität:
+      * Lieber weniger, aber präzise Fragen
+      * Unnötige Details weglassen
+
+12. GEWERKE-SPEZIFISCHE STANDARDS:
+    - Rohbau: Wandstärken, Öffnungen, Materialien
+    - Elektro: Anzahl Verbraucher, nicht technische Details
+    - Sanitär: Anzahl Objekte, nicht Rohrdimensionen
+    - Fliesen: Flächen und Fliesenformat, nicht Kleberart
+    - Maler: Flächen und Zustand, nicht Anzahl Anstriche
+
+13. MEHRFACHAUSWAHL ERMÖGLICHEN:
+    - Bei Fragen wo mehrere Antworten sinnvoll sind: "multiSelect": true setzen
+    - Beispiel: "Welche Räume sollen gestrichen werden?"
+
+WICHTIG - VERMEIDE REDUNDANZEN:
+- Andere gewählte Gewerke: ${otherTradesInfo}
+- Frage Leistungen NUR EINMAL ab
+- Wenn Gerüstbau als eigenes Gewerk gewählt: KEINE Gerüstfragen in anderen Gewerken
+- Wanddurchbruch: Frage nur im primären Gewerk (Rohbau ODER Abbruch)
+- Entsorgung: Zentral in EINEM Gewerk erfragen
+
+OUTPUT als JSON-Array mit genau ${targetQuestionCount} Fragen.
+Jede Frage muss einen klaren Mehrwert für die LV-Erstellung bieten!`;
    
    FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
 - Fehlende Info: ${intelligentCount.missingInfo.join(', ') || 'keine'}
-- Bei hoher Vollständigkeit: WENIGER Fragen stellen als vorgegeben!
+- Bei Vollständigkeit >80%: Reduziere auf ${Math.floor(targetQuestionCount * 0.6)} Fragen
+- Bei Vollständigkeit 50-80%: Reduziere auf ${Math.floor(targetQuestionCount * 0.8)} Fragen
+- Bei Vollständigkeit <50%: Stelle alle ${targetQuestionCount} Fragen
 
 OUTPUT (NUR valides JSON-Array):
 [
@@ -834,6 +916,7 @@ OUTPUT (NUR valides JSON-Array):
     "required": boolean,
     "unit": null,
     "options": ["unsicher/weiß nicht"] bei schwierigen Fragen,
+    "multiSelect": false,  // true wenn mehrere Optionen wählbar sein sollen
     "defaultAssumption": "Falls 'unsicher': Diese Annahme wird getroffen"
   }
 ]`;
