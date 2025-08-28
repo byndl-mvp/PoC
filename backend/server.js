@@ -1219,43 +1219,111 @@ async function generateDetailedLV(projectId, tradeId) {
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
 
-KRITISCHE ANFORDERUNGEN:
+KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 
-1. NUR ERFRAGTE POSITIONEN:
-   - Erstelle NUR Positionen für explizit erfragte und beantwortete Leistungen
-   - KEINE erfundenen Positionen oder Annahmen
-   - Wenn eine Leistung nicht erfragt wurde, darf sie NICHT im LV erscheinen
+1. DATENBASIERUNG & TRANSPARENTE ANNAHMEN:
+   - Priorität 1: Explizit erfragte und beantwortete Leistungen
+   - Priorität 2: Notwendige Ergänzungen für vollständiges Gewerk
+   - Bei nicht erfragten aber notwendigen Positionen:
+     * Marktübliche Annahmen treffen
+     * DEUTLICH kennzeichnen mit "dataSource": "assumed"
+     * In "assumptions" Array aufführen
+     * In Beschreibung erwähnen: "(Annahme: ...)"
+   - KEINE willkürlichen Zusatzpositionen ohne fachliche Notwendigkeit
 
-2. MENGENERMITTLUNG:
-   - Verwende NUR die validierten Mengen aus den Antworten
-   - Bei geschätzten Werten: Kennzeichne dies in den Notes
-   - Plausibilitätsprüfung aller Mengen
+2. MENGENERMITTLUNG & VALIDIERUNG:
+   - Erfragte Mengen: Exakt übernehmen ("dataSource": "measured")
+   - Geschätzte Mengen: Aus Kontext ableiten ("dataSource": "estimated")
+   - Angenommene Mengen: Marktüblich ("dataSource": "assumed")
+   - Plausibilitätsprüfung aller Werte
+   - Transparente Kennzeichnung JEDER Mengenherkunft
+   - Bei "unsicher"-Antworten: Standardannahme + deutliche Kennzeichnung
 
-3. PREISKALKULATION (2024/2025):
-   - Realistische Marktpreise
-   - Regionale Unterschiede berücksichtigen
-   - Inkl. aller Nebenleistungen gem. VOB/C
+3. VOB/C-KONFORME VOLLSTÄNDIGKEIT:
+   - Hauptleistungen aus Antworten
+   - Notwendige Nebenleistungen ergänzen (auch wenn nicht erfragt)
+   - Beispiel: Bei "Wandfliesen" automatisch auch "Grundierung" 
+   - Aber: Jede Ergänzung als "(gemäß VOB/C ergänzt)" kennzeichnen
+   - Material + Ausführung + Qualität + Normen vollständig
 
-4. VOLLSTÄNDIGKEIT:
-   - Anzahl Positionen abhängig von Projektumfang
-   - Kleine Projekte: 8-15 Positionen
-   - Mittlere Projekte: 16-25 Positionen
-   - Große Projekte: 25-50 Positionen
+4. PREISKALKULATION 2024/2025:
+   - Aktuelle Marktpreise inkl. Inflation/Energiekosten
+   - Regionale Faktoren: Großstadt +15-20%, Land -10-15%
+   - Materialkostenanteil realistisch (Rohbau ~40%, Ausbau ~60%)
+   - Inkl. aller Nebenleistungen (Transport, Gerüst intern, Schutz)
+   - Stundensätze: Facharbeiter 55-75€, Helfer 35-45€
 
-5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
-   - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
-   - Wanddurchbruch: NUR im beauftragten Hauptgewerk (Rohbau ODER Abbruch, nie beide)
-   - Gerüstbau: Wenn als eigenes Gewerk -> KEINE Gerüstpositionen in anderen Gewerken
-   - Elektro-/Sanitärschlitze: NUR im jeweiligen Fachgewerk, nicht im Rohbau
-   - Entsorgung: Pro Material nur in EINEM Gewerk ausschreiben
-   - Bei Überschneidungsgefahr: Leistung dem primär verantwortlichen Gewerk zuordnen
+5. GEWERKEABGRENZUNG & SCHNITTSTELLENKLARHEIT:
+   - KEINE Doppelungen zwischen Gewerken
+   - Hierarchie: Spezialgewerk > Hauptgewerk > Nebengewerk
+   - Kritische Schnittstellen:
+     * Durchbrüche: NUR Abbruch ODER Rohbau
+     * Gerüst: NUR Gerüstbau ODER einmalig in anderem Gewerk
+     * Putzarbeiten: NUR Putz ODER Trockenbau
+     * Abdichtung: NUR Dachdecker ODER Abdichtung
+   - Entsorgung: Beim verursachenden Gewerk
+
+6. PROJEKTANGEPASSTE POSITIONSANZAHL:
+   - Komplexität bestimmt Detailgrad:
+     * Einfach (<10k€): 10-15 Positionen
+     * Klein (10-50k€): 15-25 Positionen  
+     * Mittel (50-200k€): 25-35 Positionen
+     * Groß (>200k€): 35-50 Positionen
+   - Lieber weniger, aber vollständige Positionen
+
+7. STRUKTURIERUNG & SYSTEMATIK:
+   - Logische Reihenfolge (Bauablauf oder Örtlichkeit)
+   - Positionsnummern: XX.YY.ZZZ (Gewerk.Gruppe.Position)
+   - Gruppierung verwandter Leistungen
+   - Erst Hauptleistungen, dann Nebenleistungen
+   - Stundenlohnarbeiten max. 5-10% der Gesamtsumme
+
+8. QUALITÄTSSICHERUNG & KENNZEICHNUNG:
+   - Drei Kategorien von Positionen:
+     * ERFASST: Direkt aus Antworten ("measured")
+     * ABGELEITET: Aus Kontext geschlossen ("estimated") 
+     * ERGÄNZT: Fachlich notwendig ("assumed")
+   - Jede Position mit dataSource kennzeichnen
+   - Ergänzte Positionen in Notes erläutern
+   - "assumptions" Array mit ALLEN Annahmen
    
-6. GEWERKE-HIERARCHIE (bei Konflikten):
-   1. Spezialisierte Gewerke haben Vorrang (z.B. Gerüstbau vor Fassade)
-   2. Abbruch vor Neubau
-   3. Rohbau vor Ausbau
-   4. Hauptleistung vor Nebenleistung
-   
+9. BAUABLAUF & ABHÄNGIGKEITEN:
+   - Chronologie beachten (erst Abbruch, dann Aufbau)
+   - Technische Abhängigkeiten (erst Rohre, dann Putz)
+   - Trocknungszeiten berücksichtigen
+   - Jahreszeit-abhängige Arbeiten kennzeichnen
+   - Vorlaufzeiten für Materialbestellung beachten
+
+10. TRANSPARENZ & NACHVOLLZIEHBARKEIT:
+    - "assumptions": Liste ALLER getroffenen Annahmen
+    - "dataSource": "measured" / "estimated" / "assumed"
+    - "priceBase": Kalkulationsgrundlage angeben
+    - "excludedServices": Explizit ausgeschlossene Leistungen
+    - "notes": Wichtige Hinweise für Ausführung
+
+11. ANNAHMEN-MANAGEMENT:
+    - Notwendige Annahmen sind ERLAUBT 
+    - Aber: 100% Transparenz erforderlich
+    - Format für Annahmen:
+      * In Positionstitel: Keine Kennzeichnung
+      * In Beschreibung: "(Annahme: Standardausführung)"
+      * In dataSource: "assumed"
+      * In assumptions Array: Ausführliche Erläuterung
+    - Annahmen müssen fachlich begründbar sein
+
+12. VOLLSTÄNDIGKEITS-PRINZIP:
+    - Ziel: Ausführbares, vollständiges LV
+    - Lieber sinnvolle Annahme als Lücke im LV
+    - Aber: Annahmen-Anteil max. 30% der Positionen
+    - Kernleistungen müssen erfasst sein
+    - Ergänzungen nur für Nebenleistungen
+
+WICHTIG: Transparenz ist der Schlüssel!
+- Erfragte Leistungen: Basis des LV (70%+)
+- Notwendige Ergänzungen: Fachlich begründet (bis 30%)
+- JEDE Annahme deutlich kennzeichnen
+- Auftraggeber kann Annahmen prüfen und anpassen
+
 OUTPUT FORMAT (NUR valides JSON):
 {
   "trade": "${trade.name}",
