@@ -173,7 +173,35 @@ setProjectTrades(detectedTrades);
       assumption: assumption
     };
     setAnswers(newAnswers);
+
+    // NEUE LOGIK: Bei erster Frage eines manuellen Gewerks
+const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
+  .includes(parseInt(tradeId));
+
+if (current === 0 && isManualTrade && questions[current].id?.endsWith('-CONTEXT')) {
+  try {
+    setLoading(true);
+    // Generiere adaptive Folgefragen basierend auf Kontext
+    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contextAnswer: answerText })
+    });
     
+    if (response.ok) {
+      const data = await response.json();
+      // Ersetze aktuelle Fragen mit Kontextfrage + neue Fragen
+      const contextQuestion = questions[0];
+      const newQuestions = [contextQuestion, ...data.questions];
+      setQuestions(newQuestions);
+      setAnswers([newAnswers[0], ...new Array(data.questions.length).fill(null)]);
+    }
+    setLoading(false);
+  } catch (err) {
+    console.error('Failed to generate context questions:', err);
+    setLoading(false);
+  }
+}    
     if (current + 1 < questions.length) {
       // Gehe zur nächsten Frage
       setCurrent(current + 1);
