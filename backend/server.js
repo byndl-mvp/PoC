@@ -898,7 +898,7 @@ WICHTIG - VERMEIDE REDUNDANZEN:
 OUTPUT als JSON-Array mit genau ${targetQuestionCount} Fragen.
 Jede Frage muss einen klaren Mehrwert für die LV-Erstellung bieten!`;
    
-   FRAGENANZAHL: ${targetQuestionCount} Fragen
+  FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
 - Fehlende Info: ${intelligentCount.missingInfo.join(', ') || 'keine'}
 - Bei Vollständigkeit >80%: Reduziere auf ${Math.floor(targetQuestionCount * 0.6)} Fragen
@@ -909,17 +909,17 @@ OUTPUT (NUR valides JSON-Array):
 [
   {
     "id": "string",
-    "category": "string", 
+    "category": "string",
     "question": "Verständliche Frage MIT EINHEIT bei Zahlen",
     "explanation": "PFLICHT bei Fachbegriffen! Erkläre was gemeint ist und wie gemessen wird",
     "type": "text|number|select",
     "required": boolean,
     "unit": null,
     "options": ["unsicher/weiß nicht"] bei schwierigen Fragen,
-    "multiSelect": false,  // true wenn mehrere Optionen wählbar sein sollen
+    "multiSelect": false,
     "defaultAssumption": "Falls 'unsicher': Diese Annahme wird getroffen"
   }
-]`;
+]`; // Der Template-String muss hier geschlossen werden
 
   const userPrompt = `Erstelle ${targetQuestionCount} LAIENVERSTÄNDLICHE Fragen für ${tradeName}.
 
