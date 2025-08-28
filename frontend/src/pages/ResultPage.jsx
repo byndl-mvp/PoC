@@ -86,6 +86,7 @@ export default function ResultPage() {
     if (res.ok) {
       const newLvs = [...lvs];
       newLvs[lvIndex].content.positions = updatedPositions;
+      newLvs[lvIndex].content.totalSum = recalculateTotals(updatedPositions);
       setLvs(newLvs);
       setEditingPosition(null);
       setEditedValues({});
@@ -134,6 +135,14 @@ export default function ResultPage() {
         const lvData = await lvRes.json();
         setLvs(lvData.lvs || []);
       }
+      
+      // Aktualisiere auch costSummary
+  const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
+  if (summaryRes.ok) {
+    const summaryData = await summaryRes.json();
+    setCostSummary(summaryData.summary);
+  }      
+      
       setAddingPosition(null);
       setNewPosition({
         title: '',
