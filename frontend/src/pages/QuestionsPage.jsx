@@ -50,10 +50,26 @@ export default function QuestionsPage() {
             console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
             
             // WICHTIG: Nur die tatsächlich erkannten Gewerke (ohne INT)
-            const detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
-            console.log('Detected trades for this project:', detectedTrades);
-            
-            setProjectTrades(detectedTrades);
+            let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
+
+            // Manuell hinzugefügte Trades aus sessionStorage ergänzen
+            const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
+            if (manuallyAddedTradeIds.length > 0) {
+            for (const manualId of manuallyAddedTradeIds) {
+            if (!detectedTrades.find(t => t.id === manualId)) {
+           
+              // Trade fehlt - füge Platzhalter hinzu
+            detectedTrades.push({
+            id: manualId,
+        name: `Trade ${manualId}`,
+        code: `MANUAL_${manualId}`
+      });
+    }
+  }
+}
+
+console.log('Detected trades for this project:', detectedTrades);
+setProjectTrades(detectedTrades);
             
             // Finde den Index des aktuellen Gewerks
             const currentIdx = detectedTrades.findIndex(t => String(t.id) === String(tradeId));
