@@ -833,8 +833,8 @@ KRITISCHE REGELN FÜR BAULICH PRÄZISE & LAIENVERSTÄNDLICHE FRAGEN:
      * Mit Beispielen: "Einfach = Baumarkt, Mittel = Fachhandel, Gehoben = Premium"
 
 7. MANUELL HINZUGEFÜGTE GEWERKE:
-   - ERSTE FRAGE (ID: ${tradecode}-CONTEXT):
-     * "Welche konkreten ${tradename}-Arbeiten sollen durchgeführt werden?"
+   - ERSTE FRAGE (ID: ${tradeCode}-CONTEXT):
+     * "Welche konkreten ${tradeName}-Arbeiten sollen durchgeführt werden?"
      * "Bitte beschreiben Sie möglichst genau, was gemacht werden soll"
      * type: "text", required: true, multiline: true
    - ZWEITE FRAGE: Umfang/Menge basierend auf erster Antwort
