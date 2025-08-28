@@ -889,7 +889,6 @@ KRITISCHE REGELN FÜR BAULICH PRÄZISE & LAIENVERSTÄNDLICHE FRAGEN:
     - Beispiel: "Welche Räume sollen gestrichen werden?"
 
 WICHTIG - VERMEIDE REDUNDANZEN:
-- Andere gewählte Gewerke: ${otherTradesInfo}
 - Frage Leistungen NUR EINMAL ab
 - Wenn Gerüstbau als eigenes Gewerk gewählt: KEINE Gerüstfragen in anderen Gewerken
 - Wanddurchbruch: Frage nur im primären Gewerk (Rohbau ODER Abbruch)
