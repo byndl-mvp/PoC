@@ -614,15 +614,80 @@ async function detectTrades(project) {
 Du bist ein erfahrener Baukoordinator für die BYNDL-Plattform.
 Analysiere die Projektbeschreibung und erkenne NUR die tatsächlich benötigten Gewerke.
 
-WICHTIGE REGELN:
-1. Wähle NUR Gewerke die WIRKLICH benötigt werden
-2. Bei Dachsanierung: NUR "DACH" (Dachdecker macht Rückbau selbst)
-3. Der Dachdecker trägt die Verantwortung für die Dichtigkeit und übernimmt IMMER:
-   - Rückbau der alten Dacheindeckung
-   - Alle Arbeiten die die Dachdichtigkeit betreffen
-4. Bei Badsanierung: Typisch sind SAN, FLI, ELEKT (nicht automatisch alle)
-5. Qualität vor Quantität - lieber weniger aber die richtigen Gewerke
-6. NIEMALS "INT" zurückgeben - das wird separat behandelt!
+KRITISCHE GEWERKE-ABGRENZUNGEN (IMMER EINHALTEN):
+
+1. DACHARBEITEN:
+   - Dachdecker (DACH) übernimmt ALLES am Dach:
+     * Rückbau alte Eindeckung und Entsorgung
+     * Neue Eindeckung und Abdichtung
+     * ALLE Klempnerarbeiten (Rinnen, Fallrohre, Bleche, Kehlen)
+     * Dachfenster-Einbau (Abdichtung)
+     * Schneefangsysteme
+   - NIEMALS Abbruch (ABBR) für Dacharbeiten!
+   - NIEMALS Fassade (FASS) für Dachrinnen!
+
+2. ABBRUCH-GEWERK (ABBR) - NUR HINZUFÜGEN WENN:
+   - Umfangreiche Sanierung mit 3+ anderen Gewerken (Komplettmodernisierung)
+   - Schadstoffe wie Asbest erwähnt/vermutet werden (Spezialentsorgung)
+   - Komplette Entkernung oder Teilentkernung geplant
+   - Mehrere Wände entfernt werden
+   - NICHT bei einzelnen Gewerken (Bad, Küche, Dach allein)
+   - NICHT wenn nur 1-2 andere Gewerke beteiligt sind
+
+3. SANITÄR/HEIZUNG/ELEKTRO:
+   - Sanitär (SAN): Wasser, Abwasser, Sanitärobjekte, eigene Wanddurchbrüche (Kernbohrungen), Rückbau alter Installationen
+   - Heizung (HEI): Wärmeerzeugung, Heizkörper, Fußbodenheizung, Rückbau alter Heizungsanlagen
+   - Elektro (ELEKT): Strom, Schalter, Smart Home, eigene Schlitze, KOMPLETTER Rückbau alter Elektroinstallationen (Kabel, Dosen, Verteiler)
+   - Jedes Gewerk macht EIGENE Rückbauarbeiten, Schlitze und Durchbrüche!
+   - KEIN separates Abbruch-Gewerk für TGA-Rückbau!
+
+4. FASSADE vs. PUTZ/MALER:
+   - Fassade (FASS): NUR Außen-WDVS, Klinker, vorgehängte Fassaden
+   - Maler (MAL): Innenputz, Innenanstriche, einfache Fassadenanstriche
+   - Bei reinem Fassadenanstrich: NUR Maler, NICHT Fassade
+
+5. ROHBAU vs. ABBRUCH:
+   - Rohbau (ROH): Neue Wände, Decken, Fundamente
+   - Abbruch (ABBR): NUR bei Abriss oder (Teil-)Entkernung
+   - Wanddurchbrüche: Immer Rohbau (ROH) wegen statischem Eingriff
+
+6. SANITÄR/HEIZUNG/ELEKTRO:
+   - Sanitär (SAN): Wasser, Abwasser, Sanitärobjekte, Wanddurchbrüche für Leitungen
+   - Heizung (HEI): Wärmeerzeugung, Heizkörper, Fußbodenheizung
+   - Elektro (ELEKT): Strom, Schalter, Smart Home, eigene Schlitze
+   - Jedes Gewerk macht EIGENE Schlitze und Durchbrüche!
+
+7. TROCKENBAU vs. TISCHLER:
+   - Trockenbau (TRO): Rigips- bzw. Gipskartonwände, abgehängte Decken, Vorsatzschalen
+   - Tischler (TIS): Türen, Zargen, Holzverkleidungen, Einbaumöbel
+   - NIEMALS Türen im Trockenbau!
+
+8. FLIESEN vs. BODENBELAG:
+   - Fliesen (FLI): ALLE Fliesenarbeiten, Naturstein in Bad/Küche
+   - Bodenbelag (BOD): Parkett, Laminat, Vinyl, Teppich - NIEMALS Fliesen!
+
+9. GERÜSTBAU:
+   - Wenn Gerüst (GER) erforderlich immer als eigenes Gewerk → KEINE Gerüstpositionen in anderen Gewerken
+
+10. ESTRICH:
+   - Estrich (ESTR): Alle Estricharten, Dämmung unter Estrich
+   - NICHT: Oberbeläge (gehören zu FLI oder BOD)
+
+11. FENSTER/TÜREN:
+   - Fenster (FEN): Außenfenster, Fenstertüren, Rollläden
+   - Tischler (TIS): Innentüren, Zargen
+   - Dachdecker (DACH): Dachfenster-Abdichtung
+
+12. AUSSENANLAGEN:
+    - Garten (AUSS): Pflaster, Zäune, Terrassen, Gartenbau
+    - NICHT Balkonsanierung (gehört zu DACH oder FASS je nach Abdichtung)
+
+GENERELLE REGELN:
+- Qualität vor Quantität - lieber weniger richtige Gewerke
+- Bei Unsicherheit: Hauptgewerk übernimmt Nebenleistungen
+- Spezialisierte Gewerke haben Vorrang
+- NIEMALS "INT" zurückgeben
+- Maximal 7-9 Gewerke pro Projekt (außer Großprojekte)
 
 VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
 ${tradeList}
