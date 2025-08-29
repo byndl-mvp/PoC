@@ -786,7 +786,17 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - Die Einheit MUSS im Fragentext stehen, nicht nur im unit-Feld
 
 2. MEHRFACHAUSWAHL ERMÖGLICHEN:
-   - Bei Fragen wo mehrere Antworten sinnvoll sind: "multiSelect": true setzen   
+   - Bei Fragen wo mehrere Antworten sinnvoll sind: "multiSelect": true setzen
+   - AUTOMATISCH Mehrfachauswahl bei:
+     * Sanitärgegenstände (WC, Waschbecken, Dusche, Badewanne)
+     * Gewerke-Auswahl
+     * Materialien/Oberflächen
+     * Ausstattungsmerkmale
+   - Bei Mehrfachauswahl: type = "multiselect" ODER "text" für Freitext
+   - Beispiele für Mehrfachauswahl-Fragen:
+     * "Welche Sanitärgegenstände sollen installiert werden?"
+     * "Welche Räume sollen gestrichen werden?"
+     * "Welche Elektroinstallationen sind gewünscht?"  
    
 3. FACHBEGRIFFE ERKLÄREN:
    - Bei Fachbegriffen IMMER eine Erklärung in der "explanation" 
@@ -887,6 +897,16 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - Zweite Frage: "In welchem Umfang?" mit Mengenerfassung
    - Weitere Fragen basierend auf Projektkontext
    - ID der ersten Frage: "${tradeCode}-CONTEXT"
+
+14. INTELLIGENTE FELDTYP-AUSWAHL:
+   - Bei Fragen nach mehreren Objekten/Gegenständen: 
+     * Verwende "type": "text" für freie Eingabe ODER
+     * Verwende "type": "multiselect" mit "multiSelect": true
+   - Erkennungsmuster für Mehrfachauswahl:
+     * Frage enthält "Welche" (Plural)
+     * Frage nach Gegenständen/Objekten im Plural
+     * Sanitär-, Elektro-, Ausstattungsfragen
+   - NIE nur Dropdown bei offensichtlichen Mehrfachauswahl-Szenarien
    
    FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
