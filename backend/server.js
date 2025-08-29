@@ -2520,12 +2520,23 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
   }
 });
 
-// Generate adaptive questions for a specific trade
+/ Generate adaptive questions for a specific trade
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
-    const { isManuallyAdded } = req.body; // Flag vom Frontend
-    console.log('[DEBUG] isManuallyAdded received from frontend:', isManuallyAdded);
+    
+    // Prüfe ob Trade manuell oder KI-empfohlen hinzugefügt wurde
+    const tradeStatusResult = await query(
+      'SELECT is_manual, is_ai_recommended FROM project_trades WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    const needsContextQuestion = tradeStatusResult.rows[0]?.is_manual || 
+                                 tradeStatusResult.rows[0]?.is_ai_recommended || 
+                                 req.body.isManuallyAdded;
+    
+    console.log('[DEBUG] Trade needs context question:', needsContextQuestion);
+    
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
     const tradeInfo = await query('SELECT code, name FROM trades WHERE id = $1', [tradeId]);
     const tradeCode = tradeInfo.rows[0]?.code;
@@ -2547,7 +2558,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const project = projectResult.rows[0];
     
-    // Markiere wenn Gewerk manuell hinzugefügt wurde
+    // Markiere wenn Gewerk manuell oder KI-empfohlen hinzugefügt wurde
     const projectContext = {
       category: project.category,
       subCategory: project.sub_category,
@@ -2555,8 +2566,9 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       timeframe: project.timeframe,
       budget: project.budget,
       projectId: projectId,
-      isManuallyAdded: isManuallyAdded || false // Wichtig für kontextbezogene erste Frage
+      isManuallyAdded: needsContextQuestion // Gilt für beide: manuell UND KI-empfohlen
     };
+    
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
     const questions = await generateQuestions(tradeId, projectContext);
     
