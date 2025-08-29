@@ -760,13 +760,15 @@ WICHTIG:
   
   const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
   const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, answeredQuestions);
-  // Bei manuell hinzugefügten Gewerken: Erste Frage MUSS Kontextfrage sein
+  // Bei manuell hinzugefügten ODER KI-empfohlenen Gewerken: Erste Frage MUSS Kontextfrage sein
 let targetQuestionCount = intelligentCount.count;
 let forceContextQuestion = false;
+
 if (projectContext.isManuallyAdded) {
   forceContextQuestion = true;
-  targetQuestionCount = Math.max(5, targetQuestionCount); // Mindestens 10 Fragen bei manuellen Gewerken
-  } 
+  targetQuestionCount = Math.max(10, targetQuestionCount); // Mindestens 10 Fragen bei manuellen/KI-empfohlenen Gewerken
+  console.log(`[QUESTIONS] Context question required for ${tradeName} - manually added or AI recommended`);
+}
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
@@ -860,7 +862,7 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - MAL (Malerarbeiten): Innenputz mit Q1-Q3, Anstriche, Tapeten
    - FASS (Fassade): Außenputz mit Struktur/Körnung, WDVS - KEINE Q-Stufen!
    
-12. MANUELL HINZUGEFÜGTE UND DURCH KI EMPFOHLENE GEWERKE:
+12. MANUELL HINZUGEFÜGTE UND DURCH KI-EMPFOHLENE GEWERKE:
    - ERSTE FRAGE MUSS IMMER SEIN: "Welche konkreten ${tradeName}-Arbeiten sollen durchgeführt werden?"
    - Type: "text", required: true
    - Zweite Frage: "In welchem Umfang?" mit Mengenerfassung
@@ -906,7 +908,7 @@ PROJEKTKONTEXT:
 - Vollständigkeit: ${intelligentCount.completeness}%
 
 ${projectContext.isManuallyAdded ? 
-`WICHTIG: Dieses Gewerk wurde MANUELL hinzugefügt!
+`WICHTIG: Dieses Gewerk wurde MANUELL HINZUGEFÜGT oder von der KI EMPFOHLEN!
 ERSTE FRAGE MUSS SEIN: "Welche ${tradeName}-Arbeiten sollen im Rahmen der ${projectContext.category || 'Arbeiten'} ausgeführt werden?"` : ''}
 
 FEHLENDE INFOS: ${intelligentCount.missingInfo.join(', ') || 'keine'}
