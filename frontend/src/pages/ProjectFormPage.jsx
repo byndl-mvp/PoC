@@ -26,7 +26,7 @@ const CATEGORIES = {
     'Trockenbau (Raumaufteilung, Schallschutz)'
   ],
   'Anbau / Umbau / Aufstockung': [
-    'Anbau (Wintergarten, Raumerweiterung)',
+    'Anbau (Raumerweiterung, Wintergarten)',
     'Umbau (Grundrissänderungen)',
     'Aufstockung (zusätzlicher Wohnraum)',
     'Dachausbau (Gauben, Dachflächenfenster)'
@@ -37,7 +37,7 @@ const CATEGORIES = {
     'Statische Veränderungen (Wanddurchbrüche)',
 ],
   'Rückbau / Abbrucharbeiten': [
-    'Abbrucharbeiten',
+    'Abbrucharbeiten (Teil- oder Komplettabriss)',
     'Entkernung'
   ],
   'Technische Gebäudeausrüstung (TGA)': [
@@ -47,7 +47,7 @@ const CATEGORIES = {
     'Lüftungs- oder Klimaanlage'
   ],
   'Außenanlagen / Garten- und Landschaftsbau': [
-    'Terrasse / Balkon',
+    'Terrasse',
     'Zaunbau / Sichtschutz',
     'Gartenneugestaltung',
     'Wege / Pflasterarbeiten / Einfahrten',
@@ -263,14 +263,23 @@ export default function ProjectFormPage() {
             </div>
 
             {/* Hinweis bei genehmigungspflichtigen Arbeiten */}
-            {form.category === 'Anbau / Umbau / Aufstockung' && (
-              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
-                <p className="text-yellow-200 text-sm">
-                  <strong>⚠️ Hinweis:</strong> Bei strukturellen Änderungen oder Nutzungsänderungen 
-                  kann eine Baugenehmigung erforderlich sein. Bitte prüfen Sie die lokale Bauordnung.
-                </p>
-              </div>
-            )}
+{(form.category === 'Anbau / Umbau / Aufstockung' || 
+  form.category === 'Rohbauarbeiten / Strukturelle Eingriffe' ||
+  form.subCategories.some(sc => 
+    sc.includes('Anbau') || 
+    sc.includes('Umbau') || 
+    sc.includes('Aufstockung') || 
+    sc.includes('Dachausbau') ||
+    sc.includes('Statische Veränderungen') ||
+    sc.includes('Wanddurchbrüche')
+  )) && (
+  <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
+    <p className="text-yellow-200 text-sm">
+      <strong>⚠️ Hinweis:</strong> Bei strukturellen Änderungen oder Nutzungsänderungen 
+      kann eine Baugenehmigung erforderlich sein. Bitte prüfen Sie die lokale Bauordnung.
+    </p>
+  </div>
+)}
 
             {/* Error Message */}
             {error && (
