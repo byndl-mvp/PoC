@@ -179,7 +179,7 @@ setProjectTrades(detectedTrades);
 const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
   .includes(parseInt(tradeId));
 
-if (current === 0 && isManualTrade && questions[current].id?.endsWith('-CONTEXT')) {
+if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))) {
   try {
     setLoading(true);
     // Generiere adaptive Folgefragen basierend auf Kontext
