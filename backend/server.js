@@ -2715,7 +2715,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
     
     res.json({ 
   questions,
-  tradeName: result.rows[0]?.trade_name 
+  tradeName: result.rows[0]?.trade_name, 
   tradeCode: result.rows[0]?.trade_code 
 });
     
