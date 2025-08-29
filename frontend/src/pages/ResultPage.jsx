@@ -197,29 +197,6 @@ const recalculateTotals = (positions) => {
     }
   };
 
-  const handleExportJSON = async (tradeId, withPrices = true) => {
-    try {
-      const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv/export?withPrices=${withPrices}`);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Export fehlgeschlagen');
-      
-      const data = await res.json();
-      
-      const blob = new Blob([JSON.stringify(data.lv, null, 2)], { type: 'application/json' });
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `LV_${data.tradeCode}_${withPrices ? 'mit' : 'ohne'}_Preise.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-      
-    } catch (err) {
-      alert('JSON-Export fehlgeschlagen: ' + err.message);
-    }
-  };
-
   const handleExportCompletePDF = async () => {
     try {
       const withPrices = exportMode === 'with-prices';
