@@ -2582,7 +2582,7 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
   }
 });
 
-/ Generate adaptive questions for a specific trade
+// Generate adaptive questions for a specific trade
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
