@@ -2,11 +2,64 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
+// Kategorien-Struktur basierend auf der PDF-Liste
+const CATEGORIES = {
+  'Sanierung': [
+    'Teilsanierung',
+    'Kernsanierung',
+    'Kellersanierung',
+    'Schadstoffsanierung (Asbest/Schimmel)'
+  ],
+  'Energetische Sanierung': [
+    'Komplettsanierung (Dach, Fassade, Fenster, Heizung)',
+    'Fassadendämmung',
+    'Dachdämmung / Dachsanierung',
+    'Fenstertausch',
+    'Heizungserneuerung (Wärmepumpe, Gas, Pellet)',
+    'Photovoltaik / Solarthermie'
+  ],
+  'Innenausbau / Renovierung': [
+    'Badsanierung',
+    'Küchensanierung',
+    'Wand- und Bodenrenovierung',
+    'Türen, Zargen, Deckenverkleidungen',
+    'Trockenbau (Raumaufteilung, Schallschutz)'
+  ],
+  'Anbau / Umbau / Aufstockung': [
+    'Anbau (Wintergarten, Raumerweiterung)',
+    'Umbau (Grundrissänderungen)',
+    'Aufstockung (zusätzlicher Wohnraum)',
+    'Dachausbau (Gauben, Dachflächenfenster)'
+  ],
+  'Rohbauarbeiten / Statisch relevante Eingriffe': [
+    'Mauer- und Betonarbeiten (Wände / Decken / Stützen)',
+    'Fundamentarbeiten',
+    'Statische Veränderungen (Wanddurchbrüche)',
+],
+  'Rückbau / Abbrucharbeiten': [
+    'Abbrucharbeiten',
+    'Entkernung'
+  ],
+  'Technische Gebäudeausrüstung (TGA)': [
+    'Heizung (Neuinstallation/Austausch)',
+    'Sanitärinstallation',
+    'Elektroinstallation (inkl. Smart Home)',
+    'Lüftungs- oder Klimaanlage'
+  ],
+  'Außenanlagen / Garten- und Landschaftsbau': [
+    'Terrasse / Balkon',
+    'Zaunbau / Sichtschutz',
+    'Gartenneugestaltung',
+    'Wege / Pflasterarbeiten / Einfahrten',
+    'Carport / Garage / Gartenhaus'
+  ]
+};
+
 export default function ProjectFormPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     category: '',
-    subCategory: '',
+    subCategories: [], // NEU: Array für Mehrfachauswahl
     description: '',
     timeframe: '',
     budget: '',
@@ -16,29 +69,55 @@ export default function ProjectFormPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    
+    // Bei Änderung der Hauptkategorie, Unterkategorien zurücksetzen
+    if (name === 'category') {
+      setForm(prev => ({ ...prev, category: value, subCategories: [] }));
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Handler für Mehrfachauswahl der Unterkategorien
+  const handleSubCategoryToggle = (subCategory) => {
+    setForm(prev => ({
+      ...prev,
+      subCategories: prev.subCategories.includes(subCategory)
+        ? prev.subCategories.filter(sc => sc !== subCategory)
+        : [...prev.subCategories, subCategory]
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validierung: Mindestens eine Unterkategorie muss ausgewählt sein
+    if (form.category && form.subCategories.length === 0) {
+      setError('Bitte wählen Sie mindestens eine Unterkategorie aus.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
+    
     try {
       const res = await fetch(apiUrl('/api/projects'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: form.category,
-          subCategory: form.subCategory,
+          subCategory: form.subCategories.join(', '), // Als kommaseparierter String speichern
           description: form.description,
           timeframe: form.timeframe,
           budget: form.budget ? Number(form.budget) : null,
         }),
       });
+      
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || 'Fehler beim Anlegen des Projekts');
       }
+      
       const data = await res.json();
       const { project } = data;
       const projectId = project.id;
@@ -52,6 +131,9 @@ export default function ProjectFormPage() {
       setLoading(false);
     }
   };
+
+  // Hole Unterkategorien basierend auf gewählter Hauptkategorie
+  const availableSubCategories = form.category ? CATEGORIES[form.category] || [] : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -75,7 +157,7 @@ export default function ProjectFormPage() {
         {/* Form Card */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Kategorie */}
+            {/* Hauptkategorie */}
             <div>
               <label className="block text-white font-medium mb-2">
                 Hauptkategorie *
@@ -88,29 +170,42 @@ export default function ProjectFormPage() {
                 className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               >
                 <option value="" className="bg-slate-800">Bitte wählen</option>
-                <option value="Umbau" className="bg-slate-800">Umbau</option>
-                <option value="Neubau" className="bg-slate-800">Neubau</option>
-                <option value="Sanierung" className="bg-slate-800">Sanierung</option>
-                <option value="Modernisierung" className="bg-slate-800">Modernisierung</option>
-                <option value="Anbau" className="bg-slate-800">Anbau</option>
+                {Object.keys(CATEGORIES).map(cat => (
+                  <option key={cat} value={cat} className="bg-slate-800">{cat}</option>
+                ))}
               </select>
             </div>
 
-            {/* Unterkategorie */}
-            <div>
-              <label className="block text-white font-medium mb-2">
-                Unterkategorie
-                <span className="text-gray-400 font-normal ml-2">(optional)</span>
-              </label>
-              <input
-                type="text"
-                name="subCategory"
-                value={form.subCategory}
-                onChange={handleChange}
-                className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                placeholder="z.B. Badrenovierung, Dachsanierung, Küche"
-              />
-            </div>
+            {/* Unterkategorien - Mehrfachauswahl mit Checkboxen */}
+            {form.category && (
+              <div>
+                <label className="block text-white font-medium mb-2">
+                  Unterkategorien * 
+                  <span className="text-gray-400 font-normal ml-2">(Mehrfachauswahl möglich)</span>
+                </label>
+                <div className="bg-white/10 rounded-lg p-4 max-h-60 overflow-y-auto">
+                  {availableSubCategories.map(subCat => (
+                    <label
+                      key={subCat}
+                      className="flex items-center text-white hover:bg-white/10 rounded p-2 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.subCategories.includes(subCat)}
+                        onChange={() => handleSubCategoryToggle(subCat)}
+                        className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500 focus:ring-2"
+                      />
+                      <span>{subCat}</span>
+                    </label>
+                  ))}
+                </div>
+                {form.subCategories.length > 0 && (
+                  <div className="mt-2 text-sm text-gray-400">
+                    Ausgewählt: {form.subCategories.length} Unterkategorie(n)
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Beschreibung */}
             <div>
@@ -167,6 +262,16 @@ export default function ProjectFormPage() {
               />
             </div>
 
+            {/* Hinweis bei genehmigungspflichtigen Arbeiten */}
+            {form.category === 'Anbau / Umbau / Aufstockung' && (
+              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
+                <p className="text-yellow-200 text-sm">
+                  <strong>⚠️ Hinweis:</strong> Bei strukturellen Änderungen oder Nutzungsänderungen 
+                  kann eine Baugenehmigung erforderlich sein. Bitte prüfen Sie die lokale Bauordnung.
+                </p>
+              </div>
+            )}
+
             {/* Error Message */}
             {error && (
               <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4">
@@ -177,7 +282,7 @@ export default function ProjectFormPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (form.category && form.subCategories.length === 0)}
               className="w-full bg-gradient-to-r from-teal-500 to-blue-600 text-white font-semibold py-4 rounded-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
