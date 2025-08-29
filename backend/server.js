@@ -2439,7 +2439,7 @@ Analysiere und empfehle benötigte Gewerke.`;
 app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { confirmedTrades } = req.body;
+    const { confirmedTrades, manuallyAddedTrades = [], aiRecommendedTrades = [] } = req.body;
     
     if (!Array.isArray(confirmedTrades) || confirmedTrades.length === 0) {
       return res.status(400).json({ error: 'Keine Gewerke ausgewählt' });
@@ -2449,47 +2449,52 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
     await query('BEGIN');
     
     try {
-      // Lösche alte Trades AUSSER INT und den bestätigten
-const intTradeResult = await query(`SELECT id FROM trades WHERE code = 'INT'`);
-const intTradeId = intTradeResult.rows[0]?.id;
+      const intTradeResult = await query(`SELECT id FROM trades WHERE code = 'INT'`);
+      const intTradeId = intTradeResult.rows[0]?.id;
 
-// Lösche Antworten/Fragen/LVs für nicht-bestätigte Trades
-await query(
-  `DELETE FROM answers 
-   WHERE project_id = $1 
-   AND trade_id != $2
-   AND trade_id NOT IN (SELECT unnest($3::int[]))`,
-  [projectId, intTradeId || -1, confirmedTrades]
-);
+      // Lösche Antworten/Fragen/LVs für nicht-bestätigte Trades
+      await query(
+        `DELETE FROM answers 
+         WHERE project_id = $1 
+         AND trade_id != $2
+         AND trade_id NOT IN (SELECT unnest($3::int[]))`,
+        [projectId, intTradeId || -1, confirmedTrades]
+      );
 
-await query(
-  `DELETE FROM questions 
-   WHERE project_id = $1 
-   AND trade_id != $2
-   AND trade_id NOT IN (SELECT unnest($3::int[]))`,
-  [projectId, intTradeId || -1, confirmedTrades]
-);
+      await query(
+        `DELETE FROM questions 
+         WHERE project_id = $1 
+         AND trade_id != $2
+         AND trade_id NOT IN (SELECT unnest($3::int[]))`,
+        [projectId, intTradeId || -1, confirmedTrades]
+      );
 
-// Lösche alte Trade-Zuordnungen (außer INT)
-await query(
-  `DELETE FROM project_trades 
-   WHERE project_id = $1 
-   AND trade_id != $2`,
-  [projectId, intTradeId || -1]
-);
+      // Lösche alte Trade-Zuordnungen (außer INT)
+      await query(
+        `DELETE FROM project_trades 
+         WHERE project_id = $1 
+         AND trade_id != $2`,
+        [projectId, intTradeId || -1]
+      );
 
-// Füge ALLE bestätigten Trades hinzu
-for (const tradeId of confirmedTrades) {
-  await query(
-    `INSERT INTO project_trades (project_id, trade_id, is_manual)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (project_id, trade_id) 
-     DO UPDATE SET is_manual = $3`,
-    [projectId, tradeId, true]  // Markiere als manuell hinzugefügt
-  );
-  
-  console.log(`[TRADES] Added trade ${tradeId} to project ${projectId}`);
-}
+      // Füge ALLE bestätigten Trades hinzu mit Markierung ob manuell oder KI-empfohlen
+      for (const tradeId of confirmedTrades) {
+        const isManual = manuallyAddedTrades.includes(tradeId);
+        const isAiRecommended = aiRecommendedTrades.includes(tradeId);
+        
+        // Sowohl manuell hinzugefügte als auch KI-empfohlene Trades bekommen is_manual flag
+        const needsContextQuestion = isManual || isAiRecommended;
+        
+        await query(
+          `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (project_id, trade_id) 
+           DO UPDATE SET is_manual = $3, is_ai_recommended = $4`,
+          [projectId, tradeId, needsContextQuestion, isAiRecommended]
+        );
+        
+        console.log(`[TRADES] Added trade ${tradeId} to project ${projectId} (manual: ${isManual}, AI: ${isAiRecommended})`);
+      }
       
       await query('COMMIT');
       
