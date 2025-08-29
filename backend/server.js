@@ -839,14 +839,28 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 11. GEWERKEABGRENZUNG & SCHNITTSTELLENKLARHEIT:
    - KEINE Doppelungen zwischen Gewerken
    - Hierarchie: Spezialgewerk > Hauptgewerk > Nebengewerk
-   - Kritische Schnittstellen:
-     * Durchbrüche: NUR Abbruch ODER Rohbau
+   - KRITISCHE ZUORDNUNGEN (IMMER EINHALTEN):
+     * Fliesenarbeiten: AUSSCHLIESSLICH Gewerk FLI (Fliesenarbeiten), NIEMALS BOD (Bodenbelagsarbeiten)
+     * Türen/Zargen: AUSSCHLIESSLICH Gewerk TIS (Tischlerarbeiten), NIEMALS TRO (Trockenbau)
+     * Rigips/Gipskartonwände: AUSSCHLIESSLICH Gewerk TRO (Trockenbau), NIEMALS ROH (Rohbau)
+     * Putzqualitäten Q1-Q3: NUR bei Innenputz im Gewerk MAL (Malerarbeiten), NIEMALS bei FASS (Fassade)
+     * Fassadenputz: Nur Struktur (Glattputz, Kratzputz, Scheibenputz) und Körnung bei FASS
+     * Durchbrüche: NUR Abbruch ODER Rohbau, nie beide
      * Gerüst: NUR Gerüstbau ODER einmalig in anderem Gewerk
-     * Putzarbeiten: NUR Putz ODER Trockenbau
-     * Abdichtung: NUR Dachdecker ODER Abdichtung
-   - Entsorgung: Beim verursachenden Gewerk
+     * Entsorgung: Beim verursachenden Gewerk
+     * Elektroschlitze: NUR bei ELEKT, nicht bei ROH oder ABBR
+     * Sanitärschlitze: NUR bei SAN, nicht bei ROH oder ABBR
    
-12. MANUELL HINZUGEFÜGTE GEWERKE:
+   GEWERK-SPEZIFISCHE REGELN:
+   - FLI (Fliesenarbeiten): Fliesen, Mosaikarbeiten, Natursteinbeläge in Bad/Küche
+   - BOD (Bodenbelagsarbeiten): Parkett, Laminat, Vinyl, Teppich, PVC - KEINE Fliesen!
+   - TIS (Tischlerarbeiten): Türen, Zargen, Einbaumöbel, Holzarbeiten
+   - TRO (Trockenbau): Rigipswände, Gipskarton, Metallständerwerk, abgehängte Decken
+   - ROH (Rohbau): Mauerwerk, Beton, Stahlbeton - KEINE Leichtbauwände!
+   - MAL (Malerarbeiten): Innenputz mit Q1-Q3, Anstriche, Tapeten
+   - FASS (Fassade): Außenputz mit Struktur/Körnung, WDVS - KEINE Q-Stufen!
+   
+12. MANUELL HINZUGEFÜGTE UND DURCH KI EMPFOHLENE GEWERKE:
    - ERSTE FRAGE MUSS IMMER SEIN: "Welche konkreten ${tradeName}-Arbeiten sollen durchgeführt werden?"
    - Type: "text", required: true
    - Zweite Frage: "In welchem Umfang?" mit Mengenerfassung
@@ -1207,12 +1221,17 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 
 5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
    - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
+   - STRIKTE ZUORDNUNGEN:
+   - Fliesenarbeiten → IMMER UND AUSSCHLIESSLICH im Gewerk FLI
+   - Türen und Zargen → IMMER UND AUSSCHLIESSLICH im Gewerk TIS
+   - Rigips-/Gipskartonwände → IMMER UND AUSSCHLIESSLICH im Gewerk TRO
+   - Putzqualitäten Q1-Q3 → NUR bei Innenarbeiten im Gewerk MAL
+   - Fassadenputz → NUR Struktur/Körnung im Gewerk FASS (keine Q-Stufen)
+   - Bodenbeläge wie Parkett/Laminat/Vinyl → NUR im Gewerk BOD (nie Fliesen!)
    - Wanddurchbruch: NUR im beauftragten Hauptgewerk (Rohbau ODER Abbruch, nie beide)
    - Gerüstbau: Wenn als eigenes Gewerk -> KEINE Gerüstpositionen in anderen Gewerken
    - Elektro-/Sanitärschlitze: NUR im jeweiligen Fachgewerk, nicht im Rohbau oder Abbruch
    - Entsorgung: Pro Material nur in EINEM Gewerk ausschreiben
-   - Leichtbauwände aus Rigips oder Trockenbau nur im Gewerk Trockenbau, nie Rohbau
-   - Putzqualitäten wie Q1-Q3 ausschließlich bei Arbeiten im Innenbereich erfragen
    - Bei Überschneidungsgefahr: Leistung dem primär verantwortlichen Gewerk zuordnen
    
 6. GEWERKE-HIERARCHIE (bei Konflikten):
