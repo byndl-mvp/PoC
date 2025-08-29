@@ -42,15 +42,15 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
 
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
-  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
-  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
-  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 40 },
-  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 25, maxQuestions: 35 },
+  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 40 },
+  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 40 },
+  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 40 },
+  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 35 },
   'ROH': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 35 },
   
   // Komplexe Gewerke (20-30 Fragen)
-  'TIS': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
-  'FEN': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
+  'TIS': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 30 },
+  'FEN': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 30 },
   'FASS': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
   'SCHL': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 28 },
   
