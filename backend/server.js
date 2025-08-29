@@ -625,6 +625,8 @@ KRITISCHE GEWERKE-ABGRENZUNGEN (IMMER EINHALTEN):
      * Schneefangsysteme
    - NIEMALS Abbruch (ABBR) für Dacharbeiten!
    - NIEMALS Fassade (FASS) für Dachrinnen!
+   - NIEMALS Rohbau (ROH) für Rückbauarbeiten am Dach!
+   - NIEMALS Schlosser/Metallbau (SCHL) für Dachrinnen und Fallrohre!
 
 2. ABBRUCH-GEWERK (ABBR) - NUR HINZUFÜGEN WENN:
    - Umfangreiche Sanierung mit 3+ anderen Gewerken (Komplettmodernisierung)
