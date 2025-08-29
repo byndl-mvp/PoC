@@ -1259,7 +1259,7 @@ OUTPUT FORMAT (NUR valides JSON):
 async function checkForDuplicatePositions(projectId, currentTradeId, positions) {
   const otherLVs = await query(
     `SELECT t.name as trade_name, t.code as trade_code, l.content 
-     FROM lv_documents l 
+     FROM lvs l 
      JOIN trades t ON l.trade_id = t.id 
      WHERE l.project_id = $1 AND l.trade_id != $2`,
     [projectId, currentTradeId]
