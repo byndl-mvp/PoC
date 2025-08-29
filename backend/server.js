@@ -838,7 +838,26 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
      * Sichtbare/messbare Größen erfragen
      * Aus diesen technische Werte ableiten
 
-11. GEWERKEABGRENZUNG & SCHNITTSTELLENKLARHEIT:
+11. INTELLIGENTE FRAGE-ABHÄNGIGKEITEN:
+   - KRITISCH: Folgefragen MÜSSEN vorherige Antworten berücksichtigen
+   - Verwende bedingte Logik in Fragen mit "dependsOn" und "showIf" Feldern
+   - Beispiele:
+     * Wenn "Trockenbauwände erstellen?" = "Nein" → KEINE Fragen zu Wanddämmung, Wandhöhe, etc.
+     * Wenn "Fliesen gewünscht?" = "Nein" → KEINE Fragen zu Fliesenformat, Fugenfarbe, etc.
+     * Wenn "Dachsanierung?" = "Teilsanierung" → NUR Fragen zum betroffenen Bereich
+   - Struktur für bedingte Fragen:
+     {
+       "id": "TRO-02",
+       "question": "Sollen die Trockenbauwände gedämmt werden?",
+       "dependsOn": "TRO-01",
+       "showIf": "ja",
+       "type": "select",
+       "options": ["ja", "nein"]
+     }
+   - Bei Verneinung: Überspringe alle abhängigen Detailfragen
+   - Bei Unsicherheit: Stelle Basisfragen, aber keine Detailfragen
+
+12. GEWERKEABGRENZUNG & SCHNITTSTELLENKLARHEIT:
    - KEINE Doppelungen zwischen Gewerken
    - Hierarchie: Spezialgewerk > Hauptgewerk > Nebengewerk
    - KRITISCHE ZUORDNUNGEN (IMMER EINHALTEN):
@@ -862,7 +881,7 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - MAL (Malerarbeiten): Innenputz mit Q1-Q3, Anstriche, Tapeten
    - FASS (Fassade): Außenputz mit Struktur/Körnung, WDVS - KEINE Q-Stufen!
    
-12. MANUELL HINZUGEFÜGTE UND DURCH KI-EMPFOHLENE GEWERKE:
+13. MANUELL HINZUGEFÜGTE UND DURCH KI-EMPFOHLENE GEWERKE:
    - ERSTE FRAGE MUSS IMMER SEIN: "Welche konkreten ${tradeName}-Arbeiten sollen durchgeführt werden?"
    - Type: "text", required: true
    - Zweite Frage: "In welchem Umfang?" mit Mengenerfassung
@@ -896,7 +915,9 @@ OUTPUT (NUR valides JSON-Array):
     "unit": null,
     "options": ["unsicher/weiß nicht"] bei schwierigen Fragen,
     "multiSelect": false,
-    "defaultAssumption": "Falls 'unsicher': Diese Annahme wird getroffen"
+    "defaultAssumption": "Falls 'unsicher': Diese Annahme wird getroffen",
+    "dependsOn": "ID der Vorfrage oder null",
+    "showIf": "Antwort die gegeben sein muss oder null"
   }
 ]`; // Der Template-String muss hier geschlossen werden
 
@@ -2593,24 +2614,28 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
     const questions = await generateQuestions(tradeId, projectContext);
     
-    // NEU - erweitere options um multiSelect:
+    // NEU - erweitere options um multiSelect und Dependencies:
 for (const question of questions) {
   await query(
-    `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options, depends_on, show_if)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (project_id, trade_id, question_id) 
-     DO UPDATE SET text = $4, type = $5, required = $6, options = $7`,
+     DO UPDATE SET text = $4, type = $5, required = $6, options = $7, depends_on = $8, show_if = $9`,
     [
       projectId,
       tradeId,
       question.id,
       question.question || question.text,
-      question.multiSelect ? 'multiselect' : (question.type || 'text'),  // NEU: multiselect als type
+      question.multiSelect ? 'multiselect' : (question.type || 'text'),
       question.required !== undefined ? question.required : false,
       question.options ? JSON.stringify({
         values: question.options,
-        multiSelect: question.multiSelect || false
-      }) : null
+        multiSelect: question.multiSelect || false,
+        dependsOn: question.dependsOn || null,
+        showIf: question.showIf || null
+      }) : null,
+      question.dependsOn || null,  // NEU: Abhängigkeit von vorheriger Frage
+      question.showIf || null       // NEU: Bedingung für Anzeige
     ]
   );
 }
@@ -2656,10 +2681,17 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
       [projectId, tradeId]
     );
     
-    const questions = result.rows.map(q => ({
-      ...q,
-      options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null
-    }));
+    const questions = result.rows.map(q => {
+  const parsedOptions = q.options ? 
+    (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null;
+  
+  return {
+    ...q,
+    options: parsedOptions,
+    dependsOn: q.depends_on || null,
+    showIf: q.show_if || null
+  };
+});
     
     res.json({ questions });
     
