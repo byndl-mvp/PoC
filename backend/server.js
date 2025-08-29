@@ -617,9 +617,12 @@ Analysiere die Projektbeschreibung und erkenne NUR die tatsächlich benötigten 
 WICHTIGE REGELN:
 1. Wähle NUR Gewerke die WIRKLICH benötigt werden
 2. Bei Dachsanierung: NUR "DACH" (Dachdecker macht Rückbau selbst)
-3. Bei Badsanierung: Typisch sind SAN, FLI, ELEKT (nicht automatisch alle)
-4. Qualität vor Quantität - lieber weniger aber die richtigen Gewerke
-5. NIEMALS "INT" zurückgeben - das wird separat behandelt!
+3. Der Dachdecker trägt die Verantwortung für die Dichtigkeit und übernimmt IMMER:
+   - Rückbau der alten Dacheindeckung
+   - Alle Arbeiten die die Dachdichtigkeit betreffen
+4. Bei Badsanierung: Typisch sind SAN, FLI, ELEKT (nicht automatisch alle)
+5. Qualität vor Quantität - lieber weniger aber die richtigen Gewerke
+6. NIEMALS "INT" zurückgeben - das wird separat behandelt!
 
 VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
 ${tradeList}
