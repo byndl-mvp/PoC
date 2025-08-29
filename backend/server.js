@@ -66,8 +66,8 @@ const TRADE_COMPLEXITY = {
   'GER': { complexity: 'EINFACH', minQuestions: 8, maxQuestions: 12 },
   'ABBR': { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15 },
   
-  // Intake ist speziell (12-25 Fragen)
-  'INT': { complexity: 'INTAKE', minQuestions: 12, maxQuestions: 25 }
+  // Intake ist speziell (12-20 Fragen)
+  'INT': { complexity: 'INTAKE', minQuestions: 12, maxQuestions: 20 }
 };
 
 // Fallback für nicht definierte Gewerke
