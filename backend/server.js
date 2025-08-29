@@ -2713,7 +2713,11 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
   };
 });
     
-    res.json({ questions });
+    res.json({ 
+  questions,
+  tradeName: result.rows[0]?.trade_name 
+  tradeCode: result.rows[0]?.trade_code 
+});
     
   } catch (err) {
     console.error('Failed to fetch questions:', err);
