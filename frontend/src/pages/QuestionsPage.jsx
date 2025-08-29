@@ -196,6 +196,10 @@ if (current === 0 && isManualTrade && (questions[current].id === 'context_reason
       const newQuestions = [contextQuestion, ...data.questions];
       setQuestions(newQuestions);
       setAnswers([newAnswers[0], ...new Array(data.questions.length).fill(null)]);
+      setCurrent(1);
+      setAnswerText('');
+      setAssumption('');
+      return; // Verhindere weitere Navigation
     }
     setLoading(false);
   } catch (err) {
