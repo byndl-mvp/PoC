@@ -790,6 +790,20 @@ async function generateQuestions(tradeId, projectContext = {}) {
   const { name: tradeName, code: tradeCode } = tradeResult.rows[0];
   const isIntake = tradeCode === 'INT';
   
+  // NEU: Bei manuellen/KI-empfohlenen Gewerken NUR Kontextfrage zurückgeben
+  if (projectContext.isManuallyAdded === true) {
+  console.log(`[QUESTIONS] Manual/AI trade ${tradeCode} - returning context question only`);
+  return [{
+    id: 'context_reason',
+    question: `Sie haben ${tradeName} ausgewählt. Was genau soll in diesem Bereich gemacht werden? Bitte beschreiben Sie die geplanten Arbeiten möglichst konkret.`,
+    text: `Sie haben ${tradeName} ausgewählt. Was genau soll in diesem Bereich gemacht werden? Bitte beschreiben Sie die geplanten Arbeiten möglichst konkret.`,
+    type: 'text',
+    required: true,
+    category: 'Projektkontext',
+    explanation: 'Basierend auf Ihrer Antwort erstellen wir passende Detailfragen für dieses Gewerk.'
+  }];
+}
+  
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
   
   if (!questionPrompt) {
@@ -2815,8 +2829,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
       return res.status(403).json({ error: 'Trade not assigned to project' });
     }
     
-    // Prüfe ob Kontext-Antwort dabei ist (erste Frage bei manuellen Gewerken)
-const contextAnswer = answers.find(a => a.questionId?.endsWith('-CONTEXT'));
+    // Prüfe ob Kontext-Antwort dabei ist (erste Frage bei manuellen und von KI-empfohlenen Gewerken)
+const contextAnswer = answers.find(a => 
+  a.questionId === 'context_reason' || 
+  a.questionId?.endsWith('-CONTEXT')
+);
 if (contextAnswer && contextAnswer.answer) {
   // Generiere adaptive Folgefragen basierend auf Kontext
   const additionalQuestions = await generateContextBasedQuestions(
