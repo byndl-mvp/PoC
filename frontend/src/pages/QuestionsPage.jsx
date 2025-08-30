@@ -17,7 +17,8 @@ export default function QuestionsPage() {
   const [tradeCode, setTradeCode] = useState('');
   const [projectTrades, setProjectTrades] = useState([]); // NUR die erkannten Gewerke
   const [currentTradeIndex, setCurrentTradeIndex] = useState(0);
-
+  const [generatingQuestions, setGeneratingQuestions] = useState(false);
+  
   // Skip-Button Funktion
   const handleSkipTrade = async () => {
     if (window.confirm('Möchten Sie die Fragen für dieses Gewerk überspringen?')) {
@@ -184,6 +185,8 @@ const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') |
 
 if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))) {
   try {
+setGeneratingQuestions(true);
+  
     // Generiere adaptive Folgefragen basierend auf Kontext
     const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
       method: 'POST',
@@ -202,9 +205,11 @@ if (current === 0 && isManualTrade && (questions[current].id === 'context_reason
       setAnswerText('');
       setAssumption('');
       return; // Verhindere weitere Navigation
+      setGeneratingQuestions(false);
     }
   } catch (err) {
     console.error('Failed to generate context questions:', err);
+    setGeneratingQuestions(false);
   }
 }    
     if (current + 1 < questions.length) {
@@ -533,7 +538,14 @@ if (current === 0 && isManualTrade && (questions[current].id === 'context_reason
             <p className="text-red-400 text-sm mt-3">* Diese Frage ist erforderlich</p>
           )}
         </div>
-
+        
+// Zeige einen kleinen Ladeindikator in der UI (nicht Vollbild):
+{generatingQuestions && (
+  <div className="text-center py-4">
+    <span>Fragen werden basierend auf Ihrer Antwort generiert...</span>
+  </div>
+)}  
+        
         {/* Navigation mit Skip-Button */}
         <div className="flex justify-between items-center">
           <button
