@@ -528,7 +528,7 @@ async function getProjectTrades(projectId) {
   `SELECT t.* FROM trades t
    JOIN project_trades pt ON pt.trade_id = t.id
    WHERE pt.project_id = $1
-   ORDER BY t.sort_order, t.id`,
+   ORDER BY t.sort_order, t.id`,  // <-- Backtick hier!
   [projectId]
 );
 return result.rows;
