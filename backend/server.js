@@ -2624,48 +2624,68 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
     // Start transaction for data consistency
     await query('BEGIN');
     
-    try {
-      const intTradeResult = await query(`SELECT id FROM trades WHERE code = 'INT'`);
-      const intTradeId = intTradeResult.rows[0]?.id;
-      
-      // Bei zusätzlichen Gewerken: Nicht löschen
-      if (!isAdditional) {
-        // WICHTIG: Reihenfolge beachten - erst abhängige Tabellen löschen
-        
-        // 1. Lösche questions (abhängig von project_trades)
-        await query(
-          `DELETE FROM questions 
-           WHERE project_id = $1 
-           AND trade_id != $2
-           AND trade_id NOT IN (SELECT unnest($3::int[]))`,
-          [projectId, intTradeId || -1, confirmedTrades]
-        );
-        
-        // 2. Lösche answers
-        await query(
-          `DELETE FROM answers 
-           WHERE project_id = $1 
-           AND trade_id != $2 
-           AND trade_id NOT IN (SELECT unnest($3::int[]))`,
-          [projectId, intTradeId || -1, confirmedTrades]
-        );
-        
-        // 3. Lösche lvs falls vorhanden
-        await query(
-          `DELETE FROM lvs 
-           WHERE project_id = $1 
-           AND trade_id NOT IN (SELECT unnest($2::int[]))`,
-          [projectId, confirmedTrades]
-        );
-        
-        // 4. ZULETZT: Lösche project_trades
-        await query(
-          `DELETE FROM project_trades 
-           WHERE project_id = $1 
-           AND trade_id != $2`,
-          [projectId, intTradeId || -1]
-        );
-      }
+   try {
+  const intTradeResult = await query(`SELECT id FROM trades WHERE code = 'INT'`);
+  const intTradeId = intTradeResult.rows[0]?.id;
+  
+  // Bei zusätzlichen Gewerken: Nicht löschen
+  if (!isAdditional) {
+    // CLEANUP: Stelle sicher, dass ALLE abhängigen Daten gelöscht werden
+    const allTradeIds = await query(
+      'SELECT DISTINCT trade_id FROM project_trades WHERE project_id = $1',
+      [projectId]
+    );
+    
+    const existingTradeIds = allTradeIds.rows.map(r => r.trade_id);
+    const toDelete = existingTradeIds.filter(id => 
+      id !== intTradeId && !confirmedTrades.includes(id)
+    );
+    
+    // Lösche für ALLE nicht-bestätigten Trades
+    if (toDelete.length > 0) {
+      await query('DELETE FROM questions WHERE project_id = $1 AND trade_id = ANY($2::int[])', 
+        [projectId, toDelete]);
+      await query('DELETE FROM answers WHERE project_id = $1 AND trade_id = ANY($2::int[])', 
+        [projectId, toDelete]);
+      await query('DELETE FROM lvs WHERE project_id = $1 AND trade_id = ANY($2::int[])', 
+        [projectId, toDelete]);
+    }
+    
+    // DANN die normalen DELETE Statements
+    // 1. Lösche questions (abhängig von project_trades)
+    await query(
+      `DELETE FROM questions 
+       WHERE project_id = $1 
+       AND trade_id != $2
+       AND trade_id NOT IN (SELECT unnest($3::int[]))`,
+      [projectId, intTradeId || -1, confirmedTrades]
+    );
+    
+    // 2. Lösche answers
+    await query(
+      `DELETE FROM answers 
+       WHERE project_id = $1 
+       AND trade_id != $2 
+       AND trade_id NOT IN (SELECT unnest($3::int[]))`,
+      [projectId, intTradeId || -1, confirmedTrades]
+    );
+    
+    // 3. Lösche lvs falls vorhanden
+    await query(
+      `DELETE FROM lvs 
+       WHERE project_id = $1 
+       AND trade_id NOT IN (SELECT unnest($2::int[]))`,
+      [projectId, confirmedTrades]
+    );
+    
+    // 4. ZULETZT: Lösche project_trades
+    await query(
+      `DELETE FROM project_trades 
+       WHERE project_id = $1 
+       AND trade_id != $2`,
+      [projectId, intTradeId || -1]
+    );
+  }
       
       // Füge bestätigte Trades hinzu
       if (isAdditional) {
