@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
+import { useNavigate } from 'react-router-dom';
 
 export default function ResultPage() {
   const { projectId } = useParams();
   const [lvs, setLvs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
   const [costSummary, setCostSummary] = useState(null);
   const [exportMode, setExportMode] = useState('with-prices');
   const [selectedLv, setSelectedLv] = useState(null);
