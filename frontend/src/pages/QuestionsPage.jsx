@@ -18,6 +18,7 @@ export default function QuestionsPage() {
   const [projectTrades, setProjectTrades] = useState([]); // NUR die erkannten Gewerke
   const [currentTradeIndex, setCurrentTradeIndex] = useState(0);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
   
   // Skip-Button Funktion
   const handleSkipTrade = async () => {
@@ -329,8 +330,13 @@ setGeneratingQuestions(true);
         console.log('Navigating to next detected trade:', nextTrade);
         navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
       } else {
-        console.log('All detected trades complete, navigating to results');
-        navigate(`/project/${projectId}/result`);
+        // Finaler Ladebildschirm
+  setFinalizing(true);
+  setTimeout(() => {
+    navigate(`/project/${projectId}/result`);
+  }, 3000);
+}
+      console.log('All detected trades complete, navigating to results');
       }
     } catch (err) {
       console.error('Error generating LV:', err);
@@ -355,7 +361,23 @@ setGeneratingQuestions(true);
       </div>
     );
   }
-  
+if (finalizing) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+      <div className="text-center max-w-lg">
+        <h2 className="text-3xl font-bold text-white mb-6">Fast fertig!</h2>
+        <p className="text-xl text-gray-300 mb-8">
+          Wir stellen Ihre Leistungsverzeichnisse zusammen und erstellen die Gesamtkostenübersicht...
+        </p>
+        <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur">
+          <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full animate-pulse" 
+               style={{ width: '85%' }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
   // Error State
   if (error) {
     return (
