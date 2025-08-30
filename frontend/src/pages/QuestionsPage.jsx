@@ -170,7 +170,6 @@ setProjectTrades(detectedTrades);
     initialize();
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [projectId, tradeId]);
-}, [projectId, tradeId]);
 
 // Neuer useEffect für finalen Ladebalken
 
@@ -353,8 +352,8 @@ setGeneratingQuestions(true);
   setTimeout(() => {
     navigate(`/project/${projectId}/result`);
   }, 3000);
+console.log('All detected trades complete, navigating to results');
 }
-      console.log('All detected trades complete, navigating to results');
       }
     } catch (err) {
       console.error('Error generating LV:', err);
@@ -370,7 +369,7 @@ setGeneratingQuestions(true);
         <div className="text-center">
           <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
             <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
-                 style={{ width: `${loadingProgress}%` }}  // Neu: dynamischer Fortschritt
+                 style={{ width: `${loadingProgress}%` }} />  
           </div>
           <p className="mt-4 text-white">
   {tradeName ? `Fragen für ${tradeName} werden vorbereitet...` : 'Gewerkespezifische Fragen werden vorbereitet...'}
@@ -389,7 +388,7 @@ if (finalizing) {
         </p>
         <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur">
           <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full animate-pulse" 
-               style={{ width: '85%' }} />
+               style={{ width: `${finalProgress}%` }} />  
         </div>
       </div>
     </div>
