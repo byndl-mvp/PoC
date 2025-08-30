@@ -544,10 +544,14 @@ setGeneratingQuestions(true);
         
 {/* Ladeindikator für Kontextfragen */}
 {generatingQuestions && (
-  <div className="text-center py-4">
-    <span>Fragen werden basierend auf Ihrer Antwort generiert...</span>
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent mb-4"></div>
+      <p className="text-white text-xl font-semibold">Analysiere Ihre Antwort...</p>
+      <p className="text-gray-300 mt-2">Erstelle angepasste Fragen für {tradeName}</p>
+    </div>
   </div>
-)}  
+)} 
         
         {/* Navigation mit Skip-Button */}
         <div className="flex justify-between items-center">
