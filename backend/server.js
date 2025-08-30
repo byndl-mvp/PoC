@@ -524,14 +524,14 @@ async function ensureProjectTrade(projectId, tradeId, source = 'unknown') {
  * Alle Trades eines Projekts abrufen
  */
 async function getProjectTrades(projectId) {
-  const result = await query('SELECT * FROM trades ORDER BY sort_order, id');
-    `SELECT t.* FROM trades t
-     JOIN project_trades pt ON pt.trade_id = t.id
-     WHERE pt.project_id = $1
-     ORDER BY t.sort_order, t.id`,
-    [projectId]
-  );
-  return result.rows;
+  const result = await query(
+  `SELECT t.* FROM trades t
+   JOIN project_trades pt ON pt.trade_id = t.id
+   WHERE pt.project_id = $1
+   ORDER BY t.sort_order, t.id`,
+  [projectId]
+);
+return result.rows;
 }
 
 /**
