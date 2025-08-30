@@ -1480,7 +1480,8 @@ WICHTIG:
       maxTokens: 10000,
       temperature: 0.3,
       jsonMode: true 
-    });
+      timeout: 60000
+  });
 
 const cleanedResponse = response
   .replace(/```json\n?/g, '')
@@ -2614,7 +2615,7 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
   try {
     const { projectId } = req.params;
     const { confirmedTrades, manuallyAddedTrades = [], aiRecommendedTrades = [] } = req.body;
-    
+    const { isAdditional } = req.body;
     if (!Array.isArray(confirmedTrades) || confirmedTrades.length === 0) {
       return res.status(400).json({ error: 'Keine Gewerke ausgewählt' });
     }
@@ -2626,14 +2627,17 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
       const intTradeResult = await query(`SELECT id FROM trades WHERE code = 'INT'`);
       const intTradeId = intTradeResult.rows[0]?.id;
 
-      // Lösche Antworten/Fragen/LVs für nicht-bestätigte Trades
-      await query(
-        `DELETE FROM answers 
-         WHERE project_id = $1 
-         AND trade_id != $2
-         AND trade_id NOT IN (SELECT unnest($3::int[]))`,
-        [projectId, intTradeId || -1, confirmedTrades]
-      );
+      // Bei zusätzlichen Gewerken: Nicht löschen
+if (!isAdditional) {
+  // Lösche Antworten/Fragen/LVs für nicht-bestätigte Trades
+  await query(
+    `DELETE FROM answers 
+     WHERE project_id = $1 
+     AND trade_id != $2 
+     AND trade_id NOT IN (SELECT unnest($3::int[]))`,
+    [projectId, intTradeId || -1, confirmedTrades]
+  );
+}
 
       await query(
         `DELETE FROM questions 
