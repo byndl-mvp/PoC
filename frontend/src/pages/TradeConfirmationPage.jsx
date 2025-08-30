@@ -158,6 +158,7 @@ useEffect(() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           confirmedTrades: selectedTrades 
+          isAdditional: isAdditionalTrade
         })
       });
       
