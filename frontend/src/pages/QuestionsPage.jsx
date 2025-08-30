@@ -147,6 +147,9 @@ setProjectTrades(detectedTrades);
         // Initialisiere Antworten-Array
         setAnswers(new Array(validQuestions.length).fill(null));
         setCurrent(0);
+        // FEHLERFIX: Eingabefelder zurücksetzen
+        setAnswerText('');
+        setAssumption('');
         
       } catch (err) {
         console.error('Error in initialization:', err);
