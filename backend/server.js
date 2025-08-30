@@ -627,6 +627,7 @@ KRITISCHE GEWERKE-ABGRENZUNGEN (IMMER EINHALTEN):
    - NIEMALS Fassade (FASS) für Dachrinnen!
    - NIEMALS Rohbau (ROH) für Rückbauarbeiten am Dach!
    - NIEMALS Schlosser/Metallbau (SCHL) für Dachrinnen und Fallrohre!
+   - NIEMALS Fenster/Türen (FEN) für Innentüren! 
 
 2. ABBRUCH-GEWERK (ABBR) - NUR HINZUFÜGEN WENN:
    - Umfangreiche Sanierung mit 3+ anderen Gewerken (Komplettmodernisierung)
@@ -956,7 +957,7 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - Hierarchie: Spezialgewerk > Hauptgewerk > Nebengewerk
    - KRITISCHE ZUORDNUNGEN (IMMER EINHALTEN):
      * Fliesenarbeiten: AUSSCHLIESSLICH Gewerk FLI (Fliesenarbeiten), NIEMALS BOD (Bodenbelagsarbeiten)
-     * Türen/Zargen: AUSSCHLIESSLICH Gewerk TIS (Tischlerarbeiten), NIEMALS TRO (Trockenbau)
+     * Innentüren/Zargen: AUSSCHLIESSLICH Gewerk TIS (Tischlerarbeiten), NIEMALS TRO (Trockenbau) oder FEN (Fenster/Türen)
      * Rigips/Gipskartonwände: AUSSCHLIESSLICH Gewerk TRO (Trockenbau), NIEMALS ROH (Rohbau)
      * Putzqualitäten Q1-Q3: NUR bei Innenputz im Gewerk MAL (Malerarbeiten), NIEMALS bei FASS (Fassade)
      * Fassadenputz: Nur Struktur (Glattputz, Kratzputz, Scheibenputz) und Körnung bei FASS
