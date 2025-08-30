@@ -14,7 +14,21 @@ export default function TradeConfirmationPage() {
   const [error, setError] = useState('');
   const [intakeSummary, setIntakeSummary] = useState(null);
   const [addingTrade, setAddingTrade] = useState(false);
+  const isAdditionalTrade = sessionStorage.getItem('addingAdditionalTrade') === 'true';
+const [existingTradeIds, setExistingTradeIds] = useState([]);
 
+useEffect(() => {
+  if (isAdditionalTrade) {
+    fetch(apiUrl(`/api/projects/${projectId}`))
+      .then(res => res.json())
+      .then(data => {
+        const existing = data.trades?.map(t => t.id) || [];
+        setExistingTradeIds(existing);
+        // Filtere bereits vorhandene Trades aus der Anzeige
+        setDetectedTrades(prev => prev.filter(t => !existing.includes(t.id)));
+      });
+  }
+}, [isAdditionalTrade, projectId]);
   useEffect(() => {
     async function loadData() {
       try {
@@ -161,6 +175,24 @@ export default function TradeConfirmationPage() {
   console.log('Confirmed trades:', confirmedTradesData);
   console.log('Filtering for manual trades...');
   console.log('Manual trades found:', manuallyAddedTrades);
+  // Navigation anpassen für zusätzliche Gewerke
+if (isAdditionalTrade) {
+  const newTrades = confirmedTradesData.filter(t => !existingTradeIds.includes(t.id));
+  if (newTrades.length > 0) {
+    const sortedNew = newTrades.sort((a, b) => a.id - b.id);
+    sessionStorage.removeItem('addingAdditionalTrade');
+    navigate(`/project/${projectId}/trade/${sortedNew[0].id}/questions`);
+    return; // Wichtig: Beende hier
+  }
+}
+
+// Bestehender Code bleibt unverändert
+if (manuallyAddedTrades.length > 0) {
+  sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
+}
+
+const sortedTrades = [...confirmedTradesData].sort((a, b) => a.id - b.id);
+navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
         
   if (manuallyAddedTrades.length > 0) {
     sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
