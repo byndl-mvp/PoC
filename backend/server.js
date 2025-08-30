@@ -1479,7 +1479,7 @@ WICHTIG:
     ], { 
       maxTokens: 10000,
       temperature: 0.3,
-      jsonMode: true 
+      jsonMode: true, 
       timeout: 60000
   });
 
