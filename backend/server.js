@@ -1487,7 +1487,39 @@ const cleanedResponse = response
       .replace(/```\n?/g, '')
       .trim();
     
-    const lv = JSON.parse(cleanedResponse);    
+    // Nach Zeile 1489, vor Zeile 1490:
+try {
+  const lv = JSON.parse(cleanedResponse);
+} catch (parseError) {
+  console.error('[LV] JSON Parse Error at position', parseError.message);
+  console.error('[LV] Response snippet:', cleanedResponse.substring(0, 500));
+  
+  // Versuche robustere Bereinigung
+  let fixedResponse = cleanedResponse
+    .replace(/,\s*}/g, '}')      // Entferne trailing commas vor }
+    .replace(/,\s*]/g, ']')      // Entferne trailing commas vor ]
+    .replace(/}\s*{/g, '},{')   // Füge fehlende Kommas zwischen Objekten ein
+    .replace(/]\s*\[/g, '],['); // Füge fehlende Kommas zwischen Arrays ein
+  
+  try {
+    const lv = JSON.parse(fixedResponse);
+  } catch (secondError) {
+    console.error('[LV] Even fixed response failed:', secondError);
+    // Minimales Fallback-LV zurückgeben
+    const lv = {
+      positions: [{
+        pos: "01.01.001",
+        title: "LV-Generierung fehlgeschlagen",
+        shortText: "Bitte erneut versuchen",
+        quantity: 1,
+        unit: "psch",
+        unitPrice: 0,
+        totalPrice: 0
+      }],
+      totalSum: 0
+    };
+  }
+}   
     
     // Duplikatsprüfung durchführen
 const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
