@@ -524,11 +524,11 @@ async function ensureProjectTrade(projectId, tradeId, source = 'unknown') {
  * Alle Trades eines Projekts abrufen
  */
 async function getProjectTrades(projectId) {
-  const result = await query(
+  const result = await query('SELECT * FROM trades ORDER BY sort_order, id');
     `SELECT t.* FROM trades t
      JOIN project_trades pt ON pt.trade_id = t.id
      WHERE pt.project_id = $1
-     ORDER BY t.name`,
+     ORDER BY t.sort_order, t.id`,
     [projectId]
   );
   return result.rows;
@@ -582,7 +582,7 @@ async function getPromptForTrade(tradeId, type) {
 async function getAvailableTrades() {
   try {
     const result = await query(
-      'SELECT id, code, name FROM trades ORDER BY id'
+      'SELECT id, code, name, sort_order FROM trades ORDER BY sort_order, id'
     );
     return result.rows;
   } catch (err) {
