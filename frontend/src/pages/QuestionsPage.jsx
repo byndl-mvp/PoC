@@ -354,7 +354,6 @@ setGeneratingQuestions(true);
   }, 3000);
 console.log('All detected trades complete, navigating to results');
 }
-      }
     } catch (err) {
       console.error('Error generating LV:', err);
       setError(err.message);
