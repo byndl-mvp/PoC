@@ -19,6 +19,8 @@ export default function QuestionsPage() {
   const [currentTradeIndex, setCurrentTradeIndex] = useState(0);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [finalProgress, setFinalProgress] = useState(70);
   
   // Skip-Button Funktion
   const handleSkipTrade = async () => {
@@ -37,6 +39,7 @@ export default function QuestionsPage() {
     async function initialize() {
       try {
         setLoading(true);
+        setLoadingProgress(10);
         setError('');
         setSubmitting(false);
        
@@ -86,6 +89,7 @@ setProjectTrades(detectedTrades);
             
             setTradeName(currentTrade.name);
             setTradeCode(currentTrade.code);
+            setLoadingProgress(40);
           } else {
             throw new Error('Projekt konnte nicht geladen werden');
           }
@@ -141,6 +145,7 @@ setProjectTrades(detectedTrades);
         }
         
         setQuestions(validQuestions);
+        setLoadingProgress(90);
         
         // Trade-Info aus Response
         if (data.tradeName) setTradeName(data.tradeName);
@@ -157,6 +162,7 @@ setProjectTrades(detectedTrades);
         console.error('Error in initialization:', err);
         setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
       } finally {
+        setLoadingProgress(100);
         setLoading(false);
       }
     }
@@ -164,7 +170,19 @@ setProjectTrades(detectedTrades);
     initialize();
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [projectId, tradeId]);
-  
+}, [projectId, tradeId]);
+
+// Neuer useEffect für finalen Ladebalken
+
+useEffect(() => {
+  if (finalizing) {
+    const interval = setInterval(() => {
+      setFinalProgress(prev => prev < 95 ? prev + 5 : prev);
+    }, 400);
+    return () => clearInterval(interval);
+  }
+}, [finalizing]);
+
   const handleNext = async () => {
     console.log('handleNext called, submitting=', submitting);
     console.log('current=', current, 'questions.length=', questions.length);
@@ -352,7 +370,7 @@ setGeneratingQuestions(true);
         <div className="text-center">
           <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
             <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
-                 style={{ width: '75%' }} />
+                 style={{ width: `${loadingProgress}%` }}  // Neu: dynamischer Fortschritt
           </div>
           <p className="mt-4 text-white">
   {tradeName ? `Fragen für ${tradeName} werden vorbereitet...` : 'Gewerkespezifische Fragen werden vorbereitet...'}
