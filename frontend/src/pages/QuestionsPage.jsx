@@ -204,8 +204,9 @@ setGeneratingQuestions(true);
       setCurrent(1);
       setAnswerText('');
       setAssumption('');
-      return; // Verhindere weitere Navigation
       setGeneratingQuestions(false);
+      return; // Verhindere weitere Navigation
+      
     }
   } catch (err) {
     console.error('Failed to generate context questions:', err);
@@ -347,7 +348,9 @@ setGeneratingQuestions(true);
             <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
                  style={{ width: '75%' }} />
           </div>
-          <p className="mt-4 text-white">Gewerkespezifische Fragen werden vorbereitet...</p>
+          <p className="mt-4 text-white">
+  {tradeName ? `Fragen für ${tradeName} werden vorbereitet...` : 'Gewerkespezifische Fragen werden vorbereitet...'}
+</p>
         </div>
       </div>
     );
@@ -539,7 +542,7 @@ setGeneratingQuestions(true);
           )}
         </div>
         
-// Zeige einen kleinen Ladeindikator in der UI (nicht Vollbild):
+{/* Ladeindikator für Kontextfragen */}
 {generatingQuestions && (
   <div className="text-center py-4">
     <span>Fragen werden basierend auf Ihrer Antwort generiert...</span>
