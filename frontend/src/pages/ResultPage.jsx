@@ -600,6 +600,16 @@ const recalculateTotals = (positions) => {
           </button>
         </div>
 
+      <button
+  onClick={() => {
+    sessionStorage.setItem('addingAdditionalTrade', 'true');
+    navigate(`/project/${projectId}/trades`);
+  }}
+  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+>
+  <span className="text-xl mr-2">+</span> Weiteres Gewerk hinzufügen
+</button>
+        
         {/* Footer Navigation */}
         <div className="mt-16 text-center">
           <Link to="/" className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors">
