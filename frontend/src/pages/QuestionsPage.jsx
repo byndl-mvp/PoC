@@ -184,7 +184,6 @@ const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') |
 
 if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))) {
   try {
-    setLoading(true);
     // Generiere adaptive Folgefragen basierend auf Kontext
     const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
       method: 'POST',
@@ -204,10 +203,8 @@ if (current === 0 && isManualTrade && (questions[current].id === 'context_reason
       setAssumption('');
       return; // Verhindere weitere Navigation
     }
-    setLoading(false);
   } catch (err) {
     console.error('Failed to generate context questions:', err);
-    setLoading(false);
   }
 }    
     if (current + 1 < questions.length) {
@@ -576,8 +573,10 @@ if (current === 0 && isManualTrade && (questions[current].id === 'context_reason
                 Wird gespeichert...
               </span>
             ) : (
-              current + 1 < questions.length ? 'Weiter →' : 'Abschließen & LV generieren'
-            )}
+  (questions.length === 1 && questions[0]?.id === 'context_reason') ? 
+    'Weiter →' : 
+    (current + 1 < questions.length ? 'Weiter →' : 'Abschließen & LV generieren')
+)}
           </button>
         </div>
 
