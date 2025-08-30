@@ -199,7 +199,9 @@ navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
     sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
   }
   
-  const sortedTradesNormal = [...confirmedTradesData].sort((a, b) => a.id - b.id);
+  const sortedTradesNormal = [...confirmedTradesData].sort((a, b) => 
+  (a.sort_order || 999) - (b.sort_order || 999)
+);
 navigate(`/project/${projectId}/trade/${sortedTradesNormal[0].id}/questions`);
 } else {
   navigate(`/project/${projectId}/result`);
