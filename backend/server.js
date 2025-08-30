@@ -42,16 +42,16 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
 
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
-  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 40 },
-  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 40 },
-  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 40 },
-  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 35 },
-  'ROH': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 35 },
+  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 30 },
+  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
+  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
+  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
+  'ROH': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 35 },
   
   // Komplexe Gewerke (20-30 Fragen)
   'TIS': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 30 },
   'FEN': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 30 },
-  'FASS': { complexity: 'HOCH', minQuestions: 20, maxQuestions: 30 },
+  'FASS': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 30 },
   'SCHL': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 28 },
   
   // Mittlere Komplexität (15-25 Fragen)
@@ -1483,43 +1483,39 @@ WICHTIG:
     });
 
 const cleanedResponse = response
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-    
-    // Nach Zeile 1489, vor Zeile 1490:
+  .replace(/```json\n?/g, '')
+  .replace(/```\n?/g, '')
+  .replace(/\/\/.*$/gm, '')  // Entferne einzeilige Kommentare
+  .replace(/\/\*[\s\S]*?\*\//g, '')  // Entferne mehrzeilige Kommentare
+  .replace(/,(\s*[}\]])/g, '$1')  // Entferne trailing commas
+  .trim();
+
+// WICHTIG: Variable im äußeren Scope deklarieren
+let lv;
+
 try {
-  const lv = JSON.parse(cleanedResponse);
+  lv = JSON.parse(cleanedResponse);
 } catch (parseError) {
-  console.error('[LV] JSON Parse Error at position', parseError.message);
-  console.error('[LV] Response snippet:', cleanedResponse.substring(0, 500));
+  console.error('[LV] JSON Parse Error:', parseError.message);
+  console.error('[LV] Invalid response position:', parseError.message.match(/position (\d+)/)?.[1]);
   
-  // Versuche robustere Bereinigung
+  // Aggressivere Bereinigung
   let fixedResponse = cleanedResponse
-    .replace(/,\s*}/g, '}')      // Entferne trailing commas vor }
-    .replace(/,\s*]/g, ']')      // Entferne trailing commas vor ]
-    .replace(/}\s*{/g, '},{')   // Füge fehlende Kommas zwischen Objekten ein
-    .replace(/]\s*\[/g, '],['); // Füge fehlende Kommas zwischen Arrays ein
+    .replace(/,\s*}/g, '}')
+    .replace(/,\s*]/g, ']')
+    .replace(/}\s*{/g, '},{')
+    .replace(/]\s*\[/g, '],[')
+    .replace(/"\s*:\s*undefined/g, '": null')  // undefined zu null
+    .replace(/NaN/g, '0');  // NaN zu 0
   
   try {
-    const lv = JSON.parse(fixedResponse);
+    lv = JSON.parse(fixedResponse);
+    console.log('[LV] Successfully parsed after cleanup');
   } catch (secondError) {
-    console.error('[LV] Even fixed response failed:', secondError);
-    // Minimales Fallback-LV zurückgeben
-    const lv = {
-      positions: [{
-        pos: "01.01.001",
-        title: "LV-Generierung fehlgeschlagen",
-        shortText: "Bitte erneut versuchen",
-        quantity: 1,
-        unit: "psch",
-        unitPrice: 0,
-        totalPrice: 0
-      }],
-      totalSum: 0
-    };
+    console.error('[LV] Cannot parse response:', secondError.message);
+    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - LLM lieferte ungültiges JSON`);
   }
-}   
+}
     
     // Duplikatsprüfung durchführen
 const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
