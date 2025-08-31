@@ -1530,6 +1530,9 @@ const cleanedResponse = response
   .replace(/\/\/.*$/gm, '')  // Entferne einzeilige Kommentare
   .replace(/\/\*[\s\S]*?\*\//g, '')  // Entferne mehrzeilige Kommentare
   .replace(/,(\s*[}\]])/g, '$1')  // Entferne trailing commas
+  .replace(/([}\]])(\s*)([{\[])/g, '$1,$2$3')  // Füge fehlende Kommas zwischen Objekten/Arrays ein
+  .replace(/:\s*'([^']*)'/g, ': "$1"')  // Ersetze single quotes mit double quotes
+  .replace(/:\s*([^",\[\{\s]+)([,}\]])/g, ': "$1"$2')  // Umschließe unquoted values
   .trim();
 
 // WICHTIG: Variable im äußeren Scope deklarieren
@@ -1679,6 +1682,36 @@ if (duplicates.length > 0) {
     console.error('[LV] Generation failed:', err);
     throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen`);
   }
+}
+
+// Retry-Wrapper für LV-Generierung
+async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 3) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[LV] Generation attempt ${attempt}/${maxRetries} for trade ${tradeId}`);
+      
+      const result = await generateDetailedLV(projectId, tradeId);
+      
+      console.log(`[LV] Successfully generated on attempt ${attempt}`);
+      return result;
+      
+    } catch (error) {
+      lastError = error;
+      console.error(`[LV] Attempt ${attempt} failed:`, error.message);
+      
+      if (attempt < maxRetries) {
+        const waitTime = attempt * 1500; // 1.5s, 3s, 4.5s
+        console.log(`[LV] Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+  
+  // Log den letzten Fehler ausführlich
+  console.error('[LV] All attempts failed. Last error:', lastError);
+  throw new Error(`LV-Generierung nach ${maxRetries} Versuchen fehlgeschlagen: ${lastError.message}`);
 }
 
 /**
@@ -3119,7 +3152,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
     }
     
     // Generiere detailliertes LV
-    const lv = await generateDetailedLV(projectId, tradeId);
+    const lv = await generateDetailedLVWithRetry(projectId, tradeId);
     
     // Speichere LV in DB
     await query(
