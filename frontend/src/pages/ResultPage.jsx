@@ -575,43 +575,42 @@ const recalculateTotals = (positions) => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4 justify-center mt-12">
-          <button
-            onClick={() => window.print()}
-            className="px-8 py-4 bg-white/10 backdrop-blur border border-white/30 text-white rounded-lg hover:bg-white/20 transition-all"
-          >
-            🖨 Drucken
-          </button>
-          <button
-            onClick={() => {
-              const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${exportMode === 'with-prices'}`);
-              window.open(url, '_blank');
-            }}
-            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-          >
-            💾 Als PDF speichern
-          </button>
-          <button
-            onClick={() => {
-              const mailtoLink = `mailto:?subject=Leistungsverzeichnis&body=Bitte finden Sie anbei das Leistungsverzeichnis`;
-              window.location.href = mailtoLink;
-            }}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-          >
-            ✉️ Per E-Mail versenden
-          </button>
-        </div>
+<div className="flex flex-wrap gap-4 justify-center mt-12">
+  <button
+    onClick={() => window.print()}
+    className="px-8 py-4 bg-white/10 backdrop-blur border border-white/30 text-white rounded-lg hover:bg-white/20 transition-all"
+  >
+    🖨 Drucken
+  </button>
+  <button
+    onClick={() => {
+      const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${exportMode === 'with-prices'}`);
+      window.open(url, '_blank');
+    }}
+    className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+  >
+    💾 Als PDF speichern
+  </button>
+  <button
+    onClick={() => {
+      const mailtoLink = `mailto:?subject=Leistungsverzeichnis&body=Bitte finden Sie anbei das Leistungsverzeichnis`;
+      window.location.href = mailtoLink;
+    }}
+    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+  >
+    ✉️ Per E-Mail versenden
+  </button>
+  <button
+    onClick={() => {
+      sessionStorage.setItem('addingAdditionalTrade', 'true');
+      navigate(`/project/${projectId}/add-trade?additional=true`);
+    }}
+    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+  >
+    <span className="text-xl mr-2">+</span> Weiteres Gewerk hinzufügen
+  </button>
+</div>
 
-      <button
-  onClick={() => {
-    sessionStorage.setItem('addingAdditionalTrade', 'true');
-    navigate(`/project/${projectId}/add-trade?additional=true`);
-  }}
-  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
->
-  <span className="text-xl mr-2">+</span> Weiteres Gewerk hinzufügen
-</button>
-        
         {/* Footer Navigation */}
         <div className="mt-16 text-center">
           <Link to="/" className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors">
