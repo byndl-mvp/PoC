@@ -605,7 +605,7 @@ const recalculateTotals = (positions) => {
       <button
   onClick={() => {
     sessionStorage.setItem('addingAdditionalTrade', 'true');
-    navigate(`/project/${projectId}/trades`);
+    navigate(`/project/${projectId}/add-trade?additional=true`);
   }}
   className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
 >
