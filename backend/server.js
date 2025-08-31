@@ -2982,30 +2982,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
       return res.status(403).json({ error: 'Trade not assigned to project' });
     }
     
-    // Prüfe ob Kontext-Antwort dabei ist (erste Frage bei manuellen und von KI-empfohlenen Gewerken)
-const contextAnswer = answers.find(a => 
-  a.questionId === 'context_reason' || 
-  a.questionId?.endsWith('-CONTEXT')
-);
-if (contextAnswer && contextAnswer.answer) {
-  // Generiere adaptive Folgefragen basierend auf Kontext
-  const additionalQuestions = await generateContextBasedQuestions(
-    tradeId, 
-    projectId, 
-    contextAnswer.answer
-  );
-  
-  // Speichere zusätzliche Fragen
-  for (const q of additionalQuestions) {
-    await query(
-      `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT DO NOTHING`,
-      [projectId, tradeId, q.id, q.question, q.type, q.required, q.options ? JSON.stringify(q.options) : null]
-    );
-  }
-}    
-    
     // Speichere Antworten mit Annahmen
     const savedAnswers = [];
     for (const answer of answers) {
@@ -3123,34 +3099,6 @@ Erstelle detaillierte Folgefragen für diese spezifischen Arbeiten.`;
     
   } catch (err) {
     console.error('Context questions generation failed:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Generate questions based on context answer
-app.post('/api/projects/:projectId/trades/:tradeId/questions-from-context', async (req, res) => {
-  try {
-    const { projectId, tradeId } = req.params;
-    const { contextAnswer } = req.body;
-    
-    // Generiere Fragen basierend auf der Kontextantwort
-    const questions = await generateQuestionsFromContext(tradeId, projectId, contextAnswer);
-    
-    // Speichere die Fragen
-    for (const q of questions) {
-      await query(
-        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (project_id, trade_id, question_id)
-         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
-        [projectId, tradeId, q.id, q.question, q.type, q.required, JSON.stringify(q.options)]
-      );
-    }
-    
-    res.json(questions);
-    
-  } catch (err) {
-    console.error('Error generating context-based questions:', err);
     res.status(500).json({ error: err.message });
   }
 });
