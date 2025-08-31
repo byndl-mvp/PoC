@@ -60,15 +60,16 @@ export default function QuestionsPage() {
             let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
 
             // Manuell hinzugefügte Trades aus sessionStorage ergänzen
-const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
+const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
+  .map(id => parseInt(id));
 if (manuallyAddedTradeIds.length > 0) {
   // Hole die vollständigen Trade-Informationen vom Backend
   const tradesResponse = await fetch(apiUrl('/api/trades'));
   const allTrades = await tradesResponse.json();
   
   for (const manualId of manuallyAddedTradeIds) {
-    if (!detectedTrades.find(t => t.id === manualId)) {
-      const fullTradeInfo = allTrades.find(t => t.id === manualId);
+    if (!detectedTrades.find(t => t.id === parseInt(manualId))) {
+      const fullTradeInfo = allTrades.find(t => t.id === parseInt(manualId));
       if (fullTradeInfo) {
         detectedTrades.push(fullTradeInfo);
       }
@@ -80,11 +81,11 @@ console.log('Detected trades for this project:', detectedTrades);
 setProjectTrades(detectedTrades);
             
             // Finde den Index des aktuellen Gewerks
-            const currentIdx = detectedTrades.findIndex(t => String(t.id) === String(tradeId));
+            const currentIdx = detectedTrades.findIndex(t => t.id === parseInt(tradeId));
             setCurrentTradeIndex(currentIdx);
             
             // Prüfe ob das aktuelle Trade-ID überhaupt zu diesem Projekt gehört
-            const currentTrade = detectedTrades.find(t => String(t.id) === String(tradeId));
+            const currentTrade = detectedTrades.find(t => t.id === parseInt(tradeId));
             if (!currentTrade) {
               throw new Error(`Gewerk ${tradeId} gehört nicht zu diesem Projekt`);
             }
