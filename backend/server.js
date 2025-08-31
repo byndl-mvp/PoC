@@ -1695,6 +1695,7 @@ async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 3) {
       const result = await generateDetailedLV(projectId, tradeId);
       
       console.log(`[LV] Successfully generated on attempt ${attempt}`);
+      console.log(`[LV] Generated for trade ${tradeId}: ${result.positions?.length || 0} positions, Total: €${result.totalSum || 0}`);
       return result;
       
     } catch (error) {
