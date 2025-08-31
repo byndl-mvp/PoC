@@ -11,8 +11,9 @@ export default function AdditionalTradeSelectionPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadAvailableTrades();
-  }, [projectId]);
+  loadAvailableTrades();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [projectId]);
 
   async function loadAvailableTrades() {
     try {
