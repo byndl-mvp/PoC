@@ -391,6 +391,18 @@ setGeneratingQuestions(true);
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
+
+// NEUE PRÜFUNG HIER:
+    const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
+    
+    if (isAdditionalTrade) {
+      // Bei zusätzlichem Gewerk direkt zu Results
+      setFinalizing(true);
+      setTimeout(() => {
+        navigate(`/project/${projectId}/result`);
+      }, 3000);
+      return; // Wichtig: Funktion hier beenden!
+    }
       
       if (!lvRes.ok) {
         const data = await lvRes.json().catch(() => ({}));
