@@ -2788,6 +2788,37 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
   }
 });
 
+// Add single trade to project (for additional trades)
+app.post('/api/projects/:projectId/trades/add-single', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { tradeId, isAdditional } = req.body;
+    
+    // Prüfe ob Trade bereits existiert
+    const existing = await query(
+      'SELECT * FROM project_trades WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Gewerk bereits vorhanden' });
+    }
+    
+    // Füge Trade hinzu mit additional flag
+    await query(
+      `INSERT INTO project_trades (project_id, trade_id, is_manual, is_additional)
+       VALUES ($1, $2, $3, $4)`,
+      [projectId, tradeId, true, isAdditional || false]
+    );
+    
+    res.json({ success: true });
+    
+  } catch (err) {
+    console.error('Error adding single trade:', err);
+    res.status(500).json({ error: 'Fehler beim Hinzufügen des Gewerks' });
+  }
+});
+
 // Generate adaptive questions for a specific trade
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
@@ -3092,6 +3123,34 @@ Erstelle detaillierte Folgefragen für diese spezifischen Arbeiten.`;
     
   } catch (err) {
     console.error('Context questions generation failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate questions based on context answer
+app.post('/api/projects/:projectId/trades/:tradeId/questions-from-context', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { contextAnswer } = req.body;
+    
+    // Generiere Fragen basierend auf der Kontextantwort
+    const questions = await generateQuestionsFromContext(tradeId, projectId, contextAnswer);
+    
+    // Speichere die Fragen
+    for (const q of questions) {
+      await query(
+        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (project_id, trade_id, question_id)
+         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
+        [projectId, tradeId, q.id, q.question, q.type, q.required, JSON.stringify(q.options)]
+      );
+    }
+    
+    res.json(questions);
+    
+  } catch (err) {
+    console.error('Error generating context-based questions:', err);
     res.status(500).json({ error: err.message });
   }
 });
