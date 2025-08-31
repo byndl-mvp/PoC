@@ -3598,10 +3598,10 @@ app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
         ? JSON.parse(row.content) 
         : row.content;
       
-      const tradeCost = lv.totalSum || 
-        (lv.positions || []).reduce((sum, pos) => 
-          sum + (pos.totalPrice || 0), 0
-        );
+      const tradeCost = parseFloat(lv.totalSum) || 
+  (lv.positions || []).reduce((sum, pos) => 
+    sum + (parseFloat(pos.totalPrice) || 0), 0
+  );
       
       // Zähle Datenqualität
       if (lv.positions) {
@@ -3613,15 +3613,15 @@ app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
       }
       
       summary.trades.push({
-        name: row.trade_name,
-        code: row.trade_code,
-        cost: tradeCost,
-        hasPrice: tradeCost > 0,
-        positionCount: lv.positions?.length || 0,
-        confidence: lv.dataQuality?.confidence || 0.5
-      });
-      
-      summary.totalCost += tradeCost;
+  name: row.trade_name,
+  code: row.trade_code,
+  cost: parseFloat(tradeCost) || 0,
+  hasPrice: tradeCost > 0,
+  positionCount: lv.positions?.length || 0,
+  confidence: lv.dataQuality?.confidence || 0.5
+});
+
+summary.totalCost = summary.totalCost + (parseFloat(tradeCost) || 0);
       
       if (tradeCost === 0) {
         summary.pricesComplete = false;
