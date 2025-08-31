@@ -3246,6 +3246,49 @@ app.get('/api/projects/:projectId/lvs', async (req, res) => {
   }
 });
 
+// Update LV positions (für Edit und Delete)
+app.post('/api/projects/:projectId/trades/:tradeId/lv/update', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { positions, totalSum } = req.body;
+    
+    // Hole existierendes LV
+    const existing = await query(
+      'SELECT content FROM lvs WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+    
+    const existingContent = typeof existing.rows[0].content === 'string' 
+      ? JSON.parse(existing.rows[0].content) 
+      : existing.rows[0].content;
+    
+    // Update mit neuen Daten
+    const updatedContent = {
+      ...existingContent,
+      positions: positions,
+      totalSum: totalSum || positions.reduce((sum, pos) => 
+        sum + (parseFloat(pos.totalPrice) || 0), 0
+      )
+    };
+    
+    // Speichere in DB
+    await query(
+      'UPDATE lvs SET content = $1, updated_at = NOW() WHERE project_id = $2 AND trade_id = $3',
+      [JSON.stringify(updatedContent), projectId, tradeId]
+    );
+    
+    res.json({ ok: true });
+    
+  } catch (err) {
+    console.error('Update LV failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Export LV with or without prices
 app.get('/api/projects/:projectId/trades/:tradeId/lv/export', async (req, res) => {
   try {
