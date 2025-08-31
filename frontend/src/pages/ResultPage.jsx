@@ -86,8 +86,8 @@ const safeToFixed = (value) => {
     const updatedPositions = [...lv.content.positions];
     updatedPositions[posIndex] = updatedPosition;
     
-    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv`), {
-  method: 'PUT',
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+  method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ 
     positions: updatedPositions,
@@ -135,8 +135,8 @@ newLvs[lvIndex].content.totalSum = remainingPositions.reduce((sum, pos) =>
 );
 
 // Backend-LV aktualisieren
-await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv`), {
-  method: 'PUT',
+await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+  method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ 
     positions: remainingPositions,
