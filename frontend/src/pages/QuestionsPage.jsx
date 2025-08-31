@@ -45,7 +45,7 @@ export default function QuestionsPage() {
        
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
         // Prüfe ob es ein zusätzliches Gewerk ist
-        const isAdditionalTrade = new URLSearchParams(location.search).get('additional') === 'true';
+        const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
         
         // 1. Lade Projektdetails und ERKANNTE Gewerke
         try {
@@ -219,7 +219,7 @@ useEffect(() => {
     setAnswers(newAnswers);
 
 // NEUE LOGIK: Prüfe ob es ein zusätzliches Gewerk ist
-const isAdditionalTrade = new URLSearchParams(location.search).get('additional') === 'true';
+const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
 
 if (current === 0 && isAdditionalTrade && questions[current].id === 'context_reason') {
   try {
