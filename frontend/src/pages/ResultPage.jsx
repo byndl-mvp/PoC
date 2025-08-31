@@ -122,8 +122,13 @@ const safeToFixed = (value) => {
     
     if (res.ok) {
       const newLvs = [...lvs];
-      newLvs[lvIndex].content.positions.splice(posIndex, 1);
-      newLvs[lvIndex].content.totalSum = recalculateTotals(newLvs[lvIndex].content.positions);
+      const remainingPositions = [...lv.content.positions];
+remainingPositions.splice(posIndex, 1);
+newLvs[lvIndex].content.positions = remainingPositions;
+newLvs[lvIndex].content.totalSum = remainingPositions.reduce((sum, pos) => 
+  sum + (parseFloat(pos.totalPrice) || 0), 0
+);
+      
       setLvs(newLvs);
 
       // FIX: Kostenzusammenfassung neu laden
