@@ -44,6 +44,8 @@ export default function QuestionsPage() {
         setSubmitting(false);
        
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
+        // Prüfe ob es ein zusätzliches Gewerk ist
+        const isAdditionalTrade = new URLSearchParams(location.search).get('additional') === 'true';
         
         // 1. Lade Projektdetails und ERKANNTE Gewerke
         try {
@@ -90,6 +92,25 @@ setProjectTrades(detectedTrades);
             setTradeName(currentTrade.name);
             setTradeCode(currentTrade.code);
             setLoadingProgress(40);
+            // HIER KOMMT DER NEUE BLOCK REIN (nach Zeile 88):
+if (isAdditionalTrade) {
+  // Bei zusätzlichen Gewerken: Nur Kontextfrage generieren
+  const contextQuestion = {
+    id: 'context_reason',
+    question: `Sie haben ${tradeName} nachträglich hinzugefügt. Was genau soll in diesem Gewerk gemacht werden?`,
+    type: 'text',
+    required: true,
+    category: 'Projektkontext'
+  };
+  
+  setQuestions([contextQuestion]);
+  setAnswers([null]);
+  setCurrent(0);
+  setLoading(false);
+  setLoadingProgress(100);
+  return; // Beende hier, keine weiteren Fragen laden
+}
+            
           } else {
             throw new Error('Projekt konnte nicht geladen werden');
           }
@@ -197,6 +218,42 @@ useEffect(() => {
     };
     setAnswers(newAnswers);
 
+// NEUE LOGIK: Prüfe ob es ein zusätzliches Gewerk ist
+const isAdditionalTrade = new URLSearchParams(location.search).get('additional') === 'true';
+
+if (current === 0 && isAdditionalTrade && questions[current].id === 'context_reason') {
+  try {
+    setGeneratingQuestions(true);
+    
+    // Generiere spezifische Fragen basierend auf Kontextantwort
+    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-from-context`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contextAnswer: answerText,
+        isAdditional: true
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Ersetze Kontextfrage mit spezifischen Fragen
+      setQuestions(data.questions || data);
+      setAnswers(new Array(data.questions?.length || data.length).fill(null));
+      setCurrent(0);
+      setAnswerText('');
+      setAssumption('');
+      setGeneratingQuestions(false);
+      return; // Verhindere weitere Navigation
+    }
+  } catch (err) {
+    console.error('Failed to generate context-based questions:', err);
+    setGeneratingQuestions(false);
+    setError('Fehler beim Generieren der Folgefragen');
+  }
+}    
+    
     // NEUE LOGIK: Bei erster Frage eines manuellen Gewerks
 const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
   .includes(parseInt(tradeId));
