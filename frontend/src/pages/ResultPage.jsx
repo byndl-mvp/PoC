@@ -184,15 +184,21 @@ const recalculateTotals = (positions) => {
 };
   
   const calculateTotal = (lv) => {
-    if (!lv.content || !lv.content.positions) return 0;
-    return lv.content.positions.reduce((sum, pos) => {
-      if (pos.totalPrice) return sum + pos.totalPrice;
-      if (pos.quantity && pos.unitPrice) {
-        return sum + (pos.quantity * pos.unitPrice);
-      }
-      return sum;
-    }, 0);
-  };
+  // Zuerst prüfen ob totalSum vorhanden ist
+  if (lv.content?.totalSum) {
+    return parseFloat(lv.content.totalSum) || 0;
+  }
+  
+  // Fallback: Positionen summieren
+  if (!lv.content || !lv.content.positions) return 0;
+  return lv.content.positions.reduce((sum, pos) => {
+    if (pos.totalPrice) return sum + parseFloat(pos.totalPrice) || 0;
+    if (pos.quantity && pos.unitPrice) {
+      return sum + (parseFloat(pos.quantity) * parseFloat(pos.unitPrice)) || 0;
+    }
+    return sum;
+  }, 0);
+};
 
   const handleExportPDF = async (tradeId, withPrices = true) => {
     try {
