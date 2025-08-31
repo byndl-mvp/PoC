@@ -227,7 +227,7 @@ if (current === 0 && isAdditionalTrade && questions[current].id === 'context_rea
     setGeneratingQuestions(true);
     
     // Generiere spezifische Fragen basierend auf Kontextantwort
-    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-from-context`), {
+    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
