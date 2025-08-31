@@ -1122,8 +1122,48 @@ const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) 
 }));
     
     console.log(`[QUESTIONS] Successfully generated ${processedQuestions.length} questions for ${tradeName}`);
+
+    // FILTER: Entferne Duplikate von bereits beantworteten Fragen
+let filteredQuestions = processedQuestions;
+
+if (answeredQuestions && answeredQuestions.length > 0) {
+  const answeredTexts = answeredQuestions.map(q => 
+    q.question.toLowerCase()
+      .replace(/[?.,!:]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+  
+  filteredQuestions = processedQuestions.filter(newQ => {
+    const newText = (newQ.question || '')
+      .toLowerCase()
+      .replace(/[?.,!:]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     
-    return processedQuestions;
+    // Prüfe auf Duplikate
+    const isDuplicate = answeredTexts.some(answered => {
+      if (answered === newText) return true;
+      
+      const answeredWords = answered.split(' ');
+      const newWords = newText.split(' ');
+      const commonWords = newWords.filter(w => answeredWords.includes(w));
+      const similarity = commonWords.length / Math.max(newWords.length, answeredWords.length);
+      
+      return similarity > 0.8;
+    });
+    
+    if (isDuplicate) {
+      console.log(`[QUESTIONS] Filtered duplicate: "${newQ.question}"`);
+    }
+    
+    return !isDuplicate;
+  });
+  
+  console.log(`[QUESTIONS] Filtered ${processedQuestions.length - filteredQuestions.length} duplicate questions`);
+}
+
+return filteredQuestions;    
     
   } catch (err) {
     console.error('[QUESTIONS] Generation failed:', err);
