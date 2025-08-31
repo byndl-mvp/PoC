@@ -87,10 +87,15 @@ const safeToFixed = (value) => {
     updatedPositions[posIndex] = updatedPosition;
     
     const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv`), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ positions: updatedPositions })
-    });
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    positions: updatedPositions,
+    totalSum: updatedPositions.reduce((sum, pos) => 
+      sum + (parseFloat(pos.totalPrice) || 0), 0
+    )
+  })
+});
     
     if (res.ok) {
       const newLvs = [...lvs];
@@ -128,7 +133,16 @@ newLvs[lvIndex].content.positions = remainingPositions;
 newLvs[lvIndex].content.totalSum = remainingPositions.reduce((sum, pos) => 
   sum + (parseFloat(pos.totalPrice) || 0), 0
 );
-      
+
+// Backend-LV aktualisieren
+await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv`), {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    positions: remainingPositions,
+    totalSum: remainingPositions.reduce((sum, pos) => sum + (parseFloat(pos.totalPrice) || 0), 0)
+  })
+});      
       setLvs(newLvs);
 
       // FIX: Kostenzusammenfassung neu laden
