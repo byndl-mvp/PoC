@@ -22,7 +22,14 @@ export default function ResultPage() {
     unit: 'Stk',
     unitPrice: 0
   });
-
+  
+// Helper für sichere Zahlenformatierung
+const safeToFixed = (value) => {
+  if (value === null || value === undefined) return '0.00';
+  const num = typeof value === 'number' ? value : parseFloat(value) || 0;
+  return num.toFixed(2);
+};  
+  
   useEffect(() => {
     async function fetchData() {
       try {
@@ -326,7 +333,7 @@ const recalculateTotals = (positions) => {
                       {lv.content?.positions?.length || 0} Positionen
                     </span>
                     <span className="text-2xl font-bold text-teal-400">
-                      {calculateTotal(lv).toFixed(2)} €
+                      {safeToFixed(calculateTotal(lv))} €
                     </span>
                   </div>
                 </div>
@@ -380,7 +387,7 @@ const recalculateTotals = (positions) => {
                                     onChange={(e) => handleEditPosition(idx, pidx, 'quantity', e.target.value)}
                                   />
                                 ) : (
-                                  pos.quantity?.toFixed(2) || '-'
+                                  pos.quantity ? safeToFixed(pos.quantity) : '-'
                                 )}
                               </td>
                               <td className="p-3">{pos.unit || '-'}</td>
@@ -393,11 +400,11 @@ const recalculateTotals = (positions) => {
                                     onChange={(e) => handleEditPosition(idx, pidx, 'unitPrice', e.target.value)}
                                   />
                                 ) : (
-                                  pos.unitPrice ? pos.unitPrice.toFixed(2) : '-'
+                                  pos.unitPrice ? safeToFixed(pos.unitPrice) : '-'
                                 )}
                               </td>
                               <td className="text-right p-3 font-medium text-teal-400">
-                                {pos.totalPrice ? pos.totalPrice.toFixed(2) : '-'}
+                                {pos.totalPrice ? safeToFixed(pos.totalPrice) : '-'}
                               </td>
                               <td className="p-3 text-center">
                                 {editingPosition === `${idx}-${pidx}` ? (
@@ -538,7 +545,7 @@ const recalculateTotals = (positions) => {
               <div key={idx} className="flex justify-between text-white">
                 <span className="text-gray-300">{trade.name}</span>
                 <span className={trade.hasPrice ? 'font-medium' : 'text-gray-500'}>
-                  {trade.cost.toFixed(2)} €
+                  {safeToFixed(trade.cost)} €
                 </span>
               </div>
             ))}
@@ -546,27 +553,27 @@ const recalculateTotals = (positions) => {
             <div className="border-t border-white/20 pt-4 mt-4 space-y-2">
               <div className="flex justify-between text-xl font-semibold text-white">
                 <span>Netto-Summe:</span>
-                <span>{total.toFixed(2)} €</span>
+                <span>{safeToFixed(total)} €</span>
               </div>
               
               {costSummary?.additionalCosts && (
                 <>
                   <div className="flex justify-between text-gray-300">
                     <span>Planungskosten (10%):</span>
-                    <span>{costSummary.additionalCosts.planningCosts?.toFixed(2) || '0.00'} €</span>
+                    <span>{safeToFixed(costSummary.additionalCosts.planningCosts)} €</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>Unvorhergesehenes (5%):</span>
-                    <span>{costSummary.additionalCosts.contingency?.toFixed(2) || '0.00'} €</span>
+                    <span>{safeToFixed(costSummary.additionalCosts.contingency)} €</span>
                   </div>
                   <div className="flex justify-between text-gray-300">
                     <span>MwSt. (19%):</span>
-                    <span>{costSummary.additionalCosts.vat?.toFixed(2) || '0.00'} €</span>
+                    <span>{safeToFixed(costSummary.additionalCosts.vat)} €</span>
                   </div>
                   
                   <div className="flex justify-between text-2xl font-bold text-teal-400 border-t border-white/20 pt-4 mt-4">
                     <span>Gesamtsumme:</span>
-                    <span>{costSummary.grandTotal?.toFixed(2) || total.toFixed(2)} €</span>
+                    <span>{safeToFixed(costSummary.grandTotal || total)} €</span>
                   </div>
                 </>
               )}
