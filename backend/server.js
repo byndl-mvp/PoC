@@ -1796,7 +1796,7 @@ function generateCompleteLVPDF(project, lvs, withPrices = true) {
       // Berechne Summen für Übersicht
       for (const row of lvs) {
         const lv = typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
-        const tradeTotal = lv.totalSum || 0;
+        const tradeTotal = parseFloat(lv.totalSum) || 0;
         grandTotal += tradeTotal;
         tradeSummaries.push({
           code: row.trade_code,
@@ -1910,7 +1910,7 @@ function generateCompleteLVPDF(project, lvs, withPrices = true) {
             if (withPrices && pos.unitPrice) {
               doc.text(formatCurrency(pos.unitPrice), col5, yPosition, { width: 70, align: 'right' });
               doc.text(formatCurrency(pos.totalPrice || 0), col6, yPosition, { width: 70, align: 'right' });
-              tradeSum += pos.totalPrice || 0; // FIX: Berechnung der Gewerk-Summe
+              tradeSum += parseFloat(pos.totalPrice) || 0; // FIX: Berechnung der Gewerk-Summe
             } else {
               doc.text('________', col5, yPosition, { width: 70, align: 'right' });
               doc.text('________', col6, yPosition, { width: 70, align: 'right' });
@@ -2219,7 +2219,7 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
           
           if (withPrices && pos.totalPrice) {
             doc.text(formatCurrency(pos.totalPrice), col6, yPosition, { width: 70, align: 'right' });
-            totalSum += pos.totalPrice;
+            totalSum += parseFloat(pos.totalPrice) || 0;
           } else {
             doc.text('________', col6, yPosition, { width: 70, align: 'right' });
           }
