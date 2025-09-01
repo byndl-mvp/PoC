@@ -3856,6 +3856,81 @@ summary.totalCost = summary.totalCost + (parseFloat(tradeCost) || 0);
   }
 });
 
+// Budget-Optimierung generieren
+app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { currentTotal, targetBudget, lvBreakdown } = req.body;
+    
+    const overspend = currentTotal - targetBudget;
+    const percentOver = ((overspend / targetBudget) * 100).toFixed(1);
+    
+    const systemPrompt = `Du bist ein Baukostenoptimierer mit 20 Jahren Erfahrung.
+Analysiere die Kostenüberschreitung und schlage REALISTISCHE Einsparmöglichkeiten vor.
+
+WICHTIGE REGELN:
+1. SICHERHEIT GEHT VOR: Keine Einsparungen bei Statik, Elektrik, Sanitär-Grundinstallation
+2. EIGENLEISTUNG nur bei: Malerarbeiten, Bodenbeläge verlegen, Tapezieren, einfache Demontage
+3. NIEMALS Eigenleistung bei: Gerüstbau, Dach, Elektrik, Heizung, Gas, Statik
+4. Priorisiere: Materialqualität reduzieren > Leistung verschieben > Eigenleistung
+
+OUTPUT als JSON:
+{
+  "optimizations": [
+    {
+      "trade": "Gewerk-Code",
+      "tradeName": "Gewerk-Name",
+      "measure": "Konkrete Maßnahme",
+      "savingAmount": 2500,
+      "savingPercent": 15,
+      "difficulty": "einfach|mittel|schwer",
+      "type": "material|eigenleistung|verschiebung|reduzierung",
+      "impact": "Auswirkung auf Qualität/Funktion"
+    }
+  ],
+  "totalPossibleSaving": 12500,
+  "recommendedSavings": [Array der empfohlenen Maßnahmen-IDs],
+  "summary": "Zusammenfassung der Empfehlung"
+}`;
+
+    const userPrompt = `Budget: ${formatCurrency(targetBudget)}
+Aktuelle Kosten: ${formatCurrency(currentTotal)}
+Überschreitung: ${formatCurrency(overspend)} (${percentOver}%)
+
+GEWERKE-AUFSTELLUNG:
+${lvBreakdown.map(lv => `${lv.tradeCode} - ${lv.tradeName}: ${formatCurrency(lv.total)}`).join('\n')}
+
+Erstelle konkrete, umsetzbare Einsparvorschläge um das Budget einzuhalten.
+Fokussiere auf die teuersten Gewerke und sichere Einsparmöglichkeiten.`;
+
+    const response = await llmWithPolicy('optimization', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { 
+      maxTokens: 2000,
+      temperature: 0.3,
+      jsonMode: true
+    });
+
+    const optimizations = JSON.parse(response);
+    
+    // Speichere Optimierungsvorschläge
+    await query(
+      `INSERT INTO project_optimizations (project_id, suggestions, created_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (project_id) 
+       DO UPDATE SET suggestions = $2, created_at = NOW()`,
+      [projectId, JSON.stringify(optimizations)]
+    );
+    
+    res.json(optimizations);
+    
+  } catch (err) {
+    console.error('Optimization generation failed:', err);
+    res.status(500).json({ error: 'Fehler bei der Optimierung' });
+  }
+});
+
 // ===========================================================================
 // ADMIN ROUTES
 // ===========================================================================
