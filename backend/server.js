@@ -3785,6 +3785,7 @@ app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
     const summary = {
       trades: [],
       totalCost: 0,
+      budget: project.budget,  // DIESE ZEILE HINZUFÜGEN
       pricesComplete: true,
       dataQuality: {
         measured: 0,
