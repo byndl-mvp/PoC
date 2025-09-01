@@ -248,6 +248,18 @@ const loadOptimizations = async () => {
         }))
       })
     });
+    
+    if (response.ok) {
+      const data = await response.json();
+      setOptimizations(data);
+      setShowOptimizations(true);
+    }
+  } catch (err) {
+    console.error('Failed to load optimizations:', err);
+  } finally {
+    setLoadingOptimizations(false);
+  }
+};
 
 // Budget-Komponenten
   const BudgetSuccess = ({ totalSum, budget }) => (
