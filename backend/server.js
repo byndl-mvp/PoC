@@ -1434,12 +1434,23 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    2. Abbruch vor Neubau
    3. Rohbau vor Ausbau
    4. Hauptleistung vor Nebenleistung
-
-
+   
+7. VOB-KONFORME VORBEMERKUNGEN:
+   - Erstelle aus den Intake-Daten technische Vorbemerkungen
+   - Diese müssen VOR den Positionen stehen
+   - Inhalt: Baustellenlogistik, Gebäudedaten, Arbeitszeiten, besondere Bedingungen
+   - Format: Array von Strings im "vorbemerkungen" Feld
+   
 OUTPUT FORMAT (NUR valides JSON):
 {
   "trade": "${trade.name}",
   "tradeCode": "${trade.code}",
+  "vorbemerkungen": [
+    "Gebäudedaten und Baustellensituation aus Projekterfassung",
+    "Zufahrt und Lagerungsmöglichkeiten",
+    "Verfügbare Anschlüsse",
+    "Arbeitszeiten und Einschränkungen"
+  ],
   "projectType": "string",
   "dataQuality": {
     "measuredValues": 15,
@@ -1520,6 +1531,7 @@ PROJEKTDATEN:
 ${JSON.stringify(project, null, 2)}
 
 INTAKE-ANTWORTEN (${intakeAnswers.length} Antworten):
+WICHTIG: Diese Intake-Daten müssen als Vorbemerkungen im LV erscheinen!
 ${intakeAnswers.map(a => 
   `[${a.question_id}] ${a.question}
   Antwort: ${a.answer}${a.assumption ? `\n  Annahme: ${a.assumption}` : ''}`
@@ -1675,6 +1687,30 @@ if (duplicates.length > 0) {
       calculatedSum += stundenlohnPos.totalPrice;
       
       lv.totalSum = Math.round(calculatedSum * 100) / 100;
+
+      // Vorbemerkungen aus Intake-Daten generieren falls nicht vorhanden
+      if (!lv.vorbemerkungen || lv.vorbemerkungen.length === 0) {
+        lv.vorbemerkungen = [];
+        
+        // Extrahiere relevante Intake-Infos
+        const gebäudeInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('gebäude'));
+        const zufahrtInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('zufahrt') || a.question.toLowerCase().includes('zugang'));
+        const zeitInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('zeit') || a.question.toLowerCase().includes('termin'));
+        
+        if (gebäudeInfo) {
+          lv.vorbemerkungen.push(`Gebäude: ${gebäudeInfo.answer}`);
+        }
+        if (zufahrtInfo) {
+          lv.vorbemerkungen.push(`Baustellenzugang: ${zufahrtInfo.answer}`);
+        }
+        if (zeitInfo) {
+          lv.vorbemerkungen.push(`Ausführungszeitraum: ${zeitInfo.answer}`);
+        }
+        
+        // Standard-Vorbemerkungen
+        lv.vorbemerkungen.push('Alle Preise verstehen sich inklusive aller Nebenleistungen gemäß VOB/C');
+        lv.vorbemerkungen.push('Baustrom und Bauwasser werden bauseits gestellt');
+      }
       
       // Statistiken
       lv.statistics = {
@@ -1695,6 +1731,8 @@ if (duplicates.length > 0) {
         generatedAt: new Date().toISOString(),
         projectId,
         tradeId,
+        hasVorbemerkungen: lv.vorbemerkungen && lv.vorbemerkungen.length > 0,
+        vorbemerkungCount: lv.vorbemerkungen?.length || 0,
         intakeAnswersCount: intakeAnswers.length,
         tradeAnswersCount: tradeAnswers.length,
         positionsCount: lv.positions?.length || 0,
@@ -1806,6 +1844,41 @@ function generateCompleteLVPDF(project, lvs, withPrices = true) {
            month: 'long',
            day: 'numeric'
          }));
+
+      // Globale Projekt-Vorbemerkungen aus Intake-Daten
+// Lade Intake-Antworten für Vorbemerkungen
+const intakeData = [];
+for (const row of lvs) {
+  const lv = typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
+  if (lv.vorbemerkungen && lv.vorbemerkungen.length > 0) {
+    // Sammle alle Vorbemerkungen aus den LVs (die aus Intake-Daten generiert wurden)
+    intakeData.push(...lv.vorbemerkungen.filter(v => 
+      v.includes('Gebäude') || 
+      v.includes('Zufahrt') || 
+      v.includes('Arbeitszeit') || 
+      v.includes('Baustrom') || 
+      v.includes('Bauwasser')
+    ));
+  }
+}
+
+// Entferne Duplikate
+const uniqueVorbemerkungen = [...new Set(intakeData)];
+
+if (uniqueVorbemerkungen.length > 0) {
+  doc.moveDown(2);
+  doc.fontSize(12)
+     .font('Helvetica-Bold')
+     .text('ALLGEMEINE VORBEMERKUNGEN:', { underline: true });
+
+  doc.moveDown(0.5);
+  doc.fontSize(10)
+     .font('Helvetica');
+
+  uniqueVorbemerkungen.forEach(vorbemerkung => {
+    doc.text(`• ${vorbemerkung}`, { indent: 20 });
+  });
+}
       
       // Inhaltsverzeichnis
       doc.moveDown(2);
@@ -1864,6 +1937,27 @@ const tradeTotal = lv.positions && lv.positions.length > 0
            .text(`GEWERK: ${row.trade_code} - ${row.trade_name}`, { align: 'center' });
         
         doc.moveDown(1);
+
+        // Vorbemerkungen für dieses Gewerk
+if (lv.vorbemerkungen && lv.vorbemerkungen.length > 0) {
+  doc.fontSize(11)
+     .font('Helvetica-Bold')
+     .text('VORBEMERKUNGEN:', { underline: true });
+  
+  doc.moveDown(0.3);
+  doc.fontSize(9)
+     .font('Helvetica');
+  
+  lv.vorbemerkungen.forEach((vorbemerkung, index) => {
+    doc.text(`${index + 1}. ${vorbemerkung}`, {
+      indent: 20,
+      width: 480
+    });
+    doc.moveDown(0.2);
+  });
+  
+  doc.moveDown(0.5);
+}
         
         // Positionen-Tabelle
         doc.fontSize(12)
@@ -2120,6 +2214,39 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
       
       doc.moveDown(1.5);
       
+      // NEU: Vorbemerkungen einfügen (nach Projektinfo, vor Positionen)
+  if (lv.vorbemerkungen && lv.vorbemerkungen.length > 0) {
+    doc.moveDown(1);
+    doc.fontSize(12)
+       .font('Helvetica-Bold')
+       .text('VORBEMERKUNGEN', { underline: true });
+    
+    doc.moveDown(0.5);
+    doc.fontSize(10)
+       .font('Helvetica');
+    
+    lv.vorbemerkungen.forEach((vorbemerkung, index) => {
+      doc.text(`${index + 1}. ${vorbemerkung}`, {
+        indent: 20,
+        width: 500
+      });
+      doc.moveDown(0.3);
+    });
+    
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y)
+       .lineTo(545, doc.y)
+       .stroke();
+    doc.moveDown(1);
+  }
+  
+  // Dann erst Positionen-Tabelle
+  doc.font('Helvetica-Bold')
+     .fontSize(14)
+     .text('POSITIONEN', { underline: true });
+  // ... rest of positions code
+}
+    
       // Projektinfo
       doc.fontSize(12)
          .fillColor('black')
