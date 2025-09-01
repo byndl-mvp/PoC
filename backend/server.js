@@ -790,6 +790,21 @@ async function generateQuestions(tradeId, projectContext = {}) {
   
   const { name: tradeName, code: tradeCode } = tradeResult.rows[0];
   const isIntake = tradeCode === 'INT';
+
+  // NEU: Intake-Antworten laden für Kontext-Weitergabe an Gewerke
+if (!isIntake && projectContext.projectId) {
+  const intakeAnswers = await query(
+    `SELECT q.text as question_text, r.answer_text 
+     FROM intake_responses r
+     JOIN intake_questions q ON q.id = r.question_id
+     WHERE r.project_id = $1`,
+    [projectContext.projectId]
+  );
+  
+  // Intake-Daten zum projectContext hinzufügen
+  projectContext.intakeData = intakeAnswers.rows;
+  console.log(`[QUESTIONS] Loaded ${intakeAnswers.rows.length} intake answers for context`);
+}
   
   // NEU: Bei manuellen/KI-empfohlenen Gewerken NUR Kontextfrage zurückgeben
   if (projectContext.isManuallyAdded === true) {
@@ -861,6 +876,18 @@ ${isIntake ?
 `Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}.`}
 
 ${intakeContext}
+
+${projectContext.intakeData ? `
+
+BEREITS ERFASSTE PROJEKT-DATEN (NICHT erneut fragen!):
+${projectContext.intakeData.map(item => 
+  `- ${item.question_text}: ${item.answer_text}`
+).join('\n')}
+
+WICHTIG: Frage NIEMALS nach den oben genannten Informationen!
+Diese Daten sind bereits bekannt und müssen NICHT erneut erfragt werden.
+Konzentriere dich NUR auf gewerkespezifische Details für ${tradeName}.
+` : ''}
 
 KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 
