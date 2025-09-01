@@ -103,7 +103,7 @@ if (isAdditionalTrade) {
     required: true,
     category: 'Projektkontext'
   };
-  
+  sessionStorage.setItem('currentTradeIsAdditional', 'true');
   setQuestions([contextQuestion]);
   setAnswers([null]);
   setCurrent(0);
@@ -190,7 +190,11 @@ if (isAdditionalTrade) {
     }
     
     initialize();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+// Cleanup beim Verlassen der Komponente
+return () => {
+  sessionStorage.removeItem('currentTradeIsAdditional');
+};
 }, [projectId, tradeId]);
 
 // Neuer useEffect für finalen Ladebalken
@@ -221,8 +225,7 @@ useEffect(() => {
 
 // NEUE LOGIK: Prüfe ob es ein zusätzliches Gewerk ist
 const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
-
-if (current === 0 && isAdditionalTrade && questions[current].id === 'context_reason') {
+    if (current === 0 && isAdditionalTrade && questions[current].id === 'context_reason') {
   try {
     setGeneratingQuestions(true);
     
@@ -241,6 +244,9 @@ if (current === 0 && isAdditionalTrade && questions[current].id === 'context_rea
       
       // Ersetze Kontextfrage mit spezifischen Fragen
       setQuestions(data.questions || data);
+      const currentUrl = new URL(window.location);
+      currentUrl.searchParams.set('additional', 'true');
+      window.history.replaceState({}, '', currentUrl);
       setAnswers(new Array(data.questions?.length || data.length).fill(null));
       setCurrent(0);
       setAnswerText('');
@@ -393,9 +399,9 @@ setGeneratingQuestions(true);
       });
 
 // NEUE PRÜFUNG HIER:
-    const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
-    
-    if (isAdditionalTrade) {
+    const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true' ||
+                          sessionStorage.getItem('currentTradeIsAdditional') === 'true';
+      if (isAdditionalTrade) {
       // Bei zusätzlichem Gewerk direkt zu Results
       setFinalizing(true);
       setTimeout(() => {
