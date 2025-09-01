@@ -232,15 +232,37 @@ const loadOptimizations = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        currentTotal: totalSum,
+        currentTotal: total,
         targetBudget: parseFloat(project.budget),
-        lvBreakdown: results.map(r => ({
-          tradeCode: r.trade_code,
-          tradeName: r.trade_name,
-          total: r.content.totalSum || 0
+        lvBreakdown: lvs.map(lv => ({
+          tradeCode: lv.trade_code,
+          tradeName: lv.trade_name,
+          total: calculateTotal(lv)
         }))
       })
     });
+    
+    if (response.ok) {
+      const data = await response.json();
+      setOptimizations(data);
+      setShowOptimizations(true);
+    }
+  } catch (err) {
+    console.error('Failed to load optimizations:', err);
+  } finally {
+    setLoadingOptimizations(false);
+  }
+};
+      
+      {optimizations.summary && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Empfehlung:</strong> {optimizations.summary}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 
 // Budget-Komponenten
   const BudgetSuccess = ({ totalSum, budget }) => (
@@ -364,16 +386,6 @@ const loadOptimizations = async () => {
         ))}
       </div>
       
-      {optimizations.summary && (
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Empfehlung:</strong> {optimizations.summary}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-    
   const handleExportPDF = async (tradeId, withPrices = true) => {
     try {
       const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv.pdf?withPrices=${withPrices}`);
@@ -762,17 +774,17 @@ const loadOptimizations = async () => {
         </div>
 
 {/* Budget-Vergleich */}
-{project && project.budget && (
+{costSummary && costSummary.budget && (
   <div className="mt-8">
-    {totalSum <= parseFloat(project.budget) ? (
+    {total <= parseFloat(costSummary.budget) ? (
       <BudgetSuccess 
-        totalSum={totalSum}
-        budget={project.budget}
+        totalSum={total}
+        budget={costSummary.budget}
       />
     ) : (
       <BudgetExceeded
-        totalSum={totalSum}
-        budget={project.budget}
+        totalSum={total}
+        budget={costSummary.budget}
         onLoadOptimizations={loadOptimizations}
         loadingOptimizations={loadingOptimizations}
         showOptimizations={showOptimizations}
