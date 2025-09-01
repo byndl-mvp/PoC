@@ -195,7 +195,7 @@ if (isAdditionalTrade) {
 return () => {
   sessionStorage.removeItem('currentTradeIsAdditional');
 };
-}, [projectId, tradeId]);
+}, [projectId, tradeId, tradeCode, tradeName]);
 
 // Neuer useEffect für finalen Ladebalken
 
