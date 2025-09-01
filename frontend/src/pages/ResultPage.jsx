@@ -263,18 +263,6 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
      setLoadingOptimizations(false);
    }
  };
-    
-    if (response.ok) {
-      const data = await response.json();
-      setOptimizations(data);
-      setShowOptimizations(true);
-    }
-  } catch (err) {
-    console.error('Failed to load optimizations:', err);
-  } finally {
-    setLoadingOptimizations(false);
-  }
-};
 
 // Budget-Komponenten
   const BudgetSuccess = ({ totalSum, budget }) => (
@@ -397,7 +385,8 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
           </div>
         ))}
       </div>
-     );
+    </div>
+  );
 
       
   const handleExportPDF = async (tradeId, withPrices = true) => {
