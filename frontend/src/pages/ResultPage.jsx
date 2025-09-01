@@ -219,6 +219,161 @@ const recalculateTotals = (positions) => {
   }, 0);
 };
 
+// State für Budget-Optimierung
+const [showOptimizations, setShowOptimizations] = useState(false);
+const [optimizations, setOptimizations] = useState(null);
+const [loadingOptimizations, setLoadingOptimizations] = useState(false);
+
+// Funktion zum Laden der Optimierungen
+const loadOptimizations = async () => {
+  setLoadingOptimizations(true);
+  try {
+    const response = await fetch(apiUrl(`/api/projects/${projectId}/budget-optimization`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentTotal: totalSum,
+        targetBudget: parseFloat(project.budget),
+        lvBreakdown: results.map(r => ({
+          tradeCode: r.trade_code,
+          tradeName: r.trade_name,
+          total: r.content.totalSum || 0
+        }))
+      })
+    });
+
+// Budget-Komponenten
+  const BudgetSuccess = ({ totalSum, budget }) => (
+    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-6 shadow-lg">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-green-800">Budget eingehalten!</h3>
+          <p className="text-green-700">
+            Die Gesamtkosten von {formatCurrency(totalSum)} liegen innerhalb Ihres Budgets von {formatCurrency(budget)}
+          </p>
+          <p className="text-sm text-green-600 mt-1">
+            Verbleibender Spielraum: {formatCurrency(parseFloat(budget) - totalSum)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const BudgetExceeded = ({ 
+    totalSum, 
+    budget, 
+    onLoadOptimizations, 
+    loadingOptimizations, 
+    showOptimizations, 
+    optimizations 
+  }) => (
+    <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-6 shadow-lg">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-red-800">Budget überschritten</h3>
+          <p className="text-red-700">
+            Die Gesamtkosten von {formatCurrency(totalSum)} überschreiten Ihr Budget von {formatCurrency(budget)}
+          </p>
+          <p className="text-sm text-red-600 mt-1">
+            Überschreitung: {formatCurrency(totalSum - parseFloat(budget))} 
+            ({((totalSum - parseFloat(budget)) / parseFloat(budget) * 100).toFixed(1)}%)
+          </p>
+          
+          {!showOptimizations && (
+            <button
+              onClick={onLoadOptimizations}
+              disabled={loadingOptimizations}
+              className="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+            >
+              {loadingOptimizations ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  Analysiere Einsparmöglichkeiten...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  Einsparmöglichkeiten anzeigen
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {showOptimizations && optimizations && (
+        <OptimizationsList optimizations={optimizations} />
+      )}
+    </div>
+  );
+
+  const OptimizationsList = ({ optimizations }) => (
+    <div className="mt-6 bg-white rounded-lg p-6">
+      <h4 className="text-lg font-bold text-gray-800 mb-4">
+        Einsparmöglichkeiten (Potenzial: {formatCurrency(optimizations.totalPossibleSaving)})
+      </h4>
+      
+      <div className="space-y-3">
+        {optimizations.optimizations.map((opt, idx) => (
+          <div key={idx} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-gray-800">{opt.tradeName}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    opt.type === 'eigenleistung' ? 'bg-blue-100 text-blue-700' :
+                    opt.type === 'material' ? 'bg-yellow-100 text-yellow-700' :
+                    opt.type === 'verschiebung' ? 'bg-purple-100 text-purple-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {opt.type === 'eigenleistung' ? 'Eigenleistung' :
+                     opt.type === 'material' ? 'Material' :
+                     opt.type === 'verschiebung' ? 'Verschiebung' : 'Reduzierung'}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    opt.difficulty === 'einfach' ? 'bg-green-100 text-green-700' :
+                    opt.difficulty === 'mittel' ? 'bg-orange-100 text-orange-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {opt.difficulty}
+                  </span>
+                </div>
+                <p className="text-gray-700">{opt.measure}</p>
+                {opt.impact && (
+                  <p className="text-sm text-gray-500 mt-1">⚠️ {opt.impact}</p>
+                )}
+              </div>
+              <div className="text-right ml-4">
+                <p className="font-bold text-green-600">- {formatCurrency(opt.savingAmount)}</p>
+                <p className="text-sm text-gray-500">({opt.savingPercent}%)</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {optimizations.summary && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Empfehlung:</strong> {optimizations.summary}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+    
   const handleExportPDF = async (tradeId, withPrices = true) => {
     try {
       const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv.pdf?withPrices=${withPrices}`);
@@ -606,6 +761,27 @@ const recalculateTotals = (positions) => {
           </div>
         </div>
 
+{/* Budget-Vergleich */}
+{project && project.budget && (
+  <div className="mt-8">
+    {totalSum <= parseFloat(project.budget) ? (
+      <BudgetSuccess 
+        totalSum={totalSum}
+        budget={project.budget}
+      />
+    ) : (
+      <BudgetExceeded
+        totalSum={totalSum}
+        budget={project.budget}
+        onLoadOptimizations={loadOptimizations}
+        loadingOptimizations={loadingOptimizations}
+        showOptimizations={showOptimizations}
+        optimizations={optimizations}
+      />
+    )}
+  </div>
+)}
+        
         {/* Action Buttons */}
 <div className="flex flex-wrap gap-4 justify-center mt-12">
   <button
