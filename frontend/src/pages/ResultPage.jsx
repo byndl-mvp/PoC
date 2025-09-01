@@ -214,7 +214,9 @@ const recalculateTotals = (positions) => {
   if (lv.content?.totalSum) {
     return parseFloat(lv.content.totalSum) || 0;
   }
-  
+    // Total berechnen für Budget-Vergleich
+const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+    
   // Fallback: Positionen summieren
   if (!lv.content || !lv.content.positions) return 0;
   return lv.content.positions.reduce((sum, pos) => {
@@ -426,8 +428,6 @@ const loadOptimizations = async () => {
       </div>
     </div>
   );
-
-  const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
