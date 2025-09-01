@@ -29,6 +29,13 @@ const safeToFixed = (value) => {
   const num = typeof value === 'number' ? value : parseFloat(value) || 0;
   return num.toFixed(2);
 };  
+
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value || 0);
+};
   
   useEffect(() => {
     async function fetchData() {
@@ -233,7 +240,7 @@ const loadOptimizations = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         currentTotal: total,
-        targetBudget: parseFloat(project.budget),
+        targetBudget: parseFloat(costSummary.budget),
         lvBreakdown: lvs.map(lv => ({
           tradeCode: lv.trade_code,
           tradeName: lv.trade_name,
@@ -241,28 +248,6 @@ const loadOptimizations = async () => {
         }))
       })
     });
-    
-    if (response.ok) {
-      const data = await response.json();
-      setOptimizations(data);
-      setShowOptimizations(true);
-    }
-  } catch (err) {
-    console.error('Failed to load optimizations:', err);
-  } finally {
-    setLoadingOptimizations(false);
-  }
-};
-      
-      {optimizations.summary && (
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Empfehlung:</strong> {optimizations.summary}
-          </p>
-        </div>
-      )}
-    </div>
-  );
 
 // Budget-Komponenten
   const BudgetSuccess = ({ totalSum, budget }) => (
@@ -385,6 +370,8 @@ const loadOptimizations = async () => {
           </div>
         ))}
       </div>
+     );
+
       
   const handleExportPDF = async (tradeId, withPrices = true) => {
     try {
