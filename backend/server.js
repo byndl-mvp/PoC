@@ -1796,7 +1796,10 @@ function generateCompleteLVPDF(project, lvs, withPrices = true) {
       // Berechne Summen für Übersicht
       for (const row of lvs) {
         const lv = typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
-        const tradeTotal = parseFloat(lv.totalSum) || 0;
+        // Berechne Summe aus Positionen wenn vorhanden, sonst aus totalSum
+const tradeTotal = lv.positions && lv.positions.length > 0 
+  ? lv.positions.reduce((sum, pos) => sum + (parseFloat(pos.totalPrice) || 0), 0)
+  : (parseFloat(lv.totalSum) || 0);
         grandTotal += tradeTotal;
         tradeSummaries.push({
           code: row.trade_code,
