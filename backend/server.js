@@ -2240,14 +2240,7 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
     doc.moveDown(1);
   }
   
-  // Dann erst Positionen-Tabelle
-  doc.font('Helvetica-Bold')
-     .fontSize(14)
-     .text('POSITIONEN', { underline: true });
-  // ... rest of positions code
-}
-    
-      // Projektinfo
+ // Projektinfo
       doc.fontSize(12)
          .fillColor('black')
          .font('Helvetica-Bold')
@@ -2494,7 +2487,8 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
       reject(error);
     }
   });
-}
+}    
+    
 
 // ===========================================================================
 // EXPRESS APP
