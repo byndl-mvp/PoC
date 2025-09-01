@@ -187,69 +187,82 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
       }
       
       // Aktualisiere auch costSummary
-  const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
-  if (summaryRes.ok) {
-    const summaryData = await summaryRes.json();
-    setCostSummary(summaryData.summary);
-  }      
-      
-      setAddingPosition(null);
-      setNewPosition({
-        title: '',
-        description: '',
-        quantity: 1,
-        unit: 'Stk',
-        unitPrice: 0
-      });
-    }
-  };
+     const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
+     if (summaryRes.ok) {
+       const summaryData = await summaryRes.json();
+       setCostSummary(summaryData.summary);
+     }      
+     
+     setAddingPosition(null);
+     setNewPosition({
+       title: '',
+       description: '',
+       quantity: 1,
+       unit: 'Stk',
+       unitPrice: 0
+     });
+   }
+ };
 
-  // Automatische Neuberechnung der Gesamtsumme
-const recalculateTotals = (positions) => {
-  return positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
-};
-  
-  const calculateTotal = (lv) => {
-  // Zuerst prüfen ob totalSum vorhanden ist
-  if (lv.content?.totalSum) {
-    return parseFloat(lv.content.totalSum) || 0;
-  }
-    // Total berechnen für Budget-Vergleich
-const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
-    
-  // Fallback: Positionen summieren
-  if (!lv.content || !lv.content.positions) return 0;
-  return lv.content.positions.reduce((sum, pos) => {
-    if (pos.totalPrice) return sum + parseFloat(pos.totalPrice) || 0;
-    if (pos.quantity && pos.unitPrice) {
-      return sum + (parseFloat(pos.quantity) * parseFloat(pos.unitPrice)) || 0;
-    }
-    return sum;
-  }, 0);
-};
+ // Automatische Neuberechnung der Gesamtsumme
+ const recalculateTotals = (positions) => {
+   return positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+ };
+ 
+ const calculateTotal = (lv) => {
+   // Zuerst prüfen ob totalSum vorhanden ist
+   if (lv.content?.totalSum) {
+     return parseFloat(lv.content.totalSum) || 0;
+   }
+   
+   // Fallback: Positionen summieren
+   if (!lv.content || !lv.content.positions) return 0;
+   return lv.content.positions.reduce((sum, pos) => {
+     if (pos.totalPrice) return sum + parseFloat(pos.totalPrice) || 0;
+     if (pos.quantity && pos.unitPrice) {
+       return sum + (parseFloat(pos.quantity) * parseFloat(pos.unitPrice)) || 0;
+     }
+     return sum;
+   }, 0);
+ };
 
-// State für Budget-Optimierung
-const [showOptimizations, setShowOptimizations] = useState(false);
-const [optimizations, setOptimizations] = useState(null);
-const [loadingOptimizations, setLoadingOptimizations] = useState(false);
+ // Total berechnen für Budget-Vergleich
+ const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
 
-// Funktion zum Laden der Optimierungen
-const loadOptimizations = async () => {
-  setLoadingOptimizations(true);
-  try {
-    const response = await fetch(apiUrl(`/api/projects/${projectId}/budget-optimization`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        currentTotal: total,
-        targetBudget: parseFloat(costSummary.budget),
-        lvBreakdown: lvs.map(lv => ({
-          tradeCode: lv.trade_code,
-          tradeName: lv.trade_name,
-          total: calculateTotal(lv)
-        }))
-      })
-    });
+ // State für Budget-Optimierung
+ const [showOptimizations, setShowOptimizations] = useState(false);
+ const [optimizations, setOptimizations] = useState(null);
+ const [loadingOptimizations, setLoadingOptimizations] = useState(false);
+
+ // Funktion zum Laden der Optimierungen
+ const loadOptimizations = async () => {
+   setLoadingOptimizations(true);
+   try {
+     const response = await fetch(apiUrl(`/api/projects/${projectId}/budget-optimization`), {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+         currentTotal: total,
+         targetBudget: parseFloat(costSummary.budget),
+         lvBreakdown: lvs.map(lv => ({
+           tradeCode: lv.trade_code,
+           tradeName: lv.trade_name,
+           total: calculateTotal(lv)
+         }))
+       })
+     });
+     
+     if (response.ok) {
+       const data = await response.json();
+       setOptimizations(data);
+       setShowOptimizations(true);
+     }
+   } catch (err) {
+     console.error('Failed to load optimizations:', err);
+   } finally {
+     setLoadingOptimizations(false);
+   }
+ };
     
     if (response.ok) {
       const data = await response.json();
