@@ -114,12 +114,6 @@ const formatCurrency = (value) => {
       setLvs(newLvs);
       setEditingPosition(null);
       setEditedValues({});
-
-      // FIX: Kostenzusammenfassung neu laden
-    const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
-    if (summaryRes.ok) {
-      const summaryData = await summaryRes.json();
-      }
     }
   };
 
@@ -153,12 +147,6 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   })
 });      
       setLvs(newLvs);
-
-      // FIX: Kostenzusammenfassung neu laden
-    const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
-    if (summaryRes.ok) {
-      const summaryData = await summaryRes.json();
-      }
     }
   };
 
@@ -185,13 +173,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
       if (lvRes.ok) {
         const lvData = await lvRes.json();
         setLvs(lvData.lvs || []);
-      }
-      
-      // Aktualisiere auch costSummary
-     const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
-     if (summaryRes.ok) {
-       const summaryData = await summaryRes.json();
-     }      
+      }    
      
      setAddingPosition(null);
      setNewPosition({
