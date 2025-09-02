@@ -514,7 +514,7 @@ async function ensureProjectTrade(projectId, tradeId, source = 'unknown') {
     await query(
       `INSERT INTO project_trades (project_id, trade_id)
        VALUES ($1, $2)
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT (project_id, trade_id) DO NOTHING
       [projectId, tradeId]
     );
   }
