@@ -32,6 +32,14 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+function formatCurrency(amount) {
+  if (!amount && amount !== 0) return '0 €';
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(amount);
+}
+
 // Modellnamen aus Umgebungsvariablen
 const MODEL_OPENAI = process.env.MODEL_OPENAI || 'gpt-4o-mini';
 const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest';
@@ -3976,8 +3984,19 @@ app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
     const overspend = currentTotal - targetBudget;
     const percentOver = ((overspend / targetBudget) * 100).toFixed(1);
     
+    // Erstelle Liste der vorhandenen Gewerke
+    const availableTradesText = lvBreakdown.map(lv => 
+      `- ${lv.tradeCode}: ${lv.tradeName}`
+    ).join('\n');
+    
     const systemPrompt = `Du bist ein Baukostenoptimierer mit 20 Jahren Erfahrung.
 Analysiere die Kostenüberschreitung und schlage REALISTISCHE Einsparmöglichkeiten vor.
+
+KRITISCH - NUR DIESE GEWERKE SIND IM PROJEKT VORHANDEN:
+${availableTradesText}
+
+Du darfst NUR Optimierungen für die oben gelisteten Gewerke vorschlagen!
+KEINE anderen Gewerke erwähnen oder vorschlagen!
 
 WICHTIGE REGELN:
 1. SICHERHEIT GEHT VOR: Keine Einsparungen bei Statik, Elektrik, Sanitär-Grundinstallation
@@ -3989,8 +4008,8 @@ OUTPUT als JSON:
 {
   "optimizations": [
     {
-      "trade": "Gewerk-Code",
-      "tradeName": "Gewerk-Name",
+      "trade": "EXAKTER Code aus obiger Liste",
+      "tradeName": "EXAKTER Name aus obiger Liste",
       "measure": "Konkrete Maßnahme",
       "savingAmount": 2500,
       "savingPercent": 15,
@@ -4000,8 +4019,8 @@ OUTPUT als JSON:
     }
   ],
   "totalPossibleSaving": 12500,
-  "recommendedSavings": [Array der empfohlenen Maßnahmen-IDs],
-  "summary": "Zusammenfassung der Empfehlung"
+  "recommendedSavings": [],
+  "summary": "Zusammenfassung"
 }`;
 
     const userPrompt = `Budget: ${formatCurrency(targetBudget)}
@@ -4011,8 +4030,7 @@ Aktuelle Kosten: ${formatCurrency(currentTotal)}
 GEWERKE-AUFSTELLUNG:
 ${lvBreakdown.map(lv => `${lv.tradeCode} - ${lv.tradeName}: ${formatCurrency(lv.total)}`).join('\n')}
 
-Erstelle konkrete, umsetzbare Einsparvorschläge um das Budget einzuhalten.
-Fokussiere auf die teuersten Gewerke und sichere Einsparmöglichkeiten.`;
+Erstelle konkrete, umsetzbare Einsparvorschläge NUR für die vorhandenen Gewerke.`;
 
     const response = await llmWithPolicy('optimization', [
       { role: 'system', content: systemPrompt },
@@ -4033,6 +4051,42 @@ Fokussiere auf die teuersten Gewerke und sichere Einsparmöglichkeiten.`;
        DO UPDATE SET suggestions = $2, created_at = NOW()`,
       [projectId, JSON.stringify(optimizations)]
     );
+
+    // Validierung: Filtere ungültige Gewerke raus
+    const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
+    if (optimizations.optimizations) {
+      optimizations.optimizations = optimizations.optimizations.filter(opt => {
+        const isValid = validTradeCodes.includes(opt.trade);
+        if (!isValid) {
+          console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
+        }
+        return isValid;
+      });
+
+      // Stelle sicher dass tradeName korrekt ist
+      optimizations.optimizations = optimizations.optimizations.map(opt => {
+        const matchingTrade = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
+        if (matchingTrade) {
+          opt.tradeName = matchingTrade.tradeName; // Überschreibe mit korrektem Namen
+        }
+        return opt;
+      });
+    }    
+
+    // Zusätzliche Validierung: Mindestens eine Optimierung
+if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
+  console.log('[OPTIMIZATION] No valid optimizations found, generating fallback');
+  optimizations.optimizations = [{
+    trade: lvBreakdown[0]?.tradeCode || 'GENERAL',
+    tradeName: lvBreakdown[0]?.tradeName || 'Allgemein',
+    measure: 'Materialqualität leicht reduzieren ohne Funktionseinbußen',
+    savingAmount: overspend * 0.1,
+    savingPercent: 10,
+    difficulty: 'einfach',
+    type: 'material',
+    impact: 'Geringe optische Einschränkungen'
+  }];
+}      
     
     res.json(optimizations);
     
