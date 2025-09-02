@@ -119,7 +119,6 @@ const formatCurrency = (value) => {
     const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
     if (summaryRes.ok) {
       const summaryData = await summaryRes.json();
-      setCostSummary(summaryData.summary);
       }
     }
   };
@@ -159,7 +158,6 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
     const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
     if (summaryRes.ok) {
       const summaryData = await summaryRes.json();
-      setCostSummary(summaryData.summary);
       }
     }
   };
@@ -193,7 +191,6 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
      const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
      if (summaryRes.ok) {
        const summaryData = await summaryRes.json();
-       setCostSummary(summaryData.summary);
      }      
      
      setAddingPosition(null);
