@@ -3879,6 +3879,18 @@ app.get('/api/projects/:projectId/cost-summary', async (req, res) => {
        WHERE l.project_id = $1`,
       [projectId]
     );
+
+    // Projekt-Daten laden (NEUER CODE)
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    const project = projectResult.rows[0];    
     
     const summary = {
       trades: [],
