@@ -106,11 +106,11 @@ const handleSkipQuestion = () => {
       
       const validAnswers = allAnswers.filter(a => a.answer && a.answer.trim());
       
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${intTrade.id}/answers`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: validAnswers })
-      });
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/intake/answers`), {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ answers: validAnswers })
+});
       
       if (!res.ok) throw new Error('Fehler beim Speichern der Antworten');
       
