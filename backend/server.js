@@ -794,9 +794,9 @@ async function generateQuestions(tradeId, projectContext = {}) {
   // NEU: Intake-Antworten laden für Kontext-Weitergabe an Gewerke
 if (!isIntake && projectContext.projectId) {
   const intakeAnswers = await query(
-    `SELECT q.text as question_text, r.answer_text 
-     FROM intake_responses r
-     JOIN intake_questions q ON q.id = r.question_id
+   `SELECT q.question_text, r.answer_text 
+ FROM intake_responses r
+ JOIN intake_questions q ON q.id = r.question_id
      WHERE r.project_id = $1`,
     [projectContext.projectId]
   );
