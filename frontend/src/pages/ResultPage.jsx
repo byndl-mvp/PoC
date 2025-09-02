@@ -10,7 +10,6 @@ export default function ResultPage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const [project, setProject] = useState(null); // NEU: Project State hinzufügen
-  const [costSummary, setCostSummary] = useState(null);
   const [exportMode, setExportMode] = useState('with-prices');
   const [selectedLv, setSelectedLv] = useState(null);
   const [editingPosition, setEditingPosition] = useState(null);
@@ -44,11 +43,11 @@ const formatCurrency = (value) => {
     try {
       setLoading(true);
       
-      // 1. PROJEKT LADEN (NEU)
+      // 1. Projekt laden
       const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
       if (projectRes.ok) {
         const projectData = await projectRes.json();
-        setProject(projectData); // Speichert das Projekt mit Budget
+        setProject(projectData);
       }
       
       // 2. LVs laden
@@ -59,13 +58,6 @@ const formatCurrency = (value) => {
       }
       const data = await res.json();
       setLvs(data.lvs || []);
-      
-      // 3. Cost Summary laden
-      const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
-      if (summaryRes.ok) {
-        const summaryData = await summaryRes.json();
-        setCostSummary(summaryData.summary);
-      }
       
     } catch (err) {
       console.error(err);
@@ -238,7 +230,8 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
  };
 
  // Total berechnen für Budget-Vergleich
- const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+  // eslint-disable-next-line no-unused-vars
+  const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
 
  // State für Budget-Optimierung
  const [showOptimizations, setShowOptimizations] = useState(false);
@@ -250,7 +243,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   setLoadingOptimizations(true);
   try {
     const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
-    const grandTotal = total * 1.15 * 1.19; // Mit allen Zuschlägen
+    const grandTotal = total * 1.05 * 1.19; // Mit allen Zuschlägen
     
     const response = await fetch(apiUrl(`/api/projects/${projectId}/budget-optimization`), {
       method: 'POST',
