@@ -2746,14 +2746,29 @@ for (const q of questions) {
       budget: project.budget
     }, []);
 
-    res.json({ 
-      ok: true, 
-      tradeCode: 'INT', 
-      questions, 
-      saved,
-      targetCount: intelligentCount.count,
-      completeness: intelligentCount.completeness
-    });
+// Hole die echten IDs aus der Datenbank
+const savedQuestions = await query(
+  `SELECT question_id FROM questions 
+   WHERE project_id = $1 AND trade_id = $2 
+   ORDER BY question_id`,
+  [projectId, tradeId]
+);
+
+// Mappe die echten IDs zu den Fragen
+const questionsWithIds = questions.map((q, idx) => ({
+  ...q,
+  id: savedQuestions.rows[idx]?.question_id || `INT-${idx + 1}`
+}));
+
+res.json({
+  ok: true,
+  tradeCode: 'INT',
+  questions: questionsWithIds,  // <-- HIER: questionsWithIds statt questions
+  saved,
+  targetCount: intelligentCount.count,
+  completeness: intelligentCount.completeness
+});
+    
   } catch (err) {
     console.error('intake/questions failed:', err);
     res.status(500).json({ ok: false, error: err.message });
@@ -3264,14 +3279,15 @@ app.post('/api/projects/:projectId/intake/answers', async (req, res) => {
       
       // Speichere in intake_responses
       await query(
-        `INSERT INTO intake_responses (project_id, question_text, answer_text)
-         VALUES ($1, $2, $3)`,
-        [
-          projectId,
-          questionText,
-          answer.answer
-        ]
-      );
+  `INSERT INTO intake_responses (project_id, question_id, question_text, answer_text)
+   VALUES ($1, $2, $3, $4)`,
+  [
+    projectId,
+    parseInt(answer.questionId.replace('INT-', '')),  // Extrahiere die intake_questions.id
+    questionText,
+    answer.answer
+  ]
+);
       
       // Speichere auch in answers für Kompatibilität
       await query(
