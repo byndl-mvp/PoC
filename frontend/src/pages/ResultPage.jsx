@@ -367,7 +367,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-gray-800">{opt.tradeName}</span>
+                  <span className="font-semibold text-gray-800">{opt.tradeName || opt.trade || 'Allgemein'}</span>
                   <span className={`text-xs px-2 py-1 rounded-full ${
                     opt.type === 'eigenleistung' ? 'bg-blue-100 text-blue-700' :
                     opt.type === 'material' ? 'bg-yellow-100 text-yellow-700' :
@@ -744,58 +744,64 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
         )}
 
         {/* Cost Summary */}
-        <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-          <h3 className="text-2xl font-bold text-white mb-6">Kostenzusammenfassung</h3>
-          
-          <div className="space-y-3">
-            {costSummary?.trades?.map((trade, idx) => (
-              <div key={idx} className="flex justify-between text-white">
-                <span className="text-gray-300">{trade.name}</span>
-                <span className={trade.hasPrice ? 'font-medium' : 'text-gray-500'}>
-                  {safeToFixed(trade.cost)} €
-                </span>
-              </div>
-            ))}
-            
-            <div className="border-t border-white/20 pt-4 mt-4 space-y-2">
-              <div className="flex justify-between text-xl font-semibold text-white">
-                <span>Netto-Summe:</span>
-                <span>{safeToFixed(total)} €</span>
-              </div>
-              
-              {costSummary?.additionalCosts && (
-                <>
-                  <div className="flex justify-between text-gray-300">
-                    <span>Planungskosten (10%):</span>
-                    <span>{safeToFixed(costSummary.additionalCosts.planningCosts)} €</span>
-                  </div>
-                  <div className="flex justify-between text-gray-300">
-                    <span>Unvorhergesehenes (5%):</span>
-                    <span>{safeToFixed(costSummary.additionalCosts.contingency)} €</span>
-                  </div>
-                  <div className="flex justify-between text-gray-300">
-                    <span>MwSt. (19%):</span>
-                    <span>{safeToFixed(costSummary.additionalCosts.vat)} €</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-2xl font-bold text-teal-400 border-t border-white/20 pt-4 mt-4">
-                    <span>Gesamtsumme:</span>
-                    <span>{safeToFixed(costSummary.grandTotal || total)} €</span>
-                  </div>
-                </>
-              )}
+<div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
+  <h3 className="text-2xl font-bold text-white mb-6">Kostenzusammenfassung</h3>
+  
+  <div className="space-y-3">
+    {/* Einzelne Gewerke */}
+    {lvs.map((lv, idx) => (
+      <div key={idx} className="flex justify-between text-white">
+        <span className="text-gray-300">{lv.trade_name || lv.name || lv.trade_code}</span>
+        <span className="font-medium">
+          {formatCurrency(calculateTotal(lv))}
+        </span>
+      </div>
+    ))}
+    
+    {/* Berechnungen */}
+    <div className="border-t border-white/20 pt-4 mt-4 space-y-2">
+      {(() => {
+        const nettoSum = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+        const contingency = nettoSum * 0.05;
+        const subtotal = nettoSum + contingency;
+        const vat = subtotal * 0.19;
+        const grandTotal = subtotal + vat;
+        
+        return (
+          <>
+            <div className="flex justify-between text-xl font-semibold text-white">
+              <span>Netto-Summe:</span>
+              <span>{formatCurrency(nettoSum)}</span>
             </div>
-          </div>
-        </div>
+            
+            <div className="flex justify-between text-gray-300">
+              <span>Unvorhergesehenes (5%):</span>
+              <span>{formatCurrency(contingency)}</span>
+            </div>
+            
+            <div className="flex justify-between text-gray-300">
+              <span>MwSt. (19%):</span>
+              <span>{formatCurrency(vat)}</span>
+            </div>
+            
+            <div className="flex justify-between text-2xl font-bold text-teal-400 border-t border-white/20 pt-4 mt-4">
+              <span>Gesamtsumme:</span>
+              <span>{formatCurrency(grandTotal)}</span>
+            </div>
+          </>
+        );
+      })()}
+    </div>
+  </div>
+</div>
 
 {/* Budget-Vergleich nur wenn Budget vorhanden */}
 {project && project.budget && project.budget > 0 && (
   <div className="mt-8">
     {(() => {
-      const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
-      const planningCosts = total * 0.10;
-      const contingency = total * 0.05;
-      const subtotal = total + planningCosts + contingency;
+      const nettoSum = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+      const contingency = nettoSum * 0.05;
+      const subtotal = nettoSum + contingency;
       const vat = subtotal * 0.19;
       const grandTotal = subtotal + vat;
       
