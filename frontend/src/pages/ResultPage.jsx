@@ -9,6 +9,7 @@ export default function ResultPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [project, setProject] = useState(null); // NEU: Project State hinzufügen
   const [costSummary, setCostSummary] = useState(null);
   const [exportMode, setExportMode] = useState('with-prices');
   const [selectedLv, setSelectedLv] = useState(null);
@@ -16,6 +17,7 @@ export default function ResultPage() {
   const [editedValues, setEditedValues] = useState({});
   const [addingPosition, setAddingPosition] = useState(null);
   const [newPosition, setNewPosition] = useState({
+  
     title: '',
     description: '',
     quantity: 1,
@@ -38,33 +40,42 @@ const formatCurrency = (value) => {
 };
   
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        
-        const res = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Fehler beim Laden der LVs');
-        }
-        const data = await res.json();
-        setLvs(data.lvs || []);
-        
-        const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
-        if (summaryRes.ok) {
-          const summaryData = await summaryRes.json();
-          setCostSummary(summaryData.summary);
-        }
-        
-      } catch (err) {
-        console.error(err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  async function fetchData() {
+    try {
+      setLoading(true);
+      
+      // 1. PROJEKT LADEN (NEU)
+      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+      if (projectRes.ok) {
+        const projectData = await projectRes.json();
+        setProject(projectData); // Speichert das Projekt mit Budget
       }
+      
+      // 2. LVs laden
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Fehler beim Laden der LVs');
+      }
+      const data = await res.json();
+      setLvs(data.lvs || []);
+      
+      // 3. Cost Summary laden
+      const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/cost-summary`));
+      if (summaryRes.ok) {
+        const summaryData = await summaryRes.json();
+        setCostSummary(summaryData.summary);
+      }
+      
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    fetchData();
-  }, [projectId]);
+  }
+  fetchData();
+}, [projectId]);
 
   const handleEditPosition = (lvIndex, posIndex, field, value) => {
     const key = `${lvIndex}-${posIndex}-${field}`;
@@ -236,33 +247,36 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
 
  // Funktion zum Laden der Optimierungen
  const loadOptimizations = async () => {
-   setLoadingOptimizations(true);
-   try {
-     const response = await fetch(apiUrl(`/api/projects/${projectId}/budget-optimization`), {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({
-         currentTotal: total,
-         targetBudget: parseFloat(costSummary.budget),
-         lvBreakdown: lvs.map(lv => ({
-           tradeCode: lv.trade_code,
-           tradeName: lv.trade_name,
-           total: calculateTotal(lv)
-         }))
-       })
-     });
-     
-     if (response.ok) {
-       const data = await response.json();
-       setOptimizations(data);
-       setShowOptimizations(true);
-     }
-   } catch (err) {
-     console.error('Failed to load optimizations:', err);
-   } finally {
-     setLoadingOptimizations(false);
-   }
- };
+  setLoadingOptimizations(true);
+  try {
+    const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+    const grandTotal = total * 1.15 * 1.19; // Mit allen Zuschlägen
+    
+    const response = await fetch(apiUrl(`/api/projects/${projectId}/budget-optimization`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentTotal: grandTotal,
+        targetBudget: project.budget, // Jetzt haben wir project.budget!
+        lvBreakdown: lvs.map(lv => ({
+          tradeCode: lv.trade_code,
+          tradeName: lv.trade_name,
+          total: calculateTotal(lv)
+        }))
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      setOptimizations(data);
+      setShowOptimizations(true);
+    }
+  } catch (err) {
+    console.error('Failed to load optimizations:', err);
+  } finally {
+    setLoadingOptimizations(false);
+  }
+};
 
 // Budget-Komponenten
   const BudgetSuccess = ({ totalSum, budget }) => (
@@ -774,24 +788,37 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
           </div>
         </div>
 
-{/* Budget-Vergleich */}
-{costSummary && costSummary.budget && (
+{/* Budget-Vergleich nur wenn Budget vorhanden */}
+{project && project.budget && project.budget > 0 && (
   <div className="mt-8">
-    {total <= parseFloat(costSummary.budget) ? (
-      <BudgetSuccess 
-        totalSum={total}
-        budget={costSummary.budget}
-      />
-    ) : (
-      <BudgetExceeded
-        totalSum={total}
-        budget={costSummary.budget}
-        onLoadOptimizations={loadOptimizations}
-        loadingOptimizations={loadingOptimizations}
-        showOptimizations={showOptimizations}
-        optimizations={optimizations}
-      />
-    )}
+    {(() => {
+      const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+      const planningCosts = total * 0.10;
+      const contingency = total * 0.05;
+      const subtotal = total + planningCosts + contingency;
+      const vat = subtotal * 0.19;
+      const grandTotal = subtotal + vat;
+      
+      if (grandTotal <= parseFloat(project.budget)) {
+        return (
+          <BudgetSuccess 
+            totalSum={grandTotal}
+            budget={parseFloat(project.budget)}
+          />
+        );
+      } else {
+        return (
+          <BudgetExceeded
+            totalSum={grandTotal}
+            budget={parseFloat(project.budget)}
+            onLoadOptimizations={loadOptimizations}
+            loadingOptimizations={loadingOptimizations}
+            showOptimizations={showOptimizations}
+            optimizations={optimizations}
+          />
+        );
+      }
+    })()}
   </div>
 )}
         
