@@ -2702,25 +2702,42 @@ if (!Array.isArray(questions)) {
 }
     
     // Speichere Fragen mit erweiterten Feldern
-    let saved = 0;
-    for (const q of questions) {
-      await query(
-        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (project_id, trade_id, question_id)
-         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
-        [
-          projectId,
-          tradeId,
-          q.id,
-          q.question || q.text,
-          q.type || 'text',
-          q.required ?? false,
-          q.options ? JSON.stringify(q.options) : null
-        ]
-      );
-      saved++;
-    }
+let saved = 0;
+for (const q of questions) {
+  // ZUERST in intake_questions speichern für spätere Verwendung
+  const intakeQuestionResult = await query(
+    `INSERT INTO intake_questions (question_text, question_type, sort_order, is_required, options)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id`,
+    [
+      q.question || q.text,
+      q.type || 'text',
+      saved + 1,  // sort_order basierend auf Position
+      q.required !== undefined ? q.required : true,
+      q.options ? JSON.stringify(q.options) : null
+    ]
+  );
+  
+  const intakeQuestionId = intakeQuestionResult.rows[0].id;
+  
+  // DANN in questions speichern mit Referenz zur intake_question_id
+  await query(
+    `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     ON CONFLICT (project_id, trade_id, question_id)
+     DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
+    [
+      projectId,
+      tradeId,
+      `INT-${intakeQuestionId}`,  // Verwende intake_questions.id als Referenz
+      q.question || q.text,
+      q.type || 'text',
+      q.required !== undefined ? q.required : true,
+      q.options ? JSON.stringify(q.options) : null
+    ]
+  );
+  saved++;
+}
     
     // Berechne die intelligente Fragenanzahl für die Response
     const intelligentCount = getIntelligentQuestionCount('INT', {
@@ -3214,6 +3231,76 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
     
   } catch (err) {
     console.error('Failed to save answers:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Save intake answers specifically
+app.post('/api/projects/:projectId/intake/answers', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { answers } = req.body;
+    
+    if (!Array.isArray(answers)) {
+      return res.status(400).json({ error: 'Answers must be an array' });
+    }
+    
+    const intTrade = await query(`SELECT id FROM trades WHERE code = 'INT' LIMIT 1`);
+    if (intTrade.rows.length === 0) {
+      return res.status(500).json({ error: 'INT trade missing' });
+    }
+    const tradeId = intTrade.rows[0].id;
+    
+    const savedAnswers = [];
+    
+    for (const answer of answers) {
+      // Hole den Fragetext aus questions
+      const questionResult = await query(
+        'SELECT text FROM questions WHERE project_id = $1 AND trade_id = $2 AND question_id = $3',
+        [projectId, tradeId, answer.questionId]
+      );
+      
+      const questionText = questionResult.rows[0]?.text || '';
+      
+      // Speichere in intake_responses
+      await query(
+        `INSERT INTO intake_responses (project_id, question_text, answer_text)
+         VALUES ($1, $2, $3)`,
+        [
+          projectId,
+          questionText,
+          answer.answer
+        ]
+      );
+      
+      // Speichere auch in answers für Kompatibilität
+      await query(
+        `INSERT INTO answers (project_id, trade_id, question_id, answer_text)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (project_id, trade_id, question_id)
+         DO UPDATE SET answer_text = $4, updated_at = NOW()`,
+        [
+          projectId,
+          tradeId,
+          answer.questionId,
+          answer.answer
+        ]
+      );
+      
+      savedAnswers.push({
+        questionId: answer.questionId,
+        answer: answer.answer
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      saved: savedAnswers.length,
+      answers: savedAnswers
+    });
+    
+  } catch (err) {
+    console.error('Failed to save intake answers:', err);
     res.status(500).json({ error: err.message });
   }
 });
