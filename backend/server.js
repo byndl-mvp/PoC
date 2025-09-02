@@ -2958,7 +2958,8 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
           
           await query(
             `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
-             VALUES ($1, $2, $3, $4)`,
+ VALUES ($1, $2, $3, $4)
+ ON CONFLICT (project_id, trade_id) DO NOTHING`,
             [projectId, tradeId, needsContextQuestion, isAiRecommended]
           );
         }
@@ -2971,9 +2972,9 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
           
           await query(
             `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (project_id, trade_id) 
-             DO UPDATE SET is_manual = $3, is_ai_recommended = $4`,
+ VALUES ($1, $2, $3, $4)
+ ON CONFLICT (project_id, trade_id) 
+ DO UPDATE SET is_manual = $3, is_ai_recommended = $4`,
             [projectId, tradeId, needsContextQuestion, isAiRecommended]
           );
           
