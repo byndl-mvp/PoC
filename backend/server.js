@@ -388,7 +388,7 @@ case 'FEN': // Fenster & Türen
   break;
 
 case 'TIS': // Tischler
-  if (desc.includes('einbauschrank') || desc.includes('küche') || desc.includes('möbel')) {
+  if (desc.includes('einbauschrank') || desc.includes('küche') || desc.includes('innentüren')) {
     informationCompleteness += 30;
   }
   if (desc.match(/\d+\s*(m|meter|schrank|element)/)) {
@@ -424,7 +424,7 @@ case 'TRO': // Trockenbau
   } else {
     missingCriticalInfo.push('Fläche Trockenbau');
   }
-  if (desc.includes('rigips') || desc.includes('gipskarton') || desc.includes('ständerwerk')) {
+  if (desc.includes('rigips') || desc.includes('gipskarton') || desc.includes('vorsatzschale') || .includes('ständerwerk')) {
     informationCompleteness += 20;
   }
   break;
