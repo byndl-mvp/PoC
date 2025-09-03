@@ -424,7 +424,7 @@ case 'TRO': // Trockenbau
   } else {
     missingCriticalInfo.push('Fläche Trockenbau');
   }
-  if (desc.includes('rigips') || desc.includes('gipskarton') || desc.includes('vorsatzschale') || .includes('ständerwerk')) {
+  if (desc.includes('rigips') || desc.includes('gipskarton') || desc.includes('vorsatzschale') || desc.includes('ständerwerk')) {
     informationCompleteness += 20;
   }
   break;
