@@ -57,10 +57,10 @@ const TRADE_COMPLEXITY = {
   'ROH': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 35 },
   
   // Komplexe Gewerke (20-30 Fragen)
-  'TIS': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 30 },
-  'FEN': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 30 },
-  'FASS': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 30 },
-  'SCHL': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 28 },
+  'TIS': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 25 },
+  'FEN': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 25 },
+  'FASS': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 25 },
+  'SCHL': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 25 },
   
   // Mittlere Komplexität (15-25 Fragen)
   'FLI': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
