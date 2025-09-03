@@ -146,12 +146,19 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ content, name }),
       });
       if (!res.ok) throw new Error('Fehler beim Aktualisieren des Prompts');
+      
+      // Update successful
       setMessage('Prompt erfolgreich aktualisiert');
       setEditingPrompt(null);
-      fetchPrompts();
+      
+      // Force reload of prompts
+      await fetchPrompts();
+      
+      // Clear message after 3 seconds
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       setError(err.message);
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -340,16 +347,47 @@ export default function AdminDashboardPage() {
                         <div>
                           <h4 className="text-white font-semibold mb-2">Gewerke & Q&A</h4>
                           <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                            {selectedProject.trades?.map((trade) => (
-                              <details key={trade.id} className="bg-white/5 rounded-lg p-3">
-                                <summary className="cursor-pointer text-white hover:text-teal-400">
-                                  {trade.name}
-                                </summary>
-                                <div className="mt-2 pl-4 text-white/70 text-sm">
-                                  <p>Q&A Details würden hier angezeigt...</p>
-                                </div>
-                              </details>
-                            ))}
+                            {selectedProject.trades?.map((trade) => {
+                              // Filter Q&A for this trade
+                              const tradeQA = selectedProject.questionsAnswers?.filter(
+                                qa => qa.trade_id === trade.id
+                              ) || [];
+                              
+                              return (
+                                <details key={trade.id} className="bg-white/5 rounded-lg p-3">
+                                  <summary className="cursor-pointer text-white hover:text-teal-400">
+                                    {trade.name} ({tradeQA.length} Fragen)
+                                  </summary>
+                                  <div className="mt-2 pl-4 space-y-2">
+                                    {tradeQA.length > 0 ? (
+                                      tradeQA.map((qa, idx) => (
+                                        <div key={`${qa.question_id}-${idx}`} className="border-l-2 border-teal-400/30 pl-3">
+                                          <p className="text-white/90 text-sm font-medium">
+                                            Frage {qa.question_id}: {qa.question_text}
+                                          </p>
+                                          {qa.answer_text ? (
+                                            <p className="text-green-300 text-xs mt-1">
+                                              ✓ {qa.answer_text}
+                                            </p>
+                                          ) : (
+                                            <p className="text-yellow-300 text-xs mt-1">
+                                              ⚠ Keine Antwort
+                                            </p>
+                                          )}
+                                          {qa.assumption && (
+                                            <p className="text-blue-300 text-xs mt-1">
+                                              ℹ Annahme: {qa.assumption}
+                                            </p>
+                                          )}
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="text-white/50 text-sm">Keine Fragen vorhanden</p>
+                                    )}
+                                  </div>
+                                </details>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
