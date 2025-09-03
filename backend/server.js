@@ -97,6 +97,12 @@ async function llmWithPolicy(task, messages, options = {}) {
     'summary': 4000,
     'validation': 3000   
   };
+
+// HIER DIE ZENTRALE LÖSUNG EINFÜGEN:
+  if (options.jsonMode === true) {
+    console.log(`[LLM] Forcing jsonMode to false for task: ${task}`);
+    options.jsonMode = false;
+  }
   
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
   const temperature = options.temperature !== undefined ? options.temperature : 0.4;
