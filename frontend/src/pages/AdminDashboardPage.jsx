@@ -9,7 +9,6 @@ export default function AdminDashboardPage() {
   const [lvs, setLvs] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
-  const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [editingPrompt, setEditingPrompt] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
