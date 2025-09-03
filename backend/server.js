@@ -86,7 +86,7 @@ const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 12, maxQuestion
 // ===========================================================================
 
 /**
- * Erweiterte LLM-Policy mit OpenAI primär und Claude als Fallback
+ * Erweiterte LLM-Policy mit robuster Fehlerbehandlung
  */
 async function llmWithPolicy(task, messages, options = {}) {
   const defaultMaxTokens = {
@@ -101,16 +101,16 @@ async function llmWithPolicy(task, messages, options = {}) {
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
   const temperature = options.temperature !== undefined ? options.temperature : 0.4;
   
-  // GEÄNDERT: OpenAI ist jetzt immer primär für alle Tasks
-  const primaryProvider = 'openai';
-  const fallbackProvider = 'anthropic';
+  const primaryProvider = ['detect', 'questions', 'intake', 'validation'].includes(task) 
+    ? 'anthropic' 
+    : 'openai';
   
   const callOpenAI = async () => {
     try {
       const useJsonMode = options.jsonMode && maxTokens <= 4096;
       
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',  // GEÄNDERT: Explizit gpt-4o-mini (gpt-5-mini existiert noch nicht in Produktion)
+        model: MODEL_OPENAI,
         messages,
         temperature,
         max_completion_tokens: Math.min(maxTokens, 16384),
@@ -127,15 +127,15 @@ async function llmWithPolicy(task, messages, options = {}) {
     try {
       const systemMessage = messages.find(m => m.role === "system")?.content || "";
       const otherMessages = messages.filter(m => m.role !== "system");
-      
+
       const response = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-latest',  // GEÄNDERT: Explizit claude-3-5-sonnet-latest
+        model: MODEL_ANTHROPIC,
         max_tokens: Math.min(maxTokens, 8192),
         temperature,
         system: systemMessage,
         messages: otherMessages,
       });
-      
+
       return response.content[0].text;
     } catch (error) {
       console.error('[LLM] Anthropic error:', error.status || error.message);
@@ -146,26 +146,40 @@ async function llmWithPolicy(task, messages, options = {}) {
   let result = null;
   let lastError = null;
   
-  // Try OpenAI first (primary)
+  // Try primary provider
   try {
-    console.log(`[LLM] Task: ${task} | Trying primary: OpenAI (gpt-5-mini) | Tokens: ${maxTokens}`);
-    result = await callOpenAI();
-    console.log(`[LLM] Success with OpenAI`);
+    console.log(`[LLM] Task: ${task} | Trying primary: ${primaryProvider} | Tokens: ${maxTokens}`);
+    
+    if (primaryProvider === 'anthropic') {
+      result = await callClaude();
+    } else {
+      result = await callOpenAI();
+    }
+    
+    console.log(`[LLM] Success with primary ${primaryProvider}`);
     return result;
     
   } catch (primaryError) {
     lastError = primaryError;
-    console.warn(`[LLM] OpenAI failed with status ${primaryError.status || 'unknown'}`);
+    console.warn(`[LLM] Primary ${primaryProvider} failed with status ${primaryError.status || 'unknown'}`);
     
-    // Try Claude as fallback
+    // Try fallback provider
+    const fallbackProvider = primaryProvider === 'anthropic' ? 'openai' : 'anthropic';
+    
     try {
-      console.log(`[LLM] Trying fallback: Anthropic (claude-3-5-sonnet-latest)`);
-      result = await callClaude();
-      console.log(`[LLM] Success with fallback Anthropic`);
+      console.log(`[LLM] Trying fallback: ${fallbackProvider}`);
+      
+      if (fallbackProvider === 'openai') {
+        result = await callOpenAI();
+      } else {
+        result = await callClaude();
+      }
+      
+      console.log(`[LLM] Success with fallback ${fallbackProvider}`);
       return result;
       
     } catch (fallbackError) {
-      console.error(`[LLM] Anthropic fallback also failed with status ${fallbackError.status || 'unknown'}`);
+      console.error(`[LLM] Fallback ${fallbackProvider} also failed with status ${fallbackError.status || 'unknown'}`);
       lastError = fallbackError;
     }
   }
