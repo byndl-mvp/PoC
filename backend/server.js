@@ -1560,48 +1560,53 @@ WICHTIG:
 3. Realistische Preise (Stand 2024/2025)
 4. Dokumentiere alle Annahmen transparent`;
 
+
   try {
+    // FÜR ALLE GEWERKE: jsonMode aus, da es Probleme verursacht
     const response = await llmWithPolicy('lv', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
       maxTokens: 10000,
       temperature: 0.3,
-      jsonMode: true, 
+      jsonMode: false,  // GEÄNDERT: War true, jetzt false für ALLE
       timeout: 60000
-  });
+    });
 
-if (trade.code === 'FASS') {
-  console.log('\n========== FASS LLM RESPONSE DEBUG ==========');
-  console.log('Response length:', response.length);
-  console.log('First 500 chars:', response.substring(0, 500));
-  console.log('Last 500 chars:', response.substring(response.length - 500));
-  
-  const openBraces = (response.match(/{/g) || []).length;
-  const closeBraces = (response.match(/}/g) || []).length;
-  console.log('Open { count:', openBraces);
-  console.log('Close } count:', closeBraces);
-  console.log('Balanced:', openBraces === closeBraces);
-  
-  if (response.includes('```')) {
-    console.log('⚠️ WARNING: Contains markdown blocks');
-  }
-  if (!response.trim().endsWith('}')) {
-    console.log('⚠️ WARNING: Does NOT end with }');
-  }
-  console.log('========================================\n');
-}
+    // Sicherstellen dass response ein String ist
+    let responseString = response;
+    if (typeof responseString !== 'string') {
+      console.error('[LV] WARNING: Response is not a string, converting...');
+      responseString = JSON.stringify(response);
+    }
     
-const cleanedResponse = response
-  .replace(/```json\n?/g, '')
-  .replace(/```\n?/g, '')
-  .replace(/\/\/.*$/gm, '')  // Entferne einzeilige Kommentare
-  .replace(/\/\*[\s\S]*?\*\//g, '')  // Entferne mehrzeilige Kommentare
-  .replace(/,(\s*[}\]])/g, '$1')  // Entferne trailing commas
-  .replace(/([}\]])(\s*)([{\[])/g, '$1,$2$3')  // Füge fehlende Kommas zwischen Objekten/Arrays ein
-  .replace(/:\s*'([^']*)'/g, ': "$1"')  // Ersetze single quotes mit double quotes
-  .replace(/:\s*([^",\[\{\s]+)([,}\]])/g, ': "$1"$2')  // Umschließe unquoted values
-  .trim();
+    // Check für [object Object] Bug
+    if (responseString === '[object Object]' || responseString.includes('[object Object]')) {
+      console.error('[LV] ERROR: Invalid response format [object Object]');
+      throw new Error('LLM returned object instead of JSON string');
+    }
+
+    // Extrahiere nur das JSON-Objekt aus der Response
+    let cleanedResponse = responseString;
+    
+    // Wenn Text vor/nach dem JSON ist, extrahiere nur das JSON
+    const jsonStart = cleanedResponse.indexOf('{');
+    const jsonEnd = cleanedResponse.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleanedResponse = cleanedResponse.substring(jsonStart, jsonEnd + 1);
+    }
+    
+    // Standard-Bereinigung
+    cleanedResponse = cleanedResponse
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .replace(/\/\/.*$/gm, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/,(\s*[}\]])/g, '$1')
+      .replace(/([}\]])(\s*)([{\[])/g, '$1,$2$3')
+      .replace(/:\s*'([^']*)'/g, ': "$1"')
+      .replace(/:\s*([^",\[\{\s]+)([,}\]])/g, ': "$1"$2')
+      .trim();
 
 // WICHTIG: Variable im äußeren Scope deklarieren
 let lv;
