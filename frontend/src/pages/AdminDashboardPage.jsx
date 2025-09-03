@@ -26,24 +26,29 @@ export default function AdminDashboardPage() {
 
   // Fetch initial data based on active tab
   useEffect(() => {
-    if (token) {
-      switch(activeTab) {
-        case 'projects':
-          fetchProjects();
-          break;
-        case 'prompts':
-          fetchPrompts();
-          break;
-        case 'lvs':
-          fetchLVs();
-          break;
-        case 'analytics':
-          fetchAnalytics();
-          break;
-        default:
-          break;
+    const fetchData = async () => {
+      if (token) {
+        switch(activeTab) {
+          case 'projects':
+            await fetchProjects();
+            break;
+          case 'prompts':
+            await fetchPrompts();
+            break;
+          case 'lvs':
+            await fetchLVs();
+            break;
+          case 'analytics':
+            await fetchAnalytics();
+            break;
+          default:
+            break;
+        }
       }
-    }
+    };
+    
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, activeTab]);
 
   const fetchProjects = async () => {
