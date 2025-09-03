@@ -330,131 +330,121 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
         if (desc.includes('einfamilienhaus') || desc.includes('efh')) informationCompleteness += 30;
         break;
 
-      case 'FASS': // Fassadenbau
-        if (desc.match(/\d+\s*(m²|qm)/)) {
-        informationCompleteness += 35;
-        } else {
-        missingCriticalInfo.push('Fassadenfläche');
-        }
-        if (desc.includes('fassade') || desc.includes('außenputz') || desc.includes('dämmung') || desc.includes('wdvs')) {
-        informationCompleteness += 25;
-        } else {
-        missingCriticalInfo.push('Art der Fassadenarbeiten');
-        }
-        break;
-
-    case 'ABBR': // Abbruch
-        if (desc.match(/\d+\s*(m²|m³|kg|tonnen)/)) {
-        informationCompleteness += 30;
-        } else {
-        missingCriticalInfo.push('Umfang/Menge');
-        }
-        if (desc.includes('entkernung') || desc.includes('teilabbruch') || desc.includes('komplettabbruch')) {
-        informationCompleteness += 25;
-        }
-        break;
-
-case 'BOD': // Bodenbelag
-  if (desc.match(/\d+\s*(m²|qm)/)) {
-    informationCompleteness += 35;
+      case 'FASS':
+  if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Fassadenfläche');
+  else informationCompleteness += 30;
+  if (!desc.includes('fassade') && !desc.includes('putz') && !desc.includes('dämmung')) {
+    missingCriticalInfo.push('Art der Fassadenarbeiten');
   } else {
-    missingCriticalInfo.push('Bodenfläche');
-  }
-  if (desc.includes('parkett') || desc.includes('laminat') || desc.includes('vinyl') || desc.includes('teppich')) {
     informationCompleteness += 20;
   }
   break;
 
-case 'HEI': // Heizung
-  if (desc.includes('gastherme') || desc.includes('wärmepumpe') || desc.includes('ölheizung')) {
-    informationCompleteness += 30;
+case 'ABBR':
+  if (!desc.match(/\d+\s*(m²|m³|tonnen)/)) missingCriticalInfo.push('Abbruchmenge');
+  else informationCompleteness += 30;
+  if (!desc.includes('entkernung') && !desc.includes('teilabbruch') && !desc.includes('komplettabbruch')) {
+    missingCriticalInfo.push('Art des Abbruchs');
   } else {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'BOD':
+  if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Bodenfläche');
+  else informationCompleteness += 30;
+  if (!desc.includes('parkett') && !desc.includes('laminat') && !desc.includes('vinyl')) {
+    missingCriticalInfo.push('Bodenbelagsart');
+  } else {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'HEI':
+  if (!desc.match(/\d+\s*(kw|heizkörper|räume)/)) missingCriticalInfo.push('Heizleistung/Umfang');
+  else informationCompleteness += 30;
+  if (!desc.includes('gastherme') && !desc.includes('wärmepumpe') && !desc.includes('ölheizung')) {
     missingCriticalInfo.push('Heizungstyp');
-  }
-  if (desc.match(/\d+\s*(kw|kilowatt|heizkörper)/)) {
-    informationCompleteness += 25;
-  }
-  break;
-
-case 'FEN': // Fenster & Türen
-  if (desc.match(/\d+\s*(fenster|türen)/)) {
-    informationCompleteness += 35;
   } else {
-    missingCriticalInfo.push('Anzahl Fenster/Türen');
-  }
-  if (desc.includes('kunststoff') || desc.includes('holz') || desc.includes('aluminium')) {
     informationCompleteness += 20;
   }
   break;
 
-case 'TIS': // Tischler
-  if (desc.includes('einbauschrank') || desc.includes('küche') || desc.includes('innentüren')) {
-    informationCompleteness += 30;
-  }
-  if (desc.match(/\d+\s*(m|meter|schrank|element)/)) {
-    informationCompleteness += 25;
-  }
-  break;
-
-case 'ROH': // Rohbau
-  if (desc.match(/\d+\s*(m²|m³|qm)/)) {
-    informationCompleteness += 30;
+case 'FEN':
+  if (!desc.match(/\d+\s*(fenster|türen|stück)/)) missingCriticalInfo.push('Anzahl Fenster/Türen');
+  else informationCompleteness += 30;
+  if (!desc.includes('kunststoff') && !desc.includes('holz') && !desc.includes('aluminium')) {
+    missingCriticalInfo.push('Material Fenster/Türen');
   } else {
-    missingCriticalInfo.push('Fläche/Volumen');
-  }
-  if (desc.includes('bodenplatte') || desc.includes('wand') || desc.includes('decke')) {
-    informationCompleteness += 25;
-  }
-  break;
-
-case 'ESTR': // Estrich
-  if (desc.match(/\d+\s*(m²|qm)/)) {
-    informationCompleteness += 35;
-  } else {
-    missingCriticalInfo.push('Estrichfläche');
-  }
-  if (desc.includes('fließestrich') || desc.includes('zementestrich') || desc.includes('trockenestrich')) {
     informationCompleteness += 20;
   }
   break;
 
-case 'TRO': // Trockenbau
-  if (desc.match(/\d+\s*(m²|qm|wand|decke)/)) {
-    informationCompleteness += 30;
+case 'TIS':
+  if (!desc.match(/\d+\s*(m|schrank|element)/)) missingCriticalInfo.push('Umfang Tischlerarbeiten');
+  else informationCompleteness += 30;
+  if (!desc.includes('einbauschrank') && !desc.includes('küche') && !desc.includes('möbel')) {
+    missingCriticalInfo.push('Art der Tischlerarbeiten');
   } else {
-    missingCriticalInfo.push('Fläche Trockenbau');
-  }
-  if (desc.includes('rigips') || desc.includes('gipskarton') || desc.includes('vorsatzschale') || desc.includes('ständerwerk')) {
     informationCompleteness += 20;
   }
   break;
 
-case 'SCHL': // Schlosser
-  if (desc.includes('geländer') || desc.includes('zaun') || desc.includes('tor') || desc.includes('treppe')) {
-    informationCompleteness += 30;
-  }
-  if (desc.match(/\d+\s*(m|meter|stück)/)) {
-    informationCompleteness += 25;
-  }
-  break;
-
-case 'AUSS': // Außenanlagen
-  if (desc.match(/\d+\s*(m²|qm)/)) {
-    informationCompleteness += 30;
+case 'ROH':
+  if (!desc.match(/\d+\s*(m²|m³|qm)/)) missingCriticalInfo.push('Rohbaufläche/Volumen');
+  else informationCompleteness += 30;
+  if (!desc.includes('bodenplatte') && !desc.includes('wand') && !desc.includes('decke')) {
+    missingCriticalInfo.push('Art der Rohbauarbeiten');
   } else {
-    missingCriticalInfo.push('Fläche Außenbereich');
-  }
-  if (desc.includes('pflaster') || desc.includes('rasen') || desc.includes('bepflanzung')) {
-    informationCompleteness += 25;
-  }
-  break;
-
-case 'INT': // Allgemeine Projektaufnahme
-  // Spezialfall: Bei INT reicht oft weniger spezifische Info
-  informationCompleteness += 20;
-  if (desc.length > 50) {
     informationCompleteness += 20;
   }
+  break;
+
+case 'ESTR':
+  if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Estrichfläche');
+  else informationCompleteness += 30;
+  if (!desc.includes('fließestrich') && !desc.includes('zementestrich') && !desc.includes('trockenestrich')) {
+    missingCriticalInfo.push('Estrichart');
+  } else {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'TRO':
+  if (!desc.match(/\d+\s*(m²|qm|wände)/)) missingCriticalInfo.push('Trockenbaufläche');
+  else informationCompleteness += 30;
+  if (!desc.includes('rigips') && !desc.includes('gipskarton') && !desc.includes('ständerwerk')) {
+    missingCriticalInfo.push('Art der Trockenbauarbeiten');
+  } else {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'SCHL':
+  if (!desc.match(/\d+\s*(m|meter|stück)/)) missingCriticalInfo.push('Umfang Schlosserarbeiten');
+  else informationCompleteness += 30;
+  if (!desc.includes('geländer') && !desc.includes('zaun') && !desc.includes('tor')) {
+    missingCriticalInfo.push('Art der Schlosserarbeiten');
+  } else {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'AUSS':
+  if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Außenbereichsfläche');
+  else informationCompleteness += 30;
+  if (!desc.includes('pflaster') && !desc.includes('rasen') && !desc.includes('bepflanzung')) {
+    missingCriticalInfo.push('Art der Außenarbeiten');
+  } else {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'INT':
+  // Spezialfall INT - weniger strenge Anforderungen
+  if (!desc.match(/\d+/)) missingCriticalInfo.push('Projektumfang');
+  else informationCompleteness += 30;
+  informationCompleteness += 20; // Bonus für INT
   break;
     
     }
