@@ -483,38 +483,88 @@ export default function AdminDashboardPage() {
                 <h2 className="text-2xl font-bold text-white mb-4">Leistungsverzeichnisse</h2>
                 <div className="grid gap-4">
                   {lvs.map((lv) => (
-                    <div key={`${lv.project_id}-${lv.trade_id}`} className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-semibold text-white">
-                            {lv.trade_name} - Projekt #{lv.project_id}
-                          </h3>
-                          <p className="text-white/70 text-sm mt-1">
-                            {lv.project_description}
-                          </p>
+                    <details key={`${lv.project_id}-${lv.trade_id}`} className="bg-white/10 backdrop-blur rounded-lg border border-white/20">
+                      <summary className="p-4 cursor-pointer hover:bg-white/5 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-white">
+                              {lv.trade_name} - Projekt #{lv.project_id}
+                            </h3>
+                            <p className="text-white/70 text-sm mt-1">
+                              {lv.project_description}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-teal-400 font-semibold">
+                              {lv.total_sum && !isNaN(lv.total_sum) 
+                                ? `${Number(lv.total_sum).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}` 
+                                : 'Keine Summe'}
+                            </p>
+                            <p className="text-white/50 text-xs mt-1">
+                              {lv.position_count || 0} Positionen
+                            </p>
+                            <div className={`mt-2 px-2 py-1 rounded text-xs inline-block ${
+                              lv.qualityScore > 80 ? 'bg-green-500/20 text-green-300' :
+                              lv.qualityScore > 50 ? 'bg-yellow-500/20 text-yellow-300' :
+                              'bg-red-500/20 text-red-300'
+                            }`}>
+                              Qualität: {lv.qualityScore}%
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-teal-400 font-semibold">
-                            {lv.total_sum ? `${Number(lv.total_sum).toLocaleString()} €` : 'N/A'}
-                          </p>
-                          <p className="text-white/50 text-xs mt-1">
-                            {lv.position_count || 0} Positionen
-                          </p>
-                          <div className={`mt-2 px-2 py-1 rounded text-xs inline-block ${
-                            lv.qualityScore > 80 ? 'bg-green-500/20 text-green-300' :
-                            lv.qualityScore > 50 ? 'bg-yellow-500/20 text-yellow-300' :
-                            'bg-red-500/20 text-red-300'
-                          }`}>
-                            Qualität: {lv.qualityScore}%
+                        {lv.issues?.length > 0 && (
+                          <div className="mt-2 text-yellow-300 text-sm">
+                            Issues: {lv.issues.join(', ')}
+                          </div>
+                        )}
+                      </summary>
+                      
+                      {/* LV Details - Einzelpositionen */}
+                      <div className="p-4 border-t border-white/10">
+                        <h4 className="text-white font-semibold mb-3">Einzelpositionen:</h4>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {lv.content?.positions && Array.isArray(lv.content.positions) ? (
+                            lv.content.positions.map((pos, idx) => (
+                              <div key={idx} className="bg-white/5 rounded p-3">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="text-white font-medium">
+                                      {pos.positionNumber || idx + 1}. {pos.title || pos.description?.substring(0, 50) || 'Position'}
+                                    </p>
+                                    <p className="text-white/70 text-sm mt-1">
+                                      {pos.description}
+                                    </p>
+                                    <div className="flex gap-4 mt-2 text-xs text-white/50">
+                                      <span>Menge: {pos.quantity} {pos.unit}</span>
+                                      <span>EP: {pos.unitPrice ? `${Number(pos.unitPrice).toFixed(2)} €` : 'N/A'}</span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <p className="text-teal-400 font-semibold">
+                                      {pos.totalPrice ? `${Number(pos.totalPrice).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}` : 'N/A'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-white/50">Keine Positionen vorhanden oder Datenformat fehlerhaft</p>
+                          )}
+                        </div>
+                        
+                        {/* Summen */}
+                        <div className="mt-4 pt-4 border-t border-white/20">
+                          <div className="flex justify-between text-white">
+                            <span className="font-semibold">Gesamtsumme (Netto):</span>
+                            <span className="text-xl font-bold text-teal-400">
+                              {lv.content?.totalSum && !isNaN(lv.content.totalSum)
+                                ? Number(lv.content.totalSum).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})
+                                : 'Berechnung ausstehend'}
+                            </span>
                           </div>
                         </div>
                       </div>
-                      {lv.issues?.length > 0 && (
-                        <div className="mt-2 text-yellow-300 text-sm">
-                          Issues: {lv.issues.join(', ')}
-                        </div>
-                      )}
-                    </div>
+                    </details>
                   ))}
                 </div>
               </div>
