@@ -1683,7 +1683,7 @@ WICHTIG:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 10000,
+      maxTokens: 15000,
       temperature: 0.3,
       jsonMode: true, 
       timeout: 60000
@@ -1946,6 +1946,7 @@ async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
   console.error('[LV] All attempts failed. Last error:', lastError);
   throw new Error(`LV-Generierung fehlgeschlagen: ${lastError.message}`);
 }
+
 /**
  * PDF Generation für komplettes Projekt-LV
  */
