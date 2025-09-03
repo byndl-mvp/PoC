@@ -611,47 +611,137 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                {/* Trade Stats */}
+                {/* Trade Stats - Expandable */}
                 <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
                   <h3 className="text-xl font-bold text-white mb-4">Gewerke Statistiken</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-white">
-                      <thead>
-                        <tr className="border-b border-white/20">
-                          <th className="text-left py-2">Gewerk</th>
-                          <th className="text-right py-2">Projekte</th>
-                          <th className="text-right py-2">LVs</th>
-                          <th className="text-right py-2">Ø LV-Wert</th>
-                          <th className="text-right py-2">Completion</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analytics.trades?.map((trade) => {
-                          const completion = analytics.completion?.find(c => c.trade_name === trade.name);
-                          return (
-                            <tr key={trade.code} className="border-b border-white/10">
-                              <td className="py-2">{trade.name}</td>
-                              <td className="text-right">{trade.usage_count || 0}</td>
-                              <td className="text-right">{trade.lv_count || 0}</td>
-                              <td className="text-right">
-                                {trade.avg_lv_value 
-                                  ? `${Math.round(trade.avg_lv_value).toLocaleString()} €`
-                                  : '-'}
-                              </td>
-                              <td className="text-right">
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  completion?.completion_rate > 80 ? 'bg-green-500/20 text-green-300' :
-                                  completion?.completion_rate > 50 ? 'bg-yellow-500/20 text-yellow-300' :
-                                  'bg-red-500/20 text-red-300'
-                                }`}>
-                                  {completion?.completion_rate || 0}%
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="space-y-2">
+                    {analytics.trades?.map((trade) => {
+                      const completion = analytics.completion?.find(c => c.trade_name === trade.name);
+                      const tradePrompts = analytics.prompts?.filter(p => p.trade_name === trade.name);
+                      
+                      return (
+                        <details key={trade.code} className="bg-white/5 rounded-lg">
+                          <summary className="p-4 cursor-pointer hover:bg-white/10 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <span className="text-white font-medium">{trade.name}</span>
+                              </div>
+                              <div className="flex gap-8 text-sm">
+                                <div className="text-center">
+                                  <p className="text-white/50">Projekte</p>
+                                  <p className="text-white font-semibold">{trade.usage_count || 0}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-white/50">LVs</p>
+                                  <p className="text-white font-semibold">{trade.lv_count || 0}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-white/50">Ø LV-Wert</p>
+                                  <p className="text-white font-semibold">
+                                    {trade.avg_lv_value 
+                                      ? `${Math.round(trade.avg_lv_value).toLocaleString()} €`
+                                      : '-'}
+                                  </p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-white/50">Completion</p>
+                                  <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                    completion?.completion_rate > 80 ? 'bg-green-500/20 text-green-300' :
+                                    completion?.completion_rate > 50 ? 'bg-yellow-500/20 text-yellow-300' :
+                                    'bg-red-500/20 text-red-300'
+                                  }`}>
+                                    {completion?.completion_rate || 0}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </summary>
+                          
+                          {/* Detaillierte Gewerk-Statistik */}
+                          <div className="p-4 border-t border-white/10 space-y-4">
+                            {/* Performance Metriken */}
+                            <div className="grid md:grid-cols-3 gap-4">
+                              <div className="bg-white/5 rounded p-3">
+                                <h4 className="text-white/70 text-xs uppercase mb-1">Fragen-Status</h4>
+                                <p className="text-white text-2xl font-bold">
+                                  {completion?.answered_questions || 0} / {completion?.total_questions || 0}
+                                </p>
+                                <div className="w-full bg-white/20 rounded-full h-2 mt-2">
+                                  <div 
+                                    className="bg-teal-400 h-2 rounded-full"
+                                    style={{width: `${completion?.completion_rate || 0}%`}}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white/5 rounded p-3">
+                                <h4 className="text-white/70 text-xs uppercase mb-1">LV-Qualität</h4>
+                                <p className="text-white text-2xl font-bold">
+                                  {trade.lv_count > 0 ? 'Gut' : 'N/A'}
+                                </p>
+                                <p className="text-white/50 text-xs mt-1">
+                                  Ø {trade.avg_position_count || 0} Positionen/LV
+                                </p>
+                              </div>
+                              
+                              <div className="bg-white/5 rounded p-3">
+                                <h4 className="text-white/70 text-xs uppercase mb-1">Umsatzvolumen</h4>
+                                <p className="text-white text-2xl font-bold">
+                                  {trade.lv_count && trade.avg_lv_value 
+                                    ? `${Math.round(trade.lv_count * trade.avg_lv_value).toLocaleString()} €`
+                                    : 'N/A'}
+                                </p>
+                                <p className="text-white/50 text-xs mt-1">Gesamt aus allen LVs</p>
+                              </div>
+                            </div>
+                            
+                            {/* Prompt Performance */}
+                            {tradePrompts && tradePrompts.length > 0 && (
+                              <div>
+                                <h4 className="text-white font-semibold mb-2">Prompt-Effektivität</h4>
+                                <div className="space-y-1">
+                                  {tradePrompts.map(prompt => (
+                                    <div key={prompt.id} className="flex justify-between text-sm">
+                                      <span className="text-white/70">{prompt.name}</span>
+                                      <div className="flex gap-4">
+                                        <span className="text-white/50">
+                                          {prompt.usage_count} Nutzungen
+                                        </span>
+                                        <span className="text-teal-400">
+                                          Ø {prompt.avg_position_count ? Math.round(prompt.avg_position_count) : 0} Pos.
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Trend Indikator */}
+                            <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                              <span className="text-white/50 text-sm">Performance-Trend</span>
+                              <div className="flex items-center gap-2">
+                                {completion?.completion_rate > 70 ? (
+                                  <>
+                                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                    </svg>
+                                    <span className="text-green-400 text-sm">Steigend</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                    </svg>
+                                    <span className="text-yellow-400 text-sm">Verbesserung nötig</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </details>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
