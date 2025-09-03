@@ -1896,8 +1896,8 @@ if (duplicates.length > 0) {
   }
 }
 
-// Retry-Wrapper für LV-Generierung
-async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 3) {
+// Optimierte LV-Generierung - schnell und effizient
+async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
   let lastError;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1914,19 +1914,38 @@ async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 3) {
       lastError = error;
       console.error(`[LV] Attempt ${attempt} failed:`, error.message);
       
+      // Bei Datenfehlern NICHT wiederholen - das bringt nichts
+      if (error.message.includes('JSON') || 
+          error.message.includes('[object Object]') ||
+          error.message.includes('undefined') ||
+          error.message.includes('duplicate')) {
+        console.error('[LV] Data/Structure error detected - not retrying:', error.message);
+        throw error; // Sofort fehlschlagen
+      }
+      
+      // Nur bei echten API/Netzwerk-Fehlern retry
       if (attempt < maxRetries) {
-        const waitTime = attempt * 1500; // 1.5s, 3s, 4.5s
-        console.log(`[LV] Waiting ${waitTime}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        // Nur bei OpenAI Rate Limits oder Timeouts wiederholen
+        if (error.message.includes('Rate limit') || 
+            error.message.includes('timeout') ||
+            error.message.includes('OpenAI') ||
+            error.message.includes('network')) {
+          const waitTime = 500; // Kurze konstante Wartezeit
+          console.log(`[LV] API/Network issue - waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          // Unbekannter Fehler - nicht wiederholen
+          console.error('[LV] Unknown error type - not retrying');
+          throw error;
+        }
       }
     }
   }
   
   // Log den letzten Fehler ausführlich
   console.error('[LV] All attempts failed. Last error:', lastError);
-  throw new Error(`LV-Generierung nach ${maxRetries} Versuchen fehlgeschlagen: ${lastError.message}`);
+  throw new Error(`LV-Generierung fehlgeschlagen: ${lastError.message}`);
 }
-
 /**
  * PDF Generation für komplettes Projekt-LV
  */
