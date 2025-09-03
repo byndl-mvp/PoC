@@ -4097,7 +4097,7 @@ if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
 });
 
 
-// ADMIN ROUTES - SIMPLIFIED WITH BASIC TOKEN
+// ADMIN ROUTES - SIMPLIFIED WITH BASIC TOKEN (FIXED SQL CASTS)
 // ===========================================================================
 
 // Simple token storage (in production, use Redis or database)
@@ -4244,7 +4244,7 @@ app.put('/api/admin/prompts/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// Get all LVs with quality metrics
+// Get all LVs with quality metrics - FIXED CAST
 app.get('/api/admin/lvs', requireAdmin, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 100;
@@ -4258,8 +4258,16 @@ app.get('/api/admin/lvs', requireAdmin, async (req, res) => {
         p.description as project_description,
         p.budget,
         p.category,
-        (l.content->>'totalSum')::numeric as total_sum,
-        jsonb_array_length(l.content->'positions') as position_count
+        CASE 
+          WHEN l.content->>'totalSum' IS NOT NULL 
+          THEN (l.content->>'totalSum')::numeric 
+          ELSE NULL 
+        END as total_sum,
+        CASE 
+          WHEN l.content->'positions' IS NOT NULL 
+          THEN jsonb_array_length(l.content->'positions') 
+          ELSE 0 
+        END as position_count
        FROM lvs l
        JOIN trades t ON t.id = l.trade_id
        JOIN projects p ON p.id = l.project_id
@@ -4276,12 +4284,12 @@ app.get('/api/admin/lvs', requireAdmin, async (req, res) => {
         const issues = [];
         
         // Check for common issues
-        if (!content.positions || content.positions.length === 0) {
+        if (!content || !content.positions || content.positions.length === 0) {
           qualityScore -= 50;
           issues.push('Keine Positionen');
         }
         
-        if (content.positions) {
+        if (content && content.positions && Array.isArray(content.positions)) {
           const invalidPrices = content.positions.filter(p => !p.unitPrice || p.unitPrice <= 0);
           if (invalidPrices.length > 0) {
             qualityScore -= 20;
@@ -4302,7 +4310,7 @@ app.get('/api/admin/lvs', requireAdmin, async (req, res) => {
           issues
         };
       } catch (parseError) {
-        console.error(`Error parsing LV content for ID ${lv.id}:`, parseError);
+        console.error(`Error parsing LV content for ID ${lv.project_id}-${lv.trade_id}:`, parseError);
         return {
           ...lv,
           content: lv.content,
@@ -4348,7 +4356,7 @@ app.put('/api/admin/lvs/:projectId/:tradeId', requireAdmin, async (req, res) => 
   }
 });
 
-// Get detailed project analytics
+// Get detailed project analytics - FIXED CASTS
 app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
   try {
     // Project statistics
@@ -4361,14 +4369,20 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
        FROM projects`
     );
     
-    // Trade usage statistics
+    // Trade usage statistics - FIXED CAST
     const tradeStats = await query(`
       SELECT 
         t.code,
         t.name,
         COUNT(DISTINCT pt.project_id) as usage_count,
         COUNT(DISTINCT l.id) as lv_count,
-        AVG((l.content->>'totalSum')::numeric) as avg_lv_value
+        AVG(
+          CASE 
+            WHEN l.content->>'totalSum' IS NOT NULL 
+            THEN (l.content->>'totalSum')::numeric 
+            ELSE NULL 
+          END
+        ) as avg_lv_value
       FROM trades t
       LEFT JOIN project_trades pt ON pt.trade_id = t.id
       LEFT JOIN lvs l ON l.trade_id = t.id
@@ -4376,7 +4390,7 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
       ORDER BY usage_count DESC
     `);
 
-    // Prompt effectiveness (based on LV quality)
+    // Prompt effectiveness - FIXED CASTS
     const promptStats = await query(`
       SELECT 
         p.id,
@@ -4384,8 +4398,20 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
         p.type,
         t.name as trade_name,
         COUNT(l.id) as usage_count,
-        AVG((l.content->>'totalSum')::numeric) as avg_lv_value,
-        AVG(jsonb_array_length(l.content->'positions')) as avg_position_count
+        AVG(
+          CASE 
+            WHEN l.content->>'totalSum' IS NOT NULL 
+            THEN (l.content->>'totalSum')::numeric 
+            ELSE NULL 
+          END
+        ) as avg_lv_value,
+        AVG(
+          CASE 
+            WHEN l.content->'positions' IS NOT NULL 
+            THEN jsonb_array_length(l.content->'positions') 
+            ELSE 0 
+          END
+        ) as avg_position_count
       FROM prompts p
       LEFT JOIN trades t ON t.id = p.trade_id
       LEFT JOIN lvs l ON l.trade_id = p.trade_id
@@ -4523,7 +4549,7 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
             content: typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content
           };
         } catch (e) {
-          console.error(`Error parsing LV content for ID ${lv.id}:`, e);
+          console.error(`Error parsing LV content for project ${lv.project_id}, trade ${lv.trade_id}:`, e);
           return lv;
         }
       })
