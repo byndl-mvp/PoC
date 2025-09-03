@@ -1571,6 +1571,27 @@ WICHTIG:
       timeout: 60000
   });
 
+if (trade.code === 'FASS') {
+  console.log('\n========== FASS LLM RESPONSE DEBUG ==========');
+  console.log('Response length:', response.length);
+  console.log('First 500 chars:', response.substring(0, 500));
+  console.log('Last 500 chars:', response.substring(response.length - 500));
+  
+  const openBraces = (response.match(/{/g) || []).length;
+  const closeBraces = (response.match(/}/g) || []).length;
+  console.log('Open { count:', openBraces);
+  console.log('Close } count:', closeBraces);
+  console.log('Balanced:', openBraces === closeBraces);
+  
+  if (response.includes('```')) {
+    console.log('⚠️ WARNING: Contains markdown blocks');
+  }
+  if (!response.trim().endsWith('}')) {
+    console.log('⚠️ WARNING: Does NOT end with }');
+  }
+  console.log('========================================\n');
+}
+    
 const cleanedResponse = response
   .replace(/```json\n?/g, '')
   .replace(/```\n?/g, '')
