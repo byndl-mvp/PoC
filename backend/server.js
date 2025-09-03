@@ -4096,50 +4096,67 @@ if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
   }
 });
 
-// ===========================================================================
-// ADMIN ROUTES
+
+// ADMIN ROUTES - SIMPLIFIED WITH BASIC TOKEN
 // ===========================================================================
 
-// Admin authentication
-app.post('/api/admin/login', async (req, res) => {
+// Simple token storage (in production, use Redis or database)
+const activeSessions = new Map();
+
+// Generate random token
+function generateToken() {
+  return require('crypto').randomBytes(32).toString('hex');
+}
+
+// Simple admin authentication without bcrypt
+app.post('/api/admin/auth', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { password } = req.body;
     
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+    // Use environment variable for admin password
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ChangeThisPassword2024!';
+
+    if (!password) {
+      return res.status(400).json({ error: 'Password required' });
     }
-    
-    const result = await query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
-    );
-    
-    if (result.rows.length === 0) {
+
+    // Simple password check
+    if (password !== ADMIN_PASSWORD) {
+      console.warn(`Failed admin login attempt from IP: ${req.ip}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Generate simple token
+    const token = generateToken();
     
-    const user = result.rows[0];
-    const valid = await bcrypt.compare(password, user.password_hash);
-    
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    // Store token with metadata
+    activeSessions.set(token, {
+      role: 'admin',
+      createdAt: Date.now(),
+      ip: req.ip
+    });
+
+    // Clean up old tokens (older than 24 hours)
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    for (const [key, value] of activeSessions.entries()) {
+      if (value.createdAt < oneDayAgo) {
+        activeSessions.delete(key);
+      }
     }
-    
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
-    
-    res.json({ token, user: { id: user.id, username: user.username } });
-    
+
+    console.log(`Successful admin login from IP: ${req.ip}`);
+
+    res.json({ 
+      token,
+      message: 'Login successful'
+    });
   } catch (err) {
-    console.error('Login failed:', err);
-    res.status(500).json({ error: 'Login failed' });
+    console.error('Admin auth failed:', err);
+    res.status(500).json({ error: 'Authentication failed' });
   }
 });
 
-// Admin middleware
+// Simple middleware for admin routes
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization;
   
@@ -4149,157 +4166,454 @@ function requireAdmin(req, res, next) {
   
   const token = auth.slice(7);
   
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
+  // Check if token exists and is valid
+  const session = activeSessions.get(token);
+  
+  if (!session) {
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
+  
+  // Check if token is not too old (24 hours)
+  const dayInMs = 24 * 60 * 60 * 1000;
+  if (Date.now() - session.createdAt > dayInMs) {
+    activeSessions.delete(token);
+    return res.status(403).json({ error: 'Token expired' });
+  }
+  
+  if (session.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  req.admin = session;
+  next();
 }
 
-// Admin: Get all projects with statistics
-app.get('/api/admin/projects', requireAdmin, async (req, res) => {
-  try {
-    const result = await query(
-      `SELECT p.*, 
-        COUNT(DISTINCT pt.trade_id) as trade_count,
-        COUNT(DISTINCT l.id) as lv_count,
-        COUNT(DISTINCT q.question_id) as question_count,
-        COUNT(DISTINCT a.question_id) as answer_count
-       FROM projects p
-       LEFT JOIN project_trades pt ON pt.project_id = p.id
-       LEFT JOIN lvs l ON l.project_id = p.id
-       LEFT JOIN questions q ON q.project_id = p.id
-       LEFT JOIN answers a ON a.project_id = p.id
-       GROUP BY p.id
-       ORDER BY p.created_at DESC`
-    );
-    
-    const projects = result.rows.map(p => ({
-      ...p,
-      complexity: determineProjectComplexity(p),
-      completeness: p.question_count > 0 
-        ? Math.round((p.answer_count / p.question_count) * 100)
-        : 0
-    }));
-    
-    res.json({ projects });
-    
-  } catch (err) {
-    console.error('Failed to fetch projects:', err);
-    res.status(500).json({ error: 'Failed to fetch projects' });
+// Logout endpoint
+app.post('/api/admin/logout', requireAdmin, async (req, res) => {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith('Bearer ')) {
+    const token = auth.slice(7);
+    activeSessions.delete(token);
   }
+  res.json({ message: 'Logout successful' });
 });
 
-// Admin: Get project statistics
-app.get('/api/admin/statistics', requireAdmin, async (req, res) => {
-  try {
-    const stats = {};
-    
-    // Projekt-Statistiken
-    const projectStats = await query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as last_week,
-        COUNT(CASE WHEN created_at > NOW() - INTERVAL '30 days' THEN 1 END) as last_month
-      FROM projects
-    `);
-    stats.projects = projectStats.rows[0];
-    
-    // LV-Statistiken
-    const lvStats = await query(`
-      SELECT 
-        COUNT(*) as total,
-        AVG((content->>'totalSum')::numeric) as avg_value,
-        SUM((content->>'totalSum')::numeric) as total_value
-      FROM lvs
-    `);
-    stats.lvs = lvStats.rows[0];
-    
-    // Gewerke-Statistiken
-    const tradeStats = await query(`
-      SELECT t.code, t.name, COUNT(pt.project_id) as usage_count
-      FROM trades t
-      LEFT JOIN project_trades pt ON pt.trade_id = t.id
-      GROUP BY t.id, t.code, t.name
-      ORDER BY usage_count DESC
-    `);
-    stats.tradeUsage = tradeStats.rows;
-    
-    // Fragen-Statistiken
-    const questionStats = await query(`
-      SELECT 
-        COUNT(DISTINCT q.question_id) as total_questions,
-        COUNT(DISTINCT a.question_id) as answered_questions,
-        AVG(q_count.count) as avg_questions_per_project
-      FROM questions q
-      LEFT JOIN answers a ON a.project_id = q.project_id 
-        AND a.trade_id = q.trade_id 
-        AND a.question_id = q.question_id
-      CROSS JOIN (
-        SELECT project_id, COUNT(*) as count 
-        FROM questions 
-        GROUP BY project_id
-      ) q_count
-    `);
-    stats.questions = questionStats.rows[0];
-    
-    res.json({ stats });
-    
-  } catch (err) {
-    console.error('Failed to fetch statistics:', err);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
-  }
-});
-
-// Admin: Get all prompts
-app.get('/api/admin/prompts', requireAdmin, async (req, res) => {
+// Get all prompts with full content for editing
+app.get('/api/admin/prompts/full', requireAdmin, async (req, res) => {
   try {
     const result = await query(
-      `SELECT p.*, t.name as trade_name, t.code as trade_code
-       FROM prompts p
-       LEFT JOIN trades t ON t.id = p.trade_id
-       ORDER BY p.type, t.name`
+      `SELECT p.*, t.name as trade_name, t.code as trade_code 
+       FROM prompts p 
+       LEFT JOIN trades t ON t.id = p.trade_id 
+       ORDER BY p.type, t.sort_order, p.name`
     );
     
     res.json({ prompts: result.rows });
-    
   } catch (err) {
     console.error('Failed to fetch prompts:', err);
     res.status(500).json({ error: 'Failed to fetch prompts' });
   }
 });
 
-// Admin: Update prompt
+// Update prompt content
 app.put('/api/admin/prompts/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { content } = req.body;
+    const { content, name } = req.body;
     
     if (!content) {
       return res.status(400).json({ error: 'Content is required' });
     }
-    
+
     const result = await query(
       `UPDATE prompts 
-       SET content = $1, updated_at = NOW()
-       WHERE id = $2
+       SET content = $1, name = $2, updated_at = NOW()
+       WHERE id = $3
        RETURNING *`,
-      [content, id]
+      [content, name || null, id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Prompt not found' });
     }
-    
+
     res.json({ prompt: result.rows[0] });
-    
   } catch (err) {
     console.error('Failed to update prompt:', err);
     res.status(500).json({ error: 'Failed to update prompt' });
   }
 });
+
+// Get all LVs with quality metrics
+app.get('/api/admin/lvs', requireAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const result = await query(
+      `SELECT 
+        l.*,
+        t.name as trade_name,
+        t.code as trade_code,
+        p.description as project_description,
+        p.budget,
+        p.category,
+        (l.content->>'totalSum')::numeric as total_sum,
+        jsonb_array_length(l.content->'positions') as position_count
+       FROM lvs l
+       JOIN trades t ON t.id = l.trade_id
+       JOIN projects p ON p.id = l.project_id
+       ORDER BY l.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+    
+    // Calculate quality metrics with error handling
+    const lvs = result.rows.map(lv => {
+      try {
+        const content = typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content;
+        let qualityScore = 100;
+        const issues = [];
+        
+        // Check for common issues
+        if (!content.positions || content.positions.length === 0) {
+          qualityScore -= 50;
+          issues.push('Keine Positionen');
+        }
+        
+        if (content.positions) {
+          const invalidPrices = content.positions.filter(p => !p.unitPrice || p.unitPrice <= 0);
+          if (invalidPrices.length > 0) {
+            qualityScore -= 20;
+            issues.push(`${invalidPrices.length} Positionen ohne Preis`);
+          }
+          
+          const missingDescriptions = content.positions.filter(p => !p.description);
+          if (missingDescriptions.length > 0) {
+            qualityScore -= 10;
+            issues.push(`${missingDescriptions.length} Positionen ohne Beschreibung`);
+          }
+        }
+        
+        return {
+          ...lv,
+          content,
+          qualityScore: Math.max(0, qualityScore),
+          issues
+        };
+      } catch (parseError) {
+        console.error(`Error parsing LV content for ID ${lv.id}:`, parseError);
+        return {
+          ...lv,
+          content: lv.content,
+          qualityScore: 0,
+          issues: ['Fehler beim Parsen des Inhalts']
+        };
+      }
+    });
+
+    res.json({ lvs });
+  } catch (err) {
+    console.error('Failed to fetch LVs:', err);
+    res.status(500).json({ error: 'Failed to fetch LVs' });
+  }
+});
+
+// Update LV content (for price corrections)
+app.put('/api/admin/lvs/:projectId/:tradeId', requireAdmin, async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { content } = req.body;
+    
+    if (!content || typeof content !== 'object') {
+      return res.status(400).json({ error: 'Valid content object is required' });
+    }
+    
+    const result = await query(
+      `UPDATE lvs 
+       SET content = $1::jsonb, updated_at = NOW()
+       WHERE project_id = $2 AND trade_id = $3
+       RETURNING *`,
+      [JSON.stringify(content), projectId, tradeId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'LV not found' });
+    }
+
+    res.json({ lv: result.rows[0] });
+  } catch (err) {
+    console.error('Failed to update LV:', err);
+    res.status(500).json({ error: 'Failed to update LV' });
+  }
+});
+
+// Get detailed project analytics
+app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
+  try {
+    // Project statistics
+    const projectStats = await query(
+      `SELECT 
+        COUNT(*) as total_projects,
+        COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as last_week,
+        COUNT(CASE WHEN created_at > NOW() - INTERVAL '30 days' THEN 1 END) as last_month,
+        AVG(CASE WHEN budget IS NOT NULL THEN budget END) as avg_budget
+       FROM projects`
+    );
+    
+    // Trade usage statistics
+    const tradeStats = await query(`
+      SELECT 
+        t.code,
+        t.name,
+        COUNT(DISTINCT pt.project_id) as usage_count,
+        COUNT(DISTINCT l.id) as lv_count,
+        AVG((l.content->>'totalSum')::numeric) as avg_lv_value
+      FROM trades t
+      LEFT JOIN project_trades pt ON pt.trade_id = t.id
+      LEFT JOIN lvs l ON l.trade_id = t.id
+      GROUP BY t.id, t.code, t.name
+      ORDER BY usage_count DESC
+    `);
+
+    // Prompt effectiveness (based on LV quality)
+    const promptStats = await query(`
+      SELECT 
+        p.id,
+        p.name,
+        p.type,
+        t.name as trade_name,
+        COUNT(l.id) as usage_count,
+        AVG((l.content->>'totalSum')::numeric) as avg_lv_value,
+        AVG(jsonb_array_length(l.content->'positions')) as avg_position_count
+      FROM prompts p
+      LEFT JOIN trades t ON t.id = p.trade_id
+      LEFT JOIN lvs l ON l.trade_id = p.trade_id
+      WHERE p.type IN ('questions', 'lv')
+      GROUP BY p.id, p.name, p.type, t.name
+      ORDER BY usage_count DESC
+    `);
+
+    // Question/Answer completion rates
+    const completionStats = await query(`
+      SELECT 
+        t.name as trade_name,
+        COUNT(DISTINCT q.question_id) as total_questions,
+        COUNT(DISTINCT a.question_id) as answered_questions,
+        CASE 
+          WHEN COUNT(DISTINCT q.question_id) > 0 
+          THEN ROUND((COUNT(DISTINCT a.question_id)::float / COUNT(DISTINCT q.question_id) * 100)::numeric, 2)
+          ELSE 0 
+        END as completion_rate
+      FROM trades t
+      LEFT JOIN questions q ON q.trade_id = t.id
+      LEFT JOIN answers a ON a.trade_id = t.id AND a.question_id = q.question_id
+      GROUP BY t.id, t.name
+      ORDER BY completion_rate DESC
+    `);
+
+    res.json({
+      projects: projectStats.rows[0],
+      trades: tradeStats.rows,
+      prompts: promptStats.rows,
+      completion: completionStats.rows
+    });
+  } catch (err) {
+    console.error('Failed to fetch analytics:', err);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// Get all projects with full details
+app.get('/api/admin/projects/detailed', requireAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const result = await query(
+      `SELECT 
+        p.*,
+        COUNT(DISTINCT pt.trade_id) as trade_count,
+        COUNT(DISTINCT q.question_id) as question_count,
+        COUNT(DISTINCT a.question_id) as answer_count,
+        COUNT(DISTINCT l.id) as lv_count,
+        STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name) as trade_names
+       FROM projects p
+       LEFT JOIN project_trades pt ON pt.project_id = p.id
+       LEFT JOIN trades t ON t.id = pt.trade_id
+       LEFT JOIN questions q ON q.project_id = p.id
+       LEFT JOIN answers a ON a.project_id = p.id
+       LEFT JOIN lvs l ON l.project_id = p.id
+       GROUP BY p.id
+       ORDER BY p.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    res.json({ projects: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch projects:', err);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+// Get specific project with all Q&A
+app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get project
+    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [id]);
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const project = projectResult.rows[0];
+
+    // Get trades with Q&A
+    const tradesResult = await query(
+      `SELECT 
+        t.*,
+        pt.created_at as assigned_at
+       FROM trades t
+       JOIN project_trades pt ON pt.trade_id = t.id
+       WHERE pt.project_id = $1
+       ORDER BY t.sort_order`,
+      [id]
+    );
+
+    // Get all questions and answers
+    const qaResult = await query(
+      `SELECT 
+        q.*,
+        a.answer_text,
+        a.assumption,
+        t.name as trade_name,
+        t.code as trade_code
+       FROM questions q
+       LEFT JOIN answers a ON a.project_id = q.project_id 
+         AND a.trade_id = q.trade_id 
+         AND a.question_id = q.question_id
+       JOIN trades t ON t.id = q.trade_id
+       WHERE q.project_id = $1
+       ORDER BY t.sort_order, q.question_id`,
+      [id]
+    );
+
+    // Get LVs
+    const lvsResult = await query(
+      `SELECT 
+        l.*,
+        t.name as trade_name,
+        t.code as trade_code
+       FROM lvs l
+       JOIN trades t ON t.id = l.trade_id
+       WHERE l.project_id = $1`,
+      [id]
+    );
+
+    res.json({
+      project,
+      trades: tradesResult.rows,
+      questionsAnswers: qaResult.rows,
+      lvs: lvsResult.rows.map(lv => {
+        try {
+          return {
+            ...lv,
+            content: typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content
+          };
+        } catch (e) {
+          console.error(`Error parsing LV content for ID ${lv.id}:`, e);
+          return lv;
+        }
+      })
+    });
+    
+  } catch (err) {
+    console.error('Failed to fetch project details:', err);
+    res.status(500).json({ error: 'Failed to fetch project details' });
+  }
+});
+
+// Create new prompt
+app.post('/api/admin/prompts', requireAdmin, async (req, res) => {
+  try {
+    const { name, type, trade_id, content } = req.body;
+    
+    if (!name || !type || !content) {
+      return res.status(400).json({ error: 'Name, type and content are required' });
+    }
+
+    const result = await query(
+      `INSERT INTO prompts (name, type, trade_id, content)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [name, type, trade_id || null, content]
+    );
+
+    res.json({ prompt: result.rows[0] });
+  } catch (err) {
+    console.error('Failed to create prompt:', err);
+    res.status(500).json({ error: 'Failed to create prompt' });
+  }
+});
+
+// Delete prompt
+app.delete('/api/admin/prompts/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await query(
+      'DELETE FROM prompts WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+
+    res.json({ message: 'Prompt deleted successfully' });
+  } catch (err) {
+    console.error('Failed to delete prompt:', err);
+    res.status(500).json({ error: 'Failed to delete prompt' });
+  }
+});
+
+// Health check endpoint
+app.get('/api/admin/health', requireAdmin, async (req, res) => {
+  try {
+    // Check database connection
+    await query('SELECT 1');
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      sessions: activeSessions.size
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: 'unhealthy',
+      error: 'Database connection failed'
+    });
+  }
+});
+
+// Clean up expired tokens periodically (every hour)
+setInterval(() => {
+  const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+  let cleaned = 0;
+  
+  for (const [token, session] of activeSessions.entries()) {
+    if (session.createdAt < oneDayAgo) {
+      activeSessions.delete(token);
+      cleaned++;
+    }
+  }
+  
+  if (cleaned > 0) {
+    console.log(`Cleaned up ${cleaned} expired admin sessions`);
+  }
+}, 60 * 60 * 1000); // Run every hour
 
 // ===========================================================================
 // PUBLIC PROMPT ROUTES
