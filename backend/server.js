@@ -1612,7 +1612,21 @@ async function checkForDuplicatePositions(projectId, currentTradeId, positions) 
   
   for (const pos of positions) {
     for (const lv of otherLVs.rows) {
-      const otherContent = JSON.parse(lv.content);
+
+  // NEUE ZEILEN HIER EINFÜGEN:
+  if (!lv.content || lv.content === '[object Object]') {
+    console.log('[checkForDuplicatePositions] Skipping invalid LV content');
+    continue;
+  }
+  
+  let otherContent;
+  try {
+    otherContent = JSON.parse(lv.content);  // Original Zeile 1615
+  } catch (error) {
+    console.log('[checkForDuplicatePositions] Could not parse LV content:', error.message);
+    continue;
+  }      
+  
       if (!otherContent.positions) continue;
       
       for (const otherPos of otherContent.positions) {
