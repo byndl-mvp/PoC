@@ -329,6 +329,134 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
         else missingCriticalInfo.push('Gebäudehöhe');
         if (desc.includes('einfamilienhaus') || desc.includes('efh')) informationCompleteness += 30;
         break;
+
+      case 'FASS': // Fassadenbau
+        if (desc.match(/\d+\s*(m²|qm)/)) {
+        informationCompleteness += 35;
+        } else {
+        missingCriticalInfo.push('Fassadenfläche');
+        }
+        if (desc.includes('fassade') || desc.includes('außenputz') || desc.includes('dämmung') || desc.includes('wdvs')) {
+        informationCompleteness += 25;
+        } else {
+        missingCriticalInfo.push('Art der Fassadenarbeiten');
+        }
+        break;
+
+    case 'ABBR': // Abbruch
+        if (desc.match(/\d+\s*(m²|m³|kg|tonnen)/)) {
+        informationCompleteness += 30;
+        } else {
+        missingCriticalInfo.push('Umfang/Menge');
+        }
+        if (desc.includes('entkernung') || desc.includes('teilabbruch') || desc.includes('komplettabbruch')) {
+        informationCompleteness += 25;
+        }
+        break;
+
+case 'BOD': // Bodenbelag
+  if (desc.match(/\d+\s*(m²|qm)/)) {
+    informationCompleteness += 35;
+  } else {
+    missingCriticalInfo.push('Bodenfläche');
+  }
+  if (desc.includes('parkett') || desc.includes('laminat') || desc.includes('vinyl') || desc.includes('teppich')) {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'HEI': // Heizung
+  if (desc.includes('gastherme') || desc.includes('wärmepumpe') || desc.includes('ölheizung')) {
+    informationCompleteness += 30;
+  } else {
+    missingCriticalInfo.push('Heizungstyp');
+  }
+  if (desc.match(/\d+\s*(kw|kilowatt|heizkörper)/)) {
+    informationCompleteness += 25;
+  }
+  break;
+
+case 'FEN': // Fenster & Türen
+  if (desc.match(/\d+\s*(fenster|türen)/)) {
+    informationCompleteness += 35;
+  } else {
+    missingCriticalInfo.push('Anzahl Fenster/Türen');
+  }
+  if (desc.includes('kunststoff') || desc.includes('holz') || desc.includes('aluminium')) {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'TIS': // Tischler
+  if (desc.includes('einbauschrank') || desc.includes('küche') || desc.includes('möbel')) {
+    informationCompleteness += 30;
+  }
+  if (desc.match(/\d+\s*(m|meter|schrank|element)/)) {
+    informationCompleteness += 25;
+  }
+  break;
+
+case 'ROH': // Rohbau
+  if (desc.match(/\d+\s*(m²|m³|qm)/)) {
+    informationCompleteness += 30;
+  } else {
+    missingCriticalInfo.push('Fläche/Volumen');
+  }
+  if (desc.includes('bodenplatte') || desc.includes('wand') || desc.includes('decke')) {
+    informationCompleteness += 25;
+  }
+  break;
+
+case 'ESTR': // Estrich
+  if (desc.match(/\d+\s*(m²|qm)/)) {
+    informationCompleteness += 35;
+  } else {
+    missingCriticalInfo.push('Estrichfläche');
+  }
+  if (desc.includes('fließestrich') || desc.includes('zementestrich') || desc.includes('trockenestrich')) {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'TRO': // Trockenbau
+  if (desc.match(/\d+\s*(m²|qm|wand|decke)/)) {
+    informationCompleteness += 30;
+  } else {
+    missingCriticalInfo.push('Fläche Trockenbau');
+  }
+  if (desc.includes('rigips') || desc.includes('gipskarton') || desc.includes('ständerwerk')) {
+    informationCompleteness += 20;
+  }
+  break;
+
+case 'SCHL': // Schlosser
+  if (desc.includes('geländer') || desc.includes('zaun') || desc.includes('tor') || desc.includes('treppe')) {
+    informationCompleteness += 30;
+  }
+  if (desc.match(/\d+\s*(m|meter|stück)/)) {
+    informationCompleteness += 25;
+  }
+  break;
+
+case 'AUSS': // Außenanlagen
+  if (desc.match(/\d+\s*(m²|qm)/)) {
+    informationCompleteness += 30;
+  } else {
+    missingCriticalInfo.push('Fläche Außenbereich');
+  }
+  if (desc.includes('pflaster') || desc.includes('rasen') || desc.includes('bepflanzung')) {
+    informationCompleteness += 25;
+  }
+  break;
+
+case 'INT': // Allgemeine Projektaufnahme
+  // Spezialfall: Bei INT reicht oft weniger spezifische Info
+  informationCompleteness += 20;
+  if (desc.length > 50) {
+    informationCompleteness += 20;
+  }
+  break;
+    
     }
     
     // Allgemeine hilfreiche Informationen
