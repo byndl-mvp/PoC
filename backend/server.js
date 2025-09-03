@@ -3578,13 +3578,13 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
     const lv = await generateDetailedLVWithRetry(projectId, tradeId);
     
     // Speichere LV in DB
-    await query(
-      `INSERT INTO lvs (project_id, trade_id, content)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (project_id, trade_id)
-       DO UPDATE SET content=$3, updated_at=NOW()`,
-      [projectId, tradeId, lv]
-    );
+await query(
+  `INSERT INTO lvs (project_id, trade_id, content)
+   VALUES ($1,$2,$3)
+   ON CONFLICT (project_id, trade_id)
+   DO UPDATE SET content=$3, updated_at=NOW()`,
+  [projectId, tradeId, JSON.stringify(lv)]  // <-- JSON.stringify() hinzugefügt!
+);
     
     console.log(`[LV] Generated for trade ${tradeId}: ${lv.positions?.length || 0} positions, Total: €${lv.totalSum || 0}`);
     
