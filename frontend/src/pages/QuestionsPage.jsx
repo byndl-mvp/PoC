@@ -35,7 +35,7 @@ export default function QuestionsPage() {
       }
     }
   };
-
+  
   useEffect(() => {
     async function initialize() {
       try {
@@ -207,6 +207,7 @@ return () => {
   sessionStorage.removeItem('currentTradeIsAdditional');
   sessionStorage.removeItem('aiRecommendedTrades'); // NEU: Auch KI-empfohlene aufräumen
 };
+// eslint-disable-next-line react-hooks/exhaustive-deps
 }, [projectId, tradeId]);
 
 // Neuer useEffect für finalen Ladebalken
