@@ -198,14 +198,13 @@ if (isAdditionalTrade || isAiRecommendedTrade) {
     }
     
     initialize();
-
-// Cleanup beim Verlassen der Komponente
+      
 return () => {
-  sessionStorage.removeItem('currentTradeIsAdditional');
-  sessionStorage.removeItem('aiRecommendedTrades'); // NEU: Auch KI-empfohlene aufräumen
-};
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [projectId, tradeId]);
+      sessionStorage.removeItem('currentTradeIsAdditional');
+      sessionStorage.removeItem('aiRecommendedTrades');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, tradeId]);
 
 // Neuer useEffect für finalen Ladebalken
 
