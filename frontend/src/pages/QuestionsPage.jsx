@@ -145,13 +145,12 @@ if (isAdditionalTrade || isAiRecommendedTrade) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            // Sende zusätzlichen Kontext mit
             includeIntakeContext: true,
             isManuallyAdded: isManuallyAdded,
             isAiRecommended: isAiRecommendedTrade,
-            projectDescription: project.description,  // NEU
-            projectCategory: project.category,        // NEU
-            projectBudget: project.budget            // NEU
+            projectDescription: projectData.description,  // projectData, nicht project
+            projectCategory: projectData.category,        
+            projectBudget: projectData.budget            
           })
         });
         
