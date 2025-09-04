@@ -99,6 +99,7 @@ setProjectTrades(detectedTrades);
             setTradeName(currentTrade.name);
             setTradeCode(currentTrade.code);
             setLoadingProgress(40);
+
             // HIER KOMMT DER NEUE BLOCK REIN (nach Zeile 88):
 if (isAdditionalTrade || isAiRecommendedTrade) {
   // Bei zusätzlichen oder KI-empfohlenen Gewerken: Nur Kontextfrage generieren
@@ -120,15 +121,7 @@ if (isAdditionalTrade || isAiRecommendedTrade) {
   return; // Beende hier, keine weiteren Fragen laden
 }
             
-          } else {
-            throw new Error('Projekt konnte nicht geladen werden');
-          }
-        } catch (err) {
-          console.error('Error loading project details:', err);
-          throw err;
-        }
-        
-        // 2. Generiere ADAPTIVE Fragen für dieses spezifische Gewerk
+// 2. Generiere ADAPTIVE Fragen für dieses spezifische Gewerk
         console.log(`Generating adaptive questions for trade ${tradeId} (${tradeCode})...`);
         // Prüfe ob dieses Gewerk manuell hinzugefügt wurde
         const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
@@ -190,7 +183,11 @@ if (isAdditionalTrade || isAiRecommendedTrade) {
         // FEHLERFIX: Eingabefelder zurücksetzen
         setAnswerText('');
         setAssumption('');
-        
+            
+          } else {
+            throw new Error('Projekt konnte nicht geladen werden');
+          }
+  
       } catch (err) {
         console.error('Error in initialization:', err);
         setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
