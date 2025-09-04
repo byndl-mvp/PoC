@@ -21,7 +21,6 @@ export default function QuestionsPage() {
   const [finalizing, setFinalizing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [finalProgress, setFinalProgress] = useState(70);
-  const [projectData, setProjectData] = useState(null);
   
   // Skip-Button Funktion
   const handleSkipTrade = async () => {
