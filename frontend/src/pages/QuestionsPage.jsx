@@ -21,6 +21,7 @@ export default function QuestionsPage() {
   const [finalizing, setFinalizing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [finalProgress, setFinalProgress] = useState(70);
+  const [isAiRecommended, setIsAiRecommended] = useState(false);
   
   // Skip-Button Funktion
   const handleSkipTrade = async () => {
@@ -46,7 +47,12 @@ export default function QuestionsPage() {
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
         // Prüfe ob es ein zusätzliches Gewerk ist
         const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
+        // Prüfe ob es ein KI-empfohlenes Gewerk ist
+        const aiRecommendedTrades = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]');
+        const isAiRecommendedTrade = aiRecommendedTrades.includes(parseInt(tradeId));
+        setIsAiRecommended(isAiRecommendedTrade);
         
+        console.log('Is AI recommended trade?:', isAiRecommendedTrade);        
         // 1. Lade Projektdetails und ERKANNTE Gewerke
         try {
           const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
@@ -94,14 +100,16 @@ setProjectTrades(detectedTrades);
             setTradeCode(currentTrade.code);
             setLoadingProgress(40);
             // HIER KOMMT DER NEUE BLOCK REIN (nach Zeile 88):
-if (isAdditionalTrade) {
-  // Bei zusätzlichen Gewerken: Nur Kontextfrage generieren
+if (isAdditionalTrade || isAiRecommendedTrade) {
+  // Bei zusätzlichen oder KI-empfohlenen Gewerken: Nur Kontextfrage generieren
+  const contextType = isAiRecommendedTrade ? 'KI-empfohlenes' : 'nachträglich hinzugefügtes';
   const contextQuestion = {
     id: 'context_reason',
-    question: `Sie haben ${tradeName} nachträglich hinzugefügt. Was genau soll in diesem Gewerk gemacht werden?`,
+    question: `Sie haben ${tradeName} als ${contextType} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
     type: 'text',
     required: true,
-    category: 'Projektkontext'
+    category: 'Projektkontext',
+    explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.'
   };
   sessionStorage.setItem('currentTradeIsAdditional', 'true');
   setQuestions([contextQuestion]);
@@ -139,7 +147,8 @@ if (isAdditionalTrade) {
           body: JSON.stringify({
             // Sende zusätzlichen Kontext mit
             includeIntakeContext: true,
-            isManuallyAdded: isManuallyAdded  // NEU: Flag mitschicken
+            isManuallyAdded: isManuallyAdded,
+            isAiRecommended: isAiRecommendedTrade  // NEU: KI-Flag mitschicken
           })
         });
         
@@ -194,6 +203,7 @@ if (isAdditionalTrade) {
 // Cleanup beim Verlassen der Komponente
 return () => {
   sessionStorage.removeItem('currentTradeIsAdditional');
+  sessionStorage.removeItem('aiRecommendedTrades'); // NEU: Auch KI-empfohlene aufräumen
 };
 }, [projectId, tradeId, tradeCode, tradeName]);
 
@@ -293,6 +303,43 @@ setGeneratingQuestions(true);
   } catch (err) {
     console.error('Failed to generate context questions:', err);
     setGeneratingQuestions(false);
+  }
+}    
+
+    // NEUE LOGIK: Bei KI-empfohlenen Gewerken auch Kontextfragen generieren
+const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
+  .includes(parseInt(tradeId));
+
+if (current === 0 && isAiRecommended && questions[current].id === 'context_reason') {
+  try {
+    setGeneratingQuestions(true);
+    
+    // Generiere spezifische Fragen basierend auf Kontextantwort
+    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contextAnswer: answerText,
+        isAiRecommended: true
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Ersetze Kontextfrage mit spezifischen Fragen
+      setQuestions(data.questions || data);
+      setAnswers(new Array(data.questions?.length || data.length).fill(null));
+      setCurrent(0);
+      setAnswerText('');
+      setAssumption('');
+      setGeneratingQuestions(false);
+      return; // Verhindere weitere Navigation
+    }
+  } catch (err) {
+    console.error('Failed to generate AI-recommended context questions:', err);
+    setGeneratingQuestions(false);
+    setError('Fehler beim Generieren der Folgefragen');
   }
 }    
     if (current + 1 < questions.length) {
