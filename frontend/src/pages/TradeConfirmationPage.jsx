@@ -147,6 +147,14 @@ useEffect(() => {
       alert('Bitte wählen Sie mindestens ein Gewerk aus');
       return;
     }
+    // Sammle die IDs der manuell hinzugefügten und KI-empfohlenen Trades
+      const manuallyAddedTradeIds = confirmedTradesData
+        .filter(t => t.isManuallyAdded || t.source === 'manuell')
+        .map(t => t.id);
+      
+      const aiRecommendedTradeIds = confirmedTradesData
+        .filter(t => t.recommended || t.source === 'ki-empfohlen')
+        .map(t => t.id);
     
     try {
       setLoading(true);
@@ -157,7 +165,9 @@ useEffect(() => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          confirmedTrades: selectedTrades, 
+          confirmedTrades: selectedTrades,
+          manuallyAddedTrades: manuallyAddedTradeIds,
+          aiRecommendedTrades: aiRecommendedTradeIds,
           isAdditional: isAdditionalTrade
         })
       });
@@ -187,6 +197,11 @@ if (isAdditionalTrade) {
   }
 }
 
+// Speichere auch KI-empfohlene Trades
+  if (aiRecommendedTradeIds.length > 0) {
+    sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(aiRecommendedTradeIds));
+  }
+        
 // Bestehender Code bleibt unverändert
 if (manuallyAddedTrades.length > 0) {
   sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
