@@ -209,7 +209,7 @@ return () => {
   sessionStorage.removeItem('currentTradeIsAdditional');
   sessionStorage.removeItem('aiRecommendedTrades'); // NEU: Auch KI-empfohlene aufräumen
 };
-}, [projectId, tradeId, tradeCode, tradeName]);
+}, [projectId, tradeId, tradeCode, tradeName, projectData]);
 
 // Neuer useEffect für finalen Ladebalken
 
