@@ -57,7 +57,6 @@ export default function QuestionsPage() {
           if (projectRes.ok) {
             projectData = await projectRes.json();  // KEIN 'const' mehr!
             console.log('Project data loaded:', projectData);
-            setProjectData(projectData); // NEU: Speichere in State
             console.log('NUMBER OF TRADES:', projectData.trades?.length);
             console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
             
