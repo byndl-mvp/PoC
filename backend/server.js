@@ -937,6 +937,38 @@ async function generateQuestions(tradeId, projectContext = {}) {
   const { name: tradeName, code: tradeCode } = tradeResult.rows[0];
   const isIntake = tradeCode === 'INT';
 
+// NEU: Lade Intake-Antworten UND intake_responses für besseren Kontext
+  if (!isIntake && projectContext.projectId) {
+    // Lade aus intake_responses (neue Tabelle)
+    const intakeResponses = await query(
+      `SELECT question_text, answer_text 
+       FROM intake_responses
+       WHERE project_id = $1`,
+      [projectContext.projectId]
+    );
+    
+    // Falls intake_responses leer, fallback auf answers Tabelle
+    if (intakeResponses.rows.length === 0) {
+      const intTrade = await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`);
+      if (intTrade.rows[0]) {
+        const intakeAnswers = await query(
+          `SELECT q.text as question_text, a.answer_text 
+           FROM answers a
+           JOIN questions q ON q.project_id = a.project_id 
+             AND q.trade_id = a.trade_id 
+             AND q.question_id = a.question_id
+           WHERE a.project_id = $1 AND a.trade_id = $2`,
+          [projectContext.projectId, intTrade.rows[0].id]
+        );
+        projectContext.intakeData = intakeAnswers.rows;
+      }
+    } else {
+      projectContext.intakeData = intakeResponses.rows;
+    }
+    
+    console.log(`[QUESTIONS] Loaded ${projectContext.intakeData?.length || 0} intake answers for context`);
+  }
+  
   // NEU: Intake-Antworten laden für Kontext-Weitergabe an Gewerke
 if (!isIntake && projectContext.projectId) {
   const intakeAnswers = await query(
@@ -953,18 +985,23 @@ if (!isIntake && projectContext.projectId) {
 }
   
   // NEU: Bei manuellen/KI-empfohlenen Gewerken NUR Kontextfrage zurückgeben
-  if (projectContext.isManuallyAdded === true) {
-  console.log(`[QUESTIONS] Manual/AI trade ${tradeCode} - returning context question only`);
-  return [{
-    id: 'context_reason',
-    question: `Sie haben ${tradeName} ausgewählt. Was genau soll in diesem Bereich gemacht werden? Bitte beschreiben Sie die geplanten Arbeiten möglichst konkret.`,
-    text: `Sie haben ${tradeName} ausgewählt. Was genau soll in diesem Bereich gemacht werden? Bitte beschreiben Sie die geplanten Arbeiten möglichst konkret.`,
-    type: 'text',
-    required: true,
-    category: 'Projektkontext',
-    explanation: 'Basierend auf Ihrer Antwort erstellen wir passende Detailfragen für dieses Gewerk.'
-  }];
-}
+  if (projectContext.isManuallyAdded === true || projectContext.isAiRecommended === true) {
+    console.log(`[QUESTIONS] Manual/AI-recommended trade ${tradeCode} - returning context question only`);
+    
+    // Erstelle kontextbezogene Frage basierend auf Projektbeschreibung
+    const contextQuestion = `Sie haben ${tradeName} als ${projectContext.isAiRecommended ? 'empfohlenes' : 'zusätzliches'} Gewerk ausgewählt. 
+    Basierend auf Ihrem Projekt "${projectContext.description?.substring(0, 100)}..." - was genau soll in diesem Bereich gemacht werden?`;
+    
+    return [{
+      id: 'context_reason',
+      question: contextQuestion,
+      text: contextQuestion,
+      type: 'text',
+      required: true,
+      category: 'Projektkontext',
+      explanation: 'Basierend auf Ihrer Antwort erstellen wir passende Detailfragen für dieses Gewerk.'
+    }];
+  }
   
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
   
@@ -3171,7 +3208,10 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
           await query(
             `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
  VALUES ($1, $2, $3, $4)
- ON CONFLICT (project_id, trade_id) DO NOTHING`,
+ ON CONFLICT (project_id, trade_id) 
+ DO UPDATE SET 
+   is_manual = EXCLUDED.is_manual, 
+   is_ai_recommended = EXCLUDED.is_ai_recommended`,
             [projectId, tradeId, needsContextQuestion, isAiRecommended]
           );
         }
@@ -3190,7 +3230,7 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
             [projectId, tradeId, needsContextQuestion, isAiRecommended]
           );
           
-          console.log(`[TRADES] Added trade ${tradeId} to project ${projectId} (manual: ${isManual}, AI: ${isAiRecommended})`);
+          console.log(`[TRADES] Added trade ${tradeId}: manual=${needsContextQuestion}, AI=${isAiRecommended}`);
         }
       }
       
@@ -3253,16 +3293,27 @@ app.post('/api/projects/:projectId/trades/add-single', async (req, res) => {
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
-    
-    // Prüfe ob Trade manuell oder KI-empfohlen hinzugefügt wurde
+
+    // Prüfe Trade-Status (manuell, KI-empfohlen oder automatisch)
     const tradeStatusResult = await query(
-      'SELECT is_manual, is_ai_recommended FROM project_trades WHERE project_id = $1 AND trade_id = $2',
+      `SELECT is_manual, is_ai_recommended 
+       FROM project_trades 
+       WHERE project_id = $1 AND trade_id = $2`,
       [projectId, tradeId]
     );
     
-    const needsContextQuestion = tradeStatusResult.rows[0]?.is_manual || 
-                                 tradeStatusResult.rows[0]?.is_ai_recommended || 
-                                 req.body.isManuallyAdded;
+    const tradeStatus = tradeStatusResult.rows[0] || {};
+    
+    const needsContextQuestion = tradeStatus.is_manual || 
+                                 tradeStatus.is_ai_recommended || 
+                                 req.body.isManuallyAdded ||
+                                 req.body.isAiRecommended; // NEU: Auch KI-empfohlene berücksichtigen
+    
+    console.log('[QUESTIONS] Trade status:', {
+      manual: tradeStatus.is_manual,
+      aiRecommended: tradeStatus.is_ai_recommended,
+      needsContext: needsContextQuestion
+    });
     
     console.log('[DEBUG] Trade needs context question:', needsContextQuestion);
     
@@ -3295,7 +3346,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       timeframe: project.timeframe,
       budget: project.budget,
       projectId: projectId,
-      isManuallyAdded: needsContextQuestion // Gilt für beide: manuell UND KI-empfohlen
+      isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
+      isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended // NEU
     };
     
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
@@ -3335,7 +3387,8 @@ for (const question of questions) {
       actualCount: questions.length,
       completeness: intelligentCount.completeness,
       missingInfo: intelligentCount.missingInfo,
-      tradeName: tradeName
+      tradeName: tradeName,
+      needsContextQuestion // NEU: Sende Info an Frontend
     });
     
   } catch (err) {
@@ -3546,12 +3599,29 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
     if (!contextAnswer) {
       return res.status(400).json({ error: 'Kontextantwort fehlt' });
     }
+
+    // Lade Intake-Daten für besseren Kontext
+    const intakeData = await query(
+      `SELECT question_text, answer_text 
+       FROM intake_responses 
+       WHERE project_id = $1`,
+      [projectId]
+    );
     
     const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
-Der Nutzer hat für manuell hinzugefügtes Gewerk angegeben: "${contextAnswer}"
+Der Nutzer hat für das Gewerk angegeben: "${contextAnswer}"
 
-Erstelle 15-25 SPEZIFISCHE Folgefragen basierend auf dieser Antwort.
+PROJEKTKONTEXT:
+- Beschreibung: ${project.rows[0].description}
+- Kategorie: ${project.rows[0].category}
+- Budget: ${project.rows[0].budget}
+
+BEREITS ERFASSTE INFORMATIONEN (nicht erneut fragen!):
+${intakeData.rows.map(d => `- ${d.question_text}: ${d.answer_text}`).join('\n')}
+
+Erstelle 10-20 SPEZIFISCHE Folgefragen basierend auf der Kontextantwort.
 Die Fragen MÜSSEN sich auf die genannten Arbeiten beziehen.
+Vermeide Wiederholungen von bereits erfassten Informationen.
 
 OUTPUT als JSON-Array:
 [
@@ -3568,9 +3638,10 @@ OUTPUT als JSON-Array:
 ]`;
     
     const userPrompt = `Projekt: ${project.rows[0].description}
-Gewählte Arbeiten: ${contextAnswer}
+Gewählte Arbeiten für ${trade.rows[0].name}: ${contextAnswer}
 
-Erstelle detaillierte Folgefragen für diese spezifischen Arbeiten.`;
+Erstelle detaillierte Folgefragen für diese spezifischen Arbeiten.
+Berücksichtige bereits erfasste Projektinformationen.`;
     
     const response = await llmWithPolicy('questions', [
       { role: 'system', content: systemPrompt },
