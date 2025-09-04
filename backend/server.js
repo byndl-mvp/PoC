@@ -54,7 +54,7 @@ const TRADE_COMPLEXITY = {
   'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
   'SAN': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
   'HEI': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
-  'ROH': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 35 },
+  'ROH': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 30 },
   
   // Komplexe Gewerke (20-30 Fragen)
   'TIS': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 25 },
