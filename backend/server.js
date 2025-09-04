@@ -91,8 +91,8 @@ const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 12, maxQuestion
 async function llmWithPolicy(task, messages, options = {}) {
   const defaultMaxTokens = {
     'detect': 3000,      
-    'questions': 5000,   
-    'lv': 10000,         
+    'questions': 4000,   
+    'lv': 8000,         
     'intake': 4000,      
     'summary': 3000,
     'validation': 3000   
@@ -1265,7 +1265,7 @@ BEACHTE:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 8000,
+      maxTokens: 6000,
       temperature: 0.5,
       jsonMode: false // Wichtig: jsonMode kann problematisch sein
     });
