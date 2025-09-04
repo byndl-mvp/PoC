@@ -101,13 +101,17 @@ async function llmWithPolicy(task, messages, options = {}) {
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
   const temperature = options.temperature !== undefined ? options.temperature : 0.4;
   
-  const primaryProvider = ['detect', 'questions', 'intake', 'validation'].includes(task) 
-    ? 'anthropic' 
-    : 'openai';
+  // LV IMMER mit OpenAI (wegen JSON-Mode), Rest bevorzugt Anthropic
+  const primaryProvider = task === 'lv' 
+    ? 'openai'  // LV immer OpenAI
+    : ['detect', 'questions', 'intake', 'validation'].includes(task) 
+      ? 'anthropic' 
+      : 'openai';
   
   const callOpenAI = async () => {
     try {
-      const useJsonMode = options.jsonMode && maxTokens <= 4096;
+      // JSON-Mode ohne Token-Limit-Beschränkung verwenden
+      const useJsonMode = options.jsonMode;
       
       const response = await openai.chat.completions.create({
         model: MODEL_OPENAI,
@@ -125,7 +129,22 @@ async function llmWithPolicy(task, messages, options = {}) {
   
   const callClaude = async () => {
     try {
-      const systemMessage = messages.find(m => m.role === "system")?.content || "";
+      let systemMessage = messages.find(m => m.role === "system")?.content || "";
+      
+      // Für Claude: JSON-Instruktion in System-Prompt einbauen
+      if (options.jsonMode) {
+        systemMessage = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!
+- Beginne direkt mit {
+- Ende mit }
+- KEIN Markdown (keine \`\`\`)
+- KEINE Erklärungen außerhalb des JSON
+- KEINE Kommentare
+
+${systemMessage}
+
+ERINNERUNG: NUR valides JSON ausgeben!`;
+      }
+      
       const otherMessages = messages.filter(m => m.role !== "system");
 
       const response = await anthropic.messages.create({
@@ -143,6 +162,7 @@ async function llmWithPolicy(task, messages, options = {}) {
     }
   };
   
+  // Rest der Funktion bleibt gleich...
   let result = null;
   let lastError = null;
   
@@ -187,7 +207,7 @@ async function llmWithPolicy(task, messages, options = {}) {
   // Both failed - last resort for questions
   if (task === 'questions' || task === 'intake') {
     console.log('[LLM] Both providers failed, using emergency fallback questions');
-    return '[]'; // Will trigger fallback questions
+    return '[]';
   }
   
   throw new Error(`All LLM providers unavailable. Last error: ${lastError?.message || 'Unknown error'}`);
@@ -1693,74 +1713,81 @@ WICHTIG:
 4. Dokumentiere alle Annahmen transparent`;
 
   try {
-    const response = await llmWithPolicy('lv', [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], { 
-      maxTokens: 15000,
-      temperature: 0.3,
-      jsonMode: true, 
-      timeout: 60000
+  const response = await llmWithPolicy('lv', [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt }
+  ], { 
+    maxTokens: 15000,
+    temperature: 0.3,
+    jsonMode: true,  // Nutzt jetzt den korrigierten JSON-Mode
+    timeout: 60000
   });
 
-if (trade.code === 'FASS') {
-  console.log('\n========== FASS LLM RESPONSE DEBUG ==========');
-  console.log('Response length:', response.length);
-  console.log('First 500 chars:', response.substring(0, 500));
-  console.log('Last 500 chars:', response.substring(response.length - 500));
-  
-  const openBraces = (response.match(/{/g) || []).length;
-  const closeBraces = (response.match(/}/g) || []).length;
-  console.log('Open { count:', openBraces);
-  console.log('Close } count:', closeBraces);
-  console.log('Balanced:', openBraces === closeBraces);
-  
-  if (response.includes('```')) {
-    console.log('⚠️ WARNING: Contains markdown blocks');
-  }
-  if (!response.trim().endsWith('}')) {
-    console.log('⚠️ WARNING: Does NOT end with }');
-  }
-  console.log('========================================\n');
-}
+  // Debug-Output für alle Gewerke (kann später auf problematische beschränkt werden)
+  if (trade.code === 'FASS' || trade.code === 'FEN') {
+    console.log(`\n========== ${trade.code} LLM RESPONSE DEBUG ==========`);
+    console.log('Response length:', response.length);
+    console.log('First 200 chars:', response.substring(0, 200));
+    console.log('Last 200 chars:', response.substring(response.length - 200));
     
-const cleanedResponse = response
-  .replace(/```json\n?/g, '')
-  .replace(/```\n?/g, '')
-  .replace(/\/\/.*$/gm, '')  // Entferne einzeilige Kommentare
-  .replace(/\/\*[\s\S]*?\*\//g, '')  // Entferne mehrzeilige Kommentare
-  .replace(/,(\s*[}\]])/g, '$1')  // Entferne trailing commas
-  .replace(/([}\]])(\s*)([{\[])/g, '$1,$2$3')  // Füge fehlende Kommas zwischen Objekten/Arrays ein
-  .replace(/:\s*'([^']*)'/g, ': "$1"')  // Ersetze single quotes mit double quotes
-  .replace(/:\s*([^",\[\{\s]+)([,}\]])/g, ': "$1"$2')  // Umschließe unquoted values
-  .trim();
-
-// WICHTIG: Variable im äußeren Scope deklarieren
-let lv;
-
-try {
-  lv = JSON.parse(cleanedResponse);
-} catch (parseError) {
-  console.error('[LV] JSON Parse Error:', parseError.message);
-  console.error('[LV] Invalid response position:', parseError.message.match(/position (\d+)/)?.[1]);
-  
-  // Aggressivere Bereinigung
-  let fixedResponse = cleanedResponse
-    .replace(/,\s*}/g, '}')
-    .replace(/,\s*]/g, ']')
-    .replace(/}\s*{/g, '},{')
-    .replace(/]\s*\[/g, '],[')
-    .replace(/"\s*:\s*undefined/g, '": null')  // undefined zu null
-    .replace(/NaN/g, '0');  // NaN zu 0
-  
-  try {
-    lv = JSON.parse(fixedResponse);
-    console.log('[LV] Successfully parsed after cleanup');
-  } catch (secondError) {
-    console.error('[LV] Cannot parse response:', secondError.message);
-    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - LLM lieferte ungültiges JSON`);
+    // Prüfe ob Response mit { beginnt und } endet
+    const startsWithBrace = response.trim().startsWith('{');
+    const endsWithBrace = response.trim().endsWith('}');
+    console.log('Starts with {:', startsWithBrace);
+    console.log('Ends with }:', endsWithBrace);
+    
+    // Prüfe auf Markdown
+    if (response.includes('```')) {
+      console.log('⚠️ WARNING: Contains markdown blocks (should not happen with JSON mode)');
+    }
+    
+    console.log('========================================\n');
   }
-}
+  
+  // MINIMALE Bereinigung - nur Whitespace und eventuelles Markdown
+  let cleanedResponse = response.trim();
+  
+  // Nur falls trotz JSON-Mode Markdown zurückkommt (sollte bei OpenAI nicht passieren)
+  if (cleanedResponse.includes('```')) {
+    console.warn('[LV] Unexpected markdown wrapper despite JSON mode active');
+    const match = cleanedResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (match && match[1]) {
+      cleanedResponse = match[1].trim();
+    }
+  }
+  
+  // Direkt parsen - mit aktivem JSON-Mode sollte das funktionieren
+  let lv;
+  try {
+    lv = JSON.parse(cleanedResponse);
+    console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
+  } catch (parseError) {
+    // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
+    console.error('[LV] CRITICAL: Parse error despite JSON mode active!');
+    console.error('[LV] Error message:', parseError.message);
+    
+    // Detailliertes Error-Logging
+    const errorMatch = parseError.message.match(/position (\d+)/);
+    if (errorMatch) {
+      const pos = parseInt(errorMatch[1]);
+      console.error('[LV] Error at position:', pos);
+      console.error('[LV] Context before:', cleanedResponse.substring(Math.max(0, pos - 100), pos));
+      console.error('[LV] >>> ERROR HERE <<<');
+      console.error('[LV] Context after:', cleanedResponse.substring(pos, Math.min(cleanedResponse.length, pos + 100)));
+      console.error('[LV] Character at position:', {
+        char: cleanedResponse.charAt(pos),
+        charCode: cleanedResponse.charCodeAt(pos),
+        hex: '0x' + cleanedResponse.charCodeAt(pos).toString(16)
+      });
+    }
+    
+    // Zeige vollständige Response-Struktur für Debugging
+    console.error('[LV] Full response first 500 chars:', cleanedResponse.substring(0, 500));
+    console.error('[LV] Full response last 500 chars:', cleanedResponse.substring(cleanedResponse.length - 500));
+    
+    // Klare Fehlermeldung ohne Reparaturversuche
+    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
+  }
     
     // Duplikatsprüfung durchführen
 const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
