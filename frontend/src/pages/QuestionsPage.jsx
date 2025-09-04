@@ -21,7 +21,6 @@ export default function QuestionsPage() {
   const [finalizing, setFinalizing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [finalProgress, setFinalProgress] = useState(70);
-  const [isAiRecommended, setIsAiRecommended] = useState(false);
   const [projectData, setProjectData] = useState(null);
   
   // Skip-Button Funktion
@@ -51,7 +50,6 @@ export default function QuestionsPage() {
         // Prüfe ob es ein KI-empfohlenes Gewerk ist
         const aiRecommendedTrades = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]');
         const isAiRecommendedTrade = aiRecommendedTrades.includes(parseInt(tradeId));
-        setIsAiRecommended(isAiRecommendedTrade);
         
         console.log('Is AI recommended trade?:', isAiRecommendedTrade);        
         // 1. Lade Projektdetails und ERKANNTE Gewerke
