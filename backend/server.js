@@ -91,10 +91,10 @@ const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 12, maxQuestion
 async function llmWithPolicy(task, messages, options = {}) {
   const defaultMaxTokens = {
     'detect': 3000,      
-    'questions': 8000,   
+    'questions': 5000,   
     'lv': 10000,         
-    'intake': 6000,      
-    'summary': 4000,
+    'intake': 4000,      
+    'summary': 3000,
     'validation': 3000   
   };
   
