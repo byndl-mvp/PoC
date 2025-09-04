@@ -53,7 +53,6 @@ export default function QuestionsPage() {
         
         console.log('Is AI recommended trade?:', isAiRecommendedTrade);        
         // 1. Lade Projektdetails und ERKANNTE Gewerke
-        try {
           const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
           if (projectRes.ok) {
             const projectData = await projectRes.json();
