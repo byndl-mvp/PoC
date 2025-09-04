@@ -147,6 +147,8 @@ useEffect(() => {
       alert('Bitte wählen Sie mindestens ein Gewerk aus');
       return;
     }
+    // Definiere confirmedTradesData
+      const confirmedTradesData = detectedTrades.filter(t => selectedTrades.includes(t.id));
     // Sammle die IDs der manuell hinzugefügten und KI-empfohlenen Trades
       const manuallyAddedTradeIds = confirmedTradesData
         .filter(t => t.isManuallyAdded || t.source === 'manuell')
