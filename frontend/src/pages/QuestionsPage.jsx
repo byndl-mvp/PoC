@@ -51,11 +51,12 @@ export default function QuestionsPage() {
         const aiRecommendedTrades = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]');
         const isAiRecommendedTrade = aiRecommendedTrades.includes(parseInt(tradeId));
         
-        console.log('Is AI recommended trade?:', isAiRecommendedTrade);        
+        console.log('Is AI recommended trade?:', isAiRecommendedTrade); 
+        let projectData = null;  // NEU: Deklariere projectData hier
         // 1. Lade Projektdetails und ERKANNTE Gewerke
           const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
           if (projectRes.ok) {
-            const projectData = await projectRes.json();
+            projectData = await projectRes.json();  // KEIN 'const' mehr!
             console.log('Project data loaded:', projectData);
             setProjectData(projectData); // NEU: Speichere in State
             console.log('NUMBER OF TRADES:', projectData.trades?.length);
