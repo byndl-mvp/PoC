@@ -148,7 +148,10 @@ if (isAdditionalTrade || isAiRecommendedTrade) {
             // Sende zusätzlichen Kontext mit
             includeIntakeContext: true,
             isManuallyAdded: isManuallyAdded,
-            isAiRecommended: isAiRecommendedTrade  // NEU: KI-Flag mitschicken
+            isAiRecommended: isAiRecommendedTrade,
+            projectDescription: project.description,  // NEU
+            projectCategory: project.category,        // NEU
+            projectBudget: project.budget            // NEU
           })
         });
         
