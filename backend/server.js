@@ -109,23 +109,23 @@ async function llmWithPolicy(task, messages, options = {}) {
       : 'openai';
   
   const callOpenAI = async () => {
-    try {
-      // JSON-Mode ohne Token-Limit-Beschränkung verwenden
-      const useJsonMode = options.jsonMode;
-      
-      const response = await openai.chat.completions.create({
-        model: MODEL_OPENAI,
-        messages,
-        temperature,
-        max_completion_tokens: Math.min(maxTokens, 16384),
-        response_format: useJsonMode ? { type: "json_object" } : undefined
-      });
-      return response.choices[0].message.content;
-    } catch (error) {
-      console.error('[LLM] OpenAI error:', error.status || error.message);
-      throw error;
-    }
-  };
+  try {
+    // JSON-Mode ohne Token-Limit-Beschränkung verwenden
+    const useJsonMode = options.jsonMode;
+    
+    const response = await openai.chat.completions.create({
+      model: MODEL_OPENAI,
+      messages,
+      temperature,
+      max_tokens: Math.min(maxTokens, 16384),  // HIER: max_tokens statt max_completion_tokens!
+      response_format: useJsonMode ? { type: "json_object" } : undefined
+    });
+    return response.choices[0].message.content;
+  } catch (error) {
+    console.error('[LLM] OpenAI error:', error.status || error.message);
+    throw error;
+  }
+};
   
   const callClaude = async () => {
     try {
@@ -1717,12 +1717,16 @@ WICHTIG:
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt }
   ], { 
-    maxTokens: 15000,
+    maxTokens: 10000,
     temperature: 0.3,
     jsonMode: true,  // Nutzt jetzt den korrigierten JSON-Mode
     timeout: 60000
   });
 
+// Debug was wirklich zurückkommt
+console.log('[LV-DEBUG] Raw response type:', typeof response);
+console.log('[LV-DEBUG] First 500 chars:', response.substring(0, 500));
+    
   // Debug-Output für alle Gewerke (kann später auf problematische beschränkt werden)
   if (trade.code === 'FASS' || trade.code === 'FEN') {
     console.log(`\n========== ${trade.code} LLM RESPONSE DEBUG ==========`);
