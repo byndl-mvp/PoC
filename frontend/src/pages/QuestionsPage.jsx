@@ -22,6 +22,7 @@ export default function QuestionsPage() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [finalProgress, setFinalProgress] = useState(70);
   const [isAiRecommended, setIsAiRecommended] = useState(false);
+  const [projectData, setProjectData] = useState(null);
   
   // Skip-Button Funktion
   const handleSkipTrade = async () => {
@@ -59,6 +60,7 @@ export default function QuestionsPage() {
           if (projectRes.ok) {
             const projectData = await projectRes.json();
             console.log('Project data loaded:', projectData);
+            setProjectData(projectData); // NEU: Speichere in State
             console.log('NUMBER OF TRADES:', projectData.trades?.length);
             console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
             
