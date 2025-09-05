@@ -4259,7 +4259,29 @@ summary.totalCost = summary.totalCost + (parseFloat(tradeCost) || 0);
 app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { currentTotal, targetBudget, lvBreakdown } = req.body;
+const { currentTotal, targetBudget, lvBreakdown } = req.body;
+
+// HIER NEU EINFÜGEN - Lade zusätzliche Kontextdaten:
+const lvPositions = await query(
+  `SELECT t.name as trade_name, lp.title, lp.description 
+   FROM lv_positions lp 
+   JOIN trades t ON t.id = lp.trade_id 
+   WHERE lp.project_id = $1
+   LIMIT 50`,
+  [projectId]
+);
+
+const intakeData = await query(
+  `SELECT question_text, answer_text 
+   FROM intake_responses 
+   WHERE project_id = $1`,
+  [projectId]
+);
+
+const projectData = await query(
+  'SELECT description, category FROM projects WHERE id = $1',
+  [projectId]
+);
     
     const overspend = currentTotal - targetBudget;
     const percentOver = ((overspend / targetBudget) * 100).toFixed(1);
@@ -4270,19 +4292,55 @@ app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
     ).join('\n');
     
     const systemPrompt = `Du bist ein Baukostenoptimierer mit 20 Jahren Erfahrung.
-Analysiere die Kostenüberschreitung und schlage REALISTISCHE Einsparmöglichkeiten vor.
 
-KRITISCH - NUR DIESE GEWERKE SIND IM PROJEKT VORHANDEN:
+PROJEKTKONTEXT:
+${projectData.rows[0]?.description || 'Keine Beschreibung'}
+Kategorie: ${projectData.rows[0]?.category || 'Nicht angegeben'}
+
+KONKRETE ARBEITEN IM PROJEKT (aus LV):
+${lvPositions.rows.slice(0, 30).map(p => `- ${p.trade_name}: ${p.title}`).join('\n')}
+
+ERFASSTE PROJEKTDETAILS:
+${intakeData.rows.slice(0, 20).map(r => `- ${r.question_text}: ${r.answer_text}`).join('\n')}
+
+VORHANDENE GEWERKE:
 ${availableTradesText}
 
-Du darfst NUR Optimierungen für die oben gelisteten Gewerke vorschlagen!
-KEINE anderen Gewerke erwähnen oder vorschlagen!
+ANALYSIERE NUR was tatsächlich im Projekt enthalten ist!
+- Bei Dachprojekt: KEINE Vorschläge zu Innenräumen
+- Bei Badprojekt: KEINE Vorschläge zur Fassade
+- NUR Optimierungen für oben gelistete Gewerke
 
-WICHTIGE REGELN:
-1. SICHERHEIT GEHT VOR: Keine Einsparungen bei Statik, Elektrik, Sanitär-Grundinstallation
-2. EIGENLEISTUNG nur bei: Malerarbeiten, Bodenbeläge verlegen, Tapezieren, einfache Demontage
-3. NIEMALS Eigenleistung bei: Gerüstbau, Dach, Elektrik, Heizung, Gas, Statik
-4. Priorisiere: Materialqualität reduzieren > Leistung verschieben > Eigenleistung
+INTELLIGENTE SPARVORSCHLÄGE (5-7 Stück):
+
+1. LEISTUNGSREDUZIERUNG (ohne Funktionsverlust):
+- Teilbereiche weglassen
+- Überdimensionierung reduzieren (z.B. Q3 statt Q4)
+- Verzichtbare Extras streichen
+
+2. EIGENLEISTUNG (NUR bei einfachen Arbeiten):
+- Erlaubt: Malervorarbeiten, Tapeten entfernen, Bodenbeläge entfernen
+- VERBOTEN: Elektro, Sanitär, Statik, Dach, Gerüst
+
+3. ALTERNATIVE AUSFÜHRUNGEN:
+- Sanierung statt Neubau (z.B. Türen aufarbeiten)
+- Einfachere Systeme verwenden
+- Standardprodukte statt Sonderanfertigungen
+
+4. MENGENOPTIMIERUNG:
+- Nur Teilbereiche sanieren
+- Reduzierte Ausstattung
+- Bestandserhalt wo möglich
+
+BEISPIELE GUTER VORSCHLÄGE:
+✓ "Belassen Sie bestehende Innentüren, nur neue Beschläge (spart 3.500€)"
+✓ "Fliesenfläche nur in Nassbereichen (spart 2.000€)"
+✓ "Laminat statt Parkett in Nebenräumen (spart 4.000€)"
+
+VERBOTEN:
+- Generische "günstigere Materialien" ohne konkreten Bezug
+- Unrealistische Eigenleistungen
+- Vorschläge außerhalb des Projektumfangs
 
 OUTPUT als JSON:
 {
@@ -4301,7 +4359,7 @@ OUTPUT als JSON:
   "totalPossibleSaving": 12500,
   "recommendedSavings": [],
   "summary": "Zusammenfassung"
-}`;
+}`;  // WICHTIG: Das schließende `; gehört zum systemPrompt
 
     const userPrompt = `Budget: ${formatCurrency(targetBudget)}
 Aktuelle Kosten: ${formatCurrency(currentTotal)}
@@ -4310,7 +4368,10 @@ Aktuelle Kosten: ${formatCurrency(currentTotal)}
 GEWERKE-AUFSTELLUNG:
 ${lvBreakdown.map(lv => `${lv.tradeCode} - ${lv.tradeName}: ${formatCurrency(lv.total)}`).join('\n')}
 
-Erstelle konkrete, umsetzbare Einsparvorschläge NUR für die vorhandenen Gewerke.`;
+WICHTIGSTE LV-POSITIONEN:
+${lvPositions.rows.slice(0, 10).map(p => `- ${p.title}`).join('\n')}
+
+Erstelle konkrete, projektspezifische Einsparvorschläge die zum tatsächlichen Umfang passen.`;
 
     const response = await llmWithPolicy('optimization', [
       { role: 'system', content: systemPrompt },
