@@ -416,7 +416,6 @@ export default function AdminDashboardPage() {
   </div>
 </div>
                      </div>
-</div>
                     </div>
                   ) : (
                     <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20 flex items-center justify-center h-[400px]">
