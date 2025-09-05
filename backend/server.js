@@ -1522,7 +1522,7 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Anzahl Positionen abhängig von Projektumfang
    - Kleine Projekte: 8-15 Positionen
    - Mittlere Projekte: 16-25 Positionen
-   - Große Projekte: 25-50 Positionen
+   - Große Projekte: 25-35 Positionen
 
 5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
    - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
@@ -1550,6 +1550,24 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Diese müssen VOR den Positionen stehen
    - Inhalt: Baustellenlogistik, Gebäudedaten, Arbeitszeiten, besondere Bedingungen
    - Format: Array von Strings im "vorbemerkungen" Feld
+
+8. SPEZIELLE FENSTER-REGELN (NUR für Gewerk FEN):
+   ${tradeCode === 'FEN' ? `
+   ABSOLUT VERPFLICHTEND - FENSTER-POSITIONEN:
+   - JEDES Fenster MUSS als EIGENE Position mit EXAKTEN Abmessungen
+   - Format: "Fenster [Typ] [Material], [Breite] x [Höhe] cm, [Öffnungsart]"
+   - NIEMALS Sammelpositionen wie "6 Fenster" ohne Einzelaufstellung
+   - NIEMALS m² oder Pauschalangaben
+   - Gleiche Fenstertypen: Als eine Position mit Stückzahl
+   
+   BEISPIEL KORREKT:
+   - Pos 1: Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp, 2 Stück
+   - Pos 2: Fenster Kunststoff weiß, 60 x 80 cm, Kipp, 3 Stück
+   
+   BEISPIEL FALSCH:
+   - "Einbau von 6 Fenstern" ❌
+   - "Fenster gesamt 25 m²" ❌
+   ` : ''}
    
 OUTPUT FORMAT (NUR valides JSON):
 {
@@ -1676,6 +1694,19 @@ WICHTIG:
 3. Realistische Preise (Stand 2024/2025)
 4. Dokumentiere alle Annahmen transparent`;
 
+// Debug-Log für Fenster-Antworten
+if (trade.code === 'FEN') {
+  console.log('[LV] Fenster-Antworten für LV-Generierung:', 
+    answersData.filter(a => 
+      a.question.toLowerCase().includes('fenster') || 
+      a.question.toLowerCase().includes('maß') ||
+      a.question.toLowerCase().includes('größe') ||
+      a.question.toLowerCase().includes('breite') ||
+      a.question.toLowerCase().includes('höhe')
+    )
+  );
+}  
+  
   try {
   const response = await llmWithPolicy('lv', [
     { role: 'system', content: systemPrompt },
@@ -1725,11 +1756,50 @@ console.log('[LV-DEBUG] First 500 chars:', response.substring(0, 500));
   }
   
   // Direkt parsen - mit aktivem JSON-Mode sollte das funktionieren
-  let lv;
-  try {
-    lv = JSON.parse(cleanedResponse);
-    console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
-  } catch (parseError) {
+let lv;
+try {
+  lv = JSON.parse(cleanedResponse);
+  console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
+  
+  // HIER die erweiterte Fenster-Validierung mit Auto-Korrektur:
+  if (trade.code === 'FEN') {
+    const hasInvalidPositions = lv.positions.some(pos => 
+      pos.description.toLowerCase().includes('fenster') &&
+      !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
+    );
+    
+    if (hasInvalidPositions) {
+  console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
+  
+  // Erweitere den User-Prompt mit expliziter Anweisung
+  const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
+  
+ABSOLUT VERPFLICHTEND für JEDE Fensterposition:
+- Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
+- Beispiel: "Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp"
+
+Die Fenstermaße MÜSSEN aus den erfassten Antworten stammen!
+Verwende die EXAKTEN Maße die der Nutzer angegeben hat.
+KEINE erfundenen Standardmaße!
+Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als "Maße fehlen - vor Ort aufzunehmen".`;
+  
+  // Rufe LLM erneut auf mit verstärktem Prompt
+  const retryResponse = await callLLM([
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: enhancedPrompt }
+  ], { 
+    maxTokens: 6000, 
+    temperature: 0.3,
+    jsonMode: true
+  });
+  
+  // Parse die neue Response
+  lv = JSON.parse(retryResponse.content.trim());
+  console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
+}
+  }    
+  
+} catch (parseError) {
     // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
     console.error('[LV] CRITICAL: Parse error despite JSON mode active!');
     console.error('[LV] Error message:', parseError.message);
