@@ -1265,7 +1265,7 @@ BEACHTE:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 6000,
+      maxTokens: 4000,
       temperature: 0.5,
       jsonMode: false // Wichtig: jsonMode kann problematisch sein
     });
