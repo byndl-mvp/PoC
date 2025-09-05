@@ -966,8 +966,14 @@ async function generateQuestions(tradeId, projectContext = {}) {
       projectContext.intakeData = intakeResponses.rows;
     }
     
-    console.log(`[QUESTIONS] Loaded ${projectContext.intakeData?.length || 0} intake answers for context`);
-  }
+  console.log(`[QUESTIONS] Loaded ${projectContext.intakeData?.length || 0} intake answers for context`);
+  console.log('[QUESTIONS] Project context:', {
+    hasDescription: !!projectContext.description,
+    hasCategory: !!projectContext.category,  
+    hasBudget: !!projectContext.budget,
+    intakeCount: projectContext.intakeData?.length || 0
+  });
+}
   
   // NEU: Intake-Antworten laden für Kontext-Weitergabe an Gewerke
 if (!isIntake && projectContext.projectId) {
@@ -1071,6 +1077,11 @@ WICHTIG: Frage NIEMALS nach den oben genannten Informationen!
 Diese Daten sind bereits bekannt und müssen NICHT erneut erfragt werden.
 Konzentriere dich NUR auf gewerkespezifische Details für ${tradeName}.
 ` : ''}
+
+PROJEKT-KONTEXT (WICHTIG - NICHT ERNEUT ERFRAGEN!):
+- Beschreibung: ${projectContext.description || 'Nicht angegeben'}
+- Kategorie: ${projectContext.category || 'Nicht angegeben'}
+- Budget: ${projectContext.budget || 'Nicht angegeben'}
 
 KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 
@@ -3293,7 +3304,15 @@ app.post('/api/projects/:projectId/trades/add-single', async (req, res) => {
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
-
+    // Hole die Daten aus dem Request Body
+    const {
+      includeIntakeContext,
+      isManuallyAdded: manualFromBody,
+      isAiRecommended: aiFromBody,
+      projectDescription: descriptionFromBody,
+      projectCategory: categoryFromBody,
+      projectBudget: budgetFromBody
+    } = req.body;
     // Prüfe Trade-Status (manuell, KI-empfohlen oder automatisch)
     const tradeStatusResult = await query(
       `SELECT is_manual, is_ai_recommended 
@@ -3338,17 +3357,17 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const project = projectResult.rows[0];
     
-    // Markiere wenn Gewerk manuell oder KI-empfohlen hinzugefügt wurde
+    // Erstelle erweiterten Projektkontext mit BEIDEN Quellen
     const projectContext = {
-      category: project.category,
-      subCategory: project.sub_category,
-      description: project.description,
-      timeframe: project.timeframe,
-      budget: project.budget,
-      projectId: projectId,
-      isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
-      isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended // NEU
-    };
+  category: req.body.projectCategory || project.category,
+  subCategory: project.sub_category,
+  description: req.body.projectDescription || project.description,
+  timeframe: project.timeframe,
+  budget: req.body.projectBudget || project.budget,
+  projectId: projectId,
+  isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
+  isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended
+};
     
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
     const questions = await generateQuestions(tradeId, projectContext);
