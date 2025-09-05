@@ -50,24 +50,24 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
 
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
-  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 30 },
-  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
-  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
-  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 30 },
-  'ROH': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 30 },
+  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 28 },
+  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25 },
+  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25 },
+  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 26 },
+  'ROH': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 28 },
   
   // Komplexe Gewerke (20-30 Fragen)
-  'TIS': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 25 },
-  'FEN': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 25 },
-  'FASS': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 25 },
-  'SCHL': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 25 },
+  'TIS': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20 },
+  'FEN': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22 },
+  'FASS': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22 },
+  'SCHL': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20 },
   
   // Mittlere Komplexität (15-25 Fragen)
-  'FLI': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
-  'ESTR': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
-  'TRO': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
-  'BOD': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
-  'AUSS': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 25 },
+  'FLI': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
+  'ESTR': { complexity: 'MITTEL', minQuestions: 12, maxQuestions: 17 },
+  'TRO': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
+  'BOD': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
+  'AUSS': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
   
   // Einfache Gewerke (8-15 Fragen)
   'MAL': { complexity: 'EINFACH', minQuestions: 8, maxQuestions: 15 },
@@ -75,11 +75,11 @@ const TRADE_COMPLEXITY = {
   'ABBR': { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15 },
   
   // Intake ist speziell (12-20 Fragen)
-  'INT': { complexity: 'INTAKE', minQuestions: 12, maxQuestions: 20 }
+  'INT': { complexity: 'INTAKE', minQuestions: 14, maxQuestions: 20 }
 };
 
 // Fallback für nicht definierte Gewerke
-const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 12, maxQuestions: 25 };
+const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 12, maxQuestions: 20 };
 
 // ===========================================================================
 // HELPER FUNCTIONS
@@ -91,7 +91,7 @@ const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 12, maxQuestion
 async function llmWithPolicy(task, messages, options = {}) {
   const defaultMaxTokens = {
     'detect': 3000,      
-    'questions': 4000,   
+    'questions': 6000,   
     'lv': 8000,         
     'intake': 4000,      
     'summary': 3000,
@@ -1276,7 +1276,7 @@ BEACHTE:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 4000,
+      maxTokens: 6000,
       temperature: 0.5,
       jsonMode: false // Wichtig: jsonMode kann problematisch sein
     });
