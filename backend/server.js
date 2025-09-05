@@ -1311,18 +1311,18 @@ BEACHTE:
         console.error('[QUESTIONS] Recovery failed:', recoveryError);
         // Fallback: Erstelle minimale Fragen
         console.log('[QUESTIONS] Using fallback questions');
-        questions = generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
+        throw new Error('Fehler bei der Fragengenerierung - bitte versuchen Sie es erneut');
       }
     }
     
     if (!Array.isArray(questions)) {
       console.error('[QUESTIONS] Response is not an array, using fallback');
-      questions = generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
+      throw new Error('Fehler bei der Fragengenerierung - bitte versuchen Sie es erneut');
     }
     
     if (questions.length === 0) {
       console.error('[QUESTIONS] Empty questions array, using fallback');
-      questions = generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
+      throw new Error('Fehler bei der Fragengenerierung - bitte versuchen Sie es erneut');
     }
     
     // NEU - füge multiSelect hinzu:
@@ -1389,7 +1389,7 @@ return filteredQuestions;
   } catch (err) {
     console.error('[QUESTIONS] Generation failed:', err);
     console.log('[QUESTIONS] Using fallback questions due to error');
-    return generateFallbackQuestions(tradeCode, tradeName, targetQuestionCount);
+    throw new Error('Fehler bei der Fragengenerierung - bitte versuchen Sie es erneut');
   }
 }
 
