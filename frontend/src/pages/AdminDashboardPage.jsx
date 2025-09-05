@@ -76,6 +76,7 @@ export default function AdminDashboardPage() {
       });
       if (!res.ok) throw new Error('Fehler beim Laden der Projektdetails');
       const data = await res.json();
+      console.log('Projektdetails:', data); // Debug um zu sehen was ankommt
       setSelectedProject(data);
     } catch (err) {
       setError(err.message);
