@@ -4849,7 +4849,7 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
       [id]
     );
 
-    // Get all questions and answers
+    // Get all questions and answers (bestehender Code)
     const qaResult = await query(
       `SELECT 
         q.*,
@@ -4864,6 +4864,34 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
        JOIN trades t ON t.id = q.trade_id
        WHERE q.project_id = $1
        ORDER BY t.sort_order, q.question_id`,
+      [id]
+    );
+
+    // NEU: Get Intake-Fragen aus intake_responses
+    const intakeResult = await query(
+      `SELECT 
+        question_text,
+        answer_text,
+        created_at
+       FROM intake_responses
+       WHERE project_id = $1
+       ORDER BY created_at ASC`,
+      [id]
+    );
+
+    // NEU: Get Gewerke-Antworten aus answers Tabelle (neues Format)
+    const answersResult = await query(
+      `SELECT 
+        t.name as trade_name,
+        t.code as trade_code,
+        a.question_text,
+        a.answer_text,
+        a.assumption,
+        a.created_at
+       FROM answers a
+       JOIN trades t ON t.id = a.trade_id
+       WHERE a.project_id = $1
+       ORDER BY t.sort_order, a.created_at`,
       [id]
     );
 
@@ -4882,7 +4910,10 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
     res.json({
       project,
       trades: tradesResult.rows,
-      questionsAnswers: qaResult.rows,
+      questionsAnswers: qaResult.rows,  // Alt (wahrscheinlich leer)
+      intakeQuestions: intakeResult.rows,  // NEU
+      tradeAnswers: answersResult.rows,    // NEU
+      totalQuestions: intakeResult.rows.length + answersResult.rows.length,  // NEU
       lvs: lvsResult.rows.map(lv => {
         try {
           return {
