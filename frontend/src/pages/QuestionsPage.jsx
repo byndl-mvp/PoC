@@ -101,22 +101,35 @@ setProjectTrades(detectedTrades);
             // HIER KOMMT DER NEUE BLOCK REIN (nach Zeile 88):
 if (isAdditionalTrade || isAiRecommendedTrade) {
   // Bei zusätzlichen oder KI-empfohlenen Gewerken: Nur Kontextfrage generieren
-  const contextType = isAiRecommendedTrade ? 'KI-empfohlenes' : 'nachträglich hinzugefügtes';
-  const contextQuestion = {
-    id: 'context_reason',
-    question: `Sie haben ${tradeName} als ${contextType} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
-    type: 'text',
-    required: true,
-    category: 'Projektkontext',
-    explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.'
-  };
+  let contextQuestion;
+  
+  if (isAiRecommendedTrade) {
+    contextQuestion = {
+      id: 'context_reason',
+      question: `Sie haben die von der KI empfohlenen ${currentTrade.name} ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
+      type: 'text',
+      required: true,
+      category: 'Projektkontext',
+      explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.'
+    };
+  } else {
+    contextQuestion = {
+      id: 'context_reason',
+      question: `Sie haben nachträglich ${currentTrade.name} ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
+      type: 'text',
+      required: true,
+      category: 'Projektkontext',
+      explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.'
+    };
+  }
+  
   sessionStorage.setItem('currentTradeIsAdditional', 'true');
   setQuestions([contextQuestion]);
   setAnswers([null]);
   setCurrent(0);
   setLoading(false);
   setLoadingProgress(100);
-  return; // Beende hier, keine weiteren Fragen laden
+  return;
 }
             
 // 2. Generiere ADAPTIVE Fragen für dieses spezifische Gewerk
@@ -445,14 +458,17 @@ if (current === 0 && isAiRecommended && questions[current].id === 'context_reaso
 // NEUE PRÜFUNG HIER:
     const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true' ||
                           sessionStorage.getItem('currentTradeIsAdditional') === 'true';
-      if (isAdditionalTrade) {
-      // Bei zusätzlichem Gewerk direkt zu Results
-      setFinalizing(true);
-      setTimeout(() => {
-        navigate(`/project/${projectId}/result`);
-      }, 3000);
-      return; // Wichtig: Funktion hier beenden!
-    }
+const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
+  .includes(parseInt(tradeId));
+
+// NUR bei zusätzlichen Gewerken (NICHT bei KI-empfohlenen) zu Results springen
+if (isAdditionalTrade && !isAiRecommended) {
+  setFinalizing(true);
+  setTimeout(() => {
+    navigate(`/project/${projectId}/result`);
+  }, 3000);
+  return;
+}
       
       if (!lvRes.ok) {
         const data = await lvRes.json().catch(() => ({}));
