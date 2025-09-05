@@ -343,63 +343,77 @@ export default function AdminDashboardPage() {
                           </div>
                         </div>
 
-                        {/* Trades */}
-                        <div>
-                          <h4 className="text-white font-semibold mb-2">Gewerke & Q&A</h4>
-                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                            {selectedProject.trades?.map((trade) => {
-                              // Filter Q&A for this trade
-                              const tradeQA = selectedProject.questionsAnswers?.filter(
-                                qa => qa.trade_id === trade.id
-                              ) || [];
-                              
-                              return (
-                                <details key={trade.id} className="bg-white/5 rounded-lg p-3">
-                                  <summary className="cursor-pointer text-white hover:text-teal-400">
-                                    {trade.name} ({tradeQA.length} Fragen)
-                                  </summary>
-                                  <div className="mt-2 pl-4 space-y-2">
-                                    {tradeQA.length > 0 ? (
-                                      tradeQA.map((qa, idx) => (
-                                        <div key={`${qa.question_id}-${idx}`} className="border-l-2 border-teal-400/30 pl-3">
-                                          <p className="text-white/90 text-sm font-medium">
-                                            Frage {qa.question_id}: {qa.question_text}
-                                          </p>
-                                          {qa.answer_text ? (
-                                            <p className="text-green-300 text-xs mt-1">
-                                              ✓ {qa.answer_text}
-                                            </p>
-                                          ) : (
-                                            <p className="text-yellow-300 text-xs mt-1">
-                                              ⚠ Keine Antwort
-                                            </p>
-                                          )}
-                                          {qa.assumption && (
-                                            <p className="text-blue-300 text-xs mt-1">
-                                              ℹ Annahme: {qa.assumption}
-                                            </p>
-                                          )}
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <p className="text-white/50 text-sm">Keine Fragen vorhanden</p>
-                                    )}
-                                  </div>
-                                </details>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20 flex items-center justify-center h-[400px]">
-                      <p className="text-white/50">Wählen Sie ein Projekt aus der Liste</p>
-                    </div>
+                        {/* Gewerke & Q&A */}
+<div>
+  <h4 className="text-white font-semibold mb-2">Fragen & Antworten</h4>
+  
+  {/* Intake-Fragen */}
+  {selectedProject.intakeQuestions && selectedProject.intakeQuestions.length > 0 && (
+    <details className="bg-white/5 rounded-lg p-3 mb-2">
+      <summary className="cursor-pointer text-white hover:text-teal-400">
+        Intake-Fragen ({selectedProject.intakeQuestions.length} Fragen)
+      </summary>
+      <div className="mt-2 pl-4 space-y-2">
+        {selectedProject.intakeQuestions.map((qa, idx) => (
+          <div key={idx} className="border-l-2 border-teal-400/30 pl-3">
+            <p className="text-white/90 text-sm font-medium">
+              {qa.question_text}
+            </p>
+            <p className="text-green-300 text-xs mt-1">
+              ✓ {qa.answer_text}
+            </p>
+          </div>
+        ))}
+      </div>
+    </details>
+  )}
+  
+  {/* Gewerke-Fragen */}
+  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+    {selectedProject.trades?.map((trade) => {
+      // Filter Antworten für dieses Gewerk
+      const tradeAnswers = selectedProject.tradeAnswers?.filter(
+        answer => answer.trade_code === trade.code
+      ) || [];
+      
+      return (
+        <details key={trade.id} className="bg-white/5 rounded-lg p-3">
+          <summary className="cursor-pointer text-white hover:text-teal-400">
+            {trade.name} ({tradeAnswers.length} Fragen)
+          </summary>
+          <div className="mt-2 pl-4 space-y-2">
+            {tradeAnswers.length > 0 ? (
+              tradeAnswers.map((answer, idx) => (
+                <div key={idx} className="border-l-2 border-teal-400/30 pl-3">
+                  <p className="text-white/90 text-sm font-medium">
+                    {answer.question_text}
+                  </p>
+                  <p className="text-green-300 text-xs mt-1">
+                    ✓ {answer.answer_text}
+                  </p>
+                  {answer.assumption && (
+                    <p className="text-blue-300 text-xs mt-1">
+                      ℹ Annahme: {answer.assumption}
+                    </p>
                   )}
                 </div>
-              </div>
+              ))
+            ) : (
+              <p className="text-white/50 text-sm">Keine Fragen vorhanden</p>
             )}
+          </div>
+        </details>
+      );
+    })}
+  </div>
+  
+  {/* Gesamt-Statistik */}
+  <div className="mt-3 pt-3 border-t border-white/20">
+    <p className="text-white/70 text-sm">
+      Gesamt: {selectedProject.totalQuestions || 0} Fragen erfasst
+    </p>
+  </div>
+</div>
 
             {/* Prompts Tab */}
             {activeTab === 'prompts' && (
