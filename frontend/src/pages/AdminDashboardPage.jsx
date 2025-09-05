@@ -416,9 +416,9 @@ export default function AdminDashboardPage() {
   </div>
 </div>
                       </div>
+</div>
+                      </div>
                     </div>
-                /div>  {/* Schließt space-y-4 container */}
-                    </div>      {/* Schließt bg-white/10 panel */}
                   ) : (
                     <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20 flex items-center justify-center h-[400px]">
                       <p className="text-white/50">Wählen Sie ein Projekt aus der Liste</p>
