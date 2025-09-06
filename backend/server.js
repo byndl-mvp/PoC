@@ -4368,25 +4368,35 @@ BEISPIELE GUTER VORSCHLÄGE:
 ✓ "Fliesen nur in Nassbereichen (spart 2.000€)"
 
 EXTREM WICHTIG: 
-Das "trade" Feld darf NIEMALS "undefined", "MUSS ein Code aus der obigen Liste sein" oder ähnlichen Text enthalten!
-Es MUSS IMMER einer der folgenden Codes sein: ${lvBreakdown.map(lv => lv.tradeCode).join(', ')}
+Das "trade" Feld MUSS EXAKT einer dieser Codes sein: ${lvBreakdown.map(lv => lv.tradeCode).join(', ')}
+KEINE ANDEREN CODES! Nicht KLIMA wenn KLIMA nicht in der Liste ist!
 
-OUTPUT als JSON (WICHTIG: "trade" muss ein echter Code sein, z.B. "KLIMA", "SAN", "ELEKT"):
+OUTPUT als JSON:
 {
   "optimizations": [
     {
-      "trade": "KLIMA",  // <-- HIER MUSS ein Code wie KLIMA, SAN, ELEKT etc. stehen
-      "tradeName": "Lüftung/Klimatechnik",
-      "measure": "Einfachere Lüftungsanlage ohne Wärmerückgewinnung",
+      "trade": "${lvBreakdown[0]?.tradeCode || 'DACH'}",
+      "tradeName": "${lvBreakdown[0]?.tradeName || 'Dachdeckerarbeiten'}",
+      "measure": "Konkrete Maßnahme für ${lvBreakdown[0]?.tradeName || 'dieses Gewerk'}",
       "savingAmount": 2500,
       "savingPercent": 15,
       "difficulty": "mittel",
       "type": "material",
-      "impact": "Höhere Heizkosten, aber gleiche Luftqualität"
-    }
+      "impact": "Auswirkung auf Qualität"
+    }${lvBreakdown[1] ? `,
+    {
+      "trade": "${lvBreakdown[1].tradeCode}",
+      "tradeName": "${lvBreakdown[1].tradeName}",
+      "measure": "Weitere Optimierung für ${lvBreakdown[1].tradeName}",
+      "savingAmount": 1500,
+      "savingPercent": 10,
+      "difficulty": "einfach",
+      "type": "eigenleistung",
+      "impact": "Keine Funktionseinschränkung"
+    }` : ''}
   ],
   "totalPossibleSaving": 12500,
-  "summary": "Durch Materialoptimierungen können bis zu 12.500€ eingespart werden"
+  "summary": "Durch gezielte Optimierungen können die Kosten reduziert werden"
 }`;
 
     const userPrompt = `Budget: ${formatCurrency(targetBudget)}
