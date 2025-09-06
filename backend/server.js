@@ -54,6 +54,7 @@ const TRADE_COMPLEXITY = {
   'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25 },
   'SAN': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25 },
   'HEI': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 26 },
+  'KLIMA': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25 },
   'ROH': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 28 },
   
   // Komplexe Gewerke (20-30 Fragen)
@@ -404,6 +405,17 @@ case 'HEI':
   }
   break;
 
+case 'KLIMA': // Lüftung- und Klimatechnik
+    if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Raumflächen');
+    else informationCompleteness += 30;
+    if (!desc.includes('raumhöhe') && !desc.includes('geschoss')) missingCriticalInfo.push('Raumhöhen');
+    else informationCompleteness += 15;
+    if (desc.includes('lüftung') || desc.includes('klima') || desc.includes('luftwechsel')) {
+        informationCompleteness += 25;
+    }
+    if (desc.includes('kühlung') || desc.includes('heizung')) informationCompleteness += 20;
+    break;
+        
 case 'FEN':
   if (!desc.match(/\d+\s*(fenster|türen|stück)/)) missingCriticalInfo.push('Anzahl Fenster/Türen');
   else informationCompleteness += 30;
@@ -787,6 +799,7 @@ KRITISCHE GEWERKE-ABGRENZUNGEN (IMMER EINHALTEN):
    - Sanitär (SAN): Wasser, Abwasser, Sanitärobjekte, eigene Wanddurchbrüche (Kernbohrungen), Rückbau alter Installationen
    - Heizung (HEI): Wärmeerzeugung, Heizkörper, Fußbodenheizung, Rückbau alter Heizungsanlagen
    - Elektro (ELEKT): Strom, Schalter, Smart Home, eigene Schlitze, KOMPLETTER Rückbau alter Elektroinstallationen (Kabel, Dosen, Verteiler)
+   - Lüftung/Klima (KLIMA): Lüftungsanlagen, Klimageräte, Luftkanäle, Wärmerückgewinnung, Luftqualität
    - Jedes Gewerk macht EIGENE Rückbauarbeiten, Schlitze und Durchbrüche!
    - KEIN separates Abbruch-Gewerk für TGA-Rückbau!
 
