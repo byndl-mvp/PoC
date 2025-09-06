@@ -4336,6 +4336,16 @@ ${intakeData.rows.slice(0, 20).map(r => `- ${r.question_text}: ${r.answer_text}`
 VORHANDENE GEWERKE:
 ${availableTradesText}
 
+KRITISCH - VERWENDUNG DER TRADE-CODES:
+Im JSON-Output MUSS das "trade" Feld IMMER einen der folgenden Codes enthalten:
+${lvBreakdown.map(lv => lv.tradeCode).join(', ')}
+KEINE anderen Werte! Nicht "LEISTUNGSREDUZIERUNG" oder "ALTERNATIVE AUSFÜHRUNGEN"!
+
+Beispiel korrekte Ausgabe:
+- trade: "ELEKT" ✓ (für Elektroinstallation)
+- trade: "SAN" ✓ (für Sanitärinstallation)
+- trade: "LEISTUNGSREDUZIERUNG" ✗ (FALSCH - kein gültiger Trade-Code!)
+
 ANALYSIERE NUR was tatsächlich im Projekt enthalten ist!
 - Bei Dachprojekt: KEINE Vorschläge zu Innenräumen
 - Bei Badprojekt: KEINE Vorschläge zur Fassade
@@ -4376,9 +4386,9 @@ OUTPUT als JSON:
 {
   "optimizations": [
     {
-      "trade": "EXAKTER Code aus obiger Liste",
-      "tradeName": "EXAKTER Name aus obiger Liste",
-      "measure": "Konkrete Maßnahme",
+      "trade": "${lvBreakdown[0]?.tradeCode || 'ELEKT'}",  // <-- MUSS ein Code aus obiger Liste sein!
+      "tradeName": "${lvBreakdown[0]?.tradeName || 'Elektroinstallation'}",
+      "measure": "Konkrete Maßnahme basierend auf den LV-Positionen",
       "savingAmount": 2500,
       "savingPercent": 15,
       "difficulty": "einfach|mittel|schwer",
