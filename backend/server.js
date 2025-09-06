@@ -1459,6 +1459,9 @@ async function generateDetailedLV(projectId, tradeId) {
   const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
   if (!trade) throw new Error('Trade not found');
 
+  // DIESE ZEILE HINZUFÜGEN:
+const tradeCode = trade.code;
+  
   // Lade alle relevanten Antworten
   const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
   const intakeAnswers = intTrade
