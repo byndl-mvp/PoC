@@ -4411,7 +4411,7 @@ Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 2000,
+      maxTokens: 3000,
       temperature: 0.3,
       jsonMode: true
     });
