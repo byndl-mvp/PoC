@@ -4271,6 +4271,12 @@ summary.totalCost = summary.totalCost + (parseFloat(tradeCost) || 0);
   }
 });
 
+function formatCurrency(value) {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value || 0);
+}
 // Budget-Optimierung generieren
 app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
   try {
