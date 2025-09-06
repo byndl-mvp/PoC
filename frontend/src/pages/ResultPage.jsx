@@ -231,10 +231,10 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
         currentTotal: grandTotal,
         targetBudget: project.budget, // Jetzt haben wir project.budget!
         lvBreakdown: lvs.map(lv => ({
-          tradeCode: lv.trade_code,
-          tradeName: lv.trade_name,
-          total: calculateTotal(lv)
-        }))
+  tradeCode: lv.trade_code || lv.code,  // <-- Fallback auf 'code'
+  tradeName: lv.trade_name || lv.name,  // <-- Fallback auf 'name'
+  total: calculateTotal(lv)
+}))
       })
     });
     
