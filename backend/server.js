@@ -4879,21 +4879,24 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
       [id]
     );
 
-    // NEU: Get Gewerke-Antworten aus answers Tabelle (neues Format)
-    const answersResult = await query(
-      `SELECT 
-        t.name as trade_name,
-        t.code as trade_code,
-        a.question_text,
-        a.answer_text,
-        a.assumption,
-        a.created_at
-       FROM answers a
-       JOIN trades t ON t.id = a.trade_id
-       WHERE a.project_id = $1
-       ORDER BY t.sort_order, a.created_at`,
-      [id]
-    );
+    // NEU: Get Gewerke-Antworten mit Fragen aus der questions Tabelle
+const answersResult = await query(
+  `SELECT 
+    t.name as trade_name,
+    t.code as trade_code,
+    q.text as question_text,
+    a.answer_text,
+    a.assumption,
+    a.created_at
+   FROM answers a
+   JOIN trades t ON t.id = a.trade_id
+   LEFT JOIN questions q ON q.project_id = a.project_id 
+     AND q.trade_id = a.trade_id 
+     AND q.question_id = a.question_id
+   WHERE a.project_id = $1
+   ORDER BY t.sort_order, a.created_at`,
+  [id]
+);
 
     // Get LVs
     const lvsResult = await query(
