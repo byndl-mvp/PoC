@@ -123,7 +123,9 @@ if (isAdditionalTrade || isAiRecommendedTrade) {
     };
   }
   
+  if (!isAiRecommendedTrade) {
   sessionStorage.setItem('currentTradeIsAdditional', 'true');
+}
   setQuestions([contextQuestion]);
   setAnswers([null]);
   setCurrent(0);
@@ -336,6 +338,10 @@ if (current === 0 && isAiRecommended && questions[current].id === 'context_reaso
     
     if (response.ok) {
       const data = await response.json();
+
+      // HIER DEN DEBUG-LOG EINFÜGEN:
+      console.log('[DEBUG] AI-recommended context response:', data);
+      console.log('[DEBUG] Questions count:', data.questions?.length || data.length);
       
       // Ersetze Kontextfrage mit spezifischen Fragen
       setQuestions(data.questions || data);
