@@ -4277,40 +4277,36 @@ function formatCurrency(value) {
     currency: 'EUR'
   }).format(value || 0);
 }
+
 // Budget-Optimierung generieren
 app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
   try {
     const { projectId } = req.params;
-const { currentTotal, targetBudget, lvBreakdown } = req.body;
+    const { currentTotal, targetBudget, lvBreakdown } = req.body;
 
-// HIER NEU EINFÜGEN - Lade zusätzliche Kontextdaten:
-const lvPositions = await query(
-  `SELECT t.name as trade_name, l.content 
-   FROM lvs l 
-   JOIN trades t ON t.id = l.trade_id 
-   WHERE l.project_id = $1`,
-  [projectId]
-);
+    // Lade zusätzliche Kontextdaten
+    const lvPositions = await query(
+      `SELECT t.name as trade_name, l.content 
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id 
+       WHERE l.project_id = $1`,
+      [projectId]
+    );
 
-const intakeData = await query(
-  `SELECT question_text, answer_text 
-   FROM intake_responses 
-   WHERE project_id = $1`,
-  [projectId]
-);
+    const intakeData = await query(
+      `SELECT question_text, answer_text 
+       FROM intake_responses 
+       WHERE project_id = $1`,
+      [projectId]
+    );
 
-const projectData = await query(
-  'SELECT description, category FROM projects WHERE id = $1',
-  [projectId]
-);
+    const projectData = await query(
+      'SELECT description, category FROM projects WHERE id = $1',
+      [projectId]
+    );
     
     const overspend = currentTotal - targetBudget;
     const percentOver = ((overspend / targetBudget) * 100).toFixed(1);
-    
-    // Erstelle Liste der vorhandenen Gewerke
-    const availableTradesText = lvBreakdown.map(lv => 
-      `- ${lv.tradeCode}: ${lv.tradeName}`
-    ).join('\n');
     
     const systemPrompt = `Du bist ein Baukostenoptimierer mit 20 Jahren Erfahrung.
 
@@ -4333,62 +4329,51 @@ ${lvPositions.rows.slice(0, 30).map(p => {
 ERFASSTE PROJEKTDETAILS:
 ${intakeData.rows.slice(0, 20).map(r => `- ${r.question_text}: ${r.answer_text}`).join('\n')}
 
-VORHANDENE GEWERKE:
-${availableTradesText}
+VERFÜGBARE GEWERKE-CODES (NUR DIESE VERWENDEN!):
+${lvBreakdown.map(lv => `${lv.tradeCode} = ${lv.tradeName}`).join('\n')}
 
-KRITISCH - VERWENDUNG DER TRADE-CODES:
-Im JSON-Output MUSS das "trade" Feld IMMER einen der folgenden Codes enthalten:
-${lvBreakdown.map(lv => lv.tradeCode).join(', ')}
-KEINE anderen Werte! Nicht "LEISTUNGSREDUZIERUNG" oder "ALTERNATIVE AUSFÜHRUNGEN"!
+KRITISCH: Im "trade" Feld MÜSSEN EXAKT diese Codes verwendet werden:
+[${lvBreakdown.map(lv => lv.tradeCode).join(', ')}]
 
-Beispiel korrekte Ausgabe:
-- trade: "ELEKT" ✓ (für Elektroinstallation)
-- trade: "SAN" ✓ (für Sanitärinstallation)
-- trade: "LEISTUNGSREDUZIERUNG" ✗ (FALSCH - kein gültiger Trade-Code!)
+Beispiel korrekte/falsche Ausgaben:
+✓ trade: "KLIMA" (wenn KLIMA in der Liste ist)
+✓ trade: "SAN" (wenn SAN in der Liste ist)
+✗ trade: "TGA" (FALSCH - kein gültiger Code)
+✗ trade: "LEISTUNGSREDUZIERUNG" (FALSCH - das ist eine Kategorie, kein Trade-Code)
 
 ANALYSIERE NUR was tatsächlich im Projekt enthalten ist!
 - Bei Dachprojekt: KEINE Vorschläge zu Innenräumen
 - Bei Badprojekt: KEINE Vorschläge zur Fassade
-- NUR Optimierungen für oben gelistete Gewerke
 
-INTELLIGENTE SPARVORSCHLÄGE (5-7 Stück):
+ERSTELLE 5-7 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
 
-1. LEISTUNGSREDUZIERUNG (ohne Funktionsverlust):
-- Teilbereiche weglassen
-- Überdimensionierung reduzieren (z.B. Q3 statt Q4)
-- Verzichtbare Extras streichen
-
-2. EIGENLEISTUNG (NUR bei einfachen Arbeiten):
-- Erlaubt: Malervorarbeiten, Tapeten entfernen, Bodenbeläge entfernen
-- VERBOTEN: Elektro, Sanitär, Statik, Dach, Gerüst
-
-3. ALTERNATIVE AUSFÜHRUNGEN:
-- Sanierung statt Neubau (z.B. Türen aufarbeiten)
-- Einfachere Systeme verwenden
-- Standardprodukte statt Sonderanfertigungen
-
-4. MENGENOPTIMIERUNG:
-- Nur Teilbereiche sanieren
+1. MATERIALOPTIMIERUNG:
+- Standardprodukte statt Premium
+- Alternative Materialien gleicher Funktion
 - Reduzierte Ausstattung
-- Bestandserhalt wo möglich
+
+2. EIGENLEISTUNG (nur bei einfachen Arbeiten):
+- Malervorarbeiten, Tapeten entfernen
+- Bodenbeläge entfernen
+- NICHT: Elektro, Sanitär, Statik, Dach
+
+3. MENGENOPTIMIERUNG:
+- Teilbereiche weglassen
+- Reduzierte Flächen
+- Bestand erhalten wo möglich
 
 BEISPIELE GUTER VORSCHLÄGE:
-✓ "Belassen Sie bestehende Innentüren, nur neue Beschläge (spart 3.500€)"
-✓ "Fliesenfläche nur in Nassbereichen (spart 2.000€)"
-✓ "Laminat statt Parkett in Nebenräumen (spart 4.000€)"
-
-VERBOTEN:
-- Generische "günstigere Materialien" ohne konkreten Bezug
-- Unrealistische Eigenleistungen
-- Vorschläge außerhalb des Projektumfangs
+✓ "Standard-Armaturen statt Designermodelle im Bad (spart 1.200€)"
+✓ "Malervorarbeiten in Eigenleistung (spart 600€)"
+✓ "Fliesen nur in Nassbereichen (spart 2.000€)"
 
 OUTPUT als JSON:
 {
   "optimizations": [
     {
-      "trade": "${lvBreakdown[0]?.tradeCode || 'ELEKT'}",  // <-- MUSS ein Code aus obiger Liste sein!
-      "tradeName": "${lvBreakdown[0]?.tradeName || 'Elektroinstallation'}",
-      "measure": "Konkrete Maßnahme basierend auf den LV-Positionen",
+      "trade": "MUSS ein Code aus der obigen Liste sein",
+      "tradeName": "Name des Gewerks",
+      "measure": "Konkrete Maßnahme",
       "savingAmount": 2500,
       "savingPercent": 15,
       "difficulty": "einfach|mittel|schwer",
@@ -4397,21 +4382,94 @@ OUTPUT als JSON:
     }
   ],
   "totalPossibleSaving": 12500,
-  "recommendedSavings": [],
   "summary": "Zusammenfassung"
-}`;  // WICHTIG: Das schließende `; gehört zum systemPrompt
+}`;
 
     const userPrompt = `Budget: ${formatCurrency(targetBudget)}
 Aktuelle Kosten: ${formatCurrency(currentTotal)}
 Überschreitung: ${formatCurrency(overspend)} (${percentOver}%)
 
-GEWERKE-AUFSTELLUNG:
-${lvBreakdown.map(lv => `${lv.tradeCode} - ${lv.tradeName}: ${formatCurrency(lv.total)}`).join('\n')}
+GEWERKE MIT CODES UND KOSTEN:
+${lvBreakdown.map(lv => `${lv.tradeCode}: ${lv.tradeName} = ${formatCurrency(lv.total)}`).join('\n')}
 
 WICHTIGSTE LV-POSITIONEN:
-${lvPositions.rows.slice(0, 10).map(p => `- ${p.title}`).join('\n')}
+${lvPositions.rows.slice(0, 10).map(p => {
+  try {
+    const content = JSON.parse(p.content);
+    return content.positions?.slice(0, 2).map(pos => 
+      `- ${p.trade_name}: ${pos.title}`
+    ).join('\n');
+  } catch {
+    return '';
+  }
+}).filter(Boolean).join('\n')}
 
-Erstelle konkrete, projektspezifische Einsparvorschläge die zum tatsächlichen Umfang passen.`;
+Analysiere JEDES Gewerk und finde konkrete Einsparmöglichkeiten.
+Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
+
+    const response = await llmWithPolicy('optimization', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { 
+      maxTokens: 2000,
+      temperature: 0.3,
+      jsonMode: true
+    });
+
+    const optimizations = JSON.parse(response);
+    
+    // Speichere Optimierungsvorschläge
+    await query(
+      `INSERT INTO project_optimizations (project_id, suggestions, created_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (project_id) 
+       DO UPDATE SET suggestions = $2, created_at = NOW()`,
+      [projectId, JSON.stringify(optimizations)]
+    );
+
+    // Validierung: Filtere ungültige Gewerke raus
+    const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
+    if (optimizations.optimizations) {
+      optimizations.optimizations = optimizations.optimizations.filter(opt => {
+        const isValid = validTradeCodes.includes(opt.trade);
+        if (!isValid) {
+          console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
+        }
+        return isValid;
+      });
+
+      // Stelle sicher dass tradeName korrekt ist
+      optimizations.optimizations = optimizations.optimizations.map(opt => {
+        const matchingTrade = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
+        if (matchingTrade) {
+          opt.tradeName = matchingTrade.tradeName;
+        }
+        return opt;
+      });
+    }    
+
+    // Fallback wenn keine gültigen Optimierungen
+    if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
+      console.log('[OPTIMIZATION] No valid optimizations found, generating fallback');
+      optimizations.optimizations = [{
+        trade: lvBreakdown[0]?.tradeCode || 'GENERAL',
+        tradeName: lvBreakdown[0]?.tradeName || 'Allgemein',
+        measure: 'Materialqualität leicht reduzieren ohne Funktionseinbußen',
+        savingAmount: overspend * 0.1,
+        savingPercent: 10,
+        difficulty: 'einfach',
+        type: 'material',
+        impact: 'Geringe optische Einschränkungen'
+      }];
+    }
+    
+    res.json(optimizations);
+    
+  } catch (err) {
+    console.error('Optimization generation failed:', err);
+    res.status(500).json({ error: 'Fehler bei der Optimierung' });
+  }
+});
 
     const response = await llmWithPolicy('optimization', [
       { role: 'system', content: systemPrompt },
