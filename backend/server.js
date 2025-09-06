@@ -4407,46 +4407,53 @@ ${lvPositions.rows.slice(0, 10).map(p => {
 Analysiere JEDES Gewerk und finde konkrete Einsparmöglichkeiten.
 Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
 
-    const response = await llmWithPolicy('optimization', [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], { 
-      maxTokens: 3000,
-      temperature: 0.3,
-      jsonMode: true
-    });
+const response = await llmWithPolicy('optimization', [
+  { role: 'system', content: systemPrompt },
+  { role: 'user', content: userPrompt }
+], { 
+  maxTokens: 3000,
+  temperature: 0.3,
+  jsonMode: true
+});
 
-    const optimizations = JSON.parse(response);
-    
-    // Speichere Optimierungsvorschläge
-    await query(
-      `INSERT INTO project_optimizations (project_id, suggestions, created_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (project_id) 
-       DO UPDATE SET suggestions = $2, created_at = NOW()`,
-      [projectId, JSON.stringify(optimizations)]
-    );
+console.log('[OPTIMIZATION] Raw LLM response:', response.substring(0, 500));
+const optimizations = JSON.parse(response);
+console.log('[OPTIMIZATION] Parsed optimizations:', JSON.stringify(optimizations.optimizations?.slice(0, 2)));
 
-    // Validierung: Filtere ungültige Gewerke raus
-    const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
-    if (optimizations.optimizations) {
-      optimizations.optimizations = optimizations.optimizations.filter(opt => {
-        const isValid = validTradeCodes.includes(opt.trade);
-        if (!isValid) {
-          console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
-        }
-        return isValid;
-      });
+// Speichere Optimierungsvorschläge
+await query(
+  `INSERT INTO project_optimizations (project_id, suggestions, created_at)
+   VALUES ($1, $2, NOW())
+   ON CONFLICT (project_id) 
+   DO UPDATE SET suggestions = $2, created_at = NOW()`,
+  [projectId, JSON.stringify(optimizations)]
+);
 
-      // Stelle sicher dass tradeName korrekt ist
-      optimizations.optimizations = optimizations.optimizations.map(opt => {
-        const matchingTrade = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
-        if (matchingTrade) {
-          opt.tradeName = matchingTrade.tradeName;
-        }
-        return opt;
-      });
-    }    
+// Validierung: Filtere ungültige Gewerke raus
+const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
+if (optimizations.optimizations) {
+  optimizations.optimizations = optimizations.optimizations.filter(opt => {
+    // Prüfe ob trade überhaupt existiert
+    if (!opt.trade || opt.trade === 'undefined') {
+      console.log('[OPTIMIZATION] Skipping optimization with undefined trade');
+      return false;
+    }
+    const isValid = validTradeCodes.includes(opt.trade);
+    if (!isValid) {
+      console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
+    }
+    return isValid;
+  });
+  
+  // Stelle sicher dass tradeName korrekt ist
+  optimizations.optimizations = optimizations.optimizations.map(opt => {
+    const matchingTrade = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
+    if (matchingTrade) {
+      opt.tradeName = matchingTrade.tradeName;
+    }
+    return opt;
+  });
+}
 
     // Fallback wenn keine gültigen Optimierungen
     if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
