@@ -4367,22 +4367,26 @@ BEISPIELE GUTER VORSCHLÄGE:
 ✓ "Malervorarbeiten in Eigenleistung (spart 600€)"
 ✓ "Fliesen nur in Nassbereichen (spart 2.000€)"
 
-OUTPUT als JSON:
+EXTREM WICHTIG: 
+Das "trade" Feld darf NIEMALS "undefined", "MUSS ein Code aus der obigen Liste sein" oder ähnlichen Text enthalten!
+Es MUSS IMMER einer der folgenden Codes sein: ${lvBreakdown.map(lv => lv.tradeCode).join(', ')}
+
+OUTPUT als JSON (WICHTIG: "trade" muss ein echter Code sein, z.B. "KLIMA", "SAN", "ELEKT"):
 {
   "optimizations": [
     {
-      "trade": "MUSS ein Code aus der obigen Liste sein",
-      "tradeName": "Name des Gewerks",
-      "measure": "Konkrete Maßnahme",
+      "trade": "KLIMA",  // <-- HIER MUSS ein Code wie KLIMA, SAN, ELEKT etc. stehen
+      "tradeName": "Lüftung/Klimatechnik",
+      "measure": "Einfachere Lüftungsanlage ohne Wärmerückgewinnung",
       "savingAmount": 2500,
       "savingPercent": 15,
-      "difficulty": "einfach|mittel|schwer",
-      "type": "material|eigenleistung|verschiebung|reduzierung",
-      "impact": "Auswirkung auf Qualität/Funktion"
+      "difficulty": "mittel",
+      "type": "material",
+      "impact": "Höhere Heizkosten, aber gleiche Luftqualität"
     }
   ],
   "totalPossibleSaving": 12500,
-  "summary": "Zusammenfassung"
+  "summary": "Durch Materialoptimierungen können bis zu 12.500€ eingespart werden"
 }`;
 
     const userPrompt = `Budget: ${formatCurrency(targetBudget)}
