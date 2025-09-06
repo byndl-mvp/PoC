@@ -4285,11 +4285,10 @@ const { currentTotal, targetBudget, lvBreakdown } = req.body;
 
 // HIER NEU EINFÜGEN - Lade zusätzliche Kontextdaten:
 const lvPositions = await query(
-  `SELECT t.name as trade_name, lp.title, lp.description 
-   FROM lv_positions lp 
-   JOIN trades t ON t.id = lp.trade_id 
-   WHERE lp.project_id = $1
-   LIMIT 50`,
+  `SELECT t.name as trade_name, l.content 
+   FROM lvs l 
+   JOIN trades t ON t.id = l.trade_id 
+   WHERE l.project_id = $1`,
   [projectId]
 );
 
@@ -4320,7 +4319,16 @@ ${projectData.rows[0]?.description || 'Keine Beschreibung'}
 Kategorie: ${projectData.rows[0]?.category || 'Nicht angegeben'}
 
 KONKRETE ARBEITEN IM PROJEKT (aus LV):
-${lvPositions.rows.slice(0, 30).map(p => `- ${p.trade_name}: ${p.title}`).join('\n')}
+${lvPositions.rows.slice(0, 30).map(p => {
+  try {
+    const content = JSON.parse(p.content);
+    return content.positions?.slice(0, 3).map(pos => 
+      `- ${p.trade_name}: ${pos.title}`
+    ).join('\n');
+  } catch {
+    return `- ${p.trade_name}: [Positionen nicht lesbar]`;
+  }
+}).join('\n')}
 
 ERFASSTE PROJEKTDETAILS:
 ${intakeData.rows.slice(0, 20).map(r => `- ${r.question_text}: ${r.answer_text}`).join('\n')}
