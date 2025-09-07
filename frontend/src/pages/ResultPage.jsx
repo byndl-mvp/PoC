@@ -438,8 +438,12 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   
   // Memoized PositionModal verhindert unnötige Re-Renders
 const PositionModal = React.memo(() => {
-  if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
+  // Early return ZUERST, BEVOR irgendwelche Hooks!
+  if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) {
+    return null;
+  }
   
+  // JETZT erst die Hooks verwenden
   const lv = lvs[modalLvIndex];
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
   const key = `${modalLvIndex}-${modalPosIndex}`;
@@ -476,7 +480,11 @@ const PositionModal = React.memo(() => {
     // selectedPosition mit den neuen Werten aktualisieren
     const updatedPosition = {
       ...selectedPosition,
-      ...currentValues,
+      title: currentValues.title,
+      description: currentValues.description,
+      quantity: parseFloat(currentValues.quantity) || 0,
+      unit: currentValues.unit,
+      unitPrice: parseFloat(currentValues.unitPrice) || 0,
       totalPrice: (parseFloat(currentValues.quantity) || 0) * (parseFloat(currentValues.unitPrice) || 0)
     };
     setSelectedPosition(updatedPosition);
