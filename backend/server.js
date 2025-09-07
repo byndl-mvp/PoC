@@ -4443,7 +4443,7 @@ await query(
   [projectId, JSON.stringify(optimizations)]
 );
 
-// Validierung: Filtere ungültige Gewerke raus
+// Validierung: Filtere ungültige und unrealistische Optimierungen
 const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
 if (optimizations.optimizations) {
   optimizations.optimizations = optimizations.optimizations.filter(opt => {
@@ -4452,11 +4452,29 @@ if (optimizations.optimizations) {
       console.log('[OPTIMIZATION] Skipping optimization with undefined trade');
       return false;
     }
+    
+    // Prüfe ob Trade im Projekt vorhanden
     const isValid = validTradeCodes.includes(opt.trade);
     if (!isValid) {
       console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
+      return false;
     }
-    return isValid;
+    
+    // NEU: Prüfe realistische Einsparungen (mindestens 200€)
+    if (opt.savingAmount < 200) {
+      console.log(`[OPTIMIZATION] Filtered unrealistic low amount: ${opt.savingAmount}€`);
+      return false;
+    }
+    
+    // NEU: Prüfe ob Einsparung nicht über 50% des Gewerks liegt
+    const tradeLv = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
+    if (tradeLv && opt.savingAmount > tradeLv.total * 0.5) {
+      console.log(`[OPTIMIZATION] Capped high amount: ${opt.savingAmount}€ to 30% of ${tradeLv.total}€`);
+      opt.savingAmount = Math.floor(tradeLv.total * 0.3);
+      opt.savingPercent = 30;
+    }
+    
+    return true;
   });
   
   // Stelle sicher dass tradeName korrekt ist
@@ -4467,6 +4485,21 @@ if (optimizations.optimizations) {
     }
     return opt;
   });
+}
+
+// Fallback mit realistischem Mindestbetrag
+if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
+  console.log('[OPTIMIZATION] No valid optimizations found, generating fallback');
+  optimizations.optimizations = [{
+    trade: lvBreakdown[0]?.tradeCode || 'GENERAL',
+    tradeName: lvBreakdown[0]?.tradeName || 'Allgemein',
+    measure: 'Materialqualität leicht reduzieren ohne Funktionseinbußen',
+    savingAmount: Math.max(500, overspend * 0.1), // Mindestens 500€
+    savingPercent: 10,
+    difficulty: 'einfach',
+    type: 'material',
+    impact: 'Geringe optische Einschränkungen'
+  }];
 }
 
     // Fallback wenn keine gültigen Optimierungen
