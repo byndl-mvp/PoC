@@ -443,37 +443,47 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
   
   // Speichern OHNE die Inputs bei jedem Tastendruck zu updaten
-  const handleSave = async () => {
-    // Werte direkt aus den Input-Feldern holen
-    const form = document.getElementById('position-edit-form');
-    const formData = new FormData(form);
-    
-    const updatedPosition = {
-      ...selectedPosition,
-      title: formData.get('title'),
-      description: formData.get('description'),
-      quantity: parseFloat(formData.get('quantity')) || 0,
-      unit: formData.get('unit'),
-      unitPrice: parseFloat(formData.get('unitPrice')) || 0,
-    };
-    updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
-    
-    // Erst JETZT editedValues setzen für handleSavePosition
-    const key = `${modalLvIndex}-${modalPosIndex}`;
-    setEditedValues({
-      [`${key}-title`]: updatedPosition.title,
-      [`${key}-description`]: updatedPosition.description,
-      [`${key}-quantity`]: updatedPosition.quantity,
-      [`${key}-unit`]: updatedPosition.unit,
-      [`${key}-unitPrice`]: updatedPosition.unitPrice,
-    });
-    
-    // Speichern
-    await handleSavePosition(modalLvIndex, modalPosIndex);
+const handleSave = async () => {
+  // Werte aus dem Formular holen
+  const form = document.getElementById('position-edit-form');
+  const formData = new FormData(form);
+  
+  const updatedPosition = {
+    ...selectedPosition,
+    pos: selectedPosition.pos, // WICHTIG: pos beibehalten!
+    title: formData.get('title'),
+    description: formData.get('description'),
+    quantity: parseFloat(formData.get('quantity')) || 0,
+    unit: formData.get('unit'),
+    unitPrice: parseFloat(formData.get('unitPrice')) || 0,
+  };
+  updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
+  
+  // Direkt die Positionen aktualisieren (OHNE handleSavePosition)
+  const updatedPositions = [...lv.content.positions];
+  updatedPositions[modalPosIndex] = updatedPosition;
+  
+  // Backend-Update
+  const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      positions: updatedPositions,
+      totalSum: updatedPositions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0)
+    })
+  });
+  
+  if (res.ok) {
+    // State aktualisieren
+    const newLvs = [...lvs];
+    newLvs[modalLvIndex].content.positions = updatedPositions;
+    newLvs[modalLvIndex].content.totalSum = updatedPositions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+    setLvs(newLvs);
     setSelectedPosition(updatedPosition);
     setEditingPosition(null);
     setEditedValues({});
-  };
+  }
+};
   
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
