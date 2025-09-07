@@ -80,44 +80,50 @@ const formatCurrency = (value) => {
   };
 
   const handleSavePosition = async (lvIndex, posIndex) => {
-    const lv = lvs[lvIndex];
-    const position = lv.content.positions[posIndex];
-    const key = `${lvIndex}-${posIndex}`;
-    
-    const updatedPosition = {
-      ...position,
-      title: editedValues[`${key}-title`] || position.title,
-      quantity: parseFloat(editedValues[`${key}-quantity`]) || position.quantity,
-      unitPrice: parseFloat(editedValues[`${key}-unitPrice`]) || position.unitPrice,
-      description: editedValues[`${key}-description`] || position.description
-    };
-    
-    updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
-    
-    // Update im Backend
-    const updatedPositions = [...lv.content.positions];
-    updatedPositions[posIndex] = updatedPosition;
-    
-    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    positions: updatedPositions,
-    totalSum: updatedPositions.reduce((sum, pos) => 
-      sum + (parseFloat(pos.totalPrice) || 0), 0
-    )
-  })
-});
-    
-    if (res.ok) {
-      const newLvs = [...lvs];
-      newLvs[lvIndex].content.positions = updatedPositions;
-      newLvs[lvIndex].content.totalSum = recalculateTotals(updatedPositions);
-      setLvs(newLvs);
-      setEditingPosition(null);
-      setEditedValues({});
-    }
+  const lv = lvs[lvIndex];
+  const position = lv.content.positions[posIndex];
+  const key = `${lvIndex}-${posIndex}`;
+  
+  const updatedPosition = {
+    ...position,
+    title: editedValues[`${key}-title`] !== undefined ? editedValues[`${key}-title`] : position.title,
+    description: editedValues[`${key}-description`] !== undefined ? editedValues[`${key}-description`] : position.description,
+    quantity: editedValues[`${key}-quantity`] !== undefined ? parseFloat(editedValues[`${key}-quantity`]) : position.quantity,
+    unit: editedValues[`${key}-unit`] !== undefined ? editedValues[`${key}-unit`] : position.unit,
+    unitPrice: editedValues[`${key}-unitPrice`] !== undefined ? parseFloat(editedValues[`${key}-unitPrice`]) : position.unitPrice
   };
+  
+  updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
+  
+  // Update im Backend
+  const updatedPositions = [...lv.content.positions];
+  updatedPositions[posIndex] = updatedPosition;
+  
+  const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      positions: updatedPositions,
+      totalSum: updatedPositions.reduce((sum, pos) => 
+        sum + (parseFloat(pos.totalPrice) || 0), 0
+      )
+    })
+  });
+  
+  if (res.ok) {
+    const newLvs = [...lvs];
+    newLvs[lvIndex].content.positions = updatedPositions;
+    newLvs[lvIndex].content.totalSum = recalculateTotals(updatedPositions);
+    setLvs(newLvs);
+    setEditingPosition(null);
+    setEditedValues({});
+    
+    // Update selectedPosition wenn Modal offen ist
+    if (selectedPosition && modalLvIndex === lvIndex && modalPosIndex === posIndex) {
+      setSelectedPosition(updatedPosition);
+    }
+  }
+};
 
   const handleDeletePosition = async (lvIndex, posIndex) => {
     if (!window.confirm('Position wirklich löschen?')) return;
@@ -568,10 +574,10 @@ const PositionModal = () => {
               {isEditing ? (
                 <>
                   <button
-                    onClick={() => {
-                      handleSavePosition(modalLvIndex, modalPosIndex);
-                      setEditingPosition(null);
-                    }}
+  onClick={async () => {
+    await handleSavePosition(modalLvIndex, modalPosIndex);
+    setEditingPosition(null);
+  }}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     ✓ Speichern
