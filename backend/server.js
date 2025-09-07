@@ -1836,8 +1836,8 @@ Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als 
     }
     
     // Zeige vollständige Response-Struktur für Debugging
-    console.error('[LV] Full response first 500 chars:', cleanedResponse.substring(0, 500));
-    console.error('[LV] Full response last 500 chars:', cleanedResponse.substring(cleanedResponse.length - 500));
+    console.error('[LV] Full response first 500 chars:', response.substring(0, 500));
+    console.error('[LV] Full response last 500 chars:', response.substring(response.length - 500));
     
     // Klare Fehlermeldung ohne Reparaturversuche
     throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
