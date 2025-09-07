@@ -435,32 +435,32 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   );
   
   const PositionModal = () => {
+  // Alle Hooks MÜSSEN vor dem early return stehen
+  const [localTitle, setLocalTitle] = useState('');
+  const [localDescription, setLocalDescription] = useState('');
+  const [localQuantity, setLocalQuantity] = useState(1);
+  const [localUnit, setLocalUnit] = useState('Stk');
+  const [localUnitPrice, setLocalUnitPrice] = useState(0);
+  
+  // useEffect auch VOR dem early return
+  useEffect(() => {
+    if (selectedPosition) {
+      setLocalTitle(selectedPosition.title || '');
+      setLocalDescription(selectedPosition.description || '');
+      setLocalQuantity(selectedPosition.quantity || 1);
+      setLocalUnit(selectedPosition.unit || 'Stk');
+      setLocalUnitPrice(selectedPosition.unitPrice || 0);
+    }
+  }, [selectedPosition]); // Nur von selectedPosition abhängig
+  
+  // Early return NACH allen Hooks
   if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
   
   const lv = lvs[modalLvIndex];
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
   
-  // Lokale States für die Bearbeitung
-  const [localTitle, setLocalTitle] = useState(selectedPosition.title);
-  const [localDescription, setLocalDescription] = useState(selectedPosition.description);
-  const [localQuantity, setLocalQuantity] = useState(selectedPosition.quantity);
-  const [localUnit, setLocalUnit] = useState(selectedPosition.unit);
-  const [localUnitPrice, setLocalUnitPrice] = useState(selectedPosition.unitPrice);
-  
-  // Reset lokale Werte wenn in Edit-Mode gewechselt wird
-  useEffect(() => {
-    if (isEditing) {
-      setLocalTitle(selectedPosition.title);
-      setLocalDescription(selectedPosition.description);
-      setLocalQuantity(selectedPosition.quantity);
-      setLocalUnit(selectedPosition.unit);
-      setLocalUnitPrice(selectedPosition.unitPrice);
-    }
-  }, [isEditing, selectedPosition]);
-  
   const handleLocalSave = async () => {
-    // Setze die Werte in editedValues
-    const key = `${modalLvIndex}-${modalPosIndex}`;
+    // Setze alle Werte in editedValues
     handleEditPosition(modalLvIndex, modalPosIndex, 'title', localTitle);
     handleEditPosition(modalLvIndex, modalPosIndex, 'description', localDescription);
     handleEditPosition(modalLvIndex, modalPosIndex, 'quantity', localQuantity);
@@ -477,7 +477,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header - bleibt gleich */}
+        {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
           <div className="flex justify-between items-start">
             <div>
@@ -503,7 +503,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
         {/* Content */}
         <div className="p-6">
           {isEditing ? (
-            // Edit Mode mit lokalen States
+            // Edit Mode
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
@@ -559,7 +559,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
               </div>
             </div>
           ) : (
-            // View Mode - bleibt gleich
+            // View Mode
             <div className="space-y-4">
               <div>
                 <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedPosition.title}</h4>
@@ -615,7 +615,12 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <button
                     onClick={() => {
                       setEditingPosition(null);
-                      setEditedValues({});
+                      // Reset lokale Werte auf Original
+                      setLocalTitle(selectedPosition.title || '');
+                      setLocalDescription(selectedPosition.description || '');
+                      setLocalQuantity(selectedPosition.quantity || 1);
+                      setLocalUnit(selectedPosition.unit || 'Stk');
+                      setLocalUnitPrice(selectedPosition.unitPrice || 0);
                     }}
                     className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   >
