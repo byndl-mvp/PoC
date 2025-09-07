@@ -1728,7 +1728,7 @@ if (trade.code === 'FEN') {
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt }
   ], { 
-    maxTokens: 14000,
+    maxTokens: 10000,
     temperature: 0.3,
     jsonMode: true,  // Nutzt jetzt den korrigierten JSON-Mode
     timeout: 60000
