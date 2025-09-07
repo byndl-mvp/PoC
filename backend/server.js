@@ -1226,7 +1226,21 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
      * Frage nach Gegenständen/Objekten im Plural
      * Sanitär-, Elektro-, Ausstattungsfragen
    - NIE nur Dropdown bei offensichtlichen Mehrfachauswahl-Szenarien
+   ${tradeCode === 'FEN' ? `
+15. SPEZIELLE FENSTER-REGELN:
+   PFLICHTFRAGEN für Fenster-Gewerk:
+   - Frage 1: "Wie viele Fenster insgesamt?"
+   - Frage 2: "Welche Maße haben die EINZELNEN Fenster?" 
+     * MUSS Einzelmaße abfragen!
+     * Format: "Fenster 1: Breite x Höhe in cm"
+     * NICHT nur Gesamtfläche!
+   - Frage 3: "Welche Öffnungsart pro Fenstertyp?"
+   - Frage 4: "Welches Material?"
+   - Frage 5: "Sollen alte Fenster demontiert werden?"
    
+   KRITISCH: Die Maßfrage MUSS nach EINZELMASSEN fragen, nicht nach Gesamtfläche!
+` : ''}
+
    FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
 - Fehlende Info: ${intelligentCount.missingInfo.join(', ') || 'keine'}
@@ -1273,7 +1287,7 @@ ERSTE FRAGE MUSS SEIN: "Welche ${tradeName}-Arbeiten sollen im Rahmen der ${proj
 
 FEHLENDE INFOS: ${intelligentCount.missingInfo.join(', ') || 'keine'}
 
-${questionPrompt ? `Template-Basis:\n${questionPrompt.substring(0, 2000)}...\n` : ''}
+${questionPrompt ? `Template-Basis:\n${questionPrompt.substring(0, 3000)}...\n` : ''}
 
 BEACHTE:
 - Fachbegriffe MÜSSEN erklärt werden
@@ -1356,7 +1370,49 @@ const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) 
 }));
     
     console.log(`[QUESTIONS] Successfully generated ${processedQuestions.length} questions for ${tradeName}`);
-
+    // SPEZIAL-BEHANDLUNG FÜR FENSTER: Stelle sicher dass Einzelmaße abgefragt werden
+if (tradeCode === 'FEN') {
+  console.log('[QUESTIONS] Checking for window measurement questions...');
+  
+  // Prüfe ob eine Frage nach Einzelmaßen existiert
+  const hasMaßfrage = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('maße') && 
+    (q.question.toLowerCase().includes('einzeln') || 
+     q.question.toLowerCase().includes('jedes') ||
+     q.question.toLowerCase().includes('liste'))
+  );
+  
+  if (!hasMaßfrage) {
+    console.log('[QUESTIONS] Adding specific window measurement question');
+    
+    // Finde die Position nach der Anzahl-Frage
+    const anzahlIndex = processedQuestions.findIndex(q => 
+      q.question.toLowerCase().includes('wie viele') ||
+      q.question.toLowerCase().includes('anzahl')
+    );
+    
+    const insertPosition = anzahlIndex >= 0 ? anzahlIndex + 1 : 1;
+    
+    // Füge Maß-Frage ein
+    processedQuestions.splice(insertPosition, 0, {
+      id: 'FEN-MASSE',
+      category: 'Abmessungen',
+      question: 'Welche Maße haben die einzelnen Fenster? Bitte geben Sie für jedes Fenster Breite x Höhe in cm an (z.B. "Fenster 1: 120x140, Fenster 2: 80x100, Fenster 3: 60x80")',
+      explanation: 'Messen Sie jedes Fenster von Rahmen zu Rahmen. Bei gleichen Fenstern können Sie schreiben: "3 Stück 120x140, 2 Stück 80x100"',
+      type: 'text',
+      multiSelect: false,
+      required: true,
+      unit: null,
+      options: null,
+      defaultValue: null,
+      validationRule: null,
+      tradeId: tradeId,
+      tradeName: tradeName
+    });
+    
+    console.log('[QUESTIONS] Window measurement question added');
+  }
+}
     // FILTER: Entferne Duplikate von bereits beantworteten Fragen
 let filteredQuestions = processedQuestions;
 
@@ -1450,8 +1506,36 @@ OUTPUT als JSON-Array:
 }
   
 /**
- * Realistische LV-Generierung basierend auf erfassten Daten
+ * Parst Fenster-Maßangaben aus Nutzer-Antwort
  */
+function parseFensterMaße(antwortText) {
+  const fensterTypen = [];
+  
+  // Pattern: "120x140" oder "120 x 140" oder "3 Stück 120x140"
+  const matches = antwortText.matchAll(/(\d+)?\s*(?:stück|stk|x)?\s*(\d+)\s*x\s*(\d+)/gi);
+  
+  for (const match of matches) {
+    const anzahl = match[1] ? parseInt(match[1]) : 1;
+    const breite = parseInt(match[2]);
+    const höhe = parseInt(match[3]);
+    
+    if (breite && höhe) {
+      fensterTypen.push({
+        anzahl,
+        breite,
+        höhe,
+        beschreibung: `${breite} x ${höhe} cm`
+      });
+    }
+  }
+  
+  // Fallback wenn keine Maße gefunden
+  if (fensterTypen.length === 0) {
+    console.log('[LV] Keine Fenstermaße in Antwort gefunden:', antwortText);
+  }
+  
+  return fensterTypen;
+}
 async function generateDetailedLV(projectId, tradeId) {
   const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
   if (!project) throw new Error('Project not found');
@@ -1513,6 +1597,30 @@ const tradeCode = trade.code;
 
   const lvPrompt = await getPromptForTrade(tradeId, 'lv');
   if (!lvPrompt) throw new Error('LV prompt missing for trade');
+
+  // SPEZIAL: Fenster-Maße verarbeiten
+  let fensterMaßZusatz = '';
+  if (trade.code === 'FEN') {
+    const maßAntwort = tradeAnswers.find(a => 
+      a.question_id === 'FEN-MASSE' || 
+      (a.question && a.question.toLowerCase().includes('maße') && 
+       a.question.toLowerCase().includes('einzeln'))
+    );
+    
+    if (maßAntwort && maßAntwort.answer) {
+      const fensterTypen = parseFensterMaße(maßAntwort.answer);
+      if (fensterTypen.length > 0) {
+        console.log('[LV] Gefundene Fenstertypen:', fensterTypen);
+        
+        fensterMaßZusatz = `\n\nEXPLIZITE FENSTER-MASSE AUS NUTZER-EINGABE:
+${fensterTypen.map((f, i) => 
+  `Fenstertyp ${i+1}: ${f.breite}x${f.höhe} cm, ${f.anzahl} Stück`
+).join('\n')}
+
+VERWENDE DIESE EXAKTEN MASSE FÜR DIE LV-POSITIONEN!`;
+      }
+    }
+  }
 
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
@@ -1708,7 +1816,7 @@ WICHTIG:
 1. Erstelle NUR Positionen für explizit erfragte Leistungen
 2. Verwende die validierten Mengen
 3. Realistische Preise (Stand 2024/2025)
-4. Dokumentiere alle Annahmen transparent`;
+4. Dokumentiere alle Annahmen transparent${fensterMaßZusatz}`;
   
   try {
   const response = await llmWithPolicy('lv', [
