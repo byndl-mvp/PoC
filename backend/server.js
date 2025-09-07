@@ -1723,46 +1723,46 @@ if (trade.code === 'FEN') {
   );
 }  
   
-  try {
+  let retryResponse; // Variable für möglichen Retry definieren
+
+try {
   const response = await llmWithPolicy('lv', [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt }
   ], { 
     maxTokens: 10000,
     temperature: 0.3,
-    jsonMode: true,  // Nutzt jetzt den korrigierten JSON-Mode
+    jsonMode: true,
     timeout: 60000
   });
 
-// Debug was wirklich zurückkommt
-console.log('[LV-DEBUG] Raw response type:', typeof response);
-console.log('[LV-DEBUG] First 500 chars:', response.substring(0, 500));
+  // Debug was wirklich zurückkommt
+  console.log('[LV-DEBUG] Raw response type:', typeof response);
+  console.log('[LV-DEBUG] First 500 chars:', response.substring(0, 500));
     
-  // Debug-Output für alle Gewerke (kann später auf problematische beschränkt werden)
+  // Debug-Output für problematische Gewerke
   if (trade.code === 'FASS' || trade.code === 'FEN') {
     console.log(`\n========== ${trade.code} LLM RESPONSE DEBUG ==========`);
     console.log('Response length:', response.length);
     console.log('First 200 chars:', response.substring(0, 200));
     console.log('Last 200 chars:', response.substring(response.length - 200));
     
-    // Prüfe ob Response mit { beginnt und } endet
     const startsWithBrace = response.trim().startsWith('{');
     const endsWithBrace = response.trim().endsWith('}');
     console.log('Starts with {:', startsWithBrace);
     console.log('Ends with }:', endsWithBrace);
     
-    // Prüfe auf Markdown
     if (response.includes('```')) {
-      console.log('⚠️ WARNING: Contains markdown blocks (should not happen with JSON mode)');
+      console.log('⚠️ WARNING: Contains markdown blocks');
     }
     
     console.log('========================================\n');
   }
   
-  // MINIMALE Bereinigung - nur Whitespace und eventuelles Markdown
+  // Minimale Bereinigung
   let cleanedResponse = response.trim();
   
-  // Nur falls trotz JSON-Mode Markdown zurückkommt (sollte bei OpenAI nicht passieren)
+  // Falls Markdown zurückkommt
   if (cleanedResponse.includes('```')) {
     console.warn('[LV] Unexpected markdown wrapper despite JSON mode active');
     const match = cleanedResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -1771,56 +1771,45 @@ console.log('[LV-DEBUG] First 500 chars:', response.substring(0, 500));
     }
   }
   
-  // Direkt parsen - mit aktivem JSON-Mode sollte das funktionieren
-let lv;
-try {
-  lv = JSON.parse(cleanedResponse);
-  console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
-  
-  // HIER die erweiterte Fenster-Validierung mit Auto-Korrektur:
-  if (trade.code === 'FEN') {
-    const hasInvalidPositions = lv.positions.some(pos => 
-      pos.description.toLowerCase().includes('fenster') &&
-      !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
-    );
+  // Parse JSON
+  let lv;
+  try {
+    lv = JSON.parse(cleanedResponse);
+    console.log(`[LV] Successfully parsed JSON for ${trade.code}`);
     
-    if (hasInvalidPositions) {
-  console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
-  
-  // Erweitere den User-Prompt mit expliziter Anweisung
-  const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
-  
-ABSOLUT VERPFLICHTEND für JEDE Fensterposition:
-- Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
-- Beispiel: "Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp"
-
-Die Fenstermaße MÜSSEN aus den erfassten Antworten stammen!
-Verwende die EXAKTEN Maße die der Nutzer angegeben hat.
-KEINE erfundenen Standardmaße!
-Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als "Maße fehlen - vor Ort aufzunehmen".`;
-  
-  // Rufe LLM erneut auf mit verstärktem Prompt
-  const retryResponse = await callLLM([
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: enhancedPrompt }
-  ], { 
-    maxTokens: 6000, 
-    temperature: 0.3,
-    jsonMode: true
-  });
-  
-  // Parse die neue Response
-  lv = JSON.parse(retryResponse.content.trim());
-  console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
-}
-  }    
-  
-} catch (parseError) {
-    // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
-    console.error('[LV] CRITICAL: Parse error despite JSON mode active!');
+    // Fenster-Validierung mit Auto-Korrektur
+    if (trade.code === 'FEN') {
+      const hasInvalidPositions = lv.positions.some(pos => 
+        pos.description.toLowerCase().includes('fenster') &&
+        !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
+      );
+      
+      if (hasInvalidPositions) {
+        console.error('[LV] WARNUNG: Fenster-LV ohne Maßangaben! Regeneriere...');
+        
+        const enhancedPrompt = userPrompt + `\n\nKRITISCH: Fenster MÜSSEN Maßangaben haben!
+Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
+Verwende die EXAKTEN Maße aus den Antworten!`;
+        
+        retryResponse = await callLLM([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: enhancedPrompt }
+        ], { 
+          maxTokens: 6000, 
+          temperature: 0.3,
+          jsonMode: true
+        });
+        
+        lv = JSON.parse(retryResponse.content.trim());
+        console.log('[LV] Fenster-LV erfolgreich regeneriert');
+      }
+    }    
+    
+  } catch (parseError) {
+    console.error('[LV] CRITICAL: Parse error despite JSON mode!');
     console.error('[LV] Error message:', parseError.message);
     
-    // Detailliertes Error-Logging
+    // Error-Position anzeigen
     const errorMatch = parseError.message.match(/position (\d+)/);
     if (errorMatch) {
       const pos = parseInt(errorMatch[1]);
@@ -1828,19 +1817,13 @@ Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als 
       console.error('[LV] Context before:', cleanedResponse.substring(Math.max(0, pos - 100), pos));
       console.error('[LV] >>> ERROR HERE <<<');
       console.error('[LV] Context after:', cleanedResponse.substring(pos, Math.min(cleanedResponse.length, pos + 100)));
-      console.error('[LV] Character at position:', {
-        char: cleanedResponse.charAt(pos),
-        charCode: cleanedResponse.charCodeAt(pos),
-        hex: '0x' + cleanedResponse.charCodeAt(pos).toString(16)
-      });
     }
     
-    // Zeige vollständige Response-Struktur für Debugging
-    console.error('[LV] Full response first 500 chars:', response.substring(0, 500));
-    console.error('[LV] Full response last 500 chars:', response.substring(response.length - 500));
+    // Debug-Ausgabe
+    console.error('[LV] First 500 chars:', cleanedResponse.substring(0, 500));
+    console.error('[LV] Last 500 chars:', cleanedResponse.substring(cleanedResponse.length - 500));
     
-    // Klare Fehlermeldung ohne Reparaturversuche
-    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
+    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Invalid JSON`);
   }
     
     // Duplikatsprüfung durchführen
