@@ -1713,7 +1713,7 @@ WICHTIG:
 // Debug-Log für Fenster-Antworten
 if (trade.code === 'FEN') {
   console.log('[LV] Fenster-Antworten für LV-Generierung:', 
-    answersData.filter(a => 
+    intakeAnswers.filter(a => 
       a.question.toLowerCase().includes('fenster') || 
       a.question.toLowerCase().includes('maß') ||
       a.question.toLowerCase().includes('größe') ||
