@@ -4469,13 +4469,20 @@ await query(
   [projectId, JSON.stringify(optimizations)]
 );
 
-// NEU: Korrigiere die Gesamtsumme basierend auf den tatsächlichen Optimierungen
-    if (optimizations.optimizations && optimizations.optimizations.length > 0) {
-      optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
-        (sum, opt) => sum + (parseFloat(opt.savingAmount) || 0), 
-        0
-      );
-    }    
+// NEU: Runde alle Beträge und korrigiere die Gesamtsumme
+if (optimizations.optimizations && optimizations.optimizations.length > 0) {
+  // Runde alle savingAmount Werte
+  optimizations.optimizations = optimizations.optimizations.map(opt => ({
+    ...opt,
+    savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
+  }));
+  
+  // Berechne Gesamtsumme aus den gerundeten Werten
+  optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
+    (sum, opt) => sum + opt.savingAmount, 
+    0
+  );
+}  
 // Validierung: Filtere ungültige und unrealistische Optimierungen
 const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
 if (optimizations.optimizations) {
