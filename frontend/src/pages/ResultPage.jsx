@@ -436,106 +436,99 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
     </div>
   );
   
-  // Memoized PositionModal verhindert unnötige Re-Renders
-const PositionModal = React.memo(() => {
-  // Early return ZUERST, BEVOR irgendwelche Hooks!
+  const PositionModal = () => {
+  // Frühe Rückgabe wenn Modal nicht angezeigt werden soll
   if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) {
     return null;
   }
   
-  // JETZT erst die Hooks verwenden
+  // Basis-Variablen
   const lv = lvs[modalLvIndex];
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
   const key = `${modalLvIndex}-${modalPosIndex}`;
   
-  // Aktuelle Werte berechnen - entweder bearbeitet oder original
-  const currentValues = useMemo(() => ({
-    title: editedValues[`${key}-title`] !== undefined 
-      ? editedValues[`${key}-title`] 
-      : selectedPosition.title,
-    description: editedValues[`${key}-description`] !== undefined 
-      ? editedValues[`${key}-description`] 
-      : selectedPosition.description,
-    quantity: editedValues[`${key}-quantity`] !== undefined 
-      ? editedValues[`${key}-quantity`] 
-      : selectedPosition.quantity,
-    unit: editedValues[`${key}-unit`] !== undefined 
-      ? editedValues[`${key}-unit`] 
-      : selectedPosition.unit,
-    unitPrice: editedValues[`${key}-unitPrice`] !== undefined 
-      ? editedValues[`${key}-unitPrice`] 
-      : selectedPosition.unitPrice
-  }), [selectedPosition, editedValues, key]);
+  // Aktuelle Werte ermitteln (entweder bearbeitet oder original)
+  const getCurrentValue = (field) => {
+    const editKey = `${key}-${field}`;
+    return editedValues[editKey] !== undefined 
+      ? editedValues[editKey] 
+      : selectedPosition[field];
+  };
   
-  // Memoized Handler für Input-Änderungen
-  const handleInputChange = useCallback((field, value) => {
+  // Handler für Input-Änderungen
+  const handleFieldChange = (field, value) => {
     handleEditPosition(modalLvIndex, modalPosIndex, field, value);
-  }, [modalLvIndex, modalPosIndex]);
+  };
   
-  // Memoized Save Handler
-  const handleSave = useCallback(async () => {
-    // Position speichern
+  // Speichern und Modal aktualisieren
+  const saveChanges = async () => {
+    // Backend-Speicherung
     await handleSavePosition(modalLvIndex, modalPosIndex);
     
-    // selectedPosition mit den neuen Werten aktualisieren
+    // Lokale Anzeige mit neuen Werten aktualisieren
     const updatedPosition = {
       ...selectedPosition,
-      title: currentValues.title,
-      description: currentValues.description,
-      quantity: parseFloat(currentValues.quantity) || 0,
-      unit: currentValues.unit,
-      unitPrice: parseFloat(currentValues.unitPrice) || 0,
-      totalPrice: (parseFloat(currentValues.quantity) || 0) * (parseFloat(currentValues.unitPrice) || 0)
+      title: getCurrentValue('title'),
+      description: getCurrentValue('description'),
+      quantity: parseFloat(getCurrentValue('quantity')) || 0,
+      unit: getCurrentValue('unit'),
+      unitPrice: parseFloat(getCurrentValue('unitPrice')) || 0,
     };
+    updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
+    
     setSelectedPosition(updatedPosition);
-    
-    // Bearbeitungsmodus beenden aber Modal offen lassen
     setEditingPosition(null);
     
-    // Nur die bearbeiteten Werte dieser Position löschen
-    const newEditedValues = { ...editedValues };
-    Object.keys(newEditedValues).forEach(k => {
+    // Bearbeitete Werte für diese Position löschen
+    const cleanedValues = { ...editedValues };
+    Object.keys(cleanedValues).forEach(k => {
       if (k.startsWith(key)) {
-        delete newEditedValues[k];
+        delete cleanedValues[k];
       }
     });
-    setEditedValues(newEditedValues);
-  }, [modalLvIndex, modalPosIndex, selectedPosition, currentValues, key, editedValues]);
+    setEditedValues(cleanedValues);
+  };
   
-  // Memoized Cancel Handler
-  const handleCancel = useCallback(() => {
+  // Abbrechen ohne zu speichern
+  const cancelEdit = () => {
     setEditingPosition(null);
-    // Nur die bearbeiteten Werte dieser Position löschen
-    const newEditedValues = { ...editedValues };
-    Object.keys(newEditedValues).forEach(k => {
+    
+    // Bearbeitete Werte für diese Position löschen
+    const cleanedValues = { ...editedValues };
+    Object.keys(cleanedValues).forEach(k => {
       if (k.startsWith(key)) {
-        delete newEditedValues[k];
+        delete cleanedValues[k];
       }
     });
-    setEditedValues(newEditedValues);
-  }, [key, editedValues]);
+    setEditedValues(cleanedValues);
+  };
   
-  // Memoized Close Handler
-  const handleClose = useCallback(() => {
+  // Modal komplett schließen
+  const closeModal = () => {
     setSelectedPosition(null);
     setModalLvIndex(null);
     setModalPosIndex(null);
     setEditingPosition(null);
     setEditedValues({});
-  }, []);
+  };
   
-  // Memoized Delete Handler
-  const handleDelete = useCallback(async () => {
+  // Position löschen
+  const deletePosition = async () => {
     if (window.confirm('Diese Position wirklich löschen?')) {
       await handleDeletePosition(modalLvIndex, modalPosIndex);
-      handleClose();
+      closeModal();
     }
-  }, [modalLvIndex, modalPosIndex, handleClose]);
+  };
+  
+  // Berechne Gesamtpreis für Anzeige
+  const displayTotal = (parseFloat(getCurrentValue('quantity')) || 0) * 
+                       (parseFloat(getCurrentValue('unitPrice')) || 0);
   
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
+        
+        {/* Modal Header */}
         <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
           <div className="flex justify-between items-start">
             <div>
@@ -543,7 +536,7 @@ const PositionModal = React.memo(() => {
               <p className="text-blue-100 mt-1">{lv.trade_name || lv.name}</p>
             </div>
             <button
-              onClick={handleClose}
+              onClick={closeModal}
               className="text-white/80 hover:text-white transition-colors"
             >
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -553,18 +546,18 @@ const PositionModal = React.memo(() => {
           </div>
         </div>
         
-        {/* Content */}
+        {/* Modal Body */}
         <div className="p-6">
           {isEditing ? (
-            // Edit Mode - WICHTIG: value statt defaultValue!
+            // Bearbeitungsmodus
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
                 <input
                   type="text"
                   className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                  value={currentValues.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  value={getCurrentValue('title') || ''}
+                  onChange={(e) => handleFieldChange('title', e.target.value)}
                 />
               </div>
               
@@ -573,8 +566,8 @@ const PositionModal = React.memo(() => {
                 <textarea
                   className="w-full border border-gray-300 rounded-lg px-4 py-2"
                   rows={6}
-                  value={currentValues.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  value={getCurrentValue('description') || ''}
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
                 />
               </div>
               
@@ -583,9 +576,10 @@ const PositionModal = React.memo(() => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
                   <input
                     type="number"
+                    step="0.01"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={currentValues.quantity}
-                    onChange={(e) => handleInputChange('quantity', e.target.value)}
+                    value={getCurrentValue('quantity') || ''}
+                    onChange={(e) => handleFieldChange('quantity', e.target.value)}
                   />
                 </div>
                 
@@ -594,8 +588,8 @@ const PositionModal = React.memo(() => {
                   <input
                     type="text"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={currentValues.unit}
-                    onChange={(e) => handleInputChange('unit', e.target.value)}
+                    value={getCurrentValue('unit') || ''}
+                    onChange={(e) => handleFieldChange('unit', e.target.value)}
                   />
                 </div>
                 
@@ -605,20 +599,30 @@ const PositionModal = React.memo(() => {
                     type="number"
                     step="0.01"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={currentValues.unitPrice}
-                    onChange={(e) => handleInputChange('unitPrice', e.target.value)}
+                    value={getCurrentValue('unitPrice') || ''}
+                    onChange={(e) => handleFieldChange('unitPrice', e.target.value)}
                   />
                 </div>
               </div>
+              
+              {/* Live-Vorschau des Gesamtpreises */}
+              <div className="bg-blue-50 rounded-lg p-3 text-right">
+                <span className="text-sm text-gray-600 mr-2">Gesamtpreis:</span>
+                <span className="text-lg font-semibold text-teal-600">
+                  {formatCurrency(displayTotal)}
+                </span>
+              </div>
             </div>
           ) : (
-            // View Mode - zeigt currentValues
+            // Ansichtsmodus
             <div className="space-y-4">
               <div>
-                <h4 className="font-semibold text-gray-900 text-xl mb-2">{currentValues.title}</h4>
+                <h4 className="font-semibold text-gray-900 text-xl mb-2">
+                  {getCurrentValue('title')}
+                </h4>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-gray-700 whitespace-pre-wrap">
-                    {currentValues.description || 'Keine Beschreibung vorhanden'}
+                    {getCurrentValue('description') || 'Keine Beschreibung vorhanden'}
                   </p>
                 </div>
               </div>
@@ -627,17 +631,19 @@ const PositionModal = React.memo(() => {
                 <div>
                   <p className="text-sm text-gray-600">Menge</p>
                   <p className="text-lg font-semibold">
-                    {safeToFixed(currentValues.quantity)} {currentValues.unit}
+                    {safeToFixed(getCurrentValue('quantity'))} {getCurrentValue('unit')}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Einzelpreis</p>
-                  <p className="text-lg font-semibold">{formatCurrency(currentValues.unitPrice)}</p>
+                  <p className="text-lg font-semibold">
+                    {formatCurrency(getCurrentValue('unitPrice'))}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Gesamtpreis</p>
                   <p className="text-lg font-semibold text-teal-600">
-                    {formatCurrency((parseFloat(currentValues.quantity) || 0) * (parseFloat(currentValues.unitPrice) || 0))}
+                    {formatCurrency(displayTotal)}
                   </p>
                 </div>
               </div>
@@ -645,11 +651,11 @@ const PositionModal = React.memo(() => {
           )}
         </div>
         
-        {/* Footer Actions */}
+        {/* Modal Footer */}
         <div className="border-t bg-gray-50 px-6 py-4 rounded-b-2xl">
           <div className="flex justify-between">
             <button
-              onClick={handleDelete}
+              onClick={deletePosition}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               🗑 Löschen
@@ -659,13 +665,13 @@ const PositionModal = React.memo(() => {
               {isEditing ? (
                 <>
                   <button
-                    onClick={handleSave}
+                    onClick={saveChanges}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     ✓ Speichern
                   </button>
                   <button
-                    onClick={handleCancel}
+                    onClick={cancelEdit}
                     className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   >
                     ✗ Abbrechen
@@ -685,7 +691,7 @@ const PositionModal = React.memo(() => {
       </div>
     </div>
   );
-});
+};
 
 // HIER KOMMEN DIE LOADING UND ERROR RETURNS
 if (loading) return (
