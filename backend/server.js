@@ -1765,18 +1765,18 @@ try {
   console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
   
   // HIER die erweiterte Fenster-Validierung mit Auto-Korrektur:
-  if (trade.code === 'FEN') {
-    const hasInvalidPositions = lv.positions.some(pos => 
-      pos.description.toLowerCase().includes('fenster') &&
-      !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
-    );
+if (trade.code === 'FEN') {
+  const hasInvalidPositions = lv.positions.some(pos => 
+    pos.description.toLowerCase().includes('fenster') &&
+    !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
+  );
+  
+  if (hasInvalidPositions) {
+    console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
     
-    if (hasInvalidPositions) {
-  console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
-  
-  // Erweitere den User-Prompt mit expliziter Anweisung
-  const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
-  
+    // Erweitere den User-Prompt mit expliziter Anweisung
+    const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
+    
 ABSOLUT VERPFLICHTEND für JEDE Fensterposition:
 - Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
 - Beispiel: "Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp"
@@ -1785,22 +1785,22 @@ Die Fenstermaße MÜSSEN aus den erfassten Antworten stammen!
 Verwende die EXAKTEN Maße die der Nutzer angegeben hat.
 KEINE erfundenen Standardmaße!
 Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als "Maße fehlen - vor Ort aufzunehmen".`;
-  
-  // Rufe LLM erneut auf mit verstärktem Prompt
-  const retryResponse = await callLLM([
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: enhancedPrompt }
-  ], { 
-    maxTokens: 6000, 
-    temperature: 0.3,
-    jsonMode: true
-  });
-  
-  // Parse die neue Response
-  lv = JSON.parse(retryResponse.content.trim());
-  console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
+    
+    // KORRIGIERT: Verwende llmWithPolicy statt callLLM
+    const retryResponse = await llmWithPolicy('lv', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: enhancedPrompt }
+    ], { 
+      maxTokens: 6000, 
+      temperature: 0.3,
+      jsonMode: true
+    });
+    
+    // KORRIGIERT: Parse direkt ohne .content
+    lv = JSON.parse(retryResponse.trim());
+    console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
+  }
 }
-  }    
   
 } catch (parseError) {
     // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
