@@ -111,21 +111,22 @@ const formatCurrency = (value) => {
   });
   
   if (res.ok) {
-  const newLvs = [...lvs];
-  newLvs[lvIndex].content.positions = updatedPositions;
-  newLvs[lvIndex].content.totalSum = recalculateTotals(updatedPositions);
-  setLvs(newLvs);
-  
-  // Update selectedPosition BEVOR editedValues gelöscht werden
-  if (selectedPosition && modalLvIndex === lvIndex && modalPosIndex === posIndex) {
-    setSelectedPosition(updatedPosition);
+    const newLvs = [...lvs];
+    newLvs[lvIndex].content.positions = updatedPositions;
+    newLvs[lvIndex].content.totalSum = recalculateTotals(updatedPositions);
+    setLvs(newLvs);
+    
+    // Update selectedPosition BEVOR editedValues gelöscht werden
+    if (selectedPosition && modalLvIndex === lvIndex && modalPosIndex === posIndex) {
+      setSelectedPosition(updatedPosition);
+    }
+    
+    // Lösche diese NACH dem Update
+    setEditingPosition(null);
+    setEditedValues({});
   }
+};  
   
-  // Lösche diese NACH dem Update
-  setEditingPosition(null);
-  setEditedValues({});
-}
-
   const handleDeletePosition = async (lvIndex, posIndex) => {
     if (!window.confirm('Position wirklich löschen?')) return;
     
