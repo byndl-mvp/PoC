@@ -434,17 +434,50 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
     </div>
   );
   
-  // Position Detail Modal - DIESE FUNKTION MUSS VOR DEM RETURN STATEMENT STEHEN
-const PositionModal = () => {
+  const PositionModal = () => {
   if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
   
   const lv = lvs[modalLvIndex];
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
   
+  // Lokale States für die Bearbeitung
+  const [localTitle, setLocalTitle] = useState(selectedPosition.title);
+  const [localDescription, setLocalDescription] = useState(selectedPosition.description);
+  const [localQuantity, setLocalQuantity] = useState(selectedPosition.quantity);
+  const [localUnit, setLocalUnit] = useState(selectedPosition.unit);
+  const [localUnitPrice, setLocalUnitPrice] = useState(selectedPosition.unitPrice);
+  
+  // Reset lokale Werte wenn in Edit-Mode gewechselt wird
+  useEffect(() => {
+    if (isEditing) {
+      setLocalTitle(selectedPosition.title);
+      setLocalDescription(selectedPosition.description);
+      setLocalQuantity(selectedPosition.quantity);
+      setLocalUnit(selectedPosition.unit);
+      setLocalUnitPrice(selectedPosition.unitPrice);
+    }
+  }, [isEditing, selectedPosition]);
+  
+  const handleLocalSave = async () => {
+    // Setze die Werte in editedValues
+    const key = `${modalLvIndex}-${modalPosIndex}`;
+    handleEditPosition(modalLvIndex, modalPosIndex, 'title', localTitle);
+    handleEditPosition(modalLvIndex, modalPosIndex, 'description', localDescription);
+    handleEditPosition(modalLvIndex, modalPosIndex, 'quantity', localQuantity);
+    handleEditPosition(modalLvIndex, modalPosIndex, 'unit', localUnit);
+    handleEditPosition(modalLvIndex, modalPosIndex, 'unitPrice', localUnitPrice);
+    
+    // Warte kurz, dann speichern
+    setTimeout(async () => {
+      await handleSavePosition(modalLvIndex, modalPosIndex);
+      setEditingPosition(null);
+    }, 100);
+  };
+  
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
+        {/* Header - bleibt gleich */}
         <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
           <div className="flex justify-between items-start">
             <div>
@@ -468,65 +501,65 @@ const PositionModal = () => {
         </div>
         
         {/* Content */}
-<div className="p-6">
-  {isEditing ? (
-    // Edit Mode
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
-        <input
-          type="text"
-          className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          value={editedValues[`${modalLvIndex}-${modalPosIndex}-title`] ?? selectedPosition.title}
-          onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'title', e.target.value)}
-        />
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
-        <textarea
-          className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          rows={6}
-          value={editedValues[`${modalLvIndex}-${modalPosIndex}-description`] ?? selectedPosition.description}
-          onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'description', e.target.value)}
-        />
-      </div>
-      
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
-          <input
-            type="number"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            value={editedValues[`${modalLvIndex}-${modalPosIndex}-quantity`] ?? selectedPosition.quantity}
-            onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'quantity', e.target.value)}
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Einheit</label>
-          <input
-            type="text"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            value={editedValues[`${modalLvIndex}-${modalPosIndex}-unit`] ?? selectedPosition.unit}
-            onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'unit', e.target.value)}
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Einzelpreis (€)</label>
-          <input
-            type="number"
-            step="0.01"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            value={editedValues[`${modalLvIndex}-${modalPosIndex}-unitPrice`] ?? selectedPosition.unitPrice}
-            onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'unitPrice', e.target.value)}
-          />
-        </div>
-      </div>
-    </div>
-  ) : (
-            // View Mode
+        <div className="p-6">
+          {isEditing ? (
+            // Edit Mode mit lokalen States
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  value={localTitle}
+                  onChange={(e) => setLocalTitle(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  rows={6}
+                  value={localDescription}
+                  onChange={(e) => setLocalDescription(e.target.value)}
+                />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
+                  <input
+                    type="number"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    value={localQuantity}
+                    onChange={(e) => setLocalQuantity(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Einheit</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    value={localUnit}
+                    onChange={(e) => setLocalUnit(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Einzelpreis (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    value={localUnitPrice}
+                    onChange={(e) => setLocalUnitPrice(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            // View Mode - bleibt gleich
             <div className="space-y-4">
               <div>
                 <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedPosition.title}</h4>
@@ -574,10 +607,7 @@ const PositionModal = () => {
               {isEditing ? (
                 <>
                   <button
-  onClick={async () => {
-    await handleSavePosition(modalLvIndex, modalPosIndex);
-    setEditingPosition(null);
-  }}
+                    onClick={handleLocalSave}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     ✓ Speichern
