@@ -435,44 +435,11 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   );
   
   const PositionModal = () => {
-  // Alle Hooks MÜSSEN vor dem early return stehen
-  const [localTitle, setLocalTitle] = useState('');
-  const [localDescription, setLocalDescription] = useState('');
-  const [localQuantity, setLocalQuantity] = useState(1);
-  const [localUnit, setLocalUnit] = useState('Stk');
-  const [localUnitPrice, setLocalUnitPrice] = useState(0);
-  
-  // Early return NACH allen Hooks
   if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
   
   const lv = lvs[modalLvIndex];
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
-  
-  // useEffect NACH dem early return, weil er nur ausgeführt wird wenn Modal sichtbar ist
-  useEffect(() => {
-    if (selectedPosition) {
-      setLocalTitle(selectedPosition.title || '');
-      setLocalDescription(selectedPosition.description || '');
-      setLocalQuantity(selectedPosition.quantity || 1);
-      setLocalUnit(selectedPosition.unit || 'Stk');
-      setLocalUnitPrice(selectedPosition.unitPrice || 0);
-    }
-  }, [selectedPosition, isEditing]); // Dependencies angepasst
-  
-  const handleLocalSave = async () => {
-    // Setze alle Werte in editedValues
-    handleEditPosition(modalLvIndex, modalPosIndex, 'title', localTitle);
-    handleEditPosition(modalLvIndex, modalPosIndex, 'description', localDescription);
-    handleEditPosition(modalLvIndex, modalPosIndex, 'quantity', localQuantity);
-    handleEditPosition(modalLvIndex, modalPosIndex, 'unit', localUnit);
-    handleEditPosition(modalLvIndex, modalPosIndex, 'unitPrice', localUnitPrice);
-    
-    // Warte kurz, dann speichern
-    setTimeout(async () => {
-      await handleSavePosition(modalLvIndex, modalPosIndex);
-      setEditingPosition(null);
-    }, 100);
-  };
+  const key = `${modalLvIndex}-${modalPosIndex}`;
   
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -490,6 +457,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                 setModalLvIndex(null);
                 setModalPosIndex(null);
                 setEditingPosition(null);
+                setEditedValues({});
               }}
               className="text-white/80 hover:text-white transition-colors"
             >
@@ -503,15 +471,15 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
         {/* Content */}
         <div className="p-6">
           {isEditing ? (
-            // Edit Mode
+            // Edit Mode - direkt mit editedValues arbeiten
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
                 <input
                   type="text"
                   className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                  value={localTitle}
-                  onChange={(e) => setLocalTitle(e.target.value)}
+                  defaultValue={selectedPosition.title}
+                  onBlur={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'title', e.target.value)}
                 />
               </div>
               
@@ -520,8 +488,8 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                 <textarea
                   className="w-full border border-gray-300 rounded-lg px-4 py-2"
                   rows={6}
-                  value={localDescription}
-                  onChange={(e) => setLocalDescription(e.target.value)}
+                  defaultValue={selectedPosition.description}
+                  onBlur={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'description', e.target.value)}
                 />
               </div>
               
@@ -531,8 +499,8 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <input
                     type="number"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={localQuantity}
-                    onChange={(e) => setLocalQuantity(e.target.value)}
+                    defaultValue={selectedPosition.quantity}
+                    onBlur={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'quantity', e.target.value)}
                   />
                 </div>
                 
@@ -541,8 +509,8 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <input
                     type="text"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={localUnit}
-                    onChange={(e) => setLocalUnit(e.target.value)}
+                    defaultValue={selectedPosition.unit}
+                    onBlur={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'unit', e.target.value)}
                   />
                 </div>
                 
@@ -552,8 +520,8 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                     type="number"
                     step="0.01"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={localUnitPrice}
-                    onChange={(e) => setLocalUnitPrice(e.target.value)}
+                    defaultValue={selectedPosition.unitPrice}
+                    onBlur={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'unitPrice', e.target.value)}
                   />
                 </div>
               </div>
@@ -607,7 +575,10 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
               {isEditing ? (
                 <>
                   <button
-                    onClick={handleLocalSave}
+                    onClick={async () => {
+                      await handleSavePosition(modalLvIndex, modalPosIndex);
+                      setEditingPosition(null);
+                    }}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     ✓ Speichern
@@ -615,12 +586,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <button
                     onClick={() => {
                       setEditingPosition(null);
-                      // Reset lokale Werte auf Original
-                      setLocalTitle(selectedPosition.title || '');
-                      setLocalDescription(selectedPosition.description || '');
-                      setLocalQuantity(selectedPosition.quantity || 1);
-                      setLocalUnit(selectedPosition.unit || 'Stk');
-                      setLocalUnitPrice(selectedPosition.unitPrice || 0);
+                      setEditedValues({});
                     }}
                     className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   >
