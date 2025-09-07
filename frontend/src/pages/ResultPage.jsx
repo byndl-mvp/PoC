@@ -15,7 +15,7 @@ export default function ResultPage() {
   const [editingPosition, setEditingPosition] = useState(null);
   const [editedValues, setEditedValues] = useState({});
   const [addingPosition, setAddingPosition] = useState(null);
-  const [newPosition, setNewPosition] = useState({
+  const [newPosition, setNewPosition] = useState({;
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [modalLvIndex, setModalLvIndex] = useState(null);
   const [modalPosIndex, setModalPosIndex] = useState(null);
