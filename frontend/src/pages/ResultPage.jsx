@@ -442,7 +442,13 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   const [localUnit, setLocalUnit] = useState('Stk');
   const [localUnitPrice, setLocalUnitPrice] = useState(0);
   
-  // useEffect auch VOR dem early return
+  // Early return NACH allen Hooks
+  if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
+  
+  const lv = lvs[modalLvIndex];
+  const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
+  
+  // useEffect NACH dem early return, weil er nur ausgeführt wird wenn Modal sichtbar ist
   useEffect(() => {
     if (selectedPosition) {
       setLocalTitle(selectedPosition.title || '');
@@ -451,13 +457,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
       setLocalUnit(selectedPosition.unit || 'Stk');
       setLocalUnitPrice(selectedPosition.unitPrice || 0);
     }
-  }, [selectedPosition]); // Nur von selectedPosition abhängig
-  
-  // Early return NACH allen Hooks
-  if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
-  
-  const lv = lvs[modalLvIndex];
-  const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
+  }, [selectedPosition, isEditing]); // Dependencies angepasst
   
   const handleLocalSave = async () => {
     // Setze alle Werte in editedValues
