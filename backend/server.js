@@ -4278,6 +4278,32 @@ function formatCurrency(value) {
   }).format(value || 0);
 }
 
+// Helper-Funktion für Gewerk-Beschreibungen
+function getTradeDescription(tradeCode) {
+  const descriptions = {
+    'ABBR': 'Abbruch, Entkernung, Rückbau, Entsorgung',
+    'ROH': 'Rohbau, Mauerarbeiten, Betonarbeiten, Fundamente',
+    'GER': 'Gerüstbau, Arbeitsplattformen, Absturzsicherung',
+    'DACH': 'Dachdeckerarbeiten, Abdichtungen, Terrassen, Flachdach',
+    'FEN': 'Fenster, Außentüren, Montage, Rollläden',
+    'FASS': 'Fassadenbau, Fassadensanierung, WDVS',
+    'AUSS': 'Außenanlagen, Garten- und Landschaftsbau, Pflasterarbeiten',
+    'ELEKT': 'Elektroinstallation, Schalter, Steckdosen, Beleuchtung',
+    'SAN': 'Sanitärinstallation, Armaturen, Rohre, Bad, WC',
+    'HEI': 'Heizungsinstallation, Heizkörper, Thermostate, Warmwasser',
+    'KLIMA': 'Lüftung, Klimatechnik, Kühlung, Be- und Entlüftung',
+    'ESTR': 'Estricharbeiten, Bodenaufbau, Dämmung, Fußbodenheizung',
+    'TRO': 'Trockenbau, Wände, Decken, Dämmung, Schallschutz',
+    'FLI': 'Fliesen, Plattenarbeiten, Verfugung, Abdichtung',
+    'TIS': 'Innentüren, Innenausbau, Einbaumöbel, Holzarbeiten',
+    'BOD': 'Bodenbeläge, Parkett, Laminat, Teppich, PVC',
+    'MAL': 'Malerarbeiten, Lackieren, Tapezieren, Spachteln',
+    'SCHL': 'Schlosserarbeiten, Metallbau, Geländer, Stahlkonstruktionen',
+    'INT': 'Allgemeine Projektaufnahme, Bestandserfassung'
+  };
+  return descriptions[tradeCode] || 'Allgemeine Bauarbeiten';
+}
+
 // Budget-Optimierung generieren
 app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
   try {
@@ -4330,7 +4356,7 @@ ERFASSTE PROJEKTDETAILS:
 ${intakeData.rows.slice(0, 20).map(r => `- ${r.question_text}: ${r.answer_text}`).join('\n')}
 
 VERFÜGBARE GEWERKE-CODES (NUR DIESE VERWENDEN!):
-${lvBreakdown.map(lv => `${lv.tradeCode} = ${lv.tradeName}`).join('\n')}
+${lvBreakdown.map(lv => `${lv.tradeCode} = ${lv.tradeName} (Typisch: ${getTradeDescription(lv.tradeCode)})`).join('\n')}
 
 KRITISCH: Im "trade" Feld MÜSSEN EXAKT diese Codes verwendet werden:
 [${lvBreakdown.map(lv => lv.tradeCode).join(', ')}]
@@ -4443,6 +4469,13 @@ await query(
   [projectId, JSON.stringify(optimizations)]
 );
 
+// NEU: Korrigiere die Gesamtsumme basierend auf den tatsächlichen Optimierungen
+    if (optimizations.optimizations && optimizations.optimizations.length > 0) {
+      optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
+        (sum, opt) => sum + (parseFloat(opt.savingAmount) || 0), 
+        0
+      );
+    }    
 // Validierung: Filtere ungültige und unrealistische Optimierungen
 const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
 if (optimizations.optimizations) {
