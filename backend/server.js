@@ -4458,6 +4458,13 @@ const response = await llmWithPolicy('optimization', [
 
 console.log('[OPTIMIZATION] Raw LLM response:', response.substring(0, 500));
 const optimizations = JSON.parse(response);
+// HIER NEU: Sofort nach dem Parsen alle Beträge runden
+if (optimizations.optimizations && Array.isArray(optimizations.optimizations)) {
+  optimizations.optimizations = optimizations.optimizations.map(opt => ({
+    ...opt,
+    savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
+  }));
+}    
 console.log('[OPTIMIZATION] Parsed optimizations:', JSON.stringify(optimizations.optimizations?.slice(0, 2)));
 
 // Speichere Optimierungsvorschläge
