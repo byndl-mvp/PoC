@@ -445,7 +445,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header - bleibt unverändert */}
+        {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
           <div className="flex justify-between items-start">
             <div>
@@ -472,7 +472,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
         {/* Content */}
         <div className="p-6">
           {isEditing ? (
-            // Edit Mode - EINFACHSTE VERSION
+            // Edit Mode
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
@@ -526,8 +526,9 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   />
                 </div>
               </div>
+            </div>
           ) : (
-            // View Mode - bleibt unverändert
+            // View Mode
             <div className="space-y-4">
               <div>
                 <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedPosition.title}</h4>
@@ -577,13 +578,12 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <button
                     onClick={async () => {
                       await handleSavePosition(modalLvIndex, modalPosIndex);
-                      // Nach dem Speichern kurz warten und Modal neu laden
-                      setTimeout(() => {
-                        setEditingPosition(null);
-                        // Position neu laden für aktuelle Anzeige
-                        const updatedPos = lvs[modalLvIndex].content.positions[modalPosIndex];
-                        setSelectedPosition({...updatedPos});
-                      }, 100);
+                      setEditingPosition(null);
+                      // Modal schließen nach dem Speichern
+                      setSelectedPosition(null);
+                      setModalLvIndex(null);
+                      setModalPosIndex(null);
+                      setEditedValues({});
                     }}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
