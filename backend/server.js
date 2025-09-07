@@ -1273,7 +1273,7 @@ ERSTE FRAGE MUSS SEIN: "Welche ${tradeName}-Arbeiten sollen im Rahmen der ${proj
 
 FEHLENDE INFOS: ${intelligentCount.missingInfo.join(', ') || 'keine'}
 
-${questionPrompt ? `Template-Basis:\n${questionPrompt.substring(0, 300)}...\n` : ''}
+${questionPrompt ? `Template-Basis:\n${questionPrompt.substring(0, 2000)}...\n` : ''}
 
 BEACHTE:
 - Fachbegriffe MÜSSEN erklärt werden
