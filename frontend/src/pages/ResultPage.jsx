@@ -552,7 +552,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
               </div>
             </div>
           )}
-        </div>
+        </div>  {/* <-- Das schließt den Content-Bereich */}
         
         {/* Footer Actions */}
         <div className="border-t bg-gray-50 px-6 py-4 rounded-b-2xl">
