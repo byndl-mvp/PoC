@@ -4563,6 +4563,18 @@ if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
         impact: 'Geringe optische Einschränkungen'
       }];
     }
+
+    // Debug: Zeige alle finalen Beträge
+console.log('[OPTIMIZATION] Final amounts before response:', 
+  optimizations.optimizations.map(opt => opt.savingAmount));
+
+// Stelle sicher, dass die Summe korrekt ist
+optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
+  (sum, opt) => sum + opt.savingAmount, 
+  0
+);
+
+console.log('[OPTIMIZATION] Final total:', optimizations.totalPossibleSaving);
     
     res.json(optimizations);
     
