@@ -1709,19 +1709,6 @@ WICHTIG:
 2. Verwende die validierten Mengen
 3. Realistische Preise (Stand 2024/2025)
 4. Dokumentiere alle Annahmen transparent`;
-
-// Debug-Log für Fenster-Antworten
-if (trade.code === 'FEN') {
-  console.log('[LV] Fenster-Antworten für LV-Generierung:', 
-    intakeAnswers.filter(a => 
-      a.question.toLowerCase().includes('fenster') || 
-      a.question.toLowerCase().includes('maß') ||
-      a.question.toLowerCase().includes('größe') ||
-      a.question.toLowerCase().includes('breite') ||
-      a.question.toLowerCase().includes('höhe')
-    )
-  );
-}  
   
   try {
   const response = await llmWithPolicy('lv', [
