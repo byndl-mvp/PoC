@@ -442,13 +442,10 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   const lv = lvs[modalLvIndex];
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
   
-  // Verwende key um bei Änderungen neu zu rendern
-  const modalKey = `${modalLvIndex}-${modalPosIndex}-${selectedPosition.title}`;
-  
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" key={modalKey}>
-        {/* Header - bleibt gleich */}
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header - bleibt unverändert */}
         <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
           <div className="flex justify-between items-start">
             <div>
@@ -473,70 +470,64 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
         </div>
         
         {/* Content */}
-<div className="p-6">
-  {isEditing ? (
-    // Edit Mode
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
-        <input
-          key={`title-${modalLvIndex}-${modalPosIndex}`}
-          type="text"
-          className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          defaultValue={selectedPosition.title}
-          onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'title', e.target.value)}
-        />
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
-        <textarea
-          key={`desc-${modalLvIndex}-${modalPosIndex}`}
-          className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          rows={6}
-          defaultValue={selectedPosition.description}
-          onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'description', e.target.value)}
-        />
-      </div>
-      
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
-          <input
-            key={`qty-${modalLvIndex}-${modalPosIndex}`}
-            type="number"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            defaultValue={selectedPosition.quantity}
-            onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'quantity', e.target.value)}
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Einheit</label>
-          <input
-            key={`unit-${modalLvIndex}-${modalPosIndex}`}
-            type="text"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            defaultValue={selectedPosition.unit}
-            onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'unit', e.target.value)}
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Einzelpreis (€)</label>
-          <input
-            key={`price-${modalLvIndex}-${modalPosIndex}`}
-            type="number"
-            step="0.01"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            defaultValue={selectedPosition.unitPrice}
-            onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'unitPrice', e.target.value)}
-          />
-        </div>
-      </div>
-    </div>
-  ) : (
-            // View Mode - bleibt gleich
+        <div className="p-6">
+          {isEditing ? (
+            // Edit Mode - EINFACHSTE VERSION
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  defaultValue={selectedPosition.title}
+                  onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'title', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  rows={6}
+                  defaultValue={selectedPosition.description}
+                  onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'description', e.target.value)}
+                />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
+                  <input
+                    type="number"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    defaultValue={selectedPosition.quantity}
+                    onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'quantity', e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Einheit</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    defaultValue={selectedPosition.unit}
+                    onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'unit', e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Einzelpreis (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    defaultValue={selectedPosition.unitPrice}
+                    onChange={(e) => handleEditPosition(modalLvIndex, modalPosIndex, 'unitPrice', e.target.value)}
+                  />
+                </div>
+              </div>
+          ) : (
+            // View Mode - bleibt unverändert
             <div className="space-y-4">
               <div>
                 <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedPosition.title}</h4>
@@ -563,7 +554,7 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
           )}
         </div>
         
-        {/* Footer Actions - bleibt gleich wie vorher */}
+        {/* Footer Actions */}
         <div className="border-t bg-gray-50 px-6 py-4 rounded-b-2xl">
           <div className="flex justify-between">
             <button
@@ -586,7 +577,13 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <button
                     onClick={async () => {
                       await handleSavePosition(modalLvIndex, modalPosIndex);
-                      setEditingPosition(null);
+                      // Nach dem Speichern kurz warten und Modal neu laden
+                      setTimeout(() => {
+                        setEditingPosition(null);
+                        // Position neu laden für aktuelle Anzeige
+                        const updatedPos = lvs[modalLvIndex].content.positions[modalPosIndex];
+                        setSelectedPosition({...updatedPos});
+                      }, 100);
                     }}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
