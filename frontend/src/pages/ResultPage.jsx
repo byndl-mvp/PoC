@@ -9,23 +9,22 @@ export default function ResultPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const [project, setProject] = useState(null); // NEU: Project State hinzufügen
+  const [project, setProject] = useState(null);
   const [exportMode, setExportMode] = useState('with-prices');
   const [selectedLv, setSelectedLv] = useState(null);
   const [editingPosition, setEditingPosition] = useState(null);
   const [editedValues, setEditedValues] = useState({});
   const [addingPosition, setAddingPosition] = useState(null);
-  const [newPosition, setNewPosition] = useState({;
-  const [selectedPosition, setSelectedPosition] = useState(null);
-  const [modalLvIndex, setModalLvIndex] = useState(null);
-  const [modalPosIndex, setModalPosIndex] = useState(null);
-  
+  const [newPosition, setNewPosition] = useState({
     title: '',
     description: '',
     quantity: 1,
     unit: 'Stk',
     unitPrice: 0
   });
+  const [selectedPosition, setSelectedPosition] = useState(null);
+  const [modalLvIndex, setModalLvIndex] = useState(null);
+  const [modalPosIndex, setModalPosIndex] = useState(null);
   
 // Helper für sichere Zahlenformatierung
 const safeToFixed = (value) => {
