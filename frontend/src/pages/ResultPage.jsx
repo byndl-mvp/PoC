@@ -437,98 +437,48 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   );
   
   const PositionModal = () => {
-  // Frühe Rückgabe wenn Modal nicht angezeigt werden soll
-  if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) {
-    return null;
-  }
+  if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
   
-  // Basis-Variablen
   const lv = lvs[modalLvIndex];
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
-  const key = `${modalLvIndex}-${modalPosIndex}`;
   
-  // Aktuelle Werte ermitteln (entweder bearbeitet oder original)
-  const getCurrentValue = (field) => {
-    const editKey = `${key}-${field}`;
-    return editedValues[editKey] !== undefined 
-      ? editedValues[editKey] 
-      : selectedPosition[field];
-  };
-  
-  // Handler für Input-Änderungen
-  const handleFieldChange = (field, value) => {
-    handleEditPosition(modalLvIndex, modalPosIndex, field, value);
-  };
-  
-  // Speichern und Modal aktualisieren
-  const saveChanges = async () => {
-    // Backend-Speicherung
-    await handleSavePosition(modalLvIndex, modalPosIndex);
+  // Speichern OHNE die Inputs bei jedem Tastendruck zu updaten
+  const handleSave = async () => {
+    // Werte direkt aus den Input-Feldern holen
+    const form = document.getElementById('position-edit-form');
+    const formData = new FormData(form);
     
-    // Lokale Anzeige mit neuen Werten aktualisieren
     const updatedPosition = {
       ...selectedPosition,
-      title: getCurrentValue('title'),
-      description: getCurrentValue('description'),
-      quantity: parseFloat(getCurrentValue('quantity')) || 0,
-      unit: getCurrentValue('unit'),
-      unitPrice: parseFloat(getCurrentValue('unitPrice')) || 0,
+      title: formData.get('title'),
+      description: formData.get('description'),
+      quantity: parseFloat(formData.get('quantity')) || 0,
+      unit: formData.get('unit'),
+      unitPrice: parseFloat(formData.get('unitPrice')) || 0,
     };
     updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
     
+    // Erst JETZT editedValues setzen für handleSavePosition
+    const key = `${modalLvIndex}-${modalPosIndex}`;
+    setEditedValues({
+      [`${key}-title`]: updatedPosition.title,
+      [`${key}-description`]: updatedPosition.description,
+      [`${key}-quantity`]: updatedPosition.quantity,
+      [`${key}-unit`]: updatedPosition.unit,
+      [`${key}-unitPrice`]: updatedPosition.unitPrice,
+    });
+    
+    // Speichern
+    await handleSavePosition(modalLvIndex, modalPosIndex);
     setSelectedPosition(updatedPosition);
-    setEditingPosition(null);
-    
-    // Bearbeitete Werte für diese Position löschen
-    const cleanedValues = { ...editedValues };
-    Object.keys(cleanedValues).forEach(k => {
-      if (k.startsWith(key)) {
-        delete cleanedValues[k];
-      }
-    });
-    setEditedValues(cleanedValues);
-  };
-  
-  // Abbrechen ohne zu speichern
-  const cancelEdit = () => {
-    setEditingPosition(null);
-    
-    // Bearbeitete Werte für diese Position löschen
-    const cleanedValues = { ...editedValues };
-    Object.keys(cleanedValues).forEach(k => {
-      if (k.startsWith(key)) {
-        delete cleanedValues[k];
-      }
-    });
-    setEditedValues(cleanedValues);
-  };
-  
-  // Modal komplett schließen
-  const closeModal = () => {
-    setSelectedPosition(null);
-    setModalLvIndex(null);
-    setModalPosIndex(null);
     setEditingPosition(null);
     setEditedValues({});
   };
   
-  // Position löschen
-  const deletePosition = async () => {
-    if (window.confirm('Diese Position wirklich löschen?')) {
-      await handleDeletePosition(modalLvIndex, modalPosIndex);
-      closeModal();
-    }
-  };
-  
-  // Berechne Gesamtpreis für Anzeige
-  const displayTotal = (parseFloat(getCurrentValue('quantity')) || 0) * 
-                       (parseFloat(getCurrentValue('unitPrice')) || 0);
-  
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        
-        {/* Modal Header */}
+        {/* Header bleibt gleich */}
         <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
           <div className="flex justify-between items-start">
             <div>
@@ -536,7 +486,13 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
               <p className="text-blue-100 mt-1">{lv.trade_name || lv.name}</p>
             </div>
             <button
-              onClick={closeModal}
+              onClick={() => {
+                setSelectedPosition(null);
+                setModalLvIndex(null);
+                setModalPosIndex(null);
+                setEditingPosition(null);
+                setEditedValues({});
+              }}
               className="text-white/80 hover:text-white transition-colors"
             >
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -546,28 +502,27 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
           </div>
         </div>
         
-        {/* Modal Body */}
         <div className="p-6">
           {isEditing ? (
-            // Bearbeitungsmodus
-            <div className="space-y-4">
+            // UNCONTROLLED INPUTS mit defaultValue!
+            <form id="position-edit-form" className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
                 <input
                   type="text"
+                  name="title"
                   className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                  value={getCurrentValue('title') || ''}
-                  onChange={(e) => handleFieldChange('title', e.target.value)}
+                  defaultValue={selectedPosition.title}
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
                 <textarea
+                  name="description"
                   className="w-full border border-gray-300 rounded-lg px-4 py-2"
                   rows={6}
-                  value={getCurrentValue('description') || ''}
-                  onChange={(e) => handleFieldChange('description', e.target.value)}
+                  defaultValue={selectedPosition.description}
                 />
               </div>
               
@@ -576,10 +531,10 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
                   <input
                     type="number"
+                    name="quantity"
                     step="0.01"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={getCurrentValue('quantity') || ''}
-                    onChange={(e) => handleFieldChange('quantity', e.target.value)}
+                    defaultValue={selectedPosition.quantity}
                   />
                 </div>
                 
@@ -587,9 +542,9 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <label className="block text-sm font-medium text-gray-700 mb-1">Einheit</label>
                   <input
                     type="text"
+                    name="unit"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={getCurrentValue('unit') || ''}
-                    onChange={(e) => handleFieldChange('unit', e.target.value)}
+                    defaultValue={selectedPosition.unit}
                   />
                 </div>
                 
@@ -597,32 +552,22 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                   <label className="block text-sm font-medium text-gray-700 mb-1">Einzelpreis (€)</label>
                   <input
                     type="number"
+                    name="unitPrice"
                     step="0.01"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={getCurrentValue('unitPrice') || ''}
-                    onChange={(e) => handleFieldChange('unitPrice', e.target.value)}
+                    defaultValue={selectedPosition.unitPrice}
                   />
                 </div>
               </div>
-              
-              {/* Live-Vorschau des Gesamtpreises */}
-              <div className="bg-blue-50 rounded-lg p-3 text-right">
-                <span className="text-sm text-gray-600 mr-2">Gesamtpreis:</span>
-                <span className="text-lg font-semibold text-teal-600">
-                  {formatCurrency(displayTotal)}
-                </span>
-              </div>
-            </div>
+            </form>
           ) : (
-            // Ansichtsmodus
+            // View Mode bleibt gleich
             <div className="space-y-4">
               <div>
-                <h4 className="font-semibold text-gray-900 text-xl mb-2">
-                  {getCurrentValue('title')}
-                </h4>
+                <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedPosition.title}</h4>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-gray-700 whitespace-pre-wrap">
-                    {getCurrentValue('description') || 'Keine Beschreibung vorhanden'}
+                    {selectedPosition.description || 'Keine Beschreibung vorhanden'}
                   </p>
                 </div>
               </div>
@@ -631,19 +576,17 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
                 <div>
                   <p className="text-sm text-gray-600">Menge</p>
                   <p className="text-lg font-semibold">
-                    {safeToFixed(getCurrentValue('quantity'))} {getCurrentValue('unit')}
+                    {safeToFixed(selectedPosition.quantity)} {selectedPosition.unit}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Einzelpreis</p>
-                  <p className="text-lg font-semibold">
-                    {formatCurrency(getCurrentValue('unitPrice'))}
-                  </p>
+                  <p className="text-lg font-semibold">{formatCurrency(selectedPosition.unitPrice)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Gesamtpreis</p>
                   <p className="text-lg font-semibold text-teal-600">
-                    {formatCurrency(displayTotal)}
+                    {formatCurrency(selectedPosition.totalPrice)}
                   </p>
                 </div>
               </div>
@@ -651,11 +594,18 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
           )}
         </div>
         
-        {/* Modal Footer */}
+        {/* Footer */}
         <div className="border-t bg-gray-50 px-6 py-4 rounded-b-2xl">
           <div className="flex justify-between">
             <button
-              onClick={deletePosition}
+              onClick={() => {
+                if (window.confirm('Diese Position wirklich löschen?')) {
+                  handleDeletePosition(modalLvIndex, modalPosIndex);
+                  setSelectedPosition(null);
+                  setModalLvIndex(null);
+                  setModalPosIndex(null);
+                }
+              }}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               🗑 Löschen
@@ -665,13 +615,17 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
               {isEditing ? (
                 <>
                   <button
-                    onClick={saveChanges}
+                    type="button"
+                    onClick={handleSave}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     ✓ Speichern
                   </button>
                   <button
-                    onClick={cancelEdit}
+                    onClick={() => {
+                      setEditingPosition(null);
+                      setEditedValues({});
+                    }}
                     className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   >
                     ✗ Abbrechen
