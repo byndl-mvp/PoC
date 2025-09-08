@@ -1561,6 +1561,7 @@ function parseFensterMaße(antwortText) {
   
   return fensterTypen;
 }
+
 async function generateDetailedLV(projectId, tradeId) {
   const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
   if (!project) throw new Error('Project not found');
@@ -2077,7 +2078,6 @@ Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als 
     lv = JSON.parse(retryResponse.trim());
     console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
   }
-}
   
 } catch (parseError) {
     // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
