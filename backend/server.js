@@ -1003,7 +1003,7 @@ if (!isIntake && projectContext.projectId) {
   console.log(`[QUESTIONS] Loaded ${intakeAnswers.rows.length} intake answers for context`);
 }
   
-  // NEU: Bei manuellen/KI-empfohlenen Gewerken NUR Kontextfrage zurückgeben
+  // NEU: Bei manuellen NUR Kontextfrage zurückgeben
   if (projectContext.isManuallyAdded === true || projectContext.isAiRecommended === true) {
     console.log(`[QUESTIONS] Manual/AI-recommended trade ${tradeCode} - returning context question only`);
     
@@ -1413,6 +1413,31 @@ if (tradeCode === 'FEN') {
     console.log('[QUESTIONS] Window measurement question added');
   }
 }
+// NEUE PRÜFUNG: Stelle sicher dass Demontage-Frage existiert
+  const hasDemontageFrage = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('demontage') || 
+    q.question.toLowerCase().includes('altfenster') ||
+    q.question.toLowerCase().includes('ausbau')
+  );
+  
+  if (!hasDemontageFrage) {
+    console.log('[QUESTIONS] Adding demontage question for windows');
+    
+    processedQuestions.splice(2, 0, {  // An Position 3 einfügen
+      id: 'FEN-DEMONTAGE',
+      category: 'Bestandssituation',
+      question: 'Sind vorhandene Fenster zu demontieren und zu entsorgen?',
+      explanation: 'Die fachgerechte Demontage und Entsorgung der Altfenster sollte mit eingeplant werden',
+      type: 'select',
+      options: ['Ja, Altfenster vorhanden', 'Nein, keine Demontage nötig', 'Unsicher'],
+      multiSelect: false,
+      required: true,
+      unit: null,
+      tradeId: tradeId,
+      tradeName: tradeName
+    });
+  }
+}    
     // FILTER: Entferne Duplikate von bereits beantworteten Fragen
 let filteredQuestions = processedQuestions;
 
@@ -1637,10 +1662,20 @@ if (trade.code === 'FEN') {
       fensterDetails.verglasung = answer.answer;
     }
     
-    // Demontage
-    if (q.includes('demontage') || q.includes('alte fenster') || q.includes('ausbau')) {
-      fensterDetails.demontage = a.includes('ja') || a.includes('demontage') || a.includes('entfernen');
-    }
+    // Demontage - ERWEITERTE LOGIK
+  if (q.includes('demontage') || q.includes('altfenster') || q.includes('ausbau')) {
+    // Bei "Unsicher" standardmäßig JA annehmen (sicherer)
+    fensterDetails.demontage = !a.includes('nein');
+    fensterDetails.demontageAntwort = answer.answer; // Original-Antwort speichern
+  }
+}
+
+// Falls keine Demontage-Antwort gefunden: Standardmäßig JA
+if (fensterDetails.demontageAntwort === undefined) {
+  console.log('[LV] Keine Demontage-Antwort gefunden - nehme JA an');
+  fensterDetails.demontage = true;
+  fensterDetails.demontageAntwort = 'Keine Angabe - Demontage vorsorglich einkalkuliert';
+}
     
     // Fensterbänke
     if (q.includes('fensterbank') || q.includes('fensterbänke')) {
@@ -1956,6 +1991,67 @@ if (trade.code === 'FEN') {
   if (hasInvalidPositions) {
     console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
     
+    // Erweitere den User-Prompt mit expliziter Anweisung
+    const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
+    
+ABSOLUT VERPFLICHTEND für JEDE Fensterposition:
+- Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
+- Beispiel: "Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp"
+
+Die Fenstermaße MÜSSEN aus den erfassten Antworten stammen!
+Verwende die EXAKTEN Maße die der Nutzer angegeben hat.
+KEINE erfundenen Standardmaße!
+Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als "Maße fehlen - vor Ort aufzunehmen".`;
+    
+    // KORRIGIERT: Verwende llmWithPolicy statt callLLM
+    const retryResponse = await llmWithPolicy('lv', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: enhancedPrompt }
+    ], { 
+      maxTokens: 6000, 
+      temperature: 0.3,
+      jsonMode: true
+    });
+    
+    // KORRIGIERT: Parse direkt ohne .content
+    lv = JSON.parse(retryResponse.trim());
+    console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
+  }
+  
+  // NEUE VALIDIERUNG FÜR DEMONTAGE/ENTSORGUNG
+  const hasDemontage = lv.positions.some(p => 
+    p.title.toLowerCase().includes('demontage') || 
+    p.title.toLowerCase().includes('ausbau') ||
+    p.title.toLowerCase().includes('altfenster')
+  );
+  
+  // NUR wenn Demontage gewünscht ist UND fehlt
+  if (!hasDemontage && fensterDetails && fensterDetails.demontage) {
+    console.log('[LV] Füge fehlende Demontage/Entsorgung-Position hinzu');
+    
+    // Finde die richtige Position zum Einfügen
+    const fensterPosCount = lv.positions.filter(p => 
+      p.title.toLowerCase().includes('fenster') && 
+      !p.title.toLowerCase().includes('bank') &&
+      !p.title.toLowerCase().includes('demontage')
+    ).length;
+    
+    // EINE kombinierte Position für Demontage UND Entsorgung
+    lv.positions.splice(fensterPosCount, 0, {
+      pos: `01.02.001`,
+      title: 'Demontage und Entsorgung der Altfenster',
+      description: 'Fachgerechter Ausbau der vorhandenen Fenster inkl. Rahmen, ' +
+                   'ohne Beschädigung des umliegenden Mauerwerks. ' +
+                   'Inklusive Abtransport und fachgerechter Entsorgung gemäß gesetzlichen Vorschriften.',
+      quantity: fensterDetails.anzahl || 1,
+      unit: 'Stk',
+      unitPrice: 130,
+      totalPrice: (fensterDetails.anzahl || 1) * 130,
+      dataSource: 'standard',
+      notes: 'Demontage + Entsorgung kombiniert'
+    });
+  }
+}
     // Erweitere den User-Prompt mit expliziter Anweisung
     const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
     
