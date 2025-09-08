@@ -1724,7 +1724,6 @@ if (trade.code === 'FEN') {
     fensterDetails.demontage = !a.includes('nein');
     fensterDetails.demontageAntwort = answer.answer; // Original-Antwort speichern
   }
-}
 
 // Falls keine Demontage-Antwort gefunden: Standardmäßig JA
 if (fensterDetails.demontageAntwort === undefined) {
