@@ -1003,7 +1003,7 @@ if (!isIntake && projectContext.projectId) {
   console.log(`[QUESTIONS] Loaded ${intakeAnswers.rows.length} intake answers for context`);
 }
   
-  // NEU: Bei manuellen NUR Kontextfrage zurückgeben
+  // NEU: Bei manuellen/KI-empfohlenen Gewerken NUR Kontextfrage zurückgeben
   if (projectContext.isManuallyAdded === true || projectContext.isAiRecommended === true) {
     console.log(`[QUESTIONS] Manual/AI-recommended trade ${tradeCode} - returning context question only`);
     
@@ -1413,31 +1413,6 @@ if (tradeCode === 'FEN') {
     console.log('[QUESTIONS] Window measurement question added');
   }
 }
-// NEUE PRÜFUNG: Stelle sicher dass Demontage-Frage existiert
-  const hasDemontageFrage = processedQuestions.some(q => 
-    q.question.toLowerCase().includes('demontage') || 
-    q.question.toLowerCase().includes('altfenster') ||
-    q.question.toLowerCase().includes('ausbau')
-  );
-  
-  if (!hasDemontageFrage) {
-    console.log('[QUESTIONS] Adding demontage question for windows');
-    
-    processedQuestions.splice(2, 0, {  // An Position 3 einfügen
-      id: 'FEN-DEMONTAGE',
-      category: 'Bestandssituation',
-      question: 'Sind vorhandene Fenster zu demontieren und zu entsorgen?',
-      explanation: 'Die fachgerechte Demontage und Entsorgung der Altfenster sollte mit eingeplant werden',
-      type: 'select',
-      options: ['Ja, Altfenster vorhanden', 'Nein, keine Demontage nötig', 'Unsicher'],
-      multiSelect: false,
-      required: true,
-      unit: null,
-      tradeId: tradeId,
-      tradeName: tradeName
-    });
-  }
-    
     // FILTER: Entferne Duplikate von bereits beantworteten Fragen
 let filteredQuestions = processedQuestions;
 
@@ -1447,7 +1422,7 @@ if (answeredQuestions && answeredQuestions.length > 0) {
       .replace(/[?.,!:]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
-  );  
+  );
   
   filteredQuestions = processedQuestions.filter(newQ => {
     const newText = (newQ.question || '')
@@ -1561,7 +1536,6 @@ function parseFensterMaße(antwortText) {
   
   return fensterTypen;
 }
-
 async function generateDetailedLV(projectId, tradeId) {
   const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
   if (!project) throw new Error('Project not found');
@@ -1624,62 +1598,6 @@ const tradeCode = trade.code;
   const lvPrompt = await getPromptForTrade(tradeId, 'lv');
   if (!lvPrompt) throw new Error('LV prompt missing for trade');
 
-  // Cross-Check Funktion zur Duplikatsprüfung
-async function checkForDuplicatePositions(projectId, currentTradeId, positions) {
-  const otherLVs = await query(
-    `SELECT t.name as trade_name, t.code as trade_code, l.content 
-     FROM lvs l 
-     JOIN trades t ON l.trade_id = t.id 
-     WHERE l.project_id = $1 AND l.trade_id != $2`,
-    [projectId, currentTradeId]
-  );
-  
-  const duplicates = [];
-  const criticalKeywords = [
-    'Wanddurchbruch', 'Durchbruch', 
-    'Gerüst', 'Arbeitsgerüst', 'Fassadengerüst',
-    'Container', 'Baustelleneinrichtung',
-    'Entsorgung', 'Abtransport', 'Abfuhr'
-  ];
-  
-  for (const pos of positions) {
-    for (const lv of otherLVs.rows) {
-
-  // NEUE ZEILEN HIER EINFÜGEN:
-  if (!lv.content || lv.content === '[object Object]') {
-    console.log('[checkForDuplicatePositions] Skipping invalid LV content');
-    continue;
-  }
-  
-  let otherContent;
-  try {
-    otherContent = JSON.parse(lv.content);  // Original Zeile 1615
-  } catch (error) {
-    console.log('[checkForDuplicatePositions] Could not parse LV content:', error.message);
-    continue;
-  }      
-  
-      if (!otherContent.positions) continue;
-      
-      for (const otherPos of otherContent.positions) {
-        for (const keyword of criticalKeywords) {
-          if (pos.title?.toLowerCase().includes(keyword.toLowerCase()) && 
-              otherPos.title?.toLowerCase().includes(keyword.toLowerCase())) {
-            duplicates.push({
-              position: pos.title,
-              foundIn: lv.trade_name,
-              tradeCode: lv.trade_code,
-              keyword: keyword
-            });
-          }
-        }
-      }
-    }
-  }
-  
-  return duplicates;
-}  
-  
   // SPEZIAL: Fenster-Details vollständig verarbeiten
 let fensterMaßZusatz = '';
 if (trade.code === 'FEN') {
@@ -1897,6 +1815,62 @@ OUTPUT FORMAT (NUR valides JSON):
   "executionTime": "Geschätzte Ausführungsdauer"
 }`;
 
+// Cross-Check Funktion zur Duplikatsprüfung
+async function checkForDuplicatePositions(projectId, currentTradeId, positions) {
+  const otherLVs = await query(
+    `SELECT t.name as trade_name, t.code as trade_code, l.content 
+     FROM lvs l 
+     JOIN trades t ON l.trade_id = t.id 
+     WHERE l.project_id = $1 AND l.trade_id != $2`,
+    [projectId, currentTradeId]
+  );
+  
+  const duplicates = [];
+  const criticalKeywords = [
+    'Wanddurchbruch', 'Durchbruch', 
+    'Gerüst', 'Arbeitsgerüst', 'Fassadengerüst',
+    'Container', 'Baustelleneinrichtung',
+    'Entsorgung', 'Abtransport', 'Abfuhr'
+  ];
+  
+  for (const pos of positions) {
+    for (const lv of otherLVs.rows) {
+
+  // NEUE ZEILEN HIER EINFÜGEN:
+  if (!lv.content || lv.content === '[object Object]') {
+    console.log('[checkForDuplicatePositions] Skipping invalid LV content');
+    continue;
+  }
+  
+  let otherContent;
+  try {
+    otherContent = JSON.parse(lv.content);  // Original Zeile 1615
+  } catch (error) {
+    console.log('[checkForDuplicatePositions] Could not parse LV content:', error.message);
+    continue;
+  }      
+  
+      if (!otherContent.positions) continue;
+      
+      for (const otherPos of otherContent.positions) {
+        for (const keyword of criticalKeywords) {
+          if (pos.title?.toLowerCase().includes(keyword.toLowerCase()) && 
+              otherPos.title?.toLowerCase().includes(keyword.toLowerCase())) {
+            duplicates.push({
+              position: pos.title,
+              foundIn: lv.trade_name,
+              tradeCode: lv.trade_code,
+              keyword: keyword
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  return duplicates;
+}  
+  
   const userPrompt = `GEWERK: ${trade.name} (${trade.code})
 
 LV-TEMPLATE:
@@ -1925,7 +1899,7 @@ WICHTIG:
 1. Erstelle NUR Positionen für explizit erfragte Leistungen
 2. Verwende die validierten Mengen
 3. Realistische Preise (Stand 2024/2025)
-4. Dokumentiere alle Annahmen transparent${fensterMaßZusatz}`;  // Backtick HIER schließen
+4. Dokumentiere alle Annahmen transparent${fensterMaßZusatz}`;
   
   try {
   const response = await llmWithPolicy('lv', [
@@ -1982,18 +1956,18 @@ try {
   console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
   
   // HIER die erweiterte Fenster-Validierung mit Auto-Korrektur:
-  if (trade.code === 'FEN') {
-    const hasInvalidPositions = lv.positions.some(pos => 
-      pos.description.toLowerCase().includes('fenster') &&
-      !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
-    );
+if (trade.code === 'FEN') {
+  const hasInvalidPositions = lv.positions.some(pos => 
+    pos.description.toLowerCase().includes('fenster') &&
+    !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
+  );
+  
+  if (hasInvalidPositions) {
+    console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
     
-    if (hasInvalidPositions) {
-      console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
-      
-      // Erweitere den User-Prompt mit expliziter Anweisung
-      const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
-      
+    // Erweitere den User-Prompt mit expliziter Anweisung
+    const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
+    
 ABSOLUT VERPFLICHTEND für JEDE Fensterposition:
 - Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
 - Beispiel: "Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp"
@@ -2002,84 +1976,50 @@ Die Fenstermaße MÜSSEN aus den erfassten Antworten stammen!
 Verwende die EXAKTEN Maße die der Nutzer angegeben hat.
 KEINE erfundenen Standardmaße!
 Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als "Maße fehlen - vor Ort aufzunehmen".`;
-      
-      // KORRIGIERT: Verwende llmWithPolicy statt callLLM
-      const retryResponse = await llmWithPolicy('lv', [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: enhancedPrompt }
-      ], { 
-        maxTokens: 6000, 
-        temperature: 0.3,
-        jsonMode: true
-      });
-      
-      // KORRIGIERT: Parse direkt ohne .content
-      lv = JSON.parse(retryResponse.trim());
-      console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
-    }
     
-    // NEUE VALIDIERUNG FÜR DEMONTAGE/ENTSORGUNG
-    const hasDemontage = lv.positions.some(p => 
-      p.title.toLowerCase().includes('demontage') || 
-      p.title.toLowerCase().includes('ausbau') ||
-      p.title.toLowerCase().includes('altfenster')
-    );
+    // KORRIGIERT: Verwende llmWithPolicy statt callLLM
+    const retryResponse = await llmWithPolicy('lv', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: enhancedPrompt }
+    ], { 
+      maxTokens: 6000, 
+      temperature: 0.3,
+      jsonMode: true
+    });
     
-    // NUR wenn Demontage gewünscht ist UND fehlt
-    if (!hasDemontage && fensterDetails && fensterDetails.demontage) {
-      console.log('[LV] Füge fehlende Demontage/Entsorgung-Position hinzu');
-      
-      // Finde die richtige Position zum Einfügen
-      const fensterPosCount = lv.positions.filter(p => 
-        p.title.toLowerCase().includes('fenster') && 
-        !p.title.toLowerCase().includes('bank') &&
-        !p.title.toLowerCase().includes('demontage')
-      ).length;
-      
-      // EINE kombinierte Position für Demontage UND Entsorgung
-      lv.positions.splice(fensterPosCount, 0, {
-        pos: `01.02.001`,
-        title: 'Demontage und Entsorgung der Altfenster',
-        description: 'Fachgerechter Ausbau der vorhandenen Fenster inkl. Rahmen, ' +
-                     'ohne Beschädigung des umliegenden Mauerwerks. ' +
-                     'Inklusive Abtransport und fachgerechter Entsorgung gemäß gesetzlichen Vorschriften.',
-        quantity: fensterDetails.anzahl || 1,
-        unit: 'Stk',
-        unitPrice: 130,
-        totalPrice: (fensterDetails.anzahl || 1) * 130,
-        dataSource: 'standard',
-        notes: 'Demontage + Entsorgung kombiniert'
-      });
-    }
+    // KORRIGIERT: Parse direkt ohne .content
+    lv = JSON.parse(retryResponse.trim());
+    console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
   }
+}
   
 } catch (parseError) {
-  // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
-  console.error('[LV] CRITICAL: Parse error despite JSON mode active!');
-  console.error('[LV] Error message:', parseError.message);
-  
-  // Detailliertes Error-Logging
-  const errorMatch = parseError.message.match(/position (\d+)/);
-  if (errorMatch) {
-    const pos = parseInt(errorMatch[1]);
-    console.error('[LV] Error at position:', pos);
-    console.error('[LV] Context before:', cleanedResponse.substring(Math.max(0, pos - 100), pos));
-    console.error('[LV] >>> ERROR HERE <<<');
-    console.error('[LV] Context after:', cleanedResponse.substring(pos, Math.min(cleanedResponse.length, pos + 100)));
-    console.error('[LV] Character at position:', {
-      char: cleanedResponse.charAt(pos),
-      charCode: cleanedResponse.charCodeAt(pos),
-      hex: '0x' + cleanedResponse.charCodeAt(pos).toString(16)
-    });
+    // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
+    console.error('[LV] CRITICAL: Parse error despite JSON mode active!');
+    console.error('[LV] Error message:', parseError.message);
+    
+    // Detailliertes Error-Logging
+    const errorMatch = parseError.message.match(/position (\d+)/);
+    if (errorMatch) {
+      const pos = parseInt(errorMatch[1]);
+      console.error('[LV] Error at position:', pos);
+      console.error('[LV] Context before:', cleanedResponse.substring(Math.max(0, pos - 100), pos));
+      console.error('[LV] >>> ERROR HERE <<<');
+      console.error('[LV] Context after:', cleanedResponse.substring(pos, Math.min(cleanedResponse.length, pos + 100)));
+      console.error('[LV] Character at position:', {
+        char: cleanedResponse.charAt(pos),
+        charCode: cleanedResponse.charCodeAt(pos),
+        hex: '0x' + cleanedResponse.charCodeAt(pos).toString(16)
+      });
+    }
+    
+    // Zeige vollständige Response-Struktur für Debugging
+    console.error('[LV] Full response first 500 chars:', cleanedResponse.substring(0, 500));
+    console.error('[LV] Full response last 500 chars:', cleanedResponse.substring(cleanedResponse.length - 500));
+    
+    // Klare Fehlermeldung ohne Reparaturversuche
+    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
   }
-  
-  // Zeige vollständige Response-Struktur für Debugging
-  console.error('[LV] Full response first 500 chars:', cleanedResponse.substring(0, 500));
-  console.error('[LV] Full response last 500 chars:', cleanedResponse.substring(cleanedResponse.length - 500));
-  
-  // Klare Fehlermeldung ohne Reparaturversuche
-  throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
-}
     
     // Duplikatsprüfung durchführen
 const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
@@ -3314,11 +3254,18 @@ OUTPUT (NUR valides JSON):
   "recommendations": ["Empfehlungen für zusätzliche Experten"],
   "risks": ["Identifizierte Projektrisiken"],
   "missingInfo": ["Fehlende wichtige Informationen"],
-  "trades": [],
+  "trades": [
+    {
+      "code": "SAN",
+      "reason": "Begründung warum dieses Gewerk benötigt wird",
+      "priority": "hoch|mittel|niedrig",
+      "estimatedQuestions": 25
+    }
+  ],
   "projectCharacteristics": {
     "complexity": "SEHR_HOCH|HOCH|MITTEL|NIEDRIG|EINFACH",
     "estimatedDuration": "4-6 Wochen",
-    "criticalPath": []
+    "criticalPath": ["SAN", "ELEKT"]
   }
 }`;
 
@@ -3341,10 +3288,18 @@ Analysiere und empfehle benötigte Gewerke.`;
       .trim();
 
     const summary = JSON.parse(cleanedResponse);
-    // Override: Keine zusätzlichen Trade-Empfehlungen
-    // Die initial erkannten Gewerke reichen aus
-    summary.trades = [];
-    console.log('[INTAKE-SUMMARY] Trade recommendations disabled - using only initially detected trades');
+
+    // Filtere und validiere Trades
+    if (summary.trades && Array.isArray(summary.trades)) {
+      summary.trades = summary.trades.filter(t => validCodes.includes(t.code));
+      
+      // Füge geschätzte Fragenanzahl hinzu
+      summary.trades = summary.trades.map(t => ({
+        ...t,
+        estimatedQuestions: t.estimatedQuestions || 
+          getTradeQuestionCount(t.code, summary.projectCharacteristics?.complexity || 'MITTEL')
+      }));
+    }
 
     res.json({ ok: true, summary });
   } catch (err) {
@@ -3533,11 +3488,12 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     const {
       includeIntakeContext,
       isManuallyAdded: manualFromBody,
+      isAiRecommended: aiFromBody,
       projectDescription: descriptionFromBody,
       projectCategory: categoryFromBody,
       projectBudget: budgetFromBody
     } = req.body;
-    // Prüfe Trade-Status (manuell oder automatisch)
+    // Prüfe Trade-Status (manuell, KI-empfohlen oder automatisch)
     const tradeStatusResult = await query(
       `SELECT is_manual, is_ai_recommended 
        FROM project_trades 
@@ -3546,11 +3502,15 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     );
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
-  
-    const needsContextQuestion = tradeStatus.is_manual || manualFromBody || false;                                
+    
+    const needsContextQuestion = tradeStatus.is_manual || 
+                                 tradeStatus.is_ai_recommended || 
+                                 req.body.isManuallyAdded ||
+                                 req.body.isAiRecommended; // NEU: Auch KI-empfohlene berücksichtigen
     
     console.log('[QUESTIONS] Trade status:', {
       manual: tradeStatus.is_manual,
+      aiRecommended: tradeStatus.is_ai_recommended,
       needsContext: needsContextQuestion
     });
     
