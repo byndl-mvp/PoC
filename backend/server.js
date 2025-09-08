@@ -1797,7 +1797,7 @@ WICHTIG:
 1. Erstelle NUR Positionen für explizit erfragte Leistungen
 2. Verwende die validierten Mengen
 3. Realistische Preise (Stand 2024/2025)
-4. Dokumentiere alle Annahmen transparent${fensterMaßZusatz}`;
+4. Dokumentiere alle Annahmen transparent`;
   
   try {
   const response = await llmWithPolicy('lv', [
