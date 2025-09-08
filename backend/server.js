@@ -1623,6 +1623,62 @@ const tradeCode = trade.code;
   const lvPrompt = await getPromptForTrade(tradeId, 'lv');
   if (!lvPrompt) throw new Error('LV prompt missing for trade');
 
+  // Cross-Check Funktion zur Duplikatsprüfung
+async function checkForDuplicatePositions(projectId, currentTradeId, positions) {
+  const otherLVs = await query(
+    `SELECT t.name as trade_name, t.code as trade_code, l.content 
+     FROM lvs l 
+     JOIN trades t ON l.trade_id = t.id 
+     WHERE l.project_id = $1 AND l.trade_id != $2`,
+    [projectId, currentTradeId]
+  );
+  
+  const duplicates = [];
+  const criticalKeywords = [
+    'Wanddurchbruch', 'Durchbruch', 
+    'Gerüst', 'Arbeitsgerüst', 'Fassadengerüst',
+    'Container', 'Baustelleneinrichtung',
+    'Entsorgung', 'Abtransport', 'Abfuhr'
+  ];
+  
+  for (const pos of positions) {
+    for (const lv of otherLVs.rows) {
+
+  // NEUE ZEILEN HIER EINFÜGEN:
+  if (!lv.content || lv.content === '[object Object]') {
+    console.log('[checkForDuplicatePositions] Skipping invalid LV content');
+    continue;
+  }
+  
+  let otherContent;
+  try {
+    otherContent = JSON.parse(lv.content);  // Original Zeile 1615
+  } catch (error) {
+    console.log('[checkForDuplicatePositions] Could not parse LV content:', error.message);
+    continue;
+  }      
+  
+      if (!otherContent.positions) continue;
+      
+      for (const otherPos of otherContent.positions) {
+        for (const keyword of criticalKeywords) {
+          if (pos.title?.toLowerCase().includes(keyword.toLowerCase()) && 
+              otherPos.title?.toLowerCase().includes(keyword.toLowerCase())) {
+            duplicates.push({
+              position: pos.title,
+              foundIn: lv.trade_name,
+              tradeCode: lv.trade_code,
+              keyword: keyword
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  return duplicates;
+}  
+  
   // SPEZIAL: Fenster-Details vollständig verarbeiten
 let fensterMaßZusatz = '';
 if (trade.code === 'FEN') {
@@ -1841,62 +1897,6 @@ OUTPUT FORMAT (NUR valides JSON):
   "executionTime": "Geschätzte Ausführungsdauer"
 }`;
 
-// Cross-Check Funktion zur Duplikatsprüfung
-async function checkForDuplicatePositions(projectId, currentTradeId, positions) {
-  const otherLVs = await query(
-    `SELECT t.name as trade_name, t.code as trade_code, l.content 
-     FROM lvs l 
-     JOIN trades t ON l.trade_id = t.id 
-     WHERE l.project_id = $1 AND l.trade_id != $2`,
-    [projectId, currentTradeId]
-  );
-  
-  const duplicates = [];
-  const criticalKeywords = [
-    'Wanddurchbruch', 'Durchbruch', 
-    'Gerüst', 'Arbeitsgerüst', 'Fassadengerüst',
-    'Container', 'Baustelleneinrichtung',
-    'Entsorgung', 'Abtransport', 'Abfuhr'
-  ];
-  
-  for (const pos of positions) {
-    for (const lv of otherLVs.rows) {
-
-  // NEUE ZEILEN HIER EINFÜGEN:
-  if (!lv.content || lv.content === '[object Object]') {
-    console.log('[checkForDuplicatePositions] Skipping invalid LV content');
-    continue;
-  }
-  
-  let otherContent;
-  try {
-    otherContent = JSON.parse(lv.content);  // Original Zeile 1615
-  } catch (error) {
-    console.log('[checkForDuplicatePositions] Could not parse LV content:', error.message);
-    continue;
-  }      
-  
-      if (!otherContent.positions) continue;
-      
-      for (const otherPos of otherContent.positions) {
-        for (const keyword of criticalKeywords) {
-          if (pos.title?.toLowerCase().includes(keyword.toLowerCase()) && 
-              otherPos.title?.toLowerCase().includes(keyword.toLowerCase())) {
-            duplicates.push({
-              position: pos.title,
-              foundIn: lv.trade_name,
-              tradeCode: lv.trade_code,
-              keyword: keyword
-            });
-          }
-        }
-      }
-    }
-  }
-  
-  return duplicates;
-}  
-  
   const userPrompt = `GEWERK: ${trade.name} (${trade.code})
 
 LV-TEMPLATE:
