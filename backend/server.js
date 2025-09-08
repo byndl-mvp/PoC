@@ -3245,18 +3245,11 @@ OUTPUT (NUR valides JSON):
   "recommendations": ["Empfehlungen für zusätzliche Experten"],
   "risks": ["Identifizierte Projektrisiken"],
   "missingInfo": ["Fehlende wichtige Informationen"],
-  "trades": [
-    {
-      "code": "SAN",
-      "reason": "Begründung warum dieses Gewerk benötigt wird",
-      "priority": "hoch|mittel|niedrig",
-      "estimatedQuestions": 25
-    }
-  ],
+  "trades": [],
   "projectCharacteristics": {
     "complexity": "SEHR_HOCH|HOCH|MITTEL|NIEDRIG|EINFACH",
     "estimatedDuration": "4-6 Wochen",
-    "criticalPath": ["SAN", "ELEKT"]
+    "criticalPath": []
   }
 }`;
 
@@ -3279,18 +3272,10 @@ Analysiere und empfehle benötigte Gewerke.`;
       .trim();
 
     const summary = JSON.parse(cleanedResponse);
-
-    // Filtere und validiere Trades
-    if (summary.trades && Array.isArray(summary.trades)) {
-      summary.trades = summary.trades.filter(t => validCodes.includes(t.code));
-      
-      // Füge geschätzte Fragenanzahl hinzu
-      summary.trades = summary.trades.map(t => ({
-        ...t,
-        estimatedQuestions: t.estimatedQuestions || 
-          getTradeQuestionCount(t.code, summary.projectCharacteristics?.complexity || 'MITTEL')
-      }));
-    }
+    // Override: Keine zusätzlichen Trade-Empfehlungen
+    // Die initial erkannten Gewerke reichen aus
+    summary.trades = [];
+    console.log('[INTAKE-SUMMARY] Trade recommendations disabled - using only initially detected trades');
 
     res.json({ ok: true, summary });
   } catch (err) {
@@ -3479,12 +3464,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     const {
       includeIntakeContext,
       isManuallyAdded: manualFromBody,
-      isAiRecommended: aiFromBody,
       projectDescription: descriptionFromBody,
       projectCategory: categoryFromBody,
       projectBudget: budgetFromBody
     } = req.body;
-    // Prüfe Trade-Status (manuell, KI-empfohlen oder automatisch)
+    // Prüfe Trade-Status (manuell oder automatisch)
     const tradeStatusResult = await query(
       `SELECT is_manual, is_ai_recommended 
        FROM project_trades 
@@ -3493,15 +3477,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     );
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
-    
-    const needsContextQuestion = tradeStatus.is_manual || 
-                                 tradeStatus.is_ai_recommended || 
-                                 req.body.isManuallyAdded ||
-                                 req.body.isAiRecommended; // NEU: Auch KI-empfohlene berücksichtigen
+  
+    const needsContextQuestion = tradeStatus.is_manual || manualFromBody || false;                                
     
     console.log('[QUESTIONS] Trade status:', {
       manual: tradeStatus.is_manual,
-      aiRecommended: tradeStatus.is_ai_recommended,
       needsContext: needsContextQuestion
     });
     
