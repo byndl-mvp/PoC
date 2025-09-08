@@ -1982,7 +1982,7 @@ Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als 
       { role: 'system', content: systemPrompt },
       { role: 'user', content: enhancedPrompt }
     ], { 
-      maxTokens: 6000, 
+      maxTokens: 10000, 
       temperature: 0.3,
       jsonMode: true
     });
