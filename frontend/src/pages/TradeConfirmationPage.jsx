@@ -69,22 +69,10 @@ useEffect(() => {
         // 4. Kombiniere initial erkannte und KI-empfohlene Gewerke
         const combinedTrades = [...initialDetected];
         
-        // Füge KI-empfohlene Gewerke hinzu (wenn nicht schon vorhanden)
-        for (const rec of finalRecommendations) {
-          const tradeToadd = allTradesData.find(t => t.code === rec.code);
-          if (tradeToadd && !combinedTrades.some(t => t.id === tradeToadd.id)) {
-            combinedTrades.push({
-              ...tradeToadd,
-              recommended: true,
-              reason: rec.reason
-            });
-          }
-        }
-        
         // Markiere initial erkannte vs. KI-empfohlene
         const markedTrades = combinedTrades.map(trade => ({
           ...trade,
-          source: trade.recommended ? 'ki-empfohlen' : 'initial-erkannt',
+          source: 'initial-erkannt',
           isManuallyAdded: false
         }));
         
@@ -153,10 +141,6 @@ useEffect(() => {
       const manuallyAddedTradeIds = confirmedTradesData
         .filter(t => t.isManuallyAdded || t.source === 'manuell')
         .map(t => t.id);
-      
-      const aiRecommendedTradeIds = confirmedTradesData
-        .filter(t => t.recommended || t.source === 'ki-empfohlen')
-        .map(t => t.id);
     
     try {
       setLoading(true);
@@ -169,7 +153,6 @@ useEffect(() => {
         body: JSON.stringify({ 
           confirmedTrades: selectedTrades,
           manuallyAddedTrades: manuallyAddedTradeIds,
-          aiRecommendedTrades: aiRecommendedTradeIds,
           isAdditional: isAdditionalTrade
         })
       });
@@ -198,11 +181,6 @@ if (isAdditionalTrade) {
     return; // Wichtig: Beende hier
   }
 }
-
-// Speichere auch KI-empfohlene Trades
-  if (aiRecommendedTradeIds.length > 0) {
-    sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(aiRecommendedTradeIds));
-  }
         
 // Bestehender Code bleibt unverändert
 if (manuallyAddedTrades.length > 0) {
@@ -336,11 +314,7 @@ navigate(`/project/${projectId}/trade/${sortedTradesNormal[0].id}/questions`);
                     <div className="flex items-center gap-2">
                       <span className="text-white font-medium">{trade.name}</span>
                       <span className="text-gray-400 text-sm">({trade.code})</span>
-                      {trade.source === 'ki-empfohlen' && (
-                        <span className="bg-teal-500/20 text-teal-300 text-xs px-2 py-1 rounded">
-                          KI-Empfehlung
-                        </span>
-                      )}
+                    
                       {trade.source === 'manuell' && (
                         <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded">
                           Manuell hinzugefügt
