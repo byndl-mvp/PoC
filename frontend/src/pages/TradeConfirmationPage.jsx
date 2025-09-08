@@ -46,21 +46,21 @@ useEffect(() => {
         
         // 2. Lade Intake-Summary für bessere Gewerke-Empfehlungen
         setLoadingMessage('Analysiere Ihre Antworten...');
-        let finalRecommendations = [];
-        try {
-          const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
-          if (summaryRes.ok) {
-            const summaryData = await summaryRes.json();
-            setIntakeSummary(summaryData.summary);
-            
-            // Nutze die KI-Empfehlungen basierend auf Intake-Antworten
-            if (summaryData.summary?.trades && Array.isArray(summaryData.summary.trades)) {
-              finalRecommendations = summaryData.summary.trades;
-            }
-          }
-        } catch (err) {
-          console.log('Keine Zusammenfassung verfügbar, nutze initial erkannte Gewerke');
-        }
+        // let finalRecommendations = [];  // DIESE ZEILE LÖSCHEN ODER AUSKOMMENTIEREN
+try {
+  const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
+  if (summaryRes.ok) {
+    const summaryData = await summaryRes.json();
+    setIntakeSummary(summaryData.summary);
+    
+    // KI-Trade-Empfehlungen deaktiviert - nur allgemeine Empfehlungen werden genutzt
+    // if (summaryData.summary?.trades && Array.isArray(summaryData.summary.trades)) {
+    //   finalRecommendations = summaryData.summary.trades;
+    // }
+  }
+} catch (err) {
+  console.log('Keine Zusammenfassung verfügbar, nutze initial erkannte Gewerke');
+}
         
         // 3. Lade alle verfügbaren Gewerke
         const tradesRes = await fetch(apiUrl('/api/trades'));
