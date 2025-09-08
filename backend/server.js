@@ -1598,29 +1598,98 @@ const tradeCode = trade.code;
   const lvPrompt = await getPromptForTrade(tradeId, 'lv');
   if (!lvPrompt) throw new Error('LV prompt missing for trade');
 
-  // SPEZIAL: Fenster-Maße verarbeiten
-  let fensterMaßZusatz = '';
-  if (trade.code === 'FEN') {
-    const maßAntwort = tradeAnswers.find(a => 
-      a.question_id === 'FEN-MASSE' || 
-      (a.question && a.question.toLowerCase().includes('maße') && 
-       a.question.toLowerCase().includes('einzeln'))
-    );
+  // SPEZIAL: Fenster-Details vollständig verarbeiten
+let fensterMaßZusatz = '';
+if (trade.code === 'FEN') {
+  // Sammle ALLE Fenster-relevanten Antworten
+  const fensterDetails = {
+    material: '',
+    anzahl: 0,
+    maße: [],
+    demontage: false,
+    fensterbänke: '',
+    öffnungsart: '',
+    verglasung: ''
+  };
+  
+  // Durchsuche alle Antworten nach Fenster-Infos
+  for (const answer of tradeAnswers) {
+    const q = (answer.question || '').toLowerCase();
+    const a = (answer.answer || '').toLowerCase();
     
-    if (maßAntwort && maßAntwort.answer) {
-      const fensterTypen = parseFensterMaße(maßAntwort.answer);
+    // Material (Holz, Kunststoff, Aluminium)
+    if (q.includes('material') || q.includes('fensterart') || q.includes('welche art')) {
+      fensterDetails.material = answer.answer;
+    }
+    
+    // Anzahl
+    if (q.includes('wie viele') || q.includes('anzahl')) {
+      fensterDetails.anzahl = parseInt(answer.answer) || 0;
+    }
+    
+    // Öffnungsart
+    if (q.includes('öffnung') || q.includes('dreh') || q.includes('kipp')) {
+      fensterDetails.öffnungsart = answer.answer;
+    }
+    
+    // Verglasung
+    if (q.includes('verglasung') || q.includes('glas')) {
+      fensterDetails.verglasung = answer.answer;
+    }
+    
+    // Demontage
+    if (q.includes('demontage') || q.includes('alte fenster') || q.includes('ausbau')) {
+      fensterDetails.demontage = a.includes('ja') || a.includes('demontage') || a.includes('entfernen');
+    }
+    
+    // Fensterbänke
+    if (q.includes('fensterbank') || q.includes('fensterbänke')) {
+      fensterDetails.fensterbänke = answer.answer;
+    }
+    
+    // Maße - speziell behandeln
+    if (answer.question_id === 'FEN-MASSE' || 
+        (q.includes('maße') && (q.includes('einzeln') || q.includes('jedes')))) {
+      const fensterTypen = parseFensterMaße(answer.answer);
       if (fensterTypen.length > 0) {
-        console.log('[LV] Gefundene Fenstertypen:', fensterTypen);
-        
-        fensterMaßZusatz = `\n\nEXPLIZITE FENSTER-MASSE AUS NUTZER-EINGABE:
-${fensterTypen.map((f, i) => 
-  `Fenstertyp ${i+1}: ${f.breite}x${f.höhe} cm, ${f.anzahl} Stück`
-).join('\n')}
-
-VERWENDE DIESE EXAKTEN MASSE FÜR DIE LV-POSITIONEN!`;
+        fensterDetails.maße = fensterTypen;
       }
     }
   }
+  
+  // Log für Debugging
+  console.log('[LV] Erfasste Fenster-Details:', fensterDetails);
+  
+  // Erstelle SEHR expliziten Prompt-Zusatz
+  fensterMaßZusatz = `
+
+========== KRITISCH: EXAKTE FENSTER-VORGABEN ==========
+DER NUTZER HAT FOLGENDE ANGABEN GEMACHT - VERWENDE SIE EXAKT:
+
+MATERIAL: ${fensterDetails.material || 'Keine Angabe - verwende Kunststoff weiß'}
+>>> WICHTIG: Wenn "${fensterDetails.material}" angegeben, NUR dieses Material verwenden! <
+
+ANZAHL GESAMT: ${fensterDetails.anzahl || 'Nicht angegeben'} Fenster
+
+${fensterDetails.maße.length > 0 ? `KONKRETE EINZELMASSE:
+${fensterDetails.maße.map((f, i) => 
+  `  • Fenstertyp ${i+1}: ${f.breite} x ${f.höhe} cm = ${f.anzahl} Stück`
+).join('\n')}
+>>> Erstelle für JEDEN Fenstertyp eine eigene Position mit diesen EXAKTEN Maßen! <<<` : 
+'MASSE: Keine Einzelmaße angegeben - verwende Hinweis "Maße vor Ort aufzunehmen"'}
+
+ÖFFNUNGSART: ${fensterDetails.öffnungsart || 'Dreh-Kipp (Standard)'}
+VERGLASUNG: ${fensterDetails.verglasung || '3-fach Verglasung'}
+DEMONTAGE ALTER FENSTER: ${fensterDetails.demontage ? '✓ JA - Position hinzufügen' : '✗ NEIN - KEINE Demontage-Position'}
+FENSTERBÄNKE: ${fensterDetails.fensterbänke || 'Nicht gewünscht'}
+
+ABSOLUTE REGELN:
+1. Material "${fensterDetails.material}" MUSS in JEDER Fenster-Position stehen
+2. Erstelle NUR Positionen für explizit gewünschte Leistungen
+3. Bei Fensterbänke = "keine" → KEINE Fensterbank-Positionen
+4. Verwende die EXAKTEN Maße aus der Liste oben
+========================================================`;
+}
 
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
@@ -1677,20 +1746,25 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 
 8. SPEZIELLE FENSTER-REGELN (NUR für Gewerk FEN):
    ${tradeCode === 'FEN' ? `
-   ABSOLUT VERPFLICHTEND - FENSTER-POSITIONEN:
+   KRITISCH: ÜBERNIMM EXAKT DIE NUTZER-ANGABEN!
+   - Wenn Nutzer "Holzfenster" wählt → NUR Holzfenster im LV
+   - Wenn Nutzer "Kunststofffenster" wählt → NUR Kunststofffenster im LV
+   - KEINE Standard-Annahmen die den Nutzer-Angaben widersprechen!
+   
    - JEDES Fenster MUSS als EIGENE Position mit EXAKTEN Abmessungen
-   - Format: "Fenster [Typ] [Material], [Breite] x [Höhe] cm, [Öffnungsart]"
+   - Format: "Fenster [GEWÄHLTES MATERIAL], [Breite] x [Höhe] cm, [Öffnungsart]"
    - NIEMALS Sammelpositionen wie "6 Fenster" ohne Einzelaufstellung
    - NIEMALS m² oder Pauschalangaben
    - Gleiche Fenstertypen: Als eine Position mit Stückzahl
    
    BEISPIEL KORREKT:
-   - Pos 1: Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp, 2 Stück
-   - Pos 2: Fenster Kunststoff weiß, 60 x 80 cm, Kipp, 3 Stück
+   - Pos 1: Fenster [NUTZER-MATERIAL], 120 x 140 cm, Dreh-Kipp, 2 Stück
+   - Pos 2: Fenster [NUTZER-MATERIAL], 60 x 80 cm, Kipp, 3 Stück
    
    BEISPIEL FALSCH:
    - "Einbau von 6 Fenstern" ❌
    - "Fenster gesamt 25 m²" ❌
+   - Falsches Material verwenden ❌
    ` : ''}
    
 OUTPUT FORMAT (NUR valides JSON):
