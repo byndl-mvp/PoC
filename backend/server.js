@@ -1437,7 +1437,7 @@ if (tradeCode === 'FEN') {
       tradeName: tradeName
     });
   }
-}    
+    
     // FILTER: Entferne Duplikate von bereits beantworteten Fragen
 let filteredQuestions = processedQuestions;
 
@@ -1447,7 +1447,7 @@ if (answeredQuestions && answeredQuestions.length > 0) {
       .replace(/[?.,!:]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
-  );
+  );  
   
   filteredQuestions = processedQuestions.filter(newQ => {
     const newText = (newQ.question || '')
