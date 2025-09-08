@@ -644,6 +644,10 @@ if (finalizing) {
 
         {/* Question Card */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20 mb-6">
+          {/* Kompakter Hinweis */}
+          <p className="text-gray-400 text-sm mb-4 italic">
+            💡 Tipp: Überspringen Sie Fragen, die nicht auf Ihr Projekt zutreffen.
+          </p>
           {currentQ.category && (
             <div className="text-teal-400 text-sm font-medium mb-3">
               {currentQ.category}
