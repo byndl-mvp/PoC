@@ -1982,18 +1982,18 @@ try {
   console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
   
   // HIER die erweiterte Fenster-Validierung mit Auto-Korrektur:
-if (trade.code === 'FEN') {
-  const hasInvalidPositions = lv.positions.some(pos => 
-    pos.description.toLowerCase().includes('fenster') &&
-    !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
-  );
-  
-  if (hasInvalidPositions) {
-    console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
+  if (trade.code === 'FEN') {
+    const hasInvalidPositions = lv.positions.some(pos => 
+      pos.description.toLowerCase().includes('fenster') &&
+      !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
+    );
     
-    // Erweitere den User-Prompt mit expliziter Anweisung
-    const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
-    
+    if (hasInvalidPositions) {
+      console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
+      
+      // Erweitere den User-Prompt mit expliziter Anweisung
+      const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
+      
 ABSOLUT VERPFLICHTEND für JEDE Fensterposition:
 - Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
 - Beispiel: "Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp"
@@ -2002,110 +2002,84 @@ Die Fenstermaße MÜSSEN aus den erfassten Antworten stammen!
 Verwende die EXAKTEN Maße die der Nutzer angegeben hat.
 KEINE erfundenen Standardmaße!
 Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als "Maße fehlen - vor Ort aufzunehmen".`;
+      
+      // KORRIGIERT: Verwende llmWithPolicy statt callLLM
+      const retryResponse = await llmWithPolicy('lv', [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: enhancedPrompt }
+      ], { 
+        maxTokens: 6000, 
+        temperature: 0.3,
+        jsonMode: true
+      });
+      
+      // KORRIGIERT: Parse direkt ohne .content
+      lv = JSON.parse(retryResponse.trim());
+      console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
+    }
     
-    // KORRIGIERT: Verwende llmWithPolicy statt callLLM
-    const retryResponse = await llmWithPolicy('lv', [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: enhancedPrompt }
-    ], { 
-      maxTokens: 6000, 
-      temperature: 0.3,
-      jsonMode: true
-    });
+    // NEUE VALIDIERUNG FÜR DEMONTAGE/ENTSORGUNG
+    const hasDemontage = lv.positions.some(p => 
+      p.title.toLowerCase().includes('demontage') || 
+      p.title.toLowerCase().includes('ausbau') ||
+      p.title.toLowerCase().includes('altfenster')
+    );
     
-    // KORRIGIERT: Parse direkt ohne .content
-    lv = JSON.parse(retryResponse.trim());
-    console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
-  }
-  
-  // NEUE VALIDIERUNG FÜR DEMONTAGE/ENTSORGUNG
-  const hasDemontage = lv.positions.some(p => 
-    p.title.toLowerCase().includes('demontage') || 
-    p.title.toLowerCase().includes('ausbau') ||
-    p.title.toLowerCase().includes('altfenster')
-  );
-  
-  // NUR wenn Demontage gewünscht ist UND fehlt
-  if (!hasDemontage && fensterDetails && fensterDetails.demontage) {
-    console.log('[LV] Füge fehlende Demontage/Entsorgung-Position hinzu');
-    
-    // Finde die richtige Position zum Einfügen
-    const fensterPosCount = lv.positions.filter(p => 
-      p.title.toLowerCase().includes('fenster') && 
-      !p.title.toLowerCase().includes('bank') &&
-      !p.title.toLowerCase().includes('demontage')
-    ).length;
-    
-    // EINE kombinierte Position für Demontage UND Entsorgung
-    lv.positions.splice(fensterPosCount, 0, {
-      pos: `01.02.001`,
-      title: 'Demontage und Entsorgung der Altfenster',
-      description: 'Fachgerechter Ausbau der vorhandenen Fenster inkl. Rahmen, ' +
-                   'ohne Beschädigung des umliegenden Mauerwerks. ' +
-                   'Inklusive Abtransport und fachgerechter Entsorgung gemäß gesetzlichen Vorschriften.',
-      quantity: fensterDetails.anzahl || 1,
-      unit: 'Stk',
-      unitPrice: 130,
-      totalPrice: (fensterDetails.anzahl || 1) * 130,
-      dataSource: 'standard',
-      notes: 'Demontage + Entsorgung kombiniert'
-    });
-  }
-}
-    // Erweitere den User-Prompt mit expliziter Anweisung
-    const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
-    
-ABSOLUT VERPFLICHTEND für JEDE Fensterposition:
-- Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
-- Beispiel: "Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp"
-
-Die Fenstermaße MÜSSEN aus den erfassten Antworten stammen!
-Verwende die EXAKTEN Maße die der Nutzer angegeben hat.
-KEINE erfundenen Standardmaße!
-Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als "Maße fehlen - vor Ort aufzunehmen".`;
-    
-    // KORRIGIERT: Verwende llmWithPolicy statt callLLM
-    const retryResponse = await llmWithPolicy('lv', [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: enhancedPrompt }
-    ], { 
-      maxTokens: 6000, 
-      temperature: 0.3,
-      jsonMode: true
-    });
-    
-    // KORRIGIERT: Parse direkt ohne .content
-    lv = JSON.parse(retryResponse.trim());
-    console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
+    // NUR wenn Demontage gewünscht ist UND fehlt
+    if (!hasDemontage && fensterDetails && fensterDetails.demontage) {
+      console.log('[LV] Füge fehlende Demontage/Entsorgung-Position hinzu');
+      
+      // Finde die richtige Position zum Einfügen
+      const fensterPosCount = lv.positions.filter(p => 
+        p.title.toLowerCase().includes('fenster') && 
+        !p.title.toLowerCase().includes('bank') &&
+        !p.title.toLowerCase().includes('demontage')
+      ).length;
+      
+      // EINE kombinierte Position für Demontage UND Entsorgung
+      lv.positions.splice(fensterPosCount, 0, {
+        pos: `01.02.001`,
+        title: 'Demontage und Entsorgung der Altfenster',
+        description: 'Fachgerechter Ausbau der vorhandenen Fenster inkl. Rahmen, ' +
+                     'ohne Beschädigung des umliegenden Mauerwerks. ' +
+                     'Inklusive Abtransport und fachgerechter Entsorgung gemäß gesetzlichen Vorschriften.',
+        quantity: fensterDetails.anzahl || 1,
+        unit: 'Stk',
+        unitPrice: 130,
+        totalPrice: (fensterDetails.anzahl || 1) * 130,
+        dataSource: 'standard',
+        notes: 'Demontage + Entsorgung kombiniert'
+      });
+    }
   }
   
 } catch (parseError) {
-    // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
-    console.error('[LV] CRITICAL: Parse error despite JSON mode active!');
-    console.error('[LV] Error message:', parseError.message);
-    
-    // Detailliertes Error-Logging
-    const errorMatch = parseError.message.match(/position (\d+)/);
-    if (errorMatch) {
-      const pos = parseInt(errorMatch[1]);
-      console.error('[LV] Error at position:', pos);
-      console.error('[LV] Context before:', cleanedResponse.substring(Math.max(0, pos - 100), pos));
-      console.error('[LV] >>> ERROR HERE <<<');
-      console.error('[LV] Context after:', cleanedResponse.substring(pos, Math.min(cleanedResponse.length, pos + 100)));
-      console.error('[LV] Character at position:', {
-        char: cleanedResponse.charAt(pos),
-        charCode: cleanedResponse.charCodeAt(pos),
-        hex: '0x' + cleanedResponse.charCodeAt(pos).toString(16)
-      });
-    }
-    
-    // Zeige vollständige Response-Struktur für Debugging
-    console.error('[LV] Full response first 500 chars:', cleanedResponse.substring(0, 500));
-    console.error('[LV] Full response last 500 chars:', cleanedResponse.substring(cleanedResponse.length - 500));
-    
-    // Klare Fehlermeldung ohne Reparaturversuche
-    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
+  // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
+  console.error('[LV] CRITICAL: Parse error despite JSON mode active!');
+  console.error('[LV] Error message:', parseError.message);
+  
+  // Detailliertes Error-Logging
+  const errorMatch = parseError.message.match(/position (\d+)/);
+  if (errorMatch) {
+    const pos = parseInt(errorMatch[1]);
+    console.error('[LV] Error at position:', pos);
+    console.error('[LV] Context before:', cleanedResponse.substring(Math.max(0, pos - 100), pos));
+    console.error('[LV] >>> ERROR HERE <<<');
+    console.error('[LV] Context after:', cleanedResponse.substring(pos, Math.min(cleanedResponse.length, pos + 100)));
+    console.error('[LV] Character at position:', {
+      char: cleanedResponse.charAt(pos),
+      charCode: cleanedResponse.charCodeAt(pos),
+      hex: '0x' + cleanedResponse.charCodeAt(pos).toString(16)
+    });
   }
+  
+  // Zeige vollständige Response-Struktur für Debugging
+  console.error('[LV] Full response first 500 chars:', cleanedResponse.substring(0, 500));
+  console.error('[LV] Full response last 500 chars:', cleanedResponse.substring(cleanedResponse.length - 500));
+  
+  // Klare Fehlermeldung ohne Reparaturversuche
+  throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
+}
     
     // Duplikatsprüfung durchführen
 const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
