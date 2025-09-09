@@ -1271,6 +1271,53 @@ INNENPROJEKT ERKANNT - Stelle zusätzlich diese Fragen:
 - Gibt es Engstellen beim Transport?`;
   }
 }
+// Schadensabfrage basierend auf Gewerken
+let schadensfrageText = '';
+if (isIntake && projectContext.detectedTrades) {
+  const schadensRelevant = [];
+  
+  // Prüfe welche Gewerke vorhanden sind und sammle relevante Schadensfragen
+  projectContext.detectedTrades.forEach(trade => {
+    switch(trade.code) {
+      case 'FASS':
+        schadensRelevant.push('Gibt es sichtbare Schäden an der Fassade (Risse, Abplatzungen, Feuchtigkeit)?');
+        break;
+      case 'DACH':
+        schadensRelevant.push('Gibt es Schäden am Dach (undichte Stellen, fehlende Ziegel, Sturmschäden)?');
+        break;
+      case 'KEL':
+      case 'ABBR':
+        schadensRelevant.push('Gibt es Feuchtigkeitsschäden im Keller (nasse Wände, Schimmel, Salzausblühungen)?');
+        break;
+      case 'SAN':
+      case 'HEI':
+        schadensRelevant.push('Gibt es Wasserschäden oder Rohrbrüche (Verfärbungen, Feuchtigkeit)?');
+        break;
+      case 'FEN':
+        schadensRelevant.push('Gibt es Schäden an Fensterlaibungen (Risse, Feuchtigkeit, Schimmel)?');
+        break;
+      case 'MAL':
+        schadensRelevant.push('Gibt es Vorschäden an Wänden/Decken (Risse, Feuchtigkeit, Schimmel)?');
+        break;
+      case 'ELEKT':
+        schadensRelevant.push('Gibt es bekannte Elektroschäden (Kurzschlüsse, defekte Leitungen)?');
+        break;
+    }
+  });
+  
+  // Keller-Check auch über Beschreibung
+  const beschreibung = (projectContext.description || '').toLowerCase();
+  if (beschreibung.includes('keller') && !schadensRelevant.some(s => s.includes('Keller'))) {
+    schadensRelevant.push('Gibt es Feuchtigkeitsprobleme im Keller?');
+  }
+  
+  if (schadensRelevant.length > 0) {
+    schadensfrageText = `
+SCHADENSABFRAGE - Wichtig für Kalkulation:
+${schadensRelevant.map(s => `- ${s}`).join('\n')}
+- Falls ja: Bitte Umfang beschreiben (klein/mittel/groß)`;
+  }
+}
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
@@ -1409,6 +1456,7 @@ PROJEKT-KONTEXT:
 - Budget: ${projectContext.budget || 'Nicht angegeben'}
 
 ${innenprojektText}
+${schadensfrageText}
 
 KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 
