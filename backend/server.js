@@ -1718,7 +1718,7 @@ BEACHTE:
     }
     
     // NEU - füge multiSelect hinzu:
-const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) => ({
+let processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) => ({
   id: q.id || `${tradeCode}-${String(idx + 1).padStart(2, '0')}`,
   category: q.category || 'Allgemein',
   question: q.question || q.text || q.q || `Frage ${idx + 1}`,
