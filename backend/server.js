@@ -1843,20 +1843,14 @@ if (tradeCode === 'FASS' && !extractedData?.quantities?.flaeche) {
 }
 
 if (tradeCode === 'GER') {
-  // Sicherstellen dass RICHTIGE Fläche erfragt wird
+  // Sicherstellen dass Gerüstfläche erfragt wird
   const hasCorrectAreaQuestion = processedQuestions.some(q => 
     q.question.toLowerCase().includes('gerüstfläche') || 
-    (q.question.toLowerCase().includes('fläche') && q.question.toLowerCase().includes('gerüst'))
+    q.question.toLowerCase().includes('m²')
   );
   
   if (!hasCorrectAreaQuestion) {
-    // Entferne falsche Fragen
-    processedQuestions = processedQuestions.filter(q => 
-      !q.question.toLowerCase().includes('höhe') || 
-      !q.question.toLowerCase().includes('länge')
-    );
-    
-    // Füge korrekte Frage hinzu
+    // Füge Pflichtfrage hinzu
     processedQuestions.unshift({
       id: 'GER-01',
       category: 'Mengenermittlung',
@@ -1864,10 +1858,12 @@ if (tradeCode === 'GER') {
       explanation: 'Berechnung: (Länge aller einzurüstenden Fassadenseiten) x (Höhe bis Arbeitsebene + 2m Überstand)',
       type: 'number',
       required: true,
-      unit: 'm²'
+      unit: 'm²',
+      tradeId: tradeId,
+      tradeName: tradeName
     });
   }
-}    
+}   
     // VERBESSERTER FILTER: Entferne Duplikate basierend auf allen Informationsquellen
 let filteredQuestions = processedQuestions;
 
