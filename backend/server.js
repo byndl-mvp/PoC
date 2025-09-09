@@ -1246,6 +1246,31 @@ if (projectContext.isManuallyAdded) {
   targetQuestionCount = Math.max(10, targetQuestionCount); // Mindestens 10 Fragen bei manuellen Gewerken
   console.log(`[QUESTIONS] Context question required for ${tradeName} - manually added`);
 }
+
+// Innenprojekt-Erkennung für intelligente Intake-Fragen
+let innenprojektText = '';
+if (isIntake) {
+  const hasInnengewerke = projectContext.detectedTrades?.some(t => 
+    ['MAL', 'BOD', 'FLI', 'TIS', 'TRO', 'ELEKT', 'SAN', 'HEI'].includes(t.code)
+  );
+  const hasAussengewerke = projectContext.detectedTrades?.some(t => 
+    ['DACH', 'FASS', 'AUSS', 'GER'].includes(t.code)
+  );
+  const beschreibung = (projectContext.description || '').toLowerCase();
+  const istWohnung = beschreibung.includes('wohnung') || 
+                     beschreibung.includes('stock') || 
+                     beschreibung.includes('etage');
+  
+  if ((hasInnengewerke && !hasAussengewerke) || istWohnung) {
+    innenprojektText = `
+INNENPROJEKT ERKANNT - Stelle zusätzlich diese Fragen:
+- In welchem Stockwerk/Geschoss befindet sich die Wohnung?
+- Gibt es einen Aufzug? (Falls ja: Maße angeben)
+- Kann der Aufzug für Materialtransport genutzt werden?
+- Wie breit ist das Treppenhaus?
+- Gibt es Engstellen beim Transport?`;
+  }
+}
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
@@ -1285,8 +1310,41 @@ INTELLIGENTE FRAGENAUSWAHL BASIEREND AUF GEWERKEN:
 
 7. SANITÄRANLAGEN FÜR HANDWERKER (NUR bei):
    - Großprojekten (>3 Gewerke)
-   - Oder Projektdauer >2 Wochen
+   - Oder Projektdauer >4 Wochen
 
+8. MATERIALTRANSPORT BEI INNENPROJEKTEN (NUR fragen bei):
+   - Erkannte Innengewerke: MAL, BOD, FLI, TIS, TRO, ELEKT, SAN, HEI
+   - Wenn Projektbeschreibung "Wohnung", "Büro", "Innen" enthält
+   
+   FRAGEN:
+   - In welchem Geschoss/Stockwerk befindet sich die Wohnung/das Objekt?
+   - Gibt es einen Aufzug? Wenn ja: Maße (B x T x H)?
+   - Kann der Aufzug für Materialtransport genutzt werden?
+   - Breite der Treppe/Treppenhaus?
+   - Gibt es Engstellen (schmale Türen, verwinkelte Flure)?
+   - Maximale Transportlänge (z.B. für lange Bretter, Rohre)?
+   - Gibt es einen Balkon/Fenster für Kranarbeiten (bei höheren Etagen)?
+
+9. SCHUTZ BEI BEWOHNTEN OBJEKTEN (bei "bewohnt während Bauzeit" = ja):
+   - Müssen bestimmte Bereiche staubfrei bleiben?
+   - Gibt es empfindliche Böden/Treppen die geschützt werden müssen?
+
+BEISPIEL-ANPASSUNG:
+- "Wohnungssanierung 3. OG": 
+  → Frage nach Aufzug PFLICHT
+  → Frage nach Treppenbreite
+  → Frage nach Balkonen/Fenstern für Materialtransport
+  
+- "Kellersanierung":
+  → Frage nach Kellerzugang
+  → Frage nach Lichtschacht
+  → Keine Aufzugfrage
+
+- "Dachgeschoss-Ausbau":
+  → Frage nach Dachbodenzugang
+  → Maximale Transportlänge für Balken
+  → Treppenbreite kritisch
+  
 ANPASSUNG AN PROJEKTGRÖSSE:
 - Kleines Projekt (1-2 Gewerke): 10-15 Fragen
 - Mittleres Projekt (3-5 Gewerke): 15-20 Fragen  
@@ -1349,6 +1407,8 @@ PROJEKT-KONTEXT:
 - Beschreibung: ${projectContext.description || 'Nicht angegeben'}
 - Kategorie: ${projectContext.category || 'Nicht angegeben'}
 - Budget: ${projectContext.budget || 'Nicht angegeben'}
+
+${innenprojektText}
 
 KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 
