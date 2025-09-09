@@ -1999,6 +1999,9 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 8. SPEZIELLE FENSTER-REGELN (NUR für Gewerk FEN):
    ${tradeCode === 'FEN' ? `
    KRITISCH: ÜBERNIMM EXAKT DIE NUTZER-ANGABEN!
+   - Lieferung und Montage IMMER in EINER Position pro Fenstertyp
+   - DEMONTAGE: NUR EINE Sammelposition für ALLE Altfenster
+   - Reihenfolge: Erst Demontage, dann neue Fenster   
    - Wenn Nutzer "Holzfenster" wählt → NUR Holzfenster im LV
    - Wenn Nutzer "Kunststofffenster" wählt → NUR Kunststofffenster im LV
    - KEINE Standard-Annahmen die den Nutzer-Angaben widersprechen!
@@ -2010,10 +2013,14 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Gleiche Fenstertypen: Als eine Position mit Stückzahl
    
    BEISPIEL KORREKT:
-   - Pos 1: Fenster [NUTZER-MATERIAL], 120 x 140 cm, Dreh-Kipp, 2 Stück
-   - Pos 2: Fenster [NUTZER-MATERIAL], 60 x 80 cm, Kipp, 3 Stück
+   - Pos 1: Demontage und Entsorgung sämtlicher Altfenster, 5 Stück
+   - Pos 2: Fenster [NUTZER-MATERIAL], 120 x 140 cm, Dreh-Kipp, 2 Stück
+   - Pos 3: Fenster [NUTZER-MATERIAL], 60 x 80 cm, Kipp, 3 Stück
    
    BEISPIEL FALSCH:
+   - "Demontage Fenster 1" ❌
+   - "Demontage Fenster 2" ❌
+   - "Entsorgung Fenster" ❌   
    - "Einbau von 6 Fenstern" ❌
    - "Fenster gesamt 25 m²" ❌
    - Falsches Material verwenden ❌
@@ -2685,7 +2692,45 @@ if (tradeCode === 'GER') {
     }
   }
 } 
+
+    // SPEZIAL-REGEL FÜR FENSTER-DEMONTAGE
+if (tradeCode === 'FEN' && lv.positions) {
+  // Sammle alle Demontage-Positionen
+  const demontagePositions = lv.positions.filter(pos => 
+    pos.title?.toLowerCase().includes('demontage') && 
+    pos.title?.toLowerCase().includes('fenster')
+  );
+  
+  if (demontagePositions.length > 1) {
+    console.warn(`[FEN] Konsolidiere ${demontagePositions.length} Demontage-Positionen zu einer`);
     
+    // Berechne Gesamtmenge
+    const totalQuantity = demontagePositions.reduce((sum, pos) => 
+      sum + (pos.quantity || 0), 0
+    );
+    
+    // Erstelle eine konsolidierte Position
+    const consolidatedDemontage = {
+      pos: demontagePositions[0].pos,
+      title: 'Demontage und Entsorgung sämtlicher Altfenster',
+      description: 'Fachgerechte Demontage aller Bestandsfenster inkl. Entsorgung und Recycling gemäß Abfallverordnung',
+      quantity: totalQuantity,
+      unit: 'Stk',
+      unitPrice: 60, // Realistischer Preis
+      totalPrice: totalQuantity * 60,
+      dataSource: 'consolidated'
+    };
+    
+    // Entferne alte Positionen und füge neue hinzu
+    lv.positions = lv.positions.filter(pos => 
+      !demontagePositions.includes(pos)
+    );
+    lv.positions.unshift(consolidatedDemontage); // Am Anfang einfügen
+    
+    fixedCount++;
+    warnings.push(`Fenster-Demontage zu Sammelposition konsolidiert`);
+  }
+}    
     // 5. GENERELLE ABSURDITÄTSPRÜFUNG
     if (pos.unit === 'm' && pos.unitPrice > 500) {
       const oldPrice = pos.unitPrice;
