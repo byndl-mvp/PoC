@@ -169,7 +169,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-5xl font-bold text-teal-400 mb-2">75%</div>
+              <div className="text-5xl font-bold text-teal-400 mb-2">98%</div>
               <p className="text-xl text-white">Zeitersparnis</p>
               <p className="text-gray-400 mt-2">gegenüber herkömmlicher LV-Erstellung</p>
             </div>
