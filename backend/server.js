@@ -1370,48 +1370,59 @@ const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) 
 }));
     
     console.log(`[QUESTIONS] Successfully generated ${processedQuestions.length} questions for ${tradeName}`);
-    // SPEZIAL-BEHANDLUNG FÜR FENSTER: Stelle sicher dass Einzelmaße abgefragt werden
-if (tradeCode === 'FEN') {
-  console.log('[QUESTIONS] Checking for window measurement questions...');
+    if (tradeCode === 'FEN') {
+  console.log('[QUESTIONS] Ensuring ALL critical window questions...');
   
-  // Prüfe ob eine Frage nach Einzelmaßen existiert
+  // PFLICHT-CHECKS für Fenster
   const hasMaßfrage = processedQuestions.some(q => 
-    q.question.toLowerCase().includes('maße') && 
-    (q.question.toLowerCase().includes('einzeln') || 
-     q.question.toLowerCase().includes('jedes') ||
-     q.question.toLowerCase().includes('liste'))
+    q.question.toLowerCase().includes('maße')
   );
   
-  if (!hasMaßfrage) {
-    console.log('[QUESTIONS] Adding specific window measurement question');
-    
-    // Finde die Position nach der Anzahl-Frage
-    const anzahlIndex = processedQuestions.findIndex(q => 
-      q.question.toLowerCase().includes('wie viele') ||
-      q.question.toLowerCase().includes('anzahl')
-    );
-    
-    const insertPosition = anzahlIndex >= 0 ? anzahlIndex + 1 : 1;
-    
-    // Füge Maß-Frage ein
-    processedQuestions.splice(insertPosition, 0, {
-      id: 'FEN-MASSE',
-      category: 'Abmessungen',
-      question: 'Welche Maße haben die einzelnen Fenster? Bitte geben Sie für jedes Fenster Breite x Höhe in cm an (z.B. "Fenster 1: 120x140, Fenster 2: 80x100, Fenster 3: 60x80")',
-      explanation: 'Messen Sie jedes Fenster von Rahmen zu Rahmen. Bei gleichen Fenstern können Sie schreiben: "3 Stück 120x140, 2 Stück 80x100"',
-      type: 'text',
-      multiSelect: false,
+  const hasMaterialFrage = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('material') || 
+    q.question.toLowerCase().includes('rahmen')
+  );
+  
+  const hasÖffnungsFrage = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('öffnung') || 
+    q.question.toLowerCase().includes('dreh')
+  );
+  
+  // FÜGE FEHLENDE FRAGEN HINZU
+  let insertPos = 1;
+  
+  if (!hasMaterialFrage) {
+    processedQuestions.splice(insertPos++, 0, {
+      id: 'FEN-MATERIAL',
+      category: 'Material',
+      question: 'Welches Rahmenmaterial wünschen Sie für die Fenster?',
+      explanation: 'Das Material bestimmt bis zu 40% des Preises!',
+      type: 'select',
+      options: ['Kunststoff', 'Holz', 'Holz-Aluminium', 'Aluminium'],
       required: true,
+      multiSelect: false,
       unit: null,
-      options: null,
-      defaultValue: null,
-      validationRule: null,
       tradeId: tradeId,
       tradeName: tradeName
     });
-    
-    console.log('[QUESTIONS] Window measurement question added');
   }
+  
+  if (!hasMaßfrage) {
+    processedQuestions.splice(insertPos++, 0, {
+      id: 'FEN-MASSE',
+      category: 'Abmessungen',
+      question: 'Welche Maße haben die einzelnen Fenster? Bitte für jedes Fenster: Breite x Höhe in cm, Anzahl Flügel, Öffnungsart',
+      explanation: 'Beispiel: "Fenster 1: 120x140cm, 2-flügelig, Dreh-Kipp" oder "3 Stück 80x100cm, 1-flügelig, Kipp"',
+      type: 'text',
+      required: true,
+      multiSelect: false,
+      unit: null,
+      tradeId: tradeId,
+      tradeName: tradeName
+    });
+  }
+  
+  console.log('[QUESTIONS] Window questions verified - Material, Maße, Öffnung checked');
 }
     // FILTER: Entferne Duplikate von bereits beantworteten Fragen
 let filteredQuestions = processedQuestions;
@@ -1918,6 +1929,13 @@ Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als 
     // Klare Fehlermeldung ohne Reparaturversuche
     throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
   }
+
+// NEUE PREISVALIDIERUNG - HIER EINFÜGEN (Zeile 1921)
+const priceValidation = validateAndFixPrices(lv, trade.code);
+if (priceValidation.fixedCount > 0) {
+  console.warn(`[LV] Fixed ${priceValidation.fixedCount} unrealistic prices for ${trade.code}`);
+  lv = priceValidation.lv;
+}
     
     // Duplikatsprüfung durchführen
 const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
@@ -2116,6 +2134,91 @@ async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
   // Log den letzten Fehler ausführlich
   console.error('[LV] All attempts failed. Last error:', lastError);
   throw new Error(`LV-Generierung fehlgeschlagen: ${lastError.message}`);
+}
+
+/**
+ * Intelligentere Preisvalidierung basierend auf Kontext
+ */
+function validateAndFixPrices(lv, tradeCode) {
+  let fixedCount = 0;
+  let warnings = [];
+  
+  if (!lv.positions || !Array.isArray(lv.positions)) {
+    return { lv, fixedCount, warnings };
+  }
+
+  lv.positions = lv.positions.map(pos => {
+    // Skip Stundenlohn und Kleinmaterial
+    if (pos.title?.includes('Stundenlohn') || 
+        pos.title?.toLowerCase().includes('kleinmaterial') ||
+        pos.title?.toLowerCase().includes('befestigung')) {
+      return pos;
+    }
+
+    // KONTEXTBASIERTE PRÜFUNG
+    const isMainPosition = 
+      pos.title?.toLowerCase().includes('fenster') ||
+      pos.title?.toLowerCase().includes('tür') ||
+      pos.title?.toLowerCase().includes('heizung') ||
+      pos.title?.toLowerCase().includes('sanitär') ||
+      pos.title?.toLowerCase().includes('fliesen') ||
+      pos.title?.toLowerCase().includes('estrich');
+
+    // Nur Hauptpositionen prüfen
+    if (isMainPosition && pos.unitPrice < 50) {
+      const oldPrice = pos.unitPrice;
+      
+      // Intelligente Korrektur basierend auf Beschreibung
+      if (pos.title?.toLowerCase().includes('fenster')) {
+        // Fenster-spezifische Größenberechnung
+        const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*x\s*(\d+)/);
+        if (sizeMatch) {
+          const width = parseInt(sizeMatch[1]);
+          const height = parseInt(sizeMatch[2]);
+          const area = (width * height) / 10000;
+          pos.unitPrice = Math.round(600 + (area * 500));
+        } else {
+          pos.unitPrice = 900; // Standard-Fenster
+        }
+        warnings.push(`Hauptposition "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      } else if (pos.title?.toLowerCase().includes('tür')) {
+        pos.unitPrice = pos.unitPrice < 100 ? 750 : pos.unitPrice;
+        if (oldPrice !== pos.unitPrice) {
+          warnings.push(`Tür: €${oldPrice} → €${pos.unitPrice}`);
+          fixedCount++;
+        }
+      }
+      
+      // Neuberechnung
+      if (pos.quantity) {
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      }
+    }
+
+    // Prüfung auf offensichtliche Fehler (1€ für m²-Positionen)
+    if (pos.unit === 'm²' && pos.unitPrice < 5) {
+      pos.unitPrice = 45; // Sicherer Default für Flächenarbeiten
+      warnings.push(`Flächenposition korrigiert: ${pos.title}`);
+      fixedCount++;
+    }
+
+    return pos;
+  });
+
+  // Neuberechnung der Gesamtsumme wenn Änderungen
+  if (fixedCount > 0) {
+    const newTotal = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+    lv.totalSum = Math.round(newTotal * 100) / 100;
+  }
+
+  // Log nur wenn wirklich was geändert wurde
+  if (warnings.length > 0) {
+    console.warn(`[PRICE-CHECK] ${tradeCode}: ${fixedCount} kritische Preise korrigiert`);
+    warnings.forEach(w => console.warn(`  - ${w}`));
+  }
+
+  return { lv, fixedCount, warnings };
 }
 
 /**
