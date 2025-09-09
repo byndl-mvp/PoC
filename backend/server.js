@@ -1609,6 +1609,85 @@ const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) 
   
   console.log('[QUESTIONS] Window questions verified - Material, Maße, Öffnung checked');
 }
+// INTELLIGENTE GEWERKE-VALIDIERUNG basierend auf Kontext
+processedQuestions = processedQuestions.map((q, idx) => {
+  const qLower = q.question.toLowerCase();
+  
+  // Regel 1: Wenn ein anderes Gewerk explizit im Projekt ist, keine Fragen dazu
+  const otherTradesInProject = projectContext.trades || [];
+  
+  // Prüfe ob Frage zu anderem Gewerk gehört
+  const belongsToOtherTrade = otherTradesInProject.some(otherTrade => {
+    if (otherTrade.code === tradeCode) return false; // Eigenes Gewerk ok
+    
+    // Mapping von Keywords zu Gewerken
+    const tradeIndicators = {
+      'FEN': ['fenster', 'verglasung', 'öffnungsart', 'rahmen', 'fensterbank'],
+      'FASS': ['fassade', 'wdvs', 'dämmung außen', 'außenputz'],
+      'DACH': ['dach', 'ziegel', 'dachrinne', 'first', 'traufe'],
+      'SAN': ['sanitär', 'waschbecken', 'wc', 'dusche', 'abwasser'],
+      'ELEKT': ['steckdose', 'schalter', 'kabel', 'verteiler', 'strom'],
+      'HEI': ['heizung', 'heizkörper', 'thermostat', 'heizkessel']
+    };
+    
+    const indicators = tradeIndicators[otherTrade.code] || [];
+    return indicators.some(indicator => qLower.includes(indicator));
+  });
+  
+  if (belongsToOtherTrade) {
+    console.log(`[GEWERKE-INTELLIGENCE] Question belongs to other trade: "${q.question}"`);
+    return null; // Markiere zum Entfernen
+  }
+  
+  return q;
+}).filter(q => q !== null);
+
+// PFLICHTFRAGEN intelligent sicherstellen
+if (tradeCode === 'FASS' && !extractedData?.quantities?.flaeche) {
+  const hasAreaQuestion = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('fläche') || 
+    q.question.toLowerCase().includes('m²')
+  );
+  
+  if (!hasAreaQuestion) {
+    processedQuestions.unshift({
+      id: 'FASS-01',
+      category: 'Mengenermittlung',
+      question: 'Wie groß ist die zu dämmende Fassadenfläche in m²?',
+      explanation: 'Bitte messen Sie alle Außenwandflächen, die gedämmt werden sollen (ohne Fenster/Türen)',
+      type: 'number',
+      required: true,
+      unit: 'm²'
+    });
+  }
+}
+
+if (tradeCode === 'GER') {
+  // Sicherstellen dass RICHTIGE Fläche erfragt wird
+  const hasCorrectAreaQuestion = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('gerüstfläche') || 
+    (q.question.toLowerCase().includes('fläche') && q.question.toLowerCase().includes('gerüst'))
+  );
+  
+  if (!hasCorrectAreaQuestion) {
+    // Entferne falsche Fragen
+    processedQuestions = processedQuestions.filter(q => 
+      !q.question.toLowerCase().includes('höhe') || 
+      !q.question.toLowerCase().includes('länge')
+    );
+    
+    // Füge korrekte Frage hinzu
+    processedQuestions.unshift({
+      id: 'GER-01',
+      category: 'Mengenermittlung',
+      question: 'Wie groß ist die benötigte Gerüstfläche in m²?',
+      explanation: 'Berechnung: (Länge aller einzurüstenden Fassadenseiten) x (Höhe bis Arbeitsebene + 2m Überstand)',
+      type: 'number',
+      required: true,
+      unit: 'm²'
+    });
+  }
+}    
     // VERBESSERTER FILTER: Entferne Duplikate basierend auf allen Informationsquellen
 let filteredQuestions = processedQuestions;
 
