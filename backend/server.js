@@ -853,11 +853,45 @@ async function detectTrades(project) {
   console.log('[DETECT] Starting trade detection for project:', project);
   
   const masterPrompt = await getPromptByName('master');
-  const availableTrades = await getAvailableTrades();
+
+// VALIDIERE Masterprompt
+if (!masterPrompt) {
+  console.error('[DETECT] CRITICAL: Master prompt missing!');
+  throw new Error('Master-Prompt fehlt in der Datenbank - Gewerke-Erkennung nicht möglich');
+}
+
+if (masterPrompt.length < 500) {
+  console.warn(`[DETECT] WARNING: Master prompt suspiciously short: ${masterPrompt.length} chars`);
+}
+
+// DEBUG: Prüfe ob wichtige Regeln im Masterprompt sind
+const criticalRules = [
+  'DACHARBEITEN',
+  'ABBRUCH-GEWERK',
+  'GERÜST',
+  'FENSTER/TÜREN',
+  'SANITÄR/HEIZUNG/ELEKTRO',
+  'FASSADE vs. PUTZ/MALER',
+  'GEWERKEABGRENZUNG'
+];
+
+const missingRules = criticalRules.filter(rule => 
+  !masterPrompt.includes(rule)
+);
+
+if (missingRules.length > 0) {
+  console.warn('[DETECT] Master prompt missing critical rules:', missingRules);
+  console.warn('[DETECT] This may lead to incorrect trade detection!');
+}
+
+console.log(`[DETECT] Master prompt loaded: ${masterPrompt.length} chars, ${criticalRules.length - missingRules.length}/${criticalRules.length} critical rules found`);
+
+// DANN GEHT ES WEITER MIT DEM BESTEHENDEN CODE:
+const availableTrades = await getAvailableTrades();
   
-  if (availableTrades.length === 0) {
-    throw new Error('No trades available in database');
-  }
+if (availableTrades.length === 0) {
+  throw new Error('No trades available in database');
+}
   
   const tradeList = availableTrades
     .filter(t => t.code !== 'INT') // INT wird separat behandelt
@@ -1217,28 +1251,52 @@ if (projectContext.isManuallyAdded) {
 ${isIntake ? 
 `WICHTIG: Dies sind ALLGEMEINE PROJEKTFRAGEN zur Erfassung der Baustellenbedingungen.
 
-FOKUS NUR AUF:
-1. Baustellenzugang und Logistik
-   - Zufahrtsmöglichkeiten (LKW-tauglich?)
-   - Lagerungsmöglichkeiten für Material
-   - Platzverhältnisse im/am Gebäude
-2. Infrastruktur
-   - Baustrom vorhanden? (230V/400V)
-   - Bauwasser vorhanden?
-   - Sanitäranlagen für Handwerker?
-3. Zeitliche Rahmenbedingungen
-   - Gewünschter Starttermin
-   - Gewünschter Fertigstellungstermin
-   - Arbeitszeiten (Einschränkungen?)
-   - Lärmschutzzeiten?
-4. Gebäudeinformationen (NUR ALLGEMEIN)
-   - Ungefähres Baujahr
-   - Anzahl Stockwerke
+ERKANNTE GEWERKE IM PROJEKT:
+${projectContext.detectedTrades ? projectContext.detectedTrades.map(t => `- ${t.code}: ${t.name}`).join('\n') : 'Keine Gewerke übergeben'}
+
+INTELLIGENTE FRAGENAUSWAHL BASIEREND AUF GEWERKEN:
+
+1. IMMER FRAGEN (für alle Projekte):
+   - Zufahrt/Zugang (LKW-tauglich bei großen Projekten)
+   - Lagerungsmöglichkeiten
+   - Arbeitszeiten/Einschränkungen
+   - Gewünschter Zeitraum
    - Bewohnt während Bauzeit?
-5. Besondere Bedingungen
-   - Denkmalschutz vorhanden?
-   - Besondere Genehmigungen erforderlich?
-   - Nachbarn zu berücksichtigen?
+
+2. BAUSTROM (immer fragen):
+   - Alle Gewerke benötigen Strom
+   - Bei ELEKT: Auch Leistung/Absicherung erfragen
+
+3. BAUWASSER (NUR fragen bei):
+   - ROH, MAL, ESTR, FLI, FASS, DACH, SAN, HEI
+   - NICHT bei: ELEKT, TIS, FEN, BOD, TRO
+
+4. DENKMALSCHUTZ (NUR fragen bei):
+   - FASS, DACH, FEN, AUSS
+   - NICHT bei: Bad-/Innensanierung ohne Außenarbeiten
+
+5. GEBÄUDEHÖHE/STOCKWERKE (NUR fragen bei):
+   - GER, DACH, FASS, FEN (wenn Obergeschoss)
+   - NICHT bei: reinen Innenarbeiten
+
+6. LÄRMSCHUTZ (NUR fragen bei):
+   - ABBR, ROH, ESTR, TRO
+   - ODER wenn "bewohnt während Bauzeit" = ja
+
+7. SANITÄRANLAGEN FÜR HANDWERKER (NUR bei):
+   - Großprojekten (>3 Gewerke)
+   - Oder Projektdauer >2 Wochen
+
+ANPASSUNG AN PROJEKTGRÖSSE:
+- Kleines Projekt (1-2 Gewerke): 10-15 Fragen
+- Mittleres Projekt (3-5 Gewerke): 15-20 Fragen  
+- Großes Projekt (>5 Gewerke): 20-25 Fragen
+
+BEISPIELE INTELLIGENTER ANPASSUNG:
+- Nur ELEKT: Keine Bauwasser-Frage
+- Nur Badsanierung: Kein Denkmalschutz
+- Nur MAL innen: Keine Gebäudehöhe
+- DACH+FASS: Alle Außen-relevanten Fragen
 
 KEINE FRAGEN ZU:
 - Technischen Details (Dämmstärke, Verglasungsart, U-Werte)
@@ -1247,6 +1305,7 @@ KEINE FRAGEN ZU:
 - Gewerkespezifischen Themen
 - Anzahl Fenster/Türen (wenn bereits in Beschreibung)
 
+KRITISCH: Stelle NUR relevante Fragen für die erkannten Gewerke!` : 
 Diese Informationen werden für die Vorbemerkungen aller LVs verwendet.` : 
 `Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}.
 WICHTIG: Berücksichtige alle nachfolgenden Regeln und bereits vorhandene Informationen!`}
@@ -3846,16 +3905,27 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
     
     await ensureProjectTrade(projectId, tradeId, 'intake');
     
-    let questions;
+    // NEU: Lade erkannte Gewerke für intelligente Intake-Fragen
+const detectedTrades = await query(
+  `SELECT t.code, t.name 
+   FROM trades t 
+   JOIN project_trades pt ON t.id = pt.trade_id 
+   WHERE pt.project_id = $1 AND t.code != 'INT'`,
+  [projectId]
+);
+
+let questions;
 try {
   questions = await generateQuestions(tradeId, {
     category: project.category,
     subCategory: project.sub_category,
     description: project.description,
     timeframe: project.timeframe,
-    budget: project.budget
+    budget: project.budget,
+    detectedTrades: detectedTrades.rows // NEU: Übergebe erkannte Gewerke für intelligente Fragenauswahl
   });
 } catch (err) {
+  
   console.error('[INTAKE] generateQuestions error:', err);
   // Nicht leeres Array zurückgeben, sondern Fehler werfen!
   return res.status(500).json({ 
