@@ -2052,6 +2052,19 @@ KRITISCH - GERÜST-REGEL:
 - Alle Gerüstkosten sind im Gewerk GER erfasst
 ` : ''}
 
+${trade.code === 'GER' ? `
+KRITISCH FÜR GERÜSTBAU:
+- Gerüstfläche MUSS aus Antworten übernommen werden
+- Wenn Fläche nicht vorhanden: Länge x Höhe berechnen
+- REALISTISCHE PREISE:
+  * Auf-/Abbau: 8-12 €/m²
+  * Standzeit erste 4 Wochen: 4-6 €/m²
+  * Jede weitere Woche: 1-2 €/m²
+  * NIEMALS über 15 €/m² für Auf-/Abbau!
+- NUR EINE Auf-/Abbau Position
+- NUR EINE Standzeit Position
+` : ''}
+
 ${trade.code === 'DACH' ? `
 KRITISCH FÜR DACHARBEITEN:
 - NUR Dachfenster wenn EXPLIZIT "Dachfenster" erwähnt
@@ -2647,7 +2660,31 @@ function validateAndFixPrices(lv, tradeCode) {
         warnings.push(`Fenster korrigiert: €${oldPrice} → €${pos.unitPrice}`);
         fixedCount++;
       }
+    }   
+
+    // SPEZIAL-REGEL FÜR GERÜST
+if (tradeCode === 'GER') {
+  if (titleLower.includes('auf') && titleLower.includes('abbau') || 
+      titleLower.includes('gerüst') && titleLower.includes('montage')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 15) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 10; // Realistischer Mittelwert
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Gerüst Auf-/Abbau korrigiert: €${oldPrice}/m² → €${pos.unitPrice}/m²`);
+      fixedCount++;
     }
+  }
+  
+  if (titleLower.includes('standzeit') || titleLower.includes('miete')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 10) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 5; // Für 4 Wochen
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Gerüst Standzeit korrigiert: €${oldPrice}/m² → €${pos.unitPrice}/m²`);
+      fixedCount++;
+    }
+  }
+} 
     
     // 5. GENERELLE ABSURDITÄTSPRÜFUNG
     if (pos.unit === 'm' && pos.unitPrice > 500) {
