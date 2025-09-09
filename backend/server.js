@@ -1152,11 +1152,23 @@ async function generateQuestions(tradeId, projectContext = {}) {
   }
   
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
+
+// VALIDIERE dass Prompt geladen wurde
+if (!questionPrompt && !isIntake) {
+  console.error(`[QUESTIONS] ERROR: No question prompt found for ${tradeName} (${tradeCode})`);
+  // Ohne Prompt können keine sinnvollen Fragen generiert werden
+  throw new Error(`Fragen-Prompt für ${tradeName} fehlt in der Datenbank`);
+}
+
+// DEBUG: Prompt-Inhalt prüfen
+if (questionPrompt) {
+  console.log(`[QUESTIONS] Prompt loaded for ${tradeName}: ${questionPrompt.length} chars`);
   
-  if (!questionPrompt) {
-    console.warn(`[QUESTIONS] No prompt found for ${tradeName}, using default template`);
-    // Fallback auf Standard-Template
+  // Prüfe ob wichtige Keywords im Prompt sind
+  if (tradeCode === 'GER' && !questionPrompt.includes('Gerüstfläche')) {
+    console.warn(`[QUESTIONS] WARNING: Gerüst prompt missing 'Gerüstfläche' keyword`);
   }
+}
   
   // Intake-Kontext für Gewerke-Fragen laden
   let intakeContext = '';
@@ -1943,6 +1955,19 @@ const tradeCode = trade.code;
   const lvPrompt = await getPromptForTrade(tradeId, 'lv');
   if (!lvPrompt) throw new Error('LV prompt missing for trade');
 
+  // SICHERSTELLEN dass Prompt korrekt geladen wurde
+if (!lvPrompt || lvPrompt.length < 100) {
+  console.error(`[LV] WARNING: LV prompt for ${trade.code} missing or too short!`);
+  console.error(`[LV] Prompt length: ${lvPrompt?.length || 0}`);
+}
+
+// DEBUG: Prüfe ob Prompt korrekte Preisinformationen enthält
+if (trade.code === 'GER' && lvPrompt) {
+  const hasCorrectPrices = lvPrompt.includes('8-12') || lvPrompt.includes('Auf-/Abbau');
+  if (!hasCorrectPrices) {
+    console.error(`[LV] WARNING: Gerüst prompt missing price information!`);
+  }
+}
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
 
@@ -2177,8 +2202,10 @@ async function checkForDuplicatePositions(projectId, currentTradeId, positions) 
   
   const userPrompt = `GEWERK: ${trade.name} (${trade.code})
 
-LV-TEMPLATE:
-${lvPrompt}
+LV-TEMPLATE (MUSS BEACHTET WERDEN!):
+${lvPrompt || 'KEIN TEMPLATE GELADEN - FEHLER!'}
+
+KRITISCH: Die Preise und Strukturvorgaben aus dem Template MÜSSEN eingehalten werden!
 
 PROJEKTDATEN:
 ${JSON.stringify(project, null, 2)}
