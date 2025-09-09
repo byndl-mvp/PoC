@@ -1383,6 +1383,7 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
      * Entsorgung: Beim verursachenden Gewerk
      * Elektroschlitze: NUR bei ELEKT, nicht bei ROH oder ABBR
      * Sanitärschlitze: NUR bei SAN, nicht bei ROH oder ABBR
+     * Fenster: Nur im Gewerk FEN, Dachfenster nur im Gewerk DACH
    
    GEWERK-SPEZIFISCHE REGELN:
    - FLI (Fliesenarbeiten): Fliesen, Mosaikarbeiten, Natursteinbeläge in Bad/Küche
@@ -1409,6 +1410,7 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
      * Frage nach Gegenständen/Objekten im Plural
      * Sanitär-, Elektro-, Ausstattungsfragen
    - NIE nur Dropdown bei offensichtlichen Mehrfachauswahl-Szenarien
+   
    ${tradeCode === 'FEN' ? `
 15. SPEZIELLE FENSTER-REGELN:
    PFLICHTFRAGEN für Fenster-Gewerk:
