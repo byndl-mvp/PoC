@@ -1022,6 +1022,29 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
       throw new Error('No valid trades detected');
     }
     
+    // NEU: Automatisch Gerüst hinzufügen wenn nötig
+    const needsScaffolding = detectedTrades.some(t => 
+      ['DACH', 'FASS', 'FEN'].includes(t.code)
+    );
+    
+    // Oder aus extractedData wenn vorhanden
+    const extractedNeedsScaffolding = project.extractedData?.specificDetails?.needsScaffolding;
+    
+    if ((needsScaffolding || extractedNeedsScaffolding) && 
+        !detectedTrades.some(t => t.code === 'GER')) {
+      
+      // Gerüstbau-Trade aus DB holen
+      const scaffoldTrade = availableTrades.find(t => t.code === 'GER');
+      if (scaffoldTrade && !usedIds.has(scaffoldTrade.id)) {
+        console.log('[DETECT] Auto-adding Gerüstbau for Dach/Fassade/Fenster work');
+        detectedTrades.push({
+          id: scaffoldTrade.id,
+          code: scaffoldTrade.code,
+          name: scaffoldTrade.name
+        });
+      }
+    }
+    
     console.log('[DETECT] Successfully detected trades:', detectedTrades);
     return detectedTrades;
     
