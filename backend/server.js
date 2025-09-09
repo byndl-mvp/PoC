@@ -93,7 +93,7 @@ async function llmWithPolicy(task, messages, options = {}) {
   const defaultMaxTokens = {
     'detect': 3000,      
     'questions': 6000,   
-    'lv': 8000,         
+    'lv': 10000,         
     'intake': 4000,      
     'summary': 3000,
     'validation': 3000   
@@ -212,6 +212,103 @@ ERINNERUNG: NUR valides JSON ausgeben!`;
   }
   
   throw new Error(`All LLM providers unavailable. Last error: ${lastError?.message || 'Unknown error'}`);
+}
+
+/**
+ * Extrahiert Schlüsseldaten aus der Projektbeschreibung
+ */
+function extractProjectKeyData(description, category = null) {
+  const extractedData = {
+    quantities: {},
+    measures: [],
+    rooms: [],
+    specificDetails: {}
+  };
+  
+  if (!description) return extractedData;
+  
+  const desc = description.toLowerCase();
+  
+  // Extrahiere Mengenangaben
+  const quantityPatterns = [
+    { pattern: /(\d+)\s*(fenster|fenstern)/gi, key: 'fenster' },
+    { pattern: /(\d+)\s*(tür|türen)/gi, key: 'tueren' },
+    { pattern: /(\d+)\s*(m²|qm|quadratmeter)/gi, key: 'flaeche' },
+    { pattern: /(\d+)\s*(zimmer|räume)/gi, key: 'raeume' },
+    { pattern: /(\d+)\s*(stockwerk|etage|geschoss)/gi, key: 'stockwerke' },
+    { pattern: /(\d+)\s*(heizkörper)/gi, key: 'heizkoerper' },
+    { pattern: /(\d+)\s*(steckdose|schalter)/gi, key: 'elektropunkte' }
+  ];
+  
+  quantityPatterns.forEach(({ pattern, key }) => {
+    const matches = description.match(pattern);
+    if (matches && matches[0]) {
+      const number = matches[0].match(/\d+/);
+      if (number) {
+        extractedData.quantities[key] = parseInt(number[0]);
+      }
+    }
+  });
+  
+  // Extrahiere spezifische Maßnahmen
+  const measureKeywords = [
+    { keyword: 'wdvs', measure: 'WDVS Fassadendämmung' },
+    { keyword: 'fassadendämmung', measure: 'Fassadendämmung' },
+    { keyword: 'dachdämmung', measure: 'Dachdämmung' },
+    { keyword: 'fenster austausch', measure: 'Fensteraustausch' },
+    { keyword: 'fenster erneuern', measure: 'Fensteraustausch' },
+    { keyword: 'bad sanierung', measure: 'Badsanierung' },
+    { keyword: 'badsanierung', measure: 'Badsanierung' },
+    { keyword: 'küche', measure: 'Küchenerneuerung' },
+    { keyword: 'heizung', measure: 'Heizungserneuerung' },
+    { keyword: 'elektro', measure: 'Elektroerneuerung' },
+    { keyword: 'dach neu', measure: 'Dacherneuerung' },
+    { keyword: 'parkett', measure: 'Parkettverlegung' },
+    { keyword: 'fliesen', measure: 'Fliesenarbeiten' }
+  ];
+  
+  measureKeywords.forEach(({ keyword, measure }) => {
+    if (desc.includes(keyword)) {
+      extractedData.measures.push(measure);
+    }
+  });
+  
+  // Extrahiere Rauminformationen
+  const roomKeywords = ['bad', 'küche', 'wohnzimmer', 'schlafzimmer', 'kinderzimmer', 
+                        'büro', 'keller', 'dachgeschoss', 'flur', 'gäste-wc'];
+  
+  roomKeywords.forEach(room => {
+    if (desc.includes(room)) {
+      extractedData.rooms.push(room);
+    }
+  });
+  
+  // Spezifische Details extrahieren
+  if (desc.includes('altbau')) extractedData.specificDetails.buildingType = 'Altbau';
+  if (desc.includes('neubau')) extractedData.specificDetails.buildingType = 'Neubau';
+  if (desc.includes('einfamilienhaus') || desc.includes('efh')) {
+    extractedData.specificDetails.buildingType = 'Einfamilienhaus';
+  }
+  if (desc.includes('mehrfamilienhaus') || desc.includes('mfh')) {
+    extractedData.specificDetails.buildingType = 'Mehrfamilienhaus';
+  }
+  
+  // Prüfe ob Gerüst benötigt wird (für spätere Verwendung)
+  extractedData.specificDetails.needsScaffolding = 
+    desc.includes('dach') || desc.includes('fassade') || 
+    desc.includes('fenster') && (desc.includes('obergeschoss') || desc.includes('2. stock'));
+  
+  // Extrahiere "KEINE" Angaben (wichtig für Ausschlüsse)
+  if (desc.includes('keine haustür') || desc.includes('ohne haustür')) {
+    extractedData.specificDetails.excludeHaustuer = true;
+  }
+  if (desc.includes('ohne gerüst') || desc.includes('kein gerüst')) {
+    extractedData.specificDetails.excludeGeruest = true;
+  }
+  
+  console.log('[EXTRACT] Extracted data from description:', extractedData);
+  
+  return extractedData;
 }
 
 /**
@@ -950,7 +1047,30 @@ async function generateQuestions(tradeId, projectContext = {}) {
   const { name: tradeName, code: tradeCode } = tradeResult.rows[0];
   const isIntake = tradeCode === 'INT';
 
-// NEU: Lade Intake-Antworten UND intake_responses für besseren Kontext
+  // NEU: Lade extrahierte Projektdaten
+  let extractedData = null;
+  if (projectContext.projectId) {
+    const projectResult = await query(
+      'SELECT metadata FROM projects WHERE id = $1',
+      [projectContext.projectId]
+    );
+    if (projectResult.rows[0]?.metadata) {
+      const metadata = typeof projectResult.rows[0].metadata === 'string' 
+        ? JSON.parse(projectResult.rows[0].metadata)
+        : projectResult.rows[0].metadata;
+      extractedData = metadata?.extracted || null;
+      projectContext.extractedData = extractedData;
+    }
+  }
+
+  // NEU: Sammle ALLE bereits beantworteten Informationen
+  const allAnsweredInfo = {
+    fromDescription: extractedData || {},
+    fromIntake: [],
+    fromOtherTrades: []
+  };
+
+  // Lade Intake-Antworten
   if (!isIntake && projectContext.projectId) {
     // Lade aus intake_responses (neue Tabelle)
     const intakeResponses = await query(
@@ -960,8 +1080,11 @@ async function generateQuestions(tradeId, projectContext = {}) {
       [projectContext.projectId]
     );
     
-    // Falls intake_responses leer, fallback auf answers Tabelle
-    if (intakeResponses.rows.length === 0) {
+    if (intakeResponses.rows.length > 0) {
+      allAnsweredInfo.fromIntake = intakeResponses.rows;
+      projectContext.intakeData = intakeResponses.rows;
+    } else {
+      // Fallback auf answers Tabelle
       const intTrade = await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`);
       if (intTrade.rows[0]) {
         const intakeAnswers = await query(
@@ -973,37 +1096,20 @@ async function generateQuestions(tradeId, projectContext = {}) {
            WHERE a.project_id = $1 AND a.trade_id = $2`,
           [projectContext.projectId, intTrade.rows[0].id]
         );
+        allAnsweredInfo.fromIntake = intakeAnswers.rows;
         projectContext.intakeData = intakeAnswers.rows;
       }
-    } else {
-      projectContext.intakeData = intakeResponses.rows;
     }
-    
-  console.log(`[QUESTIONS] Loaded ${projectContext.intakeData?.length || 0} intake answers for context`);
-  console.log('[QUESTIONS] Project context:', {
-    hasDescription: !!projectContext.description,
-    hasCategory: !!projectContext.category,  
-    hasBudget: !!projectContext.budget,
-    intakeCount: projectContext.intakeData?.length || 0
+  }
+
+  console.log(`[QUESTIONS] Generating for ${tradeName} with context:`, {
+    hasExtractedData: !!extractedData,
+    extractedQuantities: extractedData?.quantities || {},
+    intakeAnswerCount: allAnsweredInfo.fromIntake.length,
+    isManuallyAdded: projectContext.isManuallyAdded,
   });
-}
   
-  // NEU: Intake-Antworten laden für Kontext-Weitergabe an Gewerke
-if (!isIntake && projectContext.projectId) {
-  const intakeAnswers = await query(
-   `SELECT q.question_text, r.answer_text 
- FROM intake_responses r
- JOIN intake_questions q ON q.id = r.question_id
-     WHERE r.project_id = $1`,
-    [projectContext.projectId]
-  );
-  
-  // Intake-Daten zum projectContext hinzufügen
-  projectContext.intakeData = intakeAnswers.rows;
-  console.log(`[QUESTIONS] Loaded ${intakeAnswers.rows.length} intake answers for context`);
-}
-  
-  // NEU: Bei manuellen/KI-empfohlenen Gewerken NUR Kontextfrage zurückgeben
+  // NEU: Bei manuellen Gewerken NUR Kontextfrage zurückgeben
   if (projectContext.isManuallyAdded === true || projectContext.isAiRecommended === true) {
     console.log(`[QUESTIONS] Manual/AI-recommended trade ${tradeCode} - returning context question only`);
     
@@ -1062,36 +1168,90 @@ WICHTIG:
   
   const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
   const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, answeredQuestions);
-  // Bei manuell hinzugefügten ODER KI-empfohlenen Gewerken: Erste Frage MUSS Kontextfrage sein
+  // Bei manuell hinzugefügten: Erste Frage MUSS Kontextfrage sein
 let targetQuestionCount = intelligentCount.count;
 let forceContextQuestion = false;
 
 if (projectContext.isManuallyAdded) {
   forceContextQuestion = true;
-  targetQuestionCount = Math.max(10, targetQuestionCount); // Mindestens 10 Fragen bei manuellen/KI-empfohlenen Gewerken
-  console.log(`[QUESTIONS] Context question required for ${tradeName} - manually added or AI recommended`);
+  targetQuestionCount = Math.max(10, targetQuestionCount); // Mindestens 10 Fragen bei manuellen Gewerken
+  console.log(`[QUESTIONS] Context question required for ${tradeName} - manually added`);
 }
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
-'Erstelle einen verständlichen Fragenkatalog für die allgemeine Projekterfassung.' : 
-`Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}.`}
+`WICHTIG: Dies sind ALLGEMEINE PROJEKTFRAGEN zur Erfassung der Baustellenbedingungen.
 
-${intakeContext}
+FOKUS NUR AUF:
+1. Baustellenzugang und Logistik
+   - Zufahrtsmöglichkeiten (LKW-tauglich?)
+   - Lagerungsmöglichkeiten für Material
+   - Platzverhältnisse im/am Gebäude
+2. Infrastruktur
+   - Baustrom vorhanden? (230V/400V)
+   - Bauwasser vorhanden?
+   - Sanitäranlagen für Handwerker?
+3. Zeitliche Rahmenbedingungen
+   - Gewünschter Starttermin
+   - Gewünschter Fertigstellungstermin
+   - Arbeitszeiten (Einschränkungen?)
+   - Lärmschutzzeiten?
+4. Gebäudeinformationen (NUR ALLGEMEIN)
+   - Ungefähres Baujahr
+   - Anzahl Stockwerke
+   - Bewohnt während Bauzeit?
+5. Besondere Bedingungen
+   - Denkmalschutz vorhanden?
+   - Besondere Genehmigungen erforderlich?
+   - Nachbarn zu berücksichtigen?
 
-${projectContext.intakeData ? `
+KEINE FRAGEN ZU:
+- Technischen Details (Dämmstärke, Verglasungsart, U-Werte)
+- Spezifischen Materialien oder Produkten
+- Detaillierten Maßen (außer grobe Gebäudegröße)
+- Gewerkespezifischen Themen
+- Anzahl Fenster/Türen (wenn bereits in Beschreibung)
 
-BEREITS ERFASSTE PROJEKT-DATEN (NICHT erneut fragen!):
-${projectContext.intakeData.map(item => 
-  `- ${item.question_text}: ${item.answer_text}`
-).join('\n')}
+Diese Informationen werden für die Vorbemerkungen aller LVs verwendet.` : 
+`Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}.
+WICHTIG: Berücksichtige alle nachfolgenden Regeln und bereits vorhandene Informationen!`}
 
-WICHTIG: Frage NIEMALS nach den oben genannten Informationen!
-Diese Daten sind bereits bekannt und müssen NICHT erneut erfragt werden.
-Konzentriere dich NUR auf gewerkespezifische Details für ${tradeName}.
+${extractedData ? `
+BEREITS AUS PROJEKTBESCHREIBUNG EXTRAHIERT (NIEMALS ERNEUT FRAGEN!):
+${extractedData.quantities ? Object.entries(extractedData.quantities).map(([key, value]) => 
+  `- ${key}: ${value}`).join('\n') : ''}
+${extractedData.measures?.length ? `- Maßnahmen: ${extractedData.measures.join(', ')}` : ''}
+${extractedData.rooms?.length ? `- Räume: ${extractedData.rooms.join(', ')}` : ''}
+${extractedData.specificDetails ? Object.entries(extractedData.specificDetails).map(([key, value]) => 
+  `- ${key}: ${value}`).join('\n') : ''}
+
+WICHTIG: Diese Informationen sind DEFINITIV BEKANNT. Stelle KEINE Fragen dazu!
 ` : ''}
 
-PROJEKT-KONTEXT (WICHTIG - NICHT ERNEUT ERFRAGEN!):
+${allAnsweredInfo?.fromIntake?.length > 0 ? `
+BEREITS IN INTAKE BEANTWORTET (NIEMALS WIEDERHOLEN!):
+${allAnsweredInfo.fromIntake.map(item => 
+  `- ${item.question_text}: ${item.answer_text}`
+).join('\n')}
+` : ''}
+
+UNIVERSELLE REGEL - NUR FRAGEN WAS ERWÄHNT WURDE:
+- Wenn Nutzer "5 Fenster" sagt → NICHT nach Haustüren fragen
+- Wenn Nutzer "Fassadendämmung" sagt → NICHT nach Dachdämmung fragen
+- Wenn Nutzer "Bad renovieren" sagt → NICHT nach Küche fragen
+- Wenn Nutzer "Parkett verlegen" sagt → NICHT nach Fliesen fragen
+- Generell: NUR zu dem fragen, was explizit im Projektumfang erwähnt wurde
+- Bei Unklarheiten: Lieber eine offene Frage stellen als Annahmen treffen
+
+${['DACH', 'FASS', 'FEN'].includes(tradeCode) ? `
+GERÜST-REGEL FÜR ${tradeName}:
+- KEINE Fragen zum Gerüst stellen!
+- Gerüst wird als separates Gewerk behandelt
+- In LV kommt Vorbemerkung: "Gerüst wird bauseits gestellt"
+- Keine Fragen zu Gerüsthöhe, Standzeit, Gerüstart
+` : ''}
+
+PROJEKT-KONTEXT:
 - Beschreibung: ${projectContext.description || 'Nicht angegeben'}
 - Kategorie: ${projectContext.category || 'Nicht angegeben'}
 - Budget: ${projectContext.budget || 'Nicht angegeben'}
@@ -1424,47 +1584,101 @@ const processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) 
   
   console.log('[QUESTIONS] Window questions verified - Material, Maße, Öffnung checked');
 }
-    // FILTER: Entferne Duplikate von bereits beantworteten Fragen
+    // VERBESSERTER FILTER: Entferne Duplikate basierend auf allen Informationsquellen
 let filteredQuestions = processedQuestions;
 
-if (answeredQuestions && answeredQuestions.length > 0) {
-  const answeredTexts = answeredQuestions.map(q => 
-    q.question.toLowerCase()
-      .replace(/[?.,!:]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-  );
-  
-  filteredQuestions = processedQuestions.filter(newQ => {
-    const newText = (newQ.question || '')
-      .toLowerCase()
-      .replace(/[?.,!:]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    // Prüfe auf Duplikate
-    const isDuplicate = answeredTexts.some(answered => {
-      if (answered === newText) return true;
-      
-      const answeredWords = answered.split(' ');
-      const newWords = newText.split(' ');
-      const commonWords = newWords.filter(w => answeredWords.includes(w));
-      const similarity = commonWords.length / Math.max(newWords.length, answeredWords.length);
-      
-      return similarity > 0.8;
-    });
-    
-    if (isDuplicate) {
-      console.log(`[QUESTIONS] Filtered duplicate: "${newQ.question}"`);
-    }
-    
-    return !isDuplicate;
-  });
-  
-  console.log(`[QUESTIONS] Filtered ${processedQuestions.length - filteredQuestions.length} duplicate questions`);
+// Erstelle Liste aller bereits bekannten Informationen
+const knownInfo = [];
+
+// Aus extrahierten Daten
+if (extractedData) {
+  if (extractedData.quantities?.fenster) {
+    knownInfo.push('anzahl fenster', 'wie viele fenster', 'fensteranzahl');
+  }
+  if (extractedData.quantities?.tueren) {
+    knownInfo.push('anzahl türen', 'wie viele türen', 'türenanzahl', 'haustür');
+  }
+  if (extractedData.quantities?.flaeche) {
+    knownInfo.push('fläche', 'quadratmeter', 'qm', 'größe');
+  }
+  if (extractedData.quantities?.raeume) {
+    knownInfo.push('anzahl zimmer', 'wie viele zimmer', 'räume');
+  }
+  if (extractedData.measures?.includes('WDVS Fassadendämmung')) {
+    knownInfo.push('fassadendämmung', 'wdvs', 'dämmung fassade');
+  }
+  if (extractedData.measures?.includes('Fensteraustausch')) {
+    knownInfo.push('fenster austauschen', 'fenster erneuern', 'neue fenster');
+  }
+  if (extractedData.measures?.includes('Badsanierung')) {
+    knownInfo.push('bad sanierung', 'bad renovieren');
+  }
 }
 
-return filteredQuestions;    
+// Aus Intake-Antworten
+if (allAnsweredInfo?.fromIntake?.length > 0) {
+  allAnsweredInfo.fromIntake.forEach(item => {
+    const questionLower = item.question_text.toLowerCase();
+    // Füge die komplette Frage als bekannt hinzu
+    knownInfo.push(questionLower);
+    // Extrahiere auch Schlüsselwörter
+    if (questionLower.includes('baustrom')) knownInfo.push('strom', 'baustrom');
+    if (questionLower.includes('bauwasser')) knownInfo.push('wasser', 'bauwasser');
+    if (questionLower.includes('zufahrt')) knownInfo.push('zufahrt', 'zugang');
+    if (questionLower.includes('gerüst')) knownInfo.push('gerüst', 'arbeitsgerüst');
+  });
+}
+
+// Filtere Fragen
+filteredQuestions = processedQuestions.filter(newQ => {
+  const questionLower = (newQ.question || '').toLowerCase();
+  
+  // Prüfe ob Frage bereits beantwortet wurde
+  const isDuplicate = knownInfo.some(known => {
+    if (questionLower.includes(known)) {
+      console.log(`[QUESTIONS] Filtered duplicate: "${newQ.question}" (matches: ${known})`);
+      return true;
+    }
+    return false;
+  });
+  
+  // UNIVERSELLE REGEL: Frage nur nach erwähnten Dingen
+  if (!isIntake && extractedData) {
+    // Bei Fenster-Gewerk: Wenn keine Türen erwähnt, keine Tür-Fragen
+    if (tradeCode === 'FEN' && !extractedData.quantities?.tueren && 
+        !projectContext.description?.toLowerCase().includes('tür')) {
+      if (questionLower.includes('haustür') || questionLower.includes('eingangstür')) {
+        console.log(`[QUESTIONS] Filtered: Tür-Frage obwohl keine Türen erwähnt`);
+        return false;
+      }
+    }
+    
+    // Bei Boden-Gewerk: Wenn nur Parkett erwähnt, keine Fliesen-Fragen
+    if (tradeCode === 'BOD' && projectContext.description) {
+      const desc = projectContext.description.toLowerCase();
+      if (desc.includes('parkett') && !desc.includes('fliesen')) {
+        if (questionLower.includes('fliesen')) {
+          console.log(`[QUESTIONS] Filtered: Fliesen-Frage obwohl nur Parkett erwähnt`);
+          return false;
+        }
+      }
+    }
+  }
+  
+  // Gerüst-Filter für betroffene Gewerke
+  if (['DACH', 'FASS', 'FEN'].includes(tradeCode)) {
+    if (questionLower.includes('gerüst') || questionLower.includes('arbeitsgerüst')) {
+      console.log(`[QUESTIONS] Filtered: Gerüst-Frage in ${tradeCode}`);
+      return false;
+    }
+  }
+  
+  return !isDuplicate;
+});
+
+console.log(`[QUESTIONS] Filtered ${processedQuestions.length - filteredQuestions.length} duplicate/irrelevant questions`);
+
+return filteredQuestions;   
     
   } catch (err) {
     console.error('[QUESTIONS] Generation failed:', err);
@@ -1595,6 +1809,22 @@ const tradeCode = trade.code;
     [projectId, tradeId]
   )).rows;
 
+// NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
+  const hasScaffoldingTrade = await query(
+    `SELECT 1 FROM project_trades pt 
+     JOIN trades t ON t.id = pt.trade_id 
+     WHERE pt.project_id = $1 AND t.code = 'GER'`,
+    [projectId]
+  );
+  const hasGeruestGewerk = hasScaffoldingTrade.rows.length > 0;
+
+  // NEU: Füge Gerüst-Vorbemerkung für betroffene Gewerke hinzu
+  let additionalVorbemerkungen = [];
+  if (hasGeruestGewerk && ['DACH', 'FASS', 'FEN'].includes(trade.code)) {
+    additionalVorbemerkungen.push('Gerüst wird bauseits gestellt');
+    additionalVorbemerkungen.push('Gerüstkosten sind in separatem Gewerk erfasst');
+  }
+  
   // Validiere und schätze fehlende Werte
   const validationResult = await validateAndEstimateAnswers(
     tradeAnswers,
@@ -1684,7 +1914,15 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - "Fenster gesamt 25 m²" ❌
    - Falsches Material verwenden ❌
    ` : ''}
-   
+
+  ${hasGeruestGewerk && ['DACH', 'FASS', 'FEN'].includes(trade.code) ? `
+KRITISCH - GERÜST-REGEL:
+- Gerüst ist als SEPARATES Gewerk vorhanden
+- KEINE Gerüstpositionen in diesem LV
+- Vorbemerkung hinzufügen: "Gerüst wird bauseits gestellt"
+- Alle Gerüstkosten sind im Gewerk GER erfasst
+` : ''}
+
 OUTPUT FORMAT (NUR valides JSON):
 {
   "trade": "${trade.name}",
@@ -1977,6 +2215,33 @@ if (duplicates.length > 0) {
   if (!lv.notes) lv.notes = '';
   lv.notes += '\n\nGewerkeabgrenzung beachtet - Duplikate wurden entfernt.';
 }
+
+    // NEU: Filtere Gerüstpositionen wenn Gerüst separates Gewerk ist
+    if (hasGeruestGewerk && ['DACH', 'FASS', 'FEN'].includes(trade.code)) {
+      const originalCount = lv.positions?.length || 0;
+      lv.positions = lv.positions?.filter(pos => {
+        const title = (pos.title || '').toLowerCase();
+        const desc = (pos.description || '').toLowerCase();
+        const isScaffolding = title.includes('gerüst') || desc.includes('gerüst') || 
+                             title.includes('arbeitsgerüst') || desc.includes('arbeitsgerüst') ||
+                             title.includes('fassadengerüst') || desc.includes('fassadengerüst');
+        if (isScaffolding) {
+          console.log(`[LV] Filtered scaffolding position in ${trade.code}: ${pos.title}`);
+        }
+        return !isScaffolding;
+      }) || [];
+      
+      if (originalCount !== lv.positions.length) {
+        console.log(`[LV] Removed ${originalCount - lv.positions.length} scaffolding positions from ${trade.code}`);
+      }
+      
+      // Füge Vorbemerkungen hinzu wenn noch nicht vorhanden
+      if (!lv.vorbemerkungen) lv.vorbemerkungen = [];
+      if (!lv.vorbemerkungen.includes('Gerüst wird bauseits gestellt')) {
+        lv.vorbemerkungen.unshift('Gerüst wird bauseits gestellt');
+        lv.vorbemerkungen.unshift('Gerüstkosten sind in separatem Gewerk erfasst');
+      }
+    }
     
     // Post-Processing und Stundenlohnarbeiten hinzufügen
     if (lv.positions && Array.isArray(lv.positions)) {
@@ -3021,25 +3286,40 @@ app.post('/api/projects', async (req, res) => {
       return res.status(400).json({ error: 'Description is required' });
     }
     
+    // NEU: Extrahiere Schlüsseldaten aus der Beschreibung
+    const extractedData = extractProjectKeyData(description, category);
+    
+    // Speichere Projekt MIT extrahierten Daten
     const projectResult = await query(
-      `INSERT INTO projects (category, sub_category, description, timeframe, budget)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO projects (category, sub_category, description, timeframe, budget, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [category || null, subCategory || null, description, timeframe || null, budget || null]
+      [
+        category || null, 
+        subCategory || null, 
+        description, 
+        timeframe || null, 
+        budget || null,
+        JSON.stringify({ extracted: extractedData }) // NEU: Speichere extrahierte Daten
+      ]
     );
     
     const project = projectResult.rows[0];
     
+    // Übergebe extrahierte Daten an detectTrades
     const detectedTrades = await detectTrades({
       category,
       subCategory,
       description,
       timeframe,
-      budget
+      budget,
+      extractedData // NEU: Weitergabe der extrahierten Daten
     });
     
     // Nur erkannte Trades hinzufügen
     console.log(`[PROJECT] Creating project ${project.id} with ${detectedTrades.length} detected trades`);
+    console.log(`[PROJECT] Extracted quantities:`, extractedData.quantities);
+    console.log(`[PROJECT] Extracted measures:`, extractedData.measures);
     
     for (const trade of detectedTrades) {
       await ensureProjectTrade(project.id, trade.id, 'detection');
@@ -3049,7 +3329,8 @@ app.post('/api/projects', async (req, res) => {
       project: {
         ...project,
         trades: detectedTrades,
-        complexity: determineProjectComplexity(project)
+        complexity: determineProjectComplexity(project),
+        extractedData // NEU: Sende extrahierte Daten zurück an Frontend
       }
     });
     
@@ -3076,10 +3357,27 @@ app.get('/api/projects/:projectId', async (req, res) => {
     const project = projectResult.rows[0];
     const trades = await getProjectTrades(projectId);
     
+    // NEU: Parse metadata falls vorhanden
+    if (project.metadata && typeof project.metadata === 'string') {
+      try {
+        project.metadata = JSON.parse(project.metadata);
+      } catch (e) {
+        console.error('[PROJECT] Failed to parse metadata:', e);
+        project.metadata = {};
+      }
+    }
+    
+    // NEU: Extrahiere Daten falls in metadata vorhanden
+    const extractedData = project.metadata?.extracted || null;
+    
     project.trades = trades;
     project.complexity = determineProjectComplexity(project);
+    project.extractedData = extractedData; // NEU: Füge extrahierte Daten hinzu
     
     console.log(`[PROJECT] Retrieved project ${projectId} with ${trades.length} trades, complexity: ${project.complexity}`);
+    if (extractedData) {
+      console.log(`[PROJECT] Has extracted data:`, extractedData.quantities);
+    }
     
     res.json(project);
     
