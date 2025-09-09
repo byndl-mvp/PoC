@@ -2476,8 +2476,43 @@ function validateAndFixPrices(lv, tradeCode) {
     }
     
     const titleLower = pos.title?.toLowerCase() || '';
+    const descLower = pos.description?.toLowerCase() || '';
     
-    // 1. NEUE REGEL: Absolute Obergrenzen für bestimmte Arbeiten
+    // 1. NEUE REGEL: Entsorgungskosten prüfen
+    if (titleLower.includes('entsorg') || 
+        titleLower.includes('abtransport') ||
+        titleLower.includes('abfuhr') ||
+        titleLower.includes('demontage und entsorgung')) {
+      
+      // Entsorgung pro Stück (Fenster, Türen, etc.)
+      if (pos.unit === 'Stk' && pos.unitPrice > 100) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 40; // Realistisch für Fenster/Tür-Entsorgung
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Entsorgung/Stück korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+      
+      // Entsorgung pro m³
+      if (pos.unit === 'm³' && pos.unitPrice > 200) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 120; // Realistisch für Bauschutt
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Entsorgung/m³ korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+      
+      // Entsorgung pauschal
+      if (pos.unit === 'psch' && pos.unitPrice > 2000) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 800; // Maximal für Pauschal-Entsorgung
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Entsorgung/pauschal korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+    
+    // 2. BESTEHENDE REGEL: Putzarbeiten
     if ((titleLower.includes('putz') || 
          titleLower.includes('laibung') || 
          titleLower.includes('spachtel') ||
@@ -2485,13 +2520,13 @@ function validateAndFixPrices(lv, tradeCode) {
         pos.unit === 'm' && pos.unitPrice > 100) {
       
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = 45; // Realistischer Wert für Putzarbeiten
+      pos.unitPrice = 45;
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
       warnings.push(`Putzarbeit korrigiert: "${pos.title}": €${oldPrice}/m → €${pos.unitPrice}/m`);
       fixedCount++;
     }
     
-    // 2. NEUE REGEL: Nebenleistungen dürfen nicht absurd teuer sein
+    // 3. BESTEHENDE REGEL: Nebenleistungen
     const isNebenleistung = 
       titleLower.includes('anschluss') ||
       titleLower.includes('abdichtung') ||
@@ -2508,10 +2543,10 @@ function validateAndFixPrices(lv, tradeCode) {
       fixedCount++;
     }
     
-    // 3. BESTEHENDE REGEL: Hauptpositionen Mindestpreise
+    // 4. BESTEHENDE REGEL: Hauptpositionen Mindestpreise
     const isMainPosition = 
-      titleLower.includes('fenster') ||
-      titleLower.includes('tür') ||
+      titleLower.includes('fenster') && !titleLower.includes('entsorg') ||
+      titleLower.includes('tür') && !titleLower.includes('entsorg') ||
       titleLower.includes('heizung') ||
       titleLower.includes('sanitär');
     
@@ -2533,21 +2568,33 @@ function validateAndFixPrices(lv, tradeCode) {
       }
     }
     
-    // 4. NEUE REGEL: Generelle Absurditätsprüfung
+    // 5. GENERELLE ABSURDITÄTSPRÜFUNG
     if (pos.unit === 'm' && pos.unitPrice > 500) {
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = 80; // Maximaler sinnvoller Wert für /m
+      pos.unitPrice = 80;
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Absurder Preis korrigiert: "${pos.title}": €${oldPrice}/m → €${pos.unitPrice}/m`);
+      warnings.push(`Absurder Preis/m korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
       fixedCount++;
     }
     
     if (pos.unit === 'm²' && pos.unitPrice > 500) {
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = 120; // Maximaler sinnvoller Wert für /m²
+      pos.unitPrice = 120;
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Absurder Preis korrigiert: "${pos.title}": €${oldPrice}/m² → €${pos.unitPrice}/m²`);
+      warnings.push(`Absurder Preis/m² korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
       fixedCount++;
+    }
+    
+    // 6. NEUE REGEL: Demontage darf nicht teurer als Montage sein
+    if (titleLower.includes('demontage') || titleLower.includes('ausbau')) {
+      // Demontage maximal 30% der Montage
+      if (pos.unit === 'Stk' && pos.unitPrice > 200) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 80; // Pauschal für Demontage
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Demontage korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
     }
     
     return pos;
