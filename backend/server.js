@@ -1938,12 +1938,45 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Falsches Material verwenden ❌
    ` : ''}
 
+  9. LIEFERUNG UND MONTAGE IMMER ZUSAMMEN:
+   - NIEMALS getrennte Positionen für Lieferung und Montage
+   - IMMER: "Lieferung und Montage [Bauteil]" in EINER Position
+   - Gilt für: Fenster, Türen, Heizkörper, Sanitär, Elektro, etc.
+   
+   RICHTIG:
+   - "Lieferung und Montage Fenster Kunststoff, 120x140cm, Dreh-Kipp"
+   
+   FALSCH:
+   - Pos 1: "Fenster Kunststoff liefern"
+   - Pos 2: "Fenster einbauen"
+
+10. REALISTISCHE PREISE ZWINGEND:
+    - Putzarbeiten: 25-60€/m² oder 30-80€/m
+    - Fenster komplett: 400-4000€/Stück (inkl. Montage)
+    - Türen komplett: 600-6000€/Stück (inkl. Montage)
+    - NIEMALS über 200€/m für einfache Arbeiten
+    - NIEMALS über 100€/m² für Standard-Arbeiten
+
+11. STRIKTE GEWERKE-TRENNUNG:
+    - Fenster (normale) → NUR im Gewerk FEN
+    - Dachfenster → NUR im Gewerk DACH
+    - NIEMALS Annahmen treffen die nicht explizit genannt wurden
+    - Bei "5 Fenster" im Projekt + Dach-Gewerk → KEINE Dachfenster annehmen!
+    
   ${hasGeruestGewerk && ['DACH', 'FASS', 'FEN'].includes(trade.code) ? `
 KRITISCH - GERÜST-REGEL:
 - Gerüst ist als SEPARATES Gewerk vorhanden
 - KEINE Gerüstpositionen in diesem LV
 - Vorbemerkung hinzufügen: "Gerüst wird bauseits gestellt"
 - Alle Gerüstkosten sind im Gewerk GER erfasst
+` : ''}
+
+${trade.code === 'DACH' ? `
+KRITISCH FÜR DACHARBEITEN:
+- NUR Dachfenster wenn EXPLIZIT "Dachfenster" erwähnt
+- Bei "Fenster" im Projekt → Das sind NORMALE Fenster (Gewerk FEN)
+- KEINE Annahmen über nicht erwähnte Leistungen
+- Fokus auf: Dämmung, Eindeckung, Abdichtung, Rinnen
 ` : ''}
 
 OUTPUT FORMAT (NUR valides JSON):
@@ -2434,31 +2467,58 @@ function validateAndFixPrices(lv, tradeCode) {
   if (!lv.positions || !Array.isArray(lv.positions)) {
     return { lv, fixedCount, warnings };
   }
-
+  
   lv.positions = lv.positions.map(pos => {
     // Skip Stundenlohn und Kleinmaterial
     if (pos.title?.includes('Stundenlohn') || 
-        pos.title?.toLowerCase().includes('kleinmaterial') ||
-        pos.title?.toLowerCase().includes('befestigung')) {
+        pos.title?.toLowerCase().includes('kleinmaterial')) {
       return pos;
     }
-
-    // KONTEXTBASIERTE PRÜFUNG
+    
+    const titleLower = pos.title?.toLowerCase() || '';
+    
+    // 1. NEUE REGEL: Absolute Obergrenzen für bestimmte Arbeiten
+    if ((titleLower.includes('putz') || 
+         titleLower.includes('laibung') || 
+         titleLower.includes('spachtel') ||
+         titleLower.includes('glätten')) && 
+        pos.unit === 'm' && pos.unitPrice > 100) {
+      
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 45; // Realistischer Wert für Putzarbeiten
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Putzarbeit korrigiert: "${pos.title}": €${oldPrice}/m → €${pos.unitPrice}/m`);
+      fixedCount++;
+    }
+    
+    // 2. NEUE REGEL: Nebenleistungen dürfen nicht absurd teuer sein
+    const isNebenleistung = 
+      titleLower.includes('anschluss') ||
+      titleLower.includes('abdichtung') ||
+      titleLower.includes('laibung') ||
+      titleLower.includes('befestigung') ||
+      titleLower.includes('dämmstreifen') ||
+      titleLower.includes('anarbeiten');
+    
+    if (isNebenleistung && pos.unitPrice > 200 && pos.unit !== 'psch') {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = pos.unit === 'm' ? 50 : 80;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Nebenleistung korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+    
+    // 3. BESTEHENDE REGEL: Hauptpositionen Mindestpreise
     const isMainPosition = 
-      pos.title?.toLowerCase().includes('fenster') ||
-      pos.title?.toLowerCase().includes('tür') ||
-      pos.title?.toLowerCase().includes('heizung') ||
-      pos.title?.toLowerCase().includes('sanitär') ||
-      pos.title?.toLowerCase().includes('fliesen') ||
-      pos.title?.toLowerCase().includes('estrich');
-
-    // Nur Hauptpositionen prüfen
+      titleLower.includes('fenster') ||
+      titleLower.includes('tür') ||
+      titleLower.includes('heizung') ||
+      titleLower.includes('sanitär');
+    
     if (isMainPosition && pos.unitPrice < 50) {
       const oldPrice = pos.unitPrice;
       
-      // Intelligente Korrektur basierend auf Beschreibung
-      if (pos.title?.toLowerCase().includes('fenster')) {
-        // Fenster-spezifische Größenberechnung
+      if (titleLower.includes('fenster')) {
         const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*x\s*(\d+)/);
         if (sizeMatch) {
           const width = parseInt(sizeMatch[1]);
@@ -2466,46 +2526,44 @@ function validateAndFixPrices(lv, tradeCode) {
           const area = (width * height) / 10000;
           pos.unitPrice = Math.round(600 + (area * 500));
         } else {
-          pos.unitPrice = 900; // Standard-Fenster
+          pos.unitPrice = 900;
         }
-        warnings.push(`Hauptposition "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        warnings.push(`Fenster korrigiert: €${oldPrice} → €${pos.unitPrice}`);
         fixedCount++;
-      } else if (pos.title?.toLowerCase().includes('tür')) {
-        pos.unitPrice = pos.unitPrice < 100 ? 750 : pos.unitPrice;
-        if (oldPrice !== pos.unitPrice) {
-          warnings.push(`Tür: €${oldPrice} → €${pos.unitPrice}`);
-          fixedCount++;
-        }
-      }
-      
-      // Neuberechnung
-      if (pos.quantity) {
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
       }
     }
-
-    // Prüfung auf offensichtliche Fehler (1€ für m²-Positionen)
-    if (pos.unit === 'm²' && pos.unitPrice < 5) {
-      pos.unitPrice = 45; // Sicherer Default für Flächenarbeiten
-      warnings.push(`Flächenposition korrigiert: ${pos.title}`);
+    
+    // 4. NEUE REGEL: Generelle Absurditätsprüfung
+    if (pos.unit === 'm' && pos.unitPrice > 500) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 80; // Maximaler sinnvoller Wert für /m
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Absurder Preis korrigiert: "${pos.title}": €${oldPrice}/m → €${pos.unitPrice}/m`);
       fixedCount++;
     }
-
+    
+    if (pos.unit === 'm²' && pos.unitPrice > 500) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 120; // Maximaler sinnvoller Wert für /m²
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Absurder Preis korrigiert: "${pos.title}": €${oldPrice}/m² → €${pos.unitPrice}/m²`);
+      fixedCount++;
+    }
+    
     return pos;
   });
-
+  
   // Neuberechnung der Gesamtsumme wenn Änderungen
   if (fixedCount > 0) {
     const newTotal = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
     lv.totalSum = Math.round(newTotal * 100) / 100;
   }
-
-  // Log nur wenn wirklich was geändert wurde
+  
   if (warnings.length > 0) {
     console.warn(`[PRICE-CHECK] ${tradeCode}: ${fixedCount} kritische Preise korrigiert`);
     warnings.forEach(w => console.warn(`  - ${w}`));
   }
-
+  
   return { lv, fixedCount, warnings };
 }
 
