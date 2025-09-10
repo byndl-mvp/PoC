@@ -1900,26 +1900,88 @@ processedQuestions = processedQuestions.map((q, idx) => {
   return q;
 }).filter(q => q !== null);
 
-// PFLICHTFRAGEN intelligent sicherstellen
-if (tradeCode === 'FASS' && !extractedData?.quantities?.flaeche) {
-  const hasAreaQuestion = processedQuestions.some(q => 
-    q.question.toLowerCase().includes('fläche') || 
-    q.question.toLowerCase().includes('m²')
+if (tradeCode === 'FASS') {
+  // Pflichtfrage 1: Fassadenfläche
+  if (!extractedData?.quantities?.flaeche) {
+    const hasAreaQuestion = processedQuestions.some(q => 
+      q.question.toLowerCase().includes('fläche') || 
+      q.question.toLowerCase().includes('m²')
+    );
+    
+    if (!hasAreaQuestion) {
+      processedQuestions.unshift({
+        id: 'FASS-01',
+        category: 'Mengenermittlung',
+        question: 'Wie groß ist die zu dämmende Fassadenfläche in m²?',
+        explanation: 'Bitte messen Sie alle Außenwandflächen, die gedämmt werden sollen (ohne Fenster/Türen)',
+        type: 'number',
+        required: true,
+        unit: 'm²'
+      });
+    }
+  }
+  
+  // Pflichtfrage 2: Dämmstoffstärke
+  const hasDaemmstaerkeQuestion = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('dämmstärke') || 
+    q.question.toLowerCase().includes('dämmstoffstärke') ||
+    q.question.toLowerCase().includes('dicke') && q.question.toLowerCase().includes('dämm')
   );
   
-  if (!hasAreaQuestion) {
+  if (!hasDaemmstaerkeQuestion) {
+    processedQuestions.splice(1, 0, {
+      id: 'FASS-02',
+      category: 'Dämmung',
+      question: 'Welche Dämmstoffstärke ist geplant (in cm)?',
+      explanation: 'Empfehlung für optimale Energieeffizienz: 14-16 cm. Mindestens 12 cm für EnEV-Anforderungen, 16-20 cm für KfW-Förderung.',
+      type: 'select',
+      options: ['12 cm', '14 cm', '16 cm (Empfehlung)', '18 cm', '20 cm', 'Unsicher - bitte beraten'],
+      required: true,
+      defaultValue: '16 cm (Empfehlung)'
+    });
+  }
+}
+
+if (tradeCode === 'PV') {
+  // Pflichtfrage 1: Verfügbare Dachfläche
+  const hasDachflaecheQuestion = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('dachfläche') || 
+    (q.question.toLowerCase().includes('fläche') && q.question.toLowerCase().includes('dach'))
+  );
+  
+  if (!hasDachflaecheQuestion) {
     processedQuestions.unshift({
-      id: 'FASS-01',
-      category: 'Mengenermittlung',
-      question: 'Wie groß ist die zu dämmende Fassadenfläche in m²?',
-      explanation: 'Bitte messen Sie alle Außenwandflächen, die gedämmt werden sollen (ohne Fenster/Türen)',
+      id: 'PV-01',
+      category: 'Flächenermittlung',
+      question: 'Wie groß ist die für PV belegbare Dachfläche in m²?',
+      explanation: 'Nur unverschattete Süd-, Ost- oder Westflächen. Abzüglich Dachfenster, Schornsteine, Gauben.',
       type: 'number',
       required: true,
       unit: 'm²'
     });
   }
+  
+  // Pflichtfrage 2: Gewünschte Leistung
+  const hasLeistungQuestion = processedQuestions.some(q => 
+    q.question.toLowerCase().includes('kwp') || 
+    q.question.toLowerCase().includes('kilowatt') ||
+    q.question.toLowerCase().includes('leistung')
+  );
+  
+  if (!hasLeistungQuestion) {
+    processedQuestions.splice(1, 0, {
+      id: 'PV-02',
+      category: 'Anlagenleistung',
+      question: 'Welche PV-Anlagenleistung wünschen Sie (in kWp)?',
+      explanation: 'Faustregel: Pro kWp werden ca. 5-7 m² Dachfläche benötigt. Ein 4-Personen-Haushalt benötigt typisch 6-10 kWp.',
+      type: 'select',
+      options: ['4-6 kWp', '6-8 kWp', '8-10 kWp (Empfehlung)', '10-12 kWp', '12-15 kWp', 'Maximal möglich', 'Unsicher - bitte beraten'],
+      required: true,
+      defaultValue: '8-10 kWp (Empfehlung)'
+    });
+  }
 }
-
+    
 if (tradeCode === 'GER') {
   // Sicherstellen dass Gerüstfläche erfragt wird
   const hasCorrectAreaQuestion = processedQuestions.some(q => 
