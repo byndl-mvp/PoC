@@ -1852,7 +1852,7 @@ processedQuestions = processedQuestions.map((q, idx) => {
     const tradeIndicators = {
       'FEN': ['fenster', 'verglasung', 'öffnungsart', 'rahmen', 'fensterbank'],
       'FASS': ['fassade', 'wdvs', 'dämmung außen', 'außenputz'],
-      'DACH': ['dach', 'ziegel', 'dachrinne', 'first', 'traufe'],
+      'DACH': ['dach', 'ziegel', 'dachrinne', 'dachfenster', 'first', 'traufe'],
       'SAN': ['sanitär', 'waschbecken', 'wc', 'dusche', 'abwasser'],
       'ELEKT': ['steckdose', 'schalter', 'kabel', 'verteiler', 'strom'],
       'HEI': ['heizung', 'heizkörper', 'thermostat', 'heizkessel']
@@ -4512,7 +4512,17 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
 };
     
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
-    const questions = await generateQuestions(tradeId, projectContext);
+    // Lade alle Projekt-Trades für Cross-Check
+const projectTrades = await query(
+  `SELECT t.code, t.name FROM trades t 
+   JOIN project_trades pt ON t.id = pt.trade_id 
+   WHERE pt.project_id = $1`,
+  [projectId]
+);
+
+projectContext.trades = projectTrades.rows; // <-- FÜGE TRADES HINZU!
+
+const questions = await generateQuestions(tradeId, projectContext);
     
     // NEU - erweitere options um multiSelect und Dependencies:
 for (const question of questions) {
