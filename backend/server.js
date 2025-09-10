@@ -5500,6 +5500,7 @@ function getTradeDescription(tradeCode) {
 
 // Budget-Optimierung generieren
 app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
+  console.log('[BUDGET-OPT] Route called for project:', req.params.projectId);
   try {
     const { projectId } = req.params;
     const { currentTotal, targetBudget, lvBreakdown } = req.body;
