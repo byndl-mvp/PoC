@@ -3313,18 +3313,46 @@ if (uniqueVorbemerkungen.length > 0) {
       const tradeSummaries = [];
       
       // Berechne Summen für Übersicht
-      for (const row of lvs) {
-        const lv = typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
-        // Berechne Summe aus Positionen wenn vorhanden, sonst aus totalSum
-const tradeTotal = lv.positions && lv.positions.length > 0 
-  ? lv.positions.reduce((sum, pos) => sum + (parseFloat(pos.totalPrice) || 0), 0)
-  : (parseFloat(lv.totalSum) || 0);
-        grandTotal += tradeTotal;
-        tradeSummaries.push({
-          code: row.trade_code,
-          name: row.trade_name,
-          total: tradeTotal
-        });
+for (const row of lvs) {
+  const lv = typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
+  
+  // NEU: Berechne Summe OHNE NEP-Positionen
+  const tradeTotal = lv.positions && lv.positions.length > 0 
+    ? lv.positions.reduce((sum, pos) => {
+        // NEP-Positionen NICHT mitzählen
+        if (!pos.isNEP) {
+          return sum + (parseFloat(pos.totalPrice) || 0);
+        }
+        return sum;
+      }, 0)
+    : (parseFloat(lv.totalSum) || 0);
+  
+  // NEU: NEP-Summe separat erfassen
+  const nepTotal = lv.positions && lv.positions.length > 0
+    ? lv.positions.reduce((sum, pos) => {
+        if (pos.isNEP) {
+          return sum + (parseFloat(pos.totalPrice) || 0);
+        }
+        return sum;
+      }, 0)
+    : (lv.nepSum || 0);
+  
+  grandTotal += tradeTotal;  // NEP NICHT in Gesamtsumme
+  
+  tradeSummaries.push({
+    code: row.trade_code,
+    name: row.trade_name,
+    total: tradeTotal,
+    nepTotal: nepTotal  // NEU: NEP-Summe speichern
+  });
+  
+  // In der Anzeige (ein paar Zeilen weiter unten, wo doc.text verwendet wird):
+  let displayText = `• ${row.trade_code} - ${row.trade_name}: ${withPrices ? formatCurrency(tradeTotal) : '________'}`;
+  if (nepTotal > 0 && withPrices) {
+    displayText += ` (+ NEP: ${formatCurrency(nepTotal)})`;
+  }
+  doc.text(displayText, { indent: 20 });
+}
         
         doc.text(`• ${row.trade_code} - ${row.trade_name}: ${withPrices ? formatCurrency(tradeTotal) : '________'}`, { indent: 20 });
       }
@@ -3772,10 +3800,19 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
                .fontSize(9);
           }
           
-          doc.text(pos.pos || `${index + 1}`, col1, yPosition, { width: 30 });
+          // Position mit NEP-Kennzeichnung
+let posText = pos.pos || `${index + 1}`;
+if (pos.isNEP) {
+  posText += ' (NEP)';
+}
+doc.text(posText, col1, yPosition, { width: 30 });
           
-          const titleHeight = doc.heightOfString(pos.title || '', { width: 150 });
-          doc.text(pos.title || 'Keine Bezeichnung', col2, yPosition, { width: 150 });
+          let titleText = pos.title || 'Keine Bezeichnung';
+if (pos.isNEP) {
+  titleText = '(NEP) ' + titleText;
+}
+const titleHeight = doc.heightOfString(titleText, { width: 150 });
+doc.text(titleText, col2, yPosition, { width: 150 });
           
           doc.text(pos.quantity?.toString() || '-', col3, yPosition, { width: 50, align: 'right' });
           doc.text(pos.unit || '-', col4, yPosition, { width: 50 });
@@ -3787,11 +3824,23 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
           }
           
           if (withPrices && pos.totalPrice) {
-            doc.text(formatCurrency(pos.totalPrice), col6, yPosition, { width: 70, align: 'right' });
-            totalSum += parseFloat(pos.totalPrice) || 0;
-          } else {
-            doc.text('________', col6, yPosition, { width: 70, align: 'right' });
-          }
+  // NEU: Bei NEP-Positionen den Preis in Klammern setzen
+  if (pos.isNEP) {
+    doc.text(`(${formatCurrency(pos.totalPrice)})`, col6, yPosition, { 
+      width: 70, 
+      align: 'right' 
+    });
+    // NEP nicht zur totalSum addieren!
+  } else {
+    doc.text(formatCurrency(pos.totalPrice), col6, yPosition, { 
+      width: 70, 
+      align: 'right' 
+    });
+    totalSum += parseFloat(pos.totalPrice) || 0;
+  }
+} else {
+  doc.text('________', col6, yPosition, { width: 70, align: 'right' });
+}
           
           // Beschreibung und Datenquelle
           if (pos.description) {
@@ -3842,6 +3891,17 @@ function generateLVPDF(lv, tradeName, tradeCode, projectDescription, withPrices 
            .font('Helvetica-Bold')
            .text('Nettosumme:', col5 - 80, yPosition)
            .text(formatCurrency(totalSum), col6, yPosition, { width: 70, align: 'right' });
+
+        // NEU: NEP-Summe anzeigen wenn vorhanden
+  if (lv.nepSum && lv.nepSum > 0) {
+    yPosition += 20;
+    doc.fontSize(9)
+       .font('Helvetica')
+       .fillColor('#666666')
+       .text('NEP-Positionen:', col5 - 80, yPosition)
+       .text(formatCurrency(lv.nepSum), col6, yPosition, { width: 70, align: 'right' });
+    doc.fillColor('black');
+  }
         
         yPosition += 20;
         
