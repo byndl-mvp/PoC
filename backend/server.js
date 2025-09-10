@@ -1087,6 +1087,23 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
         });
       }
     }
+    // NEU: Automatisch PV erkennen
+const needsPV = project.description?.toLowerCase().includes('pv') || 
+                 project.description?.toLowerCase().includes('photovoltaik') ||
+                 project.description?.toLowerCase().includes('solar') ||
+                 project.description?.toLowerCase().includes('solaranlage');
+
+if (needsPV && !detectedTrades.some(t => t.code === 'PV')) {
+  const pvTrade = availableTrades.find(t => t.code === 'PV');
+  if (pvTrade && !usedIds.has(pvTrade.id)) {
+    console.log('[DETECT] Auto-adding PV for solar/photovoltaik keywords');
+    detectedTrades.push({
+      id: pvTrade.id,
+      code: pvTrade.code,
+      name: pvTrade.name
+    });
+  }
+}
     
     console.log('[DETECT] Successfully detected trades:', detectedTrades);
     return detectedTrades;
@@ -4477,7 +4494,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     const {
       includeIntakeContext,
       isManuallyAdded: manualFromBody,
-      isAiRecommended: aiFromBody,
       projectDescription: descriptionFromBody,
       projectCategory: categoryFromBody,
       projectBudget: budgetFromBody
@@ -5469,6 +5485,7 @@ function getTradeDescription(tradeCode) {
     'SAN': 'Sanitärinstallation, Armaturen, Rohre, Bad, WC',
     'HEI': 'Heizungsinstallation, Heizkörper, Thermostate, Warmwasser',
     'KLIMA': 'Lüftung, Klimatechnik, Kühlung, Be- und Entlüftung',
+    'PV': 'Photovoltaik, Solarmodule, Wechselrichter, Batteriespeicher',
     'ESTR': 'Estricharbeiten, Bodenaufbau, Dämmung, Fußbodenheizung',
     'TRO': 'Trockenbau, Wände, Decken, Dämmung, Schallschutz',
     'FLI': 'Fliesen, Plattenarbeiten, Verfugung, Abdichtung',
