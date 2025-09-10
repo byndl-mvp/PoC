@@ -1670,42 +1670,78 @@ BEACHTE:
     ], { 
       maxTokens: 6000,
       temperature: 0.5,
-      jsonMode: false // Wichtig: jsonMode kann problematisch sein
+      jsonMode: true // Aktiviere JSON-Mode für saubere Ausgabe
     });
     
     // Aggressivere Bereinigung
-    let cleanedResponse = response
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/g, '')
-      .replace(/^[^[]*(\[[\s\S]*\])[^]]*$/, '$1') // Extrahiere nur das Array
-      .trim();
-    
-    // Debug-Ausgabe
-    console.log(`[QUESTIONS] Raw response length: ${response.length}`);
-    console.log(`[QUESTIONS] Cleaned response starts with: ${cleanedResponse.substring(0, 100)}`);
+let cleanedResponse = response
+  .replace(/```json\s*/gi, '')
+  .replace(/```\s*/g, '')
+  .trim();
+
+// NEU: Zusätzliche Bereinigung - Entferne alles vor dem ersten [ und nach dem letzten ]
+const arrayStart = cleanedResponse.indexOf('[');
+const arrayEnd = cleanedResponse.lastIndexOf(']');
+
+if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+  cleanedResponse = cleanedResponse.substring(arrayStart, arrayEnd + 1);
+} else {
+  console.error('[QUESTIONS] No valid array brackets found in response');
+  console.error('[QUESTIONS] Response snippet:', cleanedResponse.substring(0, 200));
+  throw new Error('Invalid JSON structure - no array found');
+}
+
+// Debug-Ausgabe
+console.log(`[QUESTIONS] Raw response length: ${response.length}`);
+console.log(`[QUESTIONS] Cleaned response starts with: ${cleanedResponse.substring(0, 100)}`);
     
     let questions;
+try {
+  questions = JSON.parse(cleanedResponse);
+} catch (parseError) {
+  console.error('[QUESTIONS] Parse error, attempting recovery:', parseError.message);
+  console.error('[QUESTIONS] Failed response preview:', cleanedResponse.substring(0, 300));
+  
+  // Versuche das JSON zu reparieren
+  try {
+    // Entferne trailing commas und andere häufige JSON-Fehler
+    let fixedResponse = cleanedResponse
+      .replace(/,\s*}/g, '}')     // Entferne trailing commas vor }
+      .replace(/,\s*\]/g, ']')     // Entferne trailing commas vor ]
+      .replace(/}\s*{/g, '},{')   // Füge fehlende Kommas zwischen Objekten hinzu
+      .replace(/"\s*\n\s*"/g, '","'); // Fixe fehlende Kommas zwischen Strings
+    
+    questions = JSON.parse(fixedResponse);
+    console.log('[QUESTIONS] Recovery successful with fixed JSON');
+  } catch (recoveryError) {
+    console.error('[QUESTIONS] Recovery failed:', recoveryError);
+    
+    // Letzter Versuch: Extrahiere einzelne JSON-Objekte
     try {
-      questions = JSON.parse(cleanedResponse);
-    } catch (parseError) {
-      console.error('[QUESTIONS] Parse error, attempting recovery:', parseError.message);
-      
-      // Versuche das JSON zu reparieren
-      try {
-        // Entferne alles vor dem ersten [ und nach dem letzten ]
-        const match = cleanedResponse.match(/\[[\s\S]*\]/);
-        if (match) {
-          questions = JSON.parse(match[0]);
+      const objectMatches = cleanedResponse.match(/\{[^{}]*\}/g);
+      if (objectMatches && objectMatches.length > 0) {
+        questions = objectMatches.map(match => {
+          try {
+            return JSON.parse(match);
+          } catch (e) {
+            return null;
+          }
+        }).filter(q => q !== null);
+        
+        if (questions.length > 0) {
+          console.log('[QUESTIONS] Recovered', questions.length, 'questions via object extraction');
         } else {
-          throw new Error('No valid JSON array found in response');
+          throw new Error('No valid objects could be parsed');
         }
-      } catch (recoveryError) {
-        console.error('[QUESTIONS] Recovery failed:', recoveryError);
-        // Fallback: Erstelle minimale Fragen
-        console.log('[QUESTIONS] Using fallback questions');
-        throw new Error('Fehler bei der Fragengenerierung - bitte versuchen Sie es erneut');
+      } else {
+        throw new Error('No JSON objects found');
       }
+    } catch (finalError) {
+      console.error('[QUESTIONS] Final recovery attempt failed:', finalError);
+      throw new Error('Fehler bei der Fragengenerierung - bitte versuchen Sie es erneut');
     }
+  }
+}
     
     if (!Array.isArray(questions)) {
       console.error('[QUESTIONS] Response is not an array, using fallback');
