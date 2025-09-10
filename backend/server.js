@@ -1628,7 +1628,11 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - Frage 3: "Welche Öffnungsart pro Fenstertyp?"
    - Frage 4: "Welches Material?"
    - Frage 5: "Sollen alte Fenster demontiert werden?"
-   
+   - Frage nach Haustüren NUR wenn in Projektbeschreibung erwähnt
+   - Projektbeschreibung enthält "Haustür"? ${projectContext.description?.toLowerCase().includes('haustür') ? 'JA ✓ - Bitte nach Haustür fragen!' : 'NEIN ✗ - KEINE Haustür-Fragen!'}
+   - Bei "Fenster und Haustür" → Frage nach beidem
+   - Bei nur "Fenster" → NUR Fenster-Fragen
+
    KRITISCH: Die Maßfrage MUSS nach EINZELMASSEN fragen, nicht nach Gesamtfläche!
 ` : ''}
 
@@ -2032,6 +2036,44 @@ filteredQuestions = processedQuestions.filter(newQ => {
 
 console.log(`[QUESTIONS] Filtered ${processedQuestions.length - filteredQuestions.length} duplicate/irrelevant questions`);
 
+// INTELLIGENTER FILTER FÜR FENSTER-GEWERK
+if (tradeCode === 'FEN') {
+  const descLower = (projectContext.description || '').toLowerCase();
+  const haustuerErwaehnt = descLower.includes('haustür') || 
+                           descLower.includes('eingangstür') || 
+                           descLower.includes('haustüre') ||
+                           descLower.includes('hauseingangstür');
+  
+  if (!haustuerErwaehnt) {
+    // NUR wenn NICHT erwähnt, dann filtern
+    filteredQuestions = filteredQuestions.filter(q => {
+      const qLower = q.question.toLowerCase();
+      if (qLower.includes('haustür') || qLower.includes('eingangstür')) {
+        console.log(`[FEN] Removed door question - not mentioned in project: "${q.question}"`);
+        return false;
+      }
+      return true;
+    });
+  } else {
+    // Wenn erwähnt, SICHERSTELLEN dass danach gefragt wird
+    const hasDoorQuestion = filteredQuestions.some(q => 
+      q.question.toLowerCase().includes('tür')
+    );
+    
+    if (!hasDoorQuestion) {
+      filteredQuestions.unshift({
+        id: 'FEN-DOOR-01',
+        category: 'Türen',
+        question: 'Welche Art von Haustür wünschen Sie?',
+        type: 'select',
+        options: ['Kunststoff', 'Aluminium', 'Holz', 'Stahl'],
+        required: true
+      });
+      console.log('[FEN] Added door question - was mentioned in project');
+    }
+  }
+}
+ 
 return filteredQuestions;   
     
   } catch (err) {
