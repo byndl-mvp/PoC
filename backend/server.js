@@ -2685,14 +2685,33 @@ if (duplicates.length > 0) {
     
     // Post-Processing und Stundenlohnarbeiten hinzufügen
     if (lv.positions && Array.isArray(lv.positions)) {
-      let calculatedSum = 0;
-      lv.positions = lv.positions.map(pos => {
-        if (!pos.totalPrice && pos.quantity && pos.unitPrice) {
-          pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        }
-        calculatedSum += pos.totalPrice || 0;
-        return pos;
-      });
+  let calculatedSum = 0;
+  let nepSum = 0; // NEU: Summe der NEP-Positionen
+  
+  lv.positions = lv.positions.map(pos => {
+    // NEU: NEP-Flag standardmäßig false
+    if (pos.isNEP === undefined) {
+      pos.isNEP = false;
+    }
+    
+    if (!pos.totalPrice && pos.quantity && pos.unitPrice) {
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    }
+    
+    // NEU: NEP-Positionen nicht zur Hauptsumme addieren
+    if (!pos.isNEP) {
+      calculatedSum += pos.totalPrice || 0;
+    } else {
+      nepSum += pos.totalPrice || 0;
+    }
+    
+    return pos;
+  });
+  
+  // NEU: NEP-Summe separat speichern
+  lv.nepSum = Math.round(nepSum * 100) / 100;
+  lv.totalSum = Math.round(calculatedSum * 100) / 100;
+}
       
       // Stundenlohnarbeiten hinzufügen
       const stundenSätze = {
@@ -5018,13 +5037,25 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv/update', async (req, res) 
       ? JSON.parse(existing.rows[0].content) 
       : existing.rows[0].content;
     
+    // NEU: Berechne Summen mit NEP-Berücksichtigung
+    let calculatedSum = 0;
+    let nepSum = 0;
+    
+    const updatedPositions = positions.map(pos => {
+      if (!pos.isNEP) {
+        calculatedSum += parseFloat(pos.totalPrice) || 0;
+      } else {
+        nepSum += parseFloat(pos.totalPrice) || 0;
+      }
+      return pos;
+    });
+    
     // Update mit neuen Daten
     const updatedContent = {
       ...existingContent,
-      positions: positions,
-      totalSum: totalSum || positions.reduce((sum, pos) => 
-        sum + (parseFloat(pos.totalPrice) || 0), 0
-      )
+      positions: updatedPositions,
+      totalSum: calculatedSum,
+      nepSum: nepSum
     };
     
     // Speichere in DB
