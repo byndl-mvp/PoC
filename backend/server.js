@@ -81,7 +81,7 @@ const TRADE_COMPLEXITY = {
 };
 
 // Fallback für nicht definierte Gewerke
-const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 12, maxQuestions: 20 };
+const DEFAULT_COMPLEXITY = { complexity: 'MITTEL', minQuestions: 14, maxQuestions: 22 };
 
 // ===========================================================================
 // HELPER FUNCTIONS
@@ -2710,6 +2710,7 @@ if (duplicates.length > 0) {
   
   // NEU: NEP-Summe separat speichern
   lv.nepSum = Math.round(nepSum * 100) / 100;
+  lv.totalSum = Math.round(calculatedSum * 100) / 100;  // DIESE ZEILE FEHLT!
       
       // Stundenlohnarbeiten hinzufügen
       const stundenSätze = {
