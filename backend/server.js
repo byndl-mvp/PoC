@@ -62,6 +62,7 @@ const TRADE_COMPLEXITY = {
   'FEN': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22 },
   'FASS': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22 },
   'SCHL': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20 },
+  'PV': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22 },
   
   // Mittlere Komplexität (15-25 Fragen)
   'FLI': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
@@ -512,6 +513,14 @@ case 'KLIMA': // Lüftung- und Klimatechnik
     }
     if (desc.includes('kühlung') || desc.includes('heizung')) informationCompleteness += 20;
     break;
+
+case 'PV': // Photovoltaik
+  if (!desc.match(/\d+\s*(kwp|kw)/i)) missingCriticalInfo.push('Anlagengröße');
+  else informationCompleteness += 35;
+  if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Dachfläche');
+  else informationCompleteness += 25;
+  if (desc.includes('speicher') || desc.includes('batterie')) informationCompleteness += 20;
+  break;
         
 case 'FEN':
   if (!desc.match(/\d+\s*(fenster|türen|stück)/)) missingCriticalInfo.push('Anzahl Fenster/Türen');
