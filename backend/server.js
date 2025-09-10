@@ -1670,14 +1670,22 @@ BEACHTE:
     ], { 
       maxTokens: 6000,
       temperature: 0.5,
-      jsonMode: true // Aktiviere JSON-Mode für saubere Ausgabe
+      jsonMode: false 
     });
     
-    // Aggressivere Bereinigung
+    // Robuste Bereinigung für Claude's Output
 let cleanedResponse = response
   .replace(/```json\s*/gi, '')
   .replace(/```\s*/g, '')
   .trim();
+
+// Entferne problematische Zeichen die Claude manchmal einfügt
+cleanedResponse = cleanedResponse
+  .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Kontrolzeichen entfernen
+  .replace(/\r\n/g, '\n')  // Windows line endings normalisieren
+  .replace(/\\n/g, ' ')    // Escaped newlines durch Leerzeichen ersetzen
+  .replace(/\\"/g, '"')    // Escaped quotes fixen
+  .replace(/\\\\/g, '\\'); // Double backslashes fixen
 
 // NEU: Zusätzliche Bereinigung - Entferne alles vor dem ersten [ und nach dem letzten ]
 const arrayStart = cleanedResponse.indexOf('[');
@@ -1690,6 +1698,10 @@ if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
   console.error('[QUESTIONS] Response snippet:', cleanedResponse.substring(0, 200));
   throw new Error('Invalid JSON structure - no array found');
 }
+
+// Entferne trailing commas (häufiger Claude-Fehler)
+cleanedResponse = cleanedResponse
+  .replace(/,(\s*[}\]])/g, '$1');  // Trailing commas entfernen
 
 // Debug-Ausgabe
 console.log(`[QUESTIONS] Raw response length: ${response.length}`);
