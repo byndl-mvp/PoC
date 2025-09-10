@@ -127,39 +127,7 @@ const handleSavePosition = async (lvIndex, posIndex) => {
     setEditingPosition(null);
     setEditedValues({});
   }
-};
-  
-  // Update im Backend
-  const updatedPositions = [...lv.content.positions];
-  updatedPositions[posIndex] = updatedPosition;
-  
-  const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      positions: updatedPositions,
-      totalSum: updatedPositions.reduce((sum, pos) => 
-        sum + (parseFloat(pos.totalPrice) || 0), 0
-      )
-    })
-  });
-  
-  if (res.ok) {
-    const newLvs = [...lvs];
-    newLvs[lvIndex].content.positions = updatedPositions;
-    newLvs[lvIndex].content.totalSum = recalculateTotals(updatedPositions);
-    setLvs(newLvs);
-    
-    // Update selectedPosition BEVOR editedValues gelöscht werden
-    if (selectedPosition && modalLvIndex === lvIndex && modalPosIndex === posIndex) {
-      setSelectedPosition(updatedPosition);
-    }
-    
-    // Lösche diese NACH dem Update
-    setEditingPosition(null);
-    setEditedValues({});
-  }
-};  
+}; 
   
   const handleDeletePosition = async (lvIndex, posIndex) => {
     if (!window.confirm('Position wirklich löschen?')) return;
