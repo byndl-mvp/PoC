@@ -5290,12 +5290,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv/position', async (req, res
       ? JSON.parse(currentLV.rows[0].content) 
       : currentLV.rows[0].content;
     
-    // Stelle sicher dass positions Array existiert
     if (!lv.positions || !Array.isArray(lv.positions)) {
       lv.positions = [];
     }
     
-    // Füge neue Position hinzu mit Standardwerten
+    // Füge neue Position hinzu mit NEP-Unterstützung
     const nextPos = lv.positions.length + 1;
     const positionToAdd = {
       pos: newPosition.pos || `${nextPos}.00`,
@@ -5306,7 +5305,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv/position', async (req, res
       unitPrice: parseFloat(newPosition.unitPrice) || 0,
       totalPrice: 0,
       dataSource: 'manual',
-      notes: 'Manuell hinzugefügt'
+      notes: 'Manuell hinzugefügt',
+      isNEP: newPosition.isNEP || false  // NEU: NEP-Flag übernehmen
     };
     
     // Berechne totalPrice
@@ -5316,11 +5316,24 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv/position', async (req, res
     
     lv.positions.push(positionToAdd);
     
-    // Neuberechnung
-    lv.totalSum = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+    // NEU: Neuberechnung mit NEP-Berücksichtigung
+    let calculatedSum = 0;
+    let nepSum = 0;
+    
+    lv.positions.forEach(pos => {
+      if (pos.isNEP) {
+        nepSum += pos.totalPrice || 0;
+      } else {
+        calculatedSum += pos.totalPrice || 0;
+      }
+    });
+    
+    lv.totalSum = Math.round(calculatedSum * 100) / 100;
+    lv.nepSum = Math.round(nepSum * 100) / 100;
+    
     lv.lastModified = new Date().toISOString();
     
-    // WICHTIG: JSON.stringify() beim Speichern!
+    // Speichere aktualisiertes LV
     await query(
       `UPDATE lvs 
        SET content = $1, updated_at = NOW()
@@ -5334,6 +5347,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv/position', async (req, res
       message: 'Position hinzugefügt',
       position: positionToAdd,
       totalSum: lv.totalSum,
+      nepSum: lv.nepSum,  // NEU: NEP-Summe zurückgeben
       lv
     });
     
