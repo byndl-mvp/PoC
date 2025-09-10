@@ -20,7 +20,7 @@ export default function ResultPage() {
     description: '',
     quantity: 1,
     unit: 'Stk',
-    unitPrice: 0
+    unitPrice: 0,
     isNEP: false  // NEU
 });
   const [selectedPosition, setSelectedPosition] = useState(null);
