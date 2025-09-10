@@ -3346,17 +3346,13 @@ for (const row of lvs) {
     nepTotal: nepTotal  // NEU: NEP-Summe speichern
   });
   
-  // In der Anzeige (ein paar Zeilen weiter unten, wo doc.text verwendet wird):
+  // Berechne und zeige die Gewerke in der Übersicht
   let displayText = `• ${row.trade_code} - ${row.trade_name}: ${withPrices ? formatCurrency(tradeTotal) : '________'}`;
   if (nepTotal > 0 && withPrices) {
-    displayText += ` (+ NEP: ${formatCurrency(nepTotal)})`;
+  displayText += ` (+ NEP: ${formatCurrency(nepTotal)})`;
   }
   doc.text(displayText, { indent: 20 });
-}
-        
-        doc.text(`• ${row.trade_code} - ${row.trade_name}: ${withPrices ? formatCurrency(tradeTotal) : '________'}`, { indent: 20 });
-      }
-      
+}    
       if (withPrices) {
         doc.moveDown(1);
         doc.fontSize(12)
