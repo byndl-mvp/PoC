@@ -2710,8 +2710,6 @@ if (duplicates.length > 0) {
   
   // NEU: NEP-Summe separat speichern
   lv.nepSum = Math.round(nepSum * 100) / 100;
-  lv.totalSum = Math.round(calculatedSum * 100) / 100;
-}
       
       // Stundenlohnarbeiten hinzufügen
       const stundenSätze = {
