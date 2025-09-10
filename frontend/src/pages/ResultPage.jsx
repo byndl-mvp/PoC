@@ -205,11 +205,6 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
    }
  };
 
- // Automatische Neuberechnung der Gesamtsumme
- const recalculateTotals = (positions) => {
-   return positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
- };
-
 // NEU HIER EINFÜGEN:
 const recalculateTotalsWithNEP = (positions) => {
   let totalSum = 0;
