@@ -21,7 +21,8 @@ export default function ResultPage() {
     quantity: 1,
     unit: 'Stk',
     unitPrice: 0
-  });
+    isNEP: false  // NEU
+});
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [modalLvIndex, setModalLvIndex] = useState(null);
   const [modalPosIndex, setModalPosIndex] = useState(null);
@@ -79,7 +80,8 @@ const formatCurrency = (value) => {
     }));
   };
 
-  const handleSavePosition = async (lvIndex, posIndex) => {
+  // ERSETZEN Sie die komplette handleSavePosition Funktion:
+const handleSavePosition = async (lvIndex, posIndex) => {
   const lv = lvs[lvIndex];
   const position = lv.content.positions[posIndex];
   const key = `${lvIndex}-${posIndex}`;
@@ -90,10 +92,42 @@ const formatCurrency = (value) => {
     description: editedValues[`${key}-description`] !== undefined ? editedValues[`${key}-description`] : position.description,
     quantity: editedValues[`${key}-quantity`] !== undefined ? parseFloat(editedValues[`${key}-quantity`]) : position.quantity,
     unit: editedValues[`${key}-unit`] !== undefined ? editedValues[`${key}-unit`] : position.unit,
-    unitPrice: editedValues[`${key}-unitPrice`] !== undefined ? parseFloat(editedValues[`${key}-unitPrice`]) : position.unitPrice
+    unitPrice: editedValues[`${key}-unitPrice`] !== undefined ? parseFloat(editedValues[`${key}-unitPrice`]) : position.unitPrice,
+    isNEP: editedValues[`${key}-isNEP`] !== undefined ? editedValues[`${key}-isNEP`] : (position.isNEP || false)  // NEU
   };
   
   updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
+  
+  const updatedPositions = [...lv.content.positions];
+  updatedPositions[posIndex] = updatedPosition;
+  
+  // NEU: Verwende die neue Berechnungsfunktion
+  const totals = recalculateTotalsWithNEP(updatedPositions);
+  
+  const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      positions: updatedPositions,
+      totalSum: totals.totalSum  // Verwende die NEP-bereinigte Summe
+    })
+  });
+  
+  if (res.ok) {
+    const newLvs = [...lvs];
+    newLvs[lvIndex].content.positions = updatedPositions;
+    newLvs[lvIndex].content.totalSum = totals.totalSum;
+    newLvs[lvIndex].content.nepSum = totals.nepSum;  // NEU: Speichere auch NEP-Summe
+    setLvs(newLvs);
+    
+    if (selectedPosition && modalLvIndex === lvIndex && modalPosIndex === posIndex) {
+      setSelectedPosition(updatedPosition);
+    }
+    
+    setEditingPosition(null);
+    setEditedValues({});
+  }
+};
   
   // Update im Backend
   const updatedPositions = [...lv.content.positions];
@@ -161,21 +195,27 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   };
 
   const handleAddPosition = async (lvIndex) => {
-    const lv = lvs[lvIndex];
-    
-    if (!newPosition.title) {
-      alert('Bitte geben Sie eine Bezeichnung ein');
-      return;
+  const lv = lvs[lvIndex];
+  
+  if (!newPosition.title) {
+    alert('Bitte geben Sie eine Bezeichnung ein');
+    return;
+  }
+  
+  // NEU: Stelle sicher, dass isNEP mitgesendet wird
+  const positionToAdd = {
+    ...newPosition,
+    isNEP: newPosition.isNEP || false  // Explizit setzen
+  };
+  
+  const res = await fetch(
+    apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/position`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(positionToAdd)  // Verwende positionToAdd statt newPosition
     }
-    
-    const res = await fetch(
-      apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/position`),
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPosition)
-      }
-    );
+  );
     
     if (res.ok) {
       // Refresh LVs
@@ -191,8 +231,9 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
        description: '',
        quantity: 1,
        unit: 'Stk',
-       unitPrice: 0
-     });
+       unitPrice: 0,
+       isNEP: false  // NEU: Reset auch isNEP
+    });
    }
  };
 
@@ -200,7 +241,27 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
  const recalculateTotals = (positions) => {
    return positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
  };
- 
+
+// NEU HIER EINFÜGEN:
+const recalculateTotalsWithNEP = (positions) => {
+  let totalSum = 0;
+  let nepSum = 0;
+  
+  positions.forEach(pos => {
+    const posTotal = parseFloat(pos.totalPrice) || 0;
+    if (pos.isNEP) {
+      nepSum += posTotal;
+    } else {
+      totalSum += posTotal;
+    }
+  });
+  
+  return {
+    totalSum: Math.round(totalSum * 100) / 100,
+    nepSum: Math.round(nepSum * 100) / 100
+  };
+};
+
  const calculateTotal = (lv) => {
    // Zuerst prüfen ob totalSum vorhanden ist
    if (lv.content?.totalSum) {
@@ -442,53 +503,53 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
   const lv = lvs[modalLvIndex];
   const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
   
-  // Speichern OHNE die Inputs bei jedem Tastendruck zu updaten
-const handleSave = async () => {
-  // Werte aus dem Formular holen
-  const form = document.getElementById('position-edit-form');
-  const formData = new FormData(form);
-  
-  const updatedPosition = {
-    ...selectedPosition,
-    pos: selectedPosition.pos, // WICHTIG: pos beibehalten!
-    title: formData.get('title'),
-    description: formData.get('description'),
-    quantity: parseFloat(formData.get('quantity')) || 0,
-    unit: formData.get('unit'),
-    unitPrice: parseFloat(formData.get('unitPrice')) || 0,
+  const handleSave = async () => {
+    const form = document.getElementById('position-edit-form');
+    const formData = new FormData(form);
+    
+    const updatedPosition = {
+      ...selectedPosition,
+      pos: selectedPosition.pos,
+      title: formData.get('title'),
+      description: formData.get('description'),
+      quantity: parseFloat(formData.get('quantity')) || 0,
+      unit: formData.get('unit'),
+      unitPrice: parseFloat(formData.get('unitPrice')) || 0,
+      isNEP: formData.get('isNEP') === 'on'
+    };
+    updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
+    
+    const updatedPositions = [...lv.content.positions];
+    updatedPositions[modalPosIndex] = updatedPosition;
+    
+    // NEU: Verwende recalculateTotalsWithNEP für korrekte Summenberechnung
+    const totals = recalculateTotalsWithNEP(updatedPositions);
+    
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        positions: updatedPositions,
+        totalSum: totals.totalSum  // Verwende NEP-bereinigte Summe
+      })
+    });
+    
+    if (res.ok) {
+      const newLvs = [...lvs];
+      newLvs[modalLvIndex].content.positions = updatedPositions;
+      newLvs[modalLvIndex].content.totalSum = totals.totalSum;
+      newLvs[modalLvIndex].content.nepSum = totals.nepSum;
+      setLvs(newLvs);
+      setSelectedPosition(updatedPosition);
+      setEditingPosition(null);
+      setEditedValues({});
+    }
   };
-  updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
-  
-  // Direkt die Positionen aktualisieren (OHNE handleSavePosition)
-  const updatedPositions = [...lv.content.positions];
-  updatedPositions[modalPosIndex] = updatedPosition;
-  
-  // Backend-Update
-  const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      positions: updatedPositions,
-      totalSum: updatedPositions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0)
-    })
-  });
-  
-  if (res.ok) {
-    // State aktualisieren
-    const newLvs = [...lvs];
-    newLvs[modalLvIndex].content.positions = updatedPositions;
-    newLvs[modalLvIndex].content.totalSum = updatedPositions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
-    setLvs(newLvs);
-    setSelectedPosition(updatedPosition);
-    setEditingPosition(null);
-    setEditedValues({});
-  }
-};
   
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header bleibt gleich */}
+        {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
           <div className="flex justify-between items-start">
             <div>
@@ -514,7 +575,6 @@ const handleSave = async () => {
         
         <div className="p-6">
           {isEditing ? (
-            // UNCONTROLLED INPUTS mit defaultValue!
             <form id="position-edit-form" className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
@@ -569,9 +629,22 @@ const handleSave = async () => {
                   />
                 </div>
               </div>
+              
+              {/* NEP-Checkbox AUSSERHALB des grid */}
+              <div className="mt-4">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isNEP"
+                    className="mr-2 w-4 h-4 text-teal-500"
+                    defaultChecked={selectedPosition.isNEP || false}
+                  />
+                  <span className="font-medium text-gray-700">NEP (Nur-Einheits-Preis)</span>
+                  <span className="ml-2 text-sm text-gray-500">Position wird nicht zur Gesamtsumme addiert</span>
+                </label>
+              </div>
             </form>
           ) : (
-            // View Mode bleibt gleich
             <div className="space-y-4">
               <div>
                 <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedPosition.title}</h4>
@@ -600,6 +673,18 @@ const handleSave = async () => {
                   </p>
                 </div>
               </div>
+              
+              {/* NEP-Warnung NACH dem grid */}
+              {selectedPosition.isNEP && (
+                <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                  <p className="text-sm font-medium text-yellow-800">
+                    ⚠️ NEP-Position (Eventualposition)
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Diese Position wird nur mit Einheitspreis ausgewiesen, aber nicht zur Gesamtsumme addiert.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -629,7 +714,7 @@ const handleSave = async () => {
                     onClick={handleSave}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
-                    ✓ Speichern
+                    ✔ Speichern
                   </button>
                   <button
                     onClick={() => {
@@ -785,28 +870,34 @@ return (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm text-white">
                         <thead className="bg-white/10">
-                          <tr>
-                            <th className="text-left p-3 font-medium">Pos.</th>
-                            <th className="text-left p-3 font-medium">Bezeichnung</th>
-                            <th className="text-right p-3 font-medium">Menge</th>
-                            <th className="text-left p-3 font-medium">Einheit</th>
-                            <th className="text-right p-3 font-medium">EP (€)</th>
-                            <th className="text-right p-3 font-medium">GP (€)</th>
-                            <th className="text-center p-3 font-medium">Aktionen</th>
-                          </tr>
-                        </thead>
+  <tr>
+    <th className="text-left p-3 font-medium">Pos.</th>
+    <th className="text-left p-3 font-medium">Bezeichnung</th>
+    <th className="text-right p-3 font-medium">Menge</th>
+    <th className="text-left p-3 font-medium">Einheit</th>
+    <th className="text-right p-3 font-medium">EP (€)</th>
+    <th className="text-right p-3 font-medium">GP (€)</th>
+    <th className="text-center p-3 font-medium">NEP</th>
+    <th className="text-center p-3 font-medium">Aktionen</th>
+  </tr>
+</thead>
                         <tbody>
                           {lv.content.positions.map((pos, pidx) => (
                             <tr 
-                              key={pidx} 
-                              className="border-t border-white/10 hover:bg-white/5 cursor-pointer"
-                              onClick={() => {
-                                setSelectedPosition(pos);
-                                setModalLvIndex(idx);
-                                setModalPosIndex(pidx);
-                              }}
-                            >
-                              <td className="p-3">{pos.pos || `${idx+1}.${pidx+1}`}</td>
+  key={pidx} 
+  className={`border-t border-white/10 hover:bg-white/5 cursor-pointer ${
+    pos.isNEP ? 'opacity-75 bg-yellow-500/5' : ''
+  }`}
+  onClick={() => {
+    setSelectedPosition(pos);
+    setModalLvIndex(idx);
+    setModalPosIndex(pidx);
+  }}
+>
+                              <td className="p-3">
+  {pos.pos || `${idx+1}.${pidx+1}`}
+  {pos.isNEP && <span className="ml-1 text-xs text-yellow-400">(NEP)</span>}
+</td>
                               <td className="p-3">
                                 {editingPosition === `${idx}-${pidx}` ? (
                                   <input
@@ -855,6 +946,40 @@ return (
                               <td className="text-right p-3 font-medium text-teal-400">
                                 {pos.totalPrice ? safeToFixed(pos.totalPrice) : '-'}
                               </td>
+                              {/* HIER NEU EINFÜGEN - NACH der totalPrice Spalte, VOR der Aktionen-Spalte: */}
+    <td className="p-3 text-center">
+      <input
+        type="checkbox"
+        checked={pos.isNEP || false}
+        onChange={async (e) => {
+          e.stopPropagation();
+          
+          const updatedPositions = [...lv.content.positions];
+          updatedPositions[pidx] = { ...pos, isNEP: e.target.checked };
+          
+          const totals = recalculateTotalsWithNEP(updatedPositions);
+          
+          const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              positions: updatedPositions,
+              totalSum: totals.totalSum
+            })
+          });
+          
+          if (res.ok) {
+            const newLvs = [...lvs];
+            newLvs[idx].content.positions = updatedPositions;
+            newLvs[idx].content.totalSum = totals.totalSum;
+            newLvs[idx].content.nepSum = totals.nepSum;
+            setLvs(newLvs);
+          }
+        }}
+        className="w-4 h-4 text-teal-500"
+        title={pos.isNEP ? "NEP-Position (nicht in Summe)" : "Normale Position"}
+      />
+    </td>                              
                               <td className="p-3 text-center">
                                 {editingPosition === `${idx}-${pidx}` ? (
                                   <div className="flex gap-2 justify-center">
@@ -945,6 +1070,17 @@ return (
                             value={newPosition.description}
                             onChange={(e) => setNewPosition({...newPosition, description: e.target.value})}
                           />
+                          {/* HIER NEU EINFÜGEN - NACH der textarea, VOR den Buttons: */}
+    <label className="flex items-center text-white cursor-pointer">
+      <input
+        type="checkbox"
+        checked={newPosition.isNEP}
+        onChange={(e) => setNewPosition({...newPosition, isNEP: e.target.checked})}
+        className="mr-2 w-4 h-4 text-teal-500"
+      />
+      <span>NEP (Nur-Einheits-Preis) - Position wird nicht zur Gesamtsumme addiert</span>
+      <span className="ml-2 text-xs text-gray-400">(Eventualposition)</span>
+    </label>                          
                           <div className="flex gap-2 justify-end">
                             <button
                               onClick={() => handleAddPosition(idx)}
@@ -961,6 +1097,7 @@ return (
                                   quantity: 1,
                                   unit: 'Stk',
                                   unitPrice: 0
+                                  isNEP: false  
                                 });
                               }}
                               className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all"
@@ -990,12 +1127,26 @@ return (
   <h3 className="text-2xl font-bold text-white mb-6">Kostenzusammenfassung</h3>
   
   <div className="space-y-3">
-    {/* Einzelne Gewerke */}
+    {/* HIER MODIFIZIEREN - Die Einzelnen Gewerke: */}
     {lvs.map((lv, idx) => (
       <div key={idx} className="flex justify-between text-white">
-        <span className="text-gray-300">{lv.trade_name || lv.name || lv.trade_code}</span>
+        <span className="text-gray-300">
+          {lv.trade_name || lv.name || lv.trade_code}
+          {/* NEU: NEP-Hinweis beim Gewerkenamen */}
+          {lv.content?.nepSum > 0 && (
+            <span className="text-xs text-yellow-400 ml-2">
+              (enthält NEP-Positionen)
+            </span>
+          )}
+        </span>
         <span className="font-medium">
           {formatCurrency(calculateTotal(lv))}
+          {/* NEU: NEP-Summe separat anzeigen */}
+          {lv.content?.nepSum > 0 && (
+            <span className="text-xs text-gray-400 ml-2">
+              + NEP: {formatCurrency(lv.content.nepSum)}
+            </span>
+          )}
         </span>
       </div>
     ))}
