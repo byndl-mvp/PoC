@@ -2265,15 +2265,26 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 
   9. LIEFERUNG UND MONTAGE IMMER ZUSAMMEN:
    - NIEMALS getrennte Positionen für Lieferung und Montage
-   - IMMER: "Lieferung und Montage [Bauteil]" in EINER Position
-   - Gilt für: Fenster, Türen, Heizkörper, Sanitär, Elektro, etc.
+   - IMMER: "Lieferung und [Verb]" in EINER Position
    
-   RICHTIG:
-   - "Lieferung und Montage Fenster Kunststoff, 120x140cm, Dreh-Kipp"
+   KORREKTE FORMULIERUNGEN:
+   - "Lieferung und Verlegung von Dachziegeln..."
+   - "Lieferung und Montage Fenster Kunststoff, 120x140cm, Dreh-Kipp..."
+   - "Lieferung und Montage von Heizkörpern..."
+   - "Lieferung und Installation von Sanitärobjekten..."
+   - "Lieferung und Verlegen von Fliesen..."
    
    FALSCH:
-   - Pos 1: "Fenster Kunststoff liefern"
-   - Pos 2: "Fenster einbauen"
+   - "Verlegung von Dachziegeln..." (fehlt Lieferung!)
+   - "Einbau von Fenstern..." (fehlt Lieferung!)
+   - Pos 1: "Lieferung Dachziegel", Pos 2: "Verlegung Dachziegel"
+   
+   AUSNAHMEN (OHNE "Lieferung"):
+   - Reine Arbeitsleistungen: "Abbruch...", "Demontage...", "Reinigung..."
+   - Vorhandenes Material: "Wiederverwendung vorhandener..."
+   - Nebenleistungen: "Abdichtung...", "Anschluss...", "Verfugung..."
+   
+   KRITISCH: Bei JEDEM einzubauenden Material in JEDEM Gewerk MUSS "Lieferung und" vorangestellt werden!
 
 10. REALISTISCHE PREISE ZWINGEND:
     - Putzarbeiten: 25-60€/m² oder 30-80€/m
@@ -2297,16 +2308,23 @@ KRITISCH - GERÜST-REGEL:
 ` : ''}
 
 ${trade.code === 'GER' ? `
-KRITISCH FÜR GERÜSTBAU:
+KRITISCH FÜR GERÜSTBAU - MINDESTENS 5 POSITIONEN:
 - Gerüstfläche MUSS aus Antworten übernommen werden
 - Wenn Fläche nicht vorhanden: Länge x Höhe berechnen
-- REALISTISCHE PREISE:
-  * Auf-/Abbau: 8-12 €/m²
-  * Standzeit erste 4 Wochen: 4-6 €/m²
-  * Jede weitere Woche: 1-2 €/m²
-  * NIEMALS über 15 €/m² für Auf-/Abbau!
-- NUR EINE Auf-/Abbau Position
-- NUR EINE Standzeit Position
+
+PFLICHT-POSITIONEN:
+1. Auf- und Abbau Arbeitsgerüst (m²) - NUR EINE Position
+2. Standzeit erste 4 Wochen (m²) - NUR EINE Position
+3. Standzeit jede weitere Woche (m²)
+4. An- und Abtransport (pauschal)
+5. Schutznetz/Plane (m²) - bei Bedarf
+
+REALISTISCHE PREISE:
+- Auf-/Abbau: 8-12 €/m²
+- Standzeit erste 4 Wochen: 4-6 €/m²
+- Jede weitere Woche: 1-2 €/m²
+- Transport: 300-500 € pauschal
+- NIEMALS über 12 €/m² für Auf-/Abbau!
 ` : ''}
 
 ${trade.code === 'DACH' ? `
