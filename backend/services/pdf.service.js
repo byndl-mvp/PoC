@@ -763,4 +763,4 @@ if (lv.vorbemerkungen && lv.vorbemerkungen.length > 0) {
 }
 } // Klasse endet hier
 
-module.exports = PDFService;
+module.exports = new PDFService();
