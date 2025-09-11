@@ -403,7 +403,8 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
    * Intelligente Fragengenerierung mit Mengenerfassung
    */
   async generateQuestions(tradeId, projectContext = {}) {
-  const tradeResult = await query(
+    let questionPrompt = null;
+    const tradeResult = await query(
     'SELECT name, code FROM trades WHERE id = $1',
     [tradeId]
   );
@@ -496,7 +497,7 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
     }];
   }
   
-  const questionsPrompt = await getPromptForTrade(tradeId, 'questions'); 
+  questionPrompt = await getPromptForTrade(tradeId, 'questions');
 
 // VALIDIERE dass Prompt geladen wurde
 if (!questionPrompt && !isIntake) {
