@@ -336,9 +336,66 @@ case 'INT':
   /**
    * Intelligente Antwort-Validierung und Schätzung
    */
-  async validateAndEstimateAnswers(answers, tradeCode, projectContext) {
-    // KOPIEREN SIE DIE KOMPLETTE FUNKTION aus server.js
+  async function validateAndEstimateAnswers(answers, tradeCode, projectContext) {
+  const systemPrompt = `Du bist ein erfahrener Bausachverständiger mit 20+ Jahren Erfahrung.
+Deine Aufgabe: Validiere Nutzerantworten und erstelle realistische Schätzungen für unsichere Angaben.
+
+WICHTIGE REGELN:
+1. Prüfe die Plausibilität aller Mengenangaben
+2. Bei "unsicher" oder fehlenden kritischen Angaben: Erstelle realistische Schätzungen basierend auf:
+   - Typischen Werten für ähnliche Projekte
+   - Ableitungen aus anderen Angaben (z.B. Raumgröße → Kabellänge)
+   - Branchenüblichen Standards
+3. Berechne abgeleitete Werte intelligent:
+   - Kabellängen: ca. 15-20m pro Raum + Steigungen
+   - Rohrleitungen: Direkte Wege + 20% Zuschlag
+   - Materialmengen: Flächen × Erfahrungswerte
+4. Dokumentiere ALLE Annahmen transparent
+
+OUTPUT (NUR valides JSON):
+{
+  "validated": [
+    {
+      "questionId": "string",
+      "originalAnswer": "string oder null",
+      "validatedValue": "number",
+      "unit": "m²/m/Stk/kg/l",
+      "assumption": "Detaillierte Erklärung der Schätzgrundlage",
+      "confidence": 0.5-1.0
+    }
+  ],
+  "derivedValues": {
+    "totalArea": "number",
+    "perimeter": "number",
+    "volume": "number",
+    "additionalMetrics": {}
+  },
+  "warnings": ["Liste von Hinweisen auf unrealistische oder fehlende Angaben"]
+}`;
+
+  const userPrompt = `Gewerk: ${tradeCode}
+Projektkontext: ${JSON.stringify(projectContext)}
+Nutzerantworten: ${JSON.stringify(answers)}
+
+Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
+
+  try {
+    const response = await llmWithPolicy('validation', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { maxTokens: 3000, temperature: 0.3, jsonMode: true });
+    
+    const cleanedResponse = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    return JSON.parse(cleanedResponse);
+  } catch (err) {
+    console.error('[VALIDATION] Failed:', err);
+    return null;
   }
+}
   
   /**
    * Intelligente Fragengenerierung mit Mengenerfassung
