@@ -145,9 +145,6 @@ class DatabaseService {
     );
     return result.rows;
   }
-}
-
-module.exports = new DatabaseService();
 
 /**
    * Fragen speichern (Intake oder Gewerke)
@@ -365,3 +362,5 @@ module.exports = new DatabaseService();
     );
     return result.rows[0];
   }
+
+module.exports = new DatabaseService();
