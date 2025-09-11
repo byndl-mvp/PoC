@@ -498,7 +498,7 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
   const tradePrompt = await db.getPromptForTrade(tradeId, 'questions');
 
 // VALIDIERE dass Prompt geladen wurde
-if (!questionPrompt && !isIntake) {
+if (!tradePrompt && !isIntake) {
   console.error(`[QUESTIONS] ERROR: No question prompt found for ${tradeName} (${tradeCode})`);
   // Ohne Prompt können keine sinnvollen Fragen generiert werden
   throw new Error(`Fragen-Prompt für ${tradeName} fehlt in der Datenbank`);
