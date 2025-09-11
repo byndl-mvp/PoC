@@ -134,12 +134,6 @@ function parseFensterMaße(antwortText) {
   return fensterTypen;
 }
 
-module.exports = {
-  formatCurrency,
-  extractProjectKeyData,
-  parseFensterMaße
-};
-
 /**
  * Projekt-Komplexität bestimmen
  */
