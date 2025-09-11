@@ -213,14 +213,6 @@ function getTradeDescription(tradeCode) {
   return descriptions[tradeCode] || 'Allgemeine Bauarbeiten';
 }
 
-module.exports = {
-  formatCurrency,
-  extractProjectKeyData,
-  parseFensterMaße,
-  determineProjectComplexity,
-  getTradeDescription
-};
-
 /**
  * Intelligente Fragenanzahl basierend auf Gewerke-Komplexität
  */
@@ -318,9 +310,13 @@ async function isTradeAssignedToProject(projectId, tradeId) {
   return result.rows.length > 0;
 }
 
-// Exportiere die zusätzlichen Funktionen
+// Am Ende der Datei - erweitere die exports:
 module.exports = {
-  ...module.exports, // Behalte die bereits exportierten
+  formatCurrency,
+  extractProjectKeyData,
+  parseFensterMaße,
+  determineProjectComplexity,
+  getTradeDescription,
   getIntelligentQuestionCount,
   getAvailableTrades,
   getPromptByName,
