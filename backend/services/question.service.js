@@ -1472,4 +1472,4 @@ OUTPUT als JSON-Array:
 }
 } // Klasse endet hier
 
-module.exports = QuestionService;
+module.exports = new QuestionService();
