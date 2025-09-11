@@ -973,10 +973,124 @@ if (tradeCode === 'FEN' && lv.positions) {
   /**
    * Finale LV-Validierung
    */
-  finalLVValidation(lv, tradeCode) {
-    // KOPIEREN SIE aus server.js
-    // Die KOMPLETTE finalLVValidation Funktion
+  function finalLVValidation(lv, tradeCode) {
+  const issues = [];
+  
+  // UMFASSENDE Cross-Trade-Keywords für alle Gewerke
+  const crossTradeKeywords = {
+    'DACH': { 
+      forbidden: ['fassadendämmung', 'wdvs', 'fenster', 'haustür', 'innentür', 'sanitär', 'elektro', 'heizung', 'fliesen', 'parkett'],
+      except: ['dachfenster', 'dachausstieg', 'blitzschutz']
+    },
+    'FASS': { 
+      forbidden: ['fenster einbau', 'fenster lieferung', 'tür montage', 'dachziegel', 'dachrinne', 'heizung', 'sanitär', 'elektro', 'parkett', 'fliesen'],
+      except: ['fensterbank', 'laibung', 'fenstersims']
+    },
+    'FEN': { 
+      forbidden: ['fassadendämmung', 'wdvs', 'außenputz', 'dachziegel', 'heizung', 'sanitär', 'elektro komplett'],
+      except: ['fensterbank', 'rollladenkasten']
+    },
+    'GER': { 
+      forbidden: ['dämmung', 'putz', 'fenster einbau', 'malerarbeiten', 'elektro', 'sanitär', 'heizung', 'fliesen'],
+      except: []
+    },
+    'ELEKT': {
+      forbidden: ['sanitär objekte', 'heizkessel', 'heizkörper', 'fliesen', 'parkett', 'fenster', 'dämmung'],
+      except: ['durchlauferhitzer', 'elektro-heizung']
+    },
+    'SAN': {
+      forbidden: ['elektro verteiler', 'steckdosen', 'schalter', 'fenster', 'parkett', 'dämmung', 'dachziegel'],
+      except: ['durchlauferhitzer', 'elektro-boiler']
+    },
+    'HEI': {
+      forbidden: ['sanitär objekte', 'wc', 'dusche', 'elektro verteiler', 'fenster', 'fliesen', 'parkett'],
+      except: ['warmwasser', 'zirkulation']
+    },
+    'FLI': {
+      forbidden: ['parkett', 'laminat', 'vinyl', 'teppich', 'elektro', 'sanitär', 'heizung', 'fenster'],
+      except: ['sockelleiste', 'übergangsprofil']
+    },
+    'BOD': {
+      forbidden: ['fliesen', 'naturstein bad', 'elektro', 'sanitär', 'heizung', 'fenster', 'dämmung'],
+      except: ['sockelleiste', 'übergangsprofil']
+    },
+    'MAL': {
+      forbidden: ['fenster einbau', 'elektro installation', 'sanitär installation', 'heizung', 'fliesen', 'parkett'],
+      except: ['malervorarbeiten']
+    },
+    'TRO': {
+      forbidden: ['fenster', 'türen', 'elektro komplett', 'sanitär komplett', 'heizung komplett', 'fliesen'],
+      except: ['revisionsklappen', 'installationsschächte']
+    },
+    'TIS': {
+      forbidden: ['fenster außen', 'elektro installation', 'sanitär', 'heizung', 'rigips', 'gipskarton'],
+      except: ['fensterbank innen', 'möbelanschluss']
+    },
+    'ROH': {
+      forbidden: ['fenster einbau', 'elektro feininstallation', 'sanitär objekte', 'fliesen', 'parkett', 'rigips'],
+      except: ['kernbohrung', 'durchbruch']
+    },
+    'ABBR': {
+      forbidden: ['neubau', 'neue fenster', 'neue elektro', 'neue sanitär', 'aufbau'],
+      except: ['schutzmaßnahmen', 'sicherung']
+    },
+    'ESTR': {
+      forbidden: ['fliesen', 'parkett', 'oberbelag', 'elektro', 'sanitär', 'fenster'],
+      except: ['fußbodenheizung', 'dämmung unter estrich']
+    },
+    'AUSS': {
+      forbidden: ['innenputz', 'innentüren', 'elektro innen', 'sanitär innen', 'heizung'],
+      except: ['außensteckdose', 'außenbeleuchtung', 'außenwasserhahn']
+    },
+    'SCHL': {
+      forbidden: ['holzarbeiten', 'elektro installation', 'sanitär', 'heizung', 'fliesen'],
+      except: ['metallzargen', 'stahlunterkonstruktion']
+    },
+    'KLIMA': {
+      forbidden: ['heizkessel', 'heizkörper', 'sanitär objekte', 'fenster', 'fliesen'],
+      except: ['kombianlagen', 'wärmepumpe']
+    }
+  };
+  
+   if (crossTradeKeywords[tradeCode] && lv.positions) {
+    lv.positions.forEach(pos => {
+      const titleLower = pos.title?.toLowerCase() || '';
+      const descLower = pos.description?.toLowerCase() || '';
+      const combined = titleLower + ' ' + descLower;
+      
+      const forbidden = crossTradeKeywords[tradeCode].forbidden;
+      const exceptions = crossTradeKeywords[tradeCode].except;
+      
+      forbidden.forEach(keyword => {
+        if (combined.includes(keyword)) {
+          const isException = exceptions.some(ex => combined.includes(ex));
+          if (!isException) {
+            issues.push(`Position "${pos.title}" gehört nicht in ${tradeCode}`);
+            console.error(`[FINAL-CHECK] Cross-trade violation in ${tradeCode}: ${pos.title}`);
+          }
+        }
+      });
+    });
   }
+  
+  // 2. Prüfe Mindestanforderungen
+  if (tradeCode === 'FASS' && lv.positions) {
+    const hasFlaeche = lv.positions.some(pos => 
+      pos.unit === 'm²' && pos.title?.toLowerCase().includes('dämmung')
+    );
+    if (!hasFlaeche) {
+      issues.push('Keine Flächenposition für Dämmung gefunden');
+    }
+  }
+  
+  // 3. Log finale Warnung wenn Issues
+  if (issues.length > 0) {
+    console.warn(`[FINAL-CHECK] ${tradeCode} hat ${issues.length} Issues:`);
+    issues.forEach(issue => console.warn(`  - ${issue}`));
+  }
+  
+  return { lv, issues };
+}
   
   /**
    * Prüft auf doppelte Positionen
