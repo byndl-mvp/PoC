@@ -257,8 +257,17 @@ async function getAvailableTrades() {
 async function getPromptByName(name) {
   const { query } = require('../db');
   const result = await query(
-    'SELECT content FROM prompts WHERE name = $1 AND is_active = true LIMIT 1',
+    'SELECT content FROM prompts WHERE name = $1 LIMIT 1',
     [name]
+  );
+  return result.rows[0]?.content || '';
+}
+
+async function getPromptForTrade(tradeId, type) {
+  const { query } = require('../db');
+  const result = await query(
+    'SELECT content FROM prompts WHERE trade_id = $1 AND type = $2 LIMIT 1',
+    [tradeId, type]
   );
   return result.rows[0]?.content || '';
 }
@@ -319,6 +328,7 @@ module.exports = {
   getIntelligentQuestionCount,
   getAvailableTrades,
   getPromptByName,
+  getPromptForTrade,
   getTradeQuestionCount,
   ensureProjectTrade,
   isTradeAssignedToProject
