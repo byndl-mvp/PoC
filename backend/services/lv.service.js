@@ -754,10 +754,221 @@ async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
   /**
    * Validiert und korrigiert Preise im LV
    */
-  validateAndFixPrices(lv, tradeCode) {
-    // KOPIEREN SIE aus server.js (ca. Zeilen 2200-2450)
-    // Die KOMPLETTE validateAndFixPrices Funktion
+  function validateAndFixPrices(lv, tradeCode) {
+  let fixedCount = 0;
+  let warnings = [];
+  
+  if (!lv.positions || !Array.isArray(lv.positions)) {
+    return { lv, fixedCount, warnings };
   }
+  
+  lv.positions = lv.positions.map(pos => {
+    // Skip Stundenlohn und Kleinmaterial
+    if (pos.title?.includes('Stundenlohn') || 
+        pos.title?.toLowerCase().includes('kleinmaterial')) {
+      return pos;
+    }
+    
+    const titleLower = pos.title?.toLowerCase() || '';
+    const descLower = pos.description?.toLowerCase() || '';
+    
+    // 1. NEUE REGEL: Entsorgungskosten prüfen
+    if (titleLower.includes('entsorg') || 
+        titleLower.includes('abtransport') ||
+        titleLower.includes('abfuhr') ||
+        titleLower.includes('demontage und entsorgung')) {
+      
+      // Entsorgung pro Stück (Fenster, Türen, etc.)
+      if (pos.unit === 'Stk' && pos.unitPrice > 100) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 40; // Realistisch für Fenster/Tür-Entsorgung
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Entsorgung/Stück korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+      
+      // Entsorgung pro m³
+      if (pos.unit === 'm³' && pos.unitPrice > 200) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 120; // Realistisch für Bauschutt
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Entsorgung/m³ korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+      
+      // Entsorgung pauschal
+      if (pos.unit === 'psch' && pos.unitPrice > 2000) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 800; // Maximal für Pauschal-Entsorgung
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Entsorgung/pauschal korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+    
+    // 2. BESTEHENDE REGEL: Putzarbeiten
+    if ((titleLower.includes('putz') || 
+         titleLower.includes('laibung') || 
+         titleLower.includes('spachtel') ||
+         titleLower.includes('glätten')) && 
+        pos.unit === 'm' && pos.unitPrice > 100) {
+      
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 45;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Putzarbeit korrigiert: "${pos.title}": €${oldPrice}/m → €${pos.unitPrice}/m`);
+      fixedCount++;
+    }
+    
+    // 3. BESTEHENDE REGEL: Nebenleistungen
+    const isNebenleistung = 
+      titleLower.includes('anschluss') ||
+      titleLower.includes('abdichtung') ||
+      titleLower.includes('laibung') ||
+      titleLower.includes('befestigung') ||
+      titleLower.includes('dämmstreifen') ||
+      titleLower.includes('anarbeiten');
+    
+    if (isNebenleistung && pos.unitPrice > 200 && pos.unit !== 'psch') {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = pos.unit === 'm' ? 50 : 80;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Nebenleistung korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+    
+    // 4. BESTEHENDE REGEL: Hauptpositionen Mindestpreise
+    const isMainPosition = 
+      titleLower.includes('fenster') && !titleLower.includes('entsorg') ||
+      titleLower.includes('tür') && !titleLower.includes('entsorg') ||
+      titleLower.includes('heizung') ||
+      titleLower.includes('sanitär');
+    
+    if (isMainPosition && pos.unitPrice < 50) {
+      const oldPrice = pos.unitPrice;
+      
+      if (titleLower.includes('fenster')) {
+        const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*x\s*(\d+)/);
+        if (sizeMatch) {
+          const width = parseInt(sizeMatch[1]);
+          const height = parseInt(sizeMatch[2]);
+          const area = (width * height) / 10000;
+          pos.unitPrice = Math.round(600 + (area * 500));
+        } else {
+          pos.unitPrice = 900;
+        }
+        warnings.push(`Fenster korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }   
+
+    // SPEZIAL-REGEL FÜR GERÜST
+if (tradeCode === 'GER') {
+  if (titleLower.includes('auf') && titleLower.includes('abbau') || 
+      titleLower.includes('gerüst') && titleLower.includes('montage')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 15) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 10; // Realistischer Mittelwert
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Gerüst Auf-/Abbau korrigiert: €${oldPrice}/m² → €${pos.unitPrice}/m²`);
+      fixedCount++;
+    }
+  }
+  
+  if (titleLower.includes('standzeit') || titleLower.includes('miete')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 10) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 5; // Für 4 Wochen
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Gerüst Standzeit korrigiert: €${oldPrice}/m² → €${pos.unitPrice}/m²`);
+      fixedCount++;
+    }
+  }
+} 
+
+    // SPEZIAL-REGEL FÜR FENSTER-DEMONTAGE
+if (tradeCode === 'FEN' && lv.positions) {
+  // Sammle alle Demontage-Positionen
+  const demontagePositions = lv.positions.filter(pos => 
+    pos.title?.toLowerCase().includes('demontage') && 
+    pos.title?.toLowerCase().includes('fenster')
+  );
+  
+  if (demontagePositions.length > 1) {
+    console.warn(`[FEN] Konsolidiere ${demontagePositions.length} Demontage-Positionen zu einer`);
+    
+    // Berechne Gesamtmenge
+    const totalQuantity = demontagePositions.reduce((sum, pos) => 
+      sum + (pos.quantity || 0), 0
+    );
+    
+    // Erstelle eine konsolidierte Position
+    const consolidatedDemontage = {
+      pos: demontagePositions[0].pos,
+      title: 'Demontage und Entsorgung sämtlicher Altfenster',
+      description: 'Fachgerechte Demontage aller Bestandsfenster inkl. Entsorgung und Recycling gemäß Abfallverordnung',
+      quantity: totalQuantity,
+      unit: 'Stk',
+      unitPrice: 60, // Realistischer Preis
+      totalPrice: totalQuantity * 60,
+      dataSource: 'consolidated'
+    };
+    
+    // Entferne alte Positionen und füge neue hinzu
+    lv.positions = lv.positions.filter(pos => 
+      !demontagePositions.includes(pos)
+    );
+    lv.positions.unshift(consolidatedDemontage); // Am Anfang einfügen
+    
+    fixedCount++;
+    warnings.push(`Fenster-Demontage zu Sammelposition konsolidiert`);
+  }
+}    
+    // 5. GENERELLE ABSURDITÄTSPRÜFUNG
+    if (pos.unit === 'm' && pos.unitPrice > 500) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 80;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Absurder Preis/m korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+    
+    if (pos.unit === 'm²' && pos.unitPrice > 500) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 120;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Absurder Preis/m² korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+    
+    // 6. NEUE REGEL: Demontage darf nicht teurer als Montage sein
+    if (titleLower.includes('demontage') || titleLower.includes('ausbau')) {
+      // Demontage maximal 30% der Montage
+      if (pos.unit === 'Stk' && pos.unitPrice > 200) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 80; // Pauschal für Demontage
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Demontage korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+    
+    return pos;
+  });
+  
+  // Neuberechnung der Gesamtsumme wenn Änderungen
+  if (fixedCount > 0) {
+    const newTotal = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+    lv.totalSum = Math.round(newTotal * 100) / 100;
+  }
+  
+  if (warnings.length > 0) {
+    console.warn(`[PRICE-CHECK] ${tradeCode}: ${fixedCount} kritische Preise korrigiert`);
+    warnings.forEach(w => console.warn(`  - ${w}`));
+  }
+  
+  return { lv, fixedCount, warnings };
+}
   
   /**
    * Finale LV-Validierung
