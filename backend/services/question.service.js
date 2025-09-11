@@ -495,7 +495,7 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
     }];
   }
   
-  const questionPrompt = await getPromptForTrade(tradeId, 'questions');
+  const tradePrompt = await db.getPromptForTrade(tradeId, 'questions');
 
 // VALIDIERE dass Prompt geladen wurde
 if (!questionPrompt && !isIntake) {
