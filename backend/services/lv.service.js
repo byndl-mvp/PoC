@@ -1108,6 +1108,7 @@ async checkForDuplicatePositions(projectId, currentTradeId, positions) {
   
   lv.totalSum = Math.round(totalSum * 100) / 100;
   return lv;
-}
+  }
+} // <-- DIESE ZEILE HINZUFÜGEN (schließt die Klasse)
 
 module.exports = new LVService();
