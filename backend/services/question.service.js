@@ -505,11 +505,11 @@ if (!tradePrompt && !isIntake) {
 }
 
 // DEBUG: Prompt-Inhalt prüfen
-if (questionPrompt) {
+if (tradePrompt) {
   console.log(`[QUESTIONS] Prompt loaded for ${tradeName}: ${questionPrompt.length} chars`);
   
   // Prüfe ob wichtige Keywords im Prompt sind
-  if (tradeCode === 'GER' && !questionPrompt.includes('Gerüstfläche')) {
+  if (tradeCode === 'GER' && !tradePrompt.includes('Gerüstfläche')) {
     console.warn(`[QUESTIONS] WARNING: Gerüst prompt missing 'Gerüstfläche' keyword`);
   }
 }
