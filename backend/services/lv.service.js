@@ -1,13 +1,14 @@
 const { llmWithPolicy } = require('./llm.service');
 const db = require('./database.service');
 const { formatCurrency, parseFensterMaße } = require('../utils/helpers');
+const { query } = require('../db');  // DIESE ZEILE HINZUFÜGEN
 
 class LVService {
   
   /**
    * Generiert detailliertes LV mit Mengenberechnung
    */
-  async function generateDetailedLV(projectId, tradeId) {
+  async generateDetailedLV(projectId, tradeId) {
   const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
   if (!project) throw new Error('Project not found');
 
@@ -645,7 +646,7 @@ if (duplicates.length > 0) {
 }
 
 // Optimierte LV-Generierung - schnell und effizient
-async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
+async generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
   let lastError;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -698,7 +699,7 @@ async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
   /**
    * Validiert und korrigiert Preise im LV
    */
-  function validateAndFixPrices(lv, tradeCode) {
+  validateAndFixPrices(lv, tradeCode) {
   let fixedCount = 0;
   let warnings = [];
   
@@ -917,7 +918,7 @@ if (tradeCode === 'FEN' && lv.positions) {
   /**
    * Finale LV-Validierung
    */
-  function finalLVValidation(lv, tradeCode) {
+  finalLVValidation(lv, tradeCode) {
   const issues = [];
   
   // UMFASSENDE Cross-Trade-Keywords für alle Gewerke
@@ -1040,7 +1041,7 @@ if (tradeCode === 'FEN' && lv.positions) {
    * Prüft auf doppelte Positionen
    */
   // Cross-Check Funktion zur Duplikatsprüfung
-async function checkForDuplicatePositions(projectId, currentTradeId, positions) {
+async checkForDuplicatePositions(projectId, currentTradeId, positions) {
   const otherLVs = await query(
     `SELECT t.name as trade_name, t.code as trade_code, l.content 
      FROM lvs l 
@@ -1099,9 +1100,14 @@ async function checkForDuplicatePositions(projectId, currentTradeId, positions) 
    * Berechnet LV-Summen
    */
   calculateLVSummary(lv) {
-    // KOPIEREN SIE aus server.js
-    // Die KOMPLETTE calculateLVSummary Funktion
-  }
+  if (!lv.positions) return lv;
+  
+  const totalSum = lv.positions.reduce((sum, pos) => {
+    return sum + (pos.totalPrice || 0);
+  }, 0);
+  
+  lv.totalSum = Math.round(totalSum * 100) / 100;
+  return lv;
 }
 
 module.exports = new LVService();
