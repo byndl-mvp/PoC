@@ -1110,4 +1110,4 @@ async checkForDuplicatePositions(projectId, currentTradeId, positions) {
   return lv;
 }
 
-module.exports = LVService;
+module.exports = new LVService();
