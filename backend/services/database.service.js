@@ -365,4 +365,4 @@ class DatabaseService {
 
   } // Klasse endet hier
 
-module.exports = new DatabaseService();
+module.exports = DatabaseService();
