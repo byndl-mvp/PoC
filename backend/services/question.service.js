@@ -7,7 +7,7 @@ class QuestionService {
   /**
    * Intelligente, dynamische Fragenanzahl-Ermittlung
    */
-  function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = []) {
+  getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = []) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
   
   // Basis-Range für das Gewerk
@@ -336,7 +336,7 @@ case 'INT':
   /**
    * Intelligente Antwort-Validierung und Schätzung
    */
-  async function validateAndEstimateAnswers(answers, tradeCode, projectContext) {
+  async validateAndEstimateAnswers(answers, tradeCode, projectContext) {
   const systemPrompt = `Du bist ein erfahrener Bausachverständiger mit 20+ Jahren Erfahrung.
 Deine Aufgabe: Validiere Nutzerantworten und erstelle realistische Schätzungen für unsichere Angaben.
 
@@ -400,7 +400,7 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
   /**
    * Intelligente Fragengenerierung mit Mengenerfassung
    */
-  async function generateQuestions(tradeId, projectContext = {}) {
+  async generateQuestions(tradeId, projectContext = {}) {
   const tradeResult = await query(
     'SELECT name, code FROM trades WHERE id = $1',
     [tradeId]
@@ -1432,8 +1432,44 @@ return filteredQuestions;
    * Generiert adaptive Folgefragen basierend auf Kontext-Antwort
    */
   async generateContextBasedQuestions(tradeId, projectId, contextAnswer) {
-    // KOPIEREN SIE DIE KOMPLETTE FUNKTION aus server.js
+  const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
+  const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+  
+  const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
+Der Nutzer hat angegeben: "${contextAnswer}"
+
+Erstelle 10-15 spezifische Folgefragen basierend auf dieser Antwort.
+
+OUTPUT als JSON-Array:
+[
+  {
+    "id": "string",
+    "question": "Spezifische Frage",
+    "type": "text|number|select",
+    "required": true/false,
+    "unit": null oder "m²/m/Stk"
+  }
+]`;
+  
+  try {
+    const response = await llmWithPolicy('questions', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Erstelle Folgefragen für diese Arbeiten: ${contextAnswer}` }
+    ], { maxTokens: 3000, temperature: 0.5 });
+    
+    const cleaned = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    const questions = JSON.parse(cleaned);
+    return Array.isArray(questions) ? questions : [];
+    
+  } catch (err) {
+    console.error('[CONTEXT] Failed to generate adaptive questions:', err);
+    return [];
   }
 }
+} // Klasse endet hier
 
 module.exports = new QuestionService();
