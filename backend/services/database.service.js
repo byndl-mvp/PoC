@@ -363,4 +363,6 @@ class DatabaseService {
     return result.rows[0];
   }
 
+  } // Klasse endet hier
+
 module.exports = new DatabaseService();
