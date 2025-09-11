@@ -220,3 +220,111 @@ module.exports = {
   determineProjectComplexity,
   getTradeDescription
 };
+
+/**
+ * Intelligente Fragenanzahl basierend auf Gewerke-Komplexität
+ */
+function getIntelligentQuestionCount(tradeCode, projectInfo, intakeAnswers = []) {
+  const { TRADE_COMPLEXITY, DEFAULT_COMPLEXITY } = require('../config/constants');
+  
+  const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
+  let baseCount = tradeConfig.minQuestions;
+  
+  // Anpassungen basierend auf Projektkontext
+  const projectComplexity = determineProjectComplexity(projectInfo, intakeAnswers);
+  
+  if (projectComplexity === 'SEHR_HOCH') {
+    baseCount = Math.min(tradeConfig.maxQuestions, baseCount + 5);
+  } else if (projectComplexity === 'HOCH') {
+    baseCount = Math.min(tradeConfig.maxQuestions, baseCount + 3);
+  }
+  
+  return {
+    count: baseCount,
+    completeness: 1.0,
+    missingInfo: []
+  };
+}
+
+/**
+ * Verfügbare Gewerke aus DB laden
+ */
+async function getAvailableTrades() {
+  const { query } = require('../db');
+  const result = await query(
+    `SELECT id, code, name, description 
+     FROM trades 
+     WHERE is_active = true 
+     ORDER BY sort_order, name`
+  );
+  return result.rows;
+}
+
+/**
+ * Prompt aus DB laden
+ */
+async function getPromptByName(name) {
+  const { query } = require('../db');
+  const result = await query(
+    'SELECT content FROM prompts WHERE name = $1 AND is_active = true LIMIT 1',
+    [name]
+  );
+  return result.rows[0]?.content || '';
+}
+
+/**
+ * Trade-Fragenanzahl berechnen
+ */
+function getTradeQuestionCount(tradeCode, complexity = 'MITTEL') {
+  const { TRADE_COMPLEXITY, DEFAULT_COMPLEXITY } = require('../config/constants');
+  const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
+  
+  const complexityMultiplier = {
+    'SEHR_HOCH': 1.3,
+    'HOCH': 1.15,
+    'MITTEL': 1.0,
+    'NIEDRIG': 0.85,
+    'EINFACH': 0.7
+  };
+  
+  const multiplier = complexityMultiplier[complexity] || 1.0;
+  return Math.round(tradeConfig.minQuestions * multiplier);
+}
+
+/**
+ * Trade zu Projekt hinzufügen
+ */
+async function ensureProjectTrade(projectId, tradeId, category = 'other') {
+  const { query } = require('../db');
+  const result = await query(
+    `INSERT INTO project_trades (project_id, trade_id, category)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (project_id, trade_id) DO UPDATE SET category = $3
+     RETURNING *`,
+    [projectId, tradeId, category]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Prüfen ob Trade zum Projekt gehört
+ */
+async function isTradeAssignedToProject(projectId, tradeId) {
+  const { query } = require('../db');
+  const result = await query(
+    'SELECT * FROM project_trades WHERE project_id = $1 AND trade_id = $2',
+    [projectId, tradeId]
+  );
+  return result.rows.length > 0;
+}
+
+// Exportiere die zusätzlichen Funktionen
+module.exports = {
+  ...module.exports, // Behalte die bereits exportierten
+  getIntelligentQuestionCount,
+  getAvailableTrades,
+  getPromptByName,
+  getTradeQuestionCount,
+  ensureProjectTrade,
+  isTradeAssignedToProject
+};
