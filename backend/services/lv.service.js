@@ -1110,11 +1110,4 @@ async checkForDuplicatePositions(projectId, currentTradeId, positions) {
   return lv;
 }
 
-module.exports = {
-  generateDetailedLV
-  generateDetailedLVWithRetry,
-  validateAndFixPrices,
-  finalLVValidation,
-  checkForDuplicatePositions,
-  calculateLVSummary
-};
+module.exports = LVService;
