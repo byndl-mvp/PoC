@@ -288,11 +288,11 @@ function getTradeQuestionCount(tradeCode, complexity = 'MITTEL') {
 async function ensureProjectTrade(projectId, tradeId, category = 'other') {
   const { query } = require('../db');
   const result = await query(
-    `INSERT INTO project_trades (project_id, trade_id, category)
+    `INSERT INTO project_trades (project_id, trade_id, status) 
      VALUES ($1, $2, $3)
-     ON CONFLICT (project_id, trade_id) DO UPDATE SET category = $3
+     ON CONFLICT (project_id, trade_id) DO NOTHING
      RETURNING *`,
-    [projectId, tradeId, category]
+    [projectId, tradeId, 'open']  // <-- DRITTER PARAMETER HINZUFÜGEN!
   );
   return result.rows[0];
 }
