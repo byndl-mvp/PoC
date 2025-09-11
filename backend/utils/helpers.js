@@ -244,9 +244,8 @@ function getIntelligentQuestionCount(tradeCode, projectInfo, intakeAnswers = [])
 async function getAvailableTrades() {
   const { query } = require('../db');
   const result = await query(
-    `SELECT id, code, name, description 
+    `SELECT id, code, name 
      FROM trades 
-     WHERE is_active = true 
      ORDER BY sort_order, name`
   );
   return result.rows;
