@@ -1117,5 +1117,4 @@ module.exports = {
   finalLVValidation,
   checkForDuplicatePositions,
   calculateLVSummary
-  // und alle anderen Funktionen die exportiert werden sollen
 };
