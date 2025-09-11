@@ -258,4 +258,4 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
   }
 }
 
-module.exports = new TradeService();
+module.exports = TradeService();
