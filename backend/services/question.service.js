@@ -495,21 +495,21 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
     }];
   }
   
-  const tradePrompt = await db.getPromptForTrade(tradeId, 'questions');
+  const questionPrompt = await getPromptForTrade(tradeId, 'questions');
 
 // VALIDIERE dass Prompt geladen wurde
-if (!tradePrompt && !isIntake) {
+if (!questionPrompt && !isIntake) {
   console.error(`[QUESTIONS] ERROR: No question prompt found for ${tradeName} (${tradeCode})`);
   // Ohne Prompt können keine sinnvollen Fragen generiert werden
   throw new Error(`Fragen-Prompt für ${tradeName} fehlt in der Datenbank`);
 }
 
 // DEBUG: Prompt-Inhalt prüfen
-if (tradePrompt) {
+if (questionPrompt) {
   console.log(`[QUESTIONS] Prompt loaded for ${tradeName}: ${questionPrompt.length} chars`);
   
   // Prüfe ob wichtige Keywords im Prompt sind
-  if (tradeCode === 'GER' && !tradePrompt.includes('Gerüstfläche')) {
+  if (tradeCode === 'GER' && !questionPrompt.includes('Gerüstfläche')) {
     console.warn(`[QUESTIONS] WARNING: Gerüst prompt missing 'Gerüstfläche' keyword`);
   }
 }
