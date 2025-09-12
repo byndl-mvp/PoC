@@ -72,12 +72,12 @@ const TRADE_COMPLEXITY = {
   'AUSS': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
   
   // Einfache Gewerke (8-15 Fragen)
-  'MAL': { complexity: 'EINFACH', minQuestions: 8, maxQuestions: 15 },
-  'GER': { complexity: 'EINFACH', minQuestions: 8, maxQuestions: 12 },
+  'MAL': { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15 },
+  'GER': { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 12 },
   'ABBR': { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15 },
   
   // Intake ist speziell (12-20 Fragen)
-  'INT': { complexity: 'INTAKE', minQuestions: 14, maxQuestions: 20 }
+  'INT': { complexity: 'INTAKE', minQuestions: 16, maxQuestions: 22 }
 };
 
 // Fallback für nicht definierte Gewerke
