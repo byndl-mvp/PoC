@@ -44,6 +44,41 @@ function formatCurrency(amount) {
 const MODEL_OPENAI = process.env.MODEL_OPENAI || 'gpt-4o-mini';
 const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest';
 
+
+
+// --- Workflow State Machine ---
+const TRADE_STATE = {
+  PENDING_CONTEXT: 'pending_context',
+  QNA: 'qna_in_progress',
+  READY_FOR_LV: 'ready_for_lv',
+  COMPLETE: 'complete'
+};
+
+async function setTradeState(projectId, tradeId, state) {
+  try {
+    await query(
+      `UPDATE project_trades SET state = $3, last_progressed_at = NOW() WHERE project_id = $1 AND trade_id = $2`,
+      [projectId, tradeId, state]
+    );
+  } catch (e) {
+    console.warn('[STATE] Could not set state (column missing?):', e.message);
+  }
+}
+
+async function markPostLvIfApplicable(projectId, tradeId) {
+  try {
+    const lvCountRes = await query(`SELECT COUNT(*)::int AS c FROM lvs WHERE project_id = $1`, [projectId]);
+    const isPost = lvCountRes.rows[0]?.c > 0;
+    if (isPost) {
+      await query(`UPDATE project_trades SET is_post_lv = TRUE WHERE project_id=$1 AND trade_id=$2`, [projectId, tradeId]);
+    }
+    return isPost;
+  } catch (e) {
+    console.warn('[STATE] Could not set is_post_lv (column missing?):', e.message);
+    return false;
+  }
+}
+
 // ===========================================================================
 // GEWERKE-KOMPLEXITÄT DEFINITIONEN (KORREKTE CODES)
 // ===========================================================================
@@ -4579,6 +4614,9 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
           const isManual = manuallyAddedTrades.includes(tradeId);
           const isAiRecommended = aiRecommendedTrades.includes(tradeId);
           const needsContextQuestion = isManual || isAiRecommended;
+    try {
+      await setTradeState(projectId, tradeId, needsContextQuestion ? TRADE_STATE.PENDING_CONTEXT : TRADE_STATE.QNA);
+    } catch (e) {}
           
           await query(
             `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
@@ -4596,6 +4634,9 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
           const isManual = manuallyAddedTrades.includes(tradeId);
           const isAiRecommended = aiRecommendedTrades.includes(tradeId);
           const needsContextQuestion = isManual || isAiRecommended;
+    try {
+      await setTradeState(projectId, tradeId, needsContextQuestion ? TRADE_STATE.PENDING_CONTEXT : TRADE_STATE.QNA);
+    } catch (e) {}
           
           await query(
             `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
@@ -4634,20 +4675,43 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
 });
 
 // Add single trade to project (for additional trades)
+
 app.post('/api/projects/:projectId/trades/add-single', async (req, res) => {
   try {
     const { projectId } = req.params;
     const { tradeId, isAdditional } = req.body;
-    
-    // Prüfe ob Trade bereits existiert
+
     const existing = await query(
       'SELECT * FROM project_trades WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
-    
     if (existing.rows.length > 0) {
       return res.status(400).json({ error: 'Gewerk bereits vorhanden' });
     }
+
+    const isPostLv = await markPostLvIfApplicable(projectId, tradeId);
+
+    try {
+      await query(
+        `INSERT INTO project_trades (project_id, trade_id, is_manual, is_additional, is_post_lv, state)
+         VALUES ($1, $2, TRUE, $3, $4, $5)`,
+        [projectId, tradeId, !!isAdditional, isPostLv, TRADE_STATE.PENDING_CONTEXT]
+      );
+    } catch (e) {
+      await query(
+        `INSERT INTO project_trades (project_id, trade_id, is_manual, is_additional)
+         VALUES ($1, $2, TRUE, $3)`,
+        [projectId, tradeId, !!isAdditional]
+      );
+    }
+
+    return res.json({ success: true, isPostLv });
+  } catch (err) {
+    console.error('Error adding single trade:', err);
+    res.status(500).json({ error: 'Fehler beim Hinzufügen des Gewerks' });
+  }
+});
+}
     
     // Füge Trade hinzu mit additional flag
     await query(
@@ -4689,7 +4753,10 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     const needsContextQuestion = tradeStatus.is_manual || 
                                  tradeStatus.is_ai_recommended || 
                                  req.body.isManuallyAdded ||
-                                 req.body.isAiRecommended; // NEU: Auch KI-empfohlene berücksichtigen
+                                 req.body.isAiRecommended;
+    try {
+      await setTradeState(projectId, tradeId, needsContextQuestion ? TRADE_STATE.PENDING_CONTEXT : TRADE_STATE.QNA);
+    } catch (e) {} // NEU: Auch KI-empfohlene berücksichtigen
     
     console.log('[QUESTIONS] Trade status:', {
       manual: tradeStatus.is_manual,
@@ -4781,7 +4848,13 @@ for (const question of questions) {
       missingInfo: intelligentCount.missingInfo,
       tradeName: tradeName,
       needsContextQuestion // NEU: Sende Info an Frontend
-    });
+    }
+    
+    try {
+      await setTradeState(projectId, tradeId, needsContextQuestion ? TRADE_STATE.PENDING_CONTEXT : TRADE_STATE.QNA);
+    } catch (e) {}
+
+    );
     
   } catch (err) {
     console.error('Failed to generate questions:', err);
@@ -4896,10 +4969,34 @@ app.post('/api/projects/:projectId/trades/:tradeId/answers', async (req, res) =>
       });
     }
     
+    const totalQsRes = await query(`SELECT COUNT(*)::int AS c FROM questions WHERE project_id=$1 AND trade_id=$2`, [projectId, tradeId]);
+    const ansQsRes = await query(`SELECT COUNT(*)::int AS c FROM answers WHERE project_id=$1 AND trade_id=$2`, [projectId, tradeId]);
+    const totalQs = totalQsRes.rows[0]?.c || 0;
+    const answeredQs = ansQsRes.rows[0]?.c || 0;
+    const completeness = totalQs ? Math.round((answeredQs/totalQs)*100) : 0;
+
+    try {
+      if (completeness >= 90) {
+        await setTradeState(projectId, tradeId, TRADE_STATE.READY_FOR_LV);
+      } else {
+        await setTradeState(projectId, tradeId, TRADE_STATE.QNA);
+      }
+    } catch (e) {}
+
+    let isPostLv = false;
+    try {
+      const r = await query(`SELECT COALESCE(is_post_lv,false) AS post FROM project_trades WHERE project_id=$1 AND trade_id=$2`, [projectId, tradeId]);
+      isPostLv = r.rows[0]?.post || false;
+    } catch (e) {}
+
+    const nextAction = (completeness >= 90) ? (isPostLv ? 'go_to_results' : 'next_trade') : 'continue_qna';
+
     res.json({ 
       success: true, 
       saved: savedAnswers.length,
-      answers: savedAnswers
+      answers: savedAnswers,
+      completeness,
+      nextAction
     });
     
   } catch (err) {
@@ -4967,10 +5064,34 @@ app.post('/api/projects/:projectId/intake/answers', async (req, res) => {
       });
     }
     
+    const totalQsRes = await query(`SELECT COUNT(*)::int AS c FROM questions WHERE project_id=$1 AND trade_id=$2`, [projectId, tradeId]);
+    const ansQsRes = await query(`SELECT COUNT(*)::int AS c FROM answers WHERE project_id=$1 AND trade_id=$2`, [projectId, tradeId]);
+    const totalQs = totalQsRes.rows[0]?.c || 0;
+    const answeredQs = ansQsRes.rows[0]?.c || 0;
+    const completeness = totalQs ? Math.round((answeredQs/totalQs)*100) : 0;
+
+    try {
+      if (completeness >= 90) {
+        await setTradeState(projectId, tradeId, TRADE_STATE.READY_FOR_LV);
+      } else {
+        await setTradeState(projectId, tradeId, TRADE_STATE.QNA);
+      }
+    } catch (e) {}
+
+    let isPostLv = false;
+    try {
+      const r = await query(`SELECT COALESCE(is_post_lv,false) AS post FROM project_trades WHERE project_id=$1 AND trade_id=$2`, [projectId, tradeId]);
+      isPostLv = r.rows[0]?.post || false;
+    } catch (e) {}
+
+    const nextAction = (completeness >= 90) ? (isPostLv ? 'go_to_results' : 'next_trade') : 'continue_qna';
+
     res.json({ 
       success: true, 
       saved: savedAnswers.length,
-      answers: savedAnswers
+      answers: savedAnswers,
+      completeness,
+      nextAction
     });
     
   } catch (err) {
@@ -5059,6 +5180,7 @@ Berücksichtige bereits erfasste Projektinformationen.`;
       );
     }
     
+    await setTradeState(projectId, tradeId, TRADE_STATE.QNA).catch(()=>{});
     res.json({ questions, count: questions.length });
     
   } catch (err) {
@@ -5096,6 +5218,28 @@ await query(
     
     console.log(`[LV] Generated for trade ${tradeId}: ${lv.positions?.length || 0} positions, Total: €${lv.totalSum || 0}`);
     
+    await setTradeState(projectId, tradeId, TRADE_STATE.COMPLETE).catch(()=>{});
+
+    let isPostLv = false;
+    try {
+      const r = await query(`SELECT COALESCE(is_post_lv,false) AS post FROM project_trades WHERE project_id=$1 AND trade_id=$2`, [projectId, tradeId]);
+      isPostLv = r.rows[0]?.post || false;
+    } catch (e) {}
+
+    let nextAction = 'go_to_results';
+    if (!isPostLv) {
+      const openCountRes = await query(
+        `SELECT COUNT(*)::int AS c 
+           FROM project_trades 
+          WHERE project_id=$1 
+            AND trade_id != $2
+            AND COALESCE(state,'qna_in_progress') IN ($3,$4)`,
+        [projectId, tradeId, TRADE_STATE.QNA, TRADE_STATE.READY_FOR_LV]
+      );
+      const openCount = openCountRes.rows[0]?.c || 0;
+      nextAction = openCount > 0 ? 'next_trade' : 'go_to_results';
+    }
+
     res.json({ 
       ok: true, 
       trade: { 
@@ -5103,7 +5247,8 @@ await query(
         code: tradeCode, 
         name: tradeInfo.rows[0]?.name 
       }, 
-      lv
+      lv,
+      nextAction
     });
     
   } catch (err) {
@@ -6824,4 +6969,36 @@ app.listen(PORT, () => {
 ║                                        ║
 ╚════════════════════════════════════════╝
     `);
+});
+
+
+// --- Workflow status endpoint ---
+app.get('/api/projects/:projectId/workflow/status', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const trades = (await query(
+      `SELECT pt.trade_id, t.code, t.name, 
+              COALESCE(pt.state,'qna_in_progress') AS state,
+              COALESCE(pt.is_post_lv,false) AS is_post_lv
+         FROM project_trades pt
+         JOIN trades t ON t.id = pt.trade_id
+        WHERE pt.project_id=$1
+        ORDER BY t.sort_order NULLS LAST, t.name`,
+      [projectId]
+    )).rows;
+
+    const lvs = (await query(
+      `SELECT trade_id FROM lvs WHERE project_id=$1`,
+      [projectId]
+    )).rows.map(r => r.trade_id);
+
+    res.json({
+      trades,
+      completed: lvs,
+      next: trades.find(tr => ['pending_context','qna_in_progress','ready_for_lv'].includes(tr.state)),
+    });
+  } catch (e) {
+    console.error('workflow/status failed:', e);
+    res.status(500).json({ error: 'Failed to get workflow status' });
+  }
 });
