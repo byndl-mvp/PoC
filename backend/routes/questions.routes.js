@@ -3,7 +3,7 @@ const router = express.Router();
 const { query } = require('../db');
 const { generateQuestions } = require('../services/question.service');
 const { llmWithPolicy } = require('../services/llm.service');
-const { isTradeAssignedToProject, ensureProjectTrade, getIntelligentQuestionCount } = require('../utils/helpers');
+const { isTradeAssignedToProject, ensureProjectTrade, getIntelligentQuestionCount, determineProjectComplexity } = require('../utils/helpers');
 
 // Generate adaptive questions for a specific trade
 router.post('/:projectId/trades/:tradeId/questions', async (req, res) => {
