@@ -4675,42 +4675,20 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
 });
 
 // Add single trade to project (for additional trades)
-
 app.post('/api/projects/:projectId/trades/add-single', async (req, res) => {
   try {
     const { projectId } = req.params;
     const { tradeId, isAdditional } = req.body;
-
+    
+    // Prüfe ob Trade bereits existiert
     const existing = await query(
       'SELECT * FROM project_trades WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
+    
     if (existing.rows.length > 0) {
       return res.status(400).json({ error: 'Gewerk bereits vorhanden' });
     }
-
-    const isPostLv = await markPostLvIfApplicable(projectId, tradeId);
-
-    try {
-      await query(
-        `INSERT INTO project_trades (project_id, trade_id, is_manual, is_additional, is_post_lv, state)
-         VALUES ($1, $2, TRUE, $3, $4, $5)`,
-        [projectId, tradeId, !!isAdditional, isPostLv, TRADE_STATE.PENDING_CONTEXT]
-      );
-    } catch (e) {
-      await query(
-        `INSERT INTO project_trades (project_id, trade_id, is_manual, is_additional)
-         VALUES ($1, $2, TRUE, $3)`,
-        [projectId, tradeId, !!isAdditional]
-      );
-    }
-
-    return res.json({ success: true, isPostLv });
-  } catch (err) {
-    console.error('Error adding single trade:', err);
-    res.status(500).json({ error: 'Fehler beim Hinzufügen des Gewerks' });
-  }
-});
     
     // Füge Trade hinzu mit additional flag
     await query(
