@@ -177,7 +177,7 @@ if (isAdditionalTrade) {
   if (newTrades.length > 0) {
     const sortedNew = newTrades.sort((a, b) => a.id - b.id);
     sessionStorage.removeItem('addingAdditionalTrade');
-    navigate(`/project/${projectId}/trade/${sortedNew[0].id}/questions`);
+    navigate(`/project/${projectId}/trade/${sortedNew[0].id}/questions?additional=true`);
     return; // Wichtig: Beende hier
   }
 }
