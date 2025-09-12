@@ -788,14 +788,21 @@ async function ensureProjectTrade(projectId, tradeId, source = 'unknown') {
  * Alle Trades eines Projekts abrufen
  */
 async function getProjectTrades(projectId) {
+  // Sort project trades so that manually added trades appear last regardless of sort_order.
+  // We join project_trades to access the is_manual flag and use a CASE expression in ORDER BY
+  // to push manual trades to the end. Within each group we still sort by sort_order and id.
   const result = await query(
-  `SELECT t.* FROM trades t
-   JOIN project_trades pt ON pt.trade_id = t.id
-   WHERE pt.project_id = $1
-   ORDER BY t.sort_order, t.id`,  // <-- Backtick hier!
-  [projectId]
-);
-return result.rows;
+    `SELECT t.*
+     FROM trades t
+     JOIN project_trades pt ON pt.trade_id = t.id
+     WHERE pt.project_id = $1
+     ORDER BY
+       CASE WHEN COALESCE(pt.is_manual, false) THEN 1 ELSE 0 END,
+       t.sort_order,
+       t.id`,
+    [projectId]
+  );
+  return result.rows;
 }
 
 /**
@@ -4650,12 +4657,10 @@ app.post('/api/projects/:projectId/trades/add-single', async (req, res) => {
     }
     
     // Füge Trade hinzu mit additional flag
-    // Bei einem Einzelergänzung handelt es sich immer um ein manuell ausgelöstes, zusätzliches Gewerk.
-    // Wir setzen is_manual=true, is_ai_recommended=false und is_additional entsprechend der übergebenen Flagge (default true).
     await query(
-      `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended, is_additional)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [projectId, tradeId, true, false, isAdditional || true]
+      `INSERT INTO project_trades (project_id, trade_id, is_manual, is_additional)
+       VALUES ($1, $2, $3, $4)`,
+      [projectId, tradeId, true, isAdditional || false]
     );
     
     res.json({ success: true });
@@ -4680,7 +4685,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     } = req.body;
     // Prüfe Trade-Status (manuell, KI-empfohlen oder automatisch)
     const tradeStatusResult = await query(
-      `SELECT is_manual, is_ai_recommended, is_additional
+      `SELECT is_manual, is_ai_recommended 
        FROM project_trades 
        WHERE project_id = $1 AND trade_id = $2`,
       [projectId, tradeId]
@@ -4688,21 +4693,14 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
     
-    // Bestimme, ob zunächst eine Kontextfrage gestellt werden muss. Dies ist der Fall bei:
-    // - manuell hinzugefügten Gewerken (is_manual)
-    // - KI-empfohlenen Gewerken (is_ai_recommended)
-    // - explizit gesetzten Flags aus dem Body (isManuallyAdded, isAiRecommended)
-    // Zusätzliche Gewerke (is_additional) werden ebenfalls wie manuell behandelt.
     const needsContextQuestion = tradeStatus.is_manual || 
-                                 tradeStatus.is_ai_recommended ||
-                                 tradeStatus.is_additional ||
+                                 tradeStatus.is_ai_recommended || 
                                  req.body.isManuallyAdded ||
-                                 req.body.isAiRecommended;
+                                 req.body.isAiRecommended; // NEU: Auch KI-empfohlene berücksichtigen
     
     console.log('[QUESTIONS] Trade status:', {
       manual: tradeStatus.is_manual,
       aiRecommended: tradeStatus.is_ai_recommended,
-      additional: tradeStatus.is_additional,
       needsContext: needsContextQuestion
     });
     
@@ -4789,8 +4787,7 @@ for (const question of questions) {
       completeness: intelligentCount.completeness,
       missingInfo: intelligentCount.missingInfo,
       tradeName: tradeName,
-      needsContextQuestion,
-      isAdditional: tradeStatus.is_additional || false
+      needsContextQuestion // NEU: Sende Info an Frontend
     });
     
   } catch (err) {
@@ -6395,12 +6392,15 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
     // Get trades with Q&A
     const tradesResult = await query(
       `SELECT 
-        t.*,
+        t.*, 
         pt.created_at as assigned_at
        FROM trades t
        JOIN project_trades pt ON pt.trade_id = t.id
        WHERE pt.project_id = $1
-       ORDER BY t.sort_order`,
+       ORDER BY
+         CASE WHEN COALESCE(pt.is_manual, false) THEN 1 ELSE 0 END,
+         t.sort_order,
+         t.id`,
       [id]
     );
 
