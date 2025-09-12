@@ -24,6 +24,8 @@ router.post('/:projectId/trades/:tradeId/questions', async (req, res) => {
        WHERE project_id = $1 AND trade_id = $2`,
       [projectId, tradeId]
     );
+    // NEUER LOG HIER:
+    console.log(`[QUESTIONS-ROUTE] Database query for project ${projectId}, trade ${tradeId}:`, tradeStatusResult.rows[0]);   
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
     
