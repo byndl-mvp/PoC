@@ -248,7 +248,12 @@ const isAdditionalTrade = new URLSearchParams(window.location.search).get('addit
     
     if (response.ok) {
       const data = await response.json();
-      
+      if (data.isAdditional === true) {
+  sessionStorage.setItem('currentTradeIsAdditional', 'true');
+  const currentUrl = new URL(window.location);
+  currentUrl.searchParams.set('additional', 'true');
+  window.history.replaceState({}, '', currentUrl);
+}      
       // Ersetze Kontextfrage mit spezifischen Fragen
       setQuestions(data.questions || data);
       const currentUrl = new URL(window.location);
