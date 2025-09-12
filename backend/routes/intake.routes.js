@@ -5,7 +5,7 @@ const { generateQuestions } = require('../services/question.service');
 const { llmWithPolicy } = require('../services/llm.service');
 
 // Helper functions aus den Services importieren
-const { ensureProjectTrade, getIntelligentQuestionCount, getAvailableTrades, getPromptByName, getTradeQuestionCount } = require('../utils/helpers');
+const { ensureProjectTrade, getIntelligentQuestionCount, getAvailableTrades, getPromptByName, getTradeQuestionCount, determineProjectComplexity } = require('../utils/helpers');
 
 // Generate Intake Questions
 router.post('/:projectId/intake/questions', async (req, res) => {
