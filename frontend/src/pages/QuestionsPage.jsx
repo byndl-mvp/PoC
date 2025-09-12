@@ -36,188 +36,169 @@ export default function QuestionsPage() {
   };
   
   useEffect(() => {
-    async function initialize() {
-      try {
-        setLoading(true);
-        setLoadingProgress(10);
-        setError('');
-        setSubmitting(false);
-       
-        console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
-        // Prüfe ob es ein zusätzliches Gewerk ist
-        const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
-        // Prüfe ob es ein KI-empfohlenes Gewerk ist
-        const aiRecommendedTrades = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]');
-        const isAiRecommendedTrade = aiRecommendedTrades.includes(parseInt(tradeId));
-        
-        console.log('Is AI recommended trade?:', isAiRecommendedTrade); 
-        let projectData = null;  // NEU: Deklariere projectData hier
-        // 1. Lade Projektdetails und ERKANNTE Gewerke
-          const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-          if (projectRes.ok) {
-            projectData = await projectRes.json();  // KEIN 'const' mehr!
-            console.log('Project data loaded:', projectData);
-            console.log('NUMBER OF TRADES:', projectData.trades?.length);
-            console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
-            
-            // WICHTIG: Nur die tatsächlich erkannten Gewerke (ohne INT)
-            let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
-
-            // Manuell hinzugefügte Trades aus sessionStorage ergänzen
-const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
-  .map(id => parseInt(id));
-if (manuallyAddedTradeIds.length > 0) {
-  // Hole die vollständigen Trade-Informationen vom Backend
-  const tradesResponse = await fetch(apiUrl('/api/trades'));
-  const allTrades = await tradesResponse.json();
-  
-  for (const manualId of manuallyAddedTradeIds) {
-    if (!detectedTrades.find(t => t.id === parseInt(manualId))) {
-      const fullTradeInfo = allTrades.find(t => t.id === parseInt(manualId));
-      if (fullTradeInfo) {
-        detectedTrades.push(fullTradeInfo);
-      }
-    }
-  }
-}
-
-console.log('Detected trades for this project:', detectedTrades);
-setProjectTrades(detectedTrades);
-            
-            // Finde den Index des aktuellen Gewerks
-            const currentIdx = detectedTrades.findIndex(t => t.id === parseInt(tradeId));
-            setCurrentTradeIndex(currentIdx);
-            
-            // Prüfe ob das aktuelle Trade-ID überhaupt zu diesem Projekt gehört
-            const currentTrade = detectedTrades.find(t => t.id === parseInt(tradeId));
-            if (!currentTrade) {
-              throw new Error(`Gewerk ${tradeId} gehört nicht zu diesem Projekt`);
-            }
-            
-            setTradeName(currentTrade.name);
-            setTradeCode(currentTrade.code);
-            setLoadingProgress(40);
-
-            // HIER KOMMT DER NEUE BLOCK REIN (nach Zeile 88):
-if (isAdditionalTrade || isAiRecommendedTrade) {
-  // Bei zusätzlichen oder KI-empfohlenen Gewerken: Nur Kontextfrage generieren
-  let contextQuestion;
-  
-  if (isAiRecommendedTrade) {
-    contextQuestion = {
-      id: 'context_reason',
-      question: `Sie haben die von der KI empfohlenen ${currentTrade.name} ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
-      type: 'text',
-      required: true,
-      category: 'Projektkontext',
-      explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.'
-    };
-  } else {
-    contextQuestion = {
-      id: 'context_reason',
-      question: `Sie haben nachträglich ${currentTrade.name} ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
-      type: 'text',
-      required: true,
-      category: 'Projektkontext',
-      explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.'
-    };
-  }
-  
-  if (!isAiRecommendedTrade) {
-  sessionStorage.setItem('currentTradeIsAdditional', 'true');
-}
-  setQuestions([contextQuestion]);
-  setAnswers([null]);
-  setCurrent(0);
-  setLoading(false);
-  setLoadingProgress(100);
-  return;
-}
-            
-// 2. Generiere ADAPTIVE Fragen für dieses spezifische Gewerk
-        console.log(`Generating adaptive questions for trade ${tradeId} (${tradeCode})...`);
-        // Prüfe ob dieses Gewerk manuell hinzugefügt wurde
-        const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
-        const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
-        
-        console.log('sessionStorage content:', sessionStorage.getItem('manuallyAddedTrades'));
-        console.log('Current tradeId:', tradeId);
-        console.log('Parsed manual trades:', manuallyAddedTrades);
-        console.log('Is manually added?:', isManuallyAdded);        
-        
-        const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            includeIntakeContext: true,
-            isManuallyAdded: isManuallyAdded,
-            isAiRecommended: isAiRecommendedTrade,
-            projectDescription: projectData.description,  // projectData, nicht project
-            projectCategory: projectData.category,        
-            projectBudget: projectData.budget            
-          })
-        });
-        
-        console.log('Generate response status:', generateRes.status);
-        
-        if (!generateRes.ok) {
-          const errorData = await generateRes.json().catch(() => ({}));
-          throw new Error(errorData.error || `Fehler beim Generieren der Fragen (Status: ${generateRes.status})`);
-        }
-        
-        const data = await generateRes.json();
-        console.log('Adaptive questions generated:', data);
-        
-        if (!data.questions || data.questions.length === 0) {
-          throw new Error('Keine Fragen wurden generiert');
-        }
-        
-        // Filtere und validiere die Fragen
-        const validQuestions = data.questions.filter(q => 
-          q.question || q.text || q.q
-        );
-        
-        if (validQuestions.length === 0) {
-          throw new Error('Keine gültigen Fragen erhalten');
-        }
-        
-        setQuestions(validQuestions);
-        setLoadingProgress(90);
-        
-        // Trade-Info aus Response
-        if (data.tradeName) setTradeName(data.tradeName);
-        if (data.tradeCode) setTradeCode(data.tradeCode);
-        
-        // Initialisiere Antworten-Array
-        setAnswers(new Array(validQuestions.length).fill(null));
-        setCurrent(0);
-        // FEHLERFIX: Eingabefelder zurücksetzen
-        setAnswerText('');
-        setAssumption('');
-            
-          } else {
-            throw new Error('Projekt konnte nicht geladen werden');
-          }
-  
-      } catch (err) {
-        console.error('Error in initialization:', err);
-        setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
-      } finally {
-        setLoadingProgress(100);
-        setLoading(false);
-      }
-    }
-    
-    initialize();
+  async function initialize() {
+    try {
+      setLoading(true);
+      setLoadingProgress(10);
+      setError('');
+      setSubmitting(false);
+     
+      console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
       
-return () => {
-      sessionStorage.removeItem('currentTradeIsAdditional');
-      sessionStorage.removeItem('aiRecommendedTrades');
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, tradeId]);
+      // Prüfe ob es ein nachträglich oder manuell hinzugefügtes Gewerk ist
+      const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
+      const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
+      const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
+      
+      console.log('Is manually added trade?:', isManuallyAdded);
+      console.log('Is additional trade?:', isAdditionalTrade);
+      
+      // 1. Lade Projektdetails und ERKANNTE Gewerke
+      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+      if (!projectRes.ok) {
+        throw new Error('Projekt konnte nicht geladen werden');
+      }
+      
+      const projectData = await projectRes.json();
+      console.log('Project data loaded:', projectData);
+      console.log('NUMBER OF TRADES:', projectData.trades?.length);
+      console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
+      
+      // WICHTIG: Nur die tatsächlich erkannten Gewerke (ohne INT)
+      let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
+
+      // Manuell hinzugefügte Trades aus sessionStorage ergänzen
+      const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
+        .map(id => parseInt(id));
+        
+      if (manuallyAddedTradeIds.length > 0) {
+        // Hole die vollständigen Trade-Informationen vom Backend
+        const tradesResponse = await fetch(apiUrl('/api/trades'));
+        const allTrades = await tradesResponse.json();
+        
+        for (const manualId of manuallyAddedTradeIds) {
+          if (!detectedTrades.find(t => t.id === parseInt(manualId))) {
+            const fullTradeInfo = allTrades.find(t => t.id === parseInt(manualId));
+            if (fullTradeInfo) {
+              detectedTrades.push(fullTradeInfo);
+            }
+          }
+        }
+      }
+
+      console.log('Detected trades for this project:', detectedTrades);
+      setProjectTrades(detectedTrades);
+      
+      // Finde den Index des aktuellen Gewerks
+      const currentIdx = detectedTrades.findIndex(t => t.id === parseInt(tradeId));
+      setCurrentTradeIndex(currentIdx);
+      
+      // Prüfe ob das aktuelle Trade-ID überhaupt zu diesem Projekt gehört
+      const currentTrade = detectedTrades.find(t => t.id === parseInt(tradeId));
+      if (!currentTrade) {
+        throw new Error(`Gewerk ${tradeId} gehört nicht zu diesem Projekt`);
+      }
+      
+      setTradeName(currentTrade.name);
+      setTradeCode(currentTrade.code);
+      setLoadingProgress(40);
+
+      // Bei manuell/nachträglich hinzugefügten Gewerken: Nur Kontextfrage generieren
+      if (isAdditionalTrade || isManuallyAdded) {
+        const contextQuestion = {
+          id: `${currentTrade.code}-CONTEXT`,
+          question: `Sie haben ${currentTrade.name} als ${isAdditionalTrade ? 'nachträglich' : 'zusätzliches'} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
+          type: 'text',
+          required: true,
+          category: 'Projektkontext',
+          explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.',
+          // KRITISCH: Diese Felder müssen vorhanden sein!
+          tradeId: parseInt(tradeId),
+          tradeName: currentTrade.name,
+          trade_name: currentTrade.name,
+          trade_code: currentTrade.code,
+          isContextQuestion: true,
+          requiresFollowUp: true
+        };
+        
+        sessionStorage.setItem('currentTradeIsAdditional', 'true');
+        setQuestions([contextQuestion]);
+        setAnswers([null]);
+        setCurrent(0);
+        setLoading(false);
+        setLoadingProgress(100);
+        return;
+      }
+
+      // 2. Generiere ADAPTIVE Fragen für dieses spezifische Gewerk (normale Gewerke)
+      console.log(`Generating adaptive questions for trade ${tradeId} (${currentTrade.code})...`);
+      
+      const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          includeIntakeContext: true,
+          isManuallyAdded: false,  // Explizit false für normale Gewerke
+          projectDescription: projectData.description,
+          projectCategory: projectData.category,        
+          projectBudget: projectData.budget            
+        })
+      });
+      
+      console.log('Generate response status:', generateRes.status);
+      
+      if (!generateRes.ok) {
+        const errorData = await generateRes.json().catch(() => ({}));
+        throw new Error(errorData.error || `Fehler beim Generieren der Fragen (Status: ${generateRes.status})`);
+      }
+      
+      const data = await generateRes.json();
+      console.log('Adaptive questions generated:', data);
+      
+      if (!data.questions || data.questions.length === 0) {
+        throw new Error('Keine Fragen wurden generiert');
+      }
+      
+      // Filtere und validiere die Fragen
+      const validQuestions = data.questions.filter(q => 
+        q.question || q.text || q.q
+      );
+      
+      if (validQuestions.length === 0) {
+        throw new Error('Keine gültigen Fragen erhalten');
+      }
+      
+      setQuestions(validQuestions);
+      setLoadingProgress(90);
+      
+      // Trade-Info aus Response
+      if (data.tradeName) setTradeName(data.tradeName);
+      if (data.tradeCode) setTradeCode(data.tradeCode);
+      
+      // Initialisiere Antworten-Array
+      setAnswers(new Array(validQuestions.length).fill(null));
+      setCurrent(0);
+      setAnswerText('');
+      setAssumption('');
+      
+    } catch (err) {
+      console.error('Error in initialization:', err);
+      setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
+    } finally {
+      setLoadingProgress(100);
+      setLoading(false);
+    }
+  }
+  
+  initialize();
+  
+  return () => {
+    sessionStorage.removeItem('currentTradeIsAdditional');
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [projectId, tradeId]);
 
 // Neuer useEffect für finalen Ladebalken
 
