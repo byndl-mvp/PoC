@@ -1192,14 +1192,14 @@ async function generateQuestions(tradeId, projectContext = {}) {
     isManuallyAdded: projectContext.isManuallyAdded,
   });
   
-  // NEU: Bei manuellen Gewerken NUR Kontextfrage zurückgeben
+  // NEU: Bei manuell hinzugefügten, AI-empfohlenen ODER nachträglichen Gewerken NUR Kontextfrage zurückgeben
   if (projectContext.isManuallyAdded === true || projectContext.isAiRecommended === true || projectContext.isAdditional === true) {
-    console.log(`[QUESTIONS] Manual/AI-recommended trade ${tradeCode} - returning context question only`);
-    
-    // Erstelle kontextbezogene Frage basierend auf Projektbeschreibung
-    const contextQuestion = `Sie haben ${tradeName} als ${projectContext.isAiRecommended ? 'empfohlenes' : 'zusätzliches'} Gewerk ausgewählt. 
-    Basierend auf Ihrem Projekt "${projectContext.description?.substring(0, 100)}..." - was genau soll in diesem Bereich gemacht werden?`;
-    
+    console.log(`[QUESTIONS] Special trade ${tradeCode} (manual/AI/additional) - returning context question only`);
+
+    // Unterscheide Beschriftung: empfohlen oder zusätzlich/nachträglich
+    const qualifier = projectContext.isAiRecommended ? 'empfohlenes' : 'zusätzliches';
+    const contextQuestion = `Sie haben ${tradeName} als ${qualifier} Gewerk ausgewählt.\n    Basierend auf Ihrem Projekt \"${projectContext.description?.substring(0, 100)}...\" - was genau soll in diesem Bereich gemacht werden?`;
+
     return [{
       id: 'context_reason',
       question: contextQuestion,
@@ -4498,11 +4498,9 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
     const { projectId } = req.params;
     const { confirmedTrades, manuallyAddedTrades = [], aiRecommendedTrades = [], isAdditional } = req.body;
 
-    // Flag to indicate whether this confirmation call is adding additional trades after initial LV creation.
-    // This flag will be stored in the project_trades table for each trade so the
-    // frontend can distinguish between trades added during the initial selection and
-    // trades added later. Without this distinction, manually added trades could be
-    // treated as additional and cause premature navigation to the result page.
+    // Determine whether this confirmation call is adding trades after the initial LV creation.
+    // This flag will be stored in project_trades for each trade to differentiate manual trades
+    // (selected on the TradeConfirmationPage) from additional trades (selected on the AdditionalTradeSelection page).
     const additionalFlag = Boolean(isAdditional);
     
     if (!Array.isArray(confirmedTrades) || confirmedTrades.length === 0) {
@@ -4587,7 +4585,7 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
           const isAiRecommended = aiRecommendedTrades.includes(tradeId);
           const needsContextQuestion = isManual || isAiRecommended;
 
-          // Persist all status flags including whether this trade was added in an additional step.
+          // Mark trades added in this branch as additional
           await query(
             `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended, is_additional)
  VALUES ($1, $2, $3, $4, $5)
@@ -4596,7 +4594,7 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
    is_manual = EXCLUDED.is_manual, 
    is_ai_recommended = EXCLUDED.is_ai_recommended,
    is_additional = EXCLUDED.is_additional`,
-            [projectId, tradeId, needsContextQuestion, isAiRecommended, additionalFlag]
+            [projectId, tradeId, needsContextQuestion, isAiRecommended, true]
           );
         }
       } else {
@@ -4606,17 +4604,16 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
           const isAiRecommended = aiRecommendedTrades.includes(tradeId);
           const needsContextQuestion = isManual || isAiRecommended;
 
-          // Persist the status flags and mark these trades as non-additional when confirming
-          // initially (additionalFlag is false in this branch).
+          // Mark trades confirmed here as not additional
           await query(
             `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended, is_additional)
  VALUES ($1, $2, $3, $4, $5)
  ON CONFLICT (project_id, trade_id) 
  DO UPDATE SET is_manual = $3, is_ai_recommended = $4, is_additional = $5`,
-            [projectId, tradeId, needsContextQuestion, isAiRecommended, additionalFlag]
+            [projectId, tradeId, needsContextQuestion, isAiRecommended, false]
           );
 
-          console.log(`[TRADES] Added trade ${tradeId}: manual=${needsContextQuestion}, AI=${isAiRecommended}, additional=${additionalFlag}`);
+          console.log(`[TRADES] Added trade ${tradeId}: manual=${needsContextQuestion}, AI=${isAiRecommended}, additional=false`);
         }
       }
       
@@ -4688,37 +4685,33 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       projectBudget: budgetFromBody
     } = req.body;
     // Prüfe Trade-Status (manuell, KI-empfohlen oder automatisch)
-    // Prüfe Trade-Status (manuell, KI-empfohlen, zusätzlich)
+    // Lade Status-Flags für das Gewerk: manuell, KI-empfohlen und nachträglich (additional)
     const tradeStatusResult = await query(
-      `SELECT is_manual, is_ai_recommended, is_additional 
-       FROM project_trades 
+      `SELECT is_manual, is_ai_recommended, is_additional
+       FROM project_trades
        WHERE project_id = $1 AND trade_id = $2`,
       [projectId, tradeId]
     );
 
     const tradeStatus = tradeStatusResult.rows[0] || {};
 
-    // Determine whether a context question is needed. Manual or AI-recommended trades
-    // always require a context question on first request. Additional trades are still
-    // treated the same in terms of context questions.
-    const needsContextQuestion = tradeStatus.is_manual ||
-                                 tradeStatus.is_ai_recommended ||
-                                 req.body.isManuallyAdded ||
-                                 req.body.isAiRecommended;
+    // Kontextfrage erforderlich, wenn das Gewerk manuell, KI-empfohlen oder nachträglich hinzugefügt wurde
+    const needsContextQuestion = Boolean(
+      tradeStatus.is_manual ||
+      tradeStatus.is_ai_recommended ||
+      tradeStatus.is_additional ||
+      req.body.isManuallyAdded ||
+      req.body.isAiRecommended ||
+      req.body.isAdditional
+    );
 
-    // Additional trades (added after initial LV creation) are flagged separately so
-    // the frontend can route back to the results page immediately after completing
-    // the questions. Without this flag, manually added trades would be treated
-    // identically to additional trades.
-    const isAdditionalTrade = tradeStatus.is_additional || false;
-    
     console.log('[QUESTIONS] Trade status:', {
       manual: tradeStatus.is_manual,
       aiRecommended: tradeStatus.is_ai_recommended,
       additional: tradeStatus.is_additional,
       needsContext: needsContextQuestion
     });
-    
+
     console.log('[DEBUG] Trade needs context question:', needsContextQuestion);
     
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
@@ -4750,10 +4743,10 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       timeframe: project.timeframe,
       budget: req.body.projectBudget || project.budget,
       projectId: projectId,
-      // Flags for the question generator to customise behaviour.
-      isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
-      isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended,
-      isAdditional: isAdditionalTrade
+      isManuallyAdded: Boolean(tradeStatus.is_manual || req.body.isManuallyAdded),
+      isAiRecommended: Boolean(tradeStatus.is_ai_recommended || req.body.isAiRecommended),
+      // NEU: Flag, ob das Gewerk nachträglich gewählt wurde
+      isAdditional: Boolean(tradeStatus.is_additional || req.body.isAdditional)
     };
     
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
@@ -4797,15 +4790,16 @@ for (const question of questions) {
     
     const intelligentCount = getIntelligentQuestionCount(tradeCode, project, []);
     
-    res.json({ 
+    res.json({
       questions,
       targetCount: intelligentCount.count,
       actualCount: questions.length,
       completeness: intelligentCount.completeness,
       missingInfo: intelligentCount.missingInfo,
       tradeName: tradeName,
-      needsContextQuestion,  // send context requirement to frontend
-      isAdditional: isAdditionalTrade // send whether this trade was added later
+      needsContextQuestion,
+      // NEU: Rückgabe, ob das Gewerk nachträglich (additional) ist – wichtig für Routing
+      isAdditional: projectContext.isAdditional
     });
     
   } catch (err) {
@@ -5079,12 +5073,26 @@ Berücksichtige bereits erfasste Projektinformationen.`;
          VALUES ($1,$2,$3,$4,$5,$6,$7)
          ON CONFLICT (project_id, trade_id, question_id)
          DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
-        [projectId, tradeId, q.id, q.question, q.type || 'text', q.required ?? true, 
+        [projectId, tradeId, q.id, q.question, q.type || 'text', q.required ?? true,
          q.options ? JSON.stringify(q.options) : null]
       );
     }
-    
-    res.json({ questions, count: questions.length });
+
+    // NEU: Lade additional-Status für dieses Gewerk zur Entscheidung im Frontend
+    let isAdditional = false;
+    try {
+      const addRes = await query(
+        `SELECT is_additional FROM project_trades WHERE project_id = $1 AND trade_id = $2`,
+        [projectId, tradeId]
+      );
+      if (addRes.rows[0]) {
+        isAdditional = Boolean(addRes.rows[0].is_additional);
+      }
+    } catch (e) {
+      console.warn('[CONTEXT-QUESTIONS] Could not load additional status:', e.message);
+    }
+
+    res.json({ questions, count: questions.length, isAdditional });
     
   } catch (err) {
     console.error('Context questions generation failed:', err);
