@@ -228,7 +228,11 @@ useEffect(() => {
 
 // NEUE LOGIK: Prüfe ob es ein zusätzliches Gewerk ist
 const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
-    if (current === 0 && isAdditionalTrade && questions[current].id === 'context_reason') {
+    if (
+  current === 0 &&
+  isAdditionalTrade &&
+  (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))
+) {
   try {
     setGeneratingQuestions(true);
     
