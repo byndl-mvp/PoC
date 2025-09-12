@@ -2,7 +2,14 @@ const { TRADE_COMPLEXITY, DEFAULT_COMPLEXITY } = require('../config/constants');
 const { llmWithPolicy } = require('./llm.service');
 const db = require('./database.service');
 const { query } = require('../db');
-const { getPromptForTrade, getPromptByName } = require('../utils/helpers');
+const { 
+  getPromptForTrade, 
+  getPromptByName,
+  determineProjectComplexity,
+  isTradeAssignedToProject,
+  ensureProjectTrade,
+  getIntelligentQuestionCount
+} = require('../utils/helpers');
 
 class QuestionService {
   
