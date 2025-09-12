@@ -485,23 +485,42 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
   });
   
   // NEU: Bei manuellen Gewerken NUR Kontextfrage zurückgeben
-  if (projectContext.isManuallyAdded === true || projectContext.isAiRecommended === true) {
-    console.log(`[QUESTIONS] Manual/AI-recommended trade ${tradeCode} - returning context question only`);
-    
-    // Erstelle kontextbezogene Frage basierend auf Projektbeschreibung
-    const contextQuestion = `Sie haben ${tradeName} als ${projectContext.isAiRecommended ? 'empfohlenes' : 'zusätzliches'} Gewerk ausgewählt. 
-    Basierend auf Ihrem Projekt "${projectContext.description?.substring(0, 100)}..." - was genau soll in diesem Bereich gemacht werden?`;
-    
-    return [{
-      id: 'context_reason',
-      question: contextQuestion,
-      text: contextQuestion,
-      type: 'text',
-      required: true,
-      category: 'Projektkontext',
-      explanation: 'Basierend auf Ihrer Antwort erstellen wir passende Detailfragen für dieses Gewerk.'
-    }];
-  }
+if (projectContext.isManuallyAdded === true || projectContext.isAiRecommended === true) {
+  console.log(`[QUESTIONS] Manual/AI-recommended trade ${tradeCode} - returning context question only`);
+  
+  // Bestimme den Kontext-Typ für die Fragestellung
+  const contextType = projectContext.isAiRecommended ? 'empfohlenes' : 'zusätzliches';
+  
+  // Erstelle eine spezifische, kontextbezogene Frage
+  const contextQuestion = {
+    id: `${tradeCode}-CONTEXT`,
+    question: `Sie haben ${tradeName} als ${contextType} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
+    type: 'text',
+    required: true,
+    category: 'Projektkontext',
+    explanation: 'Basierend auf Ihrer Antwort erstellen wir passende Detailfragen für dieses Gewerk.',
+    // WICHTIG: Diese Felder sind essentiell für das Frontend
+    tradeId: tradeId,
+    tradeName: tradeName,
+    trade_name: tradeName,    // Redundanz für Kompatibilität
+    trade_code: tradeCode,    // Redundanz für Kompatibilität
+    // Spezielle Flags für Frontend-Logik
+    isContextQuestion: true,
+    requiresFollowUp: true,
+    // Hilfreiche Metadaten
+    projectDescription: projectContext.description?.substring(0, 200),
+    unit: null,
+    options: null,
+    multiSelect: false,
+    defaultValue: null,
+    validationRule: null
+  };
+  
+  console.log(`[QUESTIONS] Returning context question for ${tradeName} (${tradeCode})`);
+  
+  // Gebe als Array zurück (Frontend erwartet Array)
+  return [contextQuestion];
+}
   
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
 
