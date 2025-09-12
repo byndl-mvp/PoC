@@ -4711,7 +4711,6 @@ app.post('/api/projects/:projectId/trades/add-single', async (req, res) => {
     res.status(500).json({ error: 'Fehler beim Hinzufügen des Gewerks' });
   }
 });
-}
     
     // Füge Trade hinzu mit additional flag
     await query(
