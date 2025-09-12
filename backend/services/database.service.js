@@ -133,18 +133,26 @@ class DatabaseService {
   }
   
   /**
-   * Alle Trades eines Projekts abrufen
-   */
-  async getProjectTrades(projectId) {
-    const result = await query(
-      `SELECT t.* FROM trades t
-       JOIN project_trades pt ON pt.trade_id = t.id
-       WHERE pt.project_id = $1
-       ORDER BY t.sort_order, t.id`,
-      [projectId]
-    );
-    return result.rows;
-  }
+ * Alle Trades eines Projekts abrufen
+ */
+async getProjectTrades(projectId) {
+  const result = await query(
+    `SELECT t.*, pt.is_manual
+     FROM trades t
+     JOIN project_trades pt ON pt.trade_id = t.id
+     WHERE pt.project_id = $1
+     ORDER BY t.sort_order, t.id`,
+    [projectId]
+  );
+  
+  console.log('[DB] Project trades with manual flags:', result.rows.map(t => ({
+    id: t.id, 
+    name: t.name, 
+    is_manual: t.is_manual
+  })));
+  
+  return result.rows;
+}
 
 /**
    * Fragen speichern (Intake oder Gewerke)
