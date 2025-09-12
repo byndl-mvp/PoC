@@ -103,27 +103,27 @@ router.post('/:projectId/trades/confirm', async (req, res) => {
       }
       
       // Füge bestätigte Trades hinzu
-if (isAdditional) {
-  // Bei zusätzlichen Gewerken nur neue hinzufügen
-  const existing = await query('SELECT trade_id FROM project_trades WHERE project_id = $1', [projectId]);
-  const existingIds = existing.rows.map(r => r.trade_id);
-  const newTrades = confirmedTrades.filter(id => !existingIds.includes(id));
-  
-  for (const tradeId of newTrades) {
-    // NUR DIESE ZEILEN ÄNDERN:
-    const isManual = manuallyAddedTrades.map(id => Number(id)).includes(Number(tradeId));
-    // ZEILE LÖSCHEN: const isAiRecommended = ...
-    // ZEILE LÖSCHEN: const needsContextQuestion = ...
-    
-    await query(
-      `INSERT INTO project_trades (project_id, trade_id, is_manual)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (project_id, trade_id) 
-       DO UPDATE SET is_manual = EXCLUDED.is_manual`,
-      [projectId, tradeId, isManual]
-    );
-  }
-}
+      if (isAdditional) {
+        // Bei zusätzlichen Gewerken nur neue hinzufügen
+        const existing = await query('SELECT trade_id FROM project_trades WHERE project_id = $1', [projectId]);
+        const existingIds = existing.rows.map(r => r.trade_id);
+        const newTrades = confirmedTrades.filter(id => !existingIds.includes(id));
+        
+        for (const tradeId of newTrades) {
+          const isManual = manuallyAddedTrades.includes(tradeId);
+          const isAiRecommended = aiRecommendedTrades.includes(tradeId);
+          const needsContextQuestion = isManual || isAiRecommended;
+          
+          await query(
+            `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (project_id, trade_id) 
+             DO UPDATE SET 
+               is_manual = EXCLUDED.is_manual, 
+               is_ai_recommended = EXCLUDED.is_ai_recommended`,
+            [projectId, tradeId, needsContextQuestion, isAiRecommended]
+          );
+        }
       } else {
         // Normale Bestätigung: Alle hinzufügen
         for (const tradeId of confirmedTrades) {
