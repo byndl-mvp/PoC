@@ -3294,7 +3294,7 @@ function finalLVValidation(lv, tradeCode) {
       except: ['kernbohrung', 'durchbruch']
     },
     'ABBR': {
-      forbidden: ['neubau', 'neue fenster', 'neue elektro', 'neue sanitär', 'aufbau'],
+      forbidden: ['neubau', 'lieferung', 'neue fenster', 'neue elektro', 'neue sanitär', 'aufbau'],
       except: ['schutzmaßnahmen', 'sicherung']
     },
     'ESTR': {
