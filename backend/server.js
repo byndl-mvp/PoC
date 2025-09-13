@@ -63,6 +63,7 @@ const TRADE_COMPLEXITY = {
   'FASS': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22 },
   'SCHL': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20 },
   'PV': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22 },
+  'ZIMM': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22 },
   
   // Mittlere Komplexität (15-25 Fragen)
   'FLI': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
@@ -552,6 +553,16 @@ case 'ROH':
   }
   break;
 
+case 'ZIMM': // Zimmererarbeiten
+  if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Holzkonstruktionsfläche');
+  else informationCompleteness += 30;
+  if (!desc.includes('dachstuhl') && !desc.includes('holzbau') && !desc.includes('carport')) {
+    missingCriticalInfo.push('Art der Zimmererarbeiten');
+  } else {
+    informationCompleteness += 20;
+  }
+  break;
+        
 case 'ESTR':
   if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Estrichfläche');
   else informationCompleteness += 30;
@@ -983,7 +994,7 @@ KRITISCHE GEWERKE-ABGRENZUNGEN (IMMER EINHALTEN):
    - NICHT: Oberbeläge (gehören zu FLI oder BOD)
 
 11. FENSTER/TÜREN:
-   - Fenster (FEN): Außenfenster, Fenstertüren, Rollläden
+   - Fenster (FEN): Außenfenster, Fenstertüren, Rollläden, Haustüren
    - Tischler (TIS): Innentüren, Zargen
    - Dachdecker (DACH): Dachfenster-Abdichtung
 
@@ -991,6 +1002,15 @@ KRITISCHE GEWERKE-ABGRENZUNGEN (IMMER EINHALTEN):
     - Garten (AUSS): Pflaster, Zäune, Terrassen, Gartenbau
     - NICHT Balkonsanierung (gehört zu DACH oder FASS je nach Abdichtung)
 
+13. ZIMMERER vs. TISCHLER vs. FENSTER:
+   - Zimmerer (ZIMM): Dachstuhl, tragende Holzkonstruktionen, Holzrahmenbau, Carports, Pergolen
+   - Tischler (TIS): Innentüren, Wohnungseingangstüren (nicht Haustüren!), Möbel, nicht-tragende Verkleidungen
+   - Fenster (FEN): ALLE Fenster inkl. Holzfenster (außer Dachfenster)
+   - Dachdecker (DACH): Dachfenster-Einbau und -Abdichtung
+   - NIEMALS Fenster im Zimmerer-Gewerk!
+   - NIEMALS Dachstuhl im Tischler-Gewerk!
+   - NIEMALS Sockelleisten im Tischler-Gewerk!
+   
 GENERELLE REGELN:
 - Qualität vor Quantität - lieber weniger richtige Gewerke
 - Bei Unsicherheit: Hauptgewerk übernimmt Nebenleistungen
@@ -2840,6 +2860,7 @@ if (duplicates.length > 0) {
         'HEI': { stunden: 12, satz: 75, bezeichnung: 'Heizungsbauer' },
         'TIS': { stunden: 10, satz: 60, bezeichnung: 'Tischler' },
         'FEN': { stunden: 8, satz: 60, bezeichnung: 'Fensterbauer' },
+        'ZIMM': { stunden: 12, satz: 65, bezeichnung: 'Zimmerer' },
         'DEFAULT': { stunden: 8, satz: 55, bezeichnung: 'Handwerker' }
       };
       
@@ -3148,6 +3169,19 @@ if (tradeCode === 'FEN' && lv.positions) {
     warnings.push(`Fenster-Demontage zu Sammelposition konsolidiert`);
   }
 }    
+
+// SPEZIAL-REGEL FÜR ZIMMERER
+if (tradeCode === 'ZIMM') {
+  if (titleLower.includes('dachstuhl')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 250) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 180; // Realistischer Wert für Dachstuhl
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Dachstuhl korrigiert: €${oldPrice}/m² → €${pos.unitPrice}/m²`);
+      fixedCount++;
+    }
+  }
+}    
     // 5. GENERELLE ABSURDITÄTSPRÜFUNG
     if (pos.unit === 'm' && pos.unitPrice > 500) {
       const oldPrice = pos.unitPrice;
@@ -3214,6 +3248,10 @@ function finalLVValidation(lv, tradeCode) {
       forbidden: ['fassadendämmung', 'wdvs', 'außenputz', 'dachziegel', 'heizung', 'sanitär', 'elektro komplett'],
       except: ['fensterbank', 'rollladenkasten']
     },
+    'ZIMM': {
+    forbidden: ['innentüren', 'wohnungseingangstür', 'möbel', 'fenster', 'dachfenster', 'elektro', 'sanitär', 'fliesen'],
+    except: ['holzverbindung', 'zimmermannsverbindung']
+    },    
     'GER': { 
       forbidden: ['dämmung', 'putz', 'fenster einbau', 'malerarbeiten', 'elektro', 'sanitär', 'heizung', 'fliesen'],
       except: []
@@ -3247,7 +3285,7 @@ function finalLVValidation(lv, tradeCode) {
       except: ['revisionsklappen', 'installationsschächte']
     },
     'TIS': {
-      forbidden: ['fenster außen', 'elektro installation', 'sanitär', 'heizung', 'rigips', 'gipskarton'],
+      forbidden: ['fenster', 'elektro installation', 'sanitär', 'heizung', 'rigips', 'gipskarton', 'sockelleisten'],
       except: ['fensterbank innen', 'möbelanschluss']
     },
     'ROH': {
@@ -5693,8 +5731,9 @@ function getTradeDescription(tradeCode) {
     'ABBR': 'Abbruch, Entkernung, Rückbau, Entsorgung',
     'ROH': 'Rohbau, Mauerarbeiten, Betonarbeiten, Fundamente',
     'GER': 'Gerüstbau, Arbeitsplattformen, Absturzsicherung',
+    'ZIMM': 'Zimmererarbeiten, Gauben, Dachstuhl, Holzkonstruktionen, Carports, Holzrahmenbau',
     'DACH': 'Dachdeckerarbeiten, Abdichtungen, Terrassen, Flachdach',
-    'FEN': 'Fenster, Außentüren, Montage, Rollläden',
+    'FEN': 'Fenster, Außentüren, Haustüren, Montage, Rollläden',
     'FASS': 'Fassadenbau, Fassadensanierung, WDVS',
     'AUSS': 'Außenanlagen, Garten- und Landschaftsbau, Pflasterarbeiten',
     'ELEKT': 'Elektroinstallation, Schalter, Steckdosen, Beleuchtung',
@@ -5705,10 +5744,10 @@ function getTradeDescription(tradeCode) {
     'ESTR': 'Estricharbeiten, Bodenaufbau, Dämmung, Fußbodenheizung',
     'TRO': 'Trockenbau, Wände, Decken, Dämmung, Schallschutz',
     'FLI': 'Fliesen, Plattenarbeiten, Verfugung, Abdichtung',
-    'TIS': 'Innentüren, Innenausbau, Einbaumöbel, Holzarbeiten',
-    'BOD': 'Bodenbeläge, Parkett, Laminat, Teppich, PVC',
+    'TIS': 'Innentüren, Wohnungseingangstüren, Innenausbau, Einbaumöbel, Holzarbeiten',
+    'BOD': 'Bodenbeläge, Parkett, Laminat, Vinyl, Teppich, PVC',
     'MAL': 'Malerarbeiten, Lackieren, Tapezieren, Spachteln',
-    'SCHL': 'Schlosserarbeiten, Metallbau, Geländer, Stahlkonstruktionen',
+    'SCHL': 'Schlosserarbeiten, Metallbau, Geländer, Treppengeländer, Stahlkonstruktionen',
     'INT': 'Allgemeine Projektaufnahme, Bestandserfassung'
   };
   return descriptions[tradeCode] || 'Allgemeine Bauarbeiten';
