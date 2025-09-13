@@ -50,35 +50,35 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
 
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
-  'DACH': { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 28 },
-  'ELEKT': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25 },
-  'SAN': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25 },
-  'HEI': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 26 },
-  'KLIMA': { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25 },
-  'ROH': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 28 },
-  
+  DACH:  { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 28, targetPositionsRatio: 0.8 },
+  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.7 },
+  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.75 },
+  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 26, targetPositionsRatio: 0.75 },
+  KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.7 },
+  ROH:   { complexity: 'HOCH',      minQuestions: 18, maxQuestions: 28, targetPositionsRatio: 0.8 },
+
   // Komplexe Gewerke (20-30 Fragen)
-  'TIS': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20 },
-  'FEN': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22 },
-  'FASS': { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22 },
-  'SCHL': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20 },
-  'PV': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22 },
-  'ZIMM': { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22 },
-  
+  TIS:   { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 1.0 }, // Türen: oft 1:1
+  FEN:   { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 1.0 }, // Fenster: oft 1:1
+  FASS:  { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 0.8 },
+  SCHL:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
+  PV:    { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.75 },
+  ZIMM:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.85 },
+
   // Mittlere Komplexität (15-25 Fragen)
-  'FLI': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
-  'ESTR': { complexity: 'MITTEL', minQuestions: 12, maxQuestions: 17 },
-  'TRO': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
-  'BOD': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
-  'AUSS': { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20 },
-  
+  FLI:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.8 },
+  ESTR:  { complexity: 'MITTEL', minQuestions: 12, maxQuestions: 17, targetPositionsRatio: 0.7 },
+  TRO:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
+  BOD:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.8 },
+  AUSS:  { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
+
   // Einfache Gewerke (8-15 Fragen)
-  'MAL': { complexity: 'EINFACH', minQuestions: 8, maxQuestions: 15 },
-  'GER': { complexity: 'EINFACH', minQuestions: 8, maxQuestions: 12 },
-  'ABBR': { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15 },
-  
+  MAL:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 15, targetPositionsRatio: 0.7 },
+  GER:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 12, targetPositionsRatio: 0.6 },
+  ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15, targetPositionsRatio: 0.6 },
+
   // Intake ist speziell (12-20 Fragen)
-  'INT': { complexity: 'INTAKE', minQuestions: 14, maxQuestions: 20 }
+  INT:   { complexity: 'INTAKE', minQuestions: 14, maxQuestions: 20, targetPositionsRatio: 0.0 }
 };
 
 // Fallback für nicht definierte Gewerke
@@ -2364,10 +2364,11 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Inkl. aller Nebenleistungen gem. VOB/C
 
 4. VOLLSTÄNDIGKEIT:
-   - Anzahl Positionen abhängig vom Projektumfang
-   - Kleine Projekte: 8-15 Positionen
-   - Mittlere Projekte: 16-25 Positionen
-   - Große Projekte: 25-35 Positionen
+   - Anzahl Positionen abhängig vom Umfang der Komplexität des Gewerks
+   - Einfache Gewerke ('MAL', 'GER', 'ABBR'): 8-15 Positionen je Gewerk
+   - Mittlere Komplexität ('FLI', 'ESTR', 'TRO', 'BOD', 'AUSS'): 12-18 Positionen je Gewerk
+   - Hohe Komplexität ('TIS', 'FEN', 'FASS', 'SCHL','PV','ZIMM',): 14-22 Positionen je Gewerk
+   - Sehr hohe Komplexität ('DACH', 'ELEKT', 'SAN', 'HEI', 'KLIMA', 'ROH'): 16-25 Positionen je Gewerk
    - Richtwert: ca. ${targetPositionsApprox} Positionen (≈ 80 % der beantworteten Fragen). Dieser Wert ist eine Zielgröße – keine starre Ober- oder Untergrenze. Vermeide Nonsenspositionen: Bei unklarer Menge lieber weniger, aber realistische Positionen erstellen.
 
 5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
