@@ -2317,6 +2317,10 @@ if (trade.code === 'GER' && lvPrompt) {
     console.error(`[LV] WARNING: Gerüst prompt missing price information!`);
   }
 }
+  // Dynamische Ziel-Positionsanzahl: ca. 80 % der beantworteten Fragen
+  // Diese Größe dient als Orientierung – keine starre Ober- oder Untergrenze
+  const targetPositionsApprox = Math.max(1, Math.ceil((tradeAnswers?.length || 0) * 0.8));
+
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
 
@@ -2338,10 +2342,11 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Inkl. aller Nebenleistungen gem. VOB/C
 
 4. VOLLSTÄNDIGKEIT:
-   - Anzahl Positionen abhängig von Projektumfang
+   - Anzahl Positionen abhängig vom Projektumfang
    - Kleine Projekte: 8-15 Positionen
    - Mittlere Projekte: 16-25 Positionen
    - Große Projekte: 25-35 Positionen
+   - Richtwert: ca. ${targetPositionsApprox} Positionen (≈ 80 % der beantworteten Fragen). Dieser Wert ist eine Zielgröße – keine starre Ober- oder Untergrenze. Vermeide Nonsenspositionen: Bei unklarer Menge lieber weniger, aber realistische Positionen erstellen.
 
 5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
    - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
