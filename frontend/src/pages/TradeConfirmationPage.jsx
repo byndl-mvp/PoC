@@ -199,6 +199,11 @@ const sortedTrades = [...confirmedTradesData].sort((a, b) => {
 
 // NUR EINE Navigation zum ersten Gewerk
 navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
+
+} else {
+  // NEU: Dieser else-Block für den Fall dass keine Trades bestätigt wurden
+  navigate(`/project/${projectId}/result`);
+}      
       
     } catch (err) {
       setError(err.message);
