@@ -2353,12 +2353,11 @@ function parseFensterMaße(antwortText) {
 async function generateDetailedLV(projectId, tradeId) {
   const project = (await query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
   if (!project) throw new Error('Project not found');
-
+  
   const trade = (await query('SELECT id, name, code FROM trades WHERE id=$1', [tradeId])).rows[0];
   if (!trade) throw new Error('Trade not found');
-
-  // DIESE ZEILE HINZUFÜGEN:
-const tradeCode = trade.code;
+  
+  const tradeCode = trade.code;
   
   // Lade alle relevanten Antworten
   const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
@@ -2374,7 +2373,7 @@ const tradeCode = trade.code;
         [projectId, intTrade.id]
       )).rows
     : [];
-
+    
   const tradeAnswers = (await query(
     `SELECT 
        q.text as question, 
@@ -2397,10 +2396,22 @@ const tradeCode = trade.code;
      ORDER BY q.question_id`,
     [projectId, tradeId]
   )).rows;
-
-const targetPositionsApprox = Math.max(1, Math.round((tradeAnswers?.length || 0) * 0.8));
   
-// NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
+  // NEU: Intelligente Positionsanzahl HIER berechnen (direkt nach tradeAnswers)
+  const answeredQuestionCount = tradeAnswers.length;
+  const positionGuidance = getIntelligentPositionCount(
+    trade.code,
+    {
+      category: project.category,
+      description: project.description,
+      budget: project.budget,
+      intakeAnswers: intakeAnswers
+    },
+    answeredQuestionCount
+  );
+  console.log(`[LV] Position guidance for ${trade.code}: ${positionGuidance.count} positions (${positionGuidance.min}-${positionGuidance.max})`);
+  
+  // NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
   const hasScaffoldingTrade = await query(
     `SELECT 1 FROM project_trades pt 
      JOIN trades t ON t.id = pt.trade_id 
@@ -2699,21 +2710,7 @@ async function checkForDuplicatePositions(projectId, currentTradeId, positions) 
   
   return duplicates;
 }  
-
-// NEU: Intelligente Positionsanzahl berechnen (AUSSERHALB des Strings!)
-const answeredQuestionCount = tradeAnswers.length;
-const positionGuidance = getIntelligentPositionCount(
-  trade.code,
-  {
-    category: project.category,
-    description: project.description,
-    budget: project.budget,
-    intakeAnswers: intakeAnswers
-  },
-  answeredQuestionCount
-);
-
-console.log(`[LV] Position guidance for ${trade.code}: ${positionGuidance.count} positions (${positionGuidance.min}-${positionGuidance.max})`);  
+  
   const userPrompt = `GEWERK: ${trade.name} (${trade.code})
 
 LV-TEMPLATE (MUSS BEACHTET WERDEN!):
