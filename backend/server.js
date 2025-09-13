@@ -2467,13 +2467,16 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Regionale Unterschiede berücksichtigen
    - Inkl. aller Nebenleistungen gem. VOB/C
 
-4. VOLLSTÄNDIGKEIT:
-   - Anzahl Positionen abhängig vom Umfang der Komplexität des Gewerks
-   - Einfache Gewerke ('MAL', 'GER', 'ABBR'): 8-15 Positionen je Gewerk
-   - Mittlere Komplexität ('FLI', 'ESTR', 'TRO', 'BOD', 'AUSS'): 12-18 Positionen je Gewerk
-   - Hohe Komplexität ('TIS', 'FEN', 'FASS', 'SCHL','PV','ZIMM',): 14-22 Positionen je Gewerk
-   - Sehr hohe Komplexität ('DACH', 'ELEKT', 'SAN', 'HEI', 'KLIMA', 'ROH'): 16-25 Positionen je Gewerk
-   - Richtwert: ca. ${targetPositionsApprox} Positionen (≈ 80 % der beantworteten Fragen). Dieser Wert ist eine Zielgröße – keine starre Ober- oder Untergrenze. Vermeide Nonsenspositionen: Bei unklarer Menge lieber weniger, aber realistische Positionen erstellen.
+4. VOLLSTÄNDIGKEIT basierend auf erfassten Daten:
+   - Erfasste Fragen: ${answeredQuestionCount}
+   - ZIEL-POSITIONSANZAHL: ${positionGuidance.count} Positionen
+   - Erlaubte Range: ${positionGuidance.min}-${positionGuidance.max} Positionen
+   - Verhältnis: Bei ${trade.code} typisch ${Math.round(positionGuidance.ratio * 100)}% der Fragenanzahl
+   
+   KRITISCH: Erstelle GENAU ${positionGuidance.count} Positionen (+/- 2)
+   - Kleine Projekte: ${positionGuidance.min}-${Math.round((positionGuidance.min + positionGuidance.count) / 2)} Positionen
+   - Mittlere Projekte: ${Math.round((positionGuidance.min + positionGuidance.max) / 2)} Positionen
+   - Große Projekte: ${Math.round((positionGuidance.count + positionGuidance.max) / 2)}-${positionGuidance.max} Positionen
 
 5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
    - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
@@ -2730,7 +2733,22 @@ WICHTIG:
 1. Erstelle NUR Positionen für explizit erfragte Leistungen
 2. Verwende die validierten Mengen
 3. Realistische Preise (Stand 2024/2025)
-4. Dokumentiere alle Annahmen transparent`;
+4. Dokumentiere alle Annahmen transparent`;  // HIER ENDET der userPrompt String
+
+// NEU: Intelligente Positionsanzahl berechnen (AUSSERHALB des Strings!)
+const answeredQuestionCount = tradeAnswers.length;
+const positionGuidance = getIntelligentPositionCount(
+  trade.code,
+  {
+    category: project.category,
+    description: project.description,
+    budget: project.budget,
+    intakeAnswers: intakeAnswers
+  },
+  answeredQuestionCount
+);
+
+console.log(`[LV] Position guidance for ${trade.code}: ${positionGuidance.count} positions (${positionGuidance.min}-${positionGuidance.max})`);
   
   try {
   const response = await llmWithPolicy('lv', [
