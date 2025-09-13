@@ -2443,9 +2443,6 @@ if (trade.code === 'GER' && lvPrompt) {
     console.error(`[LV] WARNING: Gerüst prompt missing price information!`);
   }
 }
-  // Dynamische Ziel-Positionsanzahl: ca. 80 % der beantworteten Fragen
-  // Diese Größe dient als Orientierung – keine starre Ober- oder Untergrenze
-  const targetPositionsApprox = Math.max(1, Math.ceil((tradeAnswers?.length || 0) * 0.8));
 
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
