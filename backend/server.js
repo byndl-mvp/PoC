@@ -2294,6 +2294,8 @@ const tradeCode = trade.code;
     [projectId, tradeId]
   )).rows;
 
+const targetPositionsApprox = Math.max(1, Math.round((tradeAnswers?.length || 0) * 0.8));
+  
 // NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
   const hasScaffoldingTrade = await query(
     `SELECT 1 FROM project_trades pt 
