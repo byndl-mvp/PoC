@@ -164,14 +164,15 @@ try {
       if (confirmedTradesData.length > 0) {
         
   // Speichere Info über manuell hinzugefügte Gewerke in sessionStorage
-  const manuallyAddedTrades = confirmedTradesData
-    .filter(t => t.isManuallyAdded)
-    .map(t => t.id);
+const manuallyAddedTrades = confirmedTradesData
+  .filter(t => t.isManuallyAdded)
+  .map(t => t.id);
 
-  console.log('Confirmed trades:', confirmedTradesData);
-  console.log('Filtering for manual trades...');
-  console.log('Manual trades found:', manuallyAddedTrades);
-  // Navigation anpassen für zusätzliche Gewerke
+console.log('Confirmed trades:', confirmedTradesData);
+console.log('Filtering for manual trades...');
+console.log('Manual trades found:', manuallyAddedTrades);
+
+// Navigation anpassen für zusätzliche Gewerke
 if (isAdditionalTrade) {
   const newTrades = confirmedTradesData.filter(t => !existingTradeIds.includes(t.id));
   if (newTrades.length > 0) {
@@ -181,26 +182,23 @@ if (isAdditionalTrade) {
     return; // Wichtig: Beende hier
   }
 }
-        
-// Bestehender Code bleibt unverändert
+
+// Speichere manuell hinzugefügte Trades (NUR EINMAL!)
 if (manuallyAddedTrades.length > 0) {
   sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
 }
 
-const sortedTrades = [...confirmedTradesData].sort((a, b) => a.id - b.id);
+// Sortiere: Erst nicht-manuelle (erkannte), dann manuelle Gewerke
+const sortedTrades = [...confirmedTradesData].sort((a, b) => {
+  // Manuelle Gewerke kommen ans Ende
+  if (a.isManuallyAdded && !b.isManuallyAdded) return 1;
+  if (!a.isManuallyAdded && b.isManuallyAdded) return -1;
+  // Bei gleicher Kategorie: nach sort_order
+  return (a.sort_order || 999) - (b.sort_order || 999);
+});
+
+// NUR EINE Navigation zum ersten Gewerk
 navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
-        
-  if (manuallyAddedTrades.length > 0) {
-    sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
-  }
-  
-  const sortedTradesNormal = [...confirmedTradesData].sort((a, b) => 
-  (a.sort_order || 999) - (b.sort_order || 999)
-);
-navigate(`/project/${projectId}/trade/${sortedTradesNormal[0].id}/questions`);
-} else {
-  navigate(`/project/${projectId}/result`);
-}
       
     } catch (err) {
       setError(err.message);
