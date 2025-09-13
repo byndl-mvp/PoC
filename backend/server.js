@@ -2699,7 +2699,21 @@ async function checkForDuplicatePositions(projectId, currentTradeId, positions) 
   
   return duplicates;
 }  
-  
+
+// NEU: Intelligente Positionsanzahl berechnen (AUSSERHALB des Strings!)
+const answeredQuestionCount = tradeAnswers.length;
+const positionGuidance = getIntelligentPositionCount(
+  trade.code,
+  {
+    category: project.category,
+    description: project.description,
+    budget: project.budget,
+    intakeAnswers: intakeAnswers
+  },
+  answeredQuestionCount
+);
+
+console.log(`[LV] Position guidance for ${trade.code}: ${positionGuidance.count} positions (${positionGuidance.min}-${positionGuidance.max})`);  
   const userPrompt = `GEWERK: ${trade.name} (${trade.code})
 
 LV-TEMPLATE (MUSS BEACHTET WERDEN!):
@@ -2732,21 +2746,6 @@ WICHTIG:
 3. Realistische Preise (Stand 2024/2025)
 4. Dokumentiere alle Annahmen transparent`;  // HIER ENDET der userPrompt String
 
-// NEU: Intelligente Positionsanzahl berechnen (AUSSERHALB des Strings!)
-const answeredQuestionCount = tradeAnswers.length;
-const positionGuidance = getIntelligentPositionCount(
-  trade.code,
-  {
-    category: project.category,
-    description: project.description,
-    budget: project.budget,
-    intakeAnswers: intakeAnswers
-  },
-  answeredQuestionCount
-);
-
-console.log(`[LV] Position guidance for ${trade.code}: ${positionGuidance.count} positions (${positionGuidance.min}-${positionGuidance.max})`);
-  
   try {
   const response = await llmWithPolicy('lv', [
     { role: 'system', content: systemPrompt },
