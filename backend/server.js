@@ -2393,7 +2393,7 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 
 4. TECHNISCH SINNVOLLE POSITIONIERUNG & ORIENTIERUNG:
    - Erfasste Informationen: ${answeredQuestionCount} beantwortete Fragen
-   - Orientierungs-Richtwert: ca. ${Math.round(answeredQuestionCount * 0.7)}-${Math.round(answeredQuestionCount * 1.2)} Positionen
+   - Orientierungs-Richtwert: ca. ${orientation.min}-${orientation.max} Positionen
    - Diese Zahl ist KEINE strikte Vorgabe, sondern eine ORIENTIERUNG
    - Maßgeblich ist die TECHNISCH SINNVOLLE Aufteilung
 
