@@ -5322,8 +5322,8 @@ const tradeKeywords = {
 };
 
 // Analysiere alle Intake-Antworten
-const allAnswersText = intakeAnswers
-  .map(a => `${a.question_text} ${a.answer_text}`.toLowerCase())
+const allAnswersText = answers
+  .map(a => `${a.question} ${a.answer}`.toLowerCase())
   .join(' ');
 
 for (const [code, keywords] of Object.entries(tradeKeywords)) {
@@ -5376,6 +5376,12 @@ res.json({
   summary,
   additionalTradesDetected: additionalTrades 
 });
+
+  } catch (err) {
+    console.error('intake/summary failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+}); // <- Diese schließenden Klammern fehlen
 
 // Confirm trades for project
 app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
