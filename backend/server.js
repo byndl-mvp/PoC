@@ -2322,19 +2322,10 @@ async function generateDetailedLV(projectId, tradeId) {
     [projectId, tradeId]
   )).rows;
   
-  // NEU: Intelligente Positionsanzahl HIER berechnen (direkt nach tradeAnswers)
-  const answeredQuestionCount = tradeAnswers.length;
-  const positionGuidance = getIntelligentPositionCount(
-    trade.code,
-    {
-      category: project.category,
-      description: project.description,
-      budget: project.budget,
-      intakeAnswers: intakeAnswers
-    },
-    answeredQuestionCount
-  );
-  console.log(`[LV] Position guidance for ${trade.code}: ${positionGuidance.count} positions (${positionGuidance.min}-${positionGuidance.max})`);
+  // NEU: Orientierungswerte für Positionsanzahl berechnen (nur als Richtwert!)
+const answeredQuestionCount = tradeAnswers.length;
+const orientation = getPositionOrientation(trade.code, answeredQuestionCount);
+console.log(`[LV] Orientation for ${trade.code}: ${orientation.min}-${orientation.max} positions from ${answeredQuestionCount} questions`);
   
   // NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
   const hasScaffoldingTrade = await query(
