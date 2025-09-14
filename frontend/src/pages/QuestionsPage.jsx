@@ -465,7 +465,6 @@ export default function QuestionsPage() {
     console.log('saveAllAnswersAndContinue called');
     try {
       setSubmitting(true);
-      setGeneratingLV(true);  // <-- HIER HINZUFÜGEN!
       console.log('submitting set to true');
       setError('');
       
@@ -499,8 +498,7 @@ export default function QuestionsPage() {
   async function generateLvAndContinue() {
     console.log('generateLvAndContinue called');
     try {
-      // Start LV Generation Screen
-      setGeneratingLV(true);
+      // LV Generation Screen wird schon in saveAllAnswersAndContinue gesetzt
       console.log('Generating LV for trade:', tradeId);
       
       const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
