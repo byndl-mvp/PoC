@@ -465,6 +465,7 @@ export default function QuestionsPage() {
     console.log('saveAllAnswersAndContinue called');
     try {
       setSubmitting(true);
+      setGeneratingLV(true);  // <-- HIER HINZUFÜGEN!
       console.log('submitting set to true');
       setError('');
       
