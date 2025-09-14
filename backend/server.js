@@ -2246,7 +2246,6 @@ cleanedResponse = cleanedResponse
 console.log(`[QUESTIONS] Raw response length: ${response.length}`);
 console.log(`[QUESTIONS] Cleaned response starts with: ${cleanedResponse.substring(0, 100)}`);
     
-    let questions;
 try {
   questions = JSON.parse(cleanedResponse);
 } catch (parseError) {
