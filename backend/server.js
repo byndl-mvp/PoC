@@ -52,8 +52,8 @@ const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
   DACH:  { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 28, targetPositionsRatio: 0.8 },
   ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.7 },
-  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.75 },
-  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 26, targetPositionsRatio: 0.75 },
+  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.7 },
+  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 26, targetPositionsRatio: 0.7 },
   KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.7 },
   ROH:   { complexity: 'HOCH',      minQuestions: 18, maxQuestions: 28, targetPositionsRatio: 0.8 },
 
