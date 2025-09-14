@@ -2260,10 +2260,19 @@ try {
   throw new Error('Fehler beim Verarbeiten der generierten Fragen');
 }
 
+// Zähle Fragen vor Validierung
+const beforeValidation = questions.length;
+
+// Erst Gewerke-Validierung (entfernt falsch zugeordnete Fragen)
+questions = validateTradeQuestions(tradeCode, questions, projectContext);
+console.log(`[QUESTIONS] After trade validation: ${questions.length} questions (removed ${beforeValidation - questions.length})`);
+
+// Zähle Fragen vor Duplikat-Filter
+const beforeDuplicates = questions.length;
+    
 // NEU: Post-Processing Filter anwenden
 questions = filterDuplicateQuestions(questions, allAnsweredInfo.fromIntake);
-
-console.log(`[QUESTIONS] After filtering: ${questions.length} questions remain`);
+console.log(`[QUESTIONS] After duplicate filter: ${questions.length} questions (removed ${beforeDuplicates - questions.length})`);
 
 return Array.isArray(questions) ? questions : [];
 
