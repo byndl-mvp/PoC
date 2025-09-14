@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
-export default function QuestionsPage() {
+export default function IntakeQuestionsPage() {
   const { projectId, tradeId } = useParams();
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
@@ -96,11 +96,11 @@ export default function QuestionsPage() {
     }
   }, [generatingLV]);
   
-  // Fake Progress für finalen Screen (45 Sekunden)
+  // Fake Progress für finalen Screen (30 Sekunden)
   useEffect(() => {
     if (finalizing) {
       setFinalProgress(0);
-      const totalDuration = 45000; // 45 Sekunden
+      const totalDuration = 30000; // 30 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
@@ -543,9 +543,11 @@ export default function QuestionsPage() {
       if (currentTradeIndex !== -1 && currentTradeIndex + 1 < projectTrades.length) {
         const nextTrade = projectTrades[currentTradeIndex + 1];
         console.log('Navigating to next detected trade:', nextTrade);
+        
+        // WICHTIG: Warte kurz, damit der neue Ladebalken Zeit hat anzuzeigen
         setTimeout(() => {
-          navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
-        }, 200);
+          window.location.href = `/project/${projectId}/trade/${nextTrade.id}/questions`;
+        }, 500);
       } else {
         setFinalizing(true);
         setTimeout(() => {
