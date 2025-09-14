@@ -2200,6 +2200,24 @@ let cleanedResponse = response
   .replace(/```\s*/g, '')
   .trim();
 
+// HIER KOMMT DER NEUE CODE:
+// Parse die Fragen
+let questions;
+try {
+  questions = JSON.parse(cleanedResponse);
+} catch (parseError) {
+  console.error('[QUESTIONS] Failed to parse response:', parseError);
+  console.log('[QUESTIONS] Raw response:', cleanedResponse.substring(0, 500));
+  throw new Error('Fehler beim Verarbeiten der generierten Fragen');
+}
+
+// NEU: Post-Processing Filter anwenden
+questions = filterDuplicateQuestions(questions, allAnsweredInfo.fromIntake);
+
+console.log(`[QUESTIONS] After filtering: ${questions.length} questions remain`);
+
+return Array.isArray(questions) ? questions : [];
+
 // Entferne problematische Zeichen die Claude manchmal einfügt
 cleanedResponse = cleanedResponse
   .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Kontrolzeichen entfernen
