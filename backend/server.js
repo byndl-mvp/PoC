@@ -3204,7 +3204,45 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
     - Dachfenster → NUR im Gewerk DACH
     - NIEMALS Annahmen treffen die nicht explizit genannt wurden
     - Bei "5 Fenster" im Projekt + Dach-Gewerk → KEINE Dachfenster annehmen!
-    
+
+const VERBOTENE_FORMULIERUNGEN = `
+KRITISCHE VERBOTE - NIE VERWENDEN:
+1. "Lieferung und Demontage" - IMMER TRENNEN in:
+   - "Demontage und Entsorgung" (eigene Position)
+   - "Lieferung und Montage" (eigene Position)
+
+2. Vorwandinstallation:
+   - NUR bei Gewerk TROCKENBAU (TRO) erlaubt
+   - Bei SANITÄR (SAN): Verwende "Unterputz-Installation"
+   - Bei anderen Gewerken: GAR NICHT erwähnen
+
+3. Korrekte Formulierungen:
+   ✓ "Lieferung und Montage"
+   ✓ "Demontage und Entsorgung"
+   ✗ "Lieferung und Demontage" (FALSCH!)
+   
+4. Gewerke-Abgrenzung:
+   - Vorwand = IMMER Trockenbau
+   - Sanitärinstallation in Vorwand = Zwei Gewerke:
+     * TRO: Vorwandinstallation erstellen
+     * SAN: Sanitärobjekte montieren
+   - Fenster (normale) → NUR im Gewerk FEN
+   - Dachfenster → NUR im Gewerk DACH
+   - NIEMALS Annahmen über nicht genannte Elemente!
+`;
+
+// Trade-spezifische Ergänzung
+const tradeSpecificRules = {
+  'FEN': 'KEINE Dachfenster - nur normale Wandfenster!',
+  'DACH': 'Dachfenster JA, normale Fenster NEIN!',
+  'SAN': 'KEINE Vorwandinstallation - nur Sanitärobjekte!',
+  'TRO': 'Vorwandinstallation JA, aber KEINE Sanitärobjekte!'
+};
+
+if (tradeSpecificRules[trade.code]) {
+  VERBOTENE_FORMULIERUNGEN += `\n\nSPEZIELL FÜR ${trade.code}:\n${tradeSpecificRules[trade.code]}`;
+}
+
   ${hasGeruestGewerk && ['DACH', 'FASS', 'FEN'].includes(trade.code) ? `
 KRITISCH - GERÜST-REGEL:
 - Gerüst ist als SEPARATES Gewerk vorhanden
