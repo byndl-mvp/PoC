@@ -3696,50 +3696,90 @@ function validateAndFixPrices(lv, tradeCode) {
       }
     }   
 
-// NEUE REGEL: INNENTÜREN MINDESTPREISE
+// NEUE REGEL: INNENTÜREN MINDESTPREISE MIT SONDERMASS-BERECHNUNG
 if (tradeCode === 'TIS') {
+  // Extrahiere Maße aus Beschreibung für Sondermaß-Berechnung
+  const sizeMatch = (pos.description || pos.title || '').match(/(\d+)\s*x\s*(\d+)/);
+  let priceMultiplier = 1;
+  
+  if (sizeMatch) {
+    const width = parseInt(sizeMatch[1]);
+    const height = parseInt(sizeMatch[2]);
+    
+    // Berechne Aufpreis für Sondermaße
+    // Breiten-Aufpreis
+    if (width > 120) {
+      priceMultiplier *= 2;      // Extreme Überbreite = Sonderanfertigung
+    } else if (width > 100) {
+      priceMultiplier *= 1.5;    // Überbreite
+    } else if (width > 94) {
+      priceMultiplier *= 1.3;     // Leichte Überbreite
+    }
+    
+    // Höhen-Aufpreis
+    if (height > 250) {
+      priceMultiplier *= 2;      // Extreme Überhöhe = Sonderanfertigung
+    } else if (height > 230) {
+      priceMultiplier *= 1.5;    // Überhöhe
+    } else if (height > 210) {
+      priceMultiplier *= 1.3;     // Leichte Überhöhe
+    }
+  }
+  
   if (titleLower.includes('innentür') || titleLower.includes('tür')) {
     // Unterscheide zwischen verschiedenen Türtypen
     if (descLower.includes('massivholz') || titleLower.includes('massivholz')) {
-      if (pos.unitPrice < 400) {
+      const minPrice = Math.round(550 * priceMultiplier);
+      if (pos.unitPrice < minPrice) {
         const oldPrice = pos.unitPrice;
-        pos.unitPrice = 450; // Massivholztür mindestens 450€
+        pos.unitPrice = minPrice; // Massivholztür mit Sondermaß-Aufschlag
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Massivholztür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        warnings.push(`Massivholztür ${sizeMatch ? `(${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
         fixedCount++;
       }
     } else if (descLower.includes('wohnungseingangstür') || titleLower.includes('wohnungseingang')) {
-      if (pos.unitPrice < 800) {
+      const minPrice = Math.round(950 * priceMultiplier);
+      if (pos.unitPrice < minPrice) {
         const oldPrice = pos.unitPrice;
-        pos.unitPrice = 900; // Wohnungseingangstür mindestens 900€
+        pos.unitPrice = minPrice; // Wohnungseingangstür mit Sondermaß-Aufschlag
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Wohnungseingangstür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        warnings.push(`Wohnungseingangstür ${sizeMatch ? `(${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
         fixedCount++;
       }
     } else {
       // Standard Innentür
-      if (pos.unitPrice < 250) {
+      const minPrice = Math.round(420 * priceMultiplier);
+      if (pos.unitPrice < minPrice) {
         const oldPrice = pos.unitPrice;
-        pos.unitPrice = 280; // Standard Innentür mindestens 280€
+        pos.unitPrice = minPrice; // Standard Innentür mit Sondermaß-Aufschlag
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Innentür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        
+        // Spezielle Warnung bei extremen Sondermaßen
+        if (priceMultiplier >= 2) {
+          warnings.push(`SONDERANFERTIGUNG Tür ${sizeMatch[1]}x${sizeMatch[2]}cm korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        } else if (priceMultiplier > 1) {
+          warnings.push(`Sondermaß Tür ${sizeMatch ? `(${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        } else {
+          warnings.push(`Innentür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        }
         fixedCount++;
       }
     }
   }
   
-  // Zargen separat prüfen
+  // Zargen separat prüfen (auch mit Sondermaß-Aufschlag)
   if (titleLower.includes('zarge')) {
-    if (pos.unitPrice < 120) {
+    const minPrice = Math.round(150 * priceMultiplier);
+    if (pos.unitPrice < minPrice) {
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = 150; // Zarge mindestens 150€
+      pos.unitPrice = minPrice; // Zarge mit Sondermaß-Aufschlag
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Zarge korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+      warnings.push(`Zarge ${sizeMatch ? `(Sondermaß ${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
       fixedCount++;
     }
   }
   
-  // Türdrücker/Beschläge
+  // Türdrücker/Beschläge (unabhängig von Sondermaß)
   if (titleLower.includes('drücker') || titleLower.includes('beschlag')) {
     if (pos.unitPrice < 30) {
       const oldPrice = pos.unitPrice;
