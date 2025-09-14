@@ -1756,6 +1756,37 @@ ${schadensRelevant.map(s => `- ${s}`).join('\n')}
 - Falls ja: Bitte Umfang beschreiben (klein/mittel/groß)`;
   }
 }
+
+// NEU: Explizite Konzept-Extraktion für bessere Duplikat-Vermeidung
+const answeredConcepts = new Set();
+const answeredValues = {};
+
+if (allAnsweredInfo.fromIntake && allAnsweredInfo.fromIntake.length > 0) {
+  allAnsweredInfo.fromIntake.forEach(item => {
+    const q = item.question_text?.toLowerCase() || '';
+    const a = item.answer_text?.toLowerCase() || '';
+    
+    // Extrahiere beantwortete Konzepte und Werte
+    if (q.includes('bad') && a.match(/\d+\s*(m²|qm)/)) {
+      answeredConcepts.add('badfläche');
+      answeredConcepts.add('badgröße');
+      answeredConcepts.add('sanitärbereich_fläche');
+      answeredValues['badfläche'] = a.match(/\d+\s*(m²|qm)/)[0];
+    }
+    
+    if (q.includes('stock') || q.includes('geschoss') || q.includes('etage')) {
+      answeredConcepts.add('stockwerk');
+      answeredConcepts.add('etage');
+      answeredConcepts.add('geschoss');
+      answeredValues['stockwerk'] = a;
+    }
+    
+    if (q.includes('fläche') && !q.includes('bad')) {
+      answeredConcepts.add('grundfläche');
+      if (a.match(/\d+/)) answeredValues['grundfläche'] = a;
+    }
+  });
+}
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
