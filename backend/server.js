@@ -329,6 +329,322 @@ function extractProjectKeyData(description, category = null) {
       extractedData.rooms.push(room);
     }
   });
+  // Spezielle Gewerke-Kombinationen für häufige Sanierungsmaßnahmen
+extractedData.impliedTrades = [];
+
+// 1. BADSANIERUNG - sehr häufig
+if (desc.includes('bad') || desc.includes('bäder') || 
+    desc.includes('sanitär') || desc.includes('dusch') || 
+    desc.includes('wc')) {
+  
+  extractedData.impliedTrades.push({
+    code: 'TRO',
+    reason: 'Vorwandinstallation für Sanitärleitungen',
+    confidence: 85
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'FLI',
+    reason: 'Fliesenarbeiten Wand und Boden',
+    confidence: 90
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'SAN',
+    reason: 'Sanitärinstallation',
+    confidence: 95
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'ELEKT',
+    reason: 'Elektroinstallation Feuchtraum',
+    confidence: 80
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'MAL',
+    reason: 'Malerarbeiten Decke',
+    confidence: 70
+  });
+}
+
+// 2. KÜCHENSANIERUNG
+if (desc.includes('küche')) {
+  extractedData.impliedTrades.push({
+    code: 'ELEKT',
+    reason: 'Elektroanschlüsse Herd, Spülmaschine, Beleuchtung',
+    confidence: 95
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'SAN',
+    reason: 'Wasseranschlüsse Spüle, Spülmaschine',
+    confidence: 90
+  });
+  
+  if (desc.includes('fliesen') || desc.includes('komplett')) {
+    extractedData.impliedTrades.push({
+      code: 'FLI',
+      reason: 'Fliesenspiegel',
+      confidence: 75
+    });
+  }
+  
+  extractedData.impliedTrades.push({
+    code: 'MAL',
+    reason: 'Wandanstrich',
+    confidence: 70
+  });
+}
+
+// 3. DACHAUSBAU / DACHGESCHOSS
+if (desc.includes('dachausbau') || desc.includes('dachgeschoss') || 
+    (desc.includes('dach') && desc.includes('ausbau'))) {
+  
+  extractedData.impliedTrades.push({
+    code: 'TRO',
+    reason: 'Dachschrägen verkleiden, Trennwände',
+    confidence: 95
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'ZIMM',
+    reason: 'Holzkonstruktion, Gauben',
+    confidence: 80
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'FEN',
+    reason: 'Dachfenster',
+    confidence: 85
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'ELEKT',
+    reason: 'Elektroinstallation neue Räume',
+    confidence: 90
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'HEI',
+    reason: 'Heizung erweitern',
+    confidence: 75
+  });
+}
+
+// 4. FASSADENSANIERUNG
+if (desc.includes('fassade') || desc.includes('wdvs') || 
+    desc.includes('außendämmung')) {
+  
+  extractedData.impliedTrades.push({
+    code: 'FASS',
+    reason: 'Fassadenarbeiten',
+    confidence: 100
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'GER',
+    reason: 'Gerüst für Fassadenarbeiten',
+    confidence: 95
+  });
+  
+  if (desc.includes('fenster') || desc.includes('komplett')) {
+    extractedData.impliedTrades.push({
+      code: 'FEN',
+      reason: 'Fensteraustausch bei Fassadensanierung',
+      confidence: 70
+    });
+  }
+}
+
+// 5. KOMPLETTSANIERUNG / KERNSANIERUNG
+if (desc.includes('kernsanierung') || desc.includes('komplettsanierung') || 
+    desc.includes('vollsanierung')) {
+  
+  extractedData.impliedTrades.push({
+    code: 'ABBR',
+    reason: 'Entkernung',
+    confidence: 90
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'ROH',
+    reason: 'Rohbauarbeiten',
+    confidence: 85
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'ELEKT',
+    reason: 'Komplette Elektroerneuerung',
+    confidence: 95
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'SAN',
+    reason: 'Komplette Sanitärerneuerung',
+    confidence: 95
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'HEI',
+    reason: 'Heizungserneuerung',
+    confidence: 90
+  });
+}
+
+// 6. KELLERSANIERUNG
+if (desc.includes('keller')) {
+  extractedData.impliedTrades.push({
+    code: 'MAL',
+    reason: 'Kellerwände streichen',
+    confidence: 70
+  });
+  
+  if (desc.includes('feucht') || desc.includes('nass')) {
+    extractedData.impliedTrades.push({
+      code: 'ROH',
+      reason: 'Sanierputz, Abdichtung',
+      confidence: 85
+    });
+  }
+  
+  if (desc.includes('ausbau')) {
+    extractedData.impliedTrades.push({
+      code: 'TRO',
+      reason: 'Kellerausbau Trockenbauwände',
+      confidence: 80
+    });
+    
+    extractedData.impliedTrades.push({
+      code: 'ELEKT',
+      reason: 'Elektroinstallation Kellerräume',
+      confidence: 75
+    });
+  }
+}
+
+// 7. WOHNUNGSSANIERUNG
+if (desc.includes('wohnung') && 
+    (desc.includes('sanier') || desc.includes('renovier'))) {
+  
+  extractedData.impliedTrades.push({
+    code: 'MAL',
+    reason: 'Malerarbeiten alle Räume',
+    confidence: 90
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'BOD',
+    reason: 'Bodenbelagsarbeiten',
+    confidence: 85
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'ELEKT',
+    reason: 'Elektromodernisierung',
+    confidence: 70
+  });
+  
+  if (!desc.includes('ohne bad')) {
+    extractedData.impliedTrades.push({
+      code: 'SAN',
+      reason: 'Sanitärmodernisierung',
+      confidence: 60
+    });
+  }
+}
+
+// 8. ENERGETISCHE SANIERUNG
+if (desc.includes('energetisch') || desc.includes('energiespar') || 
+    desc.includes('kfw') || desc.includes('bafa')) {
+  
+  extractedData.impliedTrades.push({
+    code: 'FASS',
+    reason: 'Fassadendämmung WDVS',
+    confidence: 90
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'DACH',
+    reason: 'Dachdämmung',
+    confidence: 85
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'FEN',
+    reason: 'Fensteraustausch energetisch',
+    confidence: 90
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'HEI',
+    reason: 'Heizungsmodernisierung',
+    confidence: 80
+  });
+}
+
+// 9. DACHSANIERUNG
+if (desc.includes('dach') && 
+    (desc.includes('neu') || desc.includes('sanier'))) {
+  
+  extractedData.impliedTrades.push({
+    code: 'DACH',
+    reason: 'Dachdeckerarbeiten',
+    confidence: 100
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'ZIMM',
+    reason: 'Dachstuhl prüfen/reparieren',
+    confidence: 60
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'GER',
+    reason: 'Gerüst für Dacharbeiten',
+    confidence: 95
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'SCHL',
+    reason: 'Blecharbeiten, Dachrinnen',
+    confidence: 70
+  });
+}
+
+// 10. BALKON/TERRASSEN-SANIERUNG
+if (desc.includes('balkon') || desc.includes('terrasse') || 
+    desc.includes('loggia')) {
+  
+  extractedData.impliedTrades.push({
+    code: 'FLI',
+    reason: 'Balkonbelag Fliesen/Platten',
+    confidence: 85
+  });
+  
+  extractedData.impliedTrades.push({
+    code: 'SCHL',
+    reason: 'Balkongeländer',
+    confidence: 75
+  });
+  
+  if (desc.includes('überdach')) {
+    extractedData.impliedTrades.push({
+      code: 'ZIMM',
+      reason: 'Überdachung Holzkonstruktion',
+      confidence: 70
+    });
+  }
+}
+
+// Entferne Duplikate (falls ein Gewerk mehrfach impliziert wurde)
+const uniqueTrades = {};
+extractedData.impliedTrades.forEach(trade => {
+  if (!uniqueTrades[trade.code] || uniqueTrades[trade.code].confidence < trade.confidence) {
+    uniqueTrades[trade.code] = trade;
+  }
+});
+extractedData.impliedTrades = Object.values(uniqueTrades);
   
   // Spezifische Details extrahieren
   if (desc.includes('altbau')) extractedData.specificDetails.buildingType = 'Altbau';
