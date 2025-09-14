@@ -2748,6 +2748,104 @@ function filterDuplicateQuestions(questions, intakeAnswers) {
 }
 
 /**
+ * Validiert und filtert Fragen basierend auf strikter Gewerke-Zuständigkeit
+ * KEINE fremden Begriffe in Gewerke-Fragen!
+ */
+function validateTradeQuestions(tradeCode, questions) {
+  // Definiere EXKLUSIVE Keywords pro Gewerk
+  const EXCLUSIVE_KEYWORDS = {
+    'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'strom', 'leitung', 'verteiler', 'fi-schalter'],
+    'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
+    'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
+    'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke'],
+    'FLI': ['fliesen', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
+    'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung'],
+    'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
+    'ROH': ['mauerwerk', 'durchbruch', 'beton', 'maurerarbeiten', 'putz', 'verputz'],
+    'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
+    'FEN': ['fenster', 'verglasung', 'rolladen', 'jalousie', 'fensterbank', 'glasbruch', 'isolierglas'],
+    'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'küche', 'arbeitsplatte'],
+    'DACH': ['dachfenster', 'ziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'dämmung', 'unterspannbahn'],
+    'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
+    'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst'],
+    'ZIMM': ['holzbau', 'dachstuhl', 'balken', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk', 'sparren', 'pfetten'],
+    'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
+    'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
+    'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
+    'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
+    'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
+  };
+
+  // Sammle alle Keywords die NICHT zu diesem Gewerk gehören
+  const forbiddenKeywords = [];
+  for (const [code, keywords] of Object.entries(EXCLUSIVE_KEYWORDS)) {
+    if (code !== tradeCode) {
+      forbiddenKeywords.push(...keywords);
+    }
+  }
+
+  const filteredQuestions = [];
+  const blockedQuestions = [];
+
+  for (const question of questions) {
+    const questionText = (question.question || question.text || '').toLowerCase();
+    let isValid = true;
+    let blockReason = '';
+
+    // Prüfe ob die Frage verbotene Keywords enthält
+    for (const forbidden of forbiddenKeywords) {
+      if (questionText.includes(forbidden)) {
+        // Finde zu welchem Gewerk das Keyword gehört
+        const correctTrade = Object.entries(EXCLUSIVE_KEYWORDS).find(([code, keywords]) => 
+          keywords.includes(forbidden)
+        )?.[0];
+        
+        blockReason = `Begriff "${forbidden}" gehört zu ${correctTrade}, nicht zu ${tradeCode}`;
+        isValid = false;
+        break;
+      }
+    }
+
+    // Spezielle Regeln für häufige Fehler
+    if (tradeCode === 'FEN' && questionText.includes('dach')) {
+      blockReason = 'Dachfenster gehören zu DACH, nicht zu FEN';
+      isValid = false;
+    }
+    
+    if (tradeCode === 'ZIMM' && (questionText.includes('dämm') || questionText.includes('dampf'))) {
+      blockReason = 'Dämmung gehört zu DACH, nicht zu ZIMM';
+      isValid = false;
+    }
+    
+    if (tradeCode === 'BOD' && questionText.includes('fliese')) {
+      blockReason = 'Fliesen gehören zu FLI, nicht zu BOD';
+      isValid = false;
+    }
+    
+    if (tradeCode === 'FEN' && questionText.includes('haustür') && 
+        !projectContext?.description?.toLowerCase().includes('haustür')) {
+      blockReason = 'Haustür nicht im Projekt erwähnt';
+      isValid = false;
+    }
+
+    if (isValid) {
+      filteredQuestions.push(question);
+    } else {
+      blockedQuestions.push({ question: questionText, reason: blockReason });
+      console.warn(`[BLOCKED] ${tradeCode}: ${blockReason}`);
+    }
+  }
+
+  // Logge geblockte Fragen für Debugging
+  if (blockedQuestions.length > 0) {
+    console.log(`[VALIDATION] ${tradeCode}: ${blockedQuestions.length} Fragen blockiert`);
+    blockedQuestions.forEach(b => console.log(`  - "${b.question.substring(0, 50)}..." → ${b.reason}`));
+  }
+
+  return filteredQuestions;
+}
+
+/**
  * Generiert adaptive Folgefragen basierend auf Kontext-Antwort
  */
 async function generateContextBasedQuestions(tradeId, projectId, contextAnswer) {
