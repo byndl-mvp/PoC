@@ -3696,6 +3696,82 @@ function validateAndFixPrices(lv, tradeCode) {
       }
     }   
 
+// NEUE REGEL: INNENTÜREN MINDESTPREISE
+if (tradeCode === 'TIS') {
+  if (titleLower.includes('innentür') || titleLower.includes('tür')) {
+    // Unterscheide zwischen verschiedenen Türtypen
+    if (descLower.includes('massivholz') || titleLower.includes('massivholz')) {
+      if (pos.unitPrice < 400) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 450; // Massivholztür mindestens 450€
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Massivholztür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    } else if (descLower.includes('wohnungseingangstür') || titleLower.includes('wohnungseingang')) {
+      if (pos.unitPrice < 800) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 900; // Wohnungseingangstür mindestens 900€
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Wohnungseingangstür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    } else {
+      // Standard Innentür
+      if (pos.unitPrice < 250) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 280; // Standard Innentür mindestens 280€
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Innentür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // Zargen separat prüfen
+  if (titleLower.includes('zarge')) {
+    if (pos.unitPrice < 120) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 150; // Zarge mindestens 150€
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Zarge korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
+  
+  // Türdrücker/Beschläge
+  if (titleLower.includes('drücker') || titleLower.includes('beschlag')) {
+    if (pos.unitPrice < 30) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 45; // Drücker mindestens 45€
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Türdrücker korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
+}
+
+// ZUSÄTZLICHE REGEL: KEINE PREISE UNTER 10€ (außer Kleinmaterial)
+if (!titleLower.includes('kleinmaterial') && 
+    !titleLower.includes('befestigungsmaterial') &&
+    pos.unitPrice < 10 && 
+    pos.unit === 'Stk') {
+  const oldPrice = pos.unitPrice;
+  
+  // Bestimme Mindestpreis basierend auf Gewerk
+  let minPrice = 50; // Default
+  
+  if (tradeCode === 'TIS') minPrice = 250;
+  if (tradeCode === 'FEN') minPrice = 400;
+  if (tradeCode === 'SAN') minPrice = 150;
+  if (tradeCode === 'ELEKT') minPrice = 30;
+  
+  pos.unitPrice = minPrice;
+  pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+  warnings.push(`Unrealistischer Preis korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+  fixedCount++;
+}
+    
     // SPEZIAL-REGEL FÜR GERÜST
 if (tradeCode === 'GER') {
   if (titleLower.includes('auf') && titleLower.includes('abbau') || 
