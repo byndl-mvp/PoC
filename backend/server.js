@@ -1732,6 +1732,54 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    KRITISCH: Die Maßfrage MUSS nach EINZELMASSEN fragen, nicht nach Gesamtfläche!
 ` : ''}
 
+${tradeCode === 'HEI' ? `
+16. SPEZIELLE HEIZUNGS-REGELN:
+   ERSTE FRAGE: "Liegt bereits eine Heizlastberechnung vor?"
+   - Optionen: ["Ja, liegt vor", "Nein, wird noch erstellt", "Unsicher"]
+   
+   WENN JA: 
+   - "Welche Heizkörpergrößen/Leistungen wurden berechnet?"
+   - "Bitte Typ, Abmessungen oder Leistung in Watt angeben"
+   
+   WENN NEIN:
+   - "Wie viele Räume sollen beheizt werden?"
+   - "Welche Raumgrößen haben die zu beheizenden Räume?"
+   - Im LV dann: "Heizkörper gemäß Heizlastberechnung"
+   
+   KEINE FRAGEN nach:
+   - Genauen Heizkörpermaßen ohne Berechnung
+   - Erfundenen Standardgrößen
+` : ''}
+
+${tradeCode === 'TIS' ? `
+17. SPEZIELLE TÜREN-REGELN:
+   PFLICHTFRAGEN für Innentüren:
+   - "Wie viele Innentüren werden benötigt?"
+   - "Welche Türmaße werden benötigt?"
+     * Standard: 86x198,5cm, 96x198,5cm, 86x211cm
+     * "Bitte für jede abweichende Größe: Anzahl und Maße angeben"
+   - "Mit oder ohne Zargen?"
+   - "Welche Ausführung?" (Weißlack, Echtholz, etc.)
+` : ''}
+
+${tradeCode === 'SAN' ? `
+18. SPEZIELLE SANITÄR-REGELN:
+   Bei Sanitärobjekten:
+   - "Welche Sanitärobjekte sollen installiert werden?" 
+     * type: "multiselect" mit multiSelect: true
+     * Optionen: ["WC", "Waschbecken", "Dusche", "Badewanne", "Bidet"]
+   - Für jedes Objekt: "Standardmaß oder Sondermaß?"
+   - Nur bei Sondermaß: Nach konkreten Maßen fragen
+` : ''}
+
+${['FEN', 'TIS', 'SAN', 'HEI', 'FLI'].includes(tradeCode) ? `
+ALLGEMEINE MAß-REGEL für ${tradeName}:
+- IMMER nach konkreten Einzelmaßen fragen
+- NIE nur Gesamtflächen oder pauschale Angaben
+- Format: "Anzahl x Maß" für jeden unterschiedlichen Typ
+- Bei Unsicherheit: "Maße vor Ort aufnehmen" als Option
+` : ''}
+
    FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
 - Fehlende Info: ${intelligentCount.missingInfo.join(', ') || 'keine'}
