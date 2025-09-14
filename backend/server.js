@@ -722,101 +722,26 @@ case 'INT':
 }
 
 /**
- * Intelligente Positionsanzahl-Ermittlung für LV basierend auf Ratio
+ * Berechnet Orientierungswerte für LV-Positionen (NICHT als strikte Vorgabe!)
  */
-function getIntelligentPositionCount(tradeCode, projectContext, actualQuestionCount = null) {
+function getPositionOrientation(tradeCode, questionCount) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
   
-  // Wenn keine Fragenanzahl übergeben, schätze basierend auf Kontext
-  if (!actualQuestionCount) {
-    const questionEstimate = getIntelligentQuestionCount(tradeCode, projectContext, []);
-    actualQuestionCount = questionEstimate.count;
-  }
+  // Basis-Orientierung
+  const ratio = tradeConfig.targetPositionsRatio;
+  const baseOrientation = Math.round(questionCount * ratio);
   
-  // Berechne Basis-Positionsanzahl über Ratio
-  const basePositionCount = Math.round(actualQuestionCount * tradeConfig.targetPositionsRatio);
+  // Orientierungs-Range (flexibler Bereich)
+  const orientationMin = Math.max(1, Math.round(questionCount * (ratio - 0.2)));
+  const orientationMax = Math.round(questionCount * (ratio + 0.3));
   
-  // Modifikatoren basierend auf Projektkontext
-  let modifier = 0;
-  
-  if (projectContext.description) {
-    const desc = projectContext.description.toLowerCase();
-    
-    // Spezifische Anpassungen nach Gewerk
-    switch(tradeCode) {
-      case 'FEN':
-      case 'TIS':
-        // Bei Fenster/Türen: Jedes Element = eine Position
-        const fensterMatch = desc.match(/(\d+)\s*(fenster|fenstern)/gi);
-        const tuerMatch = desc.match(/(\d+)\s*(tür|türen)/gi);
-        if (fensterMatch || tuerMatch) {
-          const fensterCount = fensterMatch ? parseInt(fensterMatch[0].match(/\d+/)[0]) : 0;
-          const tuerCount = tuerMatch ? parseInt(tuerMatch[0].match(/\d+/)[0]) : 0;
-          // Bei konkreten Stückzahlen: direkte Übernahme
-          return {
-            count: Math.max(fensterCount + tuerCount + 3, basePositionCount), // +3 für Demontage, Nebenleistungen
-            min: Math.round(tradeConfig.minQuestions * tradeConfig.targetPositionsRatio),
-            max: Math.round(tradeConfig.maxQuestions * tradeConfig.targetPositionsRatio),
-            ratio: tradeConfig.targetPositionsRatio
-          };
-        }
-        break;
-        
-      case 'DACH':
-        // Komplexes Dach = mehr Positionen
-        if (desc.includes('gauben') || desc.includes('komplex')) modifier += 3;
-        if (desc.includes('solar') || desc.includes('pv')) modifier += 2;
-        break;
-        
-      case 'SAN':
-      case 'HEI':
-        // Anzahl Räume/Bäder beeinflusst Positionsanzahl
-        const baederMatch = desc.match(/(\d+)\s*(bad|bäder)/gi);
-        if (baederMatch) {
-          const baederCount = parseInt(baederMatch[0].match(/\d+/)[0]);
-          modifier += baederCount * 2;
-        }
-        break;
-        
-      case 'ELEKT':
-        // Smart Home = mehr Positionen
-        if (desc.includes('smart') || desc.includes('knx') || desc.includes('bus')) modifier += 4;
-        break;
-    }
-    
-    // Allgemeine Projektgröße
-    if (desc.includes('klein') || desc.includes('teilweise')) modifier -= 2;
-    if (desc.includes('komplett') || desc.includes('groß')) modifier += 2;
-    if (desc.includes('luxus') || desc.includes('hochwertig')) modifier += 3;
-  }
-  
-  // Budget-basierte Anpassung
-  if (projectContext.budget) {
-    const budgetStr = projectContext.budget.toLowerCase();
-    if (budgetStr.includes('500000') || budgetStr.includes('500k')) modifier += 3;
-    else if (budgetStr.includes('20000') || budgetStr.includes('20k')) modifier -= 2;
-  }
-  
-  // Finale Berechnung mit Grenzen
-  const minPositions = Math.round(tradeConfig.minQuestions * tradeConfig.targetPositionsRatio);
-  const maxPositions = Math.round(tradeConfig.maxQuestions * tradeConfig.targetPositionsRatio);
-  
-  let targetCount = Math.max(minPositions, Math.min(maxPositions, basePositionCount + modifier));
-  
-  // Spezialregeln für bestimmte Gewerke
-  if (tradeCode === 'GER' && targetCount < 5) {
-    targetCount = 5; // Gerüst braucht mindestens 5 Positionen
-  }
-  
-  console.log(`[POSITIONS] ${tradeCode}: Questions=${actualQuestionCount}, Ratio=${tradeConfig.targetPositionsRatio}, Base=${basePositionCount}, Modifier=${modifier}, Final=${targetCount}`);
+  console.log(`[LV-ORIENTATION] ${tradeCode}: ${orientationMin}-${orientationMax} positions from ${questionCount} questions (ratio: ${ratio})`);
   
   return {
-    count: targetCount,
-    min: minPositions,
-    max: maxPositions,
-    ratio: tradeConfig.targetPositionsRatio,
-    baseFromQuestions: basePositionCount,
-    appliedModifier: modifier
+    min: orientationMin,
+    max: orientationMax,
+    base: baseOrientation,
+    ratio: ratio
   };
 }
 
