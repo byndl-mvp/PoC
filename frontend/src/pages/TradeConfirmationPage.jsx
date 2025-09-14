@@ -45,18 +45,17 @@ useEffect(() => {
         const initialDetected = (projectData.trades || []).filter(t => t.code !== 'INT');
         
         // 2. Lade Intake-Summary für bessere Gewerke-Empfehlungen
-        setLoadingMessage('Analysiere Ihre Antworten...');
-        // let finalRecommendations = [];  // DIESE ZEILE LÖSCHEN ODER AUSKOMMENTIEREN
+setLoadingMessage('Analysiere Ihre Antworten...');
+let additionalTradesFromIntake = []; // Temporär speichern
+
 try {
   const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
   if (summaryRes.ok) {
     const summaryData = await summaryRes.json();
     setIntakeSummary(summaryData.summary);
     
-    // KI-Trade-Empfehlungen deaktiviert - nur allgemeine Empfehlungen werden genutzt
-    // if (summaryData.summary?.trades && Array.isArray(summaryData.summary.trades)) {
-    //   finalRecommendations = summaryData.summary.trades;
-    // }
+    // Speichere zusätzlich erkannte Gewerke
+    additionalTradesFromIntake = summaryData.additionalTradesDetected || [];
   }
 } catch (err) {
   console.log('Keine Zusammenfassung verfügbar, nutze initial erkannte Gewerke');
@@ -66,15 +65,32 @@ try {
         const tradesRes = await fetch(apiUrl('/api/trades'));
         const allTradesData = await tradesRes.json();
         
-        // 4. Kombiniere initial erkannte und KI-empfohlene Gewerke
-        const combinedTrades = [...initialDetected];
+        // 4. Kombiniere initial erkannte und Intake-basierte Empfehlungen
+const combinedTrades = [...initialDetected];
+
+// Füge Intake-basierte Empfehlungen hinzu
+for (const rec of additionalTradesFromIntake) {
+  if (!combinedTrades.find(t => t.code === rec.code)) {
+    const fullTrade = allTradesData.find(t => t.code === rec.code);
+    if (fullTrade) {
+      combinedTrades.push({
+        ...fullTrade,
+        source: 'intake-empfohlen',
+        reason: rec.reason,
+        confidence: rec.confidence,
+        isAiRecommended: true,
+        badge: 'Basierend auf Ihren Antworten'
+      });
+    }
+  }
+}
         
-        // Markiere initial erkannte vs. KI-empfohlene
-        const markedTrades = combinedTrades.map(trade => ({
-          ...trade,
-          source: 'initial-erkannt',
-          isManuallyAdded: false
-        }));
+        // Markiere Trades, aber behalte ihre source bei
+const markedTrades = combinedTrades.map(trade => ({
+  ...trade,
+  source: trade.source || 'initial-erkannt', // Behalte existierende source
+  isManuallyAdded: false
+}));
         
         setDetectedTrades(markedTrades);
         setSelectedTrades(markedTrades.map(t => t.id));
