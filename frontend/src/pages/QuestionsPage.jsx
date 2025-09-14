@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -15,17 +15,24 @@ export default function QuestionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [tradeName, setTradeName] = useState('');
   const [tradeCode, setTradeCode] = useState('');
-  const [projectTrades, setProjectTrades] = useState([]); // NUR die erkannten Gewerke
+  const [projectTrades, setProjectTrades] = useState([]);
   const [currentTradeIndex, setCurrentTradeIndex] = useState(0);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [finalProgress, setFinalProgress] = useState(70);
+  const [finalProgress, setFinalProgress] = useState(0);
+  const [generatingLV, setGeneratingLV] = useState(false);
+  const [lvProgress, setLvProgress] = useState(0);
+  const [nextTradeName, setNextTradeName] = useState('');
+  
+  // Refs für Interval-Cleanup
+  const loadingIntervalRef = useRef(null);
+  const lvIntervalRef = useRef(null);
+  const finalIntervalRef = useRef(null);
   
   // Skip-Button Funktion
   const handleSkipTrade = async () => {
     if (window.confirm('Möchten Sie die Fragen für dieses Gewerk überspringen?')) {
-      // Navigiere zum nächsten Gewerk oder Ergebnis
       if (currentTradeIndex !== -1 && currentTradeIndex + 1 < projectTrades.length) {
         const nextTrade = projectTrades[currentTradeIndex + 1];
         navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
@@ -35,181 +42,251 @@ export default function QuestionsPage() {
     }
   };
   
+  // Fake Progress für initiales Laden (45 Sekunden)
   useEffect(() => {
-  async function initialize() {
-    try {
-      setLoading(true);
-      setLoadingProgress(10);
-      setError('');
-      setSubmitting(false);
-     
-      console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
+    if (loading && !error) {
+      setLoadingProgress(0);
+      const totalDuration = 45000; // 45 Sekunden
+      const interval = 100; // Update alle 100ms
+      const increment = (100 / (totalDuration / interval));
       
-      // Prüfe ob es ein nachträglich oder manuell hinzugefügtes Gewerk ist
-      const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
-      const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
-      const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
+      loadingIntervalRef.current = setInterval(() => {
+        setLoadingProgress(prev => {
+          const next = prev + increment;
+          if (next >= 99) {
+            clearInterval(loadingIntervalRef.current);
+            return 99; // Bleibt bei 99% bis tatsächlich fertig
+          }
+          return next;
+        });
+      }, interval);
       
-      console.log('Is manually added trade?:', isManuallyAdded);
-      console.log('Is additional trade?:', isAdditionalTrade);
+      return () => {
+        if (loadingIntervalRef.current) {
+          clearInterval(loadingIntervalRef.current);
+        }
+      };
+    }
+  }, [loading, error]);
+  
+  // Fake Progress für LV-Generierung (45 Sekunden)
+  useEffect(() => {
+    if (generatingLV) {
+      setLvProgress(0);
+      const totalDuration = 45000; // 45 Sekunden
+      const interval = 100; // Update alle 100ms
+      const increment = (100 / (totalDuration / interval));
       
-      // 1. Lade Projektdetails und ERKANNTE Gewerke
-      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-      if (!projectRes.ok) {
-        throw new Error('Projekt konnte nicht geladen werden');
-      }
+      lvIntervalRef.current = setInterval(() => {
+        setLvProgress(prev => {
+          const next = prev + increment;
+          if (next >= 99) {
+            clearInterval(lvIntervalRef.current);
+            return 99; // Bleibt bei 99% bis tatsächlich fertig
+          }
+          return next;
+        });
+      }, interval);
       
-      const projectData = await projectRes.json();
-      console.log('Project data loaded:', projectData);
-      console.log('NUMBER OF TRADES:', projectData.trades?.length);
-      console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
+      return () => {
+        if (lvIntervalRef.current) {
+          clearInterval(lvIntervalRef.current);
+        }
+      };
+    }
+  }, [generatingLV]);
+  
+  // Fake Progress für finalen Screen (45 Sekunden)
+  useEffect(() => {
+    if (finalizing) {
+      setFinalProgress(0);
+      const totalDuration = 45000; // 45 Sekunden
+      const interval = 100; // Update alle 100ms
+      const increment = (100 / (totalDuration / interval));
       
-      // WICHTIG: Nur die tatsächlich erkannten Gewerke (ohne INT)
-      let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
+      finalIntervalRef.current = setInterval(() => {
+        setFinalProgress(prev => {
+          const next = prev + increment;
+          if (next >= 99) {
+            clearInterval(finalIntervalRef.current);
+            return 99;
+          }
+          return next;
+        });
+      }, interval);
+      
+      return () => {
+        if (finalIntervalRef.current) {
+          clearInterval(finalIntervalRef.current);
+        }
+      };
+    }
+  }, [finalizing]);
+  
+  useEffect(() => {
+    async function initialize() {
+      try {
+        setLoading(true);
+        setError('');
+        setSubmitting(false);
+       
+        console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
+        
+        const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
+        const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
+        const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
+        
+        console.log('Is manually added trade?:', isManuallyAdded);
+        console.log('Is additional trade?:', isAdditionalTrade);
+        
+        const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+        if (!projectRes.ok) {
+          throw new Error('Projekt konnte nicht geladen werden');
+        }
+        
+        const projectData = await projectRes.json();
+        console.log('Project data loaded:', projectData);
+        console.log('NUMBER OF TRADES:', projectData.trades?.length);
+        console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
+        
+        let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
 
-      // Manuell hinzugefügte Trades aus sessionStorage ergänzen
-      const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
-        .map(id => parseInt(id));
-        
-      if (manuallyAddedTradeIds.length > 0) {
-        // Hole die vollständigen Trade-Informationen vom Backend
-        const tradesResponse = await fetch(apiUrl('/api/trades'));
-        const allTrades = await tradesResponse.json();
-        
-        for (const manualId of manuallyAddedTradeIds) {
-          if (!detectedTrades.find(t => t.id === parseInt(manualId))) {
-            const fullTradeInfo = allTrades.find(t => t.id === parseInt(manualId));
-            if (fullTradeInfo) {
-              detectedTrades.push(fullTradeInfo);
+        const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
+          .map(id => parseInt(id));
+          
+        if (manuallyAddedTradeIds.length > 0) {
+          const tradesResponse = await fetch(apiUrl('/api/trades'));
+          const allTrades = await tradesResponse.json();
+          
+          for (const manualId of manuallyAddedTradeIds) {
+            if (!detectedTrades.find(t => t.id === parseInt(manualId))) {
+              const fullTradeInfo = allTrades.find(t => t.id === parseInt(manualId));
+              if (fullTradeInfo) {
+                detectedTrades.push(fullTradeInfo);
+              }
             }
           }
         }
-      }
 
-      console.log('Detected trades for this project:', detectedTrades);
-      setProjectTrades(detectedTrades);
-      
-      // Finde den Index des aktuellen Gewerks
-      const currentIdx = detectedTrades.findIndex(t => t.id === parseInt(tradeId));
-      setCurrentTradeIndex(currentIdx);
-      
-      // Prüfe ob das aktuelle Trade-ID überhaupt zu diesem Projekt gehört
-      const currentTrade = detectedTrades.find(t => t.id === parseInt(tradeId));
-      if (!currentTrade) {
-        throw new Error(`Gewerk ${tradeId} gehört nicht zu diesem Projekt`);
-      }
-      
-      setTradeName(currentTrade.name);
-      setTradeCode(currentTrade.code);
-      setLoadingProgress(40);
-
-      // Bei manuell/nachträglich hinzugefügten Gewerken: Nur Kontextfrage generieren
-      if (isAdditionalTrade || isManuallyAdded) {
-        const contextQuestion = {
-          id: `${currentTrade.code}-CONTEXT`,
-          question: `Sie haben ${currentTrade.name} als ${isAdditionalTrade ? 'nachträglich' : 'zusätzliches'} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
-          type: 'text',
-          required: true,
-          category: 'Projektkontext',
-          explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.',
-          // KRITISCH: Diese Felder müssen vorhanden sein!
-          tradeId: parseInt(tradeId),
-          tradeName: currentTrade.name,
-          trade_name: currentTrade.name,
-          trade_code: currentTrade.code,
-          isContextQuestion: true,
-          requiresFollowUp: true
-        };
+        console.log('Detected trades for this project:', detectedTrades);
+        setProjectTrades(detectedTrades);
         
-        sessionStorage.setItem('currentTradeIsAdditional', 'true');
-        setQuestions([contextQuestion]);
-        setAnswers([null]);
+        const currentIdx = detectedTrades.findIndex(t => t.id === parseInt(tradeId));
+        setCurrentTradeIndex(currentIdx);
+        
+        // Setze nextTradeName für späteren Gebrauch
+        if (currentIdx !== -1 && currentIdx + 1 < detectedTrades.length) {
+          setNextTradeName(detectedTrades[currentIdx + 1].name);
+        }
+        
+        const currentTrade = detectedTrades.find(t => t.id === parseInt(tradeId));
+        if (!currentTrade) {
+          throw new Error(`Gewerk ${tradeId} gehört nicht zu diesem Projekt`);
+        }
+        
+        setTradeName(currentTrade.name);
+        setTradeCode(currentTrade.code);
+
+        if (isAdditionalTrade || isManuallyAdded) {
+          const contextQuestion = {
+            id: `${currentTrade.code}-CONTEXT`,
+            question: `Sie haben ${currentTrade.name} als ${isAdditionalTrade ? 'nachträglich' : 'zusätzliches'} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
+            type: 'text',
+            required: true,
+            category: 'Projektkontext',
+            explanation: 'Basierend auf Ihrer Antwort erstellen wir spezifische Fragen für dieses Gewerk.',
+            tradeId: parseInt(tradeId),
+            tradeName: currentTrade.name,
+            trade_name: currentTrade.name,
+            trade_code: currentTrade.code,
+            isContextQuestion: true,
+            requiresFollowUp: true
+          };
+          
+          sessionStorage.setItem('currentTradeIsAdditional', 'true');
+          setQuestions([contextQuestion]);
+          setAnswers([null]);
+          setCurrent(0);
+          setLoading(false);
+          clearInterval(loadingIntervalRef.current);
+          setLoadingProgress(100);
+          return;
+        }
+
+        console.log(`Generating adaptive questions for trade ${tradeId} (${currentTrade.code})...`);
+        
+        const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            includeIntakeContext: true,
+            isManuallyAdded: false,
+            projectDescription: projectData.description,
+            projectCategory: projectData.category,        
+            projectBudget: projectData.budget            
+          })
+        });
+        
+        console.log('Generate response status:', generateRes.status);
+        
+        if (!generateRes.ok) {
+          const errorData = await generateRes.json().catch(() => ({}));
+          throw new Error(errorData.error || `Fehler beim Generieren der Fragen (Status: ${generateRes.status})`);
+        }
+        
+        const data = await generateRes.json();
+        console.log('Adaptive questions generated:', data);
+        
+        if (!data.questions || data.questions.length === 0) {
+          throw new Error('Keine Fragen wurden generiert');
+        }
+        
+        const validQuestions = data.questions.filter(q => 
+          q.question || q.text || q.q
+        );
+        
+        if (validQuestions.length === 0) {
+          throw new Error('Keine gültigen Fragen erhalten');
+        }
+        
+        setQuestions(validQuestions);
+        
+        if (data.tradeName) setTradeName(data.tradeName);
+        if (data.tradeCode) setTradeCode(data.tradeCode);
+        
+        setAnswers(new Array(validQuestions.length).fill(null));
         setCurrent(0);
-        setLoading(false);
+        setAnswerText('');
+        setAssumption('');
+        
+      } catch (err) {
+        console.error('Error in initialization:', err);
+        setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
+      } finally {
+        // Cleanup interval und setze auf 100%
+        if (loadingIntervalRef.current) {
+          clearInterval(loadingIntervalRef.current);
+        }
         setLoadingProgress(100);
-        return;
+        setTimeout(() => {
+          setLoading(false);
+        }, 200); // Kurze Verzögerung für smooth transition
       }
-
-      // 2. Generiere ADAPTIVE Fragen für dieses spezifische Gewerk (normale Gewerke)
-      console.log(`Generating adaptive questions for trade ${tradeId} (${currentTrade.code})...`);
-      
-      const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          includeIntakeContext: true,
-          isManuallyAdded: false,  // Explizit false für normale Gewerke
-          projectDescription: projectData.description,
-          projectCategory: projectData.category,        
-          projectBudget: projectData.budget            
-        })
-      });
-      
-      console.log('Generate response status:', generateRes.status);
-      
-      if (!generateRes.ok) {
-        const errorData = await generateRes.json().catch(() => ({}));
-        throw new Error(errorData.error || `Fehler beim Generieren der Fragen (Status: ${generateRes.status})`);
-      }
-      
-      const data = await generateRes.json();
-      console.log('Adaptive questions generated:', data);
-      
-      if (!data.questions || data.questions.length === 0) {
-        throw new Error('Keine Fragen wurden generiert');
-      }
-      
-      // Filtere und validiere die Fragen
-      const validQuestions = data.questions.filter(q => 
-        q.question || q.text || q.q
-      );
-      
-      if (validQuestions.length === 0) {
-        throw new Error('Keine gültigen Fragen erhalten');
-      }
-      
-      setQuestions(validQuestions);
-      setLoadingProgress(90);
-      
-      // Trade-Info aus Response
-      if (data.tradeName) setTradeName(data.tradeName);
-      if (data.tradeCode) setTradeCode(data.tradeCode);
-      
-      // Initialisiere Antworten-Array
-      setAnswers(new Array(validQuestions.length).fill(null));
-      setCurrent(0);
-      setAnswerText('');
-      setAssumption('');
-      
-    } catch (err) {
-      console.error('Error in initialization:', err);
-      setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
-    } finally {
-      setLoadingProgress(100);
-      setLoading(false);
     }
-  }
-  
-  initialize();
-  
-  return () => {
-    sessionStorage.removeItem('currentTradeIsAdditional');
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [projectId, tradeId]);
-
-// Neuer useEffect für finalen Ladebalken
-
-useEffect(() => {
-  if (finalizing) {
-    const interval = setInterval(() => {
-      setFinalProgress(prev => prev < 95 ? prev + 5 : prev);
-    }, 400);
-    return () => clearInterval(interval);
-  }
-}, [finalizing]);
+    
+    initialize();
+    
+    return () => {
+      sessionStorage.removeItem('currentTradeIsAdditional');
+      // Cleanup all intervals on unmount
+      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+      if (lvIntervalRef.current) clearInterval(lvIntervalRef.current);
+      if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, tradeId]);
 
   const handleNext = async () => {
     console.log('handleNext called, submitting=', submitting);
@@ -217,7 +294,6 @@ useEffect(() => {
     
     if (!questions[current]) return;
     
-    // Speichere aktuelle Antwort
     const newAnswers = [...answers];
     newAnswers[current] = {
       questionId: questions[current].id || questions[current].question_id,
@@ -226,132 +302,119 @@ useEffect(() => {
     };
     setAnswers(newAnswers);
 
-// NEUE LOGIK: Prüfe ob es ein zusätzliches Gewerk ist
-const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
+    const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
     if (
-  current === 0 &&
-  isAdditionalTrade &&
-  (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))
-) {
-  try {
-    setGeneratingQuestions(true);
+      current === 0 &&
+      isAdditionalTrade &&
+      (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))
+    ) {
+      try {
+        setGeneratingQuestions(true);
+        
+        const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contextAnswer: answerText,
+            isAdditional: true
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.isAdditional === true) {
+            sessionStorage.setItem('currentTradeIsAdditional', 'true');
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('additional', 'true');
+            window.history.replaceState({}, '', currentUrl);
+          }      
+          setQuestions(data.questions || data);
+          const currentUrl = new URL(window.location);
+          currentUrl.searchParams.set('additional', 'true');
+          window.history.replaceState({}, '', currentUrl);
+          setAnswers(new Array(data.questions?.length || data.length).fill(null));
+          setCurrent(0);
+          setAnswerText('');
+          setAssumption('');
+          setGeneratingQuestions(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to generate context-based questions:', err);
+        setGeneratingQuestions(false);
+        setError('Fehler beim Generieren der Folgefragen');
+      }
+    }    
     
-    // Generiere spezifische Fragen basierend auf Kontextantwort
-    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contextAnswer: answerText,
-        isAdditional: true
-      })
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.isAdditional === true) {
-  sessionStorage.setItem('currentTradeIsAdditional', 'true');
-  const currentUrl = new URL(window.location);
-  currentUrl.searchParams.set('additional', 'true');
-  window.history.replaceState({}, '', currentUrl);
-}      
-      // Ersetze Kontextfrage mit spezifischen Fragen
-      setQuestions(data.questions || data);
-      const currentUrl = new URL(window.location);
-      currentUrl.searchParams.set('additional', 'true');
-      window.history.replaceState({}, '', currentUrl);
-      setAnswers(new Array(data.questions?.length || data.length).fill(null));
-      setCurrent(0);
-      setAnswerText('');
-      setAssumption('');
-      setGeneratingQuestions(false);
-      return; // Verhindere weitere Navigation
-    }
-  } catch (err) {
-    console.error('Failed to generate context-based questions:', err);
-    setGeneratingQuestions(false);
-    setError('Fehler beim Generieren der Folgefragen');
-  }
-}    
-    
-    // NEUE LOGIK: Bei erster Frage eines manuellen Gewerks
-const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
-  .includes(parseInt(tradeId));
+    const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
+      .includes(parseInt(tradeId));
 
-if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))) {
-  try {
-setGeneratingQuestions(true);
-  
-    // Generiere adaptive Folgefragen basierend auf Kontext
-    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contextAnswer: answerText })
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      // Ersetze aktuelle Fragen mit Kontextfrage + neue Fragen
-      const contextQuestion = questions[0];
-      const newQuestions = [contextQuestion, ...data.questions];
-      setQuestions(newQuestions);
-      setAnswers([newAnswers[0], ...new Array(data.questions.length).fill(null)]);
-      setCurrent(1);
-      setAnswerText('');
-      setAssumption('');
-      setGeneratingQuestions(false);
-      return; // Verhindere weitere Navigation
-      
-    }
-  } catch (err) {
-    console.error('Failed to generate context questions:', err);
-    setGeneratingQuestions(false);
-  }
-}    
+    if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))) {
+      try {
+        setGeneratingQuestions(true);
+        
+        const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contextAnswer: answerText })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const contextQuestion = questions[0];
+          const newQuestions = [contextQuestion, ...data.questions];
+          setQuestions(newQuestions);
+          setAnswers([newAnswers[0], ...new Array(data.questions.length).fill(null)]);
+          setCurrent(1);
+          setAnswerText('');
+          setAssumption('');
+          setGeneratingQuestions(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to generate context questions:', err);
+        setGeneratingQuestions(false);
+      }
+    }    
 
-    // NEUE LOGIK: Bei KI-empfohlenen Gewerken auch Kontextfragen generieren
-const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
-  .includes(parseInt(tradeId));
+    const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
+      .includes(parseInt(tradeId));
 
-if (current === 0 && isAiRecommended && questions[current].id === 'context_reason') {
-  try {
-    setGeneratingQuestions(true);
+    if (current === 0 && isAiRecommended && questions[current].id === 'context_reason') {
+      try {
+        setGeneratingQuestions(true);
+        
+        const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contextAnswer: answerText,
+            isAiRecommended: true
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[DEBUG] AI-recommended context response:', data);
+          console.log('[DEBUG] Questions count:', data.questions?.length || data.length);
+          
+          setQuestions(data.questions || data);
+          setAnswers(new Array(data.questions?.length || data.length).fill(null));
+          setCurrent(0);
+          setAnswerText('');
+          setAssumption('');
+          setGeneratingQuestions(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to generate AI-recommended context questions:', err);
+        setGeneratingQuestions(false);
+        setError('Fehler beim Generieren der Folgefragen');
+      }
+    }    
     
-    // Generiere spezifische Fragen basierend auf Kontextantwort
-    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contextAnswer: answerText,
-        isAiRecommended: true
-      })
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-
-      // HIER DEN DEBUG-LOG EINFÜGEN:
-      console.log('[DEBUG] AI-recommended context response:', data);
-      console.log('[DEBUG] Questions count:', data.questions?.length || data.length);
-      
-      // Ersetze Kontextfrage mit spezifischen Fragen
-      setQuestions(data.questions || data);
-      setAnswers(new Array(data.questions?.length || data.length).fill(null));
-      setCurrent(0);
-      setAnswerText('');
-      setAssumption('');
-      setGeneratingQuestions(false);
-      return; // Verhindere weitere Navigation
-    }
-  } catch (err) {
-    console.error('Failed to generate AI-recommended context questions:', err);
-    setGeneratingQuestions(false);
-    setError('Fehler beim Generieren der Folgefragen');
-  }
-}    
     if (current + 1 < questions.length) {
-      // Gehe zur nächsten Frage
       setCurrent(current + 1);
-      // Lade vorherige Antwort falls vorhanden
       if (newAnswers[current + 1]) {
         setAnswerText(newAnswers[current + 1].answer || '');
         setAssumption(newAnswers[current + 1].assumption || '');
@@ -360,35 +423,30 @@ if (current === 0 && isAiRecommended && questions[current].id === 'context_reaso
         setAssumption('');
       }
     } else {
-      // Alle Fragen beantwortet - speichern und LV generieren
       saveAllAnswersAndContinue(newAnswers);
     }
   };
 
   const handleSkipQuestion = () => {
-  // Speichere "übersprungen" als Antwort
-  const newAnswers = [...answers];
-  newAnswers[current] = {
-    questionId: questions[current].id || questions[current].question_id,
-    answer: 'Übersprungen',
-    assumption: 'Vom Nutzer übersprungen'
+    const newAnswers = [...answers];
+    newAnswers[current] = {
+      questionId: questions[current].id || questions[current].question_id,
+      answer: 'Übersprungen',
+      assumption: 'Vom Nutzer übersprungen'
+    };
+    setAnswers(newAnswers);
+    
+    if (current + 1 < questions.length) {
+      setCurrent(current + 1);
+      setAnswerText('');
+      setAssumption('');
+    } else {
+      saveAllAnswersAndContinue(newAnswers);
+    }
   };
-  setAnswers(newAnswers);
-  
-  if (current + 1 < questions.length) {
-    // Gehe zur nächsten Frage
-    setCurrent(current + 1);
-    setAnswerText('');
-    setAssumption('');
-  } else {
-    // Letzte Frage - speichern und weiter
-    saveAllAnswersAndContinue(newAnswers);
-  }
-};
   
   const handlePrevious = () => {
     if (current > 0) {
-      // Speichere aktuelle Antwort bevor zurück
       const newAnswers = [...answers];
       newAnswers[current] = {
         questionId: questions[current].id || questions[current].question_id,
@@ -397,7 +455,6 @@ if (current === 0 && isAiRecommended && questions[current].id === 'context_reaso
       };
       setAnswers(newAnswers);
       
-      // Gehe zur vorherigen Frage
       setCurrent(current - 1);
       setAnswerText(newAnswers[current - 1]?.answer || '');
       setAssumption(newAnswers[current - 1]?.assumption || '');
@@ -411,12 +468,10 @@ if (current === 0 && isAiRecommended && questions[current].id === 'context_reaso
       console.log('submitting set to true');
       setError('');
       
-      // Filtere null-Werte und stelle sicher dass alle Antworten valide sind
       const validAnswers = allAnswers.filter(a => a && a.answer);
       
       console.log('Saving answers:', validAnswers);
       
-      // Speichere Antworten
       const saveRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/answers`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -430,19 +485,21 @@ if (current === 0 && isAiRecommended && questions[current].id === 'context_reaso
       
       console.log('Answers saved successfully');
       
-      // Generiere LV
       await generateLvAndContinue();
       
     } catch (err) {
       console.error('Error saving answers:', err);
       setError(err.message);
       setSubmitting(false);
+      setGeneratingLV(false);
     }
   }
 
   async function generateLvAndContinue() {
     console.log('generateLvAndContinue called');
     try {
+      // Start LV Generation Screen
+      setGeneratingLV(true);
       console.log('Generating LV for trade:', tradeId);
       
       const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
@@ -451,20 +508,24 @@ if (current === 0 && isAiRecommended && questions[current].id === 'context_reaso
         body: JSON.stringify({})
       });
 
-// NEUE PRÜFUNG HIER:
-    const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true' ||
-                          sessionStorage.getItem('currentTradeIsAdditional') === 'true';
-const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
-  .includes(parseInt(tradeId));
+      const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true' ||
+                            sessionStorage.getItem('currentTradeIsAdditional') === 'true';
+      const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
+        .includes(parseInt(tradeId));
 
-// NUR bei zusätzlichen Gewerken (NICHT bei KI-empfohlenen) zu Results springen
-if (isAdditionalTrade && !isAiRecommended) {
-  setFinalizing(true);
-  setTimeout(() => {
-    navigate(`/project/${projectId}/result`);
-  }, 3000);
-  return;
-}
+      if (isAdditionalTrade && !isAiRecommended) {
+        // Cleanup interval
+        if (lvIntervalRef.current) {
+          clearInterval(lvIntervalRef.current);
+        }
+        setLvProgress(100);
+        setGeneratingLV(false);
+        setFinalizing(true);
+        setTimeout(() => {
+          navigate(`/project/${projectId}/result`);
+        }, 3000);
+        return;
+      }
       
       if (!lvRes.ok) {
         const data = await lvRes.json().catch(() => ({}));
@@ -473,23 +534,35 @@ if (isAdditionalTrade && !isAiRecommended) {
       
       console.log('LV generated successfully');
       
-      // Navigation zur nächsten Trade NUR aus den erkannten Trades
+      // Cleanup LV interval
+      if (lvIntervalRef.current) {
+        clearInterval(lvIntervalRef.current);
+      }
+      setLvProgress(100);
+      setGeneratingLV(false);
+      
       if (currentTradeIndex !== -1 && currentTradeIndex + 1 < projectTrades.length) {
         const nextTrade = projectTrades[currentTradeIndex + 1];
         console.log('Navigating to next detected trade:', nextTrade);
-        navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
+        setTimeout(() => {
+          navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
+        }, 200);
       } else {
-        // Finaler Ladebildschirm
-  setFinalizing(true);
-  setTimeout(() => {
-    navigate(`/project/${projectId}/result`);
-  }, 3000);
-console.log('All detected trades complete, navigating to results');
-}
+        setFinalizing(true);
+        setTimeout(() => {
+          navigate(`/project/${projectId}/result`);
+        }, 3000);
+        console.log('All detected trades complete, navigating to results');
+      }
     } catch (err) {
       console.error('Error generating LV:', err);
       setError(err.message);
       setSubmitting(false);
+      setGeneratingLV(false);
+      // Cleanup interval on error
+      if (lvIntervalRef.current) {
+        clearInterval(lvIntervalRef.current);
+      }
     }
   }
 
@@ -498,33 +571,77 @@ console.log('All detected trades complete, navigating to results');
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
-            <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
+          <h2 className="text-2xl font-bold text-white mb-6">
+            Lade Fragen für {tradeName || 'Gewerk'}
+          </h2>
+          <div className="w-64 bg-white/20 rounded-full h-3 backdrop-blur mb-4">
+            <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out" 
                  style={{ width: `${loadingProgress}%` }} />  
           </div>
-          <p className="mt-4 text-white">
-  {tradeName ? `Fragen für ${tradeName} werden vorbereitet...` : 'Gewerkespezifische Fragen werden vorbereitet...'}
-</p>
+          <p className="mt-4 text-gray-300">
+            {loadingProgress < 30 ? 'Initialisiere...' :
+             loadingProgress < 60 ? 'Analysiere Projektkontext...' :
+             loadingProgress < 90 ? 'Generiere angepasste Fragen...' :
+             'Fast fertig...'}
+          </p>
         </div>
       </div>
     );
   }
-if (finalizing) {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-      <div className="text-center max-w-lg">
-        <h2 className="text-3xl font-bold text-white mb-6">Fast fertig!</h2>
-        <p className="text-xl text-gray-300 mb-8">
-          Wir stellen Ihre Leistungsverzeichnisse zusammen und erstellen die Gesamtkostenübersicht...
-        </p>
-        <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur">
-          <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full animate-pulse" 
-               style={{ width: `${finalProgress}%` }} />  
+
+  // LV Generation Screen
+  if (generatingLV) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-lg">
+          <h2 className="text-3xl font-bold text-white mb-6">
+            Erstelle Leistungsverzeichnis
+          </h2>
+          <p className="text-xl text-gray-300 mb-8">
+            für {tradeName || 'Gewerk'}
+          </p>
+          <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur mb-4">
+            <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out" 
+                 style={{ width: `${lvProgress}%` }} />  
+          </div>
+          <p className="mt-4 text-gray-300">
+            {lvProgress < 25 ? 'Analysiere Antworten...' :
+             lvProgress < 50 ? 'Erstelle VOB-konforme Positionen...' :
+             lvProgress < 75 ? 'Kalkuliere Mengen und Einheiten...' :
+             lvProgress < 95 ? 'Finalisiere Leistungsverzeichnis...' :
+             'Abgeschlossen!'}
+          </p>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+
+  // Final Screen
+  if (finalizing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-lg">
+          <h2 className="text-3xl font-bold text-white mb-6">Fast fertig!</h2>
+          <p className="text-xl text-gray-300 mb-8">
+            {nextTradeName ? 
+              `Lade Fragen für ${nextTradeName}...` :
+              'Wir stellen Ihre Leistungsverzeichnisse zusammen und erstellen die Gesamtkostenübersicht...'
+            }
+          </p>
+          <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur">
+            <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out" 
+                 style={{ width: `${finalProgress}%` }} />  
+          </div>
+          <p className="mt-4 text-gray-300">
+            {finalProgress < 30 ? 'Speichere Daten...' :
+             finalProgress < 60 ? 'Bereite nächsten Schritt vor...' :
+             finalProgress < 90 ? 'Fast fertig...' :
+             'Wird geladen...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Error State
   if (error) {
@@ -716,16 +833,16 @@ if (finalizing) {
           )}
         </div>
         
-{/* Ladeindikator für Kontextfragen */}
-{generatingQuestions && (
-  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-    <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 text-center">
-      <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent mb-4"></div>
-      <p className="text-white text-xl font-semibold">Analysiere Ihre Antwort...</p>
-      <p className="text-gray-300 mt-2">Erstelle angepasste Fragen für {tradeName}</p>
-    </div>
-  </div>
-)} 
+        {/* Ladeindikator für Kontextfragen */}
+        {generatingQuestions && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent mb-4"></div>
+              <p className="text-white text-xl font-semibold">Analysiere Ihre Antwort...</p>
+              <p className="text-gray-300 mt-2">Erstelle angepasste Fragen für {tradeName}</p>
+            </div>
+          </div>
+        )} 
         
         {/* Navigation mit Skip-Button */}
         <div className="flex justify-between items-center">
@@ -766,10 +883,10 @@ if (finalizing) {
                 Wird gespeichert...
               </span>
             ) : (
-  (questions.length === 1 && questions[0]?.id === 'context_reason') ? 
-    'Weiter →' : 
-    (current + 1 < questions.length ? 'Weiter →' : 'Abschließen & LV generieren')
-)}
+              (questions.length === 1 && questions[0]?.id === 'context_reason') ? 
+                'Weiter →' : 
+                (current + 1 < questions.length ? 'Weiter →' : 'Abschließen & LV generieren')
+            )}
           </button>
         </div>
 
