@@ -221,6 +221,46 @@ ERINNERUNG: NUR valides JSON ausgeben!`;
   throw new Error(`All LLM providers unavailable. Last error: ${lastError?.message || 'Unknown error'}`);
 }
 
+// Konstante für alle maßrelevanten Bauteile (ca. Zeile 415, vor extractProjectKeyData)
+const DIMENSION_REQUIRED_ITEMS = {
+  'FEN': {
+    keywords: ['fenster', 'haustür', 'außentür', 'terrassenentür'],
+    format: /\d+\s*x\s*\d+\s*(cm|mm)/,
+    example: 'Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp',
+    itemName: 'Fenster',
+    requireExactDimensions: true
+  },
+  'TIS': {
+    keywords: ['tür', 'türen', 'innentür'],
+    format: /\d+\s*x\s*\d+\s*(cm|mm)/,
+    example: 'Innentür Weißlack, 86 x 198,5 cm, inkl. Zarge',
+    itemName: 'Innentüren',
+    requireExactDimensions: true
+  },
+  'HEI': {
+    keywords: ['heizkörper', 'radiator'],
+    format: /\d+\s*x\s*\d+\s*(cm|mm)|typ\s*\d+|(\d+\s*watt)/i,
+    example: 'Heizkörper Typ 22, Leistung nach Heizlastberechnung',
+    itemName: 'Heizkörper',
+    requireExactDimensions: false,
+    alternativeSpec: 'Leistung/Typ'
+  },
+  'SAN': {
+    keywords: ['waschbecken', 'wc', 'dusche', 'badewanne', 'waschtisch'],
+    format: /\d+\s*(x\s*\d+)?\s*(cm|mm)|standard/i,
+    example: 'Waschtisch 60 cm oder Standardmaß',
+    itemName: 'Sanitärobjekte',
+    requireExactDimensions: true
+  },
+  'FLI': {
+    keywords: ['fliesen', 'platten'],
+    format: /\d+\s*x\s*\d+\s*(cm|mm)/,
+    example: 'Fliesen Feinsteinzeug, 60 x 60 cm, grau',
+    itemName: 'Fliesen',
+    requireExactDimensions: true
+  }
+};
+
 /**
  * Extrahiert Schlüsseldaten aus der Projektbeschreibung
  */
@@ -2736,29 +2776,64 @@ try {
   lv = JSON.parse(cleanedResponse);
   console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
   
-  // HIER die erweiterte Fenster-Validierung mit Auto-Korrektur:
-if (trade.code === 'FEN') {
-  const hasInvalidPositions = lv.positions.some(pos => 
-    pos.description.toLowerCase().includes('fenster') &&
-    !pos.description.match(/\d+\s*x\s*\d+\s*(cm|mm)/)
-  );
+  // ERWEITERTE VALIDIERUNG für alle maßrelevanten Bauteile
+const dimensionConfig = DIMENSION_REQUIRED_ITEMS[trade.code];
+
+if (dimensionConfig) {
+  const hasInvalidPositions = lv.positions.some(pos => {
+    const desc = pos.description.toLowerCase();
+    // Prüfe ob Position eines der Keywords enthält
+    const containsKeyword = dimensionConfig.keywords.some(kw => desc.includes(kw));
+    
+    // Bei Heizung: Flexiblere Prüfung
+    if (trade.code === 'HEI') {
+      const hasValidSpec = 
+        dimensionConfig.format.test(pos.description) ||
+        desc.includes('nach berechnung') ||
+        desc.includes('gemäß heizlast') ||
+        /\d+\s*watt/i.test(desc) ||
+        /typ\s*\d+/i.test(desc);
+      
+      return containsKeyword && !hasValidSpec;
+    }
+    
+    // Für andere Gewerke: Strikte Maßprüfung
+    const hasDimensions = dimensionConfig.format.test(pos.description);
+    return containsKeyword && !hasDimensions;
+  });
   
   if (hasInvalidPositions) {
-    console.error('[LV] WARNUNG: Fenster-LV ohne detaillierte Maßangaben erkannt! Regeneriere...');
+    console.error(`[LV] WARNUNG: ${dimensionConfig.itemName}-LV ohne detaillierte Maßangaben erkannt! Regeneriere...`);
     
-    // Erweitere den User-Prompt mit expliziter Anweisung
-    const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte Fenster OHNE Maßangaben!
+    // Sammle alle relevanten Maßangaben aus den Antworten
+    const dimensionAnswers = tradeAnswers.filter(a => 
+      a.answer.match(/\d+\s*x\s*\d+/) || 
+      a.answer.match(/\d+\s*(cm|mm|m)/)
+    ).map(a => `- ${a.question}: ${a.answer}`).join('\n');
     
-ABSOLUT VERPFLICHTEND für JEDE Fensterposition:
-- Format: "Fenster [Material], [BREITE] x [HÖHE] cm, [Öffnungsart]"
-- Beispiel: "Fenster Kunststoff weiß, 120 x 140 cm, Dreh-Kipp"
+    const enhancedPrompt = userPrompt + `\n\nKRITISCH: Die vorherige Generierung hatte ${dimensionConfig.itemName} OHNE Maßangaben!
+    
+ABSOLUT VERPFLICHTEND für JEDE ${dimensionConfig.itemName}-Position:
+- Format: ${dimensionConfig.example}
+- Die Maße MÜSSEN aus den erfassten Antworten stammen!
 
-Die Fenstermaße MÜSSEN aus den erfassten Antworten stammen!
-Verwende die EXAKTEN Maße die der Nutzer angegeben hat.
-KEINE erfundenen Standardmaße!
-Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als "Maße fehlen - vor Ort aufzunehmen".`;
+ERFASSTE MAßANGABEN AUS DEN ANTWORTEN:
+${dimensionAnswers || 'KEINE MAßANGABEN IN DEN ANTWORTEN GEFUNDEN'}
+
+REGELN:
+1. UNTERSCHIEDLICHE Abmessungen = SEPARATE Positionen
+2. GLEICHE Abmessungen = EINE Position mit Stückzahl
+3. Wenn KEINE Maße in den Antworten: "Maße vor Ort aufzunehmen" vermerken
+4. NIEMALS Standardmaße erfinden!
+
+Beispiel RICHTIG:
+- "3 Stk. ${dimensionConfig.example}" (gleiche Maße)
+- "1 Stk. ${dimensionConfig.itemName} [andere Maße]" (separate Position)
+
+Beispiel FALSCH:
+- "${dimensionConfig.itemName} verschiedene Größen"
+- Maßangaben erfinden die nicht in den Antworten stehen`;
     
-    // KORRIGIERT: Verwende llmWithPolicy statt callLLM
     const retryResponse = await llmWithPolicy('lv', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: enhancedPrompt }
@@ -2768,9 +2843,8 @@ Wenn keine Maße in den Antworten vorhanden sind, kennzeichne dies deutlich als 
       jsonMode: true
     });
     
-    // KORRIGIERT: Parse direkt ohne .content
     lv = JSON.parse(retryResponse.trim());
-    console.log('[LV] Fenster-LV erfolgreich regeneriert mit Maßangaben aus Antworten');
+    console.log(`[LV] ${dimensionConfig.itemName}-LV erfolgreich regeneriert mit Maßangaben aus Antworten`);
   }
 }
   
