@@ -3644,19 +3644,40 @@ function validateAndFixPrices(lv, tradeCode) {
       }
     }
     
-    // 2. BESTEHENDE REGEL: Putzarbeiten
-    if ((titleLower.includes('putz') || 
-         titleLower.includes('laibung') || 
-         titleLower.includes('spachtel') ||
-         titleLower.includes('glätten')) && 
-        pos.unit === 'm' && pos.unitPrice > 100) {
-      
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 45;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Putzarbeit korrigiert: "${pos.title}": €${oldPrice}/m → €${pos.unitPrice}/m`);
-      fixedCount++;
-    }
+    // 2. VERBESSERTE REGEL: Putzarbeiten und Ausbesserungen
+if (titleLower.includes('putz') || 
+    titleLower.includes('laibung') || 
+    titleLower.includes('spachtel') ||
+    titleLower.includes('glätten') ||
+    titleLower.includes('ausbesser')) {
+  
+  // Für laufende Meter (z.B. Laibungen)
+  if (pos.unit === 'm' && pos.unitPrice > 80) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 45;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Putzarbeit/m korrigiert: "${pos.title}": €${oldPrice}/m → €${pos.unitPrice}/m`);
+    fixedCount++;
+  }
+  
+  // Für Quadratmeter (z.B. Wandflächen)
+  else if (pos.unit === 'm²' && pos.unitPrice > 60) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 35; // Etwas günstiger pro m² als pro laufenden Meter
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Putzarbeit/m² korrigiert: "${pos.title}": €${oldPrice}/m² → €${pos.unitPrice}/m²`);
+    fixedCount++;
+  }
+  
+  // Für Pauschalpreise (kleine Ausbesserungen)
+  else if (pos.unit === 'psch' && pos.unitPrice > 500) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 250;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Ausbesserung pauschal korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+    fixedCount++;
+  }
+}
     
     // 3. BESTEHENDE REGEL: Nebenleistungen
     const isNebenleistung = 
