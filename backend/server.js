@@ -2635,7 +2635,52 @@ return filteredQuestions;
     throw new Error('Fehler bei der Fragengenerierung - bitte versuchen Sie es erneut');
   }
 }
+
+/**
+ * Filtert duplizierte Fragen basierend auf Intake-Antworten
+ */
+function filterDuplicateQuestions(questions, intakeAnswers) {
+  if (!intakeAnswers || intakeAnswers.length === 0) return questions;
   
+  const forbiddenPatterns = [];
+  
+  intakeAnswers.forEach(item => {
+    const q = item.question_text?.toLowerCase() || '';
+    const a = item.answer_text?.toLowerCase() || '';
+    
+    // Badfläche beantwortet -> keine Badflächen-Fragen mehr
+    if (q.includes('bad') && a.match(/\d+\s*(m²|qm)/)) {
+      forbiddenPatterns.push(
+        /bad.*fläche/i,
+        /fläche.*bad/i,
+        /groß.*bad/i,
+        /bad.*groß/i,
+        /sanitär.*fläche/i
+      );
+    }
+    
+    // Stockwerk beantwortet -> keine Stockwerk-Fragen mehr
+    if (q.includes('stock') || q.includes('geschoss')) {
+      forbiddenPatterns.push(
+        /stock/i,
+        /geschoss/i,
+        /etage/i,
+        /welche.*ebene/i
+      );
+    }
+  });
+  
+  return questions.filter(q => {
+    const questionText = q.question || q.text || '';
+    const isDuplicate = forbiddenPatterns.some(pattern => pattern.test(questionText));
+    
+    if (isDuplicate) {
+      console.log(`[FILTER] Removing duplicate: ${questionText}`);
+    }
+    return !isDuplicate;
+  });
+}
+
 /**
  * Generiert adaptive Folgefragen basierend auf Kontext-Antwort
  */
