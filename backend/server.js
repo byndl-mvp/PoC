@@ -3206,7 +3206,7 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
     - Bei "5 Fenster" im Projekt + Dach-Gewerk → KEINE Dachfenster annehmen!
 
 const VERBOTENE_FORMULIERUNGEN = `
-KRITISCHE VERBOTE - NIE VERWENDEN:
+KRITISCH - NIE VERWENDEN:
 1. "Lieferung und Demontage" - IMMER TRENNEN in:
    - "Demontage und Entsorgung" (eigene Position)
    - "Lieferung und Montage" (eigene Position)
