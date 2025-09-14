@@ -2103,8 +2103,12 @@ ${tradeCode === 'TIS' ? `
    PFLICHTFRAGEN für Innentüren:
    - "Wie viele Innentüren werden benötigt?"
    - "Welche Türmaße werden benötigt?"
-     * Standard: 86x198,5cm, 96x198,5cm, 86x211cm
+     * Standard: 86x198,5cm, 96x198,5cm, 86x211cm, 96x211cm
      * "Bitte für jede abweichende Größe: Anzahl und Maße angeben"
+     * WICHTIG: Bei Maßen über 100cm Breite oder 215cm Höhe: "SONDERMASS" vermerken
+   - "Gibt es Türen mit Sondermaßen (z.B. breiter als 100cm oder höher als 215cm)?"
+     * Falls ja: "Bitte genaue Maße und Anzahl angeben"
+     * Hinweis: "Sondermaße sind deutlich teurer (30-100% Aufpreis)"
    - "Mit oder ohne Zargen?"
    - "Welche Ausführung?" (Weißlack, Echtholz, etc.)
 ` : ''}
