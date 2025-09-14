@@ -2475,16 +2475,39 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Regionale Unterschiede berücksichtigen
    - Inkl. aller Nebenleistungen gem. VOB/C
 
-4. VOLLSTÄNDIGKEIT basierend auf erfassten Daten:
-   - Erfasste Fragen: ${answeredQuestionCount}
-   - ZIEL-POSITIONSANZAHL: ${positionGuidance.count} Positionen
-   - Erlaubte Range: ${positionGuidance.min}-${positionGuidance.max} Positionen
-   - Verhältnis: Bei ${trade.code} typisch ${Math.round(positionGuidance.ratio * 100)}% der Fragenanzahl
+4. TECHNISCH SINNVOLLE POSITIONIERUNG & ORIENTIERUNG:
+   - Erfasste Informationen: ${answeredQuestionCount} beantwortete Fragen
+   - Orientierungs-Richtwert: ca. ${Math.round(answeredQuestionCount * 0.7)}-${Math.round(answeredQuestionCount * 1.2)} Positionen
+   - Diese Zahl ist KEINE strikte Vorgabe, sondern eine ORIENTIERUNG
+   - Maßgeblich ist die TECHNISCH SINNVOLLE Aufteilung
+
+   KRITISCHE REGEL FÜR BAUTEILE MIT ABMESSUNGEN:
+   - UNTERSCHIEDLICHE Abmessungen = IMMER separate Positionen
+   - GLEICHE Abmessungen = IMMER in einer Position mit erhöhter Stückzahl
    
-   KRITISCH: Erstelle GENAU ${positionGuidance.count} Positionen (+/- 2)
-   - Kleine Projekte: ${positionGuidance.min}-${Math.round((positionGuidance.min + positionGuidance.count) / 2)} Positionen
-   - Mittlere Projekte: ${Math.round((positionGuidance.min + positionGuidance.max) / 2)} Positionen
-   - Große Projekte: ${Math.round((positionGuidance.count + positionGuidance.max) / 2)}-${positionGuidance.max} Positionen
+   Beispiele RICHTIG:
+   - "3 Stk. Fenster Kunststoff weiß, 120x140cm, DIN rechts" (gleiche Maße)
+   - "1 Stk. Fenster Kunststoff weiß, 180x140cm, DIN rechts" (andere Maße = neue Position)
+   - "5 Stk. Innentüren Weißlack 86x198,5cm inkl. Zarge" (gleiche Maße)
+   - "2 Stk. Innentüren Weißlack 96x198,5cm inkl. Zarge" (andere Breite = neue Position)
+   
+   Beispiele FALSCH:
+   - "Fenster verschiedene Größen" (zu unspezifisch)
+   - Gleiche Fenster in mehreren Positionen aufteilen
+   - Verschiedene Türmaße in einer Position zusammenfassen
+   
+   GILT FÜR ALLE BAUTEILE wo Maße kalkulationsrelevant sind:
+   - Fenster, Türen, Zargen
+   - Heizkörper
+   - Sanitärobjekte (Waschbecken, WCs, Duschwannen)
+   - Fliesen (verschiedene Formate)
+   - Treppen, Geländer
+   - Alle vorgefertigten Bauteile mit definierten Abmessungen
+   
+   Zusammengehörende Arbeiten ohne Maßrelevanz in EINER Position:
+   - Flächenarbeiten (Malerarbeiten, Putz, Estrich)
+   - Installationsarbeiten (sofern nicht bauteilbezogen)
+   - Demontagearbeiten gleicher Art
 
 5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
    - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
