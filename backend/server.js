@@ -5254,22 +5254,99 @@ Analysiere und empfehle benötigte Gewerke.`;
     const summary = JSON.parse(cleanedResponse);
 
     // Filtere und validiere Trades
-    if (summary.trades && Array.isArray(summary.trades)) {
-      summary.trades = summary.trades.filter(t => validCodes.includes(t.code));
-      
-      // Füge geschätzte Fragenanzahl hinzu
-      summary.trades = summary.trades.map(t => ({
-        ...t,
-        estimatedQuestions: t.estimatedQuestions || 
-          getTradeQuestionCount(t.code, summary.projectCharacteristics?.complexity || 'MITTEL')
-      }));
-    }
+if (summary.trades && Array.isArray(summary.trades)) {
+  summary.trades = summary.trades.filter(t => validCodes.includes(t.code));
+  
+  // Füge geschätzte Fragenanzahl hinzu
+  summary.trades = summary.trades.map(t => ({
+    ...t,
+    estimatedQuestions: t.estimatedQuestions || 
+      getTradeQuestionCount(t.code, summary.projectCharacteristics?.complexity || 'MITTEL')
+  }));
+}
 
-    res.json({ ok: true, summary });
-  } catch (err) {
-    console.error('intake/summary failed:', err);
-    res.status(500).json({ ok: false, error: err.message });
+// NEU: Analysiere Intake-Antworten für zusätzliche Gewerke
+const additionalTrades = [];
+const processedCodes = new Set(); // Verhindere Duplikate
+
+// Keyword-basierte Analyse
+const tradeKeywords = {
+  'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'strom', 'leitung', 'verteiler', 'fi-schalter'],
+  'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
+  'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
+  'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke', 'schallschutz'],
+  'FLI': ['fliesen', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
+  'MAL': [ 'streichen', innenputz', 'tapezieren','verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung', 'malerarbeiten'],
+  'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
+  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'maurerarbeiten'],
+  'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
+  'FEN': ['fenster', 'verglasung', 'rolladen', 'jalousie', 'fensterbank', 'glasbruch', 'isolierglas'],
+  'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'holzarbeiten', 'küche', 'arbeitsplatte'],
+  'DACH': ['dach', 'ziegel', 'dachrinne', 'schneefang', 'dachfenster', 'gauben', 'dachstuhl', 'eindeckung'],
+  'FASS': ['fassade', 'wdvs', 'außenputz', 'dämmung', 'verblendung', 'klinker', 'fassadenfarbe'],
+  'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst'],
+  'ZIMM': ['holzbau', 'dachstuhl', 'balken', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk'],
+  'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
+  'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
+  'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
+  'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
+  'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
+};
+
+// Analysiere alle Intake-Antworten
+const allAnswersText = intakeAnswers
+  .map(a => `${a.question_text} ${a.answer_text}`.toLowerCase())
+  .join(' ');
+
+for (const [code, keywords] of Object.entries(tradeKeywords)) {
+  const matchedKeywords = keywords.filter(kw => allAnswersText.includes(kw));
+  
+  if (matchedKeywords.length > 0 && !processedCodes.has(code)) {
+    // Prüfe ob Gewerk nicht schon initial erkannt wurde
+    const alreadyExists = await query(
+      'SELECT 1 FROM project_trades pt JOIN trades t ON pt.trade_id = t.id WHERE pt.project_id = $1 AND t.code = $2',
+      [projectId, code]
+    );
+    
+    if (alreadyExists.rows.length === 0) {
+      const confidence = Math.min(95, 60 + (matchedKeywords.length * 10));
+      additionalTrades.push({
+        code,
+        reason: `Begriffe gefunden: ${matchedKeywords.join(', ')}`,
+        confidence,
+        matchedKeywords
+      });
+      processedCodes.add(code);
+    }
   }
+}
+
+// Speichere empfohlene Gewerke in Datenbank
+for (const trade of additionalTrades) {
+  const tradeInfo = await query('SELECT id, name FROM trades WHERE code = $1', [trade.code]);
+  if (tradeInfo.rows[0]) {
+    await query(
+      `INSERT INTO project_trades (project_id, trade_id, is_ai_recommended)
+       VALUES ($1, $2, true)
+       ON CONFLICT (project_id, trade_id) 
+       DO UPDATE SET is_ai_recommended = true`,
+      [projectId, tradeInfo.rows[0].id]
+    );
+    
+    // Füge auch zur Summary hinzu
+    summary.additionalTradesDetected = summary.additionalTradesDetected || [];
+    summary.additionalTradesDetected.push({
+      ...trade,
+      id: tradeInfo.rows[0].id,
+      name: tradeInfo.rows[0].name
+    });
+  }
+}
+
+res.json({ 
+  ok: true, 
+  summary,
+  additionalTradesDetected: additionalTrades 
 });
 
 // Confirm trades for project
