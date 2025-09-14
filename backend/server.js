@@ -3234,10 +3234,6 @@ const tradeSpecificRules = {
   'TRO': 'Vorwandinstallation JA, aber KEINE Sanitärobjekte!'
 };
 
-if (tradeSpecificRules[trade.code]) {
-  VERBOTENE_FORMULIERUNGEN += `\n\nSPEZIELL FÜR ${trade.code}:\n${tradeSpecificRules[trade.code]}`;
-}
-
   ${hasGeruestGewerk && ['DACH', 'FASS', 'FEN'].includes(trade.code) ? `
 KRITISCH - GERÜST-REGEL:
 - Gerüst ist als SEPARATES Gewerk vorhanden
