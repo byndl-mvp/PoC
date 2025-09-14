@@ -2151,6 +2151,23 @@ ${tradeCode === 'SAN' ? `
    - Nur bei Sondermaß: Nach konkreten Maßen fragen
 ` : ''}
 
+${tradeCode === 'ZIMM' ? `
+18. SPEZIELLE ZIMMERER-REGELN:
+   WICHTIG: Zimmerer macht NUR Holzkonstruktionen!
+   
+   KEINE FRAGEN ZU (gehört zum Dachdecker):
+   - Dachdämmung
+   - Dampfbremse/Dampfsperre
+   - Dacheindeckung/Ziegel
+   - Unterspannbahn
+   - Dachrinnen
+   
+   KLARE ABGRENZUNG:
+   - Zimmerer = Holztragwerk
+   - Dachdecker = Dämmung + Abdichtung + Eindeckung
+   - Bei Dachprojekten arbeiten beide Gewerke nacheinander
+` : ''}
+
 ${['FEN', 'TIS', 'SAN', 'HEI', 'FLI'].includes(tradeCode) ? `
 ALLGEMEINE MAß-REGEL für ${tradeName}:
 - IMMER nach konkreten Einzelmaßen fragen
