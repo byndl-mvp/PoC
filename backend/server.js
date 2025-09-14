@@ -3205,8 +3205,7 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
     - NIEMALS Annahmen treffen die nicht explizit genannt wurden
     - Bei "5 Fenster" im Projekt + Dach-Gewerk → KEINE Dachfenster annehmen!
 
-const VERBOTENE_FORMULIERUNGEN = `
-// KRITISCHE VERBOTE - NIE VERWENDEN:
+KRITISCHE VERBOTE - NIE VERWENDEN:
 1. "Lieferung und Demontage" - IMMER TRENNEN in:
    - "Demontage und Entsorgung" (eigene Position)
    - "Lieferung und Montage" (eigene Position)
@@ -3226,7 +3225,6 @@ const VERBOTENE_FORMULIERUNGEN = `
    - Sanitärinstallation in Vorwand = Zwei Gewerke:
      * TRO: Vorwandinstallation erstellen
      * SAN: Sanitärobjekte montieren
-`;  // <- Diese schließende Backtick fehlt!
 
 // Trade-spezifische Ergänzung
 const tradeSpecificRules = {
