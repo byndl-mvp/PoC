@@ -2757,26 +2757,44 @@ function filterDuplicateQuestions(questions, intakeAnswers) {
 }
 
 /**
- * Validiert und filtert Fragen basierend auf strikter Gewerke-Zuständigkeit
- * KEINE fremden Begriffe in Gewerke-Fragen!
+ * Validiert und filtert Fragen basierend auf Gewerke-Zuständigkeit
+ * Berücksichtigt gemeinsame und exklusive Begriffe
  */
-function validateTradeQuestions(tradeCode, questions) {
-  // Definiere EXKLUSIVE Keywords pro Gewerk
-  const EXCLUSIVE_KEYWORDS = {
+function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
+  
+  // GEMEINSAME Begriffe - mehrere Gewerke dürfen danach fragen
+  const SHARED_KEYWORDS = {
+    'bad': ['SAN', 'FLI', 'MAL', 'ELEKT', 'TRO'],  // Badezimmer betrifft viele
+    'küche': ['TIS', 'FLI', 'ELEKT', 'SAN'],        // Küche betrifft viele
+    'wand': ['ROH', 'FLI', 'MAL', 'TRO', 'ELEKT'],  // Wände betrifft viele
+    'boden': ['FLI', 'BOD', 'ESTR', 'MAL'],         // Böden betrifft viele
+    'decke': ['MAL', 'TRO', 'ROH', 'ELEKT'],        // Decken betrifft viele
+    'gaube': ['ZIMM', 'DACH'],                      // Zimmerer baut Holzkonstruktion der Gaube, Dachdecker deckt sie ein
+    'raum': ['MAL', 'TRO', 'BOD', 'FLI', 'ELEKT'],  // Räume betrifft viele
+    'tür': ['TIS', 'MAL', 'FEN'],                   // Türbereiche betrifft mehrere
+    'fläche': ['FLI', 'MAL', 'BOD', 'FASS', 'ESTR'], // Flächen allgemein
+    'material': ['ALLE'],                            // Material kann jedes Gewerk fragen
+    'farbe': ['MAL', 'FASS', 'TIS', 'FEN'],         // Farben betrifft mehrere
+    'montage': ['ALLE'],                             // Montage betrifft alle
+    'demontage': ['ALLE'],                           // Demontage betrifft alle
+  };
+
+  // NUR EXKLUSIVE Begriffe - nur DIESES Gewerk darf fragen
+  const STRICTLY_EXCLUSIVE = {
     'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'strom', 'leitung', 'verteiler', 'fi-schalter'],
     'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
     'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
     'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke'],
-    'FLI': ['fliesen', 'bad', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
+    'FLI': ['fliesen', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
     'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung'],
     'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
-    'ROH': ['mauerwerk', 'durchbruch', 'beton', 'maurerarbeiten', 'putz', 'verputz'],
+    'ROH': ['mauerwerk', 'durchbruch', 'beton', 'maurerarbeiten', 'sturz'],
     'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
-    'FEN': ['fenster', 'verglasung', 'rolladen', 'jalousie', 'fensterbank', 'glasbruch', 'isolierglas'],
-    'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'küche', 'arbeitsplatte'],
+    'FEN': ['fenster','verglasung', 'haustür', 'rolladen', 'jalousie', 'außentür', 'terrassentür', 'isolierglas'],
+    'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'küche', 'wohnungseingangstür', 'arbeitsplatte'],
     'DACH': ['dachfenster', 'ziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'dämmung', 'unterspannbahn'],
     'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
-    'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst'],
+    'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
     'ZIMM': ['holzbau', 'dachstuhl', 'balken', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk', 'sparren', 'pfetten'],
     'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
     'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
@@ -2784,32 +2802,6 @@ function validateTradeQuestions(tradeCode, questions) {
     'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
     'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
   };
-
-  // SPEZIALFALL FLI: Bodenfliesen sind erlaubt!
-  if (tradeCode === 'FLI') {
-    // FLI darf nach Boden fragen (Bodenfliesen), aber nicht nach Bodenbelägen
-    return questions.filter(q => {
-      const text = (q.question || q.text || '').toLowerCase();
-      
-      // Blockiere nur echte Bodenbeläge (Parkett, Laminat, etc.)
-      if (text.includes('parkett') || text.includes('laminat') || 
-          text.includes('vinyl') || text.includes('teppich')) {
-        console.warn(`[BLOCKED] FLI: Bodenbelag-Frage entfernt`);
-        return false;
-      }
-      
-      // Erlaubt: Bodenfliesen, Wandfliesen, etc.
-      return true;
-    });
-  }
-  
-  // Sammle alle Keywords die NICHT zu diesem Gewerk gehören
-  const forbiddenKeywords = [];
-  for (const [code, keywords] of Object.entries(EXCLUSIVE_KEYWORDS)) {
-    if (code !== tradeCode) {
-      forbiddenKeywords.push(...keywords);
-    }
-  }
 
   const filteredQuestions = [];
   const blockedQuestions = [];
@@ -2819,54 +2811,77 @@ function validateTradeQuestions(tradeCode, questions) {
     let isValid = true;
     let blockReason = '';
 
-    // Prüfe ob die Frage verbotene Keywords enthält
-    for (const forbidden of forbiddenKeywords) {
-      if (questionText.includes(forbidden)) {
-        // Finde zu welchem Gewerk das Keyword gehört
-        const correctTrade = Object.entries(EXCLUSIVE_KEYWORDS).find(([code, keywords]) => 
-          keywords.includes(forbidden)
-        )?.[0];
-        
-        blockReason = `Begriff "${forbidden}" gehört zu ${correctTrade}, nicht zu ${tradeCode}`;
-        isValid = false;
-        break;
+    // Prüfe EXKLUSIVE Keywords anderer Gewerke
+    for (const [code, keywords] of Object.entries(STRICTLY_EXCLUSIVE)) {
+      if (code !== tradeCode) {
+        for (const keyword of keywords) {
+          if (questionText.includes(keyword)) {
+            // Prüfe ob es nicht ein gemeinsamer Begriff ist
+            const isShared = Object.entries(SHARED_KEYWORDS).some(([sharedWord, allowedTrades]) => 
+              questionText.includes(sharedWord) && 
+              (allowedTrades.includes(tradeCode) || allowedTrades.includes('ALLE'))
+            );
+            
+            if (!isShared) {
+              blockReason = `Exklusiv-Begriff "${keyword}" gehört nur zu ${code}`;
+              isValid = false;
+              break;
+            }
+          }
+        }
       }
+      if (!isValid) break;
     }
 
-    // Spezielle Regeln für häufige Fehler
-    if (tradeCode === 'FEN' && questionText.includes('dach')) {
-      blockReason = 'Dachfenster gehören zu DACH, nicht zu FEN';
-      isValid = false;
-    }
-    
-    if (tradeCode === 'ZIMM' && (questionText.includes('dämm') || questionText.includes('dampf'))) {
-      blockReason = 'Dämmung gehört zu DACH, nicht zu ZIMM';
-      isValid = false;
-    }
-    
-    if (tradeCode === 'BOD' && questionText.includes('fliese')) {
-      blockReason = 'Fliesen gehören zu FLI, nicht zu BOD';
-      isValid = false;
-    }
-    
-    if (tradeCode === 'FEN' && questionText.includes('haustür') && 
-        !projectContext?.description?.toLowerCase().includes('haustür')) {
-      blockReason = 'Haustür nicht im Projekt erwähnt';
-      isValid = false;
+    // SPEZIALREGELN für bekannte Probleme
+    if (isValid) {
+      // Fenster darf nicht nach Dachfenstern fragen
+      if (tradeCode === 'FEN' && questionText.includes('dachfenster')) {
+        blockReason = 'Dachfenster gehören zu DACH, nicht zu FEN';
+        isValid = false;
+      }
+      
+      // Zimmerer darf nicht nach Dämmung fragen
+      else if (tradeCode === 'ZIMM' && 
+               (questionText.includes('dämmung') || 
+                questionText.includes('dampfsperre') || 
+                questionText.includes('isolierung'))) {
+        blockReason = 'Dämmung gehört zu DACH, nicht zu ZIMM';
+        isValid = false;
+      }
+      
+      // Bodenleger darf nicht nach Fliesen fragen
+      else if (tradeCode === 'BOD' && 
+               (questionText.includes('fliese') || 
+                questionText.includes('naturstein'))) {
+        blockReason = 'Fliesen gehören zu FLI, nicht zu BOD';
+        isValid = false;
+      }
+      
+      // Haustür nur wenn im Projekt erwähnt
+      else if (tradeCode === 'FEN' && 
+               questionText.includes('haustür') && 
+               !projectContext?.description?.toLowerCase().includes('haustür')) {
+        blockReason = 'Haustür nicht im Projekt erwähnt';
+        isValid = false;
+      }
     }
 
     if (isValid) {
       filteredQuestions.push(question);
     } else {
       blockedQuestions.push({ question: questionText, reason: blockReason });
-      console.warn(`[BLOCKED] ${tradeCode}: ${blockReason}`);
     }
   }
 
-  // Logge geblockte Fragen für Debugging
+  // Logging nur wenn Fragen blockiert wurden
   if (blockedQuestions.length > 0) {
     console.log(`[VALIDATION] ${tradeCode}: ${blockedQuestions.length} Fragen blockiert`);
-    blockedQuestions.forEach(b => console.log(`  - "${b.question.substring(0, 50)}..." → ${b.reason}`));
+    blockedQuestions.forEach(b => {
+      console.log(`  ❌ "${b.question.substring(0, 60)}..." → ${b.reason}`);
+    });
+  } else {
+    console.log(`[VALIDATION] ${tradeCode}: Alle ${filteredQuestions.length} Fragen valide`);
   }
 
   return filteredQuestions;
