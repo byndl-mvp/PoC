@@ -2767,7 +2767,7 @@ function validateTradeQuestions(tradeCode, questions) {
     'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
     'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
     'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke'],
-    'FLI': ['fliesen', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
+    'FLI': ['fliesen', 'bad', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
     'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung'],
     'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
     'ROH': ['mauerwerk', 'durchbruch', 'beton', 'maurerarbeiten', 'putz', 'verputz'],
@@ -2785,6 +2785,24 @@ function validateTradeQuestions(tradeCode, questions) {
     'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
   };
 
+  // SPEZIALFALL FLI: Bodenfliesen sind erlaubt!
+  if (tradeCode === 'FLI') {
+    // FLI darf nach Boden fragen (Bodenfliesen), aber nicht nach Bodenbelägen
+    return questions.filter(q => {
+      const text = (q.question || q.text || '').toLowerCase();
+      
+      // Blockiere nur echte Bodenbeläge (Parkett, Laminat, etc.)
+      if (text.includes('parkett') || text.includes('laminat') || 
+          text.includes('vinyl') || text.includes('teppich')) {
+        console.warn(`[BLOCKED] FLI: Bodenbelag-Frage entfernt`);
+        return false;
+      }
+      
+      // Erlaubt: Bodenfliesen, Wandfliesen, etc.
+      return true;
+    });
+  }
+  
   // Sammle alle Keywords die NICHT zu diesem Gewerk gehören
   const forbiddenKeywords = [];
   for (const [code, keywords] of Object.entries(EXCLUSIVE_KEYWORDS)) {
