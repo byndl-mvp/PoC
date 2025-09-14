@@ -5367,8 +5367,13 @@ projectContext.trades = projectTrades.rows; // <-- FÜGE TRADES HINZU!
 
 const questions = await generateQuestions(tradeId, projectContext);
     
-    // NEU - erweitere options um multiSelect und Dependencies:
-for (const question of questions) {
+// NEU - SCHRITT 4: Filter anwenden um Duplikate zu entfernen
+const filteredQuestions = filterDuplicateQuestions(questions, projectContext.intakeData || []);
+
+console.log(`[QUESTIONS] Filtered ${questions.length - filteredQuestions.length} duplicate questions`);
+
+// WICHTIG: Verwende jetzt filteredQuestions statt questions
+for (const question of filteredQuestions) {  // <- GEÄNDERT von "questions" zu "filteredQuestions"
   await query(
     `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options, depends_on, show_if)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -5396,7 +5401,7 @@ for (const question of questions) {
     const intelligentCount = getIntelligentQuestionCount(tradeCode, project, []);
     
     res.json({ 
-      questions,
+      questions: filteredQuestions,  // <- GEÄNDERT von "questions" zu "filteredQuestions"
       targetCount: intelligentCount.count,
       actualCount: questions.length,
       completeness: intelligentCount.completeness,
