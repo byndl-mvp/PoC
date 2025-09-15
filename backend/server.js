@@ -5596,7 +5596,7 @@ for (const trade of additionalTrades) {
     });
   }
 }
-
+    
 // Gruppiere die Trades
 const groupedTrades = {
   required: [], // Direkt aus Projektbeschreibung erkannt
@@ -5616,17 +5616,19 @@ const requiredTrades = await query(
 
 groupedTrades.required = requiredTrades.rows;
 
-// Die aus Intake erkannten als empfohlen markieren
-for (const trade of additionalTrades) {
-  const tradeInfo = await query('SELECT id, name FROM trades WHERE code = $1', [trade.code]);
-  if (tradeInfo.rows[0]) {
-    groupedTrades.recommended.push({
-      ...tradeInfo.rows[0],
-      ...trade,
-      reasoning: `Empfohlen weil: ${trade.matchedKeywords.join(', ')} in Ihren Antworten erwähnt`
-    });
-  }
-}
+// Stelle sicher, dass die empfohlenen Trades korrekt zugeordnet werden:
+groupedTrades.recommended = additionalTrades.map(trade => ({
+  ...trade,
+  id: trade.id,
+  name: trade.name,
+  code: trade.code,
+  reason: trade.reason || `Begriffe gefunden: ${trade.matchedKeywords?.join(', ')}`,
+  confidence: trade.confidence
+}));
+
+// Debug-Log hinzufügen:
+console.log('[INTAKE-SUMMARY] Required trades:', groupedTrades.required.length);
+console.log('[INTAKE-SUMMARY] Recommended trades:', groupedTrades.recommended.length);
     
 res.json({ 
   ok: true, 
