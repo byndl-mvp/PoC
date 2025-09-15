@@ -4273,7 +4273,7 @@ function finalLVValidation(lv, tradeCode) {
       except: ['fensterbank innen', 'möbelanschluss']
     },
     'ROH': {
-      forbidden: ['fenster einbau', 'elektro feininstallation', 'sanitär objekte', 'fliesen', 'parkett', 'rigips'],
+      forbidden: ['fenster einbau', 'gaube', 'elektro feininstallation', 'sanitär objekte', 'fliesen', 'parkett', 'rigips'],
       except: ['kernbohrung', 'durchbruch']
     },
     'ABBR': {
