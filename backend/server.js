@@ -2275,14 +2275,16 @@ if (tradeCode !== 'INT') {
 const beforeDuplicates = questions.length;
     
 // NEU: Post-Processing Filter anwenden
+console.log(`[DEBUG] tradeCode: "${tradeCode}", questions before filter: ${questions.length}`);
 if (tradeCode !== 'INT') {
   questions = filterDuplicateQuestions(questions, allAnsweredInfo.fromIntake);
 } else {
   console.log(`[QUESTIONS] INT: Skipping duplicate filter for intake questions`);
 }
 console.log(`[QUESTIONS] After duplicate filter: ${questions.length} questions (removed ${beforeDuplicates - questions.length})`);
-
-return Array.isArray(questions) ? questions : [];
+console.log(`[DEBUG] Final question count: ${questions.length}`);
+    
+  return Array.isArray(questions) ? questions : [];
 
 // Entferne problematische Zeichen die Claude manchmal einfügt
 cleanedResponse = cleanedResponse
