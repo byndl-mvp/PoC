@@ -5552,19 +5552,14 @@ const allAnswersText = answers
   .map(a => `${a.question} ${a.answer}`.toLowerCase())
   .join(' ');
 
-// Intelligente Filterung: Nutze nur substantielle Nutzer-Antworten
+// WICHTIG: Definiere relevantAnswers!
 const relevantAnswers = answers
-  .filter(a => {
-    // Filtere kurze/triviale Antworten aus
-    const isSubstantial = a.answer.length > 15;
-    const isNotBoilerplate = !['ja', 'nein', 'keine', 'nicht vorhanden', 'n/a', 'vorhanden'].includes(a.answer.toLowerCase().trim());
-    return isSubstantial && isNotBoilerplate;
-  })
+  .filter(a => a.answer.length > 15 && !['ja', 'nein', 'keine', 'vorhanden'].includes(a.answer.toLowerCase().trim()))
   .map(a => ({ question: a.question, answer: a.answer }));
 
 const userAnswerText = relevantAnswers.map(a => a.answer.toLowerCase()).join(' ');
 
-// Keyword-basierte Voranalyse mit bereits definierten tradeKeywords
+// Keyword-Analyse
 for (const [code, keywords] of Object.entries(tradeKeywords)) {
   const matchedKeywords = keywords.filter(kw => userAnswerText.includes(kw));
   
@@ -5575,95 +5570,67 @@ for (const [code, keywords] of Object.entries(tradeKeywords)) {
     );
     
     if (alreadyExists.rows.length === 0) {
-      // Finde relevante Antwort
-      let relevantAnswer = null;
-      for (const qa of relevantAnswers) {
-        if (matchedKeywords.some(kw => qa.answer.toLowerCase().includes(kw))) {
-          relevantAnswer = qa.answer;
-          break;
-        }
-      }
-      
-      const confidence = Math.min(95, 70 + (matchedKeywords.length * 5));
       additionalTrades.push({
         code,
         matchedKeywords,
-        confidence,
-        relevantAnswer: relevantAnswer ? relevantAnswer.substring(0, 100) : null,
-        reason: '' // Wird von LLM gefüllt
+        confidence: Math.min(95, 70 + (matchedKeywords.length * 5))
       });
       processedCodes.add(code);
     }
   }
 }
 
-// LLM-basierte Analyse für intelligente Begründungen
+// LLM-Analyse wenn Trades gefunden wurden
 if (additionalTrades.length > 0) {
-  console.log('[INTAKE-SUMMARY] Starte LLM-Analyse für', additionalTrades.length, 'Trades');
+  console.log('[INTAKE-SUMMARY] Rufe LLM für', additionalTrades.length, 'Trades');
   
-  const tradeNames = {
-    'ELEKT': 'Elektroinstallationen',
-    'SAN': 'Sanitärinstallationen', 
-    'HEI': 'Heizungsinstallation',
-    'KLIMA': 'Klimatechnik',
-    'TIS': 'Tischlerarbeiten',
-    'FLI': 'Fliesenarbeiten',
-    'MAL': 'Malerarbeiten',
-    'BOD': 'Bodenbelagsarbeiten',
-    'TRO': 'Trockenbauarbeiten',
-    'FEN': 'Fensterarbeiten',
-    'ROH': 'Rohbauarbeiten',
-    'DACH': 'Dacharbeiten',
-    'FASS': 'Fassadenarbeiten',
-    'GER': 'Gerüstbau',
-    'ZIMM': 'Zimmererarbeiten',
-    'ESTR': 'Estricharbeiten',
-    'SCHL': 'Schlosserarbeiten',
-    'AUSS': 'Außenanlagen',
-    'PV': 'Photovoltaik-Installation',
-    'ABBR': 'Abbrucharbeiten'
-  };
-  
-  // Nutze nur relevante User-Antworten (keine System-Fragen)
-  const relevantUserAnswers = relevantAnswers
-    .slice(0, 8)
-    .map(qa => `"${qa.answer}"`)
-    .join('\n');
-    
-  const tradeAnalysisPrompt = `Du bist ein Bauexperte. Analysiere warum diese Gewerke empfohlen werden.
-
-Nutzer-Antworten:
-${relevantUserAnswers}
-
-Erstelle für diese Gewerke prägnante Begründungen (max 12 Wörter):
-${additionalTrades.map(t => `${t.code}: ${tradeNames[t.code]}`).join('\n')}
-
-Antwort als JSON. Beispiel:
-{"ELEKT": "Zusätzliche Steckdosen benötigen professionelle Elektroinstallation"}`;
-
   try {
-    console.log('[INTAKE-SUMMARY] Rufe LLM auf...');
-    const llmResponse = await llmWithPolicy('analysis', [
-      { role: 'user', content: tradeAnalysisPrompt }
+    const tradeNames = {
+      'ELEKT': 'Elektroinstallationen',
+      'SAN': 'Sanitär',
+      'HEI': 'Heizung',
+      'FLI': 'Fliesen',
+      'MAL': 'Maler',
+      'TRO': 'Trockenbau',
+      'FEN': 'Fenster',
+      'TIS': 'Tischler',
+      'BOD': 'Bodenbeläge',
+      'ROH': 'Rohbau',
+      'FASS': 'Fassade',
+      'ZIMM': 'Zimmerer',
+      'DACH': 'Dach',
+      'KLIMA': 'Klima',
+      'GER': 'Gerüst',
+      'ESTR': 'Estrich',
+      'SCHL': 'Schlosser',
+      'AUSS': 'Außenanlagen',
+      'PV': 'Photovoltaik',
+      'ABBR': 'Abbruch'
+    };
+    
+    const userAnswersSample = relevantAnswers.slice(0, 5).map(a => a.answer).join(' | ');
+    
+    const prompt = `Nutzer sagt: "${userAnswersSample}"
+    
+Erstelle kurze Begründungen für diese Gewerke:
+${additionalTrades.map(t => t.code).join(', ')}
+
+Format: {"CODE": "Kurze Begründung max 10 Wörter"}`;
+
+    const llmResult = await llmWithPolicy('analysis', [
+      { role: 'user', content: prompt }
     ], { maxTokens: 1000, temperature: 0.3, jsonMode: true });
     
-    const reasons = JSON.parse(llmResponse);
-    console.log('[INTAKE-SUMMARY] LLM Antwort erhalten:', reasons);
+    const reasons = JSON.parse(llmResult);
     
-    // Update die Begründungen
-    additionalTrades.forEach(trade => {
-      trade.reason = reasons[trade.code] || `${tradeNames[trade.code]} könnte erforderlich sein`;
+    additionalTrades.forEach(t => {
+      t.reason = reasons[t.code] || `${tradeNames[t.code]} wurde in Ihren Angaben erkannt`;
     });
-  } catch (err) {
-    console.error('[INTAKE-SUMMARY] LLM fehlgeschlagen, nutze Fallback:', err);
-    additionalTrades.forEach(trade => {
-      const tradeName = tradeNames[trade.code];
-      if (trade.relevantAnswer) {
-        const shortAnswer = trade.relevantAnswer.substring(0, 30);
-        trade.reason = `Ihre Angabe "${shortAnswer}..." deutet auf ${tradeName} hin`;
-      } else {
-        trade.reason = `${tradeName} basierend auf Ihren Angaben empfohlen`;
-      }
+    
+  } catch (error) {
+    console.error('[INTAKE-SUMMARY] LLM failed:', error);
+    additionalTrades.forEach(t => {
+      t.reason = `Basierend auf Ihren Angaben empfohlen`;
     });
   }
 }
