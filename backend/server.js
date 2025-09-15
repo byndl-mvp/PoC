@@ -3813,46 +3813,7 @@ function validateAndFixPrices(lv, tradeCode) {
   if (!lv.positions || !Array.isArray(lv.positions)) {
     return { lv, fixedCount, warnings };
   }
-
-  // NEUE REGEL: "Lieferung und Demontage" ist VERBOTEN
-if (pos.title?.toLowerCase().includes('lieferung und demontage')) {
-  console.error(`[KRITISCH] Verbotene Kombination "Lieferung und Demontage" in ${tradeCode}`);
-  
-  // Teile in zwei separate Positionen
-  const lieferPos = {
-    ...pos,
-    title: pos.title.replace('Lieferung und Demontage', 'Lieferung und Montage'),
-    pos: pos.pos + '.1'
-  };
-  
-  const demontagePos = {
-    ...pos,
-    title: 'Demontage und Entsorgung Altmaterial',
-    pos: pos.pos + '.2',
-    unitPrice: Math.round(pos.unitPrice * 0.3), // Demontage ist günstiger
-    totalPrice: Math.round(pos.quantity * pos.unitPrice * 0.3)
-  };
-  
-  // Ersetze die fehlerhafte Position
-  return [demontagePos, lieferPos];
-}
-
-// NEUE REGEL: Vorwandinstallation NUR bei Trockenbau
-if (tradeCode !== 'TRO' && 
-    (titleLower.includes('vorwand') || descLower.includes('vorwandinstallation'))) {
-  console.error(`[KRITISCH] Vorwandinstallation in ${tradeCode} statt TRO`);
-  
-  // Position komplett entfernen oder umformulieren
-  if (tradeCode === 'SAN') {
-    pos.title = pos.title.replace(/vorwand.*installation/gi, 'Unterputz-Installation');
-    pos.description = pos.description.replace(/vorwand/gi, 'Unterputz');
-    warnings.push(`Vorwandinstallation in SAN korrigiert zu Unterputz`);
-  } else {
-    // Bei anderen Gewerken: Position entfernen
-    return null; // Position wird gefiltert
-  }
-}
-  
+ 
   lv.positions = lv.positions.map(pos => {
     // Skip Stundenlohn und Kleinmaterial
     if (pos.title?.includes('Stundenlohn') || 
@@ -3862,6 +3823,32 @@ if (tradeCode !== 'TRO' &&
     
     const titleLower = pos.title?.toLowerCase() || '';
     const descLower = pos.description?.toLowerCase() || '';
+    
+    // NEUE REGEL: "Lieferung und Demontage" ist VERBOTEN
+    if (titleLower.includes('lieferung und demontage')) {
+      console.error(`[KRITISCH] Verbotene Kombination "Lieferung und Demontage" in ${tradeCode}`);
+      
+      // Korrigiere nur den Titel
+      pos.title = pos.title.replace('Lieferung und Demontage', 'Lieferung und Montage');
+      warnings.push(`"Lieferung und Demontage" korrigiert zu "Lieferung und Montage"`);
+      fixedCount++;
+    }
+    
+    // NEUE REGEL: Vorwandinstallation NUR bei Trockenbau
+    if (tradeCode !== 'TRO' && 
+        (titleLower.includes('vorwand') || descLower.includes('vorwandinstallation'))) {
+      console.error(`[KRITISCH] Vorwandinstallation in ${tradeCode} statt TRO`);
+      
+      if (tradeCode === 'SAN') {
+        pos.title = pos.title.replace(/vorwand.*installation/gi, 'Unterputz-Installation');
+        pos.description = pos.description?.replace(/vorwand/gi, 'Unterputz');
+        warnings.push(`Vorwandinstallation in SAN korrigiert zu Unterputz`);
+        fixedCount++;
+      } else {
+        // Bei anderen Gewerken: Position markieren
+        pos._remove = true;
+      }
+    }
     
     // 1. NEUE REGEL: Entsorgungskosten prüfen
     if (titleLower.includes('entsorg') || 
@@ -4195,7 +4182,7 @@ if (tradeCode === 'ZIMM') {
     }
     
     return pos;
-  });
+  }).filter(pos => !pos._remove); 
   
   // Neuberechnung der Gesamtsumme wenn Änderungen
   if (fixedCount > 0) {
