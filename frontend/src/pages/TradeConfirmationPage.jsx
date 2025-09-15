@@ -58,7 +58,18 @@ try {
     const summaryData = await summaryRes.json();
     setIntakeSummary(summaryData.summary);
     
-    // Speichere zusätzlich erkannte Gewerke
+    // Debug-Log
+    console.log('Summary data:', summaryData);
+    console.log('Grouped trades:', summaryData.groupedTrades);
+    
+    // Nutze groupedTrades wenn vorhanden
+    if (summaryData.groupedTrades) {
+      setRequiredTrades(summaryData.groupedTrades.required || []);
+      setRecommendedTrades(summaryData.groupedTrades.recommended || []);
+      setSelectedRequired(summaryData.groupedTrades.required?.map(t => t.id) || []);
+    }
+    
+    // Speichere zusätzlich erkannte Gewerke (für Fallback)
     additionalTradesFromIntake = summaryData.additionalTradesDetected || [];
   }
 } catch (err) {
