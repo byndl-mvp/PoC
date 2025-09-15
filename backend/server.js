@@ -5546,15 +5546,13 @@ const tradeKeywords = {
   'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
   'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
 };
-console.log('[DEBUG] additionalTrades found:', additionalTrades.length, additionalTrades.map(t => t.code));
-console.log('[DEBUG] relevantAnswers:', relevantAnswers.length);
     
 // Analysiere alle Intake-Antworten
 const allAnswersText = answers
   .map(a => `${a.question} ${a.answer}`.toLowerCase())
   .join(' ');
 
-// WICHTIG: Definiere relevantAnswers!
+// DEFINIERE relevantAnswers HIER
 const relevantAnswers = answers
   .filter(a => a.answer.length > 15 && !['ja', 'nein', 'keine', 'vorhanden'].includes(a.answer.toLowerCase().trim()))
   .map(a => ({ question: a.question, answer: a.answer }));
@@ -5575,12 +5573,17 @@ for (const [code, keywords] of Object.entries(tradeKeywords)) {
       additionalTrades.push({
         code,
         matchedKeywords,
-        confidence: Math.min(95, 70 + (matchedKeywords.length * 5))
+        confidence: Math.min(95, 70 + (matchedKeywords.length * 5)),
+        reason: '' // Wird vom LLM gefüllt
       });
       processedCodes.add(code);
     }
   }
 }
+
+// Debug-Logs NACH den Definitionen
+console.log('[DEBUG] additionalTrades found:', additionalTrades.length);
+console.log('[DEBUG] relevantAnswers count:', relevantAnswers.length);
 
 // LLM-Analyse wenn Trades gefunden wurden
 if (additionalTrades.length > 0) {
