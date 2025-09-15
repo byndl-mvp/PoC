@@ -15,8 +15,12 @@ export default function TradeConfirmationPage() {
   const [intakeSummary, setIntakeSummary] = useState(null);
   const [addingTrade, setAddingTrade] = useState(false);
   const isAdditionalTrade = sessionStorage.getItem('addingAdditionalTrade') === 'true';
-const [existingTradeIds, setExistingTradeIds] = useState([]);
-
+  const [existingTradeIds, setExistingTradeIds] = useState([]);
+  const [requiredTrades, setRequiredTrades] = useState([]);
+  const [recommendedTrades, setRecommendedTrades] = useState([]);
+  const [selectedRequired, setSelectedRequired] = useState([]);
+  const [selectedRecommended, setSelectedRecommended] = useState([]);
+  
 useEffect(() => {
   if (isAdditionalTrade) {
     fetch(apiUrl(`/api/projects/${projectId}`))
