@@ -2263,9 +2263,13 @@ try {
 // Zähle Fragen vor Validierung
 const beforeValidation = questions.length;
 
-// Erst Gewerke-Validierung (entfernt falsch zugeordnete Fragen)
-questions = validateTradeQuestions(tradeCode, questions, projectContext);
-console.log(`[QUESTIONS] After trade validation: ${questions.length} questions (removed ${beforeValidation - questions.length})`);
+// Gewerke-Validierung NUR für Nicht-Intake Fragen
+if (tradeCode !== 'INT') {
+  questions = validateTradeQuestions(tradeCode, questions, projectContext);
+  console.log(`[QUESTIONS] After trade validation: ${questions.length} questions (removed ${beforeValidation - questions.length})`);
+} else {
+  console.log(`[QUESTIONS] INT: Skipping trade validation for intake questions`);
+}
 
 // Zähle Fragen vor Duplikat-Filter
 const beforeDuplicates = questions.length;
