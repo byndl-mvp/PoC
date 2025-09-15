@@ -5565,7 +5565,11 @@ for (const [code, keywords] of Object.entries(tradeKeywords)) {
   
   if (matchedKeywords.length > 0 && !processedCodes.has(code)) {
     const alreadyExists = await query(
-      'SELECT 1 FROM project_trades pt JOIN trades t ON pt.trade_id = t.id WHERE pt.project_id = $1 AND t.code = $2',
+      `SELECT 1 FROM project_trades pt 
+       JOIN trades t ON pt.trade_id = t.id 
+       WHERE pt.project_id = $1 
+       AND t.code = $2 
+       AND (pt.is_ai_recommended = false OR pt.is_ai_recommended IS NULL)`,
       [projectId, code]
     );
     
