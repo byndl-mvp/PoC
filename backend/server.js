@@ -5576,14 +5576,13 @@ for (const [code, keywords] of Object.entries(tradeKeywords)) {
   }
 }
 
-// Array für ALLE empfohlenen Trades (neu + bereits gespeichert)
+// Sammle ALLE empfohlenen Trades
 const allRecommendedTrades = [];
 
-// 1. Speichere neu erkannte Trades und füge sie zu allRecommendedTrades hinzu
+// 1. Speichere neu erkannte Trades
 for (const trade of additionalTrades) {
   const tradeInfo = await query('SELECT id, name FROM trades WHERE code = $1', [trade.code]);
   if (tradeInfo.rows[0]) {
-    // Speichere in DB mit Flag
     await query(
       `INSERT INTO project_trades (project_id, trade_id, is_ai_recommended)
        VALUES ($1, $2, true)
@@ -5592,7 +5591,6 @@ for (const trade of additionalTrades) {
       [projectId, tradeInfo.rows[0].id]
     );
     
-    // Füge zu empfohlenen Trades hinzu mit vollständigen Infos
     allRecommendedTrades.push({
       id: tradeInfo.rows[0].id,
       code: trade.code,
@@ -5604,37 +5602,37 @@ for (const trade of additionalTrades) {
   }
 }
 
-// 2. Hole BEREITS GESPEICHERTE empfohlene Trades (wichtig für wiederholte Aufrufe!)
-const existingRecommendedCodes = additionalTrades.map(t => `'${t.code}'`).join(',') || "''";
-const previouslyRecommended = await query(
+// 2. Hole ALLE gespeicherten empfohlenen Trades
+const allRecommendedFromDB = await query(
   `SELECT t.id, t.code, t.name
    FROM project_trades pt 
    JOIN trades t ON pt.trade_id = t.id 
    WHERE pt.project_id = $1 
-   AND pt.is_ai_recommended = true
-   AND t.code NOT IN (${existingRecommendedCodes})`,
+   AND pt.is_ai_recommended = true`,
   [projectId]
 );
 
-// Füge bereits gespeicherte empfohlene Trades hinzu
-for (const trade of previouslyRecommended.rows) {
-  // Versuche Keywords zu finden für bessere Begründung
-  const keywords = tradeKeywords[trade.code] || [];
-  const matchedKeywords = keywords.filter(kw => allAnswersText.includes(kw));
-  
-  allRecommendedTrades.push({
-    id: trade.id,
-    code: trade.code,
-    name: trade.name,
-    reason: matchedKeywords.length > 0 
-      ? `Begriffe gefunden: ${matchedKeywords.join(', ')}` 
-      : 'Aus vorheriger Analyse erkannt',
-    confidence: 85,
-    matchedKeywords: matchedKeywords
-  });
+// 3. Füge gespeicherte hinzu (ohne Duplikate)
+const newCodesSet = new Set(additionalTrades.map(t => t.code));
+for (const trade of allRecommendedFromDB.rows) {
+  if (!newCodesSet.has(trade.code)) {
+    const keywords = tradeKeywords[trade.code] || [];
+    const matchedKeywords = keywords.filter(kw => allAnswersText.includes(kw));
+    
+    allRecommendedTrades.push({
+      id: trade.id,
+      code: trade.code,
+      name: trade.name,
+      reason: matchedKeywords.length > 0 
+        ? `Begriffe gefunden: ${matchedKeywords.join(', ')}` 
+        : 'Aus vorheriger Analyse erkannt',
+      confidence: 85,
+      matchedKeywords: matchedKeywords
+    });
+  }
 }
 
-// 3. Lade erforderliche Trades (initial erkannte, NICHT empfohlene)
+// 4. Hole erforderliche Trades
 const requiredTrades = await query(
   `SELECT t.id, t.code, t.name
    FROM project_trades pt 
@@ -5645,27 +5643,23 @@ const requiredTrades = await query(
   [projectId]
 );
 
-// 4. Erstelle groupedTrades Objekt für Frontend
+// 5. Erstelle Response
 const groupedTrades = {
   required: requiredTrades.rows.map(trade => ({
     ...trade,
     reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
   })),
-  recommended: allRecommendedTrades  // Nutze ALLE empfohlenen (neu + gespeichert)
+  recommended: allRecommendedTrades
 };
 
-// 5. Debug-Logs
 console.log('[INTAKE-SUMMARY] Required trades:', groupedTrades.required.length);
 console.log('[INTAKE-SUMMARY] Recommended trades:', groupedTrades.recommended.length);
-console.log('[INTAKE-SUMMARY] - Neu erkannt:', additionalTrades.length);
-console.log('[INTAKE-SUMMARY] - Bereits vorhanden:', previouslyRecommended.rows.length);
 
-// 6. Sende Response mit allen Daten
 res.json({ 
   ok: true, 
   summary,
-  groupedTrades,  // Frontend erwartet dieses Format!
-  additionalTradesDetected: allRecommendedTrades // Für Backwards-Compatibility
+  groupedTrades,
+  additionalTradesDetected: allRecommendedTrades
 });
 
   } catch (err) {
