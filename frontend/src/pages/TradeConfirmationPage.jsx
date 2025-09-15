@@ -394,12 +394,12 @@ navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
 
 {/* Empfohlene Gewerke */}
 {recommendedTrades.length > 0 && (
-  <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white/20">
+  <div className="bg-blue-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-blue-400/30">
     <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
       <span className="text-blue-400 mr-2">💡</span>
       Empfohlene zusätzliche Gewerke
     </h3>
-    <p className="text-gray-300 text-sm mb-4">
+    <p className="text-gray-200 text-sm mb-4">
       Basierend auf Ihren Antworten könnten diese Gewerke relevant sein:
     </p>
     
@@ -409,33 +409,27 @@ navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
           key={trade.id}
           className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
             selectedRecommended.includes(trade.id)
-              ? 'bg-blue-500/20 border border-blue-500/50'
-              : 'bg-white/5 border border-white/20 opacity-60'
+              ? 'bg-blue-500/30 border border-blue-400/60 shadow-lg'
+              : 'bg-white/10 border border-white/30 hover:bg-white/15'
           }`}
         >
           <input
             type="checkbox"
             checked={selectedRecommended.includes(trade.id)}
             onChange={() => toggleRecommended(trade.id)}
-            className="mt-1 mr-3 w-5 h-5 text-blue-500 bg-white/10 border-white/30 rounded focus:ring-blue-500"
+            className="mt-1 mr-3 w-5 h-5 text-blue-500 bg-white/20 border-white/40 rounded focus:ring-blue-500"
           />
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="text-white font-medium">{trade.name}</span>
-              <span className="text-gray-400 text-sm">({trade.code})</span>
-              {trade.confidence && (
-                <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded">
-                  {trade.confidence}% Konfidenz
+              <span className="text-gray-300 text-sm">({trade.code})</span>
+              {trade.confidence && trade.confidence >= 80 && (
+                <span className="bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
+                  Sehr wahrscheinlich
                 </span>
               )}
             </div>
-            <p className="text-gray-400 text-sm mt-1">{trade.reason}</p>
-            {trade.matchedKeywords && trade.matchedKeywords.length > 0 && (
-              <p className="text-gray-500 text-xs mt-1">
-                Erkannte Begriffe: {trade.matchedKeywords.slice(0, 3).join(', ')}
-                {trade.matchedKeywords.length > 3 && '...'}
-              </p>
-            )}
+            <p className="text-gray-200 text-sm mt-1">{trade.reason}</p>
           </div>
         </label>
       ))}
