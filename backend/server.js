@@ -2275,7 +2275,11 @@ if (tradeCode !== 'INT') {
 const beforeDuplicates = questions.length;
     
 // NEU: Post-Processing Filter anwenden
-questions = filterDuplicateQuestions(questions, allAnsweredInfo.fromIntake);
+if (tradeCode !== 'INT') {
+  questions = filterDuplicateQuestions(questions, allAnsweredInfo.fromIntake);
+} else {
+  console.log(`[QUESTIONS] INT: Skipping duplicate filter for intake questions`);
+}
 console.log(`[QUESTIONS] After duplicate filter: ${questions.length} questions (removed ${beforeDuplicates - questions.length})`);
 
 return Array.isArray(questions) ? questions : [];
