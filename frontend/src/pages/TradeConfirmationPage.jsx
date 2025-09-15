@@ -69,41 +69,51 @@ try {
         const tradesRes = await fetch(apiUrl('/api/trades'));
         const allTradesData = await tradesRes.json();
         
-        // 4. Kombiniere initial erkannte und Intake-basierte Empfehlungen
-const combinedTrades = [...initialDetected];
+        // 4. Trades aufteilen in erforderlich und empfohlen
+const required = [];
+const recommended = [];
 
-// Füge Intake-basierte Empfehlungen hinzu
-for (const rec of additionalTradesFromIntake) {
-  if (!combinedTrades.find(t => t.code === rec.code)) {
+// Initial erkannte als erforderlich
+for (const trade of initialDetected) {
+  required.push({
+    ...trade,
+    category: 'required',
+    reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
+  });
+}
+
+// Aus Intake-Antworten als empfohlen
+if (additionalTradesFromIntake && additionalTradesFromIntake.length > 0) {
+  for (const rec of additionalTradesFromIntake) {
     const fullTrade = allTradesData.find(t => t.code === rec.code);
-    if (fullTrade) {
-      combinedTrades.push({
+    if (fullTrade && !required.find(r => r.code === rec.code)) {
+      recommended.push({
         ...fullTrade,
-        source: 'intake-empfohlen',
-        reason: rec.reason,
+        category: 'recommended',
+        reason: rec.reason || `Begriffe gefunden: ${rec.matchedKeywords?.join(', ') || ''}`,
         confidence: rec.confidence,
-        isAiRecommended: true,
-        badge: 'Basierend auf Ihren Antworten'
+        matchedKeywords: rec.matchedKeywords
       });
     }
   }
 }
-        
-        // Markiere Trades, aber behalte ihre source bei
-const markedTrades = combinedTrades.map(trade => ({
-  ...trade,
-  source: trade.source || 'initial-erkannt', // Behalte existierende source
-  isManuallyAdded: false
-}));
-        
-        setDetectedTrades(markedTrades);
-        setSelectedTrades(markedTrades.map(t => t.id));
-        
-        // Verfügbare Trades (ohne INT und bereits erkannte/empfohlene)
-        const availableTrades = allTradesData.filter(t => 
-          t.code !== 'INT' && !markedTrades.some(d => d.id === t.id)
-        );
-        setAllTrades(availableTrades);
+
+setRequiredTrades(required);
+setRecommendedTrades(recommended);
+setSelectedRequired(required.map(t => t.id));
+setSelectedRecommended([]); // Empfohlene standardmäßig nicht ausgewählt
+
+// Für manuelle Hinzufügung
+const availableTrades = allTradesData.filter(t => 
+  t.code !== 'INT' && 
+  !required.some(r => r.id === t.id) &&
+  !recommended.some(r => r.id === t.id)
+);
+setAllTrades(availableTrades);
+
+// Alte States für Kompatibilität
+setDetectedTrades([...required, ...recommended]);
+setSelectedTrades(required.map(t => t.id));
         
       } catch (err) {
         setError(err.message);
