@@ -5595,9 +5595,41 @@ for (const trade of additionalTrades) {
   }
 }
 
+// Gruppiere die Trades
+const groupedTrades = {
+  required: [], // Direkt aus Projektbeschreibung erkannt
+  recommended: [] // Aus Intake-Antworten abgeleitet
+};
+
+// Lade bereits zugeordnete (erforderliche) Trades
+const requiredTrades = await query(
+  `SELECT t.id, t.code, t.name, pt.confidence 
+   FROM project_trades pt 
+   JOIN trades t ON pt.trade_id = t.id 
+   WHERE pt.project_id = $1 
+   AND pt.is_ai_recommended = false
+   AND t.code != 'INT'`,
+  [projectId]
+);
+
+groupedTrades.required = requiredTrades.rows;
+
+// Die aus Intake erkannten als empfohlen markieren
+for (const trade of additionalTrades) {
+  const tradeInfo = await query('SELECT id, name FROM trades WHERE code = $1', [trade.code]);
+  if (tradeInfo.rows[0]) {
+    groupedTrades.recommended.push({
+      ...tradeInfo.rows[0],
+      ...trade,
+      reasoning: `Empfohlen weil: ${trade.matchedKeywords.join(', ')} in Ihren Antworten erwähnt`
+    });
+  }
+}
+    
 res.json({ 
   ok: true, 
   summary,
+  groupedTrades,  // NEU hinzufügen
   additionalTradesDetected: additionalTrades 
 });
 
