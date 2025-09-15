@@ -5547,11 +5547,12 @@ const tradeKeywords = {
   'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
 };
 
-// Analysiere alle Intake-Antworten
+// Analysiere alle Intake-Antworten (BLEIBT GLEICH)
 const allAnswersText = answers
   .map(a => `${a.question} ${a.answer}`.toLowerCase())
   .join(' ');
 
+// Finde neue Trades basierend auf Keywords (BLEIBT GLEICH)
 for (const [code, keywords] of Object.entries(tradeKeywords)) {
   const matchedKeywords = keywords.filter(kw => allAnswersText.includes(kw));
   
@@ -5575,10 +5576,14 @@ for (const [code, keywords] of Object.entries(tradeKeywords)) {
   }
 }
 
-// Speichere empfohlene Gewerke in Datenbank
+// Array für ALLE empfohlenen Trades (neu + bereits gespeichert)
+const allRecommendedTrades = [];
+
+// 1. Speichere neu erkannte Trades und füge sie zu allRecommendedTrades hinzu
 for (const trade of additionalTrades) {
   const tradeInfo = await query('SELECT id, name FROM trades WHERE code = $1', [trade.code]);
   if (tradeInfo.rows[0]) {
+    // Speichere in DB mit Flag
     await query(
       `INSERT INTO project_trades (project_id, trade_id, is_ai_recommended)
        VALUES ($1, $2, true)
@@ -5587,23 +5592,49 @@ for (const trade of additionalTrades) {
       [projectId, tradeInfo.rows[0].id]
     );
     
-    // Füge auch zur Summary hinzu
-    summary.additionalTradesDetected = summary.additionalTradesDetected || [];
-    summary.additionalTradesDetected.push({
-      ...trade,
+    // Füge zu empfohlenen Trades hinzu mit vollständigen Infos
+    allRecommendedTrades.push({
       id: tradeInfo.rows[0].id,
-      name: tradeInfo.rows[0].name
+      code: trade.code,
+      name: tradeInfo.rows[0].name,
+      reason: trade.reason,
+      confidence: trade.confidence,
+      matchedKeywords: trade.matchedKeywords
     });
   }
 }
-    
-// Gruppiere die Trades
-const groupedTrades = {
-  required: [], // Direkt aus Projektbeschreibung erkannt
-  recommended: [] // Aus Intake-Antworten abgeleitet
-};
 
-// Lade bereits zugeordnete (erforderliche) Trades
+// 2. Hole BEREITS GESPEICHERTE empfohlene Trades (wichtig für wiederholte Aufrufe!)
+const existingRecommendedCodes = additionalTrades.map(t => `'${t.code}'`).join(',') || "''";
+const previouslyRecommended = await query(
+  `SELECT t.id, t.code, t.name
+   FROM project_trades pt 
+   JOIN trades t ON pt.trade_id = t.id 
+   WHERE pt.project_id = $1 
+   AND pt.is_ai_recommended = true
+   AND t.code NOT IN (${existingRecommendedCodes})`,
+  [projectId]
+);
+
+// Füge bereits gespeicherte empfohlene Trades hinzu
+for (const trade of previouslyRecommended.rows) {
+  // Versuche Keywords zu finden für bessere Begründung
+  const keywords = tradeKeywords[trade.code] || [];
+  const matchedKeywords = keywords.filter(kw => allAnswersText.includes(kw));
+  
+  allRecommendedTrades.push({
+    id: trade.id,
+    code: trade.code,
+    name: trade.name,
+    reason: matchedKeywords.length > 0 
+      ? `Begriffe gefunden: ${matchedKeywords.join(', ')}` 
+      : 'Aus vorheriger Analyse erkannt',
+    confidence: 85,
+    matchedKeywords: matchedKeywords
+  });
+}
+
+// 3. Lade erforderliche Trades (initial erkannte, NICHT empfohlene)
 const requiredTrades = await query(
   `SELECT t.id, t.code, t.name
    FROM project_trades pt 
@@ -5614,27 +5645,27 @@ const requiredTrades = await query(
   [projectId]
 );
 
-groupedTrades.required = requiredTrades.rows;
+// 4. Erstelle groupedTrades Objekt für Frontend
+const groupedTrades = {
+  required: requiredTrades.rows.map(trade => ({
+    ...trade,
+    reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
+  })),
+  recommended: allRecommendedTrades  // Nutze ALLE empfohlenen (neu + gespeichert)
+};
 
-// Stelle sicher, dass die empfohlenen Trades korrekt zugeordnet werden:
-groupedTrades.recommended = additionalTrades.map(trade => ({
-  ...trade,
-  id: trade.id,
-  name: trade.name,
-  code: trade.code,
-  reason: trade.reason || `Begriffe gefunden: ${trade.matchedKeywords?.join(', ')}`,
-  confidence: trade.confidence
-}));
-
-// Debug-Log hinzufügen:
+// 5. Debug-Logs
 console.log('[INTAKE-SUMMARY] Required trades:', groupedTrades.required.length);
 console.log('[INTAKE-SUMMARY] Recommended trades:', groupedTrades.recommended.length);
-    
+console.log('[INTAKE-SUMMARY] - Neu erkannt:', additionalTrades.length);
+console.log('[INTAKE-SUMMARY] - Bereits vorhanden:', previouslyRecommended.rows.length);
+
+// 6. Sende Response mit allen Daten
 res.json({ 
   ok: true, 
   summary,
-  groupedTrades,  // NEU hinzufügen
-  additionalTradesDetected: additionalTrades 
+  groupedTrades,  // Frontend erwartet dieses Format!
+  additionalTradesDetected: allRecommendedTrades // Für Backwards-Compatibility
 });
 
   } catch (err) {
