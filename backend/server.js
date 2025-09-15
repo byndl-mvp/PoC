@@ -5989,6 +5989,28 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     }
     
     const project = projectResult.rows[0];
+
+    // Hole Intake-Antworten für Kontext (für ALLE Gewerke)
+let intakeContext = '';
+if (tradeCode !== 'INT') {
+  const intakeAnswers = await query(
+    `SELECT q.text as question, a.answer_text as answer
+     FROM answers a
+     JOIN questions q ON q.project_id = a.project_id 
+       AND q.trade_id = a.trade_id 
+       AND q.question_id = a.question_id
+     JOIN trades t ON t.id = a.trade_id
+     WHERE a.project_id = $1 
+     AND t.code = 'INT'`,
+    [projectId]
+  );
+  
+  if (intakeAnswers.rows.length > 0) {
+    intakeContext = intakeAnswers.rows
+      .map(a => `${a.question}: ${a.answer}`)
+      .join('\n');
+  }
+}
     
     // Erstelle erweiterten Projektkontext mit BEIDEN Quellen
     const projectContext = {
@@ -5999,7 +6021,9 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
   budget: req.body.projectBudget || project.budget,
   projectId: projectId,
   isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
-  isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended
+  isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended,
+  intakeContext: intakeContext,  // NEU: Füge Intake-Kontext hinzu
+  hasIntakeAnswers: intakeContext.length > 0  // NEU: Flag ob Intake vorhanden
 };
     
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
