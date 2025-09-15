@@ -5605,11 +5605,11 @@ const groupedTrades = {
 
 // Lade bereits zugeordnete (erforderliche) Trades
 const requiredTrades = await query(
-  `SELECT t.id, t.code, t.name, pt.confidence 
+  `SELECT t.id, t.code, t.name
    FROM project_trades pt 
    JOIN trades t ON pt.trade_id = t.id 
    WHERE pt.project_id = $1 
-   AND pt.is_ai_recommended = false
+   AND (pt.is_ai_recommended = false OR pt.is_ai_recommended IS NULL)
    AND t.code != 'INT'`,
   [projectId]
 );
