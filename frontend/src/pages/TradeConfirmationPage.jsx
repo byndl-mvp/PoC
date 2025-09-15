@@ -178,16 +178,19 @@ const toggleRecommended = (tradeId) => {
   };
 
   const handleContinue = async () => {
-    if (selectedTrades.length === 0) {
-      alert('Bitte wählen Sie mindestens ein Gewerk aus');
-      return;
-    }
-    // Definiere confirmedTradesData
-      const confirmedTradesData = detectedTrades.filter(t => selectedTrades.includes(t.id));
-    // Sammle die IDs der manuell hinzugefügten und KI-empfohlenen Trades
-      const manuallyAddedTradeIds = confirmedTradesData
-        .filter(t => t.isManuallyAdded || t.source === 'manuell')
-        .map(t => t.id);
+  // WICHTIG: Verwende die neuen selected Arrays
+  const allSelectedTrades = [...selectedRequired, ...selectedRecommended];
+  
+  if (allSelectedTrades.length === 0) {
+    alert('Bitte wählen Sie mindestens ein Gewerk aus');
+    return;
+  }
+  
+  // Sammle die vollständigen Trade-Daten
+  const confirmedTradesData = [
+    ...requiredTrades.filter(t => selectedRequired.includes(t.id)),
+    ...recommendedTrades.filter(t => selectedRecommended.includes(t.id))
+  ];
     
     try {
       setLoading(true);
@@ -198,7 +201,7 @@ const toggleRecommended = (tradeId) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          confirmedTrades: selectedTrades,
+          confirmedTrades: allSelectedTrades,  // Nutze allSelectedTrades
           manuallyAddedTrades: manuallyAddedTradeIds,
           isAdditional: isAdditionalTrade
         })
