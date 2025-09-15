@@ -5589,60 +5589,83 @@ for (const [code, keywords] of Object.entries(tradeKeywords)) {
 console.log('[DEBUG] additionalTrades found:', additionalTrades.length);
 console.log('[DEBUG] relevantAnswers count:', relevantAnswers.length);
 
-// LLM-Analyse wenn Trades gefunden wurden
+// LLM-basierte Analyse für intelligente Begründungen
 if (additionalTrades.length > 0) {
-  console.log('[INTAKE-SUMMARY] Rufe LLM für', additionalTrades.length, 'Trades');
+  console.log('[INTAKE-SUMMARY] Starte LLM-Analyse für', additionalTrades.length, 'Trades');
+  
+  const tradeNames = {
+    'ELEKT': 'Elektroinstallationen',
+    'SAN': 'Sanitärinstallationen', 
+    'HEI': 'Heizungsinstallation',
+    'KLIMA': 'Klimatechnik',
+    'TIS': 'Tischlerarbeiten',
+    'FLI': 'Fliesenarbeiten',
+    'MAL': 'Malerarbeiten',
+    'BOD': 'Bodenbelagsarbeiten',
+    'TRO': 'Trockenbauarbeiten',
+    'FEN': 'Fensterarbeiten',
+    'ROH': 'Rohbauarbeiten',
+    'DACH': 'Dacharbeiten',
+    'FASS': 'Fassadenarbeiten',
+    'GER': 'Gerüstbau',
+    'ZIMM': 'Zimmererarbeiten',
+    'ESTR': 'Estricharbeiten',
+    'SCHL': 'Schlosserarbeiten',
+    'AUSS': 'Außenanlagen',
+    'PV': 'Photovoltaik-Installation',
+    'ABBR': 'Abbrucharbeiten'
+  };
   
   try {
-    const tradeNames = {
-      'ELEKT': 'Elektroinstallationen',
-      'SAN': 'Sanitär',
-      'HEI': 'Heizung',
-      'FLI': 'Fliesen',
-      'MAL': 'Maler',
-      'TRO': 'Trockenbau',
-      'FEN': 'Fenster',
-      'TIS': 'Tischler',
-      'BOD': 'Bodenbeläge',
-      'ROH': 'Rohbau',
-      'FASS': 'Fassade',
-      'ZIMM': 'Zimmerer',
-      'DACH': 'Dach',
-      'KLIMA': 'Klima',
-      'GER': 'Gerüst',
-      'ESTR': 'Estrich',
-      'SCHL': 'Schlosser',
-      'AUSS': 'Außenanlagen',
-      'PV': 'Photovoltaik',
-      'ABBR': 'Abbruch'
-    };
+    // Sammle relevante Nutzerantworten für den Kontext
+    const contextAnswers = relevantAnswers
+      .slice(0, 6)
+      .map(qa => qa.answer)
+      .join(' | ');
     
-    const userAnswersSample = relevantAnswers.slice(0, 5).map(a => a.answer).join(' | ');
-    
-    const prompt = `Nutzer sagt: "${userAnswersSample}"
-    
-Erstelle kurze Begründungen für diese Gewerke:
-${additionalTrades.map(t => t.code).join(', ')}
+    // Erstelle Trades-Info für Prompt
+    const tradesInfo = additionalTrades.map(t => {
+      const relevantAnswer = relevantAnswers.find(qa => 
+        t.matchedKeywords.some(kw => qa.answer.toLowerCase().includes(kw))
+      );
+      return `${t.code}: gefunden wegen "${t.matchedKeywords.slice(0,2).join(', ')}" in Antwort "${relevantAnswer ? relevantAnswer.answer.substring(0,50) : 'diverse Angaben'}"`;
+    }).join('\n');
 
-Format: {"CODE": "Kurze Begründung max 10 Wörter"}`;
+    const prompt = `Basierend auf diesen Nutzerangaben:
+"${contextAnswers}"
+
+Erstelle kurze, spezifische Begründungen für diese Gewerke:
+${tradesInfo}
+
+Gib für jedes Gewerk eine Begründung (max 12 Wörter) die sich DIREKT auf die Nutzerangaben bezieht.
+
+Beispiel-Format:
+{
+  "ELEKT": "Zusätzliche Steckdosen im Wohnzimmer benötigen Elektroinstallation",
+  "SAN": "Neues WC im Keller erfordert Sanitärarbeiten"
+}
+
+Antworte NUR mit validem JSON.`;
 
     const llmResult = await llmWithPolicy('analysis', [
       { role: 'user', content: prompt }
     ], { maxTokens: 1000, temperature: 0.3, jsonMode: true });
-
-    console.log('[DEBUG] LLM raw response:', llmResult);
-    const reasons = JSON.parse(llmResult);
-    console.log('[DEBUG] Parsed reasons:', reasons);
     
-    additionalTrades.forEach(t => {
-      t.reason = reasons[t.code] || `${tradeNames[t.code]} wurde in Ihren Angaben erkannt`;
-      console.log(`[DEBUG] Trade ${t.code}: "${oldReason}" -> "${t.reason}"`);
+    console.log('[LLM] Raw response:', llmResult);
+    const reasons = JSON.parse(llmResult);
+    
+    // Weise die Begründungen zu
+    additionalTrades.forEach(trade => {
+      trade.reason = reasons[trade.code] || `${tradeNames[trade.code]} basierend auf Ihren Angaben empfohlen`;
+      console.log(`[LLM] ${trade.code}: ${trade.reason}`);
     });
     
   } catch (error) {
     console.error('[INTAKE-SUMMARY] LLM failed:', error);
-    additionalTrades.forEach(t => {
-      t.reason = `Basierend auf Ihren Angaben empfohlen`;
+    // Fallback mit Keywords
+    additionalTrades.forEach(trade => {
+      const keywords = trade.matchedKeywords.slice(0, 2).join(' und ');
+      trade.reason = `Wegen erwähnter Begriffe: ${keywords}`;
     });
   }
 }
