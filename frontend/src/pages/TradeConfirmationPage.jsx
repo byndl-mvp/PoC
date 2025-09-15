@@ -432,6 +432,36 @@ const toggleRecommended = (tradeId) => {
   </div>
 )}
 
+{/* Manuell hinzugefügte Gewerke */}
+{detectedTrades.filter(t => t.source === 'manuell').length > 0 && (
+  <div className="bg-yellow-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-yellow-500/30">
+    <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+      <span className="text-yellow-400 mr-2">✓</span>
+      Manuell hinzugefügte Gewerke
+    </h3>
+    
+    <div className="space-y-3">
+      {detectedTrades.filter(t => t.source === 'manuell').map(trade => (
+        <div
+          key={trade.id}
+          className="flex items-start p-4 rounded-lg bg-yellow-500/20 border border-yellow-500/50"
+        >
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-white font-medium">{trade.name}</span>
+              <span className="text-gray-300 text-sm">({trade.code})</span>
+              <span className="bg-yellow-600/30 text-yellow-300 text-xs px-2 py-1 rounded">
+                Manuell
+              </span>
+            </div>
+            <p className="text-gray-200 text-sm mt-1">{trade.reason}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+        
 {/* Add Additional Trades - BEHALTEN */}
 <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
   <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
