@@ -135,6 +135,22 @@ setSelectedTrades(required.map(t => t.id));
     });
   };
 
+  const toggleRequired = (tradeId) => {
+  setSelectedRequired(prev => 
+    prev.includes(tradeId) 
+      ? prev.filter(id => id !== tradeId)
+      : [...prev, tradeId]
+  );
+};
+
+const toggleRecommended = (tradeId) => {
+  setSelectedRecommended(prev => 
+    prev.includes(tradeId) 
+      ? prev.filter(id => id !== tradeId)
+      : [...prev, tradeId]
+  );
+};
+  
   const addTrade = async (tradeId) => {
     if (!tradeId) return;
     
