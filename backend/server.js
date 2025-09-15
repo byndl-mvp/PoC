@@ -51,9 +51,9 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
   DACH:  { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 28, targetPositionsRatio: 0.8 },
-  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.7 },
-  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.7 },
-  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 26, targetPositionsRatio: 0.7 },
+  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 25, targetPositionsRatio: 0.7 },
+  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 17, maxQuestions: 25, targetPositionsRatio: 0.8 },
+  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 26, targetPositionsRatio: 0.7 },
   KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.7 },
   ROH:   { complexity: 'HOCH',      minQuestions: 18, maxQuestions: 28, targetPositionsRatio: 0.8 },
 
@@ -65,19 +65,19 @@ const TRADE_COMPLEXITY = {
   PV:    { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.75 },
   ZIMM:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.85 },
 
-  // Mittlere Komplexität (15-25 Fragen)
-  FLI:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.8 },
+  // Mittlere Komplexität (15-20 Fragen)
+  FLI:   { complexity: 'MITTEL', minQuestions: 16, maxQuestions: 20, targetPositionsRatio: 0.8 },
   ESTR:  { complexity: 'MITTEL', minQuestions: 12, maxQuestions: 17, targetPositionsRatio: 0.7 },
   TRO:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
   BOD:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.8 },
   AUSS:  { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
 
   // Einfache Gewerke (8-15 Fragen)
-  MAL:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 15, targetPositionsRatio: 0.7 },
-  GER:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 12, targetPositionsRatio: 0.6 },
-  ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15, targetPositionsRatio: 0.6 },
+  MAL:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 15, targetPositionsRatio: 0.8 },
+  GER:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 12, targetPositionsRatio: 0.7 },
+  ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15, targetPositionsRatio: 0.7 },
 
-  // Intake ist speziell (12-20 Fragen)
+  // Intake ist speziell (16-24 Fragen)
   INT:   { complexity: 'INTAKE', minQuestions: 16, maxQuestions: 24, targetPositionsRatio: 0.0 }
 };
 
