@@ -2761,7 +2761,11 @@ function filterDuplicateQuestions(questions, intakeAnswers) {
  * Berücksichtigt gemeinsame und exklusive Begriffe
  */
 function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
-  
+  // INTAKE-FRAGEN NIEMALS FILTERN!
+  if (tradeCode === 'INT') {
+    console.log('[VALIDATION] INT: Keine Filterung bei Intake-Fragen');
+    return questions; // Alle Fragen durchlassen
+  }  
   // GEMEINSAME Begriffe - mehrere Gewerke dürfen danach fragen
   const SHARED_KEYWORDS = {
     'bad': ['SAN', 'FLI', 'MAL', 'ELEKT', 'TRO'],  // Badezimmer betrifft viele
