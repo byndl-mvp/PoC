@@ -178,7 +178,7 @@ const toggleRecommended = (tradeId) => {
   };
 
   const handleContinue = async () => {
-  // WICHTIG: Verwende die neuen selected Arrays
+  // FÜGE DIESE ZEILEN HINZU:
   const allSelectedTrades = [...selectedRequired, ...selectedRecommended];
   
   if (allSelectedTrades.length === 0) {
@@ -186,11 +186,17 @@ const toggleRecommended = (tradeId) => {
     return;
   }
   
-  // Sammle die vollständigen Trade-Daten
+  // Sammle alle ausgewählten Trades
   const confirmedTradesData = [
     ...requiredTrades.filter(t => selectedRequired.includes(t.id)),
-    ...recommendedTrades.filter(t => selectedRecommended.includes(t.id))
+    ...recommendedTrades.filter(t => selectedRecommended.includes(t.id)),
+    ...detectedTrades.filter(t => selectedTrades.includes(t.id) && !selectedRequired.includes(t.id) && !selectedRecommended.includes(t.id))
   ];
+  
+  // DIESE ZEILE FEHLTE - DEFINIERE manuallyAddedTradeIds:
+  const manuallyAddedTradeIds = confirmedTradesData
+    .filter(t => t.isManuallyAdded || t.source === 'manuell')
+    .map(t => t.id);
     
     try {
       setLoading(true);
