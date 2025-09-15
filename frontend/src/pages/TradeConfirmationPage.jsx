@@ -34,107 +34,112 @@ useEffect(() => {
   }
 }, [isAdditionalTrade, projectId]);
   useEffect(() => {
-    async function loadData() {
+  async function loadData() {
+    try {
+      setLoading(true);
+      setLoadingMessage('Lade Projektdetails...');
+      
+      // 1. Lade Projektdetails
+      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+      if (!projectRes.ok) throw new Error('Projekt nicht gefunden');
+      const projectData = await projectRes.json();
+      setProject(projectData);
+      
+      // 2. Lade Intake-Summary - DAS ist die Hauptquelle!
+      setLoadingMessage('Analysiere Ihre Antworten...');
+      let hasIntakeSummary = false;
+      
       try {
-        setLoading(true);
-        setLoadingMessage('Lade Projektdetails...');
-        
-        // 1. Lade Projektdetails mit initial erkannten Gewerken
-        const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-        if (!projectRes.ok) throw new Error('Projekt nicht gefunden');
-        const projectData = await projectRes.json();
-        setProject(projectData);
-        
-        // Initial erkannte Gewerke (ohne INT)
+        const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
+        if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          setIntakeSummary(summaryData.summary);
+          
+          console.log('Summary data:', summaryData);
+          console.log('Grouped trades:', summaryData.groupedTrades);
+          
+          // WICHTIG: Nutze NUR groupedTrades wenn vorhanden
+          if (summaryData.groupedTrades) {
+            hasIntakeSummary = true;
+            
+            // Setze die Trades direkt aus groupedTrades
+            const requiredFromSummary = summaryData.groupedTrades.required || [];
+            const recommendedFromSummary = summaryData.groupedTrades.recommended || [];
+            
+            setRequiredTrades(requiredFromSummary);
+            setRecommendedTrades(recommendedFromSummary);
+            setSelectedRequired(requiredFromSummary.map(t => t.id));
+            setSelectedRecommended([]); // Empfohlene nicht vorausgewählt
+            
+            // Für Kompatibilität
+            setDetectedTrades([...requiredFromSummary, ...recommendedFromSummary]);
+            setSelectedTrades(requiredFromSummary.map(t => t.id));
+            
+            // 3. Lade alle verfügbaren Trades für manuelle Hinzufügung
+            const tradesRes = await fetch(apiUrl('/api/trades'));
+            const allTradesData = await tradesRes.json();
+            
+            // Filtere bereits zugeordnete aus
+            const assignedIds = new Set([
+              ...requiredFromSummary.map(t => t.id),
+              ...recommendedFromSummary.map(t => t.id)
+            ]);
+            
+            const availableTrades = allTradesData.filter(t => 
+              t.code !== 'INT' && !assignedIds.has(t.id)
+            );
+            setAllTrades(availableTrades);
+            
+            console.log('Trades gesetzt - Required:', requiredFromSummary.length, 
+                       'Recommended:', recommendedFromSummary.length);
+            
+            // WICHTIG: Return hier, damit der alte Code nicht mehr läuft!
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.log('Keine Intake-Summary verfügbar');
+      }
+      
+      // NUR FALLBACK wenn keine Summary verfügbar
+      if (!hasIntakeSummary) {
+        console.log('Fallback: Nutze Projekt-Trades');
         const initialDetected = (projectData.trades || []).filter(t => t.code !== 'INT');
         
-        // 2. Lade Intake-Summary für bessere Gewerke-Empfehlungen
-setLoadingMessage('Analysiere Ihre Antworten...');
-let additionalTradesFromIntake = []; // Temporär speichern
-
-try {
-  const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
-  if (summaryRes.ok) {
-    const summaryData = await summaryRes.json();
-    setIntakeSummary(summaryData.summary);
-    
-    // Debug-Log
-    console.log('Summary data:', summaryData);
-    console.log('Grouped trades:', summaryData.groupedTrades);
-    
-    // Nutze groupedTrades wenn vorhanden
-    if (summaryData.groupedTrades) {
-      setRequiredTrades(summaryData.groupedTrades.required || []);
-      setRecommendedTrades(summaryData.groupedTrades.recommended || []);
-      setSelectedRequired(summaryData.groupedTrades.required?.map(t => t.id) || []);
-    }
-    
-    // Speichere zusätzlich erkannte Gewerke (für Fallback)
-    additionalTradesFromIntake = summaryData.additionalTradesDetected || [];
-  }
-} catch (err) {
-  console.log('Keine Zusammenfassung verfügbar, nutze initial erkannte Gewerke');
-}
-        
-        // 3. Lade alle verfügbaren Gewerke
         const tradesRes = await fetch(apiUrl('/api/trades'));
         const allTradesData = await tradesRes.json();
         
-        // 4. Trades aufteilen in erforderlich und empfohlen
-const required = [];
-const recommended = [];
-
-// Initial erkannte als erforderlich
-for (const trade of initialDetected) {
-  required.push({
-    ...trade,
-    category: 'required',
-    reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
-  });
-}
-
-// Aus Intake-Antworten als empfohlen
-if (additionalTradesFromIntake && additionalTradesFromIntake.length > 0) {
-  for (const rec of additionalTradesFromIntake) {
-    const fullTrade = allTradesData.find(t => t.code === rec.code);
-    if (fullTrade && !required.find(r => r.code === rec.code)) {
-      recommended.push({
-        ...fullTrade,
-        category: 'recommended',
-        reason: rec.reason || `Begriffe gefunden: ${rec.matchedKeywords?.join(', ') || ''}`,
-        confidence: rec.confidence,
-        matchedKeywords: rec.matchedKeywords
-      });
+        // Alle initial erkannten als erforderlich
+        const required = initialDetected.map(trade => ({
+          ...trade,
+          category: 'required',
+          reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
+        }));
+        
+        setRequiredTrades(required);
+        setRecommendedTrades([]);
+        setSelectedRequired(required.map(t => t.id));
+        setSelectedRecommended([]);
+        
+        const availableTrades = allTradesData.filter(t => 
+          t.code !== 'INT' && !required.some(r => r.id === t.id)
+        );
+        setAllTrades(availableTrades);
+        
+        setDetectedTrades(required);
+        setSelectedTrades(required.map(t => t.id));
+      }
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   }
-}
-
-setRequiredTrades(required);
-setRecommendedTrades(recommended);
-setSelectedRequired(required.map(t => t.id));
-setSelectedRecommended([]); // Empfohlene standardmäßig nicht ausgewählt
-
-// Für manuelle Hinzufügung
-const availableTrades = allTradesData.filter(t => 
-  t.code !== 'INT' && 
-  !required.some(r => r.id === t.id) &&
-  !recommended.some(r => r.id === t.id)
-);
-setAllTrades(availableTrades);
-
-// Alte States für Kompatibilität
-setDetectedTrades([...required, ...recommended]);
-setSelectedTrades(required.map(t => t.id));
-        
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    loadData();
-  }, [projectId]);
+  
+  loadData();
+}, [projectId]);
 
   const toggleRequired = (tradeId) => {
   setSelectedRequired(prev => 
