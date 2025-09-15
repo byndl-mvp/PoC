@@ -1607,6 +1607,7 @@ async function generateQuestions(tradeId, projectContext = {}) {
       allAnsweredInfo.fromIntake = intakeResponses.rows;
       projectContext.intakeData = intakeResponses.rows;
     } else {
+      
       // Fallback auf answers Tabelle
       const intTrade = await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`);
       if (intTrade.rows[0]) {
@@ -1625,6 +1626,17 @@ async function generateQuestions(tradeId, projectContext = {}) {
     }
   }
 
+  // NEU: Füge Intake-Kontext zum System-Prompt hinzu
+  if (projectContext.intakeContext && !isIntake) {
+    console.log('[QUESTIONS] Adding intake context to prompt');
+    // Der intakeContext wird später im System-Prompt verwendet
+  }
+  
+  // Falls es ein empfohlenes Gewerk ist
+  if (projectContext.isAiRecommended && !isIntake) {
+    console.log('[QUESTIONS] Trade is AI-recommended, will add specific instructions');
+  }
+  
   console.log(`[QUESTIONS] Generating for ${tradeName} with context:`, {
     hasExtractedData: !!extractedData,
     extractedQuantities: extractedData?.quantities || {},
@@ -2207,7 +2219,16 @@ OUTPUT (NUR valides JSON-Array):
     "dependsOn": "ID der Vorfrage oder null",
     "showIf": "Antwort die gegeben sein muss oder null"
   }
-]`; // Der Template-String muss hier geschlossen werden
+]
+
+${projectContext.intakeContext && !isIntake ? `
+WICHTIGER KONTEXT aus der Vorbefragung:
+${projectContext.intakeContext}
+Berücksichtige diese Informationen bei der Fragenerstellung.` : ''}
+
+${projectContext.isAiRecommended && !isIntake ? `
+HINWEIS: Dieses Gewerk wurde aufgrund der Vorbefragung empfohlen. 
+Stelle spezifische Fragen zu den relevanten Punkten aus der Vorbefragung.` : ''}`;  // Ende des GESAMTEN Template-Strings
 
   const userPrompt = `Erstelle ${targetQuestionCount} LAIENVERSTÄNDLICHE Fragen für ${tradeName}.
 
