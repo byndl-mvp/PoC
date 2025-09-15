@@ -5547,32 +5547,137 @@ const tradeKeywords = {
   'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
 };
 
-// Analysiere alle Intake-Antworten (BLEIBT GLEICH)
+// Analysiere alle Intake-Antworten
 const allAnswersText = answers
   .map(a => `${a.question} ${a.answer}`.toLowerCase())
   .join(' ');
 
-// Finde neue Trades basierend auf Keywords (BLEIBT GLEICH)
+// Intelligente Filterung: Nutze nur substantielle Nutzer-Antworten
+const relevantAnswers = answers
+  .filter(a => {
+    // Filtere kurze/triviale Antworten aus
+    const isSubstantial = a.answer.length > 15;
+    const isNotBoilerplate = !['ja', 'nein', 'keine', 'nicht vorhanden', 'n/a', 'vorhanden'].includes(a.answer.toLowerCase().trim());
+    return isSubstantial && isNotBoilerplate;
+  })
+  .map(a => ({ question: a.question, answer: a.answer }));
+
+const userAnswerText = relevantAnswers.map(a => a.answer.toLowerCase()).join(' ');
+
+// Keyword-basierte Voranalyse mit bereits definierten tradeKeywords
 for (const [code, keywords] of Object.entries(tradeKeywords)) {
-  const matchedKeywords = keywords.filter(kw => allAnswersText.includes(kw));
+  const matchedKeywords = keywords.filter(kw => userAnswerText.includes(kw));
   
   if (matchedKeywords.length > 0 && !processedCodes.has(code)) {
-    // Prüfe ob Gewerk nicht schon initial erkannt wurde
     const alreadyExists = await query(
       'SELECT 1 FROM project_trades pt JOIN trades t ON pt.trade_id = t.id WHERE pt.project_id = $1 AND t.code = $2',
       [projectId, code]
     );
     
     if (alreadyExists.rows.length === 0) {
-      const confidence = Math.min(95, 60 + (matchedKeywords.length * 10));
+      // Finde relevante Antwort
+      let relevantAnswer = null;
+      for (const qa of relevantAnswers) {
+        if (matchedKeywords.some(kw => qa.answer.toLowerCase().includes(kw))) {
+          relevantAnswer = qa.answer;
+          break;
+        }
+      }
+      
+      const confidence = Math.min(95, 70 + (matchedKeywords.length * 5));
       additionalTrades.push({
         code,
-        reason: `Begriffe gefunden: ${matchedKeywords.join(', ')}`,
+        matchedKeywords,
         confidence,
-        matchedKeywords
+        relevantAnswer: relevantAnswer ? relevantAnswer.substring(0, 100) : null,
+        reason: '' // Wird von LLM gefüllt
       });
       processedCodes.add(code);
     }
+  }
+}
+
+// LLM-basierte Analyse für intelligente Begründungen
+if (additionalTrades.length > 0) {
+  const tradeNames = {
+    'ELEKT': 'Elektroinstallationen',
+    'SAN': 'Sanitärinstallationen', 
+    'HEI': 'Heizungsinstallation',
+    'KLIMA': 'Klimatechnik',
+    'TIS': 'Tischlerarbeiten',
+    'FLI': 'Fliesenarbeiten',
+    'MAL': 'Malerarbeiten',
+    'BOD': 'Bodenbelagsarbeiten',
+    'TRO': 'Trockenbauarbeiten',
+    'FEN': 'Fensterarbeiten',
+    'ROH': 'Rohbauarbeiten',
+    'DACH': 'Dacharbeiten',
+    'FASS': 'Fassadenarbeiten',
+    'GER': 'Gerüstbau',
+    'ZIMM': 'Zimmererarbeiten',
+    'ESTR': 'Estricharbeiten',
+    'SCHL': 'Schlosserarbeiten',
+    'AUSS': 'Außenanlagen',
+    'PV': 'Photovoltaik-Installation',
+    'ABBR': 'Abbrucharbeiten'
+  };
+
+  const relevantUserAnswers = relevantAnswers
+    .slice(0, 10) // Limitiere auf 10 relevanteste Antworten
+    .map(qa => `F: ${qa.question}\nA: ${qa.answer}`)
+    .join('\n\n');
+
+  const tradeAnalysisPrompt = `Analysiere diese Projektantworten und erstelle KURZE, PRÄGNANTE Begründungen für die empfohlenen Gewerke.
+
+PROJEKT: ${project.category} ${project.sub_category || ''}
+
+NUTZER-ANTWORTEN:
+${relevantUserAnswers}
+
+EMPFOHLENE GEWERKE (basierend auf gefundenen Begriffen):
+${additionalTrades.map(t => `- ${t.code} (${tradeNames[t.code]}): "${t.matchedKeywords.slice(0,3).join(', ')}" gefunden`).join('\n')}
+
+AUFGABE:
+Erstelle für jedes Gewerk eine KURZE Begründung (max 15 Wörter), die sich DIREKT auf eine konkrete Nutzerangabe bezieht.
+
+FORMAT: JSON
+{
+  "GEWERK_CODE": "Aufgrund [konkreter Bezug] empfehlen wir [Gewerk]"
+}
+
+BEISPIEL:
+{
+  "ELEKT": "Ihre geplanten zusätzlichen Steckdosen erfordern Elektroinstallationen",
+  "SAN": "Der Waschtischaustausch benötigt professionelle Sanitärarbeiten"
+}`;
+
+  try {
+    const llmResponse = await llmWithPolicy('analysis', [
+      { role: 'system', content: 'Du bist ein Bauexperte. Erstelle KURZE (max 15 Wörter), prägnante Begründungen die sich DIREKT auf Nutzerangaben beziehen.' },
+      { role: 'user', content: tradeAnalysisPrompt }
+    ], { maxTokens: 1000, temperature: 0.3, jsonMode: true });
+    
+    const reasons = JSON.parse(llmResponse);
+    
+    // Update die Begründungen mit LLM-Ergebnissen
+    additionalTrades.forEach(trade => {
+      trade.reason = reasons[trade.code] || 
+        `Basierend auf Ihren Angaben wird ${tradeNames[trade.code]} empfohlen`;
+    });
+    
+    console.log('[INTAKE-SUMMARY] LLM-Begründungen erstellt für:', additionalTrades.map(t => t.code).join(', '));
+  } catch (err) {
+    console.error('[INTAKE-SUMMARY] LLM-Analyse fehlgeschlagen:', err);
+    // Fallback auf Standard-Begründungen
+    additionalTrades.forEach(trade => {
+      const tradeName = tradeNames[trade.code];
+      if (trade.relevantAnswer) {
+        const shortAnswer = trade.relevantAnswer.substring(0, 30);
+        trade.reason = `Ihre Angabe "${shortAnswer}..." deutet auf ${tradeName} hin`;
+      } else {
+        trade.reason = `Basierend auf Ihren Projektangaben könnte ${tradeName} erforderlich sein`;
+      }
+    });
   }
 }
 
