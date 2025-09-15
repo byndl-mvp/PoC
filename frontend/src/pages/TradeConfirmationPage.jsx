@@ -335,105 +335,154 @@ navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
           </div>
         )}
 
-        {/* Detected/Recommended Trades */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white/20">
-          <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-            <span className="text-teal-400 mr-2">✓</span>
-            Empfohlene Gewerke
-          </h3>
-          
-          {detectedTrades.length > 0 ? (
-            <div className="space-y-3">
-              {detectedTrades.map(trade => (
-                <label
-                  key={trade.id}
-                  className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
-                    selectedTrades.includes(trade.id)
-                      ? 'bg-teal-500/20 border border-teal-500/50'
-                      : 'bg-white/5 border border-white/20 opacity-60'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedTrades.includes(trade.id)}
-                    onChange={() => toggleTrade(trade.id)}
-                    className="mt-1 mr-3 w-5 h-5 text-teal-500 bg-white/10 border-white/30 rounded focus:ring-teal-500"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">{trade.name}</span>
-                      <span className="text-gray-400 text-sm">({trade.code})</span>
-                    
-                      {trade.source === 'manuell' && (
-                        <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded">
-                          Manuell hinzugefügt
-                        </span>
-                      )}
-                    </div>
-                    {trade.reason && (
-                      <p className="text-gray-400 text-sm mt-1">{trade.reason}</p>
-                    )}
-                  </div>
-                </label>
-              ))}
+        {/* Erforderliche Gewerke */}
+<div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white/20">
+  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+    <span className="text-green-400 mr-2">✓</span>
+    Erforderliche Gewerke
+  </h3>
+  <p className="text-gray-300 text-sm mb-4">
+    Diese Gewerke wurden direkt aus Ihrer Projektbeschreibung erkannt:
+  </p>
+  
+  {requiredTrades.length > 0 ? (
+    <div className="space-y-3">
+      {requiredTrades.map(trade => (
+        <label
+          key={trade.id}
+          className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
+            selectedRequired.includes(trade.id)
+              ? 'bg-green-500/20 border border-green-500/50'
+              : 'bg-white/5 border border-white/20 opacity-60'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={selectedRequired.includes(trade.id)}
+            onChange={() => toggleRequired(trade.id)}
+            className="mt-1 mr-3 w-5 h-5 text-green-500 bg-white/10 border-white/30 rounded focus:ring-green-500"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-white font-medium">{trade.name}</span>
+              <span className="text-gray-400 text-sm">({trade.code})</span>
             </div>
-          ) : (
-            <p className="text-gray-400">Keine Gewerke erkannt</p>
-          )}
-        </div>
-
-        {/* Add Additional Trades */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
-          <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-            <span className="text-blue-400 mr-2">+</span>
-            Weitere Gewerke hinzufügen
-          </h3>
-          
-          {allTrades.length > 0 ? (
-            <div className="flex gap-3">
-              <select
-                onChange={(e) => {
-                  addTrade(e.target.value);
-                  e.target.value = '';
-                }}
-                disabled={addingTrade}
-                className="flex-1 bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                defaultValue=""
-              >
-                <option value="" className="bg-slate-800">Gewerk auswählen...</option>
-                {allTrades.map(trade => (
-                  <option key={trade.id} value={trade.id} className="bg-slate-800">
-                    {trade.name} ({trade.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <p className="text-gray-400">Alle verfügbaren Gewerke wurden bereits hinzugefügt</p>
-          )}
-          <p className="text-blue-300 text-xs mt-2">
-            ℹ️ Bei manuell hinzugefügten Gewerken wird die erste Frage den Arbeitsumfang erfassen.
-          </p>
-        </div>
-
-        {/* Summary */}
-        <div className="bg-gradient-to-r from-teal-500/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-white font-semibold">Ausgewählte Gewerke:</h3>
-              <p className="text-teal-300 text-2xl font-bold mt-1">
-                {selectedTrades.length} {selectedTrades.length === 1 ? 'Gewerk' : 'Gewerke'}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-gray-400 text-sm">Geschätzte Bearbeitungszeit:</p>
-              <p className="text-white">~{selectedTrades.length * 2} Minuten</p>
-              <p className="text-gray-400 text-xs mt-1">
-                (Angepasste Fragenanzahl pro Gewerk)
-              </p>
-            </div>
+            <p className="text-gray-400 text-sm mt-1">{trade.reason}</p>
           </div>
-        </div>
+        </label>
+      ))}
+    </div>
+  ) : (
+    <p className="text-gray-400">Keine Gewerke direkt erkannt</p>
+  )}
+</div>
+
+{/* Empfohlene Gewerke */}
+{recommendedTrades.length > 0 && (
+  <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white/20">
+    <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+      <span className="text-blue-400 mr-2">💡</span>
+      Empfohlene zusätzliche Gewerke
+    </h3>
+    <p className="text-gray-300 text-sm mb-4">
+      Basierend auf Ihren Antworten könnten diese Gewerke relevant sein:
+    </p>
+    
+    <div className="space-y-3">
+      {recommendedTrades.map(trade => (
+        <label
+          key={trade.id}
+          className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
+            selectedRecommended.includes(trade.id)
+              ? 'bg-blue-500/20 border border-blue-500/50'
+              : 'bg-white/5 border border-white/20 opacity-60'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={selectedRecommended.includes(trade.id)}
+            onChange={() => toggleRecommended(trade.id)}
+            className="mt-1 mr-3 w-5 h-5 text-blue-500 bg-white/10 border-white/30 rounded focus:ring-blue-500"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-white font-medium">{trade.name}</span>
+              <span className="text-gray-400 text-sm">({trade.code})</span>
+              {trade.confidence && (
+                <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded">
+                  {trade.confidence}% Konfidenz
+                </span>
+              )}
+            </div>
+            <p className="text-gray-400 text-sm mt-1">{trade.reason}</p>
+            {trade.matchedKeywords && trade.matchedKeywords.length > 0 && (
+              <p className="text-gray-500 text-xs mt-1">
+                Erkannte Begriffe: {trade.matchedKeywords.slice(0, 3).join(', ')}
+                {trade.matchedKeywords.length > 3 && '...'}
+              </p>
+            )}
+          </div>
+        </label>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* Add Additional Trades - BEHALTEN */}
+<div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
+  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+    <span className="text-yellow-400 mr-2">+</span>
+    Weitere Gewerke manuell hinzufügen
+  </h3>
+  
+  {allTrades.length > 0 ? (
+    <div className="flex gap-3">
+      <select
+        onChange={(e) => {
+          addTrade(e.target.value);
+          e.target.value = '';
+        }}
+        disabled={addingTrade}
+        className="flex-1 bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        defaultValue=""
+      >
+        <option value="" className="bg-slate-800">Gewerk auswählen...</option>
+        {allTrades.map(trade => (
+          <option key={trade.id} value={trade.id} className="bg-slate-800">
+            {trade.name} ({trade.code})
+          </option>
+        ))}
+      </select>
+    </div>
+  ) : (
+    <p className="text-gray-400">Alle verfügbaren Gewerke wurden bereits hinzugefügt</p>
+  )}
+  <p className="text-blue-300 text-xs mt-2">
+    ℹ️ Bei manuell hinzugefügten Gewerken wird die erste Frage den Arbeitsumfang erfassen.
+  </p>
+</div>
+
+{/* Summary - ANGEPASST */}
+<div className="bg-gradient-to-r from-teal-500/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
+  <div className="flex items-center justify-between">
+    <div>
+      <h3 className="text-white font-semibold">Ausgewählte Gewerke:</h3>
+      <p className="text-teal-300 text-2xl font-bold mt-1">
+        {selectedRequired.length + selectedRecommended.length} {(selectedRequired.length + selectedRecommended.length) === 1 ? 'Gewerk' : 'Gewerke'}
+      </p>
+      <p className="text-gray-400 text-xs mt-1">
+        {selectedRequired.length} erforderlich, {selectedRecommended.length} zusätzlich
+      </p>
+    </div>
+    <div className="text-right">
+      <p className="text-gray-400 text-sm">Geschätzte Bearbeitungszeit:</p>
+      <p className="text-white">~{(selectedRequired.length + selectedRecommended.length) * 2} Minuten</p>
+      <p className="text-gray-400 text-xs mt-1">
+        (Angepasste Fragenanzahl pro Gewerk)
+      </p>
+    </div>
+  </div>
+</div>
 
         {/* Action Buttons */}
         <div className="flex justify-between items-center">
