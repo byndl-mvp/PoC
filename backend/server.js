@@ -5546,7 +5546,9 @@ const tradeKeywords = {
   'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
   'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
 };
-
+console.log('[DEBUG] additionalTrades found:', additionalTrades.length, additionalTrades.map(t => t.code));
+console.log('[DEBUG] relevantAnswers:', relevantAnswers.length);
+    
 // Analysiere alle Intake-Antworten
 const allAnswersText = answers
   .map(a => `${a.question} ${a.answer}`.toLowerCase())
@@ -5620,11 +5622,14 @@ Format: {"CODE": "Kurze Begründung max 10 Wörter"}`;
     const llmResult = await llmWithPolicy('analysis', [
       { role: 'user', content: prompt }
     ], { maxTokens: 1000, temperature: 0.3, jsonMode: true });
-    
+
+    console.log('[DEBUG] LLM raw response:', llmResult);
     const reasons = JSON.parse(llmResult);
+    console.log('[DEBUG] Parsed reasons:', reasons);
     
     additionalTrades.forEach(t => {
       t.reason = reasons[t.code] || `${tradeNames[t.code]} wurde in Ihren Angaben erkannt`;
+      console.log(`[DEBUG] Trade ${t.code}: "${oldReason}" -> "${t.reason}"`);
     });
     
   } catch (error) {
