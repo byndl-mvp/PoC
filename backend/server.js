@@ -5599,6 +5599,8 @@ for (const [code, keywords] of Object.entries(tradeKeywords)) {
 
 // LLM-basierte Analyse für intelligente Begründungen
 if (additionalTrades.length > 0) {
+  console.log('[INTAKE-SUMMARY] Starte LLM-Analyse für', additionalTrades.length, 'Trades');
+  
   const tradeNames = {
     'ELEKT': 'Elektroinstallationen',
     'SAN': 'Sanitärinstallationen', 
@@ -5621,61 +5623,46 @@ if (additionalTrades.length > 0) {
     'PV': 'Photovoltaik-Installation',
     'ABBR': 'Abbrucharbeiten'
   };
-
+  
+  // Nutze nur relevante User-Antworten (keine System-Fragen)
   const relevantUserAnswers = relevantAnswers
-    .slice(0, 10) // Limitiere auf 10 relevanteste Antworten
-    .map(qa => `F: ${qa.question}\nA: ${qa.answer}`)
-    .join('\n\n');
+    .slice(0, 8)
+    .map(qa => `"${qa.answer}"`)
+    .join('\n');
+    
+  const tradeAnalysisPrompt = `Du bist ein Bauexperte. Analysiere warum diese Gewerke empfohlen werden.
 
-  const tradeAnalysisPrompt = `Analysiere diese Projektantworten und erstelle KURZE, PRÄGNANTE Begründungen für die empfohlenen Gewerke.
-
-PROJEKT: ${project.category} ${project.sub_category || ''}
-
-NUTZER-ANTWORTEN:
+Nutzer-Antworten:
 ${relevantUserAnswers}
 
-EMPFOHLENE GEWERKE (basierend auf gefundenen Begriffen):
-${additionalTrades.map(t => `- ${t.code} (${tradeNames[t.code]}): "${t.matchedKeywords.slice(0,3).join(', ')}" gefunden`).join('\n')}
+Erstelle für diese Gewerke prägnante Begründungen (max 12 Wörter):
+${additionalTrades.map(t => `${t.code}: ${tradeNames[t.code]}`).join('\n')}
 
-AUFGABE:
-Erstelle für jedes Gewerk eine KURZE Begründung (max 15 Wörter), die sich DIREKT auf eine konkrete Nutzerangabe bezieht.
-
-FORMAT: JSON
-{
-  "GEWERK_CODE": "Aufgrund [konkreter Bezug] empfehlen wir [Gewerk]"
-}
-
-BEISPIEL:
-{
-  "ELEKT": "Ihre geplanten zusätzlichen Steckdosen erfordern Elektroinstallationen",
-  "SAN": "Der Waschtischaustausch benötigt professionelle Sanitärarbeiten"
-}`;
+Antwort als JSON. Beispiel:
+{"ELEKT": "Zusätzliche Steckdosen benötigen professionelle Elektroinstallation"}`;
 
   try {
+    console.log('[INTAKE-SUMMARY] Rufe LLM auf...');
     const llmResponse = await llmWithPolicy('analysis', [
-      { role: 'system', content: 'Du bist ein Bauexperte. Erstelle KURZE (max 15 Wörter), prägnante Begründungen die sich DIREKT auf Nutzerangaben beziehen.' },
       { role: 'user', content: tradeAnalysisPrompt }
     ], { maxTokens: 1000, temperature: 0.3, jsonMode: true });
     
     const reasons = JSON.parse(llmResponse);
+    console.log('[INTAKE-SUMMARY] LLM Antwort erhalten:', reasons);
     
-    // Update die Begründungen mit LLM-Ergebnissen
+    // Update die Begründungen
     additionalTrades.forEach(trade => {
-      trade.reason = reasons[trade.code] || 
-        `Basierend auf Ihren Angaben wird ${tradeNames[trade.code]} empfohlen`;
+      trade.reason = reasons[trade.code] || `${tradeNames[trade.code]} könnte erforderlich sein`;
     });
-    
-    console.log('[INTAKE-SUMMARY] LLM-Begründungen erstellt für:', additionalTrades.map(t => t.code).join(', '));
   } catch (err) {
-    console.error('[INTAKE-SUMMARY] LLM-Analyse fehlgeschlagen:', err);
-    // Fallback auf Standard-Begründungen
+    console.error('[INTAKE-SUMMARY] LLM fehlgeschlagen, nutze Fallback:', err);
     additionalTrades.forEach(trade => {
       const tradeName = tradeNames[trade.code];
       if (trade.relevantAnswer) {
         const shortAnswer = trade.relevantAnswer.substring(0, 30);
         trade.reason = `Ihre Angabe "${shortAnswer}..." deutet auf ${tradeName} hin`;
       } else {
-        trade.reason = `Basierend auf Ihren Projektangaben könnte ${tradeName} erforderlich sein`;
+        trade.reason = `${tradeName} basierend auf Ihren Angaben empfohlen`;
       }
     });
   }
