@@ -168,6 +168,8 @@ const toggleRecommended = (tradeId) => {
       const manualTrade = { 
         ...trade, 
         source: 'manuell',
+        category: 'manual',  // NEU
+        reason: 'Manuell hinzugefügt für spezifische Anforderungen',  // NEU
         isManuallyAdded: true  // Wichtig für kontextbezogene Fragen
       };
       
@@ -183,94 +185,87 @@ const toggleRecommended = (tradeId) => {
   };
 
   const handleContinue = async () => {
-  // FÜGE DIESE ZEILEN HINZU:
-  const allSelectedTrades = [...selectedRequired, ...selectedRecommended];
+  // Sammle manuelle Trades
+  const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
+  const manualTradeIds = manualTrades.map(t => t.id);
   
-  if (allSelectedTrades.length === 0) {
+  // Sammle ALLE ausgewählten Trade IDs
+  const allSelectedTrades = [
+    ...selectedRequired,
+    ...selectedRecommended,
+    ...manualTradeIds
+  ];
+  
+  // Entferne Duplikate
+  const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
+  
+  if (uniqueSelectedTrades.length === 0) {
     alert('Bitte wählen Sie mindestens ein Gewerk aus');
     return;
   }
   
-  // Sammle alle ausgewählten Trades
+  // Sammle vollständige Trade-Daten
   const confirmedTradesData = [
     ...requiredTrades.filter(t => selectedRequired.includes(t.id)),
     ...recommendedTrades.filter(t => selectedRecommended.includes(t.id)),
-    ...detectedTrades.filter(t => selectedTrades.includes(t.id) && !selectedRequired.includes(t.id) && !selectedRecommended.includes(t.id))
+    ...manualTrades
   ];
   
-  // DIESE ZEILE FEHLTE - DEFINIERE manuallyAddedTradeIds:
-  const manuallyAddedTradeIds = confirmedTradesData
-    .filter(t => t.isManuallyAdded || t.source === 'manuell')
-    .map(t => t.id);
+  const manuallyAddedTradeIds = manualTrades.map(t => t.id);
+  
+  try {
+    setLoading(true);
+    setLoadingMessage('Speichere Gewerkeauswahl...');
     
-    try {
-      setLoading(true);
-      setLoadingMessage('Speichere Gewerkeauswahl...');
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        confirmedTrades: uniqueSelectedTrades,
+        manuallyAddedTrades: manuallyAddedTradeIds,
+        isAdditional: isAdditionalTrade
+      })
+    });
+    
+    if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
+    
+    if (confirmedTradesData.length > 0) {
+      // Navigation für zusätzliche Gewerke
+      if (isAdditionalTrade) {
+        const newTrades = confirmedTradesData.filter(t => !existingTradeIds.includes(t.id));
+        if (newTrades.length > 0) {
+          const sortedNew = newTrades.sort((a, b) => a.id - b.id);
+          sessionStorage.removeItem('addingAdditionalTrade');
+          navigate(`/project/${projectId}/trade/${sortedNew[0].id}/questions?additional=true`);
+          return;
+        }
+      }
       
-      // Speichere die ausgewählten Gewerke
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          confirmedTrades: allSelectedTrades,  // Nutze allSelectedTrades
-          manuallyAddedTrades: manuallyAddedTradeIds,
-          isAdditional: isAdditionalTrade
-        })
+      // Speichere Info über manuell hinzugefügte Trades
+      if (manuallyAddedTradeIds.length > 0) {
+        sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
+      }
+      
+      // Sortiere Trades
+      const sortedTrades = [...confirmedTradesData].sort((a, b) => {
+        // Priorität: required > recommended > manual
+        if (selectedRequired.includes(a.id) && !selectedRequired.includes(b.id)) return -1;
+        if (!selectedRequired.includes(a.id) && selectedRequired.includes(b.id)) return 1;
+        if (selectedRecommended.includes(a.id) && manualTradeIds.includes(b.id)) return -1;
+        if (manualTradeIds.includes(a.id) && selectedRecommended.includes(b.id)) return 1;
+        return (a.sort_order || 999) - (b.sort_order || 999);
       });
       
-      if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
-      
-      // Weiter zum ersten Gewerk für spezifische Fragen
-      const confirmedTradesData = detectedTrades.filter(t => selectedTrades.includes(t.id));
-      if (confirmedTradesData.length > 0) {
-        
-  // Speichere Info über manuell hinzugefügte Gewerke in sessionStorage
-const manuallyAddedTrades = confirmedTradesData
-  .filter(t => t.isManuallyAdded)
-  .map(t => t.id);
-
-console.log('Confirmed trades:', confirmedTradesData);
-console.log('Filtering for manual trades...');
-console.log('Manual trades found:', manuallyAddedTrades);
-
-// Navigation anpassen für zusätzliche Gewerke
-if (isAdditionalTrade) {
-  const newTrades = confirmedTradesData.filter(t => !existingTradeIds.includes(t.id));
-  if (newTrades.length > 0) {
-    const sortedNew = newTrades.sort((a, b) => a.id - b.id);
-    sessionStorage.removeItem('addingAdditionalTrade');
-    navigate(`/project/${projectId}/trade/${sortedNew[0].id}/questions?additional=true`);
-    return; // Wichtig: Beende hier
-  }
-}
-
-// Speichere manuell hinzugefügte Trades (NUR EINMAL!)
-if (manuallyAddedTrades.length > 0) {
-  sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTrades));
-}
-
-// Sortiere: Erst nicht-manuelle (erkannte), dann manuelle Gewerke
-const sortedTrades = [...confirmedTradesData].sort((a, b) => {
-  // Manuelle Gewerke kommen ans Ende
-  if (a.isManuallyAdded && !b.isManuallyAdded) return 1;
-  if (!a.isManuallyAdded && b.isManuallyAdded) return -1;
-  // Bei gleicher Kategorie: nach sort_order
-  return (a.sort_order || 999) - (b.sort_order || 999);
-});
-
-// NUR EINE Navigation zum ersten Gewerk
-navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
-
-} else {
-  // NEU: Dieser else-Block für den Fall dass keine Trades bestätigt wurden
-  navigate(`/project/${projectId}/result`);
-}      
-      
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
+      navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
+    } else {
+      navigate(`/project/${projectId}/result`);
     }
-  };
+    
+  } catch (err) {
+    setError(err.message);
+    setLoading(false);
+  }
+};
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
