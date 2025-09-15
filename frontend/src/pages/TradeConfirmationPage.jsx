@@ -125,16 +125,6 @@ setSelectedTrades(required.map(t => t.id));
     loadData();
   }, [projectId]);
 
-  const toggleTrade = (tradeId) => {
-    setSelectedTrades(prev => {
-      if (prev.includes(tradeId)) {
-        return prev.filter(id => id !== tradeId);
-      } else {
-        return [...prev, tradeId];
-      }
-    });
-  };
-
   const toggleRequired = (tradeId) => {
   setSelectedRequired(prev => 
     prev.includes(tradeId) 
