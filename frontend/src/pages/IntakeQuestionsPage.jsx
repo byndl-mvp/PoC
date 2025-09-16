@@ -229,10 +229,10 @@ export default function IntakeQuestionsPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-6">
-            Allgemeine Projektfragen werden vorbereitet...
-          </h2>
-          <div className="w-64 bg-white/20 rounded-full h-3 backdrop-blur mb-4">
+  <h2 className="text-2xl font-bold text-white mb-6">
+    Allgemeine Projektfragen werden vorbereitet...
+  </h2>
+  <div className="w-64 mx-auto bg-white/20 rounded-full h-3 backdrop-blur mb-4">
             <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out" 
                  style={{ width: `${loadingProgress}%` }} />
           </div>
@@ -251,7 +251,7 @@ export default function IntakeQuestionsPage() {
   if (analyzingAnswers) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center max-w-lg">
+        <div className="text-center max-w-lg mx-auto px-4">
           <h2 className="text-3xl font-bold text-white mb-6">
             Analysiere Ihre Antworten
           </h2>
