@@ -4218,6 +4218,43 @@ if (tradeCode === 'ZIMM') {
     
     return pos;
   }).filter(pos => !pos._remove); 
+
+  // NEUE REGEL: Stundenlohnarbeiten max. 10% der Gewerkekosten
+// Erst Gesamtsumme ohne Stundenlohn berechnen
+const summeOhneStundenlohn = lv.positions
+  .filter(pos => !pos.title?.toLowerCase().includes('stundenlohn'))
+  .reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+
+// Dann Stundenlohn-Positionen prüfen und ggf. korrigieren
+lv.positions = lv.positions.map(pos => {
+  if (pos.title?.toLowerCase().includes('stundenlohn')) {
+    const maxStundenlohn = summeOhneStundenlohn * 0.10; // 10% der anderen Kosten
+    
+    if (pos.totalPrice > maxStundenlohn) {
+      const oldPrice = pos.totalPrice;
+      
+      // Berechne neue Menge basierend auf 10%-Regel
+      const newQuantity = Math.ceil(maxStundenlohn / pos.unitPrice);
+      pos.quantity = Math.max(1, newQuantity); // Mindestens 1 Stunde
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      
+      warnings.push(
+        `Stundenlohn reduziert (max 10% der Gewerkekosten): ` +
+        `${oldPrice.toFixed(2)}€ → ${pos.totalPrice.toFixed(2)}€ ` +
+        `(${pos.quantity} Stunden)`
+      );
+      fixedCount++;
+      
+      // Spezialfall: Bei sehr kleinen Projekten
+      if (summeOhneStundenlohn < 500) {
+        pos.quantity = 1;
+        pos.totalPrice = pos.unitPrice;
+        warnings.push(`Kleines Projekt: Stundenlohn auf 1 Stunde begrenzt`);
+      }
+    }
+  }
+  return pos;
+});
   
   // Neuberechnung der Gesamtsumme wenn Änderungen
   if (fixedCount > 0) {
