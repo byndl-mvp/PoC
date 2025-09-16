@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
@@ -42,11 +43,11 @@ export default function IntakeQuestionsPage() {
     }
   };
   
-  // Fake Progress für initiales Laden (45 Sekunden)
+  // Fake Progress für initiales Laden (30 Sekunden)
   useEffect(() => {
     if (loading && !error) {
       setLoadingProgress(0);
-      const totalDuration = 45000; // 45 Sekunden
+      const totalDuration = 30000; // 30 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
@@ -69,11 +70,11 @@ export default function IntakeQuestionsPage() {
     }
   }, [loading, error]);
   
-  // Fake Progress für LV-Generierung (45 Sekunden)
+  // Fake Progress für LV-Generierung (30 Sekunden)
   useEffect(() => {
     if (generatingLV) {
       setLvProgress(0);
-      const totalDuration = 45000; // 45 Sekunden
+      const totalDuration = 30000; // 30 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
@@ -423,7 +424,12 @@ export default function IntakeQuestionsPage() {
         setAssumption('');
       }
     } else {
-      saveAllAnswersAndContinue(newAnswers);
+      // WICHTIG: Zeige LV-Screen SOFORT beim Klick auf "Abschließen & LV generieren"
+      setGeneratingLV(true);
+      // Warte kurz, damit React den Screen rendert
+      setTimeout(() => {
+        saveAllAnswersAndContinue(newAnswers);
+      }, 100);
     }
   };
 
@@ -464,8 +470,7 @@ export default function IntakeQuestionsPage() {
   async function saveAllAnswersAndContinue(allAnswers) {
     console.log('saveAllAnswersAndContinue called');
     try {
-      setSubmitting(true);
-      console.log('submitting set to true');
+      // Setze NICHT submitting auf true, das würde den LV-Screen blockieren!
       setError('');
       
       const validAnswers = allAnswers.filter(a => a && a.answer);
@@ -490,7 +495,6 @@ export default function IntakeQuestionsPage() {
     } catch (err) {
       console.error('Error saving answers:', err);
       setError(err.message);
-      setSubmitting(false);
       setGeneratingLV(false);
     }
   }
@@ -498,7 +502,9 @@ export default function IntakeQuestionsPage() {
   async function generateLvAndContinue() {
     console.log('generateLvAndContinue called');
     try {
-      // LV Generation Screen wird schon in saveAllAnswersAndContinue gesetzt
+      // Warte kurz, damit der LV-Screen sichtbar wird
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       console.log('Generating LV for trade:', tradeId);
       
       const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
@@ -571,11 +577,11 @@ export default function IntakeQuestionsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-lg mx-auto px-4">
           <h2 className="text-2xl font-bold text-white mb-6">
             Lade Fragen für {tradeName || 'Gewerk'}
           </h2>
-          <div className="w-64 bg-white/20 rounded-full h-3 backdrop-blur mb-4">
+          <div className="w-64 mx-auto bg-white/20 rounded-full h-3 backdrop-blur mb-4">
             <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out" 
                  style={{ width: `${loadingProgress}%` }} />  
           </div>
