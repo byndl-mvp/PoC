@@ -42,11 +42,11 @@ export default function IntakeQuestionsPage() {
     }
   };
   
-  // Fake Progress für initiales Laden (30 Sekunden)
+  // Fake Progress für initiales Laden (40 Sekunden)
   useEffect(() => {
     if (loading && !error) {
       setLoadingProgress(0);
-      const totalDuration = 30000; // 30 Sekunden
+      const totalDuration = 40000; // 40 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
@@ -69,11 +69,11 @@ export default function IntakeQuestionsPage() {
     }
   }, [loading, error]);
   
-  // Fake Progress für LV-Generierung (30 Sekunden)
+  // Fake Progress für LV-Generierung (45 Sekunden)
   useEffect(() => {
     if (generatingLV) {
       setLvProgress(0);
-      const totalDuration = 30000; // 30 Sekunden
+      const totalDuration = 45000; // 45 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
@@ -96,11 +96,11 @@ export default function IntakeQuestionsPage() {
     }
   }, [generatingLV]);
   
-  // Fake Progress für finalen Screen (30 Sekunden)
+  // Fake Progress für finalen Screen (20 Sekunden)
   useEffect(() => {
     if (finalizing) {
       setFinalProgress(0);
-      const totalDuration = 30000; // 30 Sekunden
+      const totalDuration = 20000; // 20 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
