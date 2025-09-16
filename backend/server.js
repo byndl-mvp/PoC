@@ -2835,7 +2835,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
     'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
     'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
-    'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
+    'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'schutt']
   };
 
   const filteredQuestions = [];
@@ -5565,7 +5565,7 @@ const tradeKeywords = {
   'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
   'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
   'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
-  'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
+  'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'schutt']
 };
     
 // Analysiere alle Intake-Antworten
