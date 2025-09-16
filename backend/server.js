@@ -3854,9 +3854,7 @@ function validateAndFixPrices(lv, tradeCode) {
     if (pos.title?.toLowerCase().includes('kleinmaterial')) {
   return pos;
 }
-      return pos;
-    }
-    
+   
     const titleLower = pos.title?.toLowerCase() || '';
     const descLower = pos.description?.toLowerCase() || '';
     
