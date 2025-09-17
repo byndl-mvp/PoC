@@ -4220,7 +4220,7 @@ if (tradeCode === 'ZIMM') {
 
 // NEUE REGEL: Stundenlohnarbeiten bei KLEINEN Projekten begrenzen
 const summeOhneStundenlohn = lv.positions
-  .filter(pos => !pos.title?.toLowerCase().includes('stundenlohn'))
+  .filter(pos => !pos.title?.toLowerCase().includes('stundenlohn')) // Findet auch "Stundenlohnarbeiten"
   .reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
 
 console.log(`[STUNDENLOHN-CHECK] ${tradeCode}: Summe ohne Stundenlohn: €${summeOhneStundenlohn}`);
@@ -4229,7 +4229,7 @@ console.log(`[STUNDENLOHN-CHECK] ${tradeCode}: Summe ohne Stundenlohn: €${summ
 if (summeOhneStundenlohn < 2000) {
   console.log(`[STUNDENLOHN-CHECK] Projekt < 2000€, prüfe Stundenlohn...`);
   lv.positions = lv.positions.map(pos => {
-    if (pos.title?.toLowerCase().includes('stundenlohn')) {
+    if (pos.title?.toLowerCase().includes('stundenlohn')) { // Findet auch "Stundenlohnarbeiten"
       const maxStundenlohn = summeOhneStundenlohn * 0.10;
       console.log(`[STUNDENLOHN-CHECK] Gefundene Stundenlohn-Positionen:`, stundenlohnPos.length);
       
