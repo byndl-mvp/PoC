@@ -1130,54 +1130,161 @@ function getPositionOrientation(tradeCode, questionCount) {
 }
 
 /**
- * Projektkomplexität bestimmen
+ * Projektkomplexität bestimmen - VERBESSERTE VERSION
  */
 function determineProjectComplexity(projectContext, intakeAnswers = []) {
   let complexityScore = 0;
   
-  // Budget-basierte Komplexität
+  // NEU: Gewerke-basierte Komplexität als Hauptfaktor
+  const tradeCount = projectContext.detectedTrades?.length || 0;
+  
+  // Gewerke-Komplexität hat höchste Priorität
+  if (tradeCount >= 5) {
+    complexityScore += 6;  // Großprojekt
+  } else if (tradeCount >= 3) {
+    complexityScore += 4;  // Mittleres Projekt
+  } else if (tradeCount >= 2) {
+    complexityScore += 2;  // Kleines Mehrgewerk-Projekt
+  } else if (tradeCount === 1) {
+    complexityScore += 1;  // Einzelgewerk
+  }
+  
+  // Budget-basierte Komplexität (sekundär)
   if (projectContext.budget) {
     const budgetStr = projectContext.budget.toLowerCase();
-    if (budgetStr.includes('500000') || budgetStr.includes('500k')) complexityScore += 5;
-    else if (budgetStr.includes('200000') || budgetStr.includes('200k')) complexityScore += 4;
-    else if (budgetStr.includes('100000') || budgetStr.includes('100k')) complexityScore += 3;
-    else if (budgetStr.includes('50000') || budgetStr.includes('50k')) complexityScore += 2;
+    if (budgetStr.includes('500000') || budgetStr.includes('500k')) complexityScore += 3;
+    else if (budgetStr.includes('200000') || budgetStr.includes('200k')) complexityScore += 2.5;
+    else if (budgetStr.includes('100000') || budgetStr.includes('100k')) complexityScore += 2;
+    else if (budgetStr.includes('50000') || budgetStr.includes('50k')) complexityScore += 1.5;
     else if (budgetStr.includes('20000') || budgetStr.includes('20k')) complexityScore += 1;
+    else if (budgetStr.includes('10000') || budgetStr.includes('10k')) complexityScore += 0.5;
   }
   
   // Beschreibungslänge und Komplexität
   if (projectContext.description) {
     const wordCount = projectContext.description.split(' ').length;
-    if (wordCount > 150) complexityScore += 3;
-    else if (wordCount > 100) complexityScore += 2;
+    if (wordCount > 150) complexityScore += 2;
+    else if (wordCount > 100) complexityScore += 1.5;
     else if (wordCount > 50) complexityScore += 1;
     
-    // Spezielle Keywords
-    const complexKeywords = ['kernsanierung', 'denkmalschutz', 'komplett', 'statik', 'energetisch'];
+    // Spezielle Keywords für Komplexität
+    const complexKeywords = ['kernsanierung', 'denkmalschutz', 'komplett', 'statik', 'energetisch', 
+                            'brandschutz', 'schadstoffe', 'asbest', 'koordination'];
     const description = projectContext.description.toLowerCase();
+    let keywordMatches = 0;
     complexKeywords.forEach(keyword => {
-      if (description.includes(keyword)) complexityScore += 1;
+      if (description.includes(keyword)) keywordMatches++;
     });
+    complexityScore += Math.min(keywordMatches * 0.5, 2); // Max 2 Punkte aus Keywords
   }
   
   // Kategorie-basierte Komplexität
   if (projectContext.category) {
     const category = projectContext.category.toLowerCase();
-    if (category.includes('neubau') || category.includes('kernsanierung')) complexityScore += 3;
-    else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 2;
+    if (category.includes('neubau') || category.includes('kernsanierung')) complexityScore += 2;
+    else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 1.5;
     else if (category.includes('renovierung') || category.includes('modernisierung')) complexityScore += 1;
+    else if (category.includes('reparatur') || category.includes('instandhaltung')) complexityScore += 0.5;
   }
   
-  // Intake-Antworten Komplexität
-  if (intakeAnswers.length > 15) complexityScore += 2;
-  else if (intakeAnswers.length > 10) complexityScore += 1;
+  // Intake-Antworten Komplexität (nur wenn schon vorhanden)
+  if (intakeAnswers.length > 15) complexityScore += 1;
+  else if (intakeAnswers.length > 10) complexityScore += 0.5;
   
-  // Klassifizierung
+  // Klassifizierung mit angepassten Schwellenwerten
   if (complexityScore >= 10) return 'SEHR_HOCH';
   if (complexityScore >= 7) return 'HOCH';
   if (complexityScore >= 4) return 'MITTEL';
   if (complexityScore >= 2) return 'NIEDRIG';
   return 'EINFACH';
+}
+
+/**
+ * NEU: Intelligente Intake-Fragenanzahl basierend auf Gewerke-Count
+ */
+function getIntakeQuestionCount(projectContext) {
+  const tradeCount = projectContext.detectedTrades?.length || 0;
+  const complexity = determineProjectComplexity(projectContext, []);
+  
+  // Basis-Ranges für Intake
+  const INTAKE_RANGES = {
+    SINGLE_TRADE: { min: 14, max: 18 },    // 1 Gewerk
+    SMALL_PROJECT: { min: 16, max: 20 },   // 2-3 Gewerke
+    MEDIUM_PROJECT: { min: 18, max: 24 },  // 4-5 Gewerke
+    LARGE_PROJECT: { min: 22, max: 28 }    // 6+ Gewerke
+  };
+  
+  let range;
+  
+  // Primär nach Gewerke-Anzahl
+  if (tradeCount === 1) {
+    range = INTAKE_RANGES.SINGLE_TRADE;
+  } else if (tradeCount <= 3) {
+    range = INTAKE_RANGES.SMALL_PROJECT;
+  } else if (tradeCount <= 5) {
+    range = INTAKE_RANGES.MEDIUM_PROJECT;
+  } else {
+    range = INTAKE_RANGES.LARGE_PROJECT;
+  }
+  
+  // Feintuning basierend auf Komplexität
+  let targetCount = range.min;
+  
+  switch(complexity) {
+    case 'SEHR_HOCH':
+      targetCount = range.max;
+      break;
+    case 'HOCH':
+      targetCount = Math.round((range.min + range.max) * 0.75 / 2);
+      break;
+    case 'MITTEL':
+      targetCount = Math.round((range.min + range.max) / 2);
+      break;
+    case 'NIEDRIG':
+      targetCount = Math.round((range.min + range.max) * 0.35 / 2);
+      break;
+    case 'EINFACH':
+      targetCount = range.min;
+      break;
+  }
+  
+  // Spezialfälle
+  if (projectContext.description) {
+    const desc = projectContext.description.toLowerCase();
+    
+    // Weniger Fragen bei sehr spezifischen Einzelmaßnahmen
+    if (tradeCount === 1 && (
+      desc.includes('nur') || 
+      desc.includes('lediglich') || 
+      desc.includes('ausschließlich')
+    )) {
+      targetCount = Math.max(8, targetCount - 2);
+    }
+    
+    // Mehr Fragen bei Koordinationsbedarf
+    if (desc.includes('koordination') || 
+        desc.includes('gleichzeitig') || 
+        desc.includes('bewohnt während')) {
+      targetCount = Math.min(range.max, targetCount + 2);
+    }
+    
+    // Mehr Fragen bei besonderen Anforderungen
+    if (desc.includes('denkmalschutz') || 
+        desc.includes('brandschutz') || 
+        desc.includes('schadstoffe')) {
+      targetCount = Math.min(range.max + 2, targetCount + 3);
+    }
+  }
+  
+  console.log(`[INTAKE] Trade count: ${tradeCount}, Complexity: ${complexity}, Target questions: ${targetCount}`);
+  
+  return {
+    count: targetCount,
+    range: range,
+    tradeCount: tradeCount,
+    complexity: complexity,
+    reasoning: `${tradeCount} Gewerk(e) erkannt → ${targetCount} Intake-Fragen`
+  };
 }
 
 /**
