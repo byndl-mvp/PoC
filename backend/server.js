@@ -4223,11 +4223,15 @@ const summeOhneStundenlohn = lv.positions
   .filter(pos => !pos.title?.toLowerCase().includes('stundenlohn'))
   .reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
 
+console.log(`[STUNDENLOHN-CHECK] ${tradeCode}: Summe ohne Stundenlohn: €${summeOhneStundenlohn}`);
+
 // NUR bei kleinen Projekten eingreifen
 if (summeOhneStundenlohn < 2000) {
+  console.log(`[STUNDENLOHN-CHECK] Projekt < 2000€, prüfe Stundenlohn...`);
   lv.positions = lv.positions.map(pos => {
     if (pos.title?.toLowerCase().includes('stundenlohn')) {
       const maxStundenlohn = summeOhneStundenlohn * 0.10;
+      console.log(`[STUNDENLOHN-CHECK] Gefundene Stundenlohn-Positionen:`, stundenlohnPos.length);
       
       if (pos.totalPrice > maxStundenlohn) {
         const oldPrice = pos.totalPrice;
