@@ -4219,22 +4219,40 @@ if (tradeCode === 'ZIMM') {
   }).filter(pos => !pos._remove); 
 
 // NEUE REGEL: Stundenlohnarbeiten bei KLEINEN Projekten begrenzen
+// Debug: Zeige alle Positionen
+console.log(`[STUNDENLOHN-DEBUG] ${tradeCode} - Alle Positionen:`);
+lv.positions.forEach(pos => {
+  console.log(`  - "${pos.title}": €${pos.totalPrice} (${pos.quantity} ${pos.unit})`);
+});
+
 const summeOhneStundenlohn = lv.positions
-  .filter(pos => !pos.title?.toLowerCase().includes('stundenlohn')) // Findet auch "Stundenlohnarbeiten"
+  .filter(pos => !pos.title?.toLowerCase().includes('stundenlohn'))
   .reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
 
-console.log(`[STUNDENLOHN-CHECK] ${tradeCode}: Summe ohne Stundenlohn: €${summeOhneStundenlohn}`);
+const stundenlohnPositionen = lv.positions.filter(pos => 
+  pos.title?.toLowerCase().includes('stundenlohn')
+);
+
+console.log(`[STUNDENLOHN-CHECK] ${tradeCode}:`);
+console.log(`  - Summe ohne Stundenlohn: €${summeOhneStundenlohn}`);
+console.log(`  - Stundenlohn-Positionen gefunden: ${stundenlohnPositionen.length}`);
+stundenlohnPositionen.forEach(pos => {
+  console.log(`    -> "${pos.title}": €${pos.totalPrice}`);
+});
 
 // NUR bei kleinen Projekten eingreifen
-if (summeOhneStundenlohn < 2000) {
-  console.log(`[STUNDENLOHN-CHECK] Projekt < 2000€, prüfe Stundenlohn...`);
+if (summeOhneStundenlohn < 2000 && stundenlohnPositionen.length > 0) {
+  console.log(`[STUNDENLOHN-CHECK] Projekt < 2000€, korrigiere Stundenlohn...`);
+  
   lv.positions = lv.positions.map(pos => {
-    if (pos.title?.toLowerCase().includes('stundenlohn')) { // Findet auch "Stundenlohnarbeiten"
+    if (pos.title?.toLowerCase().includes('stundenlohn')) {
       const maxStundenlohn = summeOhneStundenlohn * 0.10;
-      console.log(`[STUNDENLOHN-CHECK] Gefundene Stundenlohn-Positionen:`, stundenlohnPos.length);
+      console.log(`  - Position: "${pos.title}"`);
+      console.log(`    Aktuell: €${pos.totalPrice}, Max erlaubt: €${maxStundenlohn}`);
       
       if (pos.totalPrice > maxStundenlohn) {
         const oldPrice = pos.totalPrice;
+        const oldQuantity = pos.quantity;
         
         if (summeOhneStundenlohn < 500) {
           pos.quantity = 1;
@@ -4249,11 +4267,19 @@ if (summeOhneStundenlohn < 2000) {
           pos.totalPrice = pos.quantity * pos.unitPrice;
           warnings.push(`Projekt <2000€: Stundenlohn auf 10% begrenzt (${pos.quantity} Stunden)`);
         }
+        
+        console.log(`    KORRIGIERT: ${oldQuantity}h (€${oldPrice}) -> ${pos.quantity}h (€${pos.totalPrice})`);
         fixedCount++;
+      } else {
+        console.log(`    -> Bereits unter 10%, keine Korrektur nötig`);
       }
     }
     return pos;
   });
+} else if (summeOhneStundenlohn >= 2000) {
+  console.log(`[STUNDENLOHN-CHECK] Projekt >= 2000€, keine Anpassung`);
+} else {
+  console.log(`[STUNDENLOHN-CHECK] Keine Stundenlohn-Positionen gefunden`);
 }
   
   // Neuberechnung der Gesamtsumme wenn Änderungen
