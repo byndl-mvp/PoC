@@ -2806,7 +2806,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'decke': ['MAL', 'TRO', 'ROH', 'ELEKT'],        // Decken betrifft viele
     'gaube': ['ZIMM', 'DACH'],                      // Zimmerer baut Holzkonstruktion der Gaube, Dachdecker deckt sie ein
     'raum': ['MAL', 'TRO', 'BOD', 'FLI', 'ELEKT'],  // Räume betrifft viele
-    'tür': ['TIS', 'MAL', 'FEN'],                   // Türbereiche betrifft mehrere
+    'tür': ['TIS', 'MAL', 'TRO', 'FEN'],             // Türbereiche betrifft mehrere
     'fläche': ['FLI', 'MAL', 'BOD', 'FASS', 'ESTR'], // Flächen allgemein
     'material': ['ALLE'],                            // Material kann jedes Gewerk fragen
     'farbe': ['MAL', 'FASS', 'TIS', 'FEN'],         // Farben betrifft mehrere
@@ -2819,7 +2819,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'strom', 'leitung', 'verteiler', 'fi-schalter'],
     'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
     'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
-    'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke'],
+    'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'türöffnung', 'dämmung', 'abgehängte decke'],
     'FLI': ['fliesen', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
     'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung'],
     'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
@@ -5582,7 +5582,7 @@ const tradeKeywords = {
   'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'strom', 'leitung', 'verteiler', 'fi-schalter'],
   'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
   'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
-  'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke', 'schallschutz'],
+  'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'türöffnung', 'dämmung', 'abgehängte decke', 'schallschutz'],
   'FLI': ['fliesen', 'verfugen', 'bad', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
   'MAL': [ 'streichen', 'innenputz', 'tapezieren','verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung', 'malerarbeiten'],
   'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
