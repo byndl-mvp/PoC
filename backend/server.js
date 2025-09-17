@@ -5462,118 +5462,135 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
     
     await ensureProjectTrade(projectId, tradeId, 'intake');
     
-    // NEU: Lade erkannte Gewerke für intelligente Intake-Fragen
-const detectedTrades = await query(
-  `SELECT t.code, t.name 
-   FROM trades t 
-   JOIN project_trades pt ON t.id = pt.trade_id 
-   WHERE pt.project_id = $1 AND t.code != 'INT'`,
-  [projectId]
-);
+    // Lade erkannte Gewerke
+    const detectedTrades = await query(
+      `SELECT t.code, t.name 
+       FROM trades t 
+       JOIN project_trades pt ON t.id = pt.trade_id 
+       WHERE pt.project_id = $1 AND t.code != 'INT'`,
+      [projectId]
+    );
 
-let questions;
-try {
-  questions = await generateQuestions(tradeId, {
-    category: project.category,
-    subCategory: project.sub_category,
-    description: project.description,
-    timeframe: project.timeframe,
-    budget: project.budget,
-    detectedTrades: detectedTrades.rows // NEU: Übergebe erkannte Gewerke für intelligente Fragenauswahl
-  });
-} catch (err) {
-  
-  console.error('[INTAKE] generateQuestions error:', err);
-  // Nicht leeres Array zurückgeben, sondern Fehler werfen!
-  return res.status(500).json({ 
-    error: 'Fehler beim Generieren der Intake-Fragen',
-    details: err.message 
-  });
-}
+    // Erweitere Projektkontext mit erkannten Gewerken
+    const projectContext = {
+      category: project.category,
+      subCategory: project.sub_category,
+      description: project.description,
+      timeframe: project.timeframe,
+      budget: project.budget,
+      detectedTrades: detectedTrades.rows
+    };
     
-// Parse questions wenn es ein String ist
-if (typeof questions === 'string') {
-  try {
-    questions = JSON.parse(questions);
-  } catch (e) {
-    console.error('[INTAKE] Failed to parse questions:', e);
-    return res.status(500).json({ error: 'Fehler beim Generieren der Fragen' });
-  }
-}
+    // NEU: Berechne intelligente Fragenanzahl basierend auf Gewerke-Anzahl
+    const tradeCount = detectedTrades.rows.length;
+    let targetQuestionCount;
+    
+    if (tradeCount === 1) {
+      targetQuestionCount = 16;  // 14-18 Fragen für Einzelgewerk
+    } else if (tradeCount <= 3) {
+      targetQuestionCount = 18;  // 16-20 Fragen für 2-3 Gewerke
+    } else if (tradeCount <= 5) {
+      targetQuestionCount = 21;  // 18-24 Fragen für 4-5 Gewerke
+    } else {
+      targetQuestionCount = 25;  // 22-28 Fragen für 6+ Gewerke
+    }
+    
+    // Modifiziere Projektkontext mit Ziel-Fragenanzahl
+    const modifiedProjectContext = {
+      ...projectContext,
+      targetQuestionCount: targetQuestionCount,
+      tradeCount: tradeCount
+    };
+    
+    let questions;
+    try {
+      // WICHTIG: Verwende modifiedProjectContext statt projectContext
+      questions = await generateQuestions(tradeId, modifiedProjectContext);
+    } catch (err) {
+      console.error('[INTAKE] generateQuestions error:', err);
+      return res.status(500).json({ 
+        error: 'Fehler beim Generieren der Intake-Fragen',
+        details: err.message 
+      });
+    }
+    
+    // Parse questions wenn es ein String ist
+    if (typeof questions === 'string') {
+      try {
+        questions = JSON.parse(questions);
+      } catch (e) {
+        console.error('[INTAKE] Failed to parse questions:', e);
+        return res.status(500).json({ error: 'Fehler beim Generieren der Fragen' });
+      }
+    }
 
-// Stelle sicher dass es ein Array ist
-if (!Array.isArray(questions)) {
-  console.error('[INTAKE] Questions is not an array:', typeof questions);
-  return res.status(500).json({ error: 'Fehler beim Generieren der Fragen' });
-}
+    // Stelle sicher dass es ein Array ist
+    if (!Array.isArray(questions)) {
+      console.error('[INTAKE] Questions is not an array:', typeof questions);
+      return res.status(500).json({ error: 'Fehler beim Generieren der Fragen' });
+    }
     
     // Speichere Fragen mit erweiterten Feldern
-let saved = 0;
-for (const q of questions) {
-  // ZUERST in intake_questions speichern für spätere Verwendung
-  const intakeQuestionResult = await query(
-    `INSERT INTO intake_questions (question_text, question_type, sort_order, is_required, options)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id`,
-    [
-      q.question || q.text,
-      q.type || 'text',
-      saved + 1,  // sort_order basierend auf Position
-      q.required !== undefined ? q.required : true,
-      q.options ? JSON.stringify(q.options) : null
-    ]
-  );
-  
-  const intakeQuestionId = intakeQuestionResult.rows[0].id;
-  
-  // DANN in questions speichern mit Referenz zur intake_question_id
-  await query(
-    `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
-     ON CONFLICT (project_id, trade_id, question_id)
-     DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
-    [
-      projectId,
-      tradeId,
-      `INT-${intakeQuestionId}`,  // Verwende intake_questions.id als Referenz
-      q.question || q.text,
-      q.type || 'text',
-      q.required !== undefined ? q.required : true,
-      q.options ? JSON.stringify(q.options) : null
-    ]
-  );
-  saved++;
-}
-    
-    // Berechne die intelligente Fragenanzahl für die Response
-    const intelligentCount = getIntelligentQuestionCount('INT', {
-      category: project.category,
-      description: project.description,
-      budget: project.budget
-    }, []);
+    let saved = 0;
+    for (const q of questions) {
+      // ZUERST in intake_questions speichern für spätere Verwendung
+      const intakeQuestionResult = await query(
+        `INSERT INTO intake_questions (question_text, question_type, sort_order, is_required, options)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [
+          q.question || q.text,
+          q.type || 'text',
+          saved + 1,  // sort_order basierend auf Position
+          q.required !== undefined ? q.required : true,
+          q.options ? JSON.stringify(q.options) : null
+        ]
+      );
+      
+      const intakeQuestionId = intakeQuestionResult.rows[0].id;
+      
+      // DANN in questions speichern mit Referenz zur intake_question_id
+      await query(
+        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (project_id, trade_id, question_id)
+         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
+        [
+          projectId,
+          tradeId,
+          `INT-${intakeQuestionId}`,  // Verwende intake_questions.id als Referenz
+          q.question || q.text,
+          q.type || 'text',
+          q.required !== undefined ? q.required : true,
+          q.options ? JSON.stringify(q.options) : null
+        ]
+      );
+      saved++;
+    }
 
-// Hole die echten IDs aus der Datenbank
-const savedQuestions = await query(
-  `SELECT question_id FROM questions 
-   WHERE project_id = $1 AND trade_id = $2 
-   ORDER BY question_id`,
-  [projectId, tradeId]
-);
+    // Hole die echten IDs aus der Datenbank
+    const savedQuestions = await query(
+      `SELECT question_id FROM questions 
+       WHERE project_id = $1 AND trade_id = $2 
+       ORDER BY question_id`,
+      [projectId, tradeId]
+    );
 
-// Mappe die echten IDs zu den Fragen
-const questionsWithIds = questions.map((q, idx) => ({
-  ...q,
-  id: savedQuestions.rows[idx]?.question_id || `INT-${idx + 1}`
-}));
+    // Mappe die echten IDs zu den Fragen
+    const questionsWithIds = questions.map((q, idx) => ({
+      ...q,
+      id: savedQuestions.rows[idx]?.question_id || `INT-${idx + 1}`
+    }));
 
-res.json({
-  ok: true,
-  tradeCode: 'INT',
-  questions: questionsWithIds,  // <-- HIER: questionsWithIds statt questions
-  saved,
-  targetCount: intelligentCount.count,
-  completeness: intelligentCount.completeness
-});
+    res.json({
+      ok: true,
+      tradeCode: 'INT',
+      questions: questionsWithIds,
+      saved,
+      targetCount: targetQuestionCount,  // Verwende berechnete Anzahl
+      tradeCount: tradeCount,            // Sende Gewerke-Anzahl zurück
+      completeness: tradeCount <= 2 ? 'EINFACH' : tradeCount <= 5 ? 'MITTEL' : 'HOCH'
+    });
     
   } catch (err) {
     console.error('intake/questions failed:', err);
