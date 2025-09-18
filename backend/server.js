@@ -1135,67 +1135,101 @@ function getPositionOrientation(tradeCode, questionCount) {
 function determineProjectComplexity(projectContext, intakeAnswers = []) {
   let complexityScore = 0;
   
-  // NEU: Gewerke-basierte Komplexität als Hauptfaktor
+  // HAUPTFAKTOR: Gewerke-Anzahl (progressiv steigend)
   const tradeCount = projectContext.detectedTrades?.length || 0;
   
-  // Gewerke-Komplexität hat höchste Priorität
-  if (tradeCount >= 5) {
-    complexityScore += 6;  // Großprojekt
+  if (tradeCount >= 15) {
+    complexityScore += 12;  // Mega-Projekt
+  } else if (tradeCount >= 10) {
+    complexityScore += 10;  // Großprojekt
+  } else if (tradeCount >= 7) {
+    complexityScore += 8;   // Größeres Projekt
+  } else if (tradeCount >= 5) {
+    complexityScore += 6;   // Mittleres Projekt
   } else if (tradeCount >= 3) {
-    complexityScore += 4;  // Mittleres Projekt
-  } else if (tradeCount >= 2) {
-    complexityScore += 2;  // Kleines Mehrgewerk-Projekt
+    complexityScore += 4;   // Kleines Mehrgewerk-Projekt
+  } else if (tradeCount === 2) {
+    complexityScore += 2;   // Zwei-Gewerk-Projekt
   } else if (tradeCount === 1) {
-    complexityScore += 1;  // Einzelgewerk
+    complexityScore += 1;   // Einzelgewerk
   }
   
-  // Budget-basierte Komplexität (sekundär)
-  if (projectContext.budget) {
-    const budgetStr = projectContext.budget.toLowerCase();
-    if (budgetStr.includes('500000') || budgetStr.includes('500k')) complexityScore += 3;
-    else if (budgetStr.includes('200000') || budgetStr.includes('200k')) complexityScore += 2.5;
-    else if (budgetStr.includes('100000') || budgetStr.includes('100k')) complexityScore += 2;
-    else if (budgetStr.includes('50000') || budgetStr.includes('50k')) complexityScore += 1.5;
-    else if (budgetStr.includes('20000') || budgetStr.includes('20k')) complexityScore += 1;
-    else if (budgetStr.includes('10000') || budgetStr.includes('10k')) complexityScore += 0.5;
-  }
-  
-  // Beschreibungslänge und Komplexität
+  // PROJEKTTYP-KEYWORDS (erhöhte Gewichtung für Kernsanierung)
   if (projectContext.description) {
-    const wordCount = projectContext.description.split(' ').length;
-    if (wordCount > 150) complexityScore += 2;
-    else if (wordCount > 100) complexityScore += 1.5;
-    else if (wordCount > 50) complexityScore += 1;
-    
-    // Spezielle Keywords für Komplexität
-    const complexKeywords = ['kernsanierung', 'denkmalschutz', 'komplett', 'statik', 'energetisch', 
-                            'brandschutz', 'schadstoffe', 'asbest', 'koordination'];
     const description = projectContext.description.toLowerCase();
-    let keywordMatches = 0;
-    complexKeywords.forEach(keyword => {
-      if (description.includes(keyword)) keywordMatches++;
-    });
-    complexityScore += Math.min(keywordMatches * 0.5, 2); // Max 2 Punkte aus Keywords
+    
+    // Kritische Projekttypen
+    if (description.includes('kernsanierung') || description.includes('komplettsanierung')) {
+      complexityScore += 4;  // Kernsanierung ist immer komplex
+    } else if (description.includes('vollsanierung') || description.includes('generalsanierung')) {
+      complexityScore += 3.5;
+    } else if (description.includes('denkmalschutz')) {
+      complexityScore += 3;  // Denkmalschutz erhöht Komplexität erheblich
+    }
+    
+    // Weitere Komplexitäts-Keywords
+    const complexKeywords = {
+      'energetisch': 1.5,
+      'kfw': 1.5,
+      'brandschutz': 1.5,
+      'statik': 1.5,
+      'asbest': 2,
+      'schadstoffe': 2,
+      'bewohnt während': 1.5,
+      'koordination': 1
+    };
+    
+    for (const [keyword, points] of Object.entries(complexKeywords)) {
+      if (description.includes(keyword)) {
+        complexityScore += points;
+      }
+    }
+    
+    // Beschreibungslänge als Indikator
+    const wordCount = description.split(' ').length;
+    if (wordCount > 200) complexityScore += 2;
+    else if (wordCount > 150) complexityScore += 1.5;
+    else if (wordCount > 100) complexityScore += 1;
+    else if (wordCount > 50) complexityScore += 0.5;
   }
   
-  // Kategorie-basierte Komplexität
+  // BUDGET-KOMPLEXITÄT (angepasste Bewertung)
+  if (projectContext.budget) {
+    const budgetStr = projectContext.budget.toLowerCase().replace(/[^\d]/g, '');
+    const budgetNum = parseInt(budgetStr);
+    
+    if (budgetNum >= 500000) complexityScore += 3;
+    else if (budgetNum >= 300000) complexityScore += 2.5;
+    else if (budgetNum >= 200000) complexityScore += 2;
+    else if (budgetNum >= 100000) complexityScore += 1.5;
+    else if (budgetNum >= 50000) complexityScore += 1;
+    else if (budgetNum >= 20000) complexityScore += 0.5;
+  }
+  
+  // KATEGORIE-BASIERTE KOMPLEXITÄT
   if (projectContext.category) {
     const category = projectContext.category.toLowerCase();
-    if (category.includes('neubau') || category.includes('kernsanierung')) complexityScore += 2;
-    else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 1.5;
+    if (category.includes('kernsanierung')) complexityScore += 3;  // Zusätzlich zur Description
+    else if (category.includes('neubau')) complexityScore += 2.5;
+    else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 2;
+    else if (category.includes('sanierung')) complexityScore += 1.5;
     else if (category.includes('renovierung') || category.includes('modernisierung')) complexityScore += 1;
     else if (category.includes('reparatur') || category.includes('instandhaltung')) complexityScore += 0.5;
   }
   
-  // Intake-Antworten Komplexität (nur wenn schon vorhanden)
-  if (intakeAnswers.length > 15) complexityScore += 1;
-  else if (intakeAnswers.length > 10) complexityScore += 0.5;
+  // INTAKE-ANTWORTEN (nur wenn vorhanden, geringere Gewichtung)
+  if (intakeAnswers && intakeAnswers.length > 0) {
+    if (intakeAnswers.length > 20) complexityScore += 1;
+    else if (intakeAnswers.length > 15) complexityScore += 0.5;
+  }
   
-  // Klassifizierung mit angepassten Schwellenwerten
-  if (complexityScore >= 10) return 'SEHR_HOCH';
-  if (complexityScore >= 7) return 'HOCH';
-  if (complexityScore >= 4) return 'MITTEL';
-  if (complexityScore >= 2) return 'NIEDRIG';
+  // FINALE KLASSIFIZIERUNG mit realistischen Schwellenwerten
+  console.log(`[COMPLEXITY] Score: ${complexityScore} (Trades: ${tradeCount})`);
+  
+  if (complexityScore >= 12) return 'SEHR_HOCH';
+  if (complexityScore >= 8) return 'HOCH';
+  if (complexityScore >= 5) return 'MITTEL';
+  if (complexityScore >= 3) return 'NIEDRIG';
   return 'EINFACH';
 }
 
