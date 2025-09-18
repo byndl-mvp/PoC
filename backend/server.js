@@ -1955,26 +1955,23 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
       }
   }
   
-  // Anpassung basierend auf Fragenanzahl (sekundär)
-  const questionFactor = Math.min(1.5, Math.max(0.5, questionCount / 15));
-  
   // Finale Berechnung
-  const finalMin = Math.round(minPositions * scopeMultiplier * questionFactor);
-  const finalMax = Math.round(maxPositions * scopeMultiplier * questionFactor);
-  
-  // Sicherstellen dass Min/Max sinnvoll sind
-  const adjustedMin = Math.max(3, Math.min(40, finalMin));
-  const adjustedMax = Math.min(50, Math.max(adjustedMin + 2, finalMax));
-  
-  console.log(`[LV-ORIENTATION] ${tradeCode}: ${adjustedMin}-${adjustedMax} positions`);
-  console.log(`  -> Scope: ${scopeMultiplier}x, Questions: ${questionCount}, Factor: ${questionFactor}`);
-  
-  return {
-    min: adjustedMin,
-    max: adjustedMax,
-    base: Math.round((adjustedMin + adjustedMax) / 2),
-    ratio: tradeConfig.targetPositionsRatio,
-    scopeMultiplier: scopeMultiplier
+const finalMin = minPositions;
+const finalMax = maxPositions;
+
+// Sicherstellen dass Min/Max sinnvoll sind
+const adjustedMin = Math.max(3, Math.min(40, finalMin));
+const adjustedMax = Math.min(50, Math.max(adjustedMin + 2, finalMax));
+
+console.log(`[LV-ORIENTATION] ${tradeCode}: ${adjustedMin}-${adjustedMax} positions (base: ${minPositions}-${maxPositions})`);
+
+return {
+  min: adjustedMin,
+  max: adjustedMax,
+  base: Math.round((adjustedMin + adjustedMax) / 2),
+  ratio: tradeConfig.targetPositionsRatio || 1.0,
+  // scopeMultiplier entfernen oder dokumentieren dass er nicht verwendet wird
+  confidence: 0.8
   };
 }
 
