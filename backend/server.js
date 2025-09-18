@@ -107,6 +107,19 @@ async function llmWithPolicy(task, messages, options = {}) {
   };
   
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
+  // DEBUG: Log prompt sizes for questions task
+if (task === 'questions' || task === 'intake') {
+  const systemMsg = messages.find(m => m.role === 'system');
+  const userMsg = messages.find(m => m.role === 'user');
+  
+  console.log(`[LLM-DEBUG] Task: ${task}`);
+  console.log(`[LLM-DEBUG] System prompt length: ${systemMsg?.content?.length || 0} chars`);
+  console.log(`[LLM-DEBUG] User prompt length: ${userMsg?.content?.length || 0} chars`);
+  
+  if (systemMsg?.content?.length > 8000) {
+    console.log(`[LLM-DEBUG] ⚠️ System prompt exceeds Anthropic limit!`);
+  }
+}
   const temperature = options.temperature !== undefined ? options.temperature : 0.4;
   
   // LV IMMER mit OpenAI (wegen JSON-Mode), Rest bevorzugt Anthropic
