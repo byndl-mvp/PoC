@@ -3361,7 +3361,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
 
   // NUR EXKLUSIVE Begriffe - nur DIESES Gewerk darf fragen
   const STRICTLY_EXCLUSIVE = {
-    'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'leitung', 'verteiler', 'fi-schalter'],
+    'ELEKT': ['steckdose', 'schalter', 'lampe', 'kabel', 'sicherung', 'leitung', 'verteiler', 'fi-schalter'],
     'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
     'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
     'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'türöffnung', 'abgehängte decke'],
@@ -3375,12 +3375,12 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'DACH': ['dachfenster', 'dachziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'dachdämmung', 'unterspannbahn'],
     'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
     'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
-    'ZIMM': ['holzbau', 'dachstuhl', 'balken', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk', 'sparren', 'pfetten'],
+    'ZIMM': ['holzbau', 'dachstuhl', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk', 'sparren', 'pfetten'],
     'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
     'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
     'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
     'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
-    'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'schutt']
+    'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau']
   };
 
   const filteredQuestions = [];
