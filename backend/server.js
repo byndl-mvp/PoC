@@ -8952,6 +8952,129 @@ console.log('[OPTIMIZATION] Final total:', optimizations.totalPossibleSaving);
   }
 });
 
+// Get project timeline and sequencing
+app.get('/api/projects/:projectId/timeline', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Hole Projekt mit Metadaten
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    const project = projectResult.rows[0];
+    const metadata = typeof project.metadata === 'string' 
+      ? JSON.parse(project.metadata) 
+      : project.metadata;
+    
+    // Hole alle Projekt-Trades
+    const trades = await getProjectTrades(projectId);
+    
+    // Generiere Timeline wenn noch nicht vorhanden
+    if (!metadata?.sequencing) {
+      const sequenceAnalysis = analyzeTradeSequencing(trades);
+      
+      // Speichere für zukünftige Nutzung
+      await query(
+        `UPDATE projects 
+         SET metadata = metadata || $1 
+         WHERE id = $2`,
+        [
+          JSON.stringify({ sequencing: sequenceAnalysis }),
+          projectId
+        ]
+      );
+      
+      metadata.sequencing = sequenceAnalysis;
+    }
+    
+    // Erweitere mit LV-Status
+    const lvsResult = await query(
+      `SELECT trade_id, created_at 
+       FROM lvs 
+       WHERE project_id = $1`,
+      [projectId]
+    );
+    
+    const lvsMap = new Map(
+      lvsResult.rows.map(row => [row.trade_id, row.created_at])
+    );
+    
+    // Erstelle detaillierte Timeline
+    const timeline = {
+      phases: {},
+      totalDuration: metadata.sequencing.duration,
+      criticalPath: metadata.sequencing.criticalPath,
+      currentPhase: null,
+      progress: 0
+    };
+    
+    // Ordne Trades den Phasen zu mit Status
+    const phaseOrder = ['preparation', 'structure', 'technical', 'interior', 'finishing', 'exterior'];
+    
+    phaseOrder.forEach(phaseName => {
+      timeline.phases[phaseName] = {
+        name: phaseName,
+        trades: [],
+        duration: { min: 0, max: 0 },
+        status: 'pending'
+      };
+      
+      trades.forEach(trade => {
+        const tradePhase = TRADE_INTERACTION_MATRIX[trade.code]?.phase;
+        if (tradePhase === phaseName) {
+          timeline.phases[phaseName].trades.push({
+            ...trade,
+            hasLV: lvsMap.has(trade.id),
+            lvCreatedAt: lvsMap.get(trade.id) || null,
+            dependencies: TRADE_INTERACTION_MATRIX[trade.code]?.requires || [],
+            canParallelWith: TRADE_INTERACTION_MATRIX[trade.code]?.parallel || []
+          });
+        }
+      });
+      
+      // Berechne Phasen-Dauer
+      if (timeline.phases[phaseName].trades.length > 0) {
+        timeline.phases[phaseName].status = 'active';
+        // Vereinfachte Dauer-Berechnung
+        timeline.phases[phaseName].duration.min = timeline.phases[phaseName].trades.length * 2;
+        timeline.phases[phaseName].duration.max = timeline.phases[phaseName].trades.length * 5;
+      }
+    });
+    
+    // Bestimme aktuelle Phase
+    for (const phaseName of phaseOrder) {
+      if (timeline.phases[phaseName].trades.length > 0) {
+        const allHaveLV = timeline.phases[phaseName].trades.every(t => t.hasLV);
+        if (!allHaveLV) {
+          timeline.currentPhase = phaseName;
+          break;
+        }
+      }
+    }
+    
+    // Berechne Fortschritt
+    const totalTrades = trades.length;
+    const tradesWithLV = trades.filter(t => lvsMap.has(t.id)).length;
+    timeline.progress = totalTrades > 0 ? Math.round((tradesWithLV / totalTrades) * 100) : 0;
+    
+    res.json({
+      ok: true,
+      timeline,
+      warnings: metadata.sequencing.conflicts || []
+    });
+    
+  } catch (err) {
+    console.error('Timeline generation failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ADMIN ROUTES - SIMPLIFIED WITH BASIC TOKEN (FIXED SQL CASTS)
 // ===========================================================================
 
