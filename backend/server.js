@@ -3212,7 +3212,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
 
   // NUR EXKLUSIVE Begriffe - nur DIESES Gewerk darf fragen
   const STRICTLY_EXCLUSIVE = {
-    'ELEKT': ['steckdose', 'schalter', 'lampe', 'kabel', 'sicherung', 'leitung', 'verteiler', 'fi-schalter'],
+    'ELEKT': ['steckdose', 'schalter', 'leuchte', 'kabel', 'sicherung', 'verteiler', 'fi-schalter'],
     'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
     'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
     'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke'],
