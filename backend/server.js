@@ -5150,6 +5150,39 @@ if (tradeCode === 'FEN' && lv.positions) {
   }
 }    
 
+// Spezielle Regel für Wanddurchbruch
+if (titleLower.includes('wanddurchbruch') || titleLower.includes('durchbruch')) {
+  if (pos.unit === 'Stk' || pos.unit === 'psch') {
+    // Großer Durchbruch mind. 800€
+    if (descLower.includes('groß') || descLower.includes('2,6') || 
+        parseFloat(pos.quantity) > 2) {
+      if (pos.unitPrice < 800) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 950;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Wanddurchbruch korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+  }
+}
+
+// Rohbau-Mindestpreise
+if (tradeCode === 'ROH') {
+  if (titleLower.includes('beton') && pos.unit === 'm³') {
+    if (pos.unitPrice < 110) {
+      pos.unitPrice = 125;  // Realistischer Betonpreis
+      fixedCount++;
+    }
+  }
+  if (titleLower.includes('mauerwerk') && pos.unit === 'm²') {
+    if (pos.unitPrice < 65) {
+      pos.unitPrice = 75;  // Realistischer Mauerwerks-Preis
+      fixedCount++;
+    }
+  }
+}
+    
 // SPEZIAL-REGEL FÜR ZIMMERER
 if (tradeCode === 'ZIMM') {
   if (titleLower.includes('dachstuhl')) {
