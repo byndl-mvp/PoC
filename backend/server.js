@@ -150,97 +150,87 @@ if (task === 'questions' || task === 'intake') {
   
   const callClaude = async () => {
   try {
-    let systemMessage = messages.find(m => m.role === "system")?.content || "";
-    let otherMessages = messages.filter(m => m.role !== "system");
+    // Finde System und andere Messages
+    const systemMessage = messages.find(m => m.role === "system")?.content || "";
+    const originalUserMessages = messages.filter(m => m.role === "user");
+    const assistantMessages = messages.filter(m => m.role === "assistant");
     
-    // Anthropic Limits
-    const ANTHROPIC_SYSTEM_LIMIT = 7000;  // Konservativer
-    const ANTHROPIC_USER_LIMIT = 15000;   // User kann mehr haben
+    // Baue Messages für Anthropic auf
+    let claudeMessages = [];
     
-    if (systemMessage.length > ANTHROPIC_SYSTEM_LIMIT) {
-      console.log(`[LLM] System prompt too long for Anthropic: ${systemMessage.length} chars, redistributing...`);
+    // Kombiniere System-Content mit erster User-Message wenn System zu lang
+    if (systemMessage.length > 8000) {
+      console.log(`[LLM-CLAUDE] System prompt ${systemMessage.length} chars - moving to user message`);
       
-      // Extrahiere absolut kritische System-Instruktionen
-      const criticalPatterns = [
-        /Du bist[^\n]+/,
-        /OUTPUT[^\n]+JSON[^\n]*/i,
-        /KRITISCH[^\n]+/gi,
-        /NUR valides JSON/i
-      ];
-      
-      let coreSystem = '';
-      let remainingSystem = systemMessage;
-      
-      // Sammle kritische Zeilen
-      for (const pattern of criticalPatterns) {
-        const match = remainingSystem.match(pattern);
-        if (match) {
-          coreSystem += match[0] + '\n\n';
-          remainingSystem = remainingSystem.replace(match[0], '');
-        }
-      }
-      
-      // Füge die ersten 1500 Zeichen hinzu (wichtigster Kontext)
-      const firstChunk = remainingSystem.substring(0, 1500);
-      coreSystem += firstChunk;
-      remainingSystem = remainingSystem.substring(1500);
-      
-      // Sicherstellen dass wir unter dem Limit sind
-      if (coreSystem.length > ANTHROPIC_SYSTEM_LIMIT) {
-        coreSystem = coreSystem.substring(0, ANTHROPIC_SYSTEM_LIMIT - 100);
-        remainingSystem = systemMessage.substring(ANTHROPIC_SYSTEM_LIMIT - 100);
-      }
-      
-      // Verschiebe Rest in User-Message
-      if (remainingSystem && otherMessages.length > 0) {
-        const currentUserLength = otherMessages[0].content.length;
-        const movedContentLength = remainingSystem.length;
-        
-        // Prüfe ob User-Message nicht zu lang wird
-        if (currentUserLength + movedContentLength > ANTHROPIC_USER_LIMIT) {
-          console.warn('[LLM] User message would be too long, truncating moved content');
-          remainingSystem = remainingSystem.substring(0, ANTHROPIC_USER_LIMIT - currentUserLength - 500);
-        }
-        
-        otherMessages[0].content = 
-          "ZUSÄTZLICHE REGELN UND KONTEXT:\n" +
-          "================================\n" +
-          remainingSystem + 
-          "\n\nHAUPTANFRAGE:\n" +
-          "============\n" +
-          otherMessages[0].content;
-      }
-      
-      console.log(`[LLM] Redistributed - System: ${coreSystem.length} chars, User: ${otherMessages[0]?.content.length} chars`);
-      systemMessage = coreSystem;
-    }
-    
-    // JSON-Mode Instruktion
-    if (options.jsonMode && !systemMessage.includes('JSON')) {
-      systemMessage = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!\n\n${systemMessage}`;
-    }
+      // ALLES in die User-Message verschieben
+      const combinedContent = `SYSTEM-INSTRUKTIONEN:
+=====================================
+${systemMessage}
 
-    const response = await anthropic.messages.create({
-      model: MODEL_ANTHROPIC,
-      max_tokens: Math.min(maxTokens, 8192),
-      temperature,
-      system: systemMessage,
-      messages: otherMessages,
-    });
-
-    return response.content[0].text;
-  } catch (error) {
-    console.error('[LLM] Anthropic error:', error.status || error.message);
-    
-    // Detaillierte Fehleranalyse
-    if (error.status === 400) {
-      console.error('[LLM] 400 Error Details:', {
-        error_type: error.error?.type,
-        error_message: error.error?.message || error.message,
-        systemLength: systemMessage.length,
-        userLength: otherMessages[0]?.content?.length,
-        totalLength: (systemMessage.length + (otherMessages[0]?.content?.length || 0))
+ANFRAGE:
+========
+${originalUserMessages[0]?.content || 'Bitte die obigen Instruktionen befolgen.'}`;
+      
+      claudeMessages.push({
+        role: "user",
+        content: combinedContent
       });
+      
+      // Füge restliche User-Messages hinzu falls vorhanden
+      for (let i = 1; i < originalUserMessages.length; i++) {
+        claudeMessages.push({
+          role: "user",
+          content: originalUserMessages[i].content
+        });
+      }
+      
+      // Kein System-Prompt für Anthropic in diesem Fall
+      const response = await anthropic.messages.create({
+        model: MODEL_ANTHROPIC,
+        max_tokens: Math.min(maxTokens, 8192),
+        temperature,
+        messages: claudeMessages  // KEIN system Parameter!
+      });
+      
+      console.log(`[LLM-CLAUDE] Success without system prompt`);
+      return response.content[0].text;
+      
+    } else {
+      // System ist klein genug - normale Verarbeitung
+      for (const msg of messages.filter(m => m.role !== "system")) {
+        claudeMessages.push({
+          role: msg.role,
+          content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+        });
+      }
+      
+      // JSON-Mode
+      let finalSystem = systemMessage;
+      if (options.jsonMode) {
+        finalSystem = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!\n\n${systemMessage}`;
+      }
+      
+      console.log(`[LLM-CLAUDE] Normal call - System: ${finalSystem.length} chars`);
+      
+      const response = await anthropic.messages.create({
+        model: MODEL_ANTHROPIC,
+        max_tokens: Math.min(maxTokens, 8192),
+        temperature,
+        system: finalSystem,
+        messages: claudeMessages
+      });
+      
+      return response.content[0].text;
+    }
+    
+  } catch (error) {
+    console.error('[LLM-CLAUDE] Full error:', error);
+    
+    if (error.status === 400) {
+      console.error('[LLM-CLAUDE] 400 Error - Message:', error.message);
+      if (error.error) {
+        console.error('[LLM-CLAUDE] Error details:', error.error);
+      }
     }
     
     throw error;
