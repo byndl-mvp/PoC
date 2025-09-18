@@ -2993,71 +2993,173 @@ return filteredQuestions;
 /**
  * Filtert duplizierte Fragen basierend auf Intake-Antworten
  */
-/**
 function filterDuplicateQuestions(questions, intakeAnswers) {
   if (!intakeAnswers || intakeAnswers.length === 0) return questions;
   
-  // Sammle alle Intake-Fragen die substantiell beantwortet wurden
-  const answeredQuestions = new Set();
+  // Erstelle semantische Fingerprints der beantworteten Fragen
+  const answeredConcepts = [];
   
   intakeAnswers.forEach(item => {
     const q = item.question_text?.toLowerCase().trim() || '';
     const a = item.answer_text?.toLowerCase().trim() || '';
     
-    // Nur wenn eine echte Antwort gegeben wurde (nicht "keine Angabe" etc.)
+    // Nur substantielle Antworten berücksichtigen
     if (a && a.length > 2 && 
         a !== 'ja' && 
         a !== 'nein' && 
         a !== 'keine angabe' && 
-        a !== 'weiß nicht' &&
-        a !== 'unklar') {
-      // Speichere die exakte Frage
-      answeredQuestions.add(q);
+        a !== 'weiß nicht') {
       
-      // Optional: Speichere auch leichte Variationen (Singular/Plural etc.)
-      // Aber NUR wenn sie fast identisch sind
-      if (q.endsWith('?')) {
-        answeredQuestions.add(q.slice(0, -1)); // Ohne Fragezeichen
+      // Extrahiere den Kern der Frage (Subjekt + Aktion)
+      const concept = extractQuestionConcept(q);
+      if (concept) {
+        answeredConcepts.push({
+          concept: concept,
+          originalQuestion: q,
+          answer: a
+        });
       }
     }
   });
   
   return questions.filter(q => {
     const questionText = (q.question || q.text || '').toLowerCase().trim();
+    const currentConcept = extractQuestionConcept(questionText);
     
-    // Prüfe ob GENAU diese Frage schon beantwortet wurde
-    const isExactDuplicate = answeredQuestions.has(questionText) || 
-                             answeredQuestions.has(questionText.replace('?', ''));
+    // Prüfe ob diese Frage semantisch bereits beantwortet wurde
+    let isDuplicate = false;
+    let reason = '';
     
-    // Prüfe auf fast identische Formulierung (>85% gleiche Wörter)
-    let isNearDuplicate = false;
-    if (!isExactDuplicate) {
-      const questionWords = new Set(questionText.split(/\s+/));
-      
-      for (const answered of answeredQuestions) {
-        const answeredWords = new Set(answered.split(/\s+/));
-        
-        // Berechne Überschneidung der Wörter
-        const commonWords = [...questionWords].filter(w => answeredWords.has(w));
-        const similarity = commonWords.length / Math.max(questionWords.size, answeredWords.size);
-        
-        // NUR wenn fast alle Wörter gleich sind (85%+)
-        if (similarity > 0.85 && questionWords.size > 3) { // Mindestens 4 Wörter für Vergleich
-          isNearDuplicate = true;
-          break;
-        }
+    for (const answered of answeredConcepts) {
+      // Vergleiche die Konzepte, nicht nur einzelne Wörter
+      if (isSameQuestion(currentConcept, answered.concept)) {
+        isDuplicate = true;
+        reason = `Bereits beantwortet: "${answered.originalQuestion.substring(0, 50)}..."`;
+        break;
       }
     }
     
-    const isDuplicate = isExactDuplicate || isNearDuplicate;
-    
     if (isDuplicate) {
-      console.log(`[FILTER] Removing duplicate: ${questionText.substring(0, 80)}...`);
+      console.log(`[FILTER] Removing duplicate: ${questionText.substring(0, 60)}... (${reason})`);
     }
     
     return !isDuplicate;
   });
 }
+
+/**
+ * Extrahiert das Kernkonzept einer Frage
+ * Rückgabe: { subject, action, object, measure }
+ */
+function extractQuestionConcept(question) {
+  const q = question.toLowerCase().trim();
+  
+  const concept = {
+    subject: null,    // Worüber (z.B. "bad", "aufstockung", "außenwände")
+    action: null,     // Was (z.B. "größe", "anzahl", "material", "kosten")
+    object: null,     // Spezifisches Objekt (z.B. "fläche", "räume", "fenster")
+    measure: null     // Maßeinheit/Typ (z.B. "m²", "stück", "euro")
+  };
+  
+  // Erkenne Fragewort/Aktion
+  if (q.match(/wie\s+(groß|viel|hoch|lang|breit|tief)/)) {
+    concept.action = 'dimension';
+    if (q.includes('groß') || q.includes('fläche')) concept.measure = 'fläche';
+    if (q.includes('hoch') || q.includes('höhe')) concept.measure = 'höhe';
+    if (q.includes('lang') || q.includes('länge')) concept.measure = 'länge';
+    if (q.includes('viel') || q.includes('anzahl')) concept.measure = 'anzahl';
+  } else if (q.includes('welche') || q.includes('welcher') || q.includes('welches')) {
+    concept.action = 'auswahl';
+    if (q.includes('material')) concept.measure = 'material';
+    if (q.includes('art') || q.includes('typ')) concept.measure = 'typ';
+    if (q.includes('farbe')) concept.measure = 'farbe';
+  } else if (q.includes('wann')) {
+    concept.action = 'zeitpunkt';
+  } else if (q.includes('wo') || q.includes('wohin')) {
+    concept.action = 'ort';
+  }
+  
+  // Erkenne Hauptsubjekt (wichtigste Substantive)
+  const subjects = {
+    'bad': ['bad', 'badezimmer', 'sanitär', 'nasszelle'],
+    'küche': ['küche', 'küchenbereich'],
+    'aufstockung': ['aufstockung', 'aufgestockt', 'stockwerk', 'etage', 'geschoss'],
+    'wand': ['wand', 'wände', 'mauer', 'mauerwerk'],
+    'außenwand': ['außenwand', 'außenwände', 'außenmauer'],
+    'innenwand': ['innenwand', 'innenwände', 'zwischenwand'],
+    'decke': ['decke', 'geschossdecke', 'zimmerdecke'],
+    'boden': ['boden', 'fußboden', 'bodenbelag'],
+    'dach': ['dach', 'dachfläche', 'dachbereich'],
+    'fenster': ['fenster', 'fensteröffnung', 'verglasung'],
+    'tür': ['tür', 'türöffnung', 'türen'],
+    'raum': ['raum', 'räume', 'zimmer'],
+    'fläche': ['fläche', 'quadratmeter', 'qm', 'm²'],
+    'gebäude': ['gebäude', 'haus', 'objekt', 'immobilie']
+  };
+  
+  for (const [key, variations] of Object.entries(subjects)) {
+    if (variations.some(v => q.includes(v))) {
+      concept.subject = key;
+      break;
+    }
+  }
+  
+  // Erkenne spezifisches Objekt
+  if (q.includes('fläche') || q.includes('quadratmeter') || q.includes('m²')) {
+    concept.object = 'fläche';
+  } else if (q.includes('anzahl') || q.includes('stück') || q.includes('wie viele')) {
+    concept.object = 'anzahl';
+  } else if (q.includes('material') || q.includes('ausführung')) {
+    concept.object = 'material';
+  } else if (q.includes('kosten') || q.includes('preis') || q.includes('budget')) {
+    concept.object = 'kosten';
+  }
+  
+  return concept;
+}
+
+/**
+ * Vergleicht zwei Fragekonzepte auf semantische Gleichheit
+ */
+function isSameQuestion(concept1, concept2) {
+  if (!concept1 || !concept2) return false;
+  
+  // Beide müssen das gleiche fragen (Aktion + Objekt)
+  if (concept1.action !== concept2.action) return false;
+  if (concept1.object !== concept2.object) return false;
+  
+  // Das Subjekt muss auch übereinstimmen
+  if (concept1.subject !== concept2.subject) return false;
+  
+  // Wenn Maßeinheit vorhanden, muss sie auch gleich sein
+  if (concept1.measure && concept2.measure && concept1.measure !== concept2.measure) {
+    return false;
+  }
+  
+  // Alle Kernkomponenten stimmen überein = gleiche Frage
+  return true;
+}
+
+/**
+ * Beispiele was gefiltert wird und was nicht:
+ * 
+ * WIRD GEFILTERT (gleiche Frage, andere Formulierung):
+ * - "Wie groß ist das Bad?" vs "Welche Fläche hat das Badezimmer?"
+ *   -> Beide fragen nach: bad + dimension + fläche
+ * 
+ * - "Wie viele Stockwerke?" vs "Anzahl der Etagen?"
+ *   -> Beide fragen nach: aufstockung + dimension + anzahl
+ * 
+ * WIRD NICHT GEFILTERT (unterschiedliche Fragen):
+ * - "Wie groß ist das Bad?" vs "Welches Material für Badfliesen?"
+ *   -> Unterschiedlich: dimension/fläche vs auswahl/material
+ * 
+ * - "Aufstockung geplant?" vs "Wandstärke der Aufstockung?"
+ *   -> Unterschiedlich: Allgemeine Frage vs spezifische Dimension
+ * 
+ * - "Welche Räume?" vs "Welche Raumhöhe?"
+ *   -> Unterschiedlich: auswahl/typ vs dimension/höhe
+ */
 
 // Export
 module.exports = filterDuplicateQuestions;
