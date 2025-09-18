@@ -90,898 +90,6 @@ const DEFAULT_COMPLEXITY = {
 };
 
 // ===========================================================================
-// NEUE ZENTRALE KOMPLEXITÄTSANALYSE
-// ===========================================================================
-
-class ProjectComplexityAnalyzer {
-  constructor(project, trades, intakeAnswers = []) {
-    this.project = project;
-    this.trades = trades;
-    this.intakeAnswers = intakeAnswers;
-    this.extractedData = project.extractedData || {};
-  }
-
-  analyze() {
-    const factors = {
-      tradeCount: this.trades.length,
-      tradeComplexity: this.calculateAverageTradeComplexity(),
-      interactions: this.calculateTradeInteractions(),
-      projectScope: this.calculateProjectScope(),
-      dataCompleteness: this.calculateDataCompleteness()
-    };
-
-    const score = this.calculateWeightedScore(factors);
-    
-    return {
-      score: score,
-      level: this.getComplexityLevel(score),
-      factors: factors,
-      questionMultiplier: this.getQuestionMultiplier(score),
-      positionMultiplier: this.getPositionMultiplier(score)
-    };
-  }
-
-  calculateAverageTradeComplexity() {
-    if (!this.trades.length) return 0;
-    
-    const complexityScores = {
-      'SEHR_HOCH': 100,
-      'HOCH': 75,
-      'MITTEL': 50,
-      'EINFACH': 25,
-      'INTAKE': 0
-    };
-    
-    const total = this.trades.reduce((sum, trade) => {
-      const config = TRADE_COMPLEXITY[trade.code] || DEFAULT_COMPLEXITY;
-      return sum + (complexityScores[config.complexity] || 50);
-    }, 0);
-    
-    return total / this.trades.length;
-  }
-
-  calculateTradeInteractions() {
-    // Kritische Gewerke-Kombinationen die Koordination erfordern
-    const criticalCombos = [
-      ['ROH', 'ELEKT', 'SAN', 'HEI'],  // Rohbau mit TGA
-      ['DACH', 'ZIMM',],               // Dach-Komplex
-      ['TRO', 'ELEKT', 'MAL'],         // Innenausbau
-      ['FLI', 'SAN', 'HEI']             // Badkomplex
-    ];
-    
-    let interactionScore = 0;
-    const tradeCodes = this.trades.map(t => t.code);
-    
-    criticalCombos.forEach(combo => {
-      const matchCount = combo.filter(code => tradeCodes.includes(code)).length;
-      if (matchCount >= 3) {
-        interactionScore += 25;
-      } else if (matchCount >= 2) {
-        interactionScore += 10;
-      }
-    });
-    
-    return Math.min(100, interactionScore);
-  }
-
-  calculateProjectScope() {
-    const desc = (this.project.description || '').toLowerCase();
-    let scope = 0;
-    
-    // Schlüsselwörter für Projektumfang
-    const scopeIndicators = {
-      'komplettsanierung': 40,
-      'kernsanierung': 40,
-      'generalsanierung': 40,
-      'anbau': 40,
-      'aufstockung': 40,
-      'umbau': 30,
-      'modernisierung': 15,
-      'renovierung': 10,
-      'reparatur': 5
-    };
-    
-    for (const [keyword, points] of Object.entries(scopeIndicators)) {
-      if (desc.includes(keyword)) {
-        scope = Math.max(scope, points);
-      }
-    }
-    
-    // Budget-basierte Anpassung
-    if (this.project.budget) {
-      const budget = parseInt(this.project.budget.replace(/\D/g, '')) || 0;
-      if (budget > 500000) scope += 30;
-      else if (budget > 200000) scope += 20;
-      else if (budget > 100000) scope += 10;
-      else if (budget > 50000) scope += 5;
-    }
-    
-    return Math.min(100, scope);
-  }
-
-  calculateDataCompleteness() {
-    let completeness = 0;
-    
-    // Extrahierte Daten vorhanden?
-    if (this.extractedData.quantities) {
-      completeness += Object.keys(this.extractedData.quantities).length * 5;
-    }
-    
-    // Intake-Antworten vorhanden?
-    if (this.intakeAnswers.length > 0) {
-      completeness += Math.min(30, this.intakeAnswers.length * 2);
-    }
-    
-    // Projektbeschreibung Qualität
-    const descLength = (this.project.description || '').split(' ').length;
-    if (descLength > 100) completeness += 20;
-    else if (descLength > 50) completeness += 10;
-    else if (descLength > 20) completeness += 5;
-    
-    return Math.min(100, completeness);
-  }
-
-  calculateWeightedScore(factors) {
-    // Gewichtete Berechnung des Gesamtscores
-    const weights = {
-      tradeCount: 0.25,
-      tradeComplexity: 0.25,
-      interactions: 0.20,
-      projectScope: 0.20,
-      dataCompleteness: 0.10
-    };
-    
-    let totalScore = 0;
-    
-    // Trade Count normalisieren (0-100)
-    const normalizedTradeCount = Math.min(100, factors.tradeCount * 10);
-    
-    totalScore += normalizedTradeCount * weights.tradeCount;
-    totalScore += factors.tradeComplexity * weights.tradeComplexity;
-    totalScore += factors.interactions * weights.interactions;
-    totalScore += factors.projectScope * weights.projectScope;
-    totalScore += factors.dataCompleteness * weights.dataCompleteness;
-    
-    return Math.round(totalScore);
-  }
-
-  getComplexityLevel(score) {
-    if (score >= 80) return 'SEHR_HOCH';
-    if (score >= 60) return 'HOCH';
-    if (score >= 40) return 'MITTEL';
-    if (score >= 20) return 'NIEDRIG';
-    return 'EINFACH';
-  }
-
-  getQuestionMultiplier(score) {
-    // Multiplier für Fragenanzahl basierend auf Komplexität
-    if (score >= 80) return 1.0;   // Maximum
-    if (score >= 60) return 0.85;
-    if (score >= 40) return 0.70;
-    if (score >= 20) return 0.55;
-    return 0.40;  // Minimum
-  }
-
-  getPositionMultiplier(score) {
-    // Multiplier für LV-Positionsanzahl
-    if (score >= 80) return 1.2;   // Mehr Details
-    if (score >= 60) return 1.0;
-    if (score >= 40) return 0.85;
-    if (score >= 20) return 0.70;
-    return 0.60;  // Kompakt
-  }
-}
-
-// ===========================================================================
-// INTELLIGENTE MENGENERMITTLUNG UND VALIDIERUNG
-// ===========================================================================
-
-class QuantityIntelligence {
-  constructor(projectData, tradeAnswers, intakeAnswers = []) {
-    this.projectData = projectData;
-    this.tradeAnswers = tradeAnswers;
-    this.intakeAnswers = intakeAnswers;
-    this.derivedQuantities = new Map();
-    this.validationWarnings = [];
-  }
-
-  /**
-   * Hauptmethode: Leitet alle Mengen intelligent ab
-   */
-  analyzeAndDeriveQuantities() {
-    // 1. Basis-Mengen extrahieren
-    const baseQuantities = this.extractBaseQuantities();
-    
-    // 2. Intelligente Ableitungen
-    this.deriveSecondaryQuantities(baseQuantities);
-    
-    // 3. Kreuzvalidierung zwischen Gewerken
-    this.crossValidateQuantities();
-    
-    // 4. Plausibilitätsprüfung
-    this.performPlausibilityChecks();
-    
-    return {
-      quantities: Object.fromEntries(this.derivedQuantities),
-      warnings: this.validationWarnings,
-      confidence: this.calculateOverallConfidence()
-    };
-  }
-
-  /**
-   * Extrahiert Basis-Mengen aus Antworten
-   */
-  extractBaseQuantities() {
-    const quantities = {
-      areas: {},      // Flächen in m²
-      lengths: {},    // Längen in m
-      counts: {},     // Stückzahlen
-      volumes: {},    // Volumen in m³
-      dimensions: {}  // Maße (Höhe, Breite, etc.)
-    };
-    
-    // Parse Trade-Antworten
-    this.tradeAnswers.forEach(answer => {
-      const text = (answer.answer || '').toLowerCase();
-      const question = (answer.question || '').toLowerCase();
-      
-      // Flächen
-      const areaMatch = text.match(/(\d+(?:[,\.]\d+)?)\s*(m²|qm|quadratmeter)/);
-      if (areaMatch) {
-        const value = parseFloat(areaMatch[1].replace(',', '.'));
-        const key = this.identifyQuantityKey(question, 'area');
-        quantities.areas[key] = value;
-        this.derivedQuantities.set(key, {
-          value: value,
-          unit: 'm²',
-          source: 'direct',
-          confidence: 1.0,
-          origin: 'trade_answer'
-        });
-      }
-      
-      // Stückzahlen
-      const countMatch = text.match(/(\d+)\s*(stück|stk|fenster|türen|heizkörper|steckdosen)/);
-      if (countMatch) {
-        const value = parseInt(countMatch[1]);
-        const key = this.identifyQuantityKey(question, 'count');
-        quantities.counts[key] = value;
-        this.derivedQuantities.set(key, {
-          value: value,
-          unit: 'Stk',
-          source: 'direct',
-          confidence: 1.0,
-          origin: 'trade_answer'
-        });
-      }
-      
-      // Höhenangaben
-      const heightMatch = text.match(/(\d+(?:[,\.]\d+)?)\s*(m|meter)\s*(hoch|höhe)/);
-      if (heightMatch) {
-        const value = parseFloat(heightMatch[1].replace(',', '.'));
-        quantities.dimensions.height = value;
-        this.derivedQuantities.set('raumhoehe', {
-          value: value,
-          unit: 'm',
-          source: 'direct',
-          confidence: 1.0,
-          origin: 'trade_answer'
-        });
-      }
-    });
-    
-    // Parse Intake-Antworten (haben oft allgemeinere Infos)
-    this.intakeAnswers.forEach(answer => {
-      const text = (answer.answer_text || answer.answer || '').toLowerCase();
-      
-      // Gebäudemaße
-      if (text.includes('geschoss') || text.includes('stockwerk')) {
-        const stockMatch = text.match(/(\d+)/);
-        if (stockMatch) {
-          quantities.counts.stockwerke = parseInt(stockMatch[1]);
-        }
-      }
-      
-      // Raumanzahl
-      if (text.includes('zimmer') || text.includes('räume')) {
-        const roomMatch = text.match(/(\d+)\s*(zimmer|räume)/);
-        if (roomMatch) {
-          quantities.counts.raeume = parseInt(roomMatch[1]);
-        }
-      }
-    });
-    
-    return quantities;
-  }
-
-  /**
-   * Leitet sekundäre Mengen intelligent ab
-   */
-  deriveSecondaryQuantities(base) {
-    // Wandfläche aus Raumfläche ableiten
-    if (base.areas.raumflaeche && !this.derivedQuantities.has('wandflaeche')) {
-      const raumhoehe = base.dimensions.height || 2.5; // Standard 2.5m
-      const raumflaeche = base.areas.raumflaeche;
-      
-      // Annahme: Raum ist annähernd quadratisch
-      const raumlaenge = Math.sqrt(raumflaeche);
-      const umfang = raumlaenge * 4;
-      const wandflaeche = umfang * raumhoehe;
-      
-      this.derivedQuantities.set('wandflaeche_brutto', {
-        value: wandflaeche,
-        unit: 'm²',
-        source: 'derived',
-        confidence: 0.85,
-        calculation: `Umfang (${umfang.toFixed(1)}m) × Höhe (${raumhoehe}m)`,
-        origin: 'calculated_from_raumflaeche'
-      });
-    }
-    
-    // Netto-Wandfläche (abzüglich Öffnungen)
-    if (this.derivedQuantities.has('wandflaeche_brutto') && base.counts.fenster) {
-      const brutto = this.derivedQuantities.get('wandflaeche_brutto').value;
-      const fensterFlaeche = base.counts.fenster * 2.1; // Standard 1.2×1.4m
-      const tuerFlaeche = (base.counts.tueren || 1) * 2.0; // Standard 1.0×2.0m
-      
-      const netto = brutto - fensterFlaeche - tuerFlaeche;
-      
-      this.derivedQuantities.set('wandflaeche_netto', {
-        value: Math.max(0, netto),
-        unit: 'm²',
-        source: 'derived',
-        confidence: 0.8,
-        calculation: `Brutto ${brutto.toFixed(1)}m² - Öffnungen ${(fensterFlaeche + tuerFlaeche).toFixed(1)}m²`,
-        origin: 'calculated_from_brutto'
-      });
-    }
-    
-    // Kabellängen aus Elektropunkten
-    if (base.counts.steckdosen || base.counts.schalter) {
-      const elektropunkte = (base.counts.steckdosen || 0) + (base.counts.schalter || 0);
-      const raeume = base.counts.raeume || Math.ceil(base.areas.raumflaeche / 20);
-      
-      // Pro Raum: 15-20m + Steigungen
-      const kabellaenge = (raeume * 17.5) + (elektropunkte * 3);
-      
-      this.derivedQuantities.set('kabellaenge', {
-        value: kabellaenge,
-        unit: 'm',
-        source: 'estimated',
-        confidence: 0.7,
-        calculation: `${raeume} Räume × 17.5m + ${elektropunkte} Punkte × 3m`,
-        origin: 'estimated_from_elektropunkte'
-      });
-    }
-    
-    // Rohrleitungen aus Sanitärausstattung
-    if (base.counts.bad || base.counts.wc) {
-      const sanitaerpunkte = (base.counts.bad || 0) + (base.counts.wc || 0);
-      const geschosse = base.counts.stockwerke || 1;
-      
-      // Basis + Steigungen + Zuschlag
-      const rohrlaenge = (sanitaerpunkte * 8) + (geschosse * 6) + 10;
-      
-      this.derivedQuantities.set('rohrlaenge_wasser', {
-        value: rohrlaenge,
-        unit: 'm',
-        source: 'estimated',
-        confidence: 0.65,
-        calculation: `Sanitärpunkte × 8m + Steigungen + Reserve`,
-        origin: 'estimated_from_sanitaer'
-      });
-    }
-    
-    // Estrichfläche = Bodenfläche
-    if (base.areas.raumflaeche && !this.derivedQuantities.has('estrichflaeche')) {
-      this.derivedQuantities.set('estrichflaeche', {
-        value: base.areas.raumflaeche,
-        unit: 'm²',
-        source: 'assumed',
-        confidence: 0.95,
-        calculation: 'Gleich Raumfläche',
-        origin: 'equals_raumflaeche'
-      });
-    }
-  }
-
-  /**
-   * Kreuzvalidierung zwischen zusammenhängenden Mengen
-   */
-  crossValidateQuantities() {
-    const checks = [];
-    
-    // Prüfung: Wandfläche vs. Bodenfläche
-    const wandflaeche = this.derivedQuantities.get('wandflaeche_netto')?.value || 
-                        this.derivedQuantities.get('wandflaeche_brutto')?.value;
-    const bodenflaeche = this.derivedQuantities.get('raumflaeche')?.value || 
-                         this.derivedQuantities.get('estrichflaeche')?.value;
-    
-    if (wandflaeche && bodenflaeche) {
-      const ratio = wandflaeche / bodenflaeche;
-      
-      // Normale Räume haben Verhältnis 2.5-4.0
-      if (ratio < 2.0) {
-        this.validationWarnings.push({
-          type: 'WARNING',
-          field: 'wandflaeche',
-          message: `Wandfläche erscheint zu niedrig (Verhältnis ${ratio.toFixed(1)}:1)`,
-          suggestion: 'Bitte Raumhöhe und Wandflächen prüfen'
-        });
-      } else if (ratio > 5.0) {
-        this.validationWarnings.push({
-          type: 'WARNING',
-          field: 'wandflaeche',
-          message: `Wandfläche erscheint zu hoch (Verhältnis ${ratio.toFixed(1)}:1)`,
-          suggestion: 'Vermutlich sehr hohe Räume oder viele Wände'
-        });
-      }
-    }
-    
-    // Prüfung: Fensteranzahl vs. Raumanzahl
-    const fenster = this.derivedQuantities.get('fenster')?.value;
-    const raeume = this.derivedQuantities.get('raeume')?.value;
-    
-    if (fenster && raeume) {
-      const fensterProRaum = fenster / raeume;
-      
-      if (fensterProRaum < 0.8) {
-        this.validationWarnings.push({
-          type: 'INFO',
-          field: 'fenster',
-          message: 'Wenige Fenster pro Raum - möglicherweise innenliegende Räume',
-          suggestion: 'OK für Keller/Bäder'
-        });
-      } else if (fensterProRaum > 3) {
-        this.validationWarnings.push({
-          type: 'INFO',
-          field: 'fenster',
-          message: 'Viele Fenster pro Raum - große Fensterfronten?',
-          suggestion: 'Prüfung empfohlen'
-        });
-      }
-    }
-  }
-
-  /**
-   * Plausibilitätschecks für unrealistische Werte
-   */
-  performPlausibilityChecks() {
-    // Maximale Raumhöhe
-    const raumhoehe = this.derivedQuantities.get('raumhoehe')?.value;
-    if (raumhoehe && raumhoehe > 4.0) {
-      this.validationWarnings.push({
-        type: 'WARNING',
-        field: 'raumhoehe',
-        message: `Ungewöhnlich hohe Räume (${raumhoehe}m)`,
-        suggestion: 'Altbau oder Gewerbe?'
-      });
-    }
-    
-    // Minimale Raumgröße
-    const raumflaeche = this.derivedQuantities.get('raumflaeche')?.value;
-    if (raumflaeche && raumflaeche < 10) {
-      this.validationWarnings.push({
-        type: 'WARNING',
-        field: 'raumflaeche',
-        message: `Sehr kleine Raumfläche (${raumflaeche}m²)`,
-        suggestion: 'Einzelraum oder Gesamtfläche?'
-      });
-    }
-  }
-
-  /**
-   * Berechnet Gesamt-Konfidenz der Mengen
-   */
-  calculateOverallConfidence() {
-    if (this.derivedQuantities.size === 0) return 0;
-    
-    let totalConfidence = 0;
-    let directCount = 0;
-    
-    this.derivedQuantities.forEach(item => {
-      totalConfidence += item.confidence;
-      if (item.source === 'direct') directCount++;
-    });
-    
-    const avgConfidence = totalConfidence / this.derivedQuantities.size;
-    const directRatio = directCount / this.derivedQuantities.size;
-    
-    // Gewichtete Konfidenz (direkte Werte sind besser)
-    return avgConfidence * (0.7 + 0.3 * directRatio);
-  }
-
-  /**
-   * Hilfsmethode: Identifiziert Schlüssel für Mengen
-   */
-  identifyQuantityKey(questionText, type) {
-    const q = questionText.toLowerCase();
-    
-    if (type === 'area') {
-      if (q.includes('wand')) return 'wandflaeche';
-      if (q.includes('boden')) return 'bodenflaeche';
-      if (q.includes('decke')) return 'deckenflaeche';
-      if (q.includes('dach')) return 'dachflaeche';
-      if (q.includes('fassade')) return 'fassadenflaeche';
-      if (q.includes('fliesen')) return 'fliesenflaeche';
-      if (q.includes('raum') || q.includes('gesamt')) return 'raumflaeche';
-      return 'flaeche_sonstige';
-    }
-    
-    if (type === 'count') {
-      if (q.includes('fenster')) return 'fenster';
-      if (q.includes('tür') || q.includes('tuer')) return 'tueren';
-      if (q.includes('steckdose')) return 'steckdosen';
-      if (q.includes('schalter')) return 'schalter';
-      if (q.includes('heizkörper')) return 'heizkoerper';
-      if (q.includes('bad')) return 'bad';
-      if (q.includes('wc')) return 'wc';
-      return 'anzahl_sonstige';
-    }
-    
-    return 'unbekannt';
-  }
-}
-
-// ===========================================================================
-// GEWERKE-INTERAKTIONS-MATRIX UND SEQUENZIERUNG
-// ===========================================================================
-
-const TRADE_INTERACTION_MATRIX = {
-  'ABBR': {
-    requires: [],
-    enables: ['ROH', 'ELEKT', 'SAN', 'HEI'],
-    conflicts: [],
-    parallel: [],
-    phase: 'preparation'
-  },
-  'GER': {
-    requires: [],
-    enables: ['DACH', 'FASS', 'FEN'],
-    conflicts: [],
-    parallel: ['ROH', 'ABBR'],
-    phase: 'preparation'
-  },
-  'ROH': {
-    requires: ['ABBR'],
-    enables: ['ELEKT', 'SAN', 'HEI', 'TRO', 'FEN'],
-    conflicts: [],
-    parallel: ['GER'],
-    phase: 'structure'
-  },
-  'ZIMM': {
-    requires: ['ROH'],
-    enables: ['DACH'],
-    conflicts: [],
-    parallel: ['FEN'],
-    phase: 'structure'
-  },
-  'DACH': {
-    requires: ['ZIMM', 'GER'],
-    enables: ['FEN', 'FASS'],
-    conflicts: [],
-    parallel: [],
-    phase: 'structure'
-  },
-  'FEN': {
-    requires: ['ROH', 'GER'],
-    enables: ['FASS', 'TRO', 'MAL'],
-    conflicts: [],
-    parallel: ['DACH'],
-    phase: 'structure'
-  },
-  'FASS': {
-    requires: ['FEN', 'GER'],
-    enables: ['MAL'],
-    conflicts: [],
-    parallel: ['DACH'],
-    phase: 'structure'
-  },
-  'ELEKT': {
-    requires: ['ROH'],
-    enables: ['TRO', 'MAL', 'BOD'],
-    conflicts: ['MAL'],
-    parallel: ['SAN', 'HEI'],
-    phase: 'technical'
-  },
-  'SAN': {
-    requires: ['ROH'],
-    enables: ['TRO', 'FLI', 'MAL'],
-    conflicts: ['FLI'],
-    parallel: ['ELEKT', 'HEI'],
-    phase: 'technical'
-  },
-  'HEI': {
-    requires: ['ROH'],
-    enables: ['ESTR', 'TRO', 'MAL'],
-    conflicts: ['ESTR'],
-    parallel: ['ELEKT', 'SAN'],
-    phase: 'technical'
-  },
-  'KLIMA': {
-    requires: ['ROH', 'TRO'],
-    enables: ['MAL'],
-    conflicts: [],
-    parallel: ['ELEKT'],
-    phase: 'technical'
-  },
-  'TRO': {
-    requires: ['ELEKT', 'SAN', 'HEI'],
-    enables: ['MAL', 'FLI', 'BOD'],
-    conflicts: [],
-    parallel: [],
-    phase: 'interior'
-  },
-  'ESTR': {
-    requires: ['HEI'],
-    enables: ['FLI', 'BOD'],
-    conflicts: ['BOD'],
-    parallel: [],
-    phase: 'interior'
-  },
-  'FLI': {
-    requires: ['TRO', 'SAN', 'ESTR'],
-    enables: ['MAL'],
-    conflicts: [],
-    parallel: [],
-    phase: 'finishing'
-  },
-  'MAL': {
-    requires: ['TRO', 'ELEKT', 'FLI'],
-    enables: ['BOD'],
-    conflicts: [],
-    parallel: [],
-    phase: 'finishing'
-  },
-  'BOD': {
-    requires: ['MAL', 'ESTR'],
-    enables: [],
-    conflicts: [],
-    parallel: [],
-    phase: 'finishing'
-  },
-  'TIS': {
-    requires: ['MAL', 'BOD'],
-    enables: [],
-    conflicts: [],
-    parallel: ['SCHL'],
-    phase: 'finishing'
-  },
-  'SCHL': {
-    requires: ['ROH'],
-    enables: [],
-    conflicts: [],
-    parallel: ['TIS'],
-    phase: 'finishing'
-  },
-  'AUSS': {
-    requires: [],
-    enables: [],
-    conflicts: [],
-    parallel: ['FASS', 'DACH'],
-    phase: 'exterior'
-  },
-  'PV': {
-    requires: ['DACH', 'ELEKT'],
-    enables: [],
-    conflicts: [],
-    parallel: [],
-    phase: 'technical'
-  }
-};
-
-/**
- * Analysiert die optimale Reihenfolge der Gewerke
- */
-function analyzeTradeSequencing(selectedTrades) {
-  const phases = {
-    preparation: [],    // Abbruch, Gerüst
-    structure: [],      // Rohbau, Dach, Fenster
-    technical: [],      // Elektro, Sanitär, Heizung
-    interior: [],       // Trockenbau, Estrich
-    finishing: [],      // Fliesen, Maler, Boden
-    exterior: []        // Außenanlagen
-  };
-  
-  // Sortiere Trades nach Phasen
-  selectedTrades.forEach(trade => {
-    const matrix = TRADE_INTERACTION_MATRIX[trade.code];
-    if (matrix) {
-      phases[matrix.phase].push({
-        ...trade,
-        dependencies: matrix
-      });
-    }
-  });
-  
-  // Optimiere Reihenfolge innerhalb der Phasen
-  const sequence = [];
-  const phaseOrder = ['preparation', 'structure', 'technical', 'interior', 'finishing', 'exterior'];
-  
-  phaseOrder.forEach(phaseName => {
-    const phaseTrades = phases[phaseName];
-    if (phaseTrades.length > 0) {
-      // Sortiere nach Abhängigkeiten
-      const sorted = sortByDependencies(phaseTrades);
-      sequence.push(...sorted);
-    }
-  });
-  
-  return {
-    sequence,
-    phases,
-    criticalPath: identifyCriticalPath(sequence),
-    parallelizable: identifyParallelWork(sequence),
-    conflicts: identifyConflicts(selectedTrades),
-    duration: estimateTotalDuration(sequence)
-  };
-}
-
-/**
- * Sortiert Trades innerhalb einer Phase nach Abhängigkeiten
- */
-function sortByDependencies(trades) {
-  const sorted = [];
-  const remaining = [...trades];
-  const maxIterations = trades.length * 2;
-  let iterations = 0;
-  
-  while (remaining.length > 0 && iterations < maxIterations) {
-    iterations++;
-    
-    for (let i = 0; i < remaining.length; i++) {
-      const trade = remaining[i];
-      const deps = trade.dependencies.requires || [];
-      
-      // Prüfe ob alle Abhängigkeiten erfüllt sind
-      const allDepsInSorted = deps.every(depCode => 
-        sorted.some(s => s.code === depCode)
-      );
-      
-      if (allDepsInSorted || deps.length === 0) {
-        sorted.push(trade);
-        remaining.splice(i, 1);
-        break;
-      }
-    }
-  }
-  
-  // Falls nicht alle sortiert werden konnten, füge Rest hinzu
-  sorted.push(...remaining);
-  
-  return sorted;
-}
-
-/**
- * Identifiziert den kritischen Pfad
- */
-function identifyCriticalPath(sequence) {
-  const critical = [];
-  
-  sequence.forEach(trade => {
-    const deps = TRADE_INTERACTION_MATRIX[trade.code];
-    if (deps && deps.enables.length > 0) {
-      // Trade ist kritisch wenn es andere Trades blockiert
-      const enablesInSequence = deps.enables.filter(code =>
-        sequence.some(t => t.code === code)
-      );
-      
-      if (enablesInSequence.length > 0) {
-        critical.push({
-          code: trade.code,
-          name: trade.name,
-          enables: enablesInSequence
-        });
-      }
-    }
-  });
-  
-  return critical;
-}
-
-/**
- * Identifiziert parallel ausführbare Arbeiten
- */
-function identifyParallelWork(sequence) {
-  const parallel = [];
-  
-  sequence.forEach((trade, index) => {
-    const deps = TRADE_INTERACTION_MATRIX[trade.code];
-    if (deps && deps.parallel.length > 0) {
-      const parallelInSequence = deps.parallel.filter(code =>
-        sequence.some(t => t.code === code)
-      );
-      
-      if (parallelInSequence.length > 0) {
-        parallel.push({
-          trade: trade.code,
-          canParallelWith: parallelInSequence
-        });
-      }
-    }
-  });
-  
-  return parallel;
-}
-
-/**
- * Identifiziert potenzielle Konflikte
- */
-function identifyConflicts(trades) {
-  const conflicts = [];
-  
-  trades.forEach(trade => {
-    const deps = TRADE_INTERACTION_MATRIX[trade.code];
-    if (deps && deps.conflicts.length > 0) {
-      deps.conflicts.forEach(conflictCode => {
-        if (trades.some(t => t.code === conflictCode)) {
-          conflicts.push({
-            trade1: trade.code,
-            trade2: conflictCode,
-            reason: 'Diese Gewerke sollten nicht gleichzeitig arbeiten'
-          });
-        }
-      });
-    }
-  });
-  
-  return conflicts;
-}
-
-/**
- * Schätzt die Gesamtdauer basierend auf Sequenzierung
- */
-function estimateTotalDuration(sequence) {
-  const baseDurations = {
-    'ABBR': { min: 3, max: 10 },
-    'GER': { min: 1, max: 2 },
-    'ROH': { min: 10, max: 30 },
-    'ZIMM': { min: 5, max: 15 },
-    'DACH': { min: 5, max: 15 },
-    'FEN': { min: 2, max: 5 },
-    'FASS': { min: 10, max: 20 },
-    'ELEKT': { min: 5, max: 15 },
-    'SAN': { min: 5, max: 15 },
-    'HEI': { min: 5, max: 15 },
-    'KLIMA': { min: 3, max: 10 },
-    'TRO': { min: 5, max: 10 },
-    'ESTR': { min: 3, max: 7 },
-    'FLI': { min: 3, max: 10 },
-    'MAL': { min: 3, max: 10 },
-    'BOD': { min: 2, max: 5 },
-    'TIS': { min: 2, max: 5 },
-    'SCHL': { min: 2, max: 5 },
-    'AUSS': { min: 5, max: 15 },
-    'PV': { min: 2, max: 5 }
-  };
-  
-  let totalMin = 0;
-  let totalMax = 0;
-  const parallelReduction = 0.7; // 30% Zeitersparnis bei Parallelarbeit
-  
-  sequence.forEach(trade => {
-    const duration = baseDurations[trade.code] || { min: 3, max: 7 };
-    const deps = TRADE_INTERACTION_MATRIX[trade.code];
-    
-    if (deps && deps.parallel.length > 0) {
-      // Reduziere Zeit wenn parallel gearbeitet werden kann
-      totalMin += duration.min * parallelReduction;
-      totalMax += duration.max * parallelReduction;
-    } else {
-      totalMin += duration.min;
-      totalMax += duration.max;
-    }
-  });
-  
-  return {
-    minDays: Math.round(totalMin),
-    maxDays: Math.round(totalMax),
-    avgDays: Math.round((totalMin + totalMax) / 2),
-    formatted: `${Math.round(totalMin)} - ${Math.round(totalMax)} Arbeitstage`
-  };
-}
-
-// ===========================================================================
 // HELPER FUNCTIONS
 // ===========================================================================
 
@@ -1598,22 +706,20 @@ extractedData.impliedTrades = Object.values(uniqueTrades);
  * Intelligente Antwort-Validierung und Schätzung
  */
 async function validateAndEstimateAnswers(answers, tradeCode, projectContext) {
-  // NEU: Nutze abgeleitete Mengen falls vorhanden
-  const derivedQuantities = projectContext.derivedQuantities || {};
-  
   const systemPrompt = `Du bist ein erfahrener Bausachverständiger mit 20+ Jahren Erfahrung.
 Deine Aufgabe: Validiere Nutzerantworten und erstelle realistische Schätzungen für unsichere Angaben.
 
 WICHTIGE REGELN:
 1. Prüfe die Plausibilität aller Mengenangaben
-2. Bei "unsicher" oder fehlenden kritischen Angaben: Erstelle realistische Schätzungen
-3. NUTZE ABGELEITETE MENGEN als Basis für Schätzungen
+2. Bei "unsicher" oder fehlenden kritischen Angaben: Erstelle realistische Schätzungen basierend auf:
+   - Typischen Werten für ähnliche Projekte
+   - Ableitungen aus anderen Angaben (z.B. Raumgröße → Kabellänge)
+   - Branchenüblichen Standards
+3. Berechne abgeleitete Werte intelligent:
+   - Kabellängen: ca. 15-20m pro Raum + Steigungen
+   - Rohrleitungen: Direkte Wege + 20% Zuschlag
+   - Materialmengen: Flächen × Erfahrungswerte
 4. Dokumentiere ALLE Annahmen transparent
-
-BEREITS ABGELEITETE MENGEN:
-${Object.entries(derivedQuantities).map(([key, data]) => 
-  `- ${key}: ${data.value} ${data.unit} (Konfidenz: ${data.confidence})`
-).join('\n')}
 
 OUTPUT (NUR valides JSON):
 {
@@ -1624,8 +730,7 @@ OUTPUT (NUR valides JSON):
       "validatedValue": "number",
       "unit": "m²/m/Stk/kg/l",
       "assumption": "Detaillierte Erklärung der Schätzgrundlage",
-      "confidence": 0.5-1.0,
-      "derivedFrom": "Name der abgeleiteten Menge oder null"
+      "confidence": 0.5-1.0
     }
   ],
   "derivedValues": {
@@ -1634,16 +739,14 @@ OUTPUT (NUR valides JSON):
     "volume": "number",
     "additionalMetrics": {}
   },
-  "warnings": ["Liste von Hinweisen"],
-  "usedDerivedQuantities": ["Liste der verwendeten abgeleiteten Mengen"]
+  "warnings": ["Liste von Hinweisen auf unrealistische oder fehlende Angaben"]
 }`;
 
   const userPrompt = `Gewerk: ${tradeCode}
 Projektkontext: ${JSON.stringify(projectContext)}
 Nutzerantworten: ${JSON.stringify(answers)}
-Abgeleitete Mengen: ${JSON.stringify(derivedQuantities)}
 
-Validiere diese Antworten und nutze die abgeleiteten Mengen für bessere Schätzungen.`;
+Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
 
   try {
     const response = await llmWithPolicy('validation', [
@@ -1664,20 +767,11 @@ Validiere diese Antworten und nutze die abgeleiteten Mengen für bessere Schätz
 }
 
 /**
- * Intelligente Fragenanzahl-Ermittlung mit zentraler Komplexitätsanalyse
- * KOMBINIERT: Alte gewerkespezifische Logik + neuer Analyzer
+ * Intelligente, dynamische Fragenanzahl-Ermittlung
+ * VERBESSERT: Realistischere Bewertung der vorhandenen Informationen
  */
 function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = []) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
-  
-  // Nutze den neuen Analyzer für Basis-Komplexität
-  const analyzer = new ProjectComplexityAnalyzer(
-    projectContext,
-    [{ code: tradeCode }],
-    intakeAnswers
-  );
-  
-  const complexity = analyzer.analyze();
   
   // Basis-Range für das Gewerk
   const baseRange = {
@@ -1687,14 +781,21 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
   };
   
   // Analysiere wie viel Information bereits vorhanden ist
-  let informationCompleteness = complexity.factors.dataCompleteness;
+  let informationCompleteness = 0;
   let missingCriticalInfo = [];
   
-  // Prüfe Projektbeschreibung - DETAILLIERTE GEWERKE-SPEZIFISCHE PRÜFUNGEN
+  // Prüfe Projektbeschreibung
   if (projectContext.description) {
     const desc = projectContext.description.toLowerCase();
+    const wordCount = desc.split(' ').length;
     
-    // ALLE URSPRÜNGLICHEN GEWERKE-SPEZIFISCHEN PRÜFUNGEN BEIBEHALTEN
+    // REALISTISCHERE Bewertung der Beschreibung
+    if (wordCount > 100) informationCompleteness += 20;
+    else if (wordCount > 50) informationCompleteness += 15;
+    else if (wordCount > 20) informationCompleteness += 10;
+    else informationCompleteness += 5;
+    
+    // Gewerke-spezifische Prüfungen mit höherer Gewichtung
     switch(tradeCode) {
       case 'MAL': // Malerarbeiten
         if (desc.match(/\d+\s*(m²|qm|quadratmeter)/)) {
@@ -1908,41 +1009,66 @@ case 'INT':
   
   // Prüfe Intake-Antworten (haben mehr Gewicht)
   if (intakeAnswers.length > 0) {
+    // Jede beantwortete Intake-Frage erhöht die Vollständigkeit
     informationCompleteness += Math.min(40, intakeAnswers.length * 3);
     
+    // Prüfe auf konkrete Mengenangaben in Antworten
     const hasNumbers = intakeAnswers.filter(a => 
       a.answer && a.answer.match(/\d+/)
     ).length;
     informationCompleteness += Math.min(20, hasNumbers * 5);
   }
   
-  // Kombiniere beide Bewertungen
+  // Budget gibt Aufschluss über Projektumfang
+  if (projectContext.budget && !projectContext.budget.includes('unsicher')) {
+    informationCompleteness += 10;
+  }
+  
+  // Kategorie kann auch helfen
+  if (projectContext.category) {
+    const cat = projectContext.category.toLowerCase();
+    if (cat.includes('renovierung') || cat.includes('sanierung')) {
+      informationCompleteness += 5;
+    }
+  }
+  
+  // Berechne finale Fragenanzahl
   informationCompleteness = Math.min(100, informationCompleteness);
   
-  // Berechne finale Fragenanzahl mit BEIDEN Faktoren
+  // VERBESSERTE Reduktionslogik
   let targetCount;
-  const complexityMultiplier = complexity.questionMultiplier;
   
-  // Detaillierte Reduktionslogik basierend auf Vollständigkeit UND Komplexität
   if (baseRange.complexity === 'EINFACH') {
+    // Einfache Gewerke brauchen weniger Fragen
     if (informationCompleteness >= 70) {
-      targetCount = baseRange.min;
+      targetCount = baseRange.min; // Minimum
     } else if (informationCompleteness >= 50) {
       targetCount = Math.round(baseRange.min + 2);
+    } else if (informationCompleteness >= 30) {
+      targetCount = Math.round((baseRange.min + baseRange.max) / 2);
     } else {
-      targetCount = Math.round(baseRange.min + (baseRange.max - baseRange.min) * complexityMultiplier);
+      targetCount = baseRange.max - 2;
     }
   } else if (baseRange.complexity === 'SEHR_HOCH' || baseRange.complexity === 'HOCH') {
+    // Komplexe Gewerke brauchen mehr Details
     if (informationCompleteness >= 80) {
       targetCount = Math.round(baseRange.min + 5);
     } else if (informationCompleteness >= 60) {
       targetCount = Math.round((baseRange.min + baseRange.max) / 2);
+    } else if (informationCompleteness >= 40) {
+      targetCount = Math.round(baseRange.max - 5);
     } else {
-      targetCount = Math.round(baseRange.min + (baseRange.max - baseRange.min) * complexityMultiplier);
+      targetCount = baseRange.max;
     }
   } else {
     // Mittlere Komplexität
-    targetCount = Math.round(baseRange.min + (baseRange.max - baseRange.min) * complexityMultiplier);
+    if (informationCompleteness >= 70) {
+      targetCount = baseRange.min + 2;
+    } else if (informationCompleteness >= 40) {
+      targetCount = Math.round((baseRange.min + baseRange.max) / 2);
+    } else {
+      targetCount = baseRange.max - 3;
+    }
   }
   
   // Kritische fehlende Infos erhöhen Fragenbedarf
@@ -1952,8 +1078,21 @@ case 'INT':
   targetCount = Math.max(baseRange.min, targetCount);
   targetCount = Math.min(baseRange.max, targetCount);
   
+  // SPEZIALFALL: Sehr einfache Projekte
+  if (projectContext.description) {
+    const desc = projectContext.description.toLowerCase();
+    // "Zimmer streichen" oder ähnlich einfache Aufgaben
+    if ((desc.includes('zimmer') || desc.includes('raum')) && 
+        (desc.includes('streichen') || desc.includes('malen')) &&
+        tradeCode === 'MAL') {
+      targetCount = Math.min(targetCount, 8); // Maximal 8 Fragen
+      if (desc.match(/\d+\s*(m²|qm)/)) {
+        targetCount = Math.min(targetCount, 5); // Mit Flächenangabe nur 5 Fragen
+      }
+    }
+  }
+  
   console.log(`[QUESTIONS] Intelligent count for ${tradeCode}:`);
-  console.log(`  -> Complexity: ${complexity.level} (Score: ${complexity.score})`);
   console.log(`  -> Information completeness: ${informationCompleteness}%`);
   console.log(`  -> Missing critical info: ${missingCriticalInfo.join(', ') || 'none'}`);
   console.log(`  -> Base range: ${baseRange.min}-${baseRange.max}`);
@@ -1962,9 +1101,7 @@ case 'INT':
   return {
     count: targetCount,
     completeness: informationCompleteness,
-    missingInfo: missingCriticalInfo,
-    complexity: complexity.level,
-    factors: complexity.factors
+    missingInfo: missingCriticalInfo
   };
 }
 
@@ -1975,19 +1112,12 @@ case 'INT':
 function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
   
-  // Nutze Analyzer für Multiplikator
-  const analyzer = new ProjectComplexityAnalyzer(
-    projectContext,
-    [{ code: tradeCode }],
-    []
-  );
+  let scopeMultiplier = 1.0;
+  let minPositions = 5;
+  let maxPositions = 50;
   
-  const complexity = analyzer.analyze();
-  
-  // WICHTIG: Variablen definieren
   const description = (projectContext.description || '').toLowerCase();
   const answers = projectContext.answers || [];
-  let scopeMultiplier = 1.0;
   
   // Helper: Finde Antwort mit Mengenangabe
   const findQuantityAnswer = (keywords) => {
@@ -1995,10 +1125,6 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
       keywords.some(kw => (a.question || '').toLowerCase().includes(kw))
     );
   };
-  
-  // Bestehende Basis-Logik bleibt
-  let minPositions = 5;
-  let maxPositions = 50;
   
   // GEWERKE-SPEZIFISCHE LOGIK
   switch(tradeCode) {
@@ -2366,27 +1492,26 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
       }
   }
   
-   // Anpassung basierend auf Fragenanzahl (sekundär)
+  // Anpassung basierend auf Fragenanzahl (sekundär)
   const questionFactor = Math.min(1.5, Math.max(0.5, questionCount / 15));
   
-  // Finale Berechnung MIT beiden Faktoren
-  const finalMin = Math.round(minPositions * scopeMultiplier * complexity.positionMultiplier * questionFactor);
-  const finalMax = Math.round(maxPositions * scopeMultiplier * complexity.positionMultiplier * questionFactor);
+  // Finale Berechnung
+  const finalMin = Math.round(minPositions * scopeMultiplier * questionFactor);
+  const finalMax = Math.round(maxPositions * scopeMultiplier * questionFactor);
   
   // Sicherstellen dass Min/Max sinnvoll sind
   const adjustedMin = Math.max(3, Math.min(40, finalMin));
   const adjustedMax = Math.min(50, Math.max(adjustedMin + 2, finalMax));
   
   console.log(`[LV-ORIENTATION] ${tradeCode}: ${adjustedMin}-${adjustedMax} positions`);
-  console.log(`  -> Scope: ${scopeMultiplier}x, Questions: ${questionCount}, Complexity: ${complexity.level}`);
+  console.log(`  -> Scope: ${scopeMultiplier}x, Questions: ${questionCount}, Factor: ${questionFactor}`);
   
   return {
     min: adjustedMin,
     max: adjustedMax,
     base: Math.round((adjustedMin + adjustedMax) / 2),
     ratio: tradeConfig.targetPositionsRatio,
-    scopeMultiplier: scopeMultiplier,
-    complexity: complexity.level
+    scopeMultiplier: scopeMultiplier
   };
 }
 
@@ -2946,33 +2071,6 @@ if (needsPV && !detectedTrades.some(t => t.code === 'PV')) {
     });
   }
 }
-
-// NEU: Analysiere Gewerke-Sequenzierung
-const sequenceAnalysis = analyzeTradeSequencing(detectedTrades);
-
-console.log('[DETECT] Trade sequencing analysis:', {
-  phases: Object.keys(sequenceAnalysis.phases).map(p => 
-    `${p}: ${sequenceAnalysis.phases[p].length} trades`
-  ),
-  criticalPath: sequenceAnalysis.criticalPath.length,
-  parallelizable: sequenceAnalysis.parallelizable.length,
-  estimatedDuration: sequenceAnalysis.duration.formatted
-});
-
-// Füge Sequenzierungs-Info zu den Trades hinzu
-detectedTrades = detectedTrades.map(trade => {
-  const sequenceInfo = sequenceAnalysis.sequence.find(s => s.code === trade.code);
-  return {
-    ...trade,
-    phase: TRADE_INTERACTION_MATRIX[trade.code]?.phase || 'unknown',
-    dependencies: TRADE_INTERACTION_MATRIX[trade.code]?.requires || [],
-    enables: TRADE_INTERACTION_MATRIX[trade.code]?.enables || [],
-    canParallelWith: TRADE_INTERACTION_MATRIX[trade.code]?.parallel || []
-  };
-});
-
-// Speichere Sequenzierung in Metadaten
-project.sequencing = sequenceAnalysis;
     
     console.log('[DETECT] Successfully detected trades:', detectedTrades);
     return detectedTrades;
@@ -3142,8 +2240,9 @@ WICHTIG:
     }
   }
   
+  // Für die Fragenanzahl verwenden wir die neue adaptive Logik
   const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
-  const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, answeredQuestions);
+  const intelligentCount = getAdaptiveQuestionCount(tradeCode, projectContext, answeredQuestions);
   // Bei manuell hinzugefügten: Erste Frage MUSS Kontextfrage sein
 let targetQuestionCount = intelligentCount.count;
 let forceContextQuestion = false;
@@ -3739,20 +2838,11 @@ if (tradeCode !== 'INT') {
   console.log(`[QUESTIONS] INT: Skipping trade validation for intake questions`);
 }
 
-// Zähle Fragen vor Duplikat-Filter
-const beforeDuplicates = questions.length;
-    
-// NEU: Post-Processing Filter anwenden
-console.log(`[DEBUG] tradeCode: "${tradeCode}", questions before filter: ${questions.length}`);
-if (tradeCode !== 'INT') {
-  questions = filterDuplicateQuestions(questions, allAnsweredInfo.fromIntake);
-} else {
-  console.log(`[QUESTIONS] INT: Skipping duplicate filter for intake questions`);
-}
-console.log(`[QUESTIONS] After duplicate filter: ${questions.length} questions (removed ${beforeDuplicates - questions.length})`);
-console.log(`[DEBUG] Final question count: ${questions.length}`);
-    
-  return Array.isArray(questions) ? questions : [];
+  // Zähle Fragen vor Duplikat-Filter
+  const beforeDuplicates = questions.length;
+  // Hinweis: Duplikate werden erst nach vollständiger Verarbeitung entfernt
+  console.log(`[DEBUG] tradeCode: "${tradeCode}", questions before initial filter: ${questions.length}`);
+  // Keine unmittelbare Rückgabe – weitere Verarbeitung folgt
 
 // Entferne problematische Zeichen die Claude manchmal einfügt
 cleanedResponse = cleanedResponse
@@ -4099,8 +3189,7 @@ filteredQuestions = processedQuestions.filter(newQ => {
   
   // Prüfe ob Frage bereits beantwortet wurde
   const isDuplicate = knownInfo.some(known => {
-    if (questionLower === known || 
-    (known.length > 10 && questionLower.includes(known))) {
+    if (questionLower.includes(known)) {
       console.log(`[QUESTIONS] Filtered duplicate: "${newQ.question}" (matches: ${known})`);
       return true;
     }
@@ -4264,7 +3353,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
 
   // NUR EXKLUSIVE Begriffe - nur DIESES Gewerk darf fragen
   const STRICTLY_EXCLUSIVE = {
-    'ELEKT': ['steckdose', 'schalter', 'lampe', 'kabel', 'sicherung', 'leitung', 'verteiler', 'fi-schalter'],
+    'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'leitung', 'verteiler', 'fi-schalter'],
     'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
     'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
     'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'türöffnung', 'abgehängte decke'],
@@ -4278,12 +3367,12 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'DACH': ['dachfenster', 'dachziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'dachdämmung', 'unterspannbahn'],
     'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
     'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
-    'ZIMM': ['holzbau', 'dachstuhl', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk', 'sparren', 'pfetten'],
+    'ZIMM': ['holzbau', 'dachstuhl', 'balken', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk', 'sparren', 'pfetten'],
     'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
     'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
     'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
     'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
-    'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau']
+    'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'schutt']
   };
 
   const filteredQuestions = [];
@@ -4493,7 +3582,8 @@ async function generateDetailedLV(projectId, tradeId) {
   
   // NEU: Orientierungswerte für Positionsanzahl berechnen (nur als Richtwert!)
 const answeredQuestionCount = tradeAnswers.length;
-const orientation = getPositionOrientation(trade.code, answeredQuestionCount);
+  // Verwende adaptive Positionsberechnung basierend auf Frageanzahl
+  const orientation = getAdaptivePositionCount(trade.code, answeredQuestionCount, { description: project.description, category: project.category, budget: project.budget });
 console.log(`[LV] Orientation for ${trade.code}: ${orientation.min}-${orientation.max} positions from ${answeredQuestionCount} questions`);
   
   // NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
@@ -4512,38 +3602,16 @@ console.log(`[LV] Orientation for ${trade.code}: ${orientation.min}-${orientatio
     additionalVorbemerkungen.push('Gerüstkosten sind in separatem Gewerk erfasst');
   }
   
-  // NEU: Nutze QuantityIntelligence für bessere Mengenermittlung
-const quantityAnalyzer = new QuantityIntelligence(
-  project,
-  tradeAnswers,
-  intakeAnswers
-);
-
-const intelligentQuantities = quantityAnalyzer.analyzeAndDeriveQuantities();
-
-console.log(`[LV] Intelligent quantities for ${trade.code}:`, {
-  derived: intelligentQuantities.quantities,
-  confidence: intelligentQuantities.confidence,
-  warnings: intelligentQuantities.warnings
-});
-
-// Erweiterte Validierung mit abgeleiteten Mengen
-const validationResult = await validateAndEstimateAnswers(
-  tradeAnswers,
-  trade.code,
-  {
-    category: project.category,
-    description: project.description,
-    intakeAnswers,
-    derivedQuantities: intelligentQuantities.quantities  // NEU: Übergebe abgeleitete Mengen
-  }
-);
-
-// Kombiniere Validierungsergebnisse
-if (intelligentQuantities.warnings.length > 0) {
-  if (!validationResult.warnings) validationResult.warnings = [];
-  validationResult.warnings.push(...intelligentQuantities.warnings.map(w => w.message));
-}
+  // Validiere und schätze fehlende Werte
+  const validationResult = await validateAndEstimateAnswers(
+    tradeAnswers,
+    trade.code,
+    {
+      category: project.category,
+      description: project.description,
+      intakeAnswers
+    }
+  );
 
   const lvPrompt = await getPromptForTrade(tradeId, 'lv');
   if (!lvPrompt) throw new Error('LV prompt missing for trade');
@@ -4953,23 +4021,6 @@ ${tradeAnswers.map(a =>
 
 VALIDIERTE WERTE:
 ${validationResult ? JSON.stringify(validationResult, null, 2) : 'Keine Validierung verfügbar'}
-
-INTELLIGENTE MENGENABLEITUNG:
-${intelligentQuantities ? `
-Abgeleitete Mengen (Konfidenz: ${(intelligentQuantities.confidence * 100).toFixed(0)}%):
-${Object.entries(intelligentQuantities.quantities).map(([key, data]) => 
-  `- ${key}: ${data.value} ${data.unit} (${data.source}, Konfidenz: ${(data.confidence * 100).toFixed(0)}%)
-    Berechnung: ${data.calculation || 'Direkt erfasst'}`
-).join('\n')}
-
-${intelligentQuantities.warnings.length > 0 ? `
-WICHTIGE HINWEISE:
-${intelligentQuantities.warnings.map(w => `- ${w.type}: ${w.message}`).join('\n')}
-` : ''}
-` : 'Keine intelligente Mengenableitung verfügbar'}
-
-KRITISCH: Nutze die abgeleiteten Mengen für präzisere LV-Positionen!
-Bei niedriger Konfidenz: Kennzeichne als geschätzt.
 
 WICHTIG:
 1. Erstelle NUR Positionen für explizit erfragte Leistungen
@@ -6850,31 +5901,6 @@ app.post('/api/projects', async (req, res) => {
       budget,
       extractedData // NEU: Weitergabe der extrahierten Daten
     });
-
-    // NEU: Erweiterte Projekt-Analyse mit Sequenzierung
-const sequenceAnalysis = analyzeTradeSequencing(detectedTrades);
-const complexityAnalyzer = new ProjectComplexityAnalyzer(
-  project,
-  detectedTrades,
-  []
-);
-const complexityAnalysis = complexityAnalyzer.analyze();
-
-// Speichere erweiterte Metadaten
-await query(
-  `UPDATE projects 
-   SET metadata = metadata || $1 
-   WHERE id = $2`,
-  [
-    JSON.stringify({
-      extracted: extractedData,
-      sequencing: sequenceAnalysis,
-      complexity: complexityAnalysis,
-      estimatedDuration: sequenceAnalysis.duration
-    }),
-    project.id
-  ]
-);
     
     // Nur erkannte Trades hinzufügen
     console.log(`[PROJECT] Creating project ${project.id} with ${detectedTrades.length} detected trades`);
@@ -7188,51 +6214,6 @@ if (summary.trades && Array.isArray(summary.trades)) {
   }));
 }
 
-// NEU: Analysiere Gewerke-Abhängigkeiten für Empfehlungen
-if (summary.trades && Array.isArray(summary.trades)) {
-  const recommendedCodes = summary.trades.map(t => t.code);
-  const allRecommended = [...recommendedCodes];
-  
-  // Prüfe ob abhängige Gewerke fehlen
-  recommendedCodes.forEach(code => {
-    const deps = TRADE_INTERACTION_MATRIX[code];
-    if (deps && deps.requires) {
-      deps.requires.forEach(reqCode => {
-        if (!allRecommended.includes(reqCode)) {
-          // Füge fehlendes abhängiges Gewerk hinzu
-          const reqTrade = availableTrades.find(t => t.code === reqCode);
-          if (reqTrade) {
-            summary.trades.push({
-              code: reqCode,
-              name: reqTrade.name,
-              reason: `Erforderlich für ${code}`,
-              priority: 'hoch',
-              isDependency: true
-            });
-            allRecommended.push(reqCode);
-          }
-        }
-      });
-    }
-  });
-  
-  // Sortiere nach Abhängigkeiten
-  const sequenceAnalysis = analyzeTradeSequencing(
-    summary.trades.map(t => ({ code: t.code, name: t.name }))
-  );
-  
-  // Füge Sequenzierungs-Info zur Summary hinzu
-  summary.sequencing = {
-    recommendedOrder: sequenceAnalysis.sequence.map(s => s.code),
-    phases: Object.keys(sequenceAnalysis.phases).reduce((acc, phase) => {
-      acc[phase] = sequenceAnalysis.phases[phase].map(t => t.code);
-      return acc;
-    }, {}),
-    estimatedDuration: sequenceAnalysis.duration,
-    parallelizable: sequenceAnalysis.parallelizable
-  };
-}
-    
 // NEU: Analysiere Intake-Antworten für zusätzliche Gewerke
 const additionalTrades = [];
 const processedCodes = new Set(); // Verhindere Duplikate
@@ -8994,129 +7975,6 @@ console.log('[OPTIMIZATION] Final total:', optimizations.totalPossibleSaving);
   } catch (err) {
     console.error('Optimization generation failed:', err);
     res.status(500).json({ error: 'Fehler bei der Optimierung' });
-  }
-});
-
-// Get project timeline and sequencing
-app.get('/api/projects/:projectId/timeline', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    // Hole Projekt mit Metadaten
-    const projectResult = await query(
-      'SELECT * FROM projects WHERE id = $1',
-      [projectId]
-    );
-    
-    if (projectResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    
-    const project = projectResult.rows[0];
-    const metadata = typeof project.metadata === 'string' 
-      ? JSON.parse(project.metadata) 
-      : project.metadata;
-    
-    // Hole alle Projekt-Trades
-    const trades = await getProjectTrades(projectId);
-    
-    // Generiere Timeline wenn noch nicht vorhanden
-    if (!metadata?.sequencing) {
-      const sequenceAnalysis = analyzeTradeSequencing(trades);
-      
-      // Speichere für zukünftige Nutzung
-      await query(
-        `UPDATE projects 
-         SET metadata = metadata || $1 
-         WHERE id = $2`,
-        [
-          JSON.stringify({ sequencing: sequenceAnalysis }),
-          projectId
-        ]
-      );
-      
-      metadata.sequencing = sequenceAnalysis;
-    }
-    
-    // Erweitere mit LV-Status
-    const lvsResult = await query(
-      `SELECT trade_id, created_at 
-       FROM lvs 
-       WHERE project_id = $1`,
-      [projectId]
-    );
-    
-    const lvsMap = new Map(
-      lvsResult.rows.map(row => [row.trade_id, row.created_at])
-    );
-    
-    // Erstelle detaillierte Timeline
-    const timeline = {
-      phases: {},
-      totalDuration: metadata.sequencing.duration,
-      criticalPath: metadata.sequencing.criticalPath,
-      currentPhase: null,
-      progress: 0
-    };
-    
-    // Ordne Trades den Phasen zu mit Status
-    const phaseOrder = ['preparation', 'structure', 'technical', 'interior', 'finishing', 'exterior'];
-    
-    phaseOrder.forEach(phaseName => {
-      timeline.phases[phaseName] = {
-        name: phaseName,
-        trades: [],
-        duration: { min: 0, max: 0 },
-        status: 'pending'
-      };
-      
-      trades.forEach(trade => {
-        const tradePhase = TRADE_INTERACTION_MATRIX[trade.code]?.phase;
-        if (tradePhase === phaseName) {
-          timeline.phases[phaseName].trades.push({
-            ...trade,
-            hasLV: lvsMap.has(trade.id),
-            lvCreatedAt: lvsMap.get(trade.id) || null,
-            dependencies: TRADE_INTERACTION_MATRIX[trade.code]?.requires || [],
-            canParallelWith: TRADE_INTERACTION_MATRIX[trade.code]?.parallel || []
-          });
-        }
-      });
-      
-      // Berechne Phasen-Dauer
-      if (timeline.phases[phaseName].trades.length > 0) {
-        timeline.phases[phaseName].status = 'active';
-        // Vereinfachte Dauer-Berechnung
-        timeline.phases[phaseName].duration.min = timeline.phases[phaseName].trades.length * 2;
-        timeline.phases[phaseName].duration.max = timeline.phases[phaseName].trades.length * 5;
-      }
-    });
-    
-    // Bestimme aktuelle Phase
-    for (const phaseName of phaseOrder) {
-      if (timeline.phases[phaseName].trades.length > 0) {
-        const allHaveLV = timeline.phases[phaseName].trades.every(t => t.hasLV);
-        if (!allHaveLV) {
-          timeline.currentPhase = phaseName;
-          break;
-        }
-      }
-    }
-    
-    // Berechne Fortschritt
-    const totalTrades = trades.length;
-    const tradesWithLV = trades.filter(t => lvsMap.has(t.id)).length;
-    timeline.progress = totalTrades > 0 ? Math.round((tradesWithLV / totalTrades) * 100) : 0;
-    
-    res.json({
-      ok: true,
-      timeline,
-      warnings: metadata.sequencing.conflicts || []
-    });
-    
-  } catch (err) {
-    console.error('Timeline generation failed:', err);
-    res.status(500).json({ error: err.message });
   }
 });
 
