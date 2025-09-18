@@ -1832,6 +1832,24 @@ if (projectContext.isManuallyAdded) {
   console.log(`[QUESTIONS] Context question required for ${tradeName} - manually added`);
 }
 
+// Spezielle Behandlung für Intake-Fragen basierend auf Gewerke-Anzahl
+if (isIntake && projectContext.targetQuestionCount) {
+  targetQuestionCount = projectContext.targetQuestionCount;
+  console.log(`[QUESTIONS] INT: Using provided targetQuestionCount: ${targetQuestionCount}`);
+} else if (isIntake && projectContext.detectedTrades) {
+  const tradeCount = projectContext.detectedTrades.length;
+  if (tradeCount === 1) {
+    targetQuestionCount = 16;
+  } else if (tradeCount <= 3) {
+    targetQuestionCount = 18;
+  } else if (tradeCount <= 5) {
+    targetQuestionCount = 21;
+  } else {
+    targetQuestionCount = 25;
+  }
+  console.log(`[QUESTIONS] INT: Adjusted to ${targetQuestionCount} questions for ${tradeCount} trades`);
+}
+  
 // Innenprojekt-Erkennung für intelligente Intake-Fragen
 let innenprojektText = '';
 if (isIntake) {
