@@ -226,9 +226,21 @@ if (task === 'questions' || task === 'intake') {
 
     return response.content[0].text;
   } catch (error) {
-    console.error('[LLM] Anthropic error:', error.status || error.message);
-    throw error;
+  console.error('[LLM] Anthropic error:', error.status || error.message);
+  
+  // Detaillierte Fehleranalyse für 400er
+  if (error.status === 400) {
+    console.error('[LLM] 400 Error Details:', {
+      error_type: error.error?.type,
+      error_message: error.error?.message || error.message,
+      systemLength: systemMessage.length,
+      messagesCount: otherMessages.length,
+      firstUserLength: otherMessages[0]?.content?.length
+    });
   }
+  
+  throw error;
+}
 };
   
   // Rest der Funktion bleibt gleich...
