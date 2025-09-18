@@ -90,6 +90,189 @@ const DEFAULT_COMPLEXITY = {
 };
 
 // ===========================================================================
+// NEUE ZENTRALE KOMPLEXITÄTSANALYSE
+// ===========================================================================
+
+class ProjectComplexityAnalyzer {
+  constructor(project, trades, intakeAnswers = []) {
+    this.project = project;
+    this.trades = trades;
+    this.intakeAnswers = intakeAnswers;
+    this.extractedData = project.extractedData || {};
+  }
+
+  analyze() {
+    const factors = {
+      tradeCount: this.trades.length,
+      tradeComplexity: this.calculateAverageTradeComplexity(),
+      interactions: this.calculateTradeInteractions(),
+      projectScope: this.calculateProjectScope(),
+      dataCompleteness: this.calculateDataCompleteness()
+    };
+
+    const score = this.calculateWeightedScore(factors);
+    
+    return {
+      score: score,
+      level: this.getComplexityLevel(score),
+      factors: factors,
+      questionMultiplier: this.getQuestionMultiplier(score),
+      positionMultiplier: this.getPositionMultiplier(score)
+    };
+  }
+
+  calculateAverageTradeComplexity() {
+    if (!this.trades.length) return 0;
+    
+    const complexityScores = {
+      'SEHR_HOCH': 100,
+      'HOCH': 75,
+      'MITTEL': 50,
+      'EINFACH': 25,
+      'INTAKE': 0
+    };
+    
+    const total = this.trades.reduce((sum, trade) => {
+      const config = TRADE_COMPLEXITY[trade.code] || DEFAULT_COMPLEXITY;
+      return sum + (complexityScores[config.complexity] || 50);
+    }, 0);
+    
+    return total / this.trades.length;
+  }
+
+  calculateTradeInteractions() {
+    // Kritische Gewerke-Kombinationen die Koordination erfordern
+    const criticalCombos = [
+      ['ROH', 'ELEKT', 'SAN', 'HEI'],  // Rohbau mit TGA
+      ['DACH', 'ZIMM',],               // Dach-Komplex
+      ['TRO', 'ELEKT', 'MAL'],         // Innenausbau
+      ['FLI', 'SAN', 'HEI']             // Badkomplex
+    ];
+    
+    let interactionScore = 0;
+    const tradeCodes = this.trades.map(t => t.code);
+    
+    criticalCombos.forEach(combo => {
+      const matchCount = combo.filter(code => tradeCodes.includes(code)).length;
+      if (matchCount >= 3) {
+        interactionScore += 25;
+      } else if (matchCount >= 2) {
+        interactionScore += 10;
+      }
+    });
+    
+    return Math.min(100, interactionScore);
+  }
+
+  calculateProjectScope() {
+    const desc = (this.project.description || '').toLowerCase();
+    let scope = 0;
+    
+    // Schlüsselwörter für Projektumfang
+    const scopeIndicators = {
+      'komplettsanierung': 40,
+      'kernsanierung': 40,
+      'generalsanierung': 40,
+      'anbau': 40,
+      'aufstockung': 40,
+      'umbau': 30,
+      'modernisierung': 15,
+      'renovierung': 10,
+      'reparatur': 5
+    };
+    
+    for (const [keyword, points] of Object.entries(scopeIndicators)) {
+      if (desc.includes(keyword)) {
+        scope = Math.max(scope, points);
+      }
+    }
+    
+    // Budget-basierte Anpassung
+    if (this.project.budget) {
+      const budget = parseInt(this.project.budget.replace(/\D/g, '')) || 0;
+      if (budget > 500000) scope += 30;
+      else if (budget > 200000) scope += 20;
+      else if (budget > 100000) scope += 10;
+      else if (budget > 50000) scope += 5;
+    }
+    
+    return Math.min(100, scope);
+  }
+
+  calculateDataCompleteness() {
+    let completeness = 0;
+    
+    // Extrahierte Daten vorhanden?
+    if (this.extractedData.quantities) {
+      completeness += Object.keys(this.extractedData.quantities).length * 5;
+    }
+    
+    // Intake-Antworten vorhanden?
+    if (this.intakeAnswers.length > 0) {
+      completeness += Math.min(30, this.intakeAnswers.length * 2);
+    }
+    
+    // Projektbeschreibung Qualität
+    const descLength = (this.project.description || '').split(' ').length;
+    if (descLength > 100) completeness += 20;
+    else if (descLength > 50) completeness += 10;
+    else if (descLength > 20) completeness += 5;
+    
+    return Math.min(100, completeness);
+  }
+
+  calculateWeightedScore(factors) {
+    // Gewichtete Berechnung des Gesamtscores
+    const weights = {
+      tradeCount: 0.25,
+      tradeComplexity: 0.25,
+      interactions: 0.20,
+      projectScope: 0.20,
+      dataCompleteness: 0.10
+    };
+    
+    let totalScore = 0;
+    
+    // Trade Count normalisieren (0-100)
+    const normalizedTradeCount = Math.min(100, factors.tradeCount * 10);
+    
+    totalScore += normalizedTradeCount * weights.tradeCount;
+    totalScore += factors.tradeComplexity * weights.tradeComplexity;
+    totalScore += factors.interactions * weights.interactions;
+    totalScore += factors.projectScope * weights.projectScope;
+    totalScore += factors.dataCompleteness * weights.dataCompleteness;
+    
+    return Math.round(totalScore);
+  }
+
+  getComplexityLevel(score) {
+    if (score >= 80) return 'SEHR_HOCH';
+    if (score >= 60) return 'HOCH';
+    if (score >= 40) return 'MITTEL';
+    if (score >= 20) return 'NIEDRIG';
+    return 'EINFACH';
+  }
+
+  getQuestionMultiplier(score) {
+    // Multiplier für Fragenanzahl basierend auf Komplexität
+    if (score >= 80) return 1.0;   // Maximum
+    if (score >= 60) return 0.85;
+    if (score >= 40) return 0.70;
+    if (score >= 20) return 0.55;
+    return 0.40;  // Minimum
+  }
+
+  getPositionMultiplier(score) {
+    // Multiplier für LV-Positionsanzahl
+    if (score >= 80) return 1.2;   // Mehr Details
+    if (score >= 60) return 1.0;
+    if (score >= 40) return 0.85;
+    if (score >= 20) return 0.70;
+    return 0.60;  // Kompakt
+  }
+}
+
+// ===========================================================================
 // HELPER FUNCTIONS
 // ===========================================================================
 
