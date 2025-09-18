@@ -3197,7 +3197,8 @@ filteredQuestions = processedQuestions.filter(newQ => {
   
   // Prüfe ob Frage bereits beantwortet wurde
   const isDuplicate = knownInfo.some(known => {
-    if (questionLower.includes(known)) {
+    if (questionLower === known || 
+    (known.length > 10 && questionLower.includes(known))) {
       console.log(`[QUESTIONS] Filtered duplicate: "${newQ.question}" (matches: ${known})`);
       return true;
     }
