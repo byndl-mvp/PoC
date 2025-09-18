@@ -136,39 +136,87 @@ async function llmWithPolicy(task, messages, options = {}) {
 };
   
   const callClaude = async () => {
-    try {
-      let systemMessage = messages.find(m => m.role === "system")?.content || "";
+  try {
+    let systemMessage = messages.find(m => m.role === "system")?.content || "";
+    let otherMessages = messages.filter(m => m.role !== "system");
+    
+    // Anthropic System-Limit (konservativ)
+    const ANTHROPIC_SYSTEM_LIMIT = 8000;
+    
+    if (systemMessage.length > ANTHROPIC_SYSTEM_LIMIT) {
+      console.log(`[LLM] System prompt too long for Anthropic: ${systemMessage.length} chars, redistributing...`);
       
-      // Für Claude: JSON-Instruktion in System-Prompt einbauen
-      if (options.jsonMode) {
-        systemMessage = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!
-- Beginne direkt mit {
-- Ende mit }
-- KEIN Markdown (keine \`\`\`)
-- KEINE Erklärungen außerhalb des JSON
-- KEINE Kommentare
-
-${systemMessage}
-
-ERINNERUNG: NUR valides JSON ausgeben!`;
+      // Intelligente Aufteilung: Kern-Instruktionen identifizieren
+      const lines = systemMessage.split('\n');
+      let coreSystem = '';
+      let detailContent = '';
+      let currentLength = 0;
+      let inCoreSection = true;
+      
+      for (const line of lines) {
+        // Kern-Instruktionen (müssen im System bleiben)
+        if (inCoreSection && (
+          line.includes('Du bist') ||
+          line.includes('OUTPUT') ||
+          line.includes('JSON') ||
+          line.includes('KRITISCH') ||
+          line.includes('valides JSON') ||
+          currentLength < 2000  // Erste 2000 Zeichen immer als Kern
+        )) {
+          if ((coreSystem.length + line.length + 1) < ANTHROPIC_SYSTEM_LIMIT) {
+            coreSystem += line + '\n';
+            currentLength += line.length + 1;
+          } else {
+            inCoreSection = false;
+            detailContent += line + '\n';
+          }
+        } else {
+          inCoreSection = false;
+          detailContent += line + '\n';
+        }
       }
       
-      const otherMessages = messages.filter(m => m.role !== "system");
-
-      const response = await anthropic.messages.create({
-        model: MODEL_ANTHROPIC,
-        max_tokens: Math.min(maxTokens, 8192),
-        temperature,
-        system: systemMessage,
-        messages: otherMessages,
-      });
-
-      return response.content[0].text;
-    } catch (error) {
-      console.error('[LLM] Anthropic error:', error.status || error.message);
-      throw error;
+      // Wenn immer noch zu lang, härter kürzen
+      if (coreSystem.length > ANTHROPIC_SYSTEM_LIMIT) {
+        console.warn('[LLM] Core system still too long, truncating...');
+        coreSystem = coreSystem.substring(0, ANTHROPIC_SYSTEM_LIMIT - 200) + 
+                     '\n\n[Weitere Details siehe Kontext]';
+      }
+      
+      // Details in erste User-Message verschieben
+      if (detailContent && otherMessages.length > 0) {
+        otherMessages[0].content = 
+          "ZUSÄTZLICHE INSTRUKTIONEN UND REGELN:\n" +
+          "=====================================\n" +
+          detailContent + 
+          "\n\nURSPRÜNGLICHE ANFRAGE:\n" +
+          "===================\n" +
+          otherMessages[0].content;
+      }
+      
+      console.log(`[LLM] Redistributed prompt - System: ${coreSystem.length} chars, moved ${detailContent.length} chars to user`);
+      systemMessage = coreSystem;
     }
-  };
+    
+    // Für Claude: JSON-Instruktion sicherstellen (falls jsonMode aktiv)
+    if (options.jsonMode && !systemMessage.includes('JSON')) {
+      systemMessage = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!\n\n${systemMessage}`;
+    }
+
+    const response = await anthropic.messages.create({
+      model: MODEL_ANTHROPIC,
+      max_tokens: Math.min(maxTokens, 8192),
+      temperature,
+      system: systemMessage,
+      messages: otherMessages,
+    });
+
+    return response.content[0].text;
+  } catch (error) {
+    console.error('[LLM] Anthropic error:', error.status || error.message);
+    throw error;
+  }
+};
   
   // Rest der Funktion bleibt gleich...
   let result = null;
