@@ -1240,20 +1240,22 @@ extractedData.impliedTrades = Object.values(uniqueTrades);
  * Intelligente Antwort-Validierung und Schätzung
  */
 async function validateAndEstimateAnswers(answers, tradeCode, projectContext) {
+  // NEU: Nutze abgeleitete Mengen falls vorhanden
+  const derivedQuantities = projectContext.derivedQuantities || {};
+  
   const systemPrompt = `Du bist ein erfahrener Bausachverständiger mit 20+ Jahren Erfahrung.
 Deine Aufgabe: Validiere Nutzerantworten und erstelle realistische Schätzungen für unsichere Angaben.
 
 WICHTIGE REGELN:
 1. Prüfe die Plausibilität aller Mengenangaben
-2. Bei "unsicher" oder fehlenden kritischen Angaben: Erstelle realistische Schätzungen basierend auf:
-   - Typischen Werten für ähnliche Projekte
-   - Ableitungen aus anderen Angaben (z.B. Raumgröße → Kabellänge)
-   - Branchenüblichen Standards
-3. Berechne abgeleitete Werte intelligent:
-   - Kabellängen: ca. 15-20m pro Raum + Steigungen
-   - Rohrleitungen: Direkte Wege + 20% Zuschlag
-   - Materialmengen: Flächen × Erfahrungswerte
+2. Bei "unsicher" oder fehlenden kritischen Angaben: Erstelle realistische Schätzungen
+3. NUTZE ABGELEITETE MENGEN als Basis für Schätzungen
 4. Dokumentiere ALLE Annahmen transparent
+
+BEREITS ABGELEITETE MENGEN:
+${Object.entries(derivedQuantities).map(([key, data]) => 
+  `- ${key}: ${data.value} ${data.unit} (Konfidenz: ${data.confidence})`
+).join('\n')}
 
 OUTPUT (NUR valides JSON):
 {
@@ -1264,7 +1266,8 @@ OUTPUT (NUR valides JSON):
       "validatedValue": "number",
       "unit": "m²/m/Stk/kg/l",
       "assumption": "Detaillierte Erklärung der Schätzgrundlage",
-      "confidence": 0.5-1.0
+      "confidence": 0.5-1.0,
+      "derivedFrom": "Name der abgeleiteten Menge oder null"
     }
   ],
   "derivedValues": {
@@ -1273,14 +1276,16 @@ OUTPUT (NUR valides JSON):
     "volume": "number",
     "additionalMetrics": {}
   },
-  "warnings": ["Liste von Hinweisen auf unrealistische oder fehlende Angaben"]
+  "warnings": ["Liste von Hinweisen"],
+  "usedDerivedQuantities": ["Liste der verwendeten abgeleiteten Mengen"]
 }`;
 
   const userPrompt = `Gewerk: ${tradeCode}
 Projektkontext: ${JSON.stringify(projectContext)}
 Nutzerantworten: ${JSON.stringify(answers)}
+Abgeleitete Mengen: ${JSON.stringify(derivedQuantities)}
 
-Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
+Validiere diese Antworten und nutze die abgeleiteten Mengen für bessere Schätzungen.`;
 
   try {
     const response = await llmWithPolicy('validation', [
