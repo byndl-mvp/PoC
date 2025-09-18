@@ -650,7 +650,7 @@ extractedData.tradeKeywords = {
   'FLI': ['fliesen', 'verfugen', 'mosaik', 'bad', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
   'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung', 'malerarbeiten'],
   'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
-  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'maurerarbeiten'],
+  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'aufstockung', 'anbau', 'erweiterung', 'maurerarbeiten'],
   'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
   'FEN': ['fenster', 'verglasung', 'rolladen', 'jalousie', 'fensterbank', 'glasbruch', 'isolierglas'],
   'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'holzarbeiten', 'küche', 'arbeitsplatte'],
