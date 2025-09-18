@@ -650,7 +650,7 @@ extractedData.tradeKeywords = {
   'FLI': ['fliesen', 'verfugen', 'mosaik', 'bad', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
   'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung', 'malerarbeiten'],
   'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
-  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'aufstockung', 'anbau', 'erweiterung', 'maurerarbeiten'],
+  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'maurerarbeiten'],
   'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
   'FEN': ['fenster', 'verglasung', 'rolladen', 'jalousie', 'fensterbank', 'glasbruch', 'isolierglas'],
   'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'holzarbeiten', 'küche', 'arbeitsplatte'],
@@ -1106,412 +1106,26 @@ case 'INT':
 }
 
 /**
- * Berechnet intelligente Orientierungswerte für LV-Positionen basierend auf Projektumfang
- * Berücksichtigt tatsächliche Leistungen statt nur Fragenanzahl
+ * Berechnet Orientierungswerte für LV-Positionen (NICHT als strikte Vorgabe!)
  */
-function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
+function getPositionOrientation(tradeCode, questionCount) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
   
-  let scopeMultiplier = 1.0;
-  let minPositions = 5;
-  let maxPositions = 50;
+  // Basis-Orientierung
+  const ratio = tradeConfig.targetPositionsRatio;
+  const baseOrientation = Math.round(questionCount * ratio);
   
-  const description = (projectContext.description || '').toLowerCase();
-  const answers = projectContext.answers || [];
+  // Orientierungs-Range (flexibler Bereich)
+  const orientationMin = Math.max(1, Math.round(questionCount * (ratio - 0.2)));
+  const orientationMax = Math.round(questionCount * (ratio + 0.3));
   
-  // Helper: Finde Antwort mit Mengenangabe
-  const findQuantityAnswer = (keywords) => {
-    return answers.find(a => 
-      keywords.some(kw => (a.question || '').toLowerCase().includes(kw))
-    );
-  };
-  
-  // GEWERKE-SPEZIFISCHE LOGIK
-  switch(tradeCode) {
-    case 'ROH': // Rohbau
-      if (description.includes('anbau') || description.includes('aufstockung')) {
-        minPositions = 18;
-        maxPositions = 30;
-        scopeMultiplier = 1.5;
-      } else if (description.includes('umbau') || description.includes('sanierung')) {
-        minPositions = 12;
-        maxPositions = 20;
-        scopeMultiplier = 1.2;
-      } else if (description.includes('wanddurchbruch') && !description.includes('anbau')) {
-        minPositions = 4;
-        maxPositions = 8;
-        scopeMultiplier = 0.4;
-      }
-      // Zusatzleistungen addieren
-      if (description.includes('keller')) {
-        minPositions += 3;
-        maxPositions += 5;
-      }
-      if (description.includes('bodenplatte')) {
-        minPositions += 2;
-        maxPositions += 4;
-      }
-      break;
-      
-    case 'DACH': // Dacharbeiten
-      const dachflaeche = parseInt(findQuantityAnswer(['dachfläche', 'm²'])?.answer) || 0;
-      if (dachflaeche > 200 || description.includes('komplett')) {
-        minPositions = 20;
-        maxPositions = 35;
-        scopeMultiplier = 1.4;
-      } else if (dachflaeche > 100 || description.includes('sanierung')) {
-        minPositions = 12;
-        maxPositions = 22;
-      } else if (description.includes('reparatur')) {
-        minPositions = 6;
-        maxPositions = 12;
-        scopeMultiplier = 0.6;
-      }
-      if (description.includes('dachfenster')) {
-        minPositions += 2;
-        maxPositions += 3;
-      }
-      if (description.includes('gaube')) {
-        minPositions += 3;
-        maxPositions += 5;
-      }
-      break;
-      
-    case 'FASS': // Fassade
-      const fassflaeche = parseInt(findQuantityAnswer(['fassadenfläche', 'm²'])?.answer) || 0;
-      if (fassflaeche > 300 || description.includes('wdvs')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.3;
-      } else if (description.includes('anstrich')) {
-        minPositions = 5;
-        maxPositions = 10;
-        scopeMultiplier = 0.6;
-      } else {
-        minPositions = 10;
-        maxPositions = 18;
-      }
-      break;
-      
-    case 'FEN': // Fenster/Türen
-      const fensterCount = parseInt(findQuantityAnswer(['fenster', 'stück'])?.answer) || 0;
-      if (fensterCount > 10) {
-        minPositions = 12;
-        maxPositions = fensterCount + 8;
-        scopeMultiplier = 1.2;
-      } else if (fensterCount > 5) {
-        minPositions = fensterCount + 3;
-        maxPositions = fensterCount + 6;
-      } else if (fensterCount > 0) {
-        minPositions = fensterCount + 2;
-        maxPositions = fensterCount + 4;
-        scopeMultiplier = 0.8;
-      }
-      if (description.includes('haustür')) {
-        minPositions += 2;
-        maxPositions += 3;
-      }
-      break;
-      
-    case 'SAN': // Sanitär
-      if (description.includes('badsanierung komplett')) {
-        minPositions = 18;
-        maxPositions = 30;
-        scopeMultiplier = 1.3;
-      } else if (description.includes('bad') || description.includes('dusche')) {
-        minPositions = 12;
-        maxPositions = 20;
-      } else if (description.includes('gäste-wc')) {
-        minPositions = 8;
-        maxPositions = 15;
-        scopeMultiplier = 0.7;
-      } else if (description.includes('austausch')) {
-        minPositions = 5;
-        maxPositions = 10;
-        scopeMultiplier = 0.5;
-      }
-      break;
-      
-    case 'ELEKT': // Elektro
-      if (description.includes('komplettsanierung') || description.includes('neubau')) {
-        minPositions = 20;
-        maxPositions = 35;
-        scopeMultiplier = 1.4;
-      } else if (description.includes('smart home')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.2;
-      } else if (description.includes('modernisierung')) {
-        minPositions = 10;
-        maxPositions = 18;
-      } else if (description.includes('steckdose') || description.includes('schalter')) {
-        minPositions = 4;
-        maxPositions = 8;
-        scopeMultiplier = 0.5;
-      }
-      break;
-      
-    case 'HEI': // Heizung
-      if (description.includes('wärmepumpe') || description.includes('heizung komplett')) {
-        minPositions = 18;
-        maxPositions = 30;
-        scopeMultiplier = 1.3;
-      } else if (description.includes('fußbodenheizung')) {
-        minPositions = 12;
-        maxPositions = 20;
-      } else if (description.includes('heizkörper')) {
-        minPositions = 6;
-        maxPositions = 12;
-        scopeMultiplier = 0.7;
-      }
-      break;
-      
-    case 'KLIMA': // Klima/Lüftung
-      if (description.includes('lüftungsanlage') || description.includes('klimaanlage')) {
-        minPositions = 12;
-        maxPositions = 22;
-        scopeMultiplier = 1.1;
-      } else if (description.includes('wärmerückgewinnung')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.2;
-      } else {
-        minPositions = 8;
-        maxPositions = 15;
-      }
-      break;
-      
-    case 'TRO': // Trockenbau
-      const wandflaeche = parseInt(findQuantityAnswer(['wandfläche', 'm²'])?.answer) || 0;
-      if (wandflaeche > 200 || description.includes('komplett')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.2;
-      } else if (description.includes('wände') && description.includes('decken')) {
-        minPositions = 12;
-        maxPositions = 20;
-      } else if (description.includes('einzelne wand')) {
-        minPositions = 5;
-        maxPositions = 10;
-        scopeMultiplier = 0.6;
-      }
-      break;
-      
-    case 'FLI': // Fliesen
-      const fliesenflaeche = parseInt(findQuantityAnswer(['fliesenfläche', 'm²'])?.answer) || 0;
-      if (fliesenflaeche > 100 || (description.includes('bad') && description.includes('küche'))) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.3;
-      } else if (description.includes('bad komplett')) {
-        minPositions = 12;
-        maxPositions = 18;
-      } else if (description.includes('nur boden') || description.includes('nur wand')) {
-        minPositions = 6;
-        maxPositions = 12;
-        scopeMultiplier = 0.7;
-      }
-      break;
-      
-    case 'MAL': // Malerarbeiten
-      const malerflaeche = parseInt(findQuantityAnswer(['wandfläche', 'm²'])?.answer) || 0;
-      if (malerflaeche > 500 || description.includes('komplett')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.2;
-      } else if (malerflaeche > 200 || description.includes('wohnung')) {
-        minPositions = 10;
-        maxPositions = 18;
-      } else if (description.includes('zimmer') || malerflaeche < 100) {
-        minPositions = 5;
-        maxPositions = 10;
-        scopeMultiplier = 0.6;
-      }
-      break;
-      
-    case 'BOD': // Bodenbelag
-      const bodenflaeche = parseInt(findQuantityAnswer(['bodenfläche', 'm²'])?.answer) || 0;
-      if (bodenflaeche > 200 || description.includes('komplett')) {
-        minPositions = 12;
-        maxPositions = 20;
-        scopeMultiplier = 1.2;
-      } else if (bodenflaeche > 100) {
-        minPositions = 8;
-        maxPositions = 15;
-      } else if (description.includes('einzelner raum')) {
-        minPositions = 5;
-        maxPositions = 10;
-        scopeMultiplier = 0.6;
-      }
-      break;
-      
-    case 'TIS': // Tischler
-      const tuerenCount = parseInt(findQuantityAnswer(['türen', 'innentür'])?.answer) || 0;
-      if (tuerenCount > 10 || description.includes('einbauschränke')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.2;
-      } else if (tuerenCount > 5) {
-        minPositions = tuerenCount + 4;
-        maxPositions = tuerenCount + 8;
-      } else if (tuerenCount > 0) {
-        minPositions = tuerenCount + 2;
-        maxPositions = tuerenCount + 5;
-        scopeMultiplier = 0.8;
-      }
-      if (description.includes('küche')) {
-        minPositions += 5;
-        maxPositions += 8;
-      }
-      break;
-      
-    case 'GER': // Gerüst
-      const geruesthöhe = parseInt(findQuantityAnswer(['höhe', 'meter'])?.answer) || 0;
-      // Gerüst hat meist standardisierte Positionen
-      minPositions = 5;  // Auf-/Abbau, Transport, Standzeit, Netz
-      maxPositions = 10;
-      if (geruesthöhe > 10 || description.includes('sonderkonstruktion')) {
-        minPositions = 8;
-        maxPositions = 15;
-        scopeMultiplier = 1.2;
-      }
-      break;
-      
-    case 'ZIMM': // Zimmerer
-      if (description.includes('dachstuhl') || description.includes('komplett')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.3;
-      } else if (description.includes('gaube') || description.includes('ausbau')) {
-        minPositions = 10;
-        maxPositions = 18;
-      } else if (description.includes('carport') || description.includes('pergola')) {
-        minPositions = 8;
-        maxPositions = 15;
-        scopeMultiplier = 0.8;
-      }
-      break;
-      
-    case 'ESTR': // Estrich
-      const estrichflaeche = parseInt(findQuantityAnswer(['fläche', 'm²'])?.answer) || 0;
-      if (estrichflaeche > 200 || description.includes('fußbodenheizung')) {
-        minPositions = 12;
-        maxPositions = 20;
-        scopeMultiplier = 1.2;
-      } else if (estrichflaeche > 100) {
-        minPositions = 8;
-        maxPositions = 15;
-      } else {
-        minPositions = 5;
-        maxPositions = 10;
-        scopeMultiplier = 0.7;
-      }
-      break;
-      
-    case 'SCHL': // Schlosser
-      if (description.includes('geländer') && description.includes('zaun')) {
-        minPositions = 12;
-        maxPositions = 20;
-        scopeMultiplier = 1.2;
-      } else if (description.includes('treppe')) {
-        minPositions = 8;
-        maxPositions = 15;
-      } else if (description.includes('tor') || description.includes('gitter')) {
-        minPositions = 5;
-        maxPositions = 10;
-        scopeMultiplier = 0.7;
-      }
-      break;
-      
-    case 'AUSS': // Außenanlagen
-      const aussenflaeche = parseInt(findQuantityAnswer(['fläche', 'm²'])?.answer) || 0;
-      if (aussenflaeche > 500 || description.includes('komplett')) {
-        minPositions = 18;
-        maxPositions = 30;
-        scopeMultiplier = 1.3;
-      } else if (description.includes('pflaster') && description.includes('rasen')) {
-        minPositions = 12;
-        maxPositions = 20;
-      } else if (description.includes('terrasse') || description.includes('einfahrt')) {
-        minPositions = 8;
-        maxPositions = 15;
-        scopeMultiplier = 0.8;
-      }
-      break;
-      
-    case 'PV': // Photovoltaik
-      const pvLeistung = parseInt(findQuantityAnswer(['kwp', 'kilowatt'])?.answer) || 0;
-      if (pvLeistung > 20 || description.includes('speicher')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.2;
-      } else if (pvLeistung > 10) {
-        minPositions = 10;
-        maxPositions = 18;
-      } else {
-        minPositions = 8;
-        maxPositions = 15;
-        scopeMultiplier = 0.8;
-      }
-      break;
-      
-    case 'ABBR': // Abbruch
-      if (description.includes('komplett') || description.includes('entkernung')) {
-        minPositions = 15;
-        maxPositions = 25;
-        scopeMultiplier = 1.3;
-      } else if (description.includes('teilabbruch')) {
-        minPositions = 10;
-        maxPositions = 18;
-      } else if (description.includes('einzelne wände')) {
-        minPositions = 5;
-        maxPositions = 10;
-        scopeMultiplier = 0.6;
-      }
-      if (description.includes('asbest') || description.includes('schadstoffe')) {
-        minPositions += 3;
-        maxPositions += 5;
-      }
-      break;
-      
-    default:
-      // Fallback basierend auf Gewerke-Komplexität
-      const baseComplexity = tradeConfig.complexity;
-      if (baseComplexity === 'SEHR_HOCH') {
-        minPositions = 15;
-        maxPositions = 30;
-      } else if (baseComplexity === 'HOCH') {
-        minPositions = 10;
-        maxPositions = 20;
-      } else if (baseComplexity === 'MITTEL') {
-        minPositions = 8;
-        maxPositions = 15;
-      } else {
-        minPositions = 5;
-        maxPositions = 12;
-      }
-  }
-  
-  // Anpassung basierend auf Fragenanzahl (sekundär)
-  const questionFactor = Math.min(1.5, Math.max(0.5, questionCount / 15));
-  
-  // Finale Berechnung
-  const finalMin = Math.round(minPositions * scopeMultiplier * questionFactor);
-  const finalMax = Math.round(maxPositions * scopeMultiplier * questionFactor);
-  
-  // Sicherstellen dass Min/Max sinnvoll sind
-  const adjustedMin = Math.max(3, Math.min(40, finalMin));
-  const adjustedMax = Math.min(50, Math.max(adjustedMin + 2, finalMax));
-  
-  console.log(`[LV-ORIENTATION] ${tradeCode}: ${adjustedMin}-${adjustedMax} positions`);
-  console.log(`  -> Scope: ${scopeMultiplier}x, Questions: ${questionCount}, Factor: ${questionFactor}`);
+  console.log(`[LV-ORIENTATION] ${tradeCode}: ${orientationMin}-${orientationMax} positions from ${questionCount} questions (ratio: ${ratio})`);
   
   return {
-    min: adjustedMin,
-    max: adjustedMax,
-    base: Math.round((adjustedMin + adjustedMax) / 2),
-    ratio: tradeConfig.targetPositionsRatio,
-    scopeMultiplier: scopeMultiplier
+    min: orientationMin,
+    max: orientationMax,
+    base: baseOrientation,
+    ratio: ratio
   };
 }
 
@@ -2240,9 +1854,8 @@ WICHTIG:
     }
   }
   
-  // Für die Fragenanzahl verwenden wir die neue adaptive Logik
   const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
-  const intelligentCount = getAdaptiveQuestionCount(tradeCode, projectContext, answeredQuestions);
+  const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, answeredQuestions);
   // Bei manuell hinzugefügten: Erste Frage MUSS Kontextfrage sein
 let targetQuestionCount = intelligentCount.count;
 let forceContextQuestion = false;
@@ -2838,11 +2451,20 @@ if (tradeCode !== 'INT') {
   console.log(`[QUESTIONS] INT: Skipping trade validation for intake questions`);
 }
 
-  // Zähle Fragen vor Duplikat-Filter
-  const beforeDuplicates = questions.length;
-  // Hinweis: Duplikate werden erst nach vollständiger Verarbeitung entfernt
-  console.log(`[DEBUG] tradeCode: "${tradeCode}", questions before initial filter: ${questions.length}`);
-  // Keine unmittelbare Rückgabe – weitere Verarbeitung folgt
+// Zähle Fragen vor Duplikat-Filter
+const beforeDuplicates = questions.length;
+    
+// NEU: Post-Processing Filter anwenden
+console.log(`[DEBUG] tradeCode: "${tradeCode}", questions before filter: ${questions.length}`);
+if (tradeCode !== 'INT') {
+  questions = filterDuplicateQuestions(questions, allAnsweredInfo.fromIntake);
+} else {
+  console.log(`[QUESTIONS] INT: Skipping duplicate filter for intake questions`);
+}
+console.log(`[QUESTIONS] After duplicate filter: ${questions.length} questions (removed ${beforeDuplicates - questions.length})`);
+console.log(`[DEBUG] Final question count: ${questions.length}`);
+    
+  return Array.isArray(questions) ? questions : [];
 
 // Entferne problematische Zeichen die Claude manchmal einfügt
 cleanedResponse = cleanedResponse
@@ -3353,18 +2975,18 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
 
   // NUR EXKLUSIVE Begriffe - nur DIESES Gewerk darf fragen
   const STRICTLY_EXCLUSIVE = {
-    'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'leitung', 'verteiler', 'fi-schalter'],
+    'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'strom', 'leitung', 'verteiler', 'fi-schalter'],
     'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
     'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
-    'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'türöffnung', 'abgehängte decke'],
+    'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'türöffnung', 'dämmung', 'elektro', 'steckdosen', 'abgehängte decke'],
     'FLI': ['fliesen', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
-    'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'farbe', 'lackieren', 'grundierung'],
+    'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung'],
     'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
     'ROH': ['mauerwerk', 'ziegelmauerwerk', 'durchbruch', 'beton', 'maurerarbeiten', 'sturz', 'kalksandstein'],
-    'SAN': ['wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
+    'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
     'FEN': ['fenster','verglasung', 'haustür', 'rolladen', 'jalousie', 'außentür', 'terrassentür', 'isolierglas'],
-    'TIS': ['innentür', 'zarge', 'möbel', 'einbauschrank', 'küche', 'wohnungseingangstür', 'arbeitsplatte'],
-    'DACH': ['dachfenster', 'dachziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'dachdämmung', 'unterspannbahn'],
+    'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'küche', 'wohnungseingangstür', 'arbeitsplatte'],
+    'DACH': ['dachfenster', 'dachziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'dämmung', 'unterspannbahn'],
     'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
     'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
     'ZIMM': ['holzbau', 'dachstuhl', 'balken', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk', 'sparren', 'pfetten'],
@@ -3582,8 +3204,7 @@ async function generateDetailedLV(projectId, tradeId) {
   
   // NEU: Orientierungswerte für Positionsanzahl berechnen (nur als Richtwert!)
 const answeredQuestionCount = tradeAnswers.length;
-  // Verwende adaptive Positionsberechnung basierend auf Frageanzahl
-  const orientation = getAdaptivePositionCount(trade.code, answeredQuestionCount, { description: project.description, category: project.category, budget: project.budget });
+const orientation = getPositionOrientation(trade.code, answeredQuestionCount);
 console.log(`[LV] Orientation for ${trade.code}: ${orientation.min}-${orientation.max} positions from ${answeredQuestionCount} questions`);
   
   // NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
@@ -3655,32 +3276,6 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Orientierungs-Richtwert: ca. ${orientation.min}-${orientation.max} Positionen
    - Diese Zahl ist KEINE strikte Vorgabe, sondern eine ORIENTIERUNG
    - Maßgeblich ist die TECHNISCH SINNVOLLE Aufteilung
-   
-   WICHTIG ZUR POSITIONSANZAHL:
-   - Bei ${orientation.min} Positionen: Hauptleistungen mit inkludierten Nebenleistungen
-   - Bei ${orientation.max} Positionen: Detailliertere Aufschlüsselung wo technisch sinnvoll
-   
-   WAS HÖHERE POSITIONSANZAHL BEDEUTET:
-   ✓ Nebenleistungen als separate Positionen (statt "inkl. Abdichtung")
-   ✓ Materialvarianten getrennt (z.B. verschiedene Putzarten)
-   ✓ Vorarbeiten detailliert (z.B. Grundierung separat von Anstrich)
-   ✓ Verschiedene Räume/Bereiche trennen (z.B. Bad/Küche/Wohnbereich)
-   ✓ Qualitätsstufen separat (z.B. Q2 und Q3 Spachtelung getrennt)
-   
-   NIEMALS:
-   ✗ Künstliche Aufteilung identischer Leistungen
-   ✗ Erfundene Positionen nur für Anzahl-Ziel
-   ✗ Technisch unsinnige Kleinstpositionen
-   
-   BEISPIEL DETAILLIERUNGSGRADE:
-   Bei niedriger Positionsanzahl (${orientation.min}):
-   - "Malerarbeiten komplett inkl. Grundierung, Spachteln Q2, Anstrich"
-   
-   Bei hoher Positionsanzahl (${orientation.max}):
-   - Pos 1: "Grundierung der Wandflächen"
-   - Pos 2: "Spachtelarbeiten Qualitätsstufe Q2"
-   - Pos 3: "Zwischenanstrich Dispersionsfarbe"
-   - Pos 4: "Schlussanstrich Dispersionsfarbe"
 
    KRITISCHE REGEL FÜR BAUTEILE MIT ABMESSUNGEN:
    - UNTERSCHIEDLICHE Abmessungen = IMMER separate Positionen
@@ -3709,9 +3304,6 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Flächenarbeiten (Malerarbeiten, Putz, Estrich)
    - Installationsarbeiten (sofern nicht bauteilbezogen)
    - Demontagearbeiten gleicher Art
-   
-   Die Zielanzahl liegt bei ca. ${orientation.base} Positionen (Bereich: ${orientation.min}-${orientation.max}).
-   Technische Korrektheit hat IMMER Vorrang vor der Positionsanzahl!
 
 5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
    - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
@@ -3872,35 +3464,6 @@ KRITISCH FÜR DACHARBEITEN:
 - Fokus auf: Dämmung, Eindeckung, Abdichtung, Rinnen
 ` : ''}
 
-${trade.code === 'ROH' ? `
-KRITISCH FÜR ROHBAU - PFLICHT-POSITIONEN für Anbau:
-1. Bodenaushub und Entsorgung
-2. Sauberkeitsschicht
-3. Fundamentplatte/Streifenfundamente  
-4. Bewehrung Fundamente
-5. Horizontalsperre
-6. Außenwände (Mauerwerk/Beton)
-7. Innenwände tragend
-8. Ringanker/Ringbalken
-9. Stürze über Öffnungen
-10. Deckenkonstruktion
-11. Bewehrung Decke
-12. Treppen (falls mehrgeschossig)
-13. Abdichtung gegen Erdreich
-14. Drainage
-15. Wanddurchbrüche (falls erforderlich)
-16. Kernbohrungen
-17. Bauzeitliche Sicherungen
-18. Stundenlohnarbeiten
-
-REALISTISCHE PREISE:
-- Wanddurchbruch groß: 800-1500 €/Stk
-- Beton C25/30: 110-140 €/m³
-- Mauerwerk KS: 65-85 €/m²
-- Bewehrung: 1500-2000 €/t
-- Erdarbeiten: 15-25 €/m³
-` : ''}
-
 OUTPUT FORMAT (NUR valides JSON):
 {
   "trade": "${trade.name}",
@@ -4026,16 +3589,8 @@ WICHTIG:
 1. Erstelle NUR Positionen für explizit erfragte Leistungen
 2. Verwende die validierten Mengen
 3. Realistische Preise (Stand 2024/2025)
-4. Dokumentiere alle Annahmen transparent
+4. Dokumentiere alle Annahmen transparent`;  // HIER ENDET der userPrompt String
 
-POSITIONSDETAILLIERUNG:
-Basierend auf dem Projektumfang ist eine ausgewogene Gliederung angemessen.
-Zielbereich: ${orientation.min}-${orientation.max} technisch sinnvolle Positionen
-- Bei kleineren Arbeiten: Eher ${orientation.min} Positionen (kompakt)
-- Bei komplexen Arbeiten: Bis zu ${orientation.max} Positionen (detailliert)
-
-WICHTIG: Qualität vor Quantität! Keine künstlichen Positionen erfinden!`;
-  
   try {
   const response = await llmWithPolicy('lv', [
     { role: 'system', content: systemPrompt },
@@ -4799,39 +4354,6 @@ if (tradeCode === 'FEN' && lv.positions) {
   }
 }    
 
-// Spezielle Regel für Wanddurchbruch
-if (titleLower.includes('wanddurchbruch') || titleLower.includes('durchbruch')) {
-  if (pos.unit === 'Stk' || pos.unit === 'psch') {
-    // Großer Durchbruch mind. 800€
-    if (descLower.includes('groß') || descLower.includes('2,6') || 
-        parseFloat(pos.quantity) > 2) {
-      if (pos.unitPrice < 800) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = 950;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Wanddurchbruch korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-        fixedCount++;
-      }
-    }
-  }
-}
-
-// Rohbau-Mindestpreise
-if (tradeCode === 'ROH') {
-  if (titleLower.includes('beton') && pos.unit === 'm³') {
-    if (pos.unitPrice < 110) {
-      pos.unitPrice = 125;  // Realistischer Betonpreis
-      fixedCount++;
-    }
-  }
-  if (titleLower.includes('mauerwerk') && pos.unit === 'm²') {
-    if (pos.unitPrice < 65) {
-      pos.unitPrice = 75;  // Realistischer Mauerwerks-Preis
-      fixedCount++;
-    }
-  }
-}
-    
 // SPEZIAL-REGEL FÜR ZIMMERER
 if (tradeCode === 'ZIMM') {
   if (titleLower.includes('dachstuhl')) {
@@ -6227,7 +5749,7 @@ const tradeKeywords = {
   'FLI': ['fliesen', 'verfugen', 'bad', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
   'MAL': [ 'streichen', 'innenputz', 'tapezieren','verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung', 'malerarbeiten'],
   'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
-  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'aufstockung', 'anbau', 'erweiterung', 'maurerarbeiten'],
+  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'maurerarbeiten'],
   'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
   'FEN': ['fenster', 'verglasung', 'rolladen', 'jalousie', 'fensterbank', 'glasbruch', 'isolierglas'],
   'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'holzarbeiten', 'küche', 'arbeitsplatte'],
