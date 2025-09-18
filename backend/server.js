@@ -1106,26 +1106,412 @@ case 'INT':
 }
 
 /**
- * Berechnet Orientierungswerte für LV-Positionen (NICHT als strikte Vorgabe!)
+ * Berechnet intelligente Orientierungswerte für LV-Positionen basierend auf Projektumfang
+ * Berücksichtigt tatsächliche Leistungen statt nur Fragenanzahl
  */
-function getPositionOrientation(tradeCode, questionCount) {
+function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
   
-  // Basis-Orientierung
-  const ratio = tradeConfig.targetPositionsRatio;
-  const baseOrientation = Math.round(questionCount * ratio);
+  let scopeMultiplier = 1.0;
+  let minPositions = 5;
+  let maxPositions = 50;
   
-  // Orientierungs-Range (flexibler Bereich)
-  const orientationMin = Math.max(1, Math.round(questionCount * (ratio - 0.2)));
-  const orientationMax = Math.round(questionCount * (ratio + 0.3));
+  const description = (projectContext.description || '').toLowerCase();
+  const answers = projectContext.answers || [];
   
-  console.log(`[LV-ORIENTATION] ${tradeCode}: ${orientationMin}-${orientationMax} positions from ${questionCount} questions (ratio: ${ratio})`);
+  // Helper: Finde Antwort mit Mengenangabe
+  const findQuantityAnswer = (keywords) => {
+    return answers.find(a => 
+      keywords.some(kw => (a.question || '').toLowerCase().includes(kw))
+    );
+  };
+  
+  // GEWERKE-SPEZIFISCHE LOGIK
+  switch(tradeCode) {
+    case 'ROH': // Rohbau
+      if (description.includes('anbau') || description.includes('aufstockung')) {
+        minPositions = 18;
+        maxPositions = 30;
+        scopeMultiplier = 1.5;
+      } else if (description.includes('umbau') || description.includes('sanierung')) {
+        minPositions = 12;
+        maxPositions = 20;
+        scopeMultiplier = 1.2;
+      } else if (description.includes('wanddurchbruch') && !description.includes('anbau')) {
+        minPositions = 4;
+        maxPositions = 8;
+        scopeMultiplier = 0.4;
+      }
+      // Zusatzleistungen addieren
+      if (description.includes('keller')) {
+        minPositions += 3;
+        maxPositions += 5;
+      }
+      if (description.includes('bodenplatte')) {
+        minPositions += 2;
+        maxPositions += 4;
+      }
+      break;
+      
+    case 'DACH': // Dacharbeiten
+      const dachflaeche = parseInt(findQuantityAnswer(['dachfläche', 'm²'])?.answer) || 0;
+      if (dachflaeche > 200 || description.includes('komplett')) {
+        minPositions = 20;
+        maxPositions = 35;
+        scopeMultiplier = 1.4;
+      } else if (dachflaeche > 100 || description.includes('sanierung')) {
+        minPositions = 12;
+        maxPositions = 22;
+      } else if (description.includes('reparatur')) {
+        minPositions = 6;
+        maxPositions = 12;
+        scopeMultiplier = 0.6;
+      }
+      if (description.includes('dachfenster')) {
+        minPositions += 2;
+        maxPositions += 3;
+      }
+      if (description.includes('gaube')) {
+        minPositions += 3;
+        maxPositions += 5;
+      }
+      break;
+      
+    case 'FASS': // Fassade
+      const fassflaeche = parseInt(findQuantityAnswer(['fassadenfläche', 'm²'])?.answer) || 0;
+      if (fassflaeche > 300 || description.includes('wdvs')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.3;
+      } else if (description.includes('anstrich')) {
+        minPositions = 5;
+        maxPositions = 10;
+        scopeMultiplier = 0.6;
+      } else {
+        minPositions = 10;
+        maxPositions = 18;
+      }
+      break;
+      
+    case 'FEN': // Fenster/Türen
+      const fensterCount = parseInt(findQuantityAnswer(['fenster', 'stück'])?.answer) || 0;
+      if (fensterCount > 10) {
+        minPositions = 12;
+        maxPositions = fensterCount + 8;
+        scopeMultiplier = 1.2;
+      } else if (fensterCount > 5) {
+        minPositions = fensterCount + 3;
+        maxPositions = fensterCount + 6;
+      } else if (fensterCount > 0) {
+        minPositions = fensterCount + 2;
+        maxPositions = fensterCount + 4;
+        scopeMultiplier = 0.8;
+      }
+      if (description.includes('haustür')) {
+        minPositions += 2;
+        maxPositions += 3;
+      }
+      break;
+      
+    case 'SAN': // Sanitär
+      if (description.includes('badsanierung komplett')) {
+        minPositions = 18;
+        maxPositions = 30;
+        scopeMultiplier = 1.3;
+      } else if (description.includes('bad') || description.includes('dusche')) {
+        minPositions = 12;
+        maxPositions = 20;
+      } else if (description.includes('gäste-wc')) {
+        minPositions = 8;
+        maxPositions = 15;
+        scopeMultiplier = 0.7;
+      } else if (description.includes('austausch')) {
+        minPositions = 5;
+        maxPositions = 10;
+        scopeMultiplier = 0.5;
+      }
+      break;
+      
+    case 'ELEKT': // Elektro
+      if (description.includes('komplettsanierung') || description.includes('neubau')) {
+        minPositions = 20;
+        maxPositions = 35;
+        scopeMultiplier = 1.4;
+      } else if (description.includes('smart home')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.2;
+      } else if (description.includes('modernisierung')) {
+        minPositions = 10;
+        maxPositions = 18;
+      } else if (description.includes('steckdose') || description.includes('schalter')) {
+        minPositions = 4;
+        maxPositions = 8;
+        scopeMultiplier = 0.5;
+      }
+      break;
+      
+    case 'HEI': // Heizung
+      if (description.includes('wärmepumpe') || description.includes('heizung komplett')) {
+        minPositions = 18;
+        maxPositions = 30;
+        scopeMultiplier = 1.3;
+      } else if (description.includes('fußbodenheizung')) {
+        minPositions = 12;
+        maxPositions = 20;
+      } else if (description.includes('heizkörper')) {
+        minPositions = 6;
+        maxPositions = 12;
+        scopeMultiplier = 0.7;
+      }
+      break;
+      
+    case 'KLIMA': // Klima/Lüftung
+      if (description.includes('lüftungsanlage') || description.includes('klimaanlage')) {
+        minPositions = 12;
+        maxPositions = 22;
+        scopeMultiplier = 1.1;
+      } else if (description.includes('wärmerückgewinnung')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.2;
+      } else {
+        minPositions = 8;
+        maxPositions = 15;
+      }
+      break;
+      
+    case 'TRO': // Trockenbau
+      const wandflaeche = parseInt(findQuantityAnswer(['wandfläche', 'm²'])?.answer) || 0;
+      if (wandflaeche > 200 || description.includes('komplett')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.2;
+      } else if (description.includes('wände') && description.includes('decken')) {
+        minPositions = 12;
+        maxPositions = 20;
+      } else if (description.includes('einzelne wand')) {
+        minPositions = 5;
+        maxPositions = 10;
+        scopeMultiplier = 0.6;
+      }
+      break;
+      
+    case 'FLI': // Fliesen
+      const fliesenflaeche = parseInt(findQuantityAnswer(['fliesenfläche', 'm²'])?.answer) || 0;
+      if (fliesenflaeche > 100 || (description.includes('bad') && description.includes('küche'))) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.3;
+      } else if (description.includes('bad komplett')) {
+        minPositions = 12;
+        maxPositions = 18;
+      } else if (description.includes('nur boden') || description.includes('nur wand')) {
+        minPositions = 6;
+        maxPositions = 12;
+        scopeMultiplier = 0.7;
+      }
+      break;
+      
+    case 'MAL': // Malerarbeiten
+      const malerflaeche = parseInt(findQuantityAnswer(['wandfläche', 'm²'])?.answer) || 0;
+      if (malerflaeche > 500 || description.includes('komplett')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.2;
+      } else if (malerflaeche > 200 || description.includes('wohnung')) {
+        minPositions = 10;
+        maxPositions = 18;
+      } else if (description.includes('zimmer') || malerflaeche < 100) {
+        minPositions = 5;
+        maxPositions = 10;
+        scopeMultiplier = 0.6;
+      }
+      break;
+      
+    case 'BOD': // Bodenbelag
+      const bodenflaeche = parseInt(findQuantityAnswer(['bodenfläche', 'm²'])?.answer) || 0;
+      if (bodenflaeche > 200 || description.includes('komplett')) {
+        minPositions = 12;
+        maxPositions = 20;
+        scopeMultiplier = 1.2;
+      } else if (bodenflaeche > 100) {
+        minPositions = 8;
+        maxPositions = 15;
+      } else if (description.includes('einzelner raum')) {
+        minPositions = 5;
+        maxPositions = 10;
+        scopeMultiplier = 0.6;
+      }
+      break;
+      
+    case 'TIS': // Tischler
+      const tuerenCount = parseInt(findQuantityAnswer(['türen', 'innentür'])?.answer) || 0;
+      if (tuerenCount > 10 || description.includes('einbauschränke')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.2;
+      } else if (tuerenCount > 5) {
+        minPositions = tuerenCount + 4;
+        maxPositions = tuerenCount + 8;
+      } else if (tuerenCount > 0) {
+        minPositions = tuerenCount + 2;
+        maxPositions = tuerenCount + 5;
+        scopeMultiplier = 0.8;
+      }
+      if (description.includes('küche')) {
+        minPositions += 5;
+        maxPositions += 8;
+      }
+      break;
+      
+    case 'GER': // Gerüst
+      const geruesthöhe = parseInt(findQuantityAnswer(['höhe', 'meter'])?.answer) || 0;
+      // Gerüst hat meist standardisierte Positionen
+      minPositions = 5;  // Auf-/Abbau, Transport, Standzeit, Netz
+      maxPositions = 10;
+      if (geruesthöhe > 10 || description.includes('sonderkonstruktion')) {
+        minPositions = 8;
+        maxPositions = 15;
+        scopeMultiplier = 1.2;
+      }
+      break;
+      
+    case 'ZIMM': // Zimmerer
+      if (description.includes('dachstuhl') || description.includes('komplett')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.3;
+      } else if (description.includes('gaube') || description.includes('ausbau')) {
+        minPositions = 10;
+        maxPositions = 18;
+      } else if (description.includes('carport') || description.includes('pergola')) {
+        minPositions = 8;
+        maxPositions = 15;
+        scopeMultiplier = 0.8;
+      }
+      break;
+      
+    case 'ESTR': // Estrich
+      const estrichflaeche = parseInt(findQuantityAnswer(['fläche', 'm²'])?.answer) || 0;
+      if (estrichflaeche > 200 || description.includes('fußbodenheizung')) {
+        minPositions = 12;
+        maxPositions = 20;
+        scopeMultiplier = 1.2;
+      } else if (estrichflaeche > 100) {
+        minPositions = 8;
+        maxPositions = 15;
+      } else {
+        minPositions = 5;
+        maxPositions = 10;
+        scopeMultiplier = 0.7;
+      }
+      break;
+      
+    case 'SCHL': // Schlosser
+      if (description.includes('geländer') && description.includes('zaun')) {
+        minPositions = 12;
+        maxPositions = 20;
+        scopeMultiplier = 1.2;
+      } else if (description.includes('treppe')) {
+        minPositions = 8;
+        maxPositions = 15;
+      } else if (description.includes('tor') || description.includes('gitter')) {
+        minPositions = 5;
+        maxPositions = 10;
+        scopeMultiplier = 0.7;
+      }
+      break;
+      
+    case 'AUSS': // Außenanlagen
+      const aussenflaeche = parseInt(findQuantityAnswer(['fläche', 'm²'])?.answer) || 0;
+      if (aussenflaeche > 500 || description.includes('komplett')) {
+        minPositions = 18;
+        maxPositions = 30;
+        scopeMultiplier = 1.3;
+      } else if (description.includes('pflaster') && description.includes('rasen')) {
+        minPositions = 12;
+        maxPositions = 20;
+      } else if (description.includes('terrasse') || description.includes('einfahrt')) {
+        minPositions = 8;
+        maxPositions = 15;
+        scopeMultiplier = 0.8;
+      }
+      break;
+      
+    case 'PV': // Photovoltaik
+      const pvLeistung = parseInt(findQuantityAnswer(['kwp', 'kilowatt'])?.answer) || 0;
+      if (pvLeistung > 20 || description.includes('speicher')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.2;
+      } else if (pvLeistung > 10) {
+        minPositions = 10;
+        maxPositions = 18;
+      } else {
+        minPositions = 8;
+        maxPositions = 15;
+        scopeMultiplier = 0.8;
+      }
+      break;
+      
+    case 'ABBR': // Abbruch
+      if (description.includes('komplett') || description.includes('entkernung')) {
+        minPositions = 15;
+        maxPositions = 25;
+        scopeMultiplier = 1.3;
+      } else if (description.includes('teilabbruch')) {
+        minPositions = 10;
+        maxPositions = 18;
+      } else if (description.includes('einzelne wände')) {
+        minPositions = 5;
+        maxPositions = 10;
+        scopeMultiplier = 0.6;
+      }
+      if (description.includes('asbest') || description.includes('schadstoffe')) {
+        minPositions += 3;
+        maxPositions += 5;
+      }
+      break;
+      
+    default:
+      // Fallback basierend auf Gewerke-Komplexität
+      const baseComplexity = tradeConfig.complexity;
+      if (baseComplexity === 'SEHR_HOCH') {
+        minPositions = 15;
+        maxPositions = 30;
+      } else if (baseComplexity === 'HOCH') {
+        minPositions = 10;
+        maxPositions = 20;
+      } else if (baseComplexity === 'MITTEL') {
+        minPositions = 8;
+        maxPositions = 15;
+      } else {
+        minPositions = 5;
+        maxPositions = 12;
+      }
+  }
+  
+  // Anpassung basierend auf Fragenanzahl (sekundär)
+  const questionFactor = Math.min(1.5, Math.max(0.5, questionCount / 15));
+  
+  // Finale Berechnung
+  const finalMin = Math.round(minPositions * scopeMultiplier * questionFactor);
+  const finalMax = Math.round(maxPositions * scopeMultiplier * questionFactor);
+  
+  // Sicherstellen dass Min/Max sinnvoll sind
+  const adjustedMin = Math.max(3, Math.min(40, finalMin));
+  const adjustedMax = Math.min(50, Math.max(adjustedMin + 2, finalMax));
+  
+  console.log(`[LV-ORIENTATION] ${tradeCode}: ${adjustedMin}-${adjustedMax} positions`);
+  console.log(`  -> Scope: ${scopeMultiplier}x, Questions: ${questionCount}, Factor: ${questionFactor}`);
   
   return {
-    min: orientationMin,
-    max: orientationMax,
-    base: baseOrientation,
-    ratio: ratio
+    min: adjustedMin,
+    max: adjustedMax,
+    base: Math.round((adjustedMin + adjustedMax) / 2),
+    ratio: tradeConfig.targetPositionsRatio,
+    scopeMultiplier: scopeMultiplier
   };
 }
 
