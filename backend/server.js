@@ -147,13 +147,33 @@ if (task === 'questions' || task === 'intake') {
     throw error;
   }
 };
+
+// Unicode-Bereinigung für Anthropic
+function cleanUnicodeForAnthropic(text) {
+  if (!text) return '';
   
-  const callClaude = async () => {
+  // Entfernt kaputte Unicode-Surrogates und normalisiert den Text
+  return text
+    .normalize('NFC')  // Normalisiere Unicode
+    .replace(/[\uD800-\uDFFF]/g, '')  // Entferne einzelne Surrogates
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')  // Entferne Steuerzeichen
+    .replace(/[\uFFFD]/g, '')  // Entferne Replacement Character
+    .trim();
+}
+  
+const callClaude = async () => {
   try {
-    // Finde System und andere Messages
-    const systemMessage = messages.find(m => m.role === "system")?.content || "";
+    // NUR EINMAL deklarieren
+    let systemMessage = messages.find(m => m.role === "system")?.content || "";
     const originalUserMessages = messages.filter(m => m.role === "user");
     const assistantMessages = messages.filter(m => m.role === "assistant");
+    
+    // BEREINIGE Unicode
+    systemMessage = cleanUnicodeForAnthropic(systemMessage);
+    const cleanedUserMessages = originalUserMessages.map(msg => ({
+      ...msg,
+      content: cleanUnicodeForAnthropic(msg.content)
+    }));
     
     // Baue Messages für Anthropic auf
     let claudeMessages = [];
@@ -169,18 +189,18 @@ ${systemMessage}
 
 ANFRAGE:
 ========
-${originalUserMessages[0]?.content || 'Bitte die obigen Instruktionen befolgen.'}`;
+${cleanedUserMessages[0]?.content || 'Bitte die obigen Instruktionen befolgen.'}`;
       
       claudeMessages.push({
         role: "user",
-        content: combinedContent
+        content: cleanUnicodeForAnthropic(combinedContent)  // Nochmal bereinigen!
       });
       
       // Füge restliche User-Messages hinzu falls vorhanden
-      for (let i = 1; i < originalUserMessages.length; i++) {
+      for (let i = 1; i < cleanedUserMessages.length; i++) {
         claudeMessages.push({
           role: "user",
-          content: originalUserMessages[i].content
+          content: cleanedUserMessages[i].content
         });
       }
       
@@ -200,7 +220,9 @@ ${originalUserMessages[0]?.content || 'Bitte die obigen Instruktionen befolgen.'
       for (const msg of messages.filter(m => m.role !== "system")) {
         claudeMessages.push({
           role: msg.role,
-          content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+          content: cleanUnicodeForAnthropic(
+            typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+          )
         });
       }
       
