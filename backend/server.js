@@ -1632,19 +1632,102 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
   break;
       
     case 'HEI': // Heizung
-      if (description.includes('wärmepumpe') || description.includes('heizung komplett')) {
-        minPositions = 18;
-        maxPositions = 30;
-        scopeMultiplier = 1.3;
-      } else if (description.includes('fußbodenheizung')) {
-        minPositions = 12;
-        maxPositions = 20;
-      } else if (description.includes('heizkörper')) {
-        minPositions = 8;
-        maxPositions = 12;
-        scopeMultiplier = 0.7;
-      }
-      break;
+  let heizScope = 'standard';
+  minPositions = 8;
+  maxPositions = 15;
+  
+  // HAUPTUMFANG bestimmen
+  if (description.includes('komplettsanierung') || description.includes('heizung komplett') ||
+      description.includes('neue heizungsanlage')) {
+    heizScope = 'komplett';
+    minPositions = 20;
+    maxPositions = 35;
+    scopeMultiplier = 1.3;
+  } else if (description.includes('wärmepumpe')) {
+    heizScope = 'waermepumpe';
+    minPositions = 18;
+    maxPositions = 30;
+    scopeMultiplier = 1.2;
+  } else if (description.includes('brennwertkessel') || description.includes('gasheizung neu')) {
+    heizScope = 'brennwert';
+    minPositions = 15;
+    maxPositions = 25;
+    scopeMultiplier = 1.1;
+  } else if (description.includes('heizkörpertausch') || description.includes('heizkörper erneuern')) {
+    heizScope = 'heizkoerper';
+    minPositions = 8;
+    maxPositions = 15;
+    scopeMultiplier = 0.7;
+  }
+  
+  // WÄRMEVERTEILUNG
+  if (description.includes('fußbodenheizung')) {
+    minPositions += 8;
+    maxPositions += 12;
+  }
+  
+  if (description.includes('wandheizung')) {
+    minPositions += 6;
+    maxPositions += 10;
+  }
+  
+  // HYDRAULIK & REGELUNG
+  if (description.includes('hydraulischer abgleich')) {
+    minPositions += 2;
+    maxPositions += 4;
+  }
+  
+  if (description.includes('smart') || description.includes('raumregelung') || 
+      description.includes('einzelraumregelung')) {
+    minPositions += 3;
+    maxPositions += 6;
+  }
+  
+  // SPEICHER & WARMWASSER
+  if (description.includes('pufferspeicher') || description.includes('schichtenspeicher')) {
+    minPositions += 3;
+    maxPositions += 5;
+  }
+  
+  if (description.includes('warmwasser') || description.includes('brauchwasser')) {
+    minPositions += 3;
+    maxPositions += 5;
+  }
+  
+  // ZUSATZKOMPONENTEN
+  if (description.includes('solar') || description.includes('solarthermie')) {
+    minPositions += 5;
+    maxPositions += 8;
+  }
+  
+  if (description.includes('kamin') || description.includes('ofen') || 
+      description.includes('holzheizung')) {
+    minPositions += 4;
+    maxPositions += 7;
+  }
+  
+  // DEMONTAGE & ENTSORGUNG
+  if (description.includes('altanlage') || description.includes('demontage') ||
+      description.includes('öltank')) {
+    minPositions += 3;
+    maxPositions += 6;
+  }
+  
+  // OBJEKTGRÖSSE
+  if (description.includes('mehrfamilienhaus') || description.includes('mfh')) {
+    minPositions += 5;
+    maxPositions += 10;
+  } else if (description.includes('gewerbe') || description.includes('halle')) {
+    minPositions += 6;
+    maxPositions += 12;
+  }
+  
+  // Obergrenze
+  minPositions = Math.min(minPositions, 40);
+  maxPositions = Math.min(maxPositions, 50);
+  
+  console.log(`[LV-ORIENTATION] HEI: Scope=${heizScope}, Positions=${minPositions}-${maxPositions}`);
+  break;
       
     case 'KLIMA': // Klima/Lüftung
       if (description.includes('lüftungsanlage') || description.includes('klimaanlage')) {
@@ -4258,7 +4341,6 @@ REALISTISCHE PREISE:
 - Bewehrung: 1500-2000 €/t
 - Erdarbeiten: 15-25 €/m³
 ` : ''}
-...`;
 
 OUTPUT FORMAT (NUR valides JSON):
 {
