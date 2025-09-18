@@ -273,6 +273,357 @@ class ProjectComplexityAnalyzer {
 }
 
 // ===========================================================================
+// INTELLIGENTE MENGENERMITTLUNG UND VALIDIERUNG
+// ===========================================================================
+
+class QuantityIntelligence {
+  constructor(projectData, tradeAnswers, intakeAnswers = []) {
+    this.projectData = projectData;
+    this.tradeAnswers = tradeAnswers;
+    this.intakeAnswers = intakeAnswers;
+    this.derivedQuantities = new Map();
+    this.validationWarnings = [];
+  }
+
+  /**
+   * Hauptmethode: Leitet alle Mengen intelligent ab
+   */
+  analyzeAndDeriveQuantities() {
+    // 1. Basis-Mengen extrahieren
+    const baseQuantities = this.extractBaseQuantities();
+    
+    // 2. Intelligente Ableitungen
+    this.deriveSecondaryQuantities(baseQuantities);
+    
+    // 3. Kreuzvalidierung zwischen Gewerken
+    this.crossValidateQuantities();
+    
+    // 4. Plausibilitätsprüfung
+    this.performPlausibilityChecks();
+    
+    return {
+      quantities: Object.fromEntries(this.derivedQuantities),
+      warnings: this.validationWarnings,
+      confidence: this.calculateOverallConfidence()
+    };
+  }
+
+  /**
+   * Extrahiert Basis-Mengen aus Antworten
+   */
+  extractBaseQuantities() {
+    const quantities = {
+      areas: {},      // Flächen in m²
+      lengths: {},    // Längen in m
+      counts: {},     // Stückzahlen
+      volumes: {},    // Volumen in m³
+      dimensions: {}  // Maße (Höhe, Breite, etc.)
+    };
+    
+    // Parse Trade-Antworten
+    this.tradeAnswers.forEach(answer => {
+      const text = (answer.answer || '').toLowerCase();
+      const question = (answer.question || '').toLowerCase();
+      
+      // Flächen
+      const areaMatch = text.match(/(\d+(?:[,\.]\d+)?)\s*(m²|qm|quadratmeter)/);
+      if (areaMatch) {
+        const value = parseFloat(areaMatch[1].replace(',', '.'));
+        const key = this.identifyQuantityKey(question, 'area');
+        quantities.areas[key] = value;
+        this.derivedQuantities.set(key, {
+          value: value,
+          unit: 'm²',
+          source: 'direct',
+          confidence: 1.0,
+          origin: 'trade_answer'
+        });
+      }
+      
+      // Stückzahlen
+      const countMatch = text.match(/(\d+)\s*(stück|stk|fenster|türen|heizkörper|steckdosen)/);
+      if (countMatch) {
+        const value = parseInt(countMatch[1]);
+        const key = this.identifyQuantityKey(question, 'count');
+        quantities.counts[key] = value;
+        this.derivedQuantities.set(key, {
+          value: value,
+          unit: 'Stk',
+          source: 'direct',
+          confidence: 1.0,
+          origin: 'trade_answer'
+        });
+      }
+      
+      // Höhenangaben
+      const heightMatch = text.match(/(\d+(?:[,\.]\d+)?)\s*(m|meter)\s*(hoch|höhe)/);
+      if (heightMatch) {
+        const value = parseFloat(heightMatch[1].replace(',', '.'));
+        quantities.dimensions.height = value;
+        this.derivedQuantities.set('raumhoehe', {
+          value: value,
+          unit: 'm',
+          source: 'direct',
+          confidence: 1.0,
+          origin: 'trade_answer'
+        });
+      }
+    });
+    
+    // Parse Intake-Antworten (haben oft allgemeinere Infos)
+    this.intakeAnswers.forEach(answer => {
+      const text = (answer.answer_text || answer.answer || '').toLowerCase();
+      
+      // Gebäudemaße
+      if (text.includes('geschoss') || text.includes('stockwerk')) {
+        const stockMatch = text.match(/(\d+)/);
+        if (stockMatch) {
+          quantities.counts.stockwerke = parseInt(stockMatch[1]);
+        }
+      }
+      
+      // Raumanzahl
+      if (text.includes('zimmer') || text.includes('räume')) {
+        const roomMatch = text.match(/(\d+)\s*(zimmer|räume)/);
+        if (roomMatch) {
+          quantities.counts.raeume = parseInt(roomMatch[1]);
+        }
+      }
+    });
+    
+    return quantities;
+  }
+
+  /**
+   * Leitet sekundäre Mengen intelligent ab
+   */
+  deriveSecondaryQuantities(base) {
+    // Wandfläche aus Raumfläche ableiten
+    if (base.areas.raumflaeche && !this.derivedQuantities.has('wandflaeche')) {
+      const raumhoehe = base.dimensions.height || 2.5; // Standard 2.5m
+      const raumflaeche = base.areas.raumflaeche;
+      
+      // Annahme: Raum ist annähernd quadratisch
+      const raumlaenge = Math.sqrt(raumflaeche);
+      const umfang = raumlaenge * 4;
+      const wandflaeche = umfang * raumhoehe;
+      
+      this.derivedQuantities.set('wandflaeche_brutto', {
+        value: wandflaeche,
+        unit: 'm²',
+        source: 'derived',
+        confidence: 0.85,
+        calculation: `Umfang (${umfang.toFixed(1)}m) × Höhe (${raumhoehe}m)`,
+        origin: 'calculated_from_raumflaeche'
+      });
+    }
+    
+    // Netto-Wandfläche (abzüglich Öffnungen)
+    if (this.derivedQuantities.has('wandflaeche_brutto') && base.counts.fenster) {
+      const brutto = this.derivedQuantities.get('wandflaeche_brutto').value;
+      const fensterFlaeche = base.counts.fenster * 2.1; // Standard 1.2×1.4m
+      const tuerFlaeche = (base.counts.tueren || 1) * 2.0; // Standard 1.0×2.0m
+      
+      const netto = brutto - fensterFlaeche - tuerFlaeche;
+      
+      this.derivedQuantities.set('wandflaeche_netto', {
+        value: Math.max(0, netto),
+        unit: 'm²',
+        source: 'derived',
+        confidence: 0.8,
+        calculation: `Brutto ${brutto.toFixed(1)}m² - Öffnungen ${(fensterFlaeche + tuerFlaeche).toFixed(1)}m²`,
+        origin: 'calculated_from_brutto'
+      });
+    }
+    
+    // Kabellängen aus Elektropunkten
+    if (base.counts.steckdosen || base.counts.schalter) {
+      const elektropunkte = (base.counts.steckdosen || 0) + (base.counts.schalter || 0);
+      const raeume = base.counts.raeume || Math.ceil(base.areas.raumflaeche / 20);
+      
+      // Pro Raum: 15-20m + Steigungen
+      const kabellaenge = (raeume * 17.5) + (elektropunkte * 3);
+      
+      this.derivedQuantities.set('kabellaenge', {
+        value: kabellaenge,
+        unit: 'm',
+        source: 'estimated',
+        confidence: 0.7,
+        calculation: `${raeume} Räume × 17.5m + ${elektropunkte} Punkte × 3m`,
+        origin: 'estimated_from_elektropunkte'
+      });
+    }
+    
+    // Rohrleitungen aus Sanitärausstattung
+    if (base.counts.bad || base.counts.wc) {
+      const sanitaerpunkte = (base.counts.bad || 0) + (base.counts.wc || 0);
+      const geschosse = base.counts.stockwerke || 1;
+      
+      // Basis + Steigungen + Zuschlag
+      const rohrlaenge = (sanitaerpunkte * 8) + (geschosse * 6) + 10;
+      
+      this.derivedQuantities.set('rohrlaenge_wasser', {
+        value: rohrlaenge,
+        unit: 'm',
+        source: 'estimated',
+        confidence: 0.65,
+        calculation: `Sanitärpunkte × 8m + Steigungen + Reserve`,
+        origin: 'estimated_from_sanitaer'
+      });
+    }
+    
+    // Estrichfläche = Bodenfläche
+    if (base.areas.raumflaeche && !this.derivedQuantities.has('estrichflaeche')) {
+      this.derivedQuantities.set('estrichflaeche', {
+        value: base.areas.raumflaeche,
+        unit: 'm²',
+        source: 'assumed',
+        confidence: 0.95,
+        calculation: 'Gleich Raumfläche',
+        origin: 'equals_raumflaeche'
+      });
+    }
+  }
+
+  /**
+   * Kreuzvalidierung zwischen zusammenhängenden Mengen
+   */
+  crossValidateQuantities() {
+    const checks = [];
+    
+    // Prüfung: Wandfläche vs. Bodenfläche
+    const wandflaeche = this.derivedQuantities.get('wandflaeche_netto')?.value || 
+                        this.derivedQuantities.get('wandflaeche_brutto')?.value;
+    const bodenflaeche = this.derivedQuantities.get('raumflaeche')?.value || 
+                         this.derivedQuantities.get('estrichflaeche')?.value;
+    
+    if (wandflaeche && bodenflaeche) {
+      const ratio = wandflaeche / bodenflaeche;
+      
+      // Normale Räume haben Verhältnis 2.5-4.0
+      if (ratio < 2.0) {
+        this.validationWarnings.push({
+          type: 'WARNING',
+          field: 'wandflaeche',
+          message: `Wandfläche erscheint zu niedrig (Verhältnis ${ratio.toFixed(1)}:1)`,
+          suggestion: 'Bitte Raumhöhe und Wandflächen prüfen'
+        });
+      } else if (ratio > 5.0) {
+        this.validationWarnings.push({
+          type: 'WARNING',
+          field: 'wandflaeche',
+          message: `Wandfläche erscheint zu hoch (Verhältnis ${ratio.toFixed(1)}:1)`,
+          suggestion: 'Vermutlich sehr hohe Räume oder viele Wände'
+        });
+      }
+    }
+    
+    // Prüfung: Fensteranzahl vs. Raumanzahl
+    const fenster = this.derivedQuantities.get('fenster')?.value;
+    const raeume = this.derivedQuantities.get('raeume')?.value;
+    
+    if (fenster && raeume) {
+      const fensterProRaum = fenster / raeume;
+      
+      if (fensterProRaum < 0.8) {
+        this.validationWarnings.push({
+          type: 'INFO',
+          field: 'fenster',
+          message: 'Wenige Fenster pro Raum - möglicherweise innenliegende Räume',
+          suggestion: 'OK für Keller/Bäder'
+        });
+      } else if (fensterProRaum > 3) {
+        this.validationWarnings.push({
+          type: 'INFO',
+          field: 'fenster',
+          message: 'Viele Fenster pro Raum - große Fensterfronten?',
+          suggestion: 'Prüfung empfohlen'
+        });
+      }
+    }
+  }
+
+  /**
+   * Plausibilitätschecks für unrealistische Werte
+   */
+  performPlausibilityChecks() {
+    // Maximale Raumhöhe
+    const raumhoehe = this.derivedQuantities.get('raumhoehe')?.value;
+    if (raumhoehe && raumhoehe > 4.0) {
+      this.validationWarnings.push({
+        type: 'WARNING',
+        field: 'raumhoehe',
+        message: `Ungewöhnlich hohe Räume (${raumhoehe}m)`,
+        suggestion: 'Altbau oder Gewerbe?'
+      });
+    }
+    
+    // Minimale Raumgröße
+    const raumflaeche = this.derivedQuantities.get('raumflaeche')?.value;
+    if (raumflaeche && raumflaeche < 10) {
+      this.validationWarnings.push({
+        type: 'WARNING',
+        field: 'raumflaeche',
+        message: `Sehr kleine Raumfläche (${raumflaeche}m²)`,
+        suggestion: 'Einzelraum oder Gesamtfläche?'
+      });
+    }
+  }
+
+  /**
+   * Berechnet Gesamt-Konfidenz der Mengen
+   */
+  calculateOverallConfidence() {
+    if (this.derivedQuantities.size === 0) return 0;
+    
+    let totalConfidence = 0;
+    let directCount = 0;
+    
+    this.derivedQuantities.forEach(item => {
+      totalConfidence += item.confidence;
+      if (item.source === 'direct') directCount++;
+    });
+    
+    const avgConfidence = totalConfidence / this.derivedQuantities.size;
+    const directRatio = directCount / this.derivedQuantities.size;
+    
+    // Gewichtete Konfidenz (direkte Werte sind besser)
+    return avgConfidence * (0.7 + 0.3 * directRatio);
+  }
+
+  /**
+   * Hilfsmethode: Identifiziert Schlüssel für Mengen
+   */
+  identifyQuantityKey(questionText, type) {
+    const q = questionText.toLowerCase();
+    
+    if (type === 'area') {
+      if (q.includes('wand')) return 'wandflaeche';
+      if (q.includes('boden')) return 'bodenflaeche';
+      if (q.includes('decke')) return 'deckenflaeche';
+      if (q.includes('dach')) return 'dachflaeche';
+      if (q.includes('fassade')) return 'fassadenflaeche';
+      if (q.includes('fliesen')) return 'fliesenflaeche';
+      if (q.includes('raum') || q.includes('gesamt')) return 'raumflaeche';
+      return 'flaeche_sonstige';
+    }
+    
+    if (type === 'count') {
+      if (q.includes('fenster')) return 'fenster';
+      if (q.includes('tür') || q.includes('tuer')) return 'tueren';
+      if (q.includes('steckdose')) return 'steckdosen';
+      if (q.includes('schalter')) return 'schalter';
+      if (q.includes('heizkörper')) return 'heizkoerper';
+      if (q.includes('bad')) return 'bad';
+      if (q.includes('wc')) return 'wc';
+      return 'anzahl_sonstige';
+    }
+    
+    return 'unbekannt';
+  }
+}
+
+// ===========================================================================
 // HELPER FUNCTIONS
 // ===========================================================================
 
@@ -950,11 +1301,20 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
 }
 
 /**
- * Intelligente, dynamische Fragenanzahl-Ermittlung
- * VERBESSERT: Realistischere Bewertung der vorhandenen Informationen
+ * Intelligente Fragenanzahl-Ermittlung mit zentraler Komplexitätsanalyse
+ * KOMBINIERT: Alte gewerkespezifische Logik + neuer Analyzer
  */
 function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = []) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
+  
+  // Nutze den neuen Analyzer für Basis-Komplexität
+  const analyzer = new ProjectComplexityAnalyzer(
+    projectContext,
+    [{ code: tradeCode }],
+    intakeAnswers
+  );
+  
+  const complexity = analyzer.analyze();
   
   // Basis-Range für das Gewerk
   const baseRange = {
@@ -964,21 +1324,14 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
   };
   
   // Analysiere wie viel Information bereits vorhanden ist
-  let informationCompleteness = 0;
+  let informationCompleteness = complexity.factors.dataCompleteness;
   let missingCriticalInfo = [];
   
-  // Prüfe Projektbeschreibung
+  // Prüfe Projektbeschreibung - DETAILLIERTE GEWERKE-SPEZIFISCHE PRÜFUNGEN
   if (projectContext.description) {
     const desc = projectContext.description.toLowerCase();
-    const wordCount = desc.split(' ').length;
     
-    // REALISTISCHERE Bewertung der Beschreibung
-    if (wordCount > 100) informationCompleteness += 20;
-    else if (wordCount > 50) informationCompleteness += 15;
-    else if (wordCount > 20) informationCompleteness += 10;
-    else informationCompleteness += 5;
-    
-    // Gewerke-spezifische Prüfungen mit höherer Gewichtung
+    // ALLE URSPRÜNGLICHEN GEWERKE-SPEZIFISCHEN PRÜFUNGEN BEIBEHALTEN
     switch(tradeCode) {
       case 'MAL': // Malerarbeiten
         if (desc.match(/\d+\s*(m²|qm|quadratmeter)/)) {
@@ -1192,66 +1545,41 @@ case 'INT':
   
   // Prüfe Intake-Antworten (haben mehr Gewicht)
   if (intakeAnswers.length > 0) {
-    // Jede beantwortete Intake-Frage erhöht die Vollständigkeit
     informationCompleteness += Math.min(40, intakeAnswers.length * 3);
     
-    // Prüfe auf konkrete Mengenangaben in Antworten
     const hasNumbers = intakeAnswers.filter(a => 
       a.answer && a.answer.match(/\d+/)
     ).length;
     informationCompleteness += Math.min(20, hasNumbers * 5);
   }
   
-  // Budget gibt Aufschluss über Projektumfang
-  if (projectContext.budget && !projectContext.budget.includes('unsicher')) {
-    informationCompleteness += 10;
-  }
-  
-  // Kategorie kann auch helfen
-  if (projectContext.category) {
-    const cat = projectContext.category.toLowerCase();
-    if (cat.includes('renovierung') || cat.includes('sanierung')) {
-      informationCompleteness += 5;
-    }
-  }
-  
-  // Berechne finale Fragenanzahl
+  // Kombiniere beide Bewertungen
   informationCompleteness = Math.min(100, informationCompleteness);
   
-  // VERBESSERTE Reduktionslogik
+  // Berechne finale Fragenanzahl mit BEIDEN Faktoren
   let targetCount;
+  const complexityMultiplier = complexity.questionMultiplier;
   
+  // Detaillierte Reduktionslogik basierend auf Vollständigkeit UND Komplexität
   if (baseRange.complexity === 'EINFACH') {
-    // Einfache Gewerke brauchen weniger Fragen
     if (informationCompleteness >= 70) {
-      targetCount = baseRange.min; // Minimum
+      targetCount = baseRange.min;
     } else if (informationCompleteness >= 50) {
       targetCount = Math.round(baseRange.min + 2);
-    } else if (informationCompleteness >= 30) {
-      targetCount = Math.round((baseRange.min + baseRange.max) / 2);
     } else {
-      targetCount = baseRange.max - 2;
+      targetCount = Math.round(baseRange.min + (baseRange.max - baseRange.min) * complexityMultiplier);
     }
   } else if (baseRange.complexity === 'SEHR_HOCH' || baseRange.complexity === 'HOCH') {
-    // Komplexe Gewerke brauchen mehr Details
     if (informationCompleteness >= 80) {
       targetCount = Math.round(baseRange.min + 5);
     } else if (informationCompleteness >= 60) {
       targetCount = Math.round((baseRange.min + baseRange.max) / 2);
-    } else if (informationCompleteness >= 40) {
-      targetCount = Math.round(baseRange.max - 5);
     } else {
-      targetCount = baseRange.max;
+      targetCount = Math.round(baseRange.min + (baseRange.max - baseRange.min) * complexityMultiplier);
     }
   } else {
     // Mittlere Komplexität
-    if (informationCompleteness >= 70) {
-      targetCount = baseRange.min + 2;
-    } else if (informationCompleteness >= 40) {
-      targetCount = Math.round((baseRange.min + baseRange.max) / 2);
-    } else {
-      targetCount = baseRange.max - 3;
-    }
+    targetCount = Math.round(baseRange.min + (baseRange.max - baseRange.min) * complexityMultiplier);
   }
   
   // Kritische fehlende Infos erhöhen Fragenbedarf
@@ -1261,21 +1589,8 @@ case 'INT':
   targetCount = Math.max(baseRange.min, targetCount);
   targetCount = Math.min(baseRange.max, targetCount);
   
-  // SPEZIALFALL: Sehr einfache Projekte
-  if (projectContext.description) {
-    const desc = projectContext.description.toLowerCase();
-    // "Zimmer streichen" oder ähnlich einfache Aufgaben
-    if ((desc.includes('zimmer') || desc.includes('raum')) && 
-        (desc.includes('streichen') || desc.includes('malen')) &&
-        tradeCode === 'MAL') {
-      targetCount = Math.min(targetCount, 8); // Maximal 8 Fragen
-      if (desc.match(/\d+\s*(m²|qm)/)) {
-        targetCount = Math.min(targetCount, 5); // Mit Flächenangabe nur 5 Fragen
-      }
-    }
-  }
-  
   console.log(`[QUESTIONS] Intelligent count for ${tradeCode}:`);
+  console.log(`  -> Complexity: ${complexity.level} (Score: ${complexity.score})`);
   console.log(`  -> Information completeness: ${informationCompleteness}%`);
   console.log(`  -> Missing critical info: ${missingCriticalInfo.join(', ') || 'none'}`);
   console.log(`  -> Base range: ${baseRange.min}-${baseRange.max}`);
@@ -1284,7 +1599,9 @@ case 'INT':
   return {
     count: targetCount,
     completeness: informationCompleteness,
-    missingInfo: missingCriticalInfo
+    missingInfo: missingCriticalInfo,
+    complexity: complexity.level,
+    factors: complexity.factors
   };
 }
 
@@ -1295,12 +1612,19 @@ case 'INT':
 function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
   
-  let scopeMultiplier = 1.0;
-  let minPositions = 5;
-  let maxPositions = 50;
+  // Nutze Analyzer für Multiplikator
+  const analyzer = new ProjectComplexityAnalyzer(
+    projectContext,
+    [{ code: tradeCode }],
+    []
+  );
   
+  const complexity = analyzer.analyze();
+  
+  // WICHTIG: Variablen definieren
   const description = (projectContext.description || '').toLowerCase();
   const answers = projectContext.answers || [];
+  let scopeMultiplier = 1.0;
   
   // Helper: Finde Antwort mit Mengenangabe
   const findQuantityAnswer = (keywords) => {
@@ -1308,6 +1632,10 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
       keywords.some(kw => (a.question || '').toLowerCase().includes(kw))
     );
   };
+  
+  // Bestehende Basis-Logik bleibt
+  let minPositions = 5;
+  let maxPositions = 50;
   
   // GEWERKE-SPEZIFISCHE LOGIK
   switch(tradeCode) {
@@ -1675,26 +2003,27 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
       }
   }
   
-  // Anpassung basierend auf Fragenanzahl (sekundär)
+   // Anpassung basierend auf Fragenanzahl (sekundär)
   const questionFactor = Math.min(1.5, Math.max(0.5, questionCount / 15));
   
-  // Finale Berechnung
-  const finalMin = Math.round(minPositions * scopeMultiplier * questionFactor);
-  const finalMax = Math.round(maxPositions * scopeMultiplier * questionFactor);
+  // Finale Berechnung MIT beiden Faktoren
+  const finalMin = Math.round(minPositions * scopeMultiplier * complexity.positionMultiplier * questionFactor);
+  const finalMax = Math.round(maxPositions * scopeMultiplier * complexity.positionMultiplier * questionFactor);
   
   // Sicherstellen dass Min/Max sinnvoll sind
   const adjustedMin = Math.max(3, Math.min(40, finalMin));
   const adjustedMax = Math.min(50, Math.max(adjustedMin + 2, finalMax));
   
   console.log(`[LV-ORIENTATION] ${tradeCode}: ${adjustedMin}-${adjustedMax} positions`);
-  console.log(`  -> Scope: ${scopeMultiplier}x, Questions: ${questionCount}, Factor: ${questionFactor}`);
+  console.log(`  -> Scope: ${scopeMultiplier}x, Questions: ${questionCount}, Complexity: ${complexity.level}`);
   
   return {
     min: adjustedMin,
     max: adjustedMax,
     base: Math.round((adjustedMin + adjustedMax) / 2),
     ratio: tradeConfig.targetPositionsRatio,
-    scopeMultiplier: scopeMultiplier
+    scopeMultiplier: scopeMultiplier,
+    complexity: complexity.level
   };
 }
 
