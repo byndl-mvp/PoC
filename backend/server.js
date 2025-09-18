@@ -6850,6 +6850,31 @@ app.post('/api/projects', async (req, res) => {
       budget,
       extractedData // NEU: Weitergabe der extrahierten Daten
     });
+
+    // NEU: Erweiterte Projekt-Analyse mit Sequenzierung
+const sequenceAnalysis = analyzeTradeSequencing(detectedTrades);
+const complexityAnalyzer = new ProjectComplexityAnalyzer(
+  project,
+  detectedTrades,
+  []
+);
+const complexityAnalysis = complexityAnalyzer.analyze();
+
+// Speichere erweiterte Metadaten
+await query(
+  `UPDATE projects 
+   SET metadata = metadata || $1 
+   WHERE id = $2`,
+  [
+    JSON.stringify({
+      extracted: extractedData,
+      sequencing: sequenceAnalysis,
+      complexity: complexityAnalysis,
+      estimatedDuration: sequenceAnalysis.duration
+    }),
+    project.id
+  ]
+);
     
     // Nur erkannte Trades hinzufügen
     console.log(`[PROJECT] Creating project ${project.id} with ${detectedTrades.length} detected trades`);
