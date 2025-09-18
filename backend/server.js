@@ -2993,47 +2993,74 @@ return filteredQuestions;
 /**
  * Filtert duplizierte Fragen basierend auf Intake-Antworten
  */
+/**
 function filterDuplicateQuestions(questions, intakeAnswers) {
   if (!intakeAnswers || intakeAnswers.length === 0) return questions;
   
-  const forbiddenPatterns = [];
+  // Sammle alle Intake-Fragen die substantiell beantwortet wurden
+  const answeredQuestions = new Set();
   
   intakeAnswers.forEach(item => {
-    const q = item.question_text?.toLowerCase() || '';
-    const a = item.answer_text?.toLowerCase() || '';
+    const q = item.question_text?.toLowerCase().trim() || '';
+    const a = item.answer_text?.toLowerCase().trim() || '';
     
-    // Badfläche beantwortet -> keine Badflächen-Fragen mehr
-    if (q.includes('bad') && a.match(/\d+\s*(m²|qm)/)) {
-      forbiddenPatterns.push(
-        /bad.*fläche/i,
-        /fläche.*bad/i,
-        /groß.*bad/i,
-        /bad.*groß/i,
-        /sanitär.*fläche/i
-      );
-    }
-    
-    // Stockwerk beantwortet -> keine Stockwerk-Fragen mehr
-    if (q.includes('stock') || q.includes('geschoss')) {
-      forbiddenPatterns.push(
-        /stock/i,
-        /geschoss/i,
-        /etage/i,
-        /welche.*ebene/i
-      );
+    // Nur wenn eine echte Antwort gegeben wurde (nicht "keine Angabe" etc.)
+    if (a && a.length > 2 && 
+        a !== 'ja' && 
+        a !== 'nein' && 
+        a !== 'keine angabe' && 
+        a !== 'weiß nicht' &&
+        a !== 'unklar') {
+      // Speichere die exakte Frage
+      answeredQuestions.add(q);
+      
+      // Optional: Speichere auch leichte Variationen (Singular/Plural etc.)
+      // Aber NUR wenn sie fast identisch sind
+      if (q.endsWith('?')) {
+        answeredQuestions.add(q.slice(0, -1)); // Ohne Fragezeichen
+      }
     }
   });
   
   return questions.filter(q => {
-    const questionText = q.question || q.text || '';
-    const isDuplicate = forbiddenPatterns.some(pattern => pattern.test(questionText));
+    const questionText = (q.question || q.text || '').toLowerCase().trim();
+    
+    // Prüfe ob GENAU diese Frage schon beantwortet wurde
+    const isExactDuplicate = answeredQuestions.has(questionText) || 
+                             answeredQuestions.has(questionText.replace('?', ''));
+    
+    // Prüfe auf fast identische Formulierung (>85% gleiche Wörter)
+    let isNearDuplicate = false;
+    if (!isExactDuplicate) {
+      const questionWords = new Set(questionText.split(/\s+/));
+      
+      for (const answered of answeredQuestions) {
+        const answeredWords = new Set(answered.split(/\s+/));
+        
+        // Berechne Überschneidung der Wörter
+        const commonWords = [...questionWords].filter(w => answeredWords.has(w));
+        const similarity = commonWords.length / Math.max(questionWords.size, answeredWords.size);
+        
+        // NUR wenn fast alle Wörter gleich sind (85%+)
+        if (similarity > 0.85 && questionWords.size > 3) { // Mindestens 4 Wörter für Vergleich
+          isNearDuplicate = true;
+          break;
+        }
+      }
+    }
+    
+    const isDuplicate = isExactDuplicate || isNearDuplicate;
     
     if (isDuplicate) {
-      console.log(`[FILTER] Removing duplicate: ${questionText}`);
+      console.log(`[FILTER] Removing duplicate: ${questionText.substring(0, 80)}...`);
     }
+    
     return !isDuplicate;
   });
 }
+
+// Export
+module.exports = filterDuplicateQuestions;
 
 /**
  * Validiert und filtert Fragen basierend auf Gewerke-Zuständigkeit
