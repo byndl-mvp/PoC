@@ -153,65 +153,69 @@ if (task === 'questions' || task === 'intake') {
     let systemMessage = messages.find(m => m.role === "system")?.content || "";
     let otherMessages = messages.filter(m => m.role !== "system");
     
-    // Anthropic System-Limit (konservativ)
-    const ANTHROPIC_SYSTEM_LIMIT = 8000;
+    // Anthropic Limits
+    const ANTHROPIC_SYSTEM_LIMIT = 7000;  // Konservativer
+    const ANTHROPIC_USER_LIMIT = 15000;   // User kann mehr haben
     
     if (systemMessage.length > ANTHROPIC_SYSTEM_LIMIT) {
       console.log(`[LLM] System prompt too long for Anthropic: ${systemMessage.length} chars, redistributing...`);
       
-      // Intelligente Aufteilung: Kern-Instruktionen identifizieren
-      const lines = systemMessage.split('\n');
-      let coreSystem = '';
-      let detailContent = '';
-      let currentLength = 0;
-      let inCoreSection = true;
+      // Extrahiere absolut kritische System-Instruktionen
+      const criticalPatterns = [
+        /Du bist[^\n]+/,
+        /OUTPUT[^\n]+JSON[^\n]*/i,
+        /KRITISCH[^\n]+/gi,
+        /NUR valides JSON/i
+      ];
       
-      for (const line of lines) {
-        // Kern-Instruktionen (müssen im System bleiben)
-        if (inCoreSection && (
-          line.includes('Du bist') ||
-          line.includes('OUTPUT') ||
-          line.includes('JSON') ||
-          line.includes('KRITISCH') ||
-          line.includes('valides JSON') ||
-          currentLength < 2000  // Erste 2000 Zeichen immer als Kern
-        )) {
-          if ((coreSystem.length + line.length + 1) < ANTHROPIC_SYSTEM_LIMIT) {
-            coreSystem += line + '\n';
-            currentLength += line.length + 1;
-          } else {
-            inCoreSection = false;
-            detailContent += line + '\n';
-          }
-        } else {
-          inCoreSection = false;
-          detailContent += line + '\n';
+      let coreSystem = '';
+      let remainingSystem = systemMessage;
+      
+      // Sammle kritische Zeilen
+      for (const pattern of criticalPatterns) {
+        const match = remainingSystem.match(pattern);
+        if (match) {
+          coreSystem += match[0] + '\n\n';
+          remainingSystem = remainingSystem.replace(match[0], '');
         }
       }
       
-      // Wenn immer noch zu lang, härter kürzen
+      // Füge die ersten 1500 Zeichen hinzu (wichtigster Kontext)
+      const firstChunk = remainingSystem.substring(0, 1500);
+      coreSystem += firstChunk;
+      remainingSystem = remainingSystem.substring(1500);
+      
+      // Sicherstellen dass wir unter dem Limit sind
       if (coreSystem.length > ANTHROPIC_SYSTEM_LIMIT) {
-        console.warn('[LLM] Core system still too long, truncating...');
-        coreSystem = coreSystem.substring(0, ANTHROPIC_SYSTEM_LIMIT - 200) + 
-                     '\n\n[Weitere Details siehe Kontext]';
+        coreSystem = coreSystem.substring(0, ANTHROPIC_SYSTEM_LIMIT - 100);
+        remainingSystem = systemMessage.substring(ANTHROPIC_SYSTEM_LIMIT - 100);
       }
       
-      // Details in erste User-Message verschieben
-      if (detailContent && otherMessages.length > 0) {
+      // Verschiebe Rest in User-Message
+      if (remainingSystem && otherMessages.length > 0) {
+        const currentUserLength = otherMessages[0].content.length;
+        const movedContentLength = remainingSystem.length;
+        
+        // Prüfe ob User-Message nicht zu lang wird
+        if (currentUserLength + movedContentLength > ANTHROPIC_USER_LIMIT) {
+          console.warn('[LLM] User message would be too long, truncating moved content');
+          remainingSystem = remainingSystem.substring(0, ANTHROPIC_USER_LIMIT - currentUserLength - 500);
+        }
+        
         otherMessages[0].content = 
-          "ZUSÄTZLICHE INSTRUKTIONEN UND REGELN:\n" +
-          "=====================================\n" +
-          detailContent + 
-          "\n\nURSPRÜNGLICHE ANFRAGE:\n" +
-          "===================\n" +
+          "ZUSÄTZLICHE REGELN UND KONTEXT:\n" +
+          "================================\n" +
+          remainingSystem + 
+          "\n\nHAUPTANFRAGE:\n" +
+          "============\n" +
           otherMessages[0].content;
       }
       
-      console.log(`[LLM] Redistributed prompt - System: ${coreSystem.length} chars, moved ${detailContent.length} chars to user`);
+      console.log(`[LLM] Redistributed - System: ${coreSystem.length} chars, User: ${otherMessages[0]?.content.length} chars`);
       systemMessage = coreSystem;
     }
     
-    // Für Claude: JSON-Instruktion sicherstellen (falls jsonMode aktiv)
+    // JSON-Mode Instruktion
     if (options.jsonMode && !systemMessage.includes('JSON')) {
       systemMessage = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!\n\n${systemMessage}`;
     }
@@ -226,21 +230,21 @@ if (task === 'questions' || task === 'intake') {
 
     return response.content[0].text;
   } catch (error) {
-  console.error('[LLM] Anthropic error:', error.status || error.message);
-  
-  // Detaillierte Fehleranalyse für 400er
-  if (error.status === 400) {
-    console.error('[LLM] 400 Error Details:', {
-      error_type: error.error?.type,
-      error_message: error.error?.message || error.message,
-      systemLength: systemMessage.length,
-      messagesCount: otherMessages.length,
-      firstUserLength: otherMessages[0]?.content?.length
-    });
+    console.error('[LLM] Anthropic error:', error.status || error.message);
+    
+    // Detaillierte Fehleranalyse
+    if (error.status === 400) {
+      console.error('[LLM] 400 Error Details:', {
+        error_type: error.error?.type,
+        error_message: error.error?.message || error.message,
+        systemLength: systemMessage.length,
+        userLength: otherMessages[0]?.content?.length,
+        totalLength: (systemMessage.length + (otherMessages[0]?.content?.length || 0))
+      });
+    }
+    
+    throw error;
   }
-  
-  throw error;
-}
 };
   
   // Rest der Funktion bleibt gleich...
