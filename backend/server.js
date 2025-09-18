@@ -4122,16 +4122,38 @@ console.log(`[LV] Orientation for ${trade.code}: ${orientation.min}-${orientatio
     additionalVorbemerkungen.push('Gerüstkosten sind in separatem Gewerk erfasst');
   }
   
-  // Validiere und schätze fehlende Werte
-  const validationResult = await validateAndEstimateAnswers(
-    tradeAnswers,
-    trade.code,
-    {
-      category: project.category,
-      description: project.description,
-      intakeAnswers
-    }
-  );
+  // NEU: Nutze QuantityIntelligence für bessere Mengenermittlung
+const quantityAnalyzer = new QuantityIntelligence(
+  project,
+  tradeAnswers,
+  intakeAnswers
+);
+
+const intelligentQuantities = quantityAnalyzer.analyzeAndDeriveQuantities();
+
+console.log(`[LV] Intelligent quantities for ${trade.code}:`, {
+  derived: intelligentQuantities.quantities,
+  confidence: intelligentQuantities.confidence,
+  warnings: intelligentQuantities.warnings
+});
+
+// Erweiterte Validierung mit abgeleiteten Mengen
+const validationResult = await validateAndEstimateAnswers(
+  tradeAnswers,
+  trade.code,
+  {
+    category: project.category,
+    description: project.description,
+    intakeAnswers,
+    derivedQuantities: intelligentQuantities.quantities  // NEU: Übergebe abgeleitete Mengen
+  }
+);
+
+// Kombiniere Validierungsergebnisse
+if (intelligentQuantities.warnings.length > 0) {
+  if (!validationResult.warnings) validationResult.warnings = [];
+  validationResult.warnings.push(...intelligentQuantities.warnings.map(w => w.message));
+}
 
   const lvPrompt = await getPromptForTrade(tradeId, 'lv');
   if (!lvPrompt) throw new Error('LV prompt missing for trade');
