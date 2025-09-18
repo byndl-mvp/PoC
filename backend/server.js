@@ -2946,6 +2946,33 @@ if (needsPV && !detectedTrades.some(t => t.code === 'PV')) {
     });
   }
 }
+
+// NEU: Analysiere Gewerke-Sequenzierung
+const sequenceAnalysis = analyzeTradeSequencing(detectedTrades);
+
+console.log('[DETECT] Trade sequencing analysis:', {
+  phases: Object.keys(sequenceAnalysis.phases).map(p => 
+    `${p}: ${sequenceAnalysis.phases[p].length} trades`
+  ),
+  criticalPath: sequenceAnalysis.criticalPath.length,
+  parallelizable: sequenceAnalysis.parallelizable.length,
+  estimatedDuration: sequenceAnalysis.duration.formatted
+});
+
+// Füge Sequenzierungs-Info zu den Trades hinzu
+detectedTrades = detectedTrades.map(trade => {
+  const sequenceInfo = sequenceAnalysis.sequence.find(s => s.code === trade.code);
+  return {
+    ...trade,
+    phase: TRADE_INTERACTION_MATRIX[trade.code]?.phase || 'unknown',
+    dependencies: TRADE_INTERACTION_MATRIX[trade.code]?.requires || [],
+    enables: TRADE_INTERACTION_MATRIX[trade.code]?.enables || [],
+    canParallelWith: TRADE_INTERACTION_MATRIX[trade.code]?.parallel || []
+  };
+});
+
+// Speichere Sequenzierung in Metadaten
+project.sequencing = sequenceAnalysis;
     
     console.log('[DETECT] Successfully detected trades:', detectedTrades);
     return detectedTrades;
