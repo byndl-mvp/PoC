@@ -1955,22 +1955,22 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = {}) {
       }
   }
   
-  // Finale Berechnung
-const finalMin = minPositions;
-const finalMax = maxPositions;
+// Finale Berechnung MIT scopeMultiplier
+const finalMin = Math.round(minPositions * scopeMultiplier);
+const finalMax = Math.round(maxPositions * scopeMultiplier);
 
 // Sicherstellen dass Min/Max sinnvoll sind
 const adjustedMin = Math.max(3, Math.min(40, finalMin));
 const adjustedMax = Math.min(50, Math.max(adjustedMin + 2, finalMax));
 
-console.log(`[LV-ORIENTATION] ${tradeCode}: ${adjustedMin}-${adjustedMax} positions (base: ${minPositions}-${maxPositions})`);
+console.log(`[LV-ORIENTATION] ${tradeCode}: ${adjustedMin}-${adjustedMax} positions (base: ${minPositions}-${maxPositions} × ${scopeMultiplier})`);
 
 return {
   min: adjustedMin,
   max: adjustedMax,
   base: Math.round((adjustedMin + adjustedMax) / 2),
   ratio: tradeConfig.targetPositionsRatio || 1.0,
-  // scopeMultiplier entfernen oder dokumentieren dass er nicht verwendet wird
+  scopeMultiplier: scopeMultiplier, // Jetzt macht es Sinn ihn zu behalten
   confidence: 0.8
   };
 }
