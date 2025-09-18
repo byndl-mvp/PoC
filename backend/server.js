@@ -4564,6 +4564,23 @@ ${tradeAnswers.map(a =>
 VALIDIERTE WERTE:
 ${validationResult ? JSON.stringify(validationResult, null, 2) : 'Keine Validierung verfügbar'}
 
+INTELLIGENTE MENGENABLEITUNG:
+${intelligentQuantities ? `
+Abgeleitete Mengen (Konfidenz: ${(intelligentQuantities.confidence * 100).toFixed(0)}%):
+${Object.entries(intelligentQuantities.quantities).map(([key, data]) => 
+  `- ${key}: ${data.value} ${data.unit} (${data.source}, Konfidenz: ${(data.confidence * 100).toFixed(0)}%)
+    Berechnung: ${data.calculation || 'Direkt erfasst'}`
+).join('\n')}
+
+${intelligentQuantities.warnings.length > 0 ? `
+WICHTIGE HINWEISE:
+${intelligentQuantities.warnings.map(w => `- ${w.type}: ${w.message}`).join('\n')}
+` : ''}
+` : 'Keine intelligente Mengenableitung verfügbar'}
+
+KRITISCH: Nutze die abgeleiteten Mengen für präzisere LV-Positionen!
+Bei niedriger Konfidenz: Kennzeichne als geschätzt.
+
 WICHTIG:
 1. Erstelle NUR Positionen für explizit erfragte Leistungen
 2. Verwende die validierten Mengen
