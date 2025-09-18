@@ -4122,6 +4122,32 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Orientierungs-Richtwert: ca. ${orientation.min}-${orientation.max} Positionen
    - Diese Zahl ist KEINE strikte Vorgabe, sondern eine ORIENTIERUNG
    - Maßgeblich ist die TECHNISCH SINNVOLLE Aufteilung
+   
+   WICHTIG ZUR POSITIONSANZAHL:
+   - Bei ${orientation.min} Positionen: Hauptleistungen mit inkludierten Nebenleistungen
+   - Bei ${orientation.max} Positionen: Detailliertere Aufschlüsselung wo technisch sinnvoll
+   
+   WAS HÖHERE POSITIONSANZAHL BEDEUTET:
+   ✓ Nebenleistungen als separate Positionen (statt "inkl. Abdichtung")
+   ✓ Materialvarianten getrennt (z.B. verschiedene Putzarten)
+   ✓ Vorarbeiten detailliert (z.B. Grundierung separat von Anstrich)
+   ✓ Verschiedene Räume/Bereiche trennen (z.B. Bad/Küche/Wohnbereich)
+   ✓ Qualitätsstufen separat (z.B. Q2 und Q3 Spachtelung getrennt)
+   
+   NIEMALS:
+   ✗ Künstliche Aufteilung identischer Leistungen
+   ✗ Erfundene Positionen nur für Anzahl-Ziel
+   ✗ Technisch unsinnige Kleinstpositionen
+   
+   BEISPIEL DETAILLIERUNGSGRADE:
+   Bei niedriger Positionsanzahl (${orientation.min}):
+   - "Malerarbeiten komplett inkl. Grundierung, Spachteln Q2, Anstrich"
+   
+   Bei hoher Positionsanzahl (${orientation.max}):
+   - Pos 1: "Grundierung der Wandflächen"
+   - Pos 2: "Spachtelarbeiten Qualitätsstufe Q2"
+   - Pos 3: "Zwischenanstrich Dispersionsfarbe"
+   - Pos 4: "Schlussanstrich Dispersionsfarbe"
 
    KRITISCHE REGEL FÜR BAUTEILE MIT ABMESSUNGEN:
    - UNTERSCHIEDLICHE Abmessungen = IMMER separate Positionen
@@ -4150,6 +4176,9 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Flächenarbeiten (Malerarbeiten, Putz, Estrich)
    - Installationsarbeiten (sofern nicht bauteilbezogen)
    - Demontagearbeiten gleicher Art
+   
+   Die Zielanzahl liegt bei ca. ${orientation.base} Positionen (Bereich: ${orientation.min}-${orientation.max}).
+   Technische Korrektheit hat IMMER Vorrang vor der Positionsanzahl!
 
 5. GEWERKEABGRENZUNG & DUPLIKATSVERMEIDUNG:
    - KRITISCH: Prüfe ALLE anderen Gewerke auf Überschneidungen
