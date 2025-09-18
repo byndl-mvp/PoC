@@ -624,6 +624,364 @@ class QuantityIntelligence {
 }
 
 // ===========================================================================
+// GEWERKE-INTERAKTIONS-MATRIX UND SEQUENZIERUNG
+// ===========================================================================
+
+const TRADE_INTERACTION_MATRIX = {
+  'ABBR': {
+    requires: [],
+    enables: ['ROH', 'ELEKT', 'SAN', 'HEI'],
+    conflicts: [],
+    parallel: [],
+    phase: 'preparation'
+  },
+  'GER': {
+    requires: [],
+    enables: ['DACH', 'FASS', 'FEN'],
+    conflicts: [],
+    parallel: ['ROH', 'ABBR'],
+    phase: 'preparation'
+  },
+  'ROH': {
+    requires: ['ABBR'],
+    enables: ['ELEKT', 'SAN', 'HEI', 'TRO', 'FEN'],
+    conflicts: [],
+    parallel: ['GER'],
+    phase: 'structure'
+  },
+  'ZIMM': {
+    requires: ['ROH'],
+    enables: ['DACH'],
+    conflicts: [],
+    parallel: ['FEN'],
+    phase: 'structure'
+  },
+  'DACH': {
+    requires: ['ZIMM', 'GER'],
+    enables: ['FEN', 'FASS'],
+    conflicts: [],
+    parallel: [],
+    phase: 'structure'
+  },
+  'FEN': {
+    requires: ['ROH', 'GER'],
+    enables: ['FASS', 'TRO', 'MAL'],
+    conflicts: [],
+    parallel: ['DACH'],
+    phase: 'structure'
+  },
+  'FASS': {
+    requires: ['FEN', 'GER'],
+    enables: ['MAL'],
+    conflicts: [],
+    parallel: ['DACH'],
+    phase: 'structure'
+  },
+  'ELEKT': {
+    requires: ['ROH'],
+    enables: ['TRO', 'MAL', 'BOD'],
+    conflicts: ['MAL'],
+    parallel: ['SAN', 'HEI'],
+    phase: 'technical'
+  },
+  'SAN': {
+    requires: ['ROH'],
+    enables: ['TRO', 'FLI', 'MAL'],
+    conflicts: ['FLI'],
+    parallel: ['ELEKT', 'HEI'],
+    phase: 'technical'
+  },
+  'HEI': {
+    requires: ['ROH'],
+    enables: ['ESTR', 'TRO', 'MAL'],
+    conflicts: ['ESTR'],
+    parallel: ['ELEKT', 'SAN'],
+    phase: 'technical'
+  },
+  'KLIMA': {
+    requires: ['ROH', 'TRO'],
+    enables: ['MAL'],
+    conflicts: [],
+    parallel: ['ELEKT'],
+    phase: 'technical'
+  },
+  'TRO': {
+    requires: ['ELEKT', 'SAN', 'HEI'],
+    enables: ['MAL', 'FLI', 'BOD'],
+    conflicts: [],
+    parallel: [],
+    phase: 'interior'
+  },
+  'ESTR': {
+    requires: ['HEI'],
+    enables: ['FLI', 'BOD'],
+    conflicts: ['BOD'],
+    parallel: [],
+    phase: 'interior'
+  },
+  'FLI': {
+    requires: ['TRO', 'SAN', 'ESTR'],
+    enables: ['MAL'],
+    conflicts: [],
+    parallel: [],
+    phase: 'finishing'
+  },
+  'MAL': {
+    requires: ['TRO', 'ELEKT', 'FLI'],
+    enables: ['BOD'],
+    conflicts: [],
+    parallel: [],
+    phase: 'finishing'
+  },
+  'BOD': {
+    requires: ['MAL', 'ESTR'],
+    enables: [],
+    conflicts: [],
+    parallel: [],
+    phase: 'finishing'
+  },
+  'TIS': {
+    requires: ['MAL', 'BOD'],
+    enables: [],
+    conflicts: [],
+    parallel: ['SCHL'],
+    phase: 'finishing'
+  },
+  'SCHL': {
+    requires: ['ROH'],
+    enables: [],
+    conflicts: [],
+    parallel: ['TIS'],
+    phase: 'finishing'
+  },
+  'AUSS': {
+    requires: [],
+    enables: [],
+    conflicts: [],
+    parallel: ['FASS', 'DACH'],
+    phase: 'exterior'
+  },
+  'PV': {
+    requires: ['DACH', 'ELEKT'],
+    enables: [],
+    conflicts: [],
+    parallel: [],
+    phase: 'technical'
+  }
+};
+
+/**
+ * Analysiert die optimale Reihenfolge der Gewerke
+ */
+function analyzeTradeSequencing(selectedTrades) {
+  const phases = {
+    preparation: [],    // Abbruch, Gerüst
+    structure: [],      // Rohbau, Dach, Fenster
+    technical: [],      // Elektro, Sanitär, Heizung
+    interior: [],       // Trockenbau, Estrich
+    finishing: [],      // Fliesen, Maler, Boden
+    exterior: []        // Außenanlagen
+  };
+  
+  // Sortiere Trades nach Phasen
+  selectedTrades.forEach(trade => {
+    const matrix = TRADE_INTERACTION_MATRIX[trade.code];
+    if (matrix) {
+      phases[matrix.phase].push({
+        ...trade,
+        dependencies: matrix
+      });
+    }
+  });
+  
+  // Optimiere Reihenfolge innerhalb der Phasen
+  const sequence = [];
+  const phaseOrder = ['preparation', 'structure', 'technical', 'interior', 'finishing', 'exterior'];
+  
+  phaseOrder.forEach(phaseName => {
+    const phaseTrades = phases[phaseName];
+    if (phaseTrades.length > 0) {
+      // Sortiere nach Abhängigkeiten
+      const sorted = sortByDependencies(phaseTrades);
+      sequence.push(...sorted);
+    }
+  });
+  
+  return {
+    sequence,
+    phases,
+    criticalPath: identifyCriticalPath(sequence),
+    parallelizable: identifyParallelWork(sequence),
+    conflicts: identifyConflicts(selectedTrades),
+    duration: estimateTotalDuration(sequence)
+  };
+}
+
+/**
+ * Sortiert Trades innerhalb einer Phase nach Abhängigkeiten
+ */
+function sortByDependencies(trades) {
+  const sorted = [];
+  const remaining = [...trades];
+  const maxIterations = trades.length * 2;
+  let iterations = 0;
+  
+  while (remaining.length > 0 && iterations < maxIterations) {
+    iterations++;
+    
+    for (let i = 0; i < remaining.length; i++) {
+      const trade = remaining[i];
+      const deps = trade.dependencies.requires || [];
+      
+      // Prüfe ob alle Abhängigkeiten erfüllt sind
+      const allDepsInSorted = deps.every(depCode => 
+        sorted.some(s => s.code === depCode)
+      );
+      
+      if (allDepsInSorted || deps.length === 0) {
+        sorted.push(trade);
+        remaining.splice(i, 1);
+        break;
+      }
+    }
+  }
+  
+  // Falls nicht alle sortiert werden konnten, füge Rest hinzu
+  sorted.push(...remaining);
+  
+  return sorted;
+}
+
+/**
+ * Identifiziert den kritischen Pfad
+ */
+function identifyCriticalPath(sequence) {
+  const critical = [];
+  
+  sequence.forEach(trade => {
+    const deps = TRADE_INTERACTION_MATRIX[trade.code];
+    if (deps && deps.enables.length > 0) {
+      // Trade ist kritisch wenn es andere Trades blockiert
+      const enablesInSequence = deps.enables.filter(code =>
+        sequence.some(t => t.code === code)
+      );
+      
+      if (enablesInSequence.length > 0) {
+        critical.push({
+          code: trade.code,
+          name: trade.name,
+          enables: enablesInSequence
+        });
+      }
+    }
+  });
+  
+  return critical;
+}
+
+/**
+ * Identifiziert parallel ausführbare Arbeiten
+ */
+function identifyParallelWork(sequence) {
+  const parallel = [];
+  
+  sequence.forEach((trade, index) => {
+    const deps = TRADE_INTERACTION_MATRIX[trade.code];
+    if (deps && deps.parallel.length > 0) {
+      const parallelInSequence = deps.parallel.filter(code =>
+        sequence.some(t => t.code === code)
+      );
+      
+      if (parallelInSequence.length > 0) {
+        parallel.push({
+          trade: trade.code,
+          canParallelWith: parallelInSequence
+        });
+      }
+    }
+  });
+  
+  return parallel;
+}
+
+/**
+ * Identifiziert potenzielle Konflikte
+ */
+function identifyConflicts(trades) {
+  const conflicts = [];
+  
+  trades.forEach(trade => {
+    const deps = TRADE_INTERACTION_MATRIX[trade.code];
+    if (deps && deps.conflicts.length > 0) {
+      deps.conflicts.forEach(conflictCode => {
+        if (trades.some(t => t.code === conflictCode)) {
+          conflicts.push({
+            trade1: trade.code,
+            trade2: conflictCode,
+            reason: 'Diese Gewerke sollten nicht gleichzeitig arbeiten'
+          });
+        }
+      });
+    }
+  });
+  
+  return conflicts;
+}
+
+/**
+ * Schätzt die Gesamtdauer basierend auf Sequenzierung
+ */
+function estimateTotalDuration(sequence) {
+  const baseDurations = {
+    'ABBR': { min: 3, max: 10 },
+    'GER': { min: 1, max: 2 },
+    'ROH': { min: 10, max: 30 },
+    'ZIMM': { min: 5, max: 15 },
+    'DACH': { min: 5, max: 15 },
+    'FEN': { min: 2, max: 5 },
+    'FASS': { min: 10, max: 20 },
+    'ELEKT': { min: 5, max: 15 },
+    'SAN': { min: 5, max: 15 },
+    'HEI': { min: 5, max: 15 },
+    'KLIMA': { min: 3, max: 10 },
+    'TRO': { min: 5, max: 10 },
+    'ESTR': { min: 3, max: 7 },
+    'FLI': { min: 3, max: 10 },
+    'MAL': { min: 3, max: 10 },
+    'BOD': { min: 2, max: 5 },
+    'TIS': { min: 2, max: 5 },
+    'SCHL': { min: 2, max: 5 },
+    'AUSS': { min: 5, max: 15 },
+    'PV': { min: 2, max: 5 }
+  };
+  
+  let totalMin = 0;
+  let totalMax = 0;
+  const parallelReduction = 0.7; // 30% Zeitersparnis bei Parallelarbeit
+  
+  sequence.forEach(trade => {
+    const duration = baseDurations[trade.code] || { min: 3, max: 7 };
+    const deps = TRADE_INTERACTION_MATRIX[trade.code];
+    
+    if (deps && deps.parallel.length > 0) {
+      // Reduziere Zeit wenn parallel gearbeitet werden kann
+      totalMin += duration.min * parallelReduction;
+      totalMax += duration.max * parallelReduction;
+    } else {
+      totalMin += duration.min;
+      totalMax += duration.max;
+    }
+  });
+  
+  return {
+    minDays: Math.round(totalMin),
+    maxDays: Math.round(totalMax),
+    avgDays: Math.round((totalMin + totalMax) / 2),
+    formatted: `${Math.round(totalMin)} - ${Math.round(totalMax)} Arbeitstage`
+  };
+}
+
+// ===========================================================================
 // HELPER FUNCTIONS
 // ===========================================================================
 
