@@ -4493,8 +4493,16 @@ WICHTIG:
 1. Erstelle NUR Positionen für explizit erfragte Leistungen
 2. Verwende die validierten Mengen
 3. Realistische Preise (Stand 2024/2025)
-4. Dokumentiere alle Annahmen transparent`;  // HIER ENDET der userPrompt String
+4. Dokumentiere alle Annahmen transparent
 
+POSITIONSDETAILLIERUNG:
+Basierend auf dem Projektumfang ist eine ausgewogene Gliederung angemessen.
+Zielbereich: ${orientation.min}-${orientation.max} technisch sinnvolle Positionen
+- Bei kleineren Arbeiten: Eher ${orientation.min} Positionen (kompakt)
+- Bei komplexen Arbeiten: Bis zu ${orientation.max} Positionen (detailliert)
+
+WICHTIG: Qualität vor Quantität! Keine künstlichen Positionen erfinden!`;
+  
   try {
   const response = await llmWithPolicy('lv', [
     { role: 'system', content: systemPrompt },
