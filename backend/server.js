@@ -7188,6 +7188,51 @@ if (summary.trades && Array.isArray(summary.trades)) {
   }));
 }
 
+// NEU: Analysiere Gewerke-Abhängigkeiten für Empfehlungen
+if (summary.trades && Array.isArray(summary.trades)) {
+  const recommendedCodes = summary.trades.map(t => t.code);
+  const allRecommended = [...recommendedCodes];
+  
+  // Prüfe ob abhängige Gewerke fehlen
+  recommendedCodes.forEach(code => {
+    const deps = TRADE_INTERACTION_MATRIX[code];
+    if (deps && deps.requires) {
+      deps.requires.forEach(reqCode => {
+        if (!allRecommended.includes(reqCode)) {
+          // Füge fehlendes abhängiges Gewerk hinzu
+          const reqTrade = availableTrades.find(t => t.code === reqCode);
+          if (reqTrade) {
+            summary.trades.push({
+              code: reqCode,
+              name: reqTrade.name,
+              reason: `Erforderlich für ${code}`,
+              priority: 'hoch',
+              isDependency: true
+            });
+            allRecommended.push(reqCode);
+          }
+        }
+      });
+    }
+  });
+  
+  // Sortiere nach Abhängigkeiten
+  const sequenceAnalysis = analyzeTradeSequencing(
+    summary.trades.map(t => ({ code: t.code, name: t.name }))
+  );
+  
+  // Füge Sequenzierungs-Info zur Summary hinzu
+  summary.sequencing = {
+    recommendedOrder: sequenceAnalysis.sequence.map(s => s.code),
+    phases: Object.keys(sequenceAnalysis.phases).reduce((acc, phase) => {
+      acc[phase] = sequenceAnalysis.phases[phase].map(t => t.code);
+      return acc;
+    }, {}),
+    estimatedDuration: sequenceAnalysis.duration,
+    parallelizable: sequenceAnalysis.parallelizable
+  };
+}
+    
 // NEU: Analysiere Intake-Antworten für zusätzliche Gewerke
 const additionalTrades = [];
 const processedCodes = new Set(); // Verhindere Duplikate
