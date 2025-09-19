@@ -1927,7 +1927,7 @@ async function generateQuestions(tradeId, projectContext = {}) {
    JOIN trades t ON t.id = a.trade_id
    WHERE a.project_id = $1 
      AND t.code = 'INT'`,  // INT = Intake Trade
-  [projectId]
+  [project_id]
 );
     
     if (intakeResponses.rows.length > 0) {
