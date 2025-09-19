@@ -2589,12 +2589,19 @@ let questions;
 try {
   questions = JSON.parse(cleanedResponse);
 } catch (parseError) {
-  console.error('[QUESTIONS] Failed to parse response:', parseError);
-  console.log('[QUESTIONS] Raw response:', cleanedResponse.substring(0, 500));
-  throw new Error('Fehler beim Verarbeiten der generierten Fragen');
+  console.error('[QUESTIONS] Failed to parse response:', parseError.message);
+  console.error('[QUESTIONS] Parse error stack:', parseError.stack);
+  console.log('[QUESTIONS] Raw response length:', cleanedResponse?.length || 0);
+  console.log('[QUESTIONS] Raw response first 500 chars:', cleanedResponse?.substring(0, 500) || 'EMPTY');
+  
+  // Den originalen Fehler mit mehr Details werfen
+  const detailedError = new Error(`JSON Parse fehlgeschlagen: ${parseError.message}`);
+  detailedError.originalError = parseError;
+  detailedError.responseSnippet = cleanedResponse?.substring(0, 200);
+  throw detailedError;
 }
-
-// Zähle Fragen vor Validierung
+  
+  // Zähle Fragen vor Validierung
 const beforeValidation = questions.length;
 
 // Gewerke-Validierung NUR für Nicht-Intake Fragen
@@ -3048,11 +3055,15 @@ if (tradeCode === 'FEN') {
  
 return filteredQuestions;   
     
-  } catch (err) {
-    console.error('[QUESTIONS] Generation failed:', err);
-    console.log('[QUESTIONS] Using fallback questions due to error');
-    throw new Error('Fehler bei der Fragengenerierung - bitte versuchen Sie es erneut');
+  // NACHHER:
+} catch (err) {
+  console.error('[QUESTIONS] Generation failed:', err.message);
+  console.error('[QUESTIONS] Error details:', err);
+  if (err.responseSnippet) {
+    console.error('[QUESTIONS] Response snippet:', err.responseSnippet);
   }
+  // Jetzt den originalen Fehler weitergeben, nicht einen neuen generischen
+  throw err;
 }
 
 /**
