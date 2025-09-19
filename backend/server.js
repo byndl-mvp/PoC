@@ -3607,6 +3607,19 @@ if (trade.code === 'GER' && lvPrompt) {
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
 
+PROJEKT-KOMPLEXITÄT: ${projectComplexity}
+${projectComplexity === 'SEHR_HOCH' ? `
+DIES IST EIN HOCHKOMPLEXES PROJEKT!
+- Erstelle DEUTLICH MEHR Positionen als normal
+- Minimum ${orientation.min} Positionen, Ziel: ${orientation.max} Positionen
+- Jede Position muss sehr detailliert beschrieben werden
+- Berücksichtige alle möglichen Nebenleistungen
+` : projectComplexity === 'HOCH' ? `
+ERHÖHTE KOMPLEXITÄT - Detaillierte Ausarbeitung erforderlich!
+- Minimum ${orientation.min} Positionen erstellen
+- Ausführliche Leistungsbeschreibungen
+` : ''}
+
 KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 
 1. NUR ERFRAGTE POSITIONEN:
