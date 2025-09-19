@@ -3055,16 +3055,15 @@ if (tradeCode === 'FEN') {
  
 return filteredQuestions;   
     
-  // NACHHER:
-} catch (err) {
-  console.error('[QUESTIONS] Generation failed:', err.message);
-  console.error('[QUESTIONS] Error details:', err);
-  if (err.responseSnippet) {
-    console.error('[QUESTIONS] Response snippet:', err.responseSnippet);
+ } catch (err) {
+    console.error('[QUESTIONS] Generation failed:', err.message);
+    console.error('[QUESTIONS] Error details:', err);
+    if (err.responseSnippet) {
+      console.error('[QUESTIONS] Response snippet:', err.responseSnippet);
+    }
+    throw err;
   }
-  // Jetzt den originalen Fehler weitergeben, nicht einen neuen generischen
-  throw err;
-}
+}  // <-- Das ist die schließende Klammer der generateQuestions Funktion
 
 /**
  * Filtert duplizierte Fragen basierend auf Intake-Antworten
