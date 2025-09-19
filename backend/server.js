@@ -3616,7 +3616,44 @@ console.log(`[LV] Final orientation for ${trade.code}: ${orientation.min}-${orie
     additionalVorbemerkungen.push('Gerüst wird bauseits gestellt');
     additionalVorbemerkungen.push('Gerüstkosten sind in separatem Gewerk erfasst');
   }
+
+  // NEU: Lade ALLE Intake-Antworten mit Zahlen/Maßen
+  const intakeResponses = await query(
+    `SELECT question_text, answer_text 
+     FROM intake_responses
+     WHERE project_id = $1`,
+    [projectId]
+  );
   
+  // NEU: Extrahiere ALLE Zahlen- und Maßangaben
+  const criticalMeasurements = {};
+  
+  intakeResponses.rows.forEach(response => {
+    const question = response.question_text.toLowerCase();
+    const answer = response.answer_text;
+    
+    // Suche nach Zahlen mit Einheiten
+    const measurementMatch = answer.match(/(\d+(?:\.\d+)?)\s*(m²|qm|m2|m|stück|stk)/i);
+    
+    if (measurementMatch) {
+      // Speichere nach Kategorie
+      if (question.includes('dach')) {
+        criticalMeasurements.dachflaeche = {
+          value: parseFloat(measurementMatch[1]),
+          unit: measurementMatch[2],
+          original: answer,
+          source: 'intake'
+        };
+      }
+      if (question.includes('fassade')) {
+        criticalMeasurements.fassadenflaeche = {
+          value: parseFloat(measurementMatch[1]),
+          unit: measurementMatch[2],
+          original: answer,
+          source: 'intake'
+        };
+      }
+      
   // Validiere und schätze fehlende Werte
   const validationResult = await validateAndEstimateAnswers(
     tradeAnswers,
@@ -3655,6 +3692,18 @@ PROJEKT-KOMPLEXITÄT: ${projectComplexity}
 
 📋 POSITIONS-ANFORDERUNG: ${orientation.min}-${orientation.max} Positionen
 
+KRITISCHE VORGABEN AUS INTAKE (MÜSSEN EXAKT ÜBERNOMMEN WERDEN):
+  ${Object.entries(criticalMeasurements).map(([key, data]) => 
+    `- ${key}: ${data.value} ${data.unit} (Nutzerangabe: "${data.original}")`
+  ).join('\n')}
+  
+  STRIKTE REGEL: 
+  - Diese Werte MÜSSEN EXAKT in den LV-Positionen verwendet werden
+  - KEINE Anpassungen, Rundungen oder "Sicherheitszuschläge"
+  - Bei Dachfläche 120m² MUSS im LV auch 120m² stehen
+  - Wenn der Nutzer "ca." oder "ungefähr" sagt, verwende trotzdem den genannten Wert
+  `;
+}
 KRITISCHE REGELN:
 1. Erstelle ${orientation.min} bis ${orientation.max} ECHTE Positionen mit tatsächlichen Leistungen
 2. NIEMALS leere, "nicht vorhanden" oder "nicht definiert" Positionen
