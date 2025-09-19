@@ -869,6 +869,27 @@ Validiere diese Antworten und erstelle realistische Schätzungen wo nötig.`;
  */
 function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = []) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
+
+  // NEU: Nutze gespeicherte Komplexität falls vorhanden
+  const projectComplexity = projectContext.complexity || 
+    projectContext.metadata?.complexity?.level ||
+    determineProjectComplexity(projectContext, intakeAnswers);
+  
+  // NEU: Komplexitäts-basierte Anpassung der Fragenanzahl
+  const complexityMultiplier = {
+    'SEHR_HOCH': 1.3,
+    'HOCH': 1.2,
+    'MITTEL': 1.0,
+    'NIEDRIG': 0.9,
+    'EINFACH': 0.8
+  }[projectComplexity] || 1.0;
+  
+  // Basis-Range mit Komplexitäts-Multiplikator
+  const baseRange = {
+    min: Math.round(tradeConfig.minQuestions * complexityMultiplier),
+    max: Math.round(tradeConfig.maxQuestions * complexityMultiplier),
+    complexity: tradeConfig.complexity
+  };
   
   // Basis-Range für das Gewerk
   const baseRange = {
