@@ -6543,7 +6543,6 @@ app.post('/api/projects/:projectId/trades/add-single', async (req, res) => {
 app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
-    // Hole die Daten aus dem Request Body
     const {
       includeIntakeContext,
       isManuallyAdded: manualFromBody,
@@ -6551,7 +6550,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       projectCategory: categoryFromBody,
       projectBudget: budgetFromBody
     } = req.body;
-    // Prüfe Trade-Status (manuell, KI-empfohlen oder automatisch)
+    
+    // Prüfe Trade-Status
     const tradeStatusResult = await query(
       `SELECT is_manual, is_ai_recommended 
        FROM project_trades 
@@ -6560,19 +6560,16 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     );
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
-    
     const needsContextQuestion = tradeStatus.is_manual || 
                                  tradeStatus.is_ai_recommended || 
                                  req.body.isManuallyAdded ||
-                                 req.body.isAiRecommended; // NEU: Auch KI-empfohlene berücksichtigen
+                                 req.body.isAiRecommended;
     
     console.log('[QUESTIONS] Trade status:', {
       manual: tradeStatus.is_manual,
       aiRecommended: tradeStatus.is_ai_recommended,
       needsContext: needsContextQuestion
     });
-    
-    console.log('[DEBUG] Trade needs context question:', needsContextQuestion);
     
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
     const tradeInfo = await query('SELECT code, name FROM trades WHERE id = $1', [tradeId]);
@@ -6584,129 +6581,112 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       await ensureProjectTrade(projectId, tradeId, 'questions_request');
     }
     
-    const projectResult = await query(
-      'SELECT * FROM projects WHERE id = $1',
-      [projectId]
-    );
-    
+    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found' });
     }
     
     const project = projectResult.rows[0];
-
-    // Parse metadata für Komplexität
-  if (project.metadata && typeof project.metadata === 'string') {
-    project.metadata = JSON.parse(project.metadata);
-  }
-  
-  // Erstelle erweiterten Projektkontext mit gespeicherter Komplexität
-  const projectContext = {
-    category: req.body.projectCategory || project.category,
-    subCategory: project.sub_category,
-    description: req.body.projectDescription || project.description,
-    timeframe: project.timeframe,
-    budget: req.body.projectBudget || project.budget,
-    projectId: projectId,
-    isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
-    isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended,
-    intakeContext: intakeContext,
-    hasIntakeAnswers: intakeContext.length > 0,
-    // NEU: Komplexität aus Metadata hinzufügen!
-    complexity: project.metadata?.complexity?.level || 'MITTEL',
-    metadata: project.metadata
-  };
     
-    // Hole Intake-Antworten für Kontext (für ALLE Gewerke)
-let intakeContext = '';
-if (tradeCode !== 'INT') {
-  const intakeAnswers = await query(
-    `SELECT q.text as question, a.answer_text as answer
-     FROM answers a
-     JOIN questions q ON q.project_id = a.project_id 
-       AND q.trade_id = a.trade_id 
-       AND q.question_id = a.question_id
-     JOIN trades t ON t.id = a.trade_id
-     WHERE a.project_id = $1 
-     AND t.code = 'INT'`,
-    [projectId]
-  );
-  
-  if (intakeAnswers.rows.length > 0) {
-    intakeContext = intakeAnswers.rows
-      .map(a => `${a.question}: ${a.answer}`)
-      .join('\n');
-  }
-}
+    // Parse metadata
+    if (project.metadata && typeof project.metadata === 'string') {
+      project.metadata = JSON.parse(project.metadata);
+    }
     
-    // Erstelle erweiterten Projektkontext mit BEIDEN Quellen
+    // ERST intakeContext laden
+    let intakeContext = '';
+    if (tradeCode !== 'INT') {
+      const intakeAnswers = await query(
+        `SELECT q.text as question, a.answer_text as answer
+         FROM answers a
+         JOIN questions q ON q.project_id = a.project_id 
+           AND q.trade_id = a.trade_id 
+           AND q.question_id = a.question_id
+         JOIN trades t ON t.id = a.trade_id
+         WHERE a.project_id = $1 
+         AND t.code = 'INT'`,
+        [projectId]
+      );
+      
+      if (intakeAnswers.rows.length > 0) {
+        intakeContext = intakeAnswers.rows
+          .map(a => `${a.question}: ${a.answer}`)
+          .join('\n');
+      }
+    }
+    
+    // Lade Projekt-Trades
+    const projectTrades = await query(
+      `SELECT t.code, t.name FROM trades t 
+       JOIN project_trades pt ON t.id = pt.trade_id 
+       WHERE pt.project_id = $1`,
+      [projectId]
+    );
+    
+    // DANN EINMAL projectContext erstellen mit ALLEN Daten
     const projectContext = {
-  category: req.body.projectCategory || project.category,
-  subCategory: project.sub_category,
-  description: req.body.projectDescription || project.description,
-  timeframe: project.timeframe,
-  budget: req.body.projectBudget || project.budget,
-  projectId: projectId,
-  isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
-  isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended,
-  intakeContext: intakeContext,  // NEU: Füge Intake-Kontext hinzu
-  hasIntakeAnswers: intakeContext.length > 0  // NEU: Flag ob Intake vorhanden
-};
+      category: req.body.projectCategory || project.category,
+      subCategory: project.sub_category,
+      description: req.body.projectDescription || project.description,
+      timeframe: project.timeframe,
+      budget: req.body.projectBudget || project.budget,
+      projectId: projectId,
+      isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
+      isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended,
+      intakeContext: intakeContext,
+      hasIntakeAnswers: intakeContext.length > 0,
+      trades: projectTrades.rows,
+      // NEU: Komplexität aus Metadata
+      complexity: project.metadata?.complexity?.level || 'MITTEL',
+      metadata: project.metadata
+    };
     
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
-    // Lade alle Projekt-Trades für Cross-Check
-const projectTrades = await query(
-  `SELECT t.code, t.name FROM trades t 
-   JOIN project_trades pt ON t.id = pt.trade_id 
-   WHERE pt.project_id = $1`,
-  [projectId]
-);
-
-projectContext.trades = projectTrades.rows; // <-- FÜGE TRADES HINZU!
-
-const questions = await generateQuestions(tradeId, projectContext);
+    console.log('[DEBUG] Project complexity:', projectContext.complexity);
     
-// NEU - SCHRITT 4: Filter anwenden um Duplikate zu entfernen
-const filteredQuestions = filterDuplicateQuestions(questions, projectContext.intakeData || []);
-
-console.log(`[QUESTIONS] Filtered ${questions.length - filteredQuestions.length} duplicate questions`);
-
-// WICHTIG: Verwende jetzt filteredQuestions statt questions
-for (const question of filteredQuestions) {  // <- GEÄNDERT von "questions" zu "filteredQuestions"
-  await query(
-    `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options, depends_on, show_if)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     ON CONFLICT (project_id, trade_id, question_id) 
-     DO UPDATE SET text = $4, type = $5, required = $6, options = $7, depends_on = $8, show_if = $9`,
-    [
-      projectId,
-      tradeId,
-      question.id,
-      question.question || question.text,
-      question.multiSelect ? 'multiselect' : (question.type || 'text'),
-      question.required !== undefined ? question.required : false,
-      question.options ? JSON.stringify({
-        values: question.options,
-        multiSelect: question.multiSelect || false,
-        dependsOn: question.dependsOn || null,
-        showIf: question.showIf || null
-      }) : null,
-      question.dependsOn || null,  // NEU: Abhängigkeit von vorheriger Frage
-      question.showIf || null       // NEU: Bedingung für Anzeige
-    ]
-  );
-}
+    const questions = await generateQuestions(tradeId, projectContext);
     
-    const intelligentCount = getIntelligentQuestionCount(tradeCode, project, []);
+    // Filter anwenden
+    const filteredQuestions = filterDuplicateQuestions(questions, projectContext.intakeData || []);
+    console.log(`[QUESTIONS] Filtered ${questions.length - filteredQuestions.length} duplicate questions`);
+    
+    // Speichere Fragen
+    for (const question of filteredQuestions) {
+      await query(
+        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options, depends_on, show_if)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (project_id, trade_id, question_id) 
+         DO UPDATE SET text = $4, type = $5, required = $6, options = $7, depends_on = $8, show_if = $9`,
+        [
+          projectId,
+          tradeId,
+          question.id,
+          question.question || question.text,
+          question.multiSelect ? 'multiselect' : (question.type || 'text'),
+          question.required !== undefined ? question.required : false,
+          question.options ? JSON.stringify({
+            values: question.options,
+            multiSelect: question.multiSelect || false,
+            dependsOn: question.dependsOn || null,
+            showIf: question.showIf || null
+          }) : null,
+          question.dependsOn || null,
+          question.showIf || null
+        ]
+      );
+    }
+    
+    // Verwende projectContext für intelligente Count
+    const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, []);
     
     res.json({ 
-      questions: filteredQuestions,  // <- GEÄNDERT von "questions" zu "filteredQuestions"
+      questions: filteredQuestions,
       targetCount: intelligentCount.count,
       actualCount: questions.length,
       completeness: intelligentCount.completeness,
       missingInfo: intelligentCount.missingInfo,
       tradeName: tradeName,
-      needsContextQuestion // NEU: Sende Info an Frontend
+      needsContextQuestion
     });
     
   } catch (err) {
