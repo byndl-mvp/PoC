@@ -3619,17 +3619,34 @@ if (trade.code === 'GER' && lvPrompt) {
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
 
 PROJEKT-KOMPLEXITÄT: ${projectComplexity}
+
+🚨 KRITISCHE ANFORDERUNG: MINDEST-POSITIONSANZAHL 🚨
+DIES IST EIN ${projectComplexity}-KOMPLEXES PROJEKT!
+Du MUSST ZWINGEND ${orientation.min} bis ${orientation.max} Positionen erstellen!
+Aktuell erforderlich: MINDESTENS ${orientation.min} POSITIONEN
+
 ${projectComplexity === 'SEHR_HOCH' ? `
-DIES IST EIN HOCHKOMPLEXES PROJEKT!
-- Erstelle DEUTLICH MEHR Positionen als normal
-- Minimum ${orientation.min} Positionen, Ziel: ${orientation.max} Positionen
-- Jede Position muss sehr detailliert beschrieben werden
-- Berücksichtige alle möglichen Nebenleistungen
+⚠️ SEHR HOHES KOMPLEXITÄTSLEVEL ⚠️
+- PFLICHT: Erstelle MINDESTENS ${orientation.min} Positionen!
+- Bei weniger als ${orientation.min} Positionen wird das LV ABGELEHNT!
+- Teile Arbeiten in detaillierte Einzelpositionen auf
+- Berücksichtige ALLE Nebenleistungen als separate Positionen
+- Beispiel: "Mauerwerk" → aufteilen in: Fundamentmauerwerk, Kellermauerwerk, EG-Mauerwerk, OG-Mauerwerk, etc.
 ` : projectComplexity === 'HOCH' ? `
 ERHÖHTE KOMPLEXITÄT - Detaillierte Ausarbeitung erforderlich!
-- Minimum ${orientation.min} Positionen erstellen
+- PFLICHT: Minimum ${orientation.min} Positionen erstellen
 - Ausführliche Leistungsbeschreibungen
-` : ''}
+- Nebenleistungen als eigene Positionen
+` : projectComplexity === 'MITTEL' ? `
+MITTLERE KOMPLEXITÄT
+- Mindestens ${orientation.min} Positionen erstellen
+- Standarddetaillierung ausreichend
+` : `
+STANDARD-PROJEKT
+- Mindestens ${orientation.min} Positionen erstellen
+`}
+
+VORGABE: ${orientation.min}-${orientation.max} Positionen (NICHT UNTERSCHREITEN!)
 
 KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 
