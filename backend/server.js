@@ -3954,7 +3954,8 @@ async function checkForDuplicatePositions(projectId, currentTradeId, positions) 
 }  
   
   const userPrompt = `GEWERK: ${trade.name} (${trade.code})
-
+  
+PFLICHT-ANFORDERUNG: Erstelle MINDESTENS ${orientation.min} Positionen!
 LV-TEMPLATE (MUSS BEACHTET WERDEN!):
 ${lvPrompt || 'KEIN TEMPLATE GELADEN - FEHLER!'}
 
