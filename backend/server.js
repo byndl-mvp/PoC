@@ -8684,21 +8684,30 @@ app.get('/api/test/openai', async (req, res) => {
   }
 });
 
-// Test Anthropic
-app.get('/api/test/anthropic', async (req, res) => {
+// Test beide Anthropic Modelle
+app.get('/api/test/anthropic/:type', async (req, res) => {
   try {
+    const { type } = req.params;
+    const testModel = type === 'lv' 
+      ? MODEL_ANTHROPIC_LV 
+      : MODEL_ANTHROPIC_QUESTIONS;
+      
     const response = await anthropic.messages.create({
-      model: MODEL_ANTHROPIC,
+      model: testModel,
       max_tokens: 20,
-      messages: [{ role: 'user', content: 'Say "Claude is working"' }]
+      messages: [{ role: 'user', content: `Say "Model ${testModel} works"` }]
     });
+    
     res.json({ 
       status: 'ok',
+      type: type,
+      model: testModel,
       response: response.content[0].text 
     });
   } catch (err) {
     res.status(500).json({ 
       status: 'error',
+      model: testModel,
       error: err.message 
     });
   }
@@ -8795,7 +8804,8 @@ app.get('/__info', (req, res) => {
     version: "4.0",
     env: {
       OPENAI_MODEL: MODEL_OPENAI,
-      ANTHROPIC_MODEL: MODEL_ANTHROPIC,
+      ANTHROPIC_QUESTIONS: MODEL_ANTHROPIC_QUESTIONS,  // NEU
+      ANTHROPIC_LV: MODEL_ANTHROPIC_LV,  // NEU
       DATABASE_URL: process.env.DATABASE_URL ? "✔️ gesetzt" : "❌ fehlt",
       JWT_SECRET: process.env.JWT_SECRET ? "✔️ gesetzt" : "❌ fehlt"
     },
