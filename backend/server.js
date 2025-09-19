@@ -2572,18 +2572,34 @@ BEACHTE:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 6000,
+      maxTokens: targetQuestionCount > 30 ? 8000 : 6000,  // Erhöhe Limit für viele Fragen
       temperature: 0.5,
       jsonMode: false 
     });
     
-    // Robuste Bereinigung für Claude's Output
+// Bereinige die Response von Claude
 let cleanedResponse = response
-  .replace(/```json\s*/gi, '')
-  .replace(/```\s*/g, '')
+  .replace(/```json\n?/g, '')
+  .replace(/```\n?/g, '')
   .trim();
 
-// HIER KOMMT DER NEUE CODE:
+// NEU: Prüfe ob die Response abgeschnitten wurde
+if (!cleanedResponse.endsWith(']')) {
+  console.warn('[QUESTIONS] Response appears truncated, attempting to fix...');
+  
+  // Finde das letzte vollständige Objekt
+  const lastCompleteObject = cleanedResponse.lastIndexOf('},');
+  if (lastCompleteObject > 0) {
+    cleanedResponse = cleanedResponse.substring(0, lastCompleteObject + 1) + '\n]';
+    console.log('[QUESTIONS] Truncated response fixed by closing at position', lastCompleteObject);
+  }
+}
+
+// NEU: Escape problematische Zeichen in Strings
+cleanedResponse = cleanedResponse
+  .replace(/\n(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)/g, '\\n')  // Newlines innerhalb von Strings
+  .replace(/\t(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)/g, '\\t'); // Tabs innerhalb von Strings
+
 // Parse die Fragen
 let questions;
 try {
