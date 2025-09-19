@@ -3694,6 +3694,7 @@ PROJEKT-KOMPLEXITÄT: ${projectComplexity}
 
 📋 POSITIONS-ANFORDERUNG: ${orientation.min}-${orientation.max} Positionen
 
+${Object.keys(criticalMeasurements).length > 0 ? `
 KRITISCHE VORGABEN AUS INTAKE (MÜSSEN EXAKT ÜBERNOMMEN WERDEN):
 ${Object.entries(criticalMeasurements).map(([key, data]) => 
   `- ${key}: ${data.value} ${data.unit} (Nutzerangabe: "${data.original}")`
