@@ -883,13 +883,6 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
     complexity: tradeConfig.complexity
   };
   
-  // Basis-Range für das Gewerk
-  const baseRange = {
-    min: tradeConfig.minQuestions,
-    max: tradeConfig.maxQuestions,
-    complexity: tradeConfig.complexity
-  };
-  
   // Analysiere wie viel Information bereits vorhanden ist
   let informationCompleteness = 0;
   let missingCriticalInfo = [];
