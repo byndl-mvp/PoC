@@ -3704,8 +3704,8 @@ KRITISCHE VORGABEN AUS INTAKE (MÜSSEN EXAKT ÜBERNOMMEN WERDEN):
   - KEINE Anpassungen, Rundungen oder "Sicherheitszuschläge"
   - Bei Dachfläche 120m² MUSS im LV auch 120m² stehen
   - Wenn der Nutzer "ca." oder "ungefähr" sagt, verwende trotzdem den genannten Wert
-  `;
-}
+  ` : ''}
+
 KRITISCHE REGELN:
 1. Erstelle ${orientation.min} bis ${orientation.max} ECHTE Positionen mit tatsächlichen Leistungen
 2. NIEMALS leere, "nicht vorhanden" oder "nicht definiert" Positionen
