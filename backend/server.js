@@ -4237,6 +4237,38 @@ if (duplicates.length > 0) {
     
     // Post-Processing und Stundenlohnarbeiten hinzufügen
     if (lv.positions && Array.isArray(lv.positions)) {
+  // Filtere leere/ungültige Positionen
+  const validPositions = lv.positions.filter(pos => {
+    // Entferne Positionen mit Menge 0, "-" oder ohne Menge
+    if (!pos.quantity || pos.quantity === 0 || pos.quantity === '-') {
+      console.log(`[LV] Filtered empty position: ${pos.title}`);
+      return false;
+    }
+    
+    // Entferne "nicht vorhanden" Positionen
+    const title = (pos.title || '').toLowerCase();
+    const desc = (pos.description || '').toLowerCase();
+    if (title.includes('nicht vorhanden') || 
+        title.includes('nicht enthalten') ||
+        title.includes('nicht definiert') ||
+        desc.includes('nicht vorhanden') ||
+        desc.includes('keine position')) {
+      console.log(`[LV] Filtered invalid position: ${pos.title}`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  console.log(`[LV] Filtered ${lv.positions.length - validPositions.length} invalid positions`);
+  lv.positions = validPositions;
+  
+  // Prüfe ob noch genug Positionen übrig sind (80% = 20% Toleranz)
+  if (lv.positions.length < orientation.min * 0.8) {
+    console.warn(`[LV] Only ${lv.positions.length} valid positions remain (80% minimum: ${Math.floor(orientation.min * 0.8)})`);
+    // Optional: Hier könnte ein Retry getriggert werden
+  }
+}      
   let calculatedSum = 0;
   let nepSum = 0; // NEU: Summe der NEP-Positionen
   
