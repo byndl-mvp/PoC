@@ -5702,7 +5702,7 @@ app.post('/api/projects', async (req, res) => {
     
     const project = projectResult.rows[0];
     
-    // Übergebe extrahierte Daten an detectTrades
+    // ERST Trades erkennen
     const detectedTrades = await detectTrades({
       category,
       subCategory,
@@ -5712,8 +5712,39 @@ app.post('/api/projects', async (req, res) => {
       extractedData // NEU: Weitergabe der extrahierten Daten
     });
     
+    // DANN Komplexität berechnen (mit den erkannten Trades)
+    const projectComplexity = determineProjectComplexity({
+      ...project,
+      detectedTrades: detectedTrades  // Jetzt ist detectedTrades definiert!
+    });
+    
+    // Komplexität in Metadata speichern (zusammen mit extrahierten Daten)
+    await query(
+      `UPDATE projects 
+       SET metadata = jsonb_set(
+         jsonb_set(
+           COALESCE(metadata, '{}')::jsonb,
+           '{complexity}',
+           $1::jsonb
+         ),
+         '{extracted}',
+         $2::jsonb
+       )
+       WHERE id = $3`,
+      [
+        JSON.stringify({
+          level: projectComplexity,
+          calculatedAt: new Date().toISOString(),
+          tradeCount: detectedTrades.length
+        }), 
+        JSON.stringify(extractedData),
+        project.id
+      ]
+    );
+    
     // Nur erkannte Trades hinzufügen
     console.log(`[PROJECT] Creating project ${project.id} with ${detectedTrades.length} detected trades`);
+    console.log(`[PROJECT] Project complexity: ${projectComplexity}`);
     console.log(`[PROJECT] Extracted quantities:`, extractedData.quantities);
     console.log(`[PROJECT] Extracted measures:`, extractedData.measures);
     
@@ -5725,7 +5756,7 @@ app.post('/api/projects', async (req, res) => {
       project: {
         ...project,
         trades: detectedTrades,
-        complexity: determineProjectComplexity(project),
+        complexity: projectComplexity,  // Verwende die berechnete Komplexität
         extractedData // NEU: Sende extrahierte Daten zurück an Frontend
       }
     });
