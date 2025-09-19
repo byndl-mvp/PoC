@@ -1268,7 +1268,19 @@ if (matchedTerm) {
   const minPositions = COMPLEXITY_MINIMUMS[projectComplexity]?.[tradeConfig.complexity] || 8;
   
   const orientationMin = Math.max(minPositions, baseOrientation);
-  const orientationMax = Math.round(orientationMin * 1.1);
+  // HIER DIE OBERGRENZE EINFÜGEN:
+  let orientationMax = Math.round(orientationMin * 1.3);
+  
+  // Absolute Obergrenzen basierend auf Komplexität
+  if (projectComplexity === 'SEHR_HOCH') {
+    orientationMax = Math.min(35, orientationMax);  // Max 35 für sehr komplexe Projekte
+  } else if (projectComplexity === 'HOCH') {
+    orientationMax = Math.min(28, orientationMax);  // Max 28 für komplexe Projekte
+  } else if (projectComplexity === 'MITTEL') {
+    orientationMax = Math.min(22, orientationMax);  // Max 22 für mittlere Projekte
+  } else {
+    orientationMax = Math.min(18, orientationMax);  // Max 18 für einfache Projekte
+  }
   
   console.log(`[LV-ORIENTATION] ${tradeCode}: ${orientationMin}-${orientationMax} positions`);
   console.log(`  Project complexity: ${projectComplexity}, Trade complexity: ${tradeConfig.complexity}`);
@@ -4268,7 +4280,7 @@ if (duplicates.length > 0) {
     console.warn(`[LV] Only ${lv.positions.length} valid positions remain (80% minimum: ${Math.floor(orientation.min * 0.8)})`);
     // Optional: Hier könnte ein Retry getriggert werden
   }
-}      
+      
   let calculatedSum = 0;
   let nepSum = 0; // NEU: Summe der NEP-Positionen
   
