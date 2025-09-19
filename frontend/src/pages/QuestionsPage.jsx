@@ -46,7 +46,7 @@ export default function IntakeQuestionsPage() {
   useEffect(() => {
     if (loading && !error) {
       setLoadingProgress(0);
-      const totalDuration = 40000; // 40 Sekunden
+      const totalDuration = 60000; // 60 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
@@ -73,7 +73,7 @@ export default function IntakeQuestionsPage() {
   useEffect(() => {
     if (generatingLV) {
       setLvProgress(0);
-      const totalDuration = 60000; // 60 Sekunden
+      const totalDuration = 70000; // 70 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
