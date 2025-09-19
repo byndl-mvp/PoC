@@ -2243,6 +2243,9 @@ KEINE FRAGEN ZU:
 - Detaillierten Maßen (außer grobe Gebäudegröße)
 - Gewerkespezifischen Themen
 - Anzahl Fenster/Türen (wenn bereits in Beschreibung)
+- Generalunternehmer vs. Einzelvergabe (BYNDL ist für Einzelvergabe konzipiert!)
+- Bevorzugter Vergabeart
+- Ob alles aus einer Hand gewünscht wird
 
 KRITISCH: Stelle NUR relevante Fragen für die erkannten Gewerke!
 
