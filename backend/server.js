@@ -50,19 +50,19 @@ const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest
 
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
-  DACH:  { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 28, targetPositionsRatio: 0.8 },
-  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 17, maxQuestions: 25, targetPositionsRatio: 0.7 },
-  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 17, maxQuestions: 25, targetPositionsRatio: 0.8 },
-  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 26, targetPositionsRatio: 0.7 },
-  KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 25, targetPositionsRatio: 0.7 },
-  ROH:   { complexity: 'HOCH',      minQuestions: 18, maxQuestions: 28, targetPositionsRatio: 0.8 },
+  DACH:  { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 28, targetPositionsRatio: 1.0 },
+  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 17, maxQuestions: 25, targetPositionsRatio: 1.0 },
+  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 17, maxQuestions: 25, targetPositionsRatio: 1.0 },
+  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 26, targetPositionsRatio: 1.0 },
+  KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 25, targetPositionsRatio: 1.0 },
+  ROH:   { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 28, targetPositionsRatio: 1.2 },
 
   // Komplexe Gewerke (20-30 Fragen)
   TIS:   { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 1.0 }, // Türen: oft 1:1
   FEN:   { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 1.0 }, // Fenster: oft 1:1
-  FASS:  { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 0.8 },
-  SCHL:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
-  PV:    { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.75 },
+  FASS:  { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 1.0 },
+  SCHL:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.8 },
+  PV:    { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.8 },
   ZIMM:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.85 },
 
   // Mittlere Komplexität (15-20 Fragen)
@@ -73,13 +73,21 @@ const TRADE_COMPLEXITY = {
   AUSS:  { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
 
   // Einfache Gewerke (8-15 Fragen)
-  MAL:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 15, targetPositionsRatio: 0.8 },
-  GER:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 12, targetPositionsRatio: 0.7 },
-  ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15, targetPositionsRatio: 0.7 },
+  MAL:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 15, targetPositionsRatio: 1.0 },
+  GER:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 12, targetPositionsRatio: 0.8 },
+  ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15, targetPositionsRatio: 0.8 },
 
   // Intake ist speziell (16-24 Fragen)
   INT:   { complexity: 'INTAKE', minQuestions: 14, maxQuestions: 26, targetPositionsRatio: 0.0 }
 };
+
+// NEU: Kontext-abhängige Anpassung
+    contextModifiers: {
+      'aufstockung': { additionalPositions: 10 },
+      'anbau': { additionalPositions: 8 },
+      'umbau': { additionalPositions: 6 }
+    }
+  },
 
 // Fallback für nicht definierte Gewerke
 const DEFAULT_COMPLEXITY = { 
@@ -1203,6 +1211,30 @@ function getPositionOrientation(tradeCode, questionCount) {
   // Basis-Orientierung
   const ratio = tradeConfig.targetPositionsRatio;
   const baseOrientation = Math.round(questionCount * ratio);
+
+  // NEU: Kontext-Modifikatoren anwenden (z.B. für Aufstockung)
+  if (tradeConfig.contextModifiers) {
+    const projectDescription = projectContext?.description?.toLowerCase() || '';
+    
+    for (const [keyword, modifier] of Object.entries(tradeConfig.contextModifiers)) {
+      if (projectDescription.includes(keyword)) {
+        baseOrientation += modifier.additionalPositions;
+        console.log(`[LV-ORIENTATION] Applied context modifier for "${keyword}": +${modifier.additionalPositions} positions`);
+        break;
+      }
+    }
+  }
+  
+  // MINIMUM garantieren für komplexe Gewerke
+  const ABSOLUTE_MINIMUMS = {
+    'SEHR_HOCH': 25,
+    'HOCH': 20,
+    'MITTEL': 15,
+    'EINFACH': 10
+  };
+  
+  const minPositions = ABSOLUTE_MINIMUMS[tradeConfig.complexity] || 10;
+  baseOrientation = Math.max(minPositions, baseOrientation);
   
   // Orientierungs-Range (flexibler Bereich)
   const orientationMin = Math.max(1, Math.round(questionCount * (ratio - 0.2)));
@@ -3443,6 +3475,25 @@ async function generateDetailedLV(projectId, tradeId) {
 const answeredQuestionCount = tradeAnswers.length;
 const orientation = getPositionOrientation(trade.code, answeredQuestionCount);
 console.log(`[LV] Orientation for ${trade.code}: ${orientation.min}-${orientation.max} positions from ${answeredQuestionCount} questions`);
+
+// NEUER CODE: Erzwinge Mindest-Positionen für komplexe Gewerke
+const MINIMUM_POSITIONS_BY_COMPLEXITY = {
+  'SEHR_HOCH': 25,  // Rohbau, Dach, Elektro, etc.
+  'HOCH': 20,
+  'MITTEL': 15,
+  'EINFACH': 10,
+  'INTAKE': 0
+};
+
+const tradeComplexity = TRADE_COMPLEXITY[trade.code]?.complexity || 'MITTEL';
+const absoluteMinimum = MINIMUM_POSITIONS_BY_COMPLEXITY[tradeComplexity];
+
+// Überschreibe orientation wenn zu niedrig
+if (orientation.min < absoluteMinimum) {
+  orientation.min = absoluteMinimum;
+  orientation.max = Math.max(absoluteMinimum + 10, orientation.max);
+  console.log(`[LV] OVERRIDE: ${trade.code} minimum positions: ${absoluteMinimum}`);
+}
   
   // NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
   const hasScaffoldingTrade = await query(
