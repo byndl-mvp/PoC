@@ -41,8 +41,9 @@ function formatCurrency(amount) {
 }
 
 // Modellnamen aus Umgebungsvariablen
-const MODEL_OPENAI = process.env.MODEL_OPENAI || 'gpt-4o-mini';
-const MODEL_ANTHROPIC = process.env.MODEL_ANTHROPIC || 'claude-3-5-sonnet-latest';
+const MODEL_OPENAI = process.env.MODEL_OPENAI || process.env.OPENAI_MODEL || 'gpt-4.1-mini';
+const MODEL_ANTHROPIC_QUESTIONS = process.env.MODEL_ANTHROPIC_QUESTIONS || process.env.ANTHROPIC_MODEL_QUESTIONS || 'claude-sonnet-4-20250514';
+const MODEL_ANTHROPIC_LV = process.env.MODEL_ANTHROPIC_LV || process.env.ANTHROPIC_MODEL_LV || 'claude-opus-4-1-20250805';
 
 // ===========================================================================
 // GEWERKE-KOMPLEXITÄT DEFINITIONEN (KORREKTE CODES)
@@ -107,196 +108,210 @@ async function llmWithPolicy(task, messages, options = {}) {
   };
   
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
+  
   // DEBUG: Log prompt sizes for questions task
-if (task === 'questions' || task === 'intake') {
-  const systemMsg = messages.find(m => m.role === 'system');
-  const userMsg = messages.find(m => m.role === 'user');
-  
-  console.log(`[LLM-DEBUG] Task: ${task}`);
-  console.log(`[LLM-DEBUG] System prompt length: ${systemMsg?.content?.length || 0} chars`);
-  console.log(`[LLM-DEBUG] User prompt length: ${userMsg?.content?.length || 0} chars`);
-  
-  if (systemMsg?.content?.length > 8000) {
-    console.log(`[LLM-DEBUG] ⚠️ System prompt exceeds Anthropic limit!`);
+  if (task === 'questions' || task === 'intake') {
+    const systemMsg = messages.find(m => m.role === 'system');
+    const userMsg = messages.find(m => m.role === 'user');
+    
+    console.log(`[LLM-DEBUG] Task: ${task}`);
+    console.log(`[LLM-DEBUG] System prompt length: ${systemMsg?.content?.length || 0} chars`);
+    console.log(`[LLM-DEBUG] User prompt length: ${userMsg?.content?.length || 0} chars`);
+    
+    if (systemMsg?.content?.length > 8000) {
+      console.log(`[LLM-DEBUG] ⚠️ System prompt exceeds Anthropic limit!`);
+    }
   }
-}
+  
   const temperature = options.temperature !== undefined ? options.temperature : 0.4;
   
-  // LV IMMER mit OpenAI (wegen JSON-Mode), Rest bevorzugt Anthropic
-  const primaryProvider = task === 'lv' 
-    ? 'openai'  // LV immer OpenAI
-    : ['detect', 'questions', 'intake', 'validation'].includes(task) 
-      ? 'anthropic' 
-      : 'openai';
+  // NEU: Modell-Selektion basierend auf Task
+  const getAnthropicModel = (task) => {
+    if (task === 'lv') {
+      // Claude Opus für LV-Generierung
+      return MODEL_ANTHROPIC_LV || MODEL_ANTHROPIC || 'claude-opus-4-1-20250805';
+    }
+    // Claude Sonnet für alle anderen Tasks
+    return MODEL_ANTHROPIC_QUESTIONS || MODEL_ANTHROPIC || 'claude-sonnet-4-20250514';
+  };
   
+  // GEÄNDERT: Anthropic als primärer Provider für ALLE Tasks
+  const primaryProvider = 'anthropic';
+  
+  // OpenAI als Fallback bleibt unverändert
   const callOpenAI = async () => {
-  try {
-    // JSON-Mode ohne Token-Limit-Beschränkung verwenden
-    const useJsonMode = options.jsonMode;
-    
-    const response = await openai.chat.completions.create({
-      model: MODEL_OPENAI,
-      messages,
-      temperature,
-      max_tokens: Math.min(maxTokens, 16384),  // HIER: max_tokens statt max_completion_tokens!
-      response_format: useJsonMode ? { type: "json_object" } : undefined
-    });
-    return response.choices[0].message.content;
-  } catch (error) {
-    console.error('[LLM] OpenAI error:', error.status || error.message);
-    throw error;
-  }
-};
-
-// Unicode-Bereinigung für Anthropic
-function cleanUnicodeForAnthropic(text) {
-  if (!text) return '';
-  
-  // Entfernt kaputte Unicode-Surrogates und normalisiert den Text
-  return text
-    .normalize('NFC')  // Normalisiere Unicode
-    .replace(/[\uD800-\uDFFF]/g, '')  // Entferne einzelne Surrogates
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')  // Entferne Steuerzeichen
-    .replace(/[\uFFFD]/g, '')  // Entferne Replacement Character
-    .trim();
-}
-  
-const callClaude = async () => {
-  try {
-    // NUR EINMAL deklarieren
-    let systemMessage = messages.find(m => m.role === "system")?.content || "";
-    const originalUserMessages = messages.filter(m => m.role === "user");
-    const assistantMessages = messages.filter(m => m.role === "assistant");
-    
-    // BEREINIGE Unicode
-    systemMessage = cleanUnicodeForAnthropic(systemMessage);
-    const cleanedUserMessages = originalUserMessages.map(msg => ({
-      ...msg,
-      content: cleanUnicodeForAnthropic(msg.content)
-    }));
-    
-    // Baue Messages für Anthropic auf
-    let claudeMessages = [];
-    
-    // Kombiniere System-Content mit erster User-Message wenn System zu lang
-    if (systemMessage.length > 8000) {
-      console.log(`[LLM-CLAUDE] System prompt ${systemMessage.length} chars - moving to user message`);
+    try {
+      const useJsonMode = options.jsonMode;
       
-      // ALLES in die User-Message verschieben
-      const combinedContent = `SYSTEM-INSTRUKTIONEN:
+      const response = await openai.chat.completions.create({
+        model: MODEL_OPENAI,
+        messages,
+        temperature,
+        max_tokens: Math.min(maxTokens, 16384),
+        response_format: useJsonMode ? { type: "json_object" } : undefined
+      });
+      return response.choices[0].message.content;
+    } catch (error) {
+      console.error('[LLM] OpenAI error:', error.status || error.message);
+      throw error;
+    }
+  };
+
+  // Unicode-Bereinigung für Anthropic
+  function cleanUnicodeForAnthropic(text) {
+    if (!text) return '';
+    
+    return text
+      .normalize('NFC')
+      .replace(/[\uD800-\uDFFF]/g, '')
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+      .replace(/[\uFFFD]/g, '')
+      .trim();
+  }
+  
+  // GEÄNDERT: Claude mit task-spezifischem Modell
+  const callClaude = async () => {
+    try {
+      // Wähle das richtige Modell basierend auf Task
+      const modelToUse = getAnthropicModel(task);
+      
+      console.log(`[LLM-CLAUDE] Using model ${modelToUse} for task: ${task}`);
+      
+      let systemMessage = messages.find(m => m.role === "system")?.content || "";
+      const originalUserMessages = messages.filter(m => m.role === "user");
+      
+      // BEREINIGE Unicode
+      systemMessage = cleanUnicodeForAnthropic(systemMessage);
+      const cleanedUserMessages = originalUserMessages.map(msg => ({
+        ...msg,
+        content: cleanUnicodeForAnthropic(msg.content)
+      }));
+      
+      // Baue Messages für Anthropic auf
+      let claudeMessages = [];
+      
+      // Kombiniere System-Content mit erster User-Message wenn System zu lang
+      if (systemMessage.length > 8000) {
+        console.log(`[LLM-CLAUDE] System prompt ${systemMessage.length} chars - moving to user message`);
+        
+        const combinedContent = `SYSTEM-INSTRUKTIONEN:
 =====================================
 ${systemMessage}
 
 ANFRAGE:
 ========
 ${cleanedUserMessages[0]?.content || 'Bitte die obigen Instruktionen befolgen.'}`;
-      
-      claudeMessages.push({
-        role: "user",
-        content: cleanUnicodeForAnthropic(combinedContent)  // Nochmal bereinigen!
-      });
-      
-      // Füge restliche User-Messages hinzu falls vorhanden
-      for (let i = 1; i < cleanedUserMessages.length; i++) {
+        
         claudeMessages.push({
           role: "user",
-          content: cleanedUserMessages[i].content
+          content: cleanUnicodeForAnthropic(combinedContent)
         });
-      }
-      
-      // Kein System-Prompt für Anthropic in diesem Fall
-      const response = await anthropic.messages.create({
-        model: MODEL_ANTHROPIC,
-        max_tokens: Math.min(maxTokens, 8192),
-        temperature,
-        messages: claudeMessages  // KEIN system Parameter!
-      });
-      
-      console.log(`[LLM-CLAUDE] Success without system prompt`);
-      return response.content[0].text;
-      
-    } else {
-      // System ist klein genug - normale Verarbeitung
-      for (const msg of messages.filter(m => m.role !== "system")) {
-        claudeMessages.push({
-          role: msg.role,
-          content: cleanUnicodeForAnthropic(
-            typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-          )
+        
+        for (let i = 1; i < cleanedUserMessages.length; i++) {
+          claudeMessages.push({
+            role: "user",
+            content: cleanedUserMessages[i].content
+          });
+        }
+        
+        // GEÄNDERT: Verwende task-spezifisches Modell
+        const response = await anthropic.messages.create({
+          model: modelToUse,
+          max_tokens: Math.min(maxTokens, 8192),
+          temperature,
+          messages: claudeMessages
         });
+        
+        console.log(`[LLM-CLAUDE] Success with ${modelToUse} (no system prompt)`);
+        return response.content[0].text;
+        
+      } else {
+        // System ist klein genug - normale Verarbeitung
+        for (const msg of messages.filter(m => m.role !== "system")) {
+          claudeMessages.push({
+            role: msg.role,
+            content: cleanUnicodeForAnthropic(
+              typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+            )
+          });
+        }
+        
+        // NEU: Spezielle JSON-Mode Behandlung je nach Modell
+        let finalSystem = systemMessage;
+        if (options.jsonMode) {
+          if (task === 'lv') {
+            // Für LV mit Opus: Stärkere JSON-Instruktion
+            finalSystem = `Du MUSST deine Antwort als VALIDES JSON-Objekt zurückgeben.
+Beginne deine Antwort direkt mit { und ende mit }
+Keine Erklärungen außerhalb des JSON.
+Kein Markdown, keine Codeblöcke.
+
+${systemMessage}`;
+          } else {
+            // Für andere Tasks mit Sonnet
+            finalSystem = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!\n\n${systemMessage}`;
+          }
+        }
+        
+        console.log(`[LLM-CLAUDE] Normal call - Model: ${modelToUse} | System: ${finalSystem.length} chars`);
+        
+        // GEÄNDERT: Verwende task-spezifisches Modell
+        const response = await anthropic.messages.create({
+          model: modelToUse,
+          max_tokens: Math.min(maxTokens, 8192),
+          temperature,
+          system: finalSystem,
+          messages: claudeMessages
+        });
+        
+        console.log(`[LLM-CLAUDE] Success with ${modelToUse}`);
+        return response.content[0].text;
       }
       
-      // JSON-Mode
-      let finalSystem = systemMessage;
-      if (options.jsonMode) {
-        finalSystem = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!\n\n${systemMessage}`;
+    } catch (error) {
+      console.error('[LLM-CLAUDE] Full error:', error);
+      console.error(`[LLM-CLAUDE] Failed model: ${getAnthropicModel(task)}`);
+      
+      if (error.status === 400) {
+        console.error('[LLM-CLAUDE] 400 Error - Message:', error.message);
+        if (error.error) {
+          console.error('[LLM-CLAUDE] Error details:', error.error);
+        }
       }
       
-      console.log(`[LLM-CLAUDE] Normal call - System: ${finalSystem.length} chars`);
-      
-      const response = await anthropic.messages.create({
-        model: MODEL_ANTHROPIC,
-        max_tokens: Math.min(maxTokens, 8192),
-        temperature,
-        system: finalSystem,
-        messages: claudeMessages
-      });
-      
-      return response.content[0].text;
+      throw error;
     }
-    
-  } catch (error) {
-    console.error('[LLM-CLAUDE] Full error:', error);
-    
-    if (error.status === 400) {
-      console.error('[LLM-CLAUDE] 400 Error - Message:', error.message);
-      if (error.error) {
-        console.error('[LLM-CLAUDE] Error details:', error.error);
-      }
-    }
-    
-    throw error;
-  }
-};
+  };
   
-  // Rest der Funktion bleibt gleich...
+  // Rest der Funktion - jetzt mit Anthropic als primär
   let result = null;
   let lastError = null;
   
-  // Try primary provider
+  // Try primary provider (jetzt immer Anthropic)
   try {
-    console.log(`[LLM] Task: ${task} | Trying primary: ${primaryProvider} | Tokens: ${maxTokens}`);
+    const model = getAnthropicModel(task);
+    console.log(`[LLM] Task: ${task} | Primary: Anthropic (${model}) | Tokens: ${maxTokens}`);
     
-    if (primaryProvider === 'anthropic') {
-      result = await callClaude();
-    } else {
-      result = await callOpenAI();
-    }
+    result = await callClaude();
     
-    console.log(`[LLM] Success with primary ${primaryProvider}`);
+    console.log(`[LLM] Success with Anthropic (${model})`);
     return result;
     
   } catch (primaryError) {
     lastError = primaryError;
-    console.warn(`[LLM] Primary ${primaryProvider} failed with status ${primaryError.status || 'unknown'}`);
+    console.warn(`[LLM] Anthropic failed with status ${primaryError.status || 'unknown'}`);
     
-    // Try fallback provider
-    const fallbackProvider = primaryProvider === 'anthropic' ? 'openai' : 'anthropic';
-    
+    // Try fallback provider (OpenAI)
     try {
-      console.log(`[LLM] Trying fallback: ${fallbackProvider}`);
+      console.log(`[LLM] Trying fallback: OpenAI (${MODEL_OPENAI})`);
       
-      if (fallbackProvider === 'openai') {
-        result = await callOpenAI();
-      } else {
-        result = await callClaude();
-      }
+      result = await callOpenAI();
       
-      console.log(`[LLM] Success with fallback ${fallbackProvider}`);
+      console.log(`[LLM] Success with fallback OpenAI`);
       return result;
       
     } catch (fallbackError) {
-      console.error(`[LLM] Fallback ${fallbackProvider} also failed with status ${fallbackError.status || 'unknown'}`);
+      console.error(`[LLM] Fallback OpenAI also failed with status ${fallbackError.status || 'unknown'}`);
       lastError = fallbackError;
     }
   }
