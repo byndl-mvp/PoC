@@ -1223,8 +1223,8 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
   
   // NEU: Komplexitäts-basierte Ratio-Anpassung
   const complexityBonus = {
-    'SEHR_HOCH': 0.3,  // +30% mehr Positionen
-    'HOCH': 0.2,       // +20% mehr Positionen
+    'SEHR_HOCH': 0.2,  // +20% mehr Positionen
+    'HOCH': 0.15,      // +15% mehr Positionen
     'MITTEL': 0.1,     // +10% mehr Positionen
     'EINFACH': 0,      // keine Anpassung
   }[projectComplexity] || 0;
@@ -1237,7 +1237,7 @@ const description = projectContext?.description?.toLowerCase() || '';
 
 const matchedTerm = complexProjects.find(term => description.includes(term));
 if (matchedTerm) {
-  ratio += 0.2;  // Zusätzlich 20% mehr Positionen
+  ratio += 0.15;  // Zusätzlich 15% mehr Positionen
   console.log(`[LV-ORIENTATION] "${matchedTerm}" erkannt - erhöhe Positions-Ratio`);
 }
   
@@ -1246,29 +1246,29 @@ if (matchedTerm) {
   // NEU: Absolute Minimums basierend auf Projekt-Komplexität
   const COMPLEXITY_MINIMUMS = {
     'SEHR_HOCH': {
-      'SEHR_HOCH': 35,  // Komplexes Projekt + komplexes Gewerk = min 35 Positionen
-      'HOCH': 25,
-      'MITTEL': 20,
-      'EINFACH': 15
-    },
-    'HOCH': {
-      'SEHR_HOCH': 30,
-      'HOCH': 20,
-      'MITTEL': 15,
+      'SEHR_HOCH': 25,  // Komplexes Projekt + komplexes Gewerk = min 25 Positionen
+      'HOCH': 22,
+      'MITTEL': 16,
       'EINFACH': 12
     },
-    'MITTEL': {
-      'SEHR_HOCH': 25,
+    'HOCH': {
+      'SEHR_HOCH': 22,
       'HOCH': 18,
-      'MITTEL': 12,
-      'EINFACH': 10
+      'MITTEL': 13,
+      'EINFACH': 9
+    },
+    'MITTEL': {
+      'SEHR_HOCH': 19,
+      'HOCH': 15,
+      'MITTEL': 10,
+      'EINFACH': 8
     }
   };
   
-  const minPositions = COMPLEXITY_MINIMUMS[projectComplexity]?.[tradeConfig.complexity] || 10;
+  const minPositions = COMPLEXITY_MINIMUMS[projectComplexity]?.[tradeConfig.complexity] || 8;
   
   const orientationMin = Math.max(minPositions, baseOrientation);
-  const orientationMax = Math.round(orientationMin * 1.3);
+  const orientationMax = Math.round(orientationMin * 1.1);
   
   console.log(`[LV-ORIENTATION] ${tradeCode}: ${orientationMin}-${orientationMax} positions`);
   console.log(`  Project complexity: ${projectComplexity}, Trade complexity: ${tradeConfig.complexity}`);
@@ -1313,12 +1313,12 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
     const description = projectContext.description.toLowerCase();
     
     // Kritische Projekttypen
-    if (description.includes('kernsanierung') || description.includes('komplettsanierung')) {
+    if (description.includes('kernsanierung') || description.includes('aufstockung')) {
       complexityScore += 4;  // Kernsanierung ist immer komplex
     } else if (description.includes('vollsanierung') || description.includes('generalsanierung')) {
       complexityScore += 3.5;
-    } else if (description.includes('denkmalschutz')) {
-      complexityScore += 3;  // Denkmalschutz erhöht Komplexität erheblich
+    } else if (description.includes('anbau')) {
+      complexityScore += 3;  // Anbau erhöht Komplexität erheblich
     }
     
     // Weitere Komplexitäts-Keywords
@@ -1329,7 +1329,7 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
       'statik': 1.5,
       'asbest': 2,
       'schadstoffe': 2,
-      'bewohnt während': 1.5,
+      'bewohnt während': 1.2,
       'koordination': 1
     };
     
@@ -1363,10 +1363,10 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
   // KATEGORIE-BASIERTE KOMPLEXITÄT
   if (projectContext.category) {
     const category = projectContext.category.toLowerCase();
-    if (category.includes('kernsanierung')) complexityScore += 3;  // Zusätzlich zur Description
-    else if (category.includes('neubau')) complexityScore += 2.5;
+    if (category.includes('aufstockung')) complexityScore += 3;  // Zusätzlich zur Description
+    else if (category.includes('kernsanierung')) complexityScore += 2.5;
     else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 2;
-    else if (category.includes('sanierung')) complexityScore += 1.5;
+    else if (category.includes('vollsanierung')) complexityScore += 2;
     else if (category.includes('renovierung') || category.includes('modernisierung')) complexityScore += 1;
     else if (category.includes('reparatur') || category.includes('instandhaltung')) complexityScore += 0.5;
   }
