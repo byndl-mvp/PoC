@@ -3913,6 +3913,8 @@ OUTPUT FORMAT (NUR valides JSON):
     "confidence": 0.85
   },
   "positions": [
+    // KRITISCH: EXAKT ${orientation.min} bis ${orientation.max} POSITIONEN
+    // NICHT WENIGER, NICHT MEHR!
     { 
       "pos": "01.01.001",
       "title": "Präziser Positionstitel",
@@ -3926,6 +3928,7 @@ OUTPUT FORMAT (NUR valides JSON):
       "notes": "Hinweise zu Annahmen"
     }
   ],
+  "positionCount": ${orientation.max}, // MAXIMAL ERLAUBTE ANZAHL
   "totalSum": 0,
   "additionalNotes": "Wichtige Ausführungshinweise",
   "assumptions": ["Liste aller getroffenen Annahmen"],
