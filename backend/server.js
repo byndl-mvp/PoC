@@ -1919,11 +1919,16 @@ async function generateQuestions(tradeId, projectContext = {}) {
   if (!isIntake && projectContext.projectId) {
     // Lade aus intake_responses (neue Tabelle)
     const intakeResponses = await query(
-      `SELECT question_text, answer_text 
-       FROM intake_responses
-       WHERE project_id = $1`,
-      [projectContext.projectId]
-    );
+  `SELECT q.text as question_text, a.answer_text 
+   FROM answers a
+   JOIN questions q ON q.project_id = a.project_id 
+     AND q.trade_id = a.trade_id 
+     AND q.question_id = a.question_id
+   JOIN trades t ON t.id = a.trade_id
+   WHERE a.project_id = $1 
+     AND t.code = 'INT'`,  // INT = Intake Trade
+  [projectId]
+);
     
     if (intakeResponses.rows.length > 0) {
       allAnsweredInfo.fromIntake = intakeResponses.rows;
