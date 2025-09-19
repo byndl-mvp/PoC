@@ -56,7 +56,7 @@ const TRADE_COMPLEXITY = {
   HEI:   { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 26, targetPositionsRatio: 1.0 },
   KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 25, targetPositionsRatio: 1.0 },
   ROH:   { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 28, targetPositionsRatio: 1.2 },
-
+  
   // Komplexe Gewerke (20-30 Fragen)
   TIS:   { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 1.0 }, // Türen: oft 1:1
   FEN:   { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 1.0 }, // Fenster: oft 1:1
@@ -80,14 +80,6 @@ const TRADE_COMPLEXITY = {
   // Intake ist speziell (16-24 Fragen)
   INT:   { complexity: 'INTAKE', minQuestions: 14, maxQuestions: 26, targetPositionsRatio: 0.0 }
 };
-
-// NEU: Kontext-abhängige Anpassung
-    contextModifiers: {
-      'aufstockung': { additionalPositions: 10 },
-      'anbau': { additionalPositions: 8 },
-      'umbau': { additionalPositions: 6 }
-    }
-  },
 
 // Fallback für nicht definierte Gewerke
 const DEFAULT_COMPLEXITY = { 
