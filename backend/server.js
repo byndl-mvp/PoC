@@ -3633,6 +3633,9 @@ if (trade.code === 'GER' && lvPrompt) {
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
 
+STRIKTE REGEL: Du MUSST zwischen ${orientation.min} und ${orientation.max} Positionen erstellen.
+NICHT WENIGER ALS ${orientation.min}, NICHT MEHR ALS ${orientation.max}!
+
 PROJEKT-KOMPLEXITÄT: ${projectComplexity}
 
 📋 POSITIONS-ANFORDERUNG: ${orientation.min}-${orientation.max} Positionen
