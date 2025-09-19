@@ -1223,9 +1223,9 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
   
   // NEU: Komplexitäts-basierte Ratio-Anpassung
   const complexityBonus = {
-    'SEHR_HOCH': 0.2,  // +20% mehr Positionen
-    'HOCH': 0.15,      // +15% mehr Positionen
-    'MITTEL': 0.1,     // +10% mehr Positionen
+    'SEHR_HOCH': 0.15,  // +15% mehr Positionen
+    'HOCH': 0.10,      // +10% mehr Positionen
+    'MITTEL': 0.05,    // +5% mehr Positionen
     'EINFACH': 0,      // keine Anpassung
   }[projectComplexity] || 0;
   
@@ -1246,22 +1246,22 @@ if (matchedTerm) {
   // NEU: Absolute Minimums basierend auf Projekt-Komplexität
   const COMPLEXITY_MINIMUMS = {
     'SEHR_HOCH': {
-      'SEHR_HOCH': 25,  // Komplexes Projekt + komplexes Gewerk = min 25 Positionen
-      'HOCH': 22,
-      'MITTEL': 16,
-      'EINFACH': 12
+      'SEHR_HOCH': 18,  // Komplexes Projekt + komplexes Gewerk = min 18 Positionen
+      'HOCH': 15,
+      'MITTEL': 12,
+      'EINFACH': 8
     },
     'HOCH': {
-      'SEHR_HOCH': 22,
-      'HOCH': 18,
-      'MITTEL': 13,
-      'EINFACH': 9
+      'SEHR_HOCH': 16,
+      'HOCH': 14,
+      'MITTEL': 11,
+      'EINFACH': 7
     },
     'MITTEL': {
-      'SEHR_HOCH': 19,
-      'HOCH': 15,
-      'MITTEL': 10,
-      'EINFACH': 8
+      'SEHR_HOCH': 15,
+      'HOCH': 12,
+      'MITTEL': 8,
+      'EINFACH': 6
     }
   };
   
@@ -3567,10 +3567,10 @@ const orientation = getPositionOrientation(trade.code, answeredQuestionCount, {
 
 // NEU: Erzwinge Mindest-Positionen für komplexe Gewerke
 const MINIMUM_POSITIONS_BY_COMPLEXITY = {
-  'SEHR_HOCH': 25,
-  'HOCH': 20,
-  'MITTEL': 15,
-  'EINFACH': 10,
+  'SEHR_HOCH': 18,
+  'HOCH': 15,
+  'MITTEL': 12,
+  'EINFACH': 8,
   'INTAKE': 0
 };
 
