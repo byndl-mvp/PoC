@@ -5847,7 +5847,7 @@ app.get('/api/projects/:projectId', async (req, res) => {
     const project = projectResult.rows[0];
     const trades = await getProjectTrades(projectId);
     
-    // NEU: Parse metadata falls vorhanden
+    // Parse metadata falls vorhanden
     if (project.metadata && typeof project.metadata === 'string') {
       try {
         project.metadata = JSON.parse(project.metadata);
@@ -5857,14 +5857,20 @@ app.get('/api/projects/:projectId', async (req, res) => {
       }
     }
     
-    // NEU: Extrahiere Daten falls in metadata vorhanden
+    // NEU: Verwende gespeicherte Komplexität ODER berechne mit den geladenen Trades
+    const projectComplexity = project.metadata?.complexity?.level || 
+      determineProjectComplexity({
+        ...project,
+        detectedTrades: trades  // WICHTIG: Übergebe die geladenen Trades!
+      });
+    
     const extractedData = project.metadata?.extracted || null;
     
     project.trades = trades;
-    project.complexity = determineProjectComplexity(project);
-    project.extractedData = extractedData; // NEU: Füge extrahierte Daten hinzu
+    project.complexity = projectComplexity;  // Verwende korrekte Komplexität
+    project.extractedData = extractedData;
     
-    console.log(`[PROJECT] Retrieved project ${projectId} with ${trades.length} trades, complexity: ${project.complexity}`);
+    console.log(`[PROJECT] Retrieved project ${projectId} with ${trades.length} trades, complexity: ${projectComplexity}`);
     if (extractedData) {
       console.log(`[PROJECT] Has extracted data:`, extractedData.quantities);
     }
