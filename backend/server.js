@@ -3636,23 +3636,25 @@ console.log(`[LV] Final orientation for ${trade.code}: ${orientation.min}-${orie
     const measurementMatch = answer.match(/(\d+(?:\.\d+)?)\s*(m²|qm|m2|m|stück|stk)/i);
     
     if (measurementMatch) {
-      // Speichere nach Kategorie
-      if (question.includes('dach')) {
-        criticalMeasurements.dachflaeche = {
-          value: parseFloat(measurementMatch[1]),
-          unit: measurementMatch[2],
-          original: answer,
-          source: 'intake'
-        };
-      }
-      if (question.includes('fassade')) {
-        criticalMeasurements.fassadenflaeche = {
-          value: parseFloat(measurementMatch[1]),
-          unit: measurementMatch[2],
-          original: answer,
-          source: 'intake'
-        };
-      }
+    // Speichere nach Kategorie
+    if (question.includes('dach')) {
+      criticalMeasurements.dachflaeche = {
+        value: parseFloat(measurementMatch[1]),
+        unit: measurementMatch[2],
+        original: answer,
+        source: 'intake'
+      };
+    }
+    if (question.includes('fassade')) {
+      criticalMeasurements.fassadenflaeche = {
+        value: parseFloat(measurementMatch[1]),
+        unit: measurementMatch[2],
+        original: answer,
+        source: 'intake'
+      };
+    }
+  }  // <-- DIESE KLAMMER FEHLT (schließt if measurementMatch)
+});  // <-- DIESE KLAMMER FEHLT (schließt forEach)
       
   // Validiere und schätze fehlende Werte
   const validationResult = await validateAndEstimateAnswers(
