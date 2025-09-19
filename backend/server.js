@@ -6595,6 +6595,28 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const project = projectResult.rows[0];
 
+    // Parse metadata für Komplexität
+  if (project.metadata && typeof project.metadata === 'string') {
+    project.metadata = JSON.parse(project.metadata);
+  }
+  
+  // Erstelle erweiterten Projektkontext mit gespeicherter Komplexität
+  const projectContext = {
+    category: req.body.projectCategory || project.category,
+    subCategory: project.sub_category,
+    description: req.body.projectDescription || project.description,
+    timeframe: project.timeframe,
+    budget: req.body.projectBudget || project.budget,
+    projectId: projectId,
+    isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
+    isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended,
+    intakeContext: intakeContext,
+    hasIntakeAnswers: intakeContext.length > 0,
+    // NEU: Komplexität aus Metadata hinzufügen!
+    complexity: project.metadata?.complexity?.level || 'MITTEL',
+    metadata: project.metadata
+  };
+    
     // Hole Intake-Antworten für Kontext (für ALLE Gewerke)
 let intakeContext = '';
 if (tradeCode !== 'INT') {
