@@ -3480,6 +3480,16 @@ async function generateDetailedLV(projectId, tradeId) {
   if (!trade) throw new Error('Trade not found');
   
   const tradeCode = trade.code;
+
+  // NEU: Lade Projekt-Komplexität aus Metadata
+  const projectMetadata = project.metadata ? 
+    (typeof project.metadata === 'string' ? JSON.parse(project.metadata) : project.metadata) 
+    : {};
+  
+  const projectComplexity = projectMetadata.complexity?.level || 
+    determineProjectComplexity(project, []);
+  
+  console.log(`[LV] Project complexity for ${trade.code}: ${projectComplexity}`);
   
   // Lade alle relevanten Antworten
   const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
@@ -3518,15 +3528,20 @@ async function generateDetailedLV(projectId, tradeId) {
      ORDER BY q.question_id`,
     [projectId, tradeId]
   )).rows;
-  
-  // NEU: Orientierungswerte für Positionsanzahl berechnen (nur als Richtwert!)
-const answeredQuestionCount = tradeAnswers.length;
-const orientation = getPositionOrientation(trade.code, answeredQuestionCount);
-console.log(`[LV] Orientation for ${trade.code}: ${orientation.min}-${orientation.max} positions from ${answeredQuestionCount} questions`);
 
-// NEUER CODE: Erzwinge Mindest-Positionen für komplexe Gewerke
+  // Berechne Fragenanzahl
+const answeredQuestionCount = tradeAnswers.length;
+
+// NEU: Erweiterte Orientierungswerte mit Projekt-Context (NUR EINMAL!)
+const orientation = getPositionOrientation(trade.code, answeredQuestionCount, {
+    ...project,
+    complexity: projectComplexity,
+    description: project.description
+});
+
+// NEU: Erzwinge Mindest-Positionen für komplexe Gewerke
 const MINIMUM_POSITIONS_BY_COMPLEXITY = {
-  'SEHR_HOCH': 25,  // Rohbau, Dach, Elektro, etc.
+  'SEHR_HOCH': 25,
   'HOCH': 20,
   'MITTEL': 15,
   'EINFACH': 10,
@@ -3542,6 +3557,8 @@ if (orientation.min < absoluteMinimum) {
   orientation.max = Math.max(absoluteMinimum + 10, orientation.max);
   console.log(`[LV] OVERRIDE: ${trade.code} minimum positions: ${absoluteMinimum}`);
 }
+
+console.log(`[LV] Final orientation for ${trade.code}: ${orientation.min}-${orientation.max} positions from ${answeredQuestionCount} questions`);
   
   // NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
   const hasScaffoldingTrade = await query(
