@@ -3695,16 +3695,16 @@ PROJEKT-KOMPLEXITÄT: ${projectComplexity}
 📋 POSITIONS-ANFORDERUNG: ${orientation.min}-${orientation.max} Positionen
 
 KRITISCHE VORGABEN AUS INTAKE (MÜSSEN EXAKT ÜBERNOMMEN WERDEN):
-  ${Object.entries(criticalMeasurements).map(([key, data]) => 
-    `- ${key}: ${data.value} ${data.unit} (Nutzerangabe: "${data.original}")`
-  ).join('\n')}
-  
-  STRIKTE REGEL: 
-  - Diese Werte MÜSSEN EXAKT in den LV-Positionen verwendet werden
-  - KEINE Anpassungen, Rundungen oder "Sicherheitszuschläge"
-  - Bei Dachfläche 120m² MUSS im LV auch 120m² stehen
-  - Wenn der Nutzer "ca." oder "ungefähr" sagt, verwende trotzdem den genannten Wert
-  ` : ''}
+${Object.entries(criticalMeasurements).map(([key, data]) => 
+  `- ${key}: ${data.value} ${data.unit} (Nutzerangabe: "${data.original}")`
+).join('\n')}
+
+STRIKTE REGEL: 
+- Diese Werte MÜSSEN EXAKT in den LV-Positionen verwendet werden
+- KEINE Anpassungen, Rundungen oder "Sicherheitszuschläge"
+- Bei Dachfläche 120m² MUSS im LV auch 120m² stehen
+- Wenn der Nutzer "ca." oder "ungefähr" sagt, verwende trotzdem den genannten Wert
+` : ''}
 
 KRITISCHE REGELN:
 1. Erstelle ${orientation.min} bis ${orientation.max} ECHTE Positionen mit tatsächlichen Leistungen
