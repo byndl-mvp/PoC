@@ -73,7 +73,7 @@ export default function IntakeQuestionsPage() {
   useEffect(() => {
     if (generatingLV) {
       setLvProgress(0);
-      const totalDuration = 70000; // 70 Sekunden
+      const totalDuration = 100000; // 100 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
