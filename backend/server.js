@@ -3620,33 +3620,53 @@ Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}
 
 PROJEKT-KOMPLEXITÄT: ${projectComplexity}
 
-🚨 KRITISCHE ANFORDERUNG: MINDEST-POSITIONSANZAHL 🚨
-DIES IST EIN ${projectComplexity}-KOMPLEXES PROJEKT!
-Du MUSST ZWINGEND ${orientation.min} bis ${orientation.max} Positionen erstellen!
-Aktuell erforderlich: MINDESTENS ${orientation.min} POSITIONEN
+📋 POSITIONS-ANFORDERUNG: ${orientation.min}-${orientation.max} Positionen
+
+KRITISCHE REGELN:
+1. Erstelle ${orientation.min} bis ${orientation.max} ECHTE Positionen mit tatsächlichen Leistungen
+2. NIEMALS leere, "nicht vorhanden" oder "nicht definiert" Positionen
+3. NIEMALS Positionen mit Menge 0, "-" oder ohne Preis
+4. NUR Arbeiten die tatsächlich ausgeführt werden
+5. Bei Bedarf: Unterschreitung um max. 20% erlaubt (Minimum: ${Math.floor(orientation.min * 0.8)} Positionen)
 
 ${projectComplexity === 'SEHR_HOCH' ? `
-⚠️ SEHR HOHES KOMPLEXITÄTSLEVEL ⚠️
-- PFLICHT: Erstelle MINDESTENS ${orientation.min} Positionen!
-- Bei weniger als ${orientation.min} Positionen wird das LV ABGELEHNT!
-- Teile Arbeiten in detaillierte Einzelpositionen auf
-- Berücksichtige ALLE Nebenleistungen als separate Positionen
-- Beispiel: "Mauerwerk" → aufteilen in: Fundamentmauerwerk, Kellermauerwerk, EG-Mauerwerk, OG-Mauerwerk, etc.
+🔴 SEHR HOHE KOMPLEXITÄT:
+- Ziel: ${orientation.min}-${orientation.max} sinnvolle Positionen
+- Mindestens: ${Math.floor(orientation.min * 0.8)} Positionen (20% Toleranz)
+- Detaillierte Aufschlüsselung wo sinnvoll
+- Zusammenfassung ähnlicher Arbeiten erlaubt
+- Fokus auf Vollständigkeit und Qualität
 ` : projectComplexity === 'HOCH' ? `
-ERHÖHTE KOMPLEXITÄT - Detaillierte Ausarbeitung erforderlich!
-- PFLICHT: Minimum ${orientation.min} Positionen erstellen
-- Ausführliche Leistungsbeschreibungen
-- Nebenleistungen als eigene Positionen
+🟡 HOHE KOMPLEXITÄT:
+- Ziel: ${orientation.min}-${orientation.max} sinnvolle Positionen
+- Mindestens: ${Math.floor(orientation.min * 0.8)} Positionen (20% Toleranz)
+- Ausgewogene Detaillierung
+- Wichtige Leistungen einzeln erfassen
 ` : projectComplexity === 'MITTEL' ? `
-MITTLERE KOMPLEXITÄT
-- Mindestens ${orientation.min} Positionen erstellen
-- Standarddetaillierung ausreichend
+🟢 MITTLERE KOMPLEXITÄT:
+- Ziel: ${orientation.min}-${orientation.max} Positionen
+- Mindestens: ${Math.floor(orientation.min * 0.8)} Positionen (20% Toleranz)
+- Standarddetaillierung mit sinnvollen Zusammenfassungen
 ` : `
-STANDARD-PROJEKT
-- Mindestens ${orientation.min} Positionen erstellen
+⚪ STANDARD-PROJEKT:
+- Ziel: ${orientation.min}-${orientation.max} Positionen
+- Mindestens: ${Math.floor(orientation.min * 0.8)} Positionen (20% Toleranz)
+- Kompakte, praxisgerechte Darstellung
 `}
 
-VORGABE: ${orientation.min}-${orientation.max} Positionen (NICHT UNTERSCHREITEN!)
+VERBOTENE POSITIONEN (WERDEN AUTOMATISCH ENTFERNT):
+❌ Positionen mit "(nicht vorhanden)", "(nicht enthalten)", "(nicht definiert)"
+❌ Positionen mit Menge = 0, "-" oder ohne Menge
+❌ Positionen ohne reale Leistung
+❌ Künstliche Positionen nur zur Mengenerhöhung
+❌ Doppelte/redundante Positionen
+
+ERLAUBT:
+✅ Sinnvolle Zusammenfassung ähnlicher Arbeiten
+✅ Unterschreitung der Vorgabe um bis zu 20% wenn nötig
+✅ Fokus auf realistische, ausführbare Leistungen
+
+Ziel: Ein vollständiges, realistisches LV ohne künstliche Aufblähung
 
 KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
 
