@@ -7946,7 +7946,7 @@ const response = await llmWithPolicy('optimization', [
   { role: 'system', content: systemPrompt },
   { role: 'user', content: userPrompt }
 ], { 
-  maxTokens: 3000,
+  maxTokens: 4000,
   temperature: 0.3,
   jsonMode: true
 });
