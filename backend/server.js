@@ -102,7 +102,7 @@ async function llmWithPolicy(task, messages, options = {}) {
     'detect': 3000,      
     'questions': 8000,   
     'lv': 16000,         
-    'intake': 4000,      
+    'intake': 6000,      
     'summary': 3000,
     'validation': 3000   
   };
@@ -8953,7 +8953,7 @@ app.get('/__info', (req, res) => {
     limits: {
       detect: "3000 tokens",
       questions: "8000 tokens",
-      lv: "10000 tokens",
+      lv: "16000 tokens",
       intake: "6000 tokens",
       validation: "3000 tokens"
     },
