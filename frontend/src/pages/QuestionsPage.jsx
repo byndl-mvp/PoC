@@ -226,7 +226,8 @@ export default function IntakeQuestionsPage() {
             projectDescription: projectData.description,
             projectCategory: projectData.category,        
             projectBudget: projectData.budget            
-          })
+          }),
+          keepalive: true  // HIER HINZUFÜGEN
         });
         
         console.log('Generate response status:', generateRes.status);
