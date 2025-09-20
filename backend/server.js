@@ -2485,11 +2485,7 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - Frage 3: "Welche Öffnungsart pro Fenstertyp?"
    - Frage 4: "Welches Material?"
    - Frage 5: "Sollen alte Fenster demontiert werden?"
-   - Frage nach Haustüren NUR wenn in Projektbeschreibung erwähnt
-   - Projektbeschreibung enthält "Haustür"? ${projectContext.description?.toLowerCase().includes('haustür') ? 'JA ✓ - Bitte nach Haustür fragen!' : 'NEIN ✗ - KEINE Haustür-Fragen!'}
-   - Bei "Fenster und Haustür" → Frage nach beidem
-   - Bei nur "Fenster" → NUR Fenster-Fragen
-
+   
    KRITISCH: Die Maßfrage MUSS nach EINZELMASSEN fragen, nicht nach Gesamtfläche!
 ` : ''}
 
@@ -3366,7 +3362,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
   const STRICTLY_EXCLUSIVE = {
     'ELEKT': ['schalter', 'leuchte', 'sicherung', 'verteiler', 'fi-schalter'],
     'HEI': ['thermostat', 'warmwasser', 'kessel', 'brenner', 'radiator'],
-    'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
+    'KLIMA': ['klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
     'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke'],
     'FLI': ['verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
     'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'farbe', 'lackieren', 'grundierung'],
