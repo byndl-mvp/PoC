@@ -7853,12 +7853,12 @@ PROJEKTKONTEXT:
 ${projectData.rows[0]?.description || 'Keine Beschreibung'}
 Kategorie: ${projectData.rows[0]?.category || 'Nicht angegeben'}
 
-KONKRETE ARBEITEN IM PROJEKT (aus LV):
-${lvPositions.rows.slice(0, 30).map(p => {
+KONKRETE LV-POSITIONEN MIT PREISEN (BASIS FÜR EINSPARUNGEN):
+${lvPositions.rows.slice(0, 40).map(p => {
   try {
     const content = JSON.parse(p.content);
-    return content.positions?.slice(0, 3).map(pos => 
-      `- ${p.trade_name}: ${pos.title}`
+    return content.positions?.slice(0, 5).map(pos => 
+      `- ${p.trade_name}: ${pos.title} = ${formatCurrency(pos.total || 0)}`
     ).join('\n');
   } catch {
     return `- ${p.trade_name}: [Positionen nicht lesbar]`;
@@ -7885,20 +7885,27 @@ ANALYSIERE NUR was tatsächlich im Projekt enthalten ist!
 - Bei Badprojekt: KEINE Vorschläge zur Fassade
 
 KRITISCHE REGELN FÜR REALISTISCHE EINSPARUNGEN:
-1. REALISTISCHE PROZENTSÄTZE vom jeweiligen Gewerk:
-   - Materialwechsel: 5-12% der jeweiligen Positionssumme
-   - Eigenleistung: 10-30% NUR bei einfachen Vorarbeiten
-   - Mengenreduzierung: 10-25% je nach Umfang
-   
-2. ABSOLUTE GRENZEN:
-   - NIEMALS mehr als 15% eines Gewerks einsparen
+
+1. BEZIEHE EINSPARUNGEN AUF KONKRETE LV-POSITIONEN:
+   - Die Einsparung muss sich auf eine spezifische Position beziehen
+   - Beispiel: Wenn "Tonziegel verlegen" = 5.750€, dann ist 10% Einsparung = 575€
+   - NICHT: 10% vom gesamten Dachgewerk!
+
+2. REALISTISCHE PROZENTSÄTZE PRO POSITION:
+   - Materialwechsel bei einer Position: 8-15% dieser Position
+   - Eigenleistung bei Vorarbeiten: 60-80% der Arbeitskosten dieser Position
+   - Weglassen einer verzichtbaren Position: 100% dieser Position
+   - Reduzierung einer Position: 20-40% dieser Position
+
+3. ABSOLUTE GRENZEN:
+   - NIEMALS mehr als 15% eines Gewerks insgesamt einsparen
    - Mindestens 200€ pro Vorschlag
    - Maximal 20% der Gesamtüberschreitung pro Einzelmaßnahme
+   - Die Summe aller Einsparungen darf nicht über 30% der Gesamtkosten liegen
 
-3. KONKRETE BERECHNUNG für jedes Gewerk:
+4. KONKRETE BERECHNUNG für jedes Gewerk (MAXIMALGRENZEN):
 ${lvBreakdown.map(lv => `   ${lv.tradeCode} (${formatCurrency(lv.total)}):
-   - Material optimieren: ${formatCurrency(Math.round(lv.total * 0.05))} bis ${formatCurrency(Math.round(lv.total * 0.08))}
-   - Menge reduzieren: ${formatCurrency(Math.round(lv.total * 0.03))} bis ${formatCurrency(Math.round(lv.total * 0.10))}`).join('\n')}
+   - Maximale Gesamteinsparung für dieses Gewerk: ${formatCurrency(Math.round(lv.total * 0.15))}`).join('\n')}
 
 ERSTELLE 4-5 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
 
@@ -7917,11 +7924,15 @@ ERSTELLE 4-5 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
 - Reduzierte Flächen
 - Bestand erhalten wo möglich
 
-BEISPIELE GUTER VORSCHLÄGE mit REALISTISCHEN Beträgen:
-Wenn Gewerk 10.000€ kostet:
-✓ "Standard-Armaturen statt Designermodelle" (800€ = 8%)
-✓ "Malervorarbeiten in Eigenleistung" (600€ = 6%)
-✗ "Günstigere Materialien" (5.000€ = 50%) - UNREALISTISCH!
+BEISPIELE MIT KONKRETEN POSITIONEN:
+Wenn Position "Tonziegel liefern und verlegen" = 5.750€:
+✓ "Standard-Tonziegel statt Premium": 575€ (10% der Position)
+✓ "Betonziegel statt Tonziegel": 860€ (15% der Position)
+✗ "Günstigere Ziegel": 4.500€ (78% der Position) - UNREALISTISCH!
+
+Wenn Position "Sanitärarmaturen montieren" = 3.200€:
+✓ "Standard-Armaturen statt Design": 480€ (15% der Position)
+✗ "Billigere Armaturen": 2.000€ (62% der Position) - UNREALISTISCH!
 
 EXTREM WICHTIG: 
 Das "trade" Feld MUSS EXAKT einer dieser Codes sein: ${lvBreakdown.map(lv => lv.tradeCode).join(', ')}
@@ -7933,9 +7944,11 @@ OUTPUT als JSON:
     {
       "trade": "${lvBreakdown[0]?.tradeCode || 'DACH'}",
       "tradeName": "${lvBreakdown[0]?.tradeName || 'Dachdeckerarbeiten'}",
-      "measure": "Konkrete Maßnahme für ${lvBreakdown[0]?.tradeName || 'dieses Gewerk'}",
-      "savingAmount": ${Math.round((lvBreakdown[0]?.total || 20000) * 0.03)},
-      "savingPercent": 3,
+      "measure": "Standard-Material statt Premium bei konkreter Position",
+      "affectedPosition": "[Name der betroffenen LV-Position]",
+      "positionValue": [Wert der Position in Euro],
+      "savingAmount": [10-15% der positionValue],
+      "savingPercent": [Prozent bezogen auf positionValue],
       "difficulty": "mittel",
       "type": "material",
       "impact": "Auswirkung auf Qualität"
@@ -7943,41 +7956,46 @@ OUTPUT als JSON:
     {
       "trade": "${lvBreakdown[1].tradeCode}",
       "tradeName": "${lvBreakdown[1].tradeName}",
-      "measure": "Weitere Optimierung für ${lvBreakdown[1].tradeName}",
-      "savingAmount": ${Math.round(lvBreakdown[1].total * 0.04)},
-      "savingPercent": 4,
+      "measure": "Weitere konkrete Optimierung",
+      "affectedPosition": "[Name der betroffenen LV-Position]",
+      "positionValue": [Wert der Position],
+      "savingAmount": [Realistische Einsparung basierend auf Position],
+      "savingPercent": [Prozent der Position],
       "difficulty": "einfach",
       "type": "eigenleistung",
       "impact": "Keine Funktionseinschränkung"
     }` : ''}
   ],
-  "totalPossibleSaving": [Summe aller realistischen savingAmount Werte],
-  "summary": "Durch gezielte Optimierungen können die Kosten reduziert werden"
+  "totalPossibleSaving": [Summe aller savingAmount Werte],
+  "summary": "Einsparungen durch gezielte Optimierung einzelner Positionen"
 }
 
 WICHTIG: Antworte NUR mit validem JSON, KEINE Markdown-Formatierung wie \`\`\`json!`;
 
-    const userPrompt = `Budget: ${formatCurrency(targetBudget)}
+const userPrompt = `Budget: ${formatCurrency(targetBudget)}
 Aktuelle Kosten: ${formatCurrency(currentTotal)}
 Überschreitung: ${formatCurrency(overspend)} (${percentOver}%)
 
-GEWERKE MIT CODES UND KOSTEN:
+GEWERKE MIT GESAMTSUMMEN:
 ${lvBreakdown.map(lv => `${lv.tradeCode}: ${lv.tradeName} = ${formatCurrency(lv.total)}`).join('\n')}
 
-WICHTIGSTE LV-POSITIONEN:
-${lvPositions.rows.slice(0, 10).map(p => {
+WICHTIGSTE LV-POSITIONEN MIT BETRÄGEN (Basis für deine Berechnungen):
+${lvPositions.rows.slice(0, 25).map(p => {
   try {
     const content = JSON.parse(p.content);
-    return content.positions?.slice(0, 2).map(pos => 
-      `- ${p.trade_name}: ${pos.title}`
+    return content.positions?.slice(0, 4).map(pos => 
+      `- ${p.trade_name}: "${pos.title}" = ${formatCurrency(pos.total || 0)}`
     ).join('\n');
   } catch {
     return '';
   }
 }).filter(Boolean).join('\n')}
 
-Analysiere JEDES Gewerk und finde konkrete Einsparmöglichkeiten.
-Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
+KRITISCH: 
+- Beziehe JEDE Einsparung auf eine konkrete Position mit deren Betrag!
+- Berechne Einsparungen als Prozentsatz der POSITION, nicht des Gewerks!
+- Nenne die betroffene Position und deren Wert im JSON!
+- Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
 
     // DIREKT OpenAI verwenden
     console.log('[OPTIMIZATION] Calling OpenAI directly with gpt-4.1-mini');
