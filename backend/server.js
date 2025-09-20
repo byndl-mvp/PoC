@@ -7886,19 +7886,19 @@ ANALYSIERE NUR was tatsächlich im Projekt enthalten ist!
 
 KRITISCHE REGELN FÜR REALISTISCHE EINSPARUNGEN:
 1. REALISTISCHE PROZENTSÄTZE vom jeweiligen Gewerk:
-   - Materialwechsel: 5-12% der Gewerksumme
-   - Eigenleistung: 20-40% NUR bei einfachen Vorarbeiten
+   - Materialwechsel: 5-12% der jeweiligen Positionssumme
+   - Eigenleistung: 10-30% NUR bei einfachen Vorarbeiten
    - Mengenreduzierung: 10-25% je nach Umfang
    
 2. ABSOLUTE GRENZEN:
-   - NIEMALS mehr als 25% eines Gewerks einsparen
+   - NIEMALS mehr als 15% eines Gewerks einsparen
    - Mindestens 200€ pro Vorschlag
    - Maximal 20% der Gesamtüberschreitung pro Einzelmaßnahme
 
 3. KONKRETE BERECHNUNG für jedes Gewerk:
 ${lvBreakdown.map(lv => `   ${lv.tradeCode} (${formatCurrency(lv.total)}):
-   - Material optimieren: ${formatCurrency(Math.round(lv.total * 0.08))} bis ${formatCurrency(Math.round(lv.total * 0.12))}
-   - Menge reduzieren: ${formatCurrency(Math.round(lv.total * 0.10))} bis ${formatCurrency(Math.round(lv.total * 0.20))}`).join('\n')}
+   - Material optimieren: ${formatCurrency(Math.round(lv.total * 0.05))} bis ${formatCurrency(Math.round(lv.total * 0.08))}
+   - Menge reduzieren: ${formatCurrency(Math.round(lv.total * 0.03))} bis ${formatCurrency(Math.round(lv.total * 0.10))}`).join('\n')}
 
 ERSTELLE 4-5 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
 
@@ -7934,8 +7934,8 @@ OUTPUT als JSON:
       "trade": "${lvBreakdown[0]?.tradeCode || 'DACH'}",
       "tradeName": "${lvBreakdown[0]?.tradeName || 'Dachdeckerarbeiten'}",
       "measure": "Konkrete Maßnahme für ${lvBreakdown[0]?.tradeName || 'dieses Gewerk'}",
-      "savingAmount": ${Math.round((lvBreakdown[0]?.total || 20000) * 0.1)},
-      "savingPercent": 10,
+      "savingAmount": ${Math.round((lvBreakdown[0]?.total || 20000) * 0.03)},
+      "savingPercent": 3,
       "difficulty": "mittel",
       "type": "material",
       "impact": "Auswirkung auf Qualität"
@@ -7944,8 +7944,8 @@ OUTPUT als JSON:
       "trade": "${lvBreakdown[1].tradeCode}",
       "tradeName": "${lvBreakdown[1].tradeName}",
       "measure": "Weitere Optimierung für ${lvBreakdown[1].tradeName}",
-      "savingAmount": ${Math.round(lvBreakdown[1].total * 0.08)},
-      "savingPercent": 8,
+      "savingAmount": ${Math.round(lvBreakdown[1].total * 0.04)},
+      "savingPercent": 4,
       "difficulty": "einfach",
       "type": "eigenleistung",
       "impact": "Keine Funktionseinschränkung"
