@@ -255,21 +255,18 @@ ${cleanedUserMessages[0]?.content || 'Bitte die obigen Instruktionen befolgen.'}
         }
         
         // NEU: Spezielle JSON-Mode Behandlung je nach Modell
-        let finalSystem = systemMessage;
-        if (options.jsonMode) {
-          if (task === 'lv') {
-            // Für LV mit Opus: Stärkere JSON-Instruktion
-            finalSystem = `Du MUSST deine Antwort als VALIDES JSON-Objekt zurückgeben.
-Beginne deine Antwort direkt mit { und ende mit }
-Keine Erklärungen außerhalb des JSON.
-Kein Markdown, keine Codeblöcke.
+let finalSystem = systemMessage;
+if (options.jsonMode) {
+  // Universelle JSON-Instruktion für ALLE Tasks und ALLE Claude-Modelle
+  finalSystem = `KRITISCH: Du MUSST ausschließlich valides JSON zurückgeben!
+- Beginne deine Antwort DIREKT mit {
+- Ende deine Antwort mit }
+- KEINE Markdown-Formatierung (keine \`\`\`json)
+- KEINE Erklärungen vor oder nach dem JSON
+- NUR das reine JSON-Objekt
 
 ${systemMessage}`;
-          } else {
-            // Für andere Tasks mit Sonnet
-            finalSystem = `KRITISCH: Antworte AUSSCHLIESSLICH mit validem JSON!\n\n${systemMessage}`;
-          }
-        }
+}
         
         console.log(`[LLM-CLAUDE] Normal call - Model: ${modelToUse} | System: ${finalSystem.length} chars`);
         
