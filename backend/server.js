@@ -109,6 +109,20 @@ async function llmWithPolicy(task, messages, options = {}) {
   
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
 
+  // GENERELLES TIMEOUT ERHÖHEN für alle Tasks die länger brauchen können
+  const defaultTimeouts = {
+    'questions': 90000,  // 90 Sekunden
+    'lv': 120000,        // 120 Sekunden (LV ist komplexer)
+    'intake': 90000,     // 90 Sekunden
+    'optimization': 60000, // 60 Sekunden
+    'default': 45000     // 45 Sekunden für alles andere
+  };
+  
+  if (!options.timeout) {
+    options.timeout = defaultTimeouts[task] || defaultTimeouts.default;
+    console.log(`[LLM] Setting timeout for ${task}: ${options.timeout}ms`);
+  }
+  
   // NEU: Für Optimization-Task direkt OpenAI verwenden
   if (task === 'optimization') {
     console.log('[LLM] Optimization task - using OpenAI directly');
