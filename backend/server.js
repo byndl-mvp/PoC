@@ -4330,7 +4330,7 @@ WICHTIG: Antworte NUR mit validem JSON!`;
 }
     
     // Detailliertes Error-Logging
-    const errorMatch = error.message.match(/position (\d+)/);
+    const errorMatch = parseError.message.match(/position (\d+)/);
     if (errorMatch) {
       const pos = parseInt(errorMatch[1]);
       console.error('[LV] Error at position:', pos);
