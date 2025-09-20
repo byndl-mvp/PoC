@@ -7942,116 +7942,130 @@ ${lvPositions.rows.slice(0, 10).map(p => {
 Analysiere JEDES Gewerk und finde konkrete Einsparmöglichkeiten.
 Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
 
-const response = await llmWithPolicy('optimization', [
-  { role: 'system', content: systemPrompt },
-  { role: 'user', content: userPrompt }
-], { 
-  maxTokens: 4000,
-  temperature: 0.3,
-  jsonMode: true
-});
+    // DIREKTE OpenAI Ansprache für Optimierungen
+    console.log('[OPTIMIZATION] Using OpenAI gpt-4.1-mini for optimization');
+    
+    let optimizations;
+    try {
+      // Verwende spezifisch OpenAI für diese Route
+      const response = await llmWithPolicy('optimization', [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ], { 
+        maxTokens: 4000,
+        temperature: 0.3,
+        jsonMode: true,
+        model: 'gpt-4.1-mini', // Explizit OpenAI Model angeben
+        forceProvider: 'openai' // Erzwinge OpenAI Provider
+      });
 
-console.log('[OPTIMIZATION] Raw LLM response:', response.substring(0, 500));
-const optimizations = JSON.parse(response);
-// HIER NEU: Sofort nach dem Parsen alle Beträge runden
-if (optimizations.optimizations && Array.isArray(optimizations.optimizations)) {
-  optimizations.optimizations = optimizations.optimizations.map(opt => ({
-    ...opt,
-    savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
-  }));
-}    
-console.log('[OPTIMIZATION] Parsed optimizations:', JSON.stringify(optimizations.optimizations?.slice(0, 2)));
+      console.log('[OPTIMIZATION] Raw LLM response:', response.substring(0, 500));
+      optimizations = JSON.parse(response);
+      
+    } catch (parseError) {
+      console.error('[OPTIMIZATION] Parse error:', parseError);
+      // Fallback ohne erneuten LLM Call
+      optimizations = {
+        optimizations: [{
+          trade: lvBreakdown[0]?.tradeCode || 'GENERAL',
+          tradeName: lvBreakdown[0]?.tradeName || 'Allgemein',
+          measure: 'Materialqualität optimieren ohne Funktionseinbußen',
+          savingAmount: Math.max(500, Math.round(overspend * 0.1)),
+          savingPercent: 10,
+          difficulty: 'einfach',
+          type: 'material',
+          impact: 'Geringe optische Einschränkungen'
+        }],
+        totalPossibleSaving: Math.max(500, Math.round(overspend * 0.1)),
+        summary: 'Automatisch generierte Optimierung'
+      };
+    }
 
-// Speichere Optimierungsvorschläge
-await query(
-  `INSERT INTO project_optimizations (project_id, suggestions, created_at)
-   VALUES ($1, $2, NOW())
-   ON CONFLICT (project_id) 
-   DO UPDATE SET suggestions = $2, created_at = NOW()`,
-  [projectId, JSON.stringify(optimizations)]
-);
+    // Sofort nach dem Parsen alle Beträge runden
+    if (optimizations.optimizations && Array.isArray(optimizations.optimizations)) {
+      optimizations.optimizations = optimizations.optimizations.map(opt => ({
+        ...opt,
+        savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
+      }));
+    }    
+    console.log('[OPTIMIZATION] Parsed optimizations:', JSON.stringify(optimizations.optimizations?.slice(0, 2)));
 
-// NEU: Runde alle Beträge und korrigiere die Gesamtsumme
-if (optimizations.optimizations && optimizations.optimizations.length > 0) {
-  // Runde alle savingAmount Werte
-  optimizations.optimizations = optimizations.optimizations.map(opt => ({
-    ...opt,
-    savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
-  }));
-  
-  // Berechne Gesamtsumme aus den gerundeten Werten
-  optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
-    (sum, opt) => sum + opt.savingAmount, 
-    0
-  );
-}  
-// Validierung: Filtere ungültige und unrealistische Optimierungen
-const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
-if (optimizations.optimizations) {
-  optimizations.optimizations = optimizations.optimizations.filter(opt => {
-    // Prüfe ob trade überhaupt existiert
-    if (!opt.trade || opt.trade === 'undefined') {
-      console.log('[OPTIMIZATION] Skipping optimization with undefined trade');
-      return false;
+    // Speichere Optimierungsvorschläge
+    await query(
+      `INSERT INTO project_optimizations (project_id, suggestions, created_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (project_id) 
+       DO UPDATE SET suggestions = $2, created_at = NOW()`,
+      [projectId, JSON.stringify(optimizations)]
+    );
+
+    // Runde alle Beträge und korrigiere die Gesamtsumme
+    if (optimizations.optimizations && optimizations.optimizations.length > 0) {
+      // Runde alle savingAmount Werte
+      optimizations.optimizations = optimizations.optimizations.map(opt => ({
+        ...opt,
+        savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
+      }));
+      
+      // Berechne Gesamtsumme aus den gerundeten Werten
+      optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
+        (sum, opt) => sum + opt.savingAmount, 
+        0
+      );
     }
     
-    // Prüfe ob Trade im Projekt vorhanden
-    const isValid = validTradeCodes.includes(opt.trade);
-    if (!isValid) {
-      console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
-      return false;
+    // Validierung: Filtere ungültige und unrealistische Optimierungen
+    const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
+    if (optimizations.optimizations) {
+      optimizations.optimizations = optimizations.optimizations.filter(opt => {
+        // Prüfe ob trade überhaupt existiert
+        if (!opt.trade || opt.trade === 'undefined') {
+          console.log('[OPTIMIZATION] Skipping optimization with undefined trade');
+          return false;
+        }
+        
+        // Prüfe ob Trade im Projekt vorhanden
+        const isValid = validTradeCodes.includes(opt.trade);
+        if (!isValid) {
+          console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
+          return false;
+        }
+        
+        // Prüfe realistische Einsparungen (mindestens 200€)
+        if (opt.savingAmount < 200) {
+          console.log(`[OPTIMIZATION] Filtered unrealistic low amount: ${opt.savingAmount}€`);
+          return false;
+        }
+        
+        // Prüfe ob Einsparung nicht über 50% des Gewerks liegt
+        const tradeLv = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
+        if (tradeLv && opt.savingAmount > tradeLv.total * 0.5) {
+          console.log(`[OPTIMIZATION] Capped high amount: ${opt.savingAmount}€ to 30% of ${tradeLv.total}€`);
+          opt.savingAmount = Math.floor(tradeLv.total * 0.3);
+          opt.savingPercent = 30;
+        }
+        
+        return true;
+      });
+      
+      // Stelle sicher dass tradeName korrekt ist
+      optimizations.optimizations = optimizations.optimizations.map(opt => {
+        const matchingTrade = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
+        if (matchingTrade) {
+          opt.tradeName = matchingTrade.tradeName;
+        }
+        return opt;
+      });
     }
-    
-    // NEU: Prüfe realistische Einsparungen (mindestens 200€)
-    if (opt.savingAmount < 200) {
-      console.log(`[OPTIMIZATION] Filtered unrealistic low amount: ${opt.savingAmount}€`);
-      return false;
-    }
-    
-    // NEU: Prüfe ob Einsparung nicht über 50% des Gewerks liegt
-    const tradeLv = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
-    if (tradeLv && opt.savingAmount > tradeLv.total * 0.5) {
-      console.log(`[OPTIMIZATION] Capped high amount: ${opt.savingAmount}€ to 30% of ${tradeLv.total}€`);
-      opt.savingAmount = Math.floor(tradeLv.total * 0.3);
-      opt.savingPercent = 30;
-    }
-    
-    return true;
-  });
-  
-  // Stelle sicher dass tradeName korrekt ist
-  optimizations.optimizations = optimizations.optimizations.map(opt => {
-    const matchingTrade = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
-    if (matchingTrade) {
-      opt.tradeName = matchingTrade.tradeName;
-    }
-    return opt;
-  });
-}
 
-// Fallback mit realistischem Mindestbetrag
-if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
-  console.log('[OPTIMIZATION] No valid optimizations found, generating fallback');
-  optimizations.optimizations = [{
-    trade: lvBreakdown[0]?.tradeCode || 'GENERAL',
-    tradeName: lvBreakdown[0]?.tradeName || 'Allgemein',
-    measure: 'Materialqualität leicht reduzieren ohne Funktionseinbußen',
-    savingAmount: Math.max(500, overspend * 0.1), // Mindestens 500€
-    savingPercent: 10,
-    difficulty: 'einfach',
-    type: 'material',
-    impact: 'Geringe optische Einschränkungen'
-  }];
-}
-
-    // Fallback wenn keine gültigen Optimierungen
+    // Fallback mit realistischem Mindestbetrag
     if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
       console.log('[OPTIMIZATION] No valid optimizations found, generating fallback');
       optimizations.optimizations = [{
         trade: lvBreakdown[0]?.tradeCode || 'GENERAL',
         tradeName: lvBreakdown[0]?.tradeName || 'Allgemein',
         measure: 'Materialqualität leicht reduzieren ohne Funktionseinbußen',
-        savingAmount: overspend * 0.1,
+        savingAmount: Math.max(500, Math.round(overspend * 0.1)), // Mindestens 500€
         savingPercent: 10,
         difficulty: 'einfach',
         type: 'material',
@@ -8060,16 +8074,16 @@ if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
     }
 
     // Debug: Zeige alle finalen Beträge
-console.log('[OPTIMIZATION] Final amounts before response:', 
-  optimizations.optimizations.map(opt => opt.savingAmount));
+    console.log('[OPTIMIZATION] Final amounts before response:', 
+      optimizations.optimizations.map(opt => opt.savingAmount));
 
-// Stelle sicher, dass die Summe korrekt ist
-optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
-  (sum, opt) => sum + opt.savingAmount, 
-  0
-);
+    // Stelle sicher, dass die Summe korrekt ist
+    optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
+      (sum, opt) => sum + opt.savingAmount, 
+      0
+    );
 
-console.log('[OPTIMIZATION] Final total:', optimizations.totalPossibleSaving);
+    console.log('[OPTIMIZATION] Final total:', optimizations.totalPossibleSaving);
     
     res.json(optimizations);
     
