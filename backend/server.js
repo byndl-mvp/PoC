@@ -74,7 +74,7 @@ const TRADE_COMPLEXITY = {
   AUSS:  { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
 
   // Einfache Gewerke (8-15 Fragen)
-  MAL:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 15, targetPositionsRatio: 0.8 },
+  MAL:   { complexity: 'EINFACH', minQuestions: 10,  maxQuestions: 15, targetPositionsRatio: 0.8 },
   GER:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 12, targetPositionsRatio: 0.8 },
   ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15, targetPositionsRatio: 0.8 },
 
