@@ -3892,6 +3892,7 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - NIEMALS getrennte Positionen für Lieferung und Montage
    - IMMER: "Lieferung und [Verb]" in EINER Position
    - NIEMALS: Lieferung und Demontage im Gewerk ABBR (Abbruch/Entkernung)
+   - NIEMALS: Lieferung und Montage bei Rückbau- und Demontagearbeiten in allen Gewerken
    
    KORREKTE FORMULIERUNGEN:
    - "Lieferung und Verlegung von Dachziegeln..."
