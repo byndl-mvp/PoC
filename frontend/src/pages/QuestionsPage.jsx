@@ -318,7 +318,8 @@ export default function IntakeQuestionsPage() {
           body: JSON.stringify({
             contextAnswer: answerText,
             isAdditional: true
-          })
+          }),
+          keepalive: true  // HIER HINZUFÜGEN
         });
         
         if (response.ok) {
@@ -357,7 +358,8 @@ export default function IntakeQuestionsPage() {
         const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contextAnswer: answerText })
+          body: JSON.stringify({ contextAnswer: answerText }),
+          keepalive: true  // ← Hier hinzufügen
         });
         
         if (response.ok) {
@@ -391,7 +393,8 @@ export default function IntakeQuestionsPage() {
           body: JSON.stringify({
             contextAnswer: answerText,
             isAiRecommended: true
-          })
+          }),
+          keepalive: true
         });
         
         if (response.ok) {
@@ -510,7 +513,7 @@ export default function IntakeQuestionsPage() {
       const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify({}),
         keepalive: true  // HIER HINZUFÜGEN
       });
 
