@@ -511,6 +511,7 @@ export default function IntakeQuestionsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
+        keepalive: true  // HIER HINZUFÜGEN
       });
 
       const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true' ||
