@@ -4329,29 +4329,6 @@ WICHTIG: Antworte NUR mit validem JSON!`;
   }
 }
     
-    // Detailliertes Error-Logging
-    const errorMatch = parseError.message.match(/position (\d+)/);
-    if (errorMatch) {
-      const pos = parseInt(errorMatch[1]);
-      console.error('[LV] Error at position:', pos);
-      console.error('[LV] Context before:', cleanedResponse.substring(Math.max(0, pos - 100), pos));
-      console.error('[LV] >>> ERROR HERE <<<');
-      console.error('[LV] Context after:', cleanedResponse.substring(pos, Math.min(cleanedResponse.length, pos + 100)));
-      console.error('[LV] Character at position:', {
-        char: cleanedResponse.charAt(pos),
-        charCode: cleanedResponse.charCodeAt(pos),
-        hex: '0x' + cleanedResponse.charCodeAt(pos).toString(16)
-      });
-    }
-    
-    // Zeige vollständige Response-Struktur für Debugging
-    console.error('[LV] Full response first 500 chars:', cleanedResponse.substring(0, 500));
-    console.error('[LV] Full response last 500 chars:', cleanedResponse.substring(cleanedResponse.length - 500));
-    
-    // Klare Fehlermeldung ohne Reparaturversuche
-    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
-
-
 // NEUE PREISVALIDIERUNG - HIER EINFÜGEN (Zeile 1921)
 const priceValidation = validateAndFixPrices(lv, trade.code);
 if (priceValidation.fixedCount > 0) {
