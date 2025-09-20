@@ -4153,27 +4153,89 @@ console.log('[LV-DEBUG] First 500 chars:', response.substring(0, 500));
     console.log('========================================\n');
   }
   
-  // MINIMALE Bereinigung - nur Whitespace und eventuelles Markdown
-  let cleanedResponse = response.trim();
+  // VERBESSERTE Bereinigung für Claude-Responses
+let cleanedResponse = response.trim();
+
+// Claude-spezifische Bereinigung (auch wenn jsonMode aktiv ist)
+if (cleanedResponse.includes('```')) {
+  console.warn(`[LV] Markdown wrapper detected for ${trade.code} - cleaning...`);
+  // Entferne ```json oder ``` am Anfang und Ende
+  cleanedResponse = cleanedResponse
+    .replace(/^```(?:json)?\s*\n?/, '')
+    .replace(/\n?```\s*$/, '');
+}
+
+// Weitere Claude-typische Probleme bereinigen
+cleanedResponse = cleanedResponse
+  .replace(/^json\s*\n?/i, '') // Falls "json" oder "JSON" am Anfang steht
+  .trim();
+
+// Validiere JSON-Struktur
+if (!cleanedResponse.startsWith('{') || !cleanedResponse.endsWith('}')) {
+  console.error(`[LV] Invalid JSON structure for ${trade.code}`);
   
-  // Nur falls trotz JSON-Mode Markdown zurückkommt (sollte bei OpenAI nicht passieren)
-  if (cleanedResponse.includes('```')) {
-    console.warn('[LV] Unexpected markdown wrapper despite JSON mode active');
-    const match = cleanedResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (match && match[1]) {
-      cleanedResponse = match[1].trim();
-    }
+  // Versuche zu reparieren
+  const firstBrace = cleanedResponse.indexOf('{');
+  const lastBrace = cleanedResponse.lastIndexOf('}');
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && firstBrace < lastBrace) {
+    cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
+    console.log(`[LV] Trimmed to valid JSON bounds for ${trade.code}`);
   }
-  
-  // Direkt parsen - mit aktivem JSON-Mode sollte das funktionieren
+}
+
+// Parse mit erweiterter Fehlerbehandlung
 let lv;
 try {
   lv = JSON.parse(cleanedResponse);
-  console.log(`[LV] Successfully parsed JSON for ${trade.code} (JSON mode was active)`);
+  console.log(`[LV] Successfully parsed JSON for ${trade.code}`);
   
-  // ERWEITERTE VALIDIERUNG für alle maßrelevanten Bauteile
-const dimensionConfig = DIMENSION_REQUIRED_ITEMS[trade.code];
+} catch (parseError) {
+  console.error(`[LV] Parse error for ${trade.code}:`, parseError.message);
+  console.error('[LV] First 200 chars of response:', cleanedResponse.substring(0, 200));
+  
+  // Versuche abgeschnittenes JSON zu reparieren
+  if (parseError.message.includes('Unexpected end of JSON')) {
+    console.log('[LV] Attempting to repair truncated JSON...');
+    
+    // Zähle offene Arrays/Objekte
+    const openBraces = (cleanedResponse.match(/{/g) || []).length;
+    const closeBraces = (cleanedResponse.match(/}/g) || []).length;
+    const openBrackets = (cleanedResponse.match(/\[/g) || []).length;
+    const closeBrackets = (cleanedResponse.match(/\]/g) || []).length;
+    
+    let repaired = cleanedResponse;
+    
+    // Schließe offene Arrays
+    for (let i = 0; i < (openBrackets - closeBrackets); i++) {
+      repaired += ']';
+    }
+    
+    // Schließe offene Objekte
+    for (let i = 0; i < (openBraces - closeBraces); i++) {
+      repaired += '}';
+    }
+    
+    try {
+      lv = JSON.parse(repaired);
+      console.log('[LV] Successfully repaired truncated JSON');
+    } catch (repairError) {
+      console.error('[LV] Repair attempt failed');
+      throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Claude lieferte ungültiges JSON trotz JSON-Mode`);
+    }
+  } else {
+    // Nicht reparierbar
+    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Claude lieferte ungültiges JSON trotz JSON-Mode`);
+  }
+}
 
+// Validiere LV-Struktur
+if (!lv || !lv.positions || !Array.isArray(lv.positions)) {
+  throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Ungültige LV-Struktur`);
+}
+
+// ERWEITERTE VALIDIERUNG für alle maßrelevanten Bauteile
+const dimensionConfig = DIMENSION_REQUIRED_ITEMS[trade.code];
 if (dimensionConfig) {
   const hasInvalidPositions = lv.positions.some(pos => {
     const desc = pos.description.toLowerCase();
@@ -4227,9 +4289,11 @@ Beispiel RICHTIG:
 
 Beispiel FALSCH:
 - "${dimensionConfig.itemName} verschiedene Größen"
-- Maßangaben erfinden die nicht in den Antworten stehen`;
+- Maßangaben erfinden die nicht in den Antworten stehen
+
+WICHTIG: Antworte NUR mit validem JSON!`;
     
-    const retryResponse = await llmWithPolicy('lv', [
+    let retryResponse = await llmWithPolicy('lv', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: enhancedPrompt }
     ], { 
@@ -4238,15 +4302,21 @@ Beispiel FALSCH:
       jsonMode: true
     });
     
-    lv = JSON.parse(retryResponse.trim());
-    console.log(`[LV] ${dimensionConfig.itemName}-LV erfolgreich regeneriert mit Maßangaben aus Antworten`);
+    // Bereinige auch die Retry-Response
+    retryResponse = retryResponse.trim()
+      .replace(/^```(?:json)?\s*\n?/, '')
+      .replace(/\n?```\s*$/, '')
+      .replace(/^json\s*\n?/i, '');
+    
+    try {
+      lv = JSON.parse(retryResponse);
+      console.log(`[LV] ${dimensionConfig.itemName}-LV erfolgreich regeneriert mit Maßangaben`);
+    } catch (retryParseError) {
+      console.error('[LV] Retry parse failed:', retryParseError.message);
+      throw new Error(`LV-Regenerierung für ${trade.name} fehlgeschlagen - Claude lieferte erneut ungültiges JSON`);
+    }
   }
 }
-  
-} catch (parseError) {
-    // Das sollte mit aktivem JSON-Mode eigentlich nicht passieren
-    console.error('[LV] CRITICAL: Parse error despite JSON mode active!');
-    console.error('[LV] Error message:', parseError.message);
     
     // Detailliertes Error-Logging
     const errorMatch = parseError.message.match(/position (\d+)/);
