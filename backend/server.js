@@ -3367,24 +3367,24 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
 
   // NUR EXKLUSIVE Begriffe - nur DIESES Gewerk darf fragen
   const STRICTLY_EXCLUSIVE = {
-    'ELEKT': ['steckdose', 'schalter', 'leuchte', 'kabel', 'sicherung', 'verteiler', 'fi-schalter'],
-    'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
+    'ELEKT': ['schalter', 'leuchte', 'sicherung', 'verteiler', 'fi-schalter'],
+    'HEI': ['thermostat', 'warmwasser', 'kessel', 'brenner', 'radiator'],
     'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
     'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke'],
-    'FLI': ['fliesen', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
+    'FLI': ['verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
     'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'farbe', 'lackieren', 'grundierung'],
-    'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
+    'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden'],
     'ROH': ['mauerwerk', 'ziegelmauerwerk', 'durchbruch', 'beton', 'maurerarbeiten', 'sturz', 'kalksandstein'],
-    'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
+    'SAN': ['wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn', 'armatur'],
     'FEN': ['verglasung', 'haustür', 'rolladen', 'jalousie', 'außentür', 'terrassentür', 'isolierglas'],
     'TIS': ['innentür', 'zarge', 'möbel', 'einbauschrank', 'küche', 'wohnungseingangstür', 'arbeitsplatte'],
-    'DACH': ['dachfenster', 'dachziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'unterspannbahn'],
+    'DACH': ['dachziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'unterspannbahn'],
     'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
     'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
-    'ZIMM': ['holzbau', 'dachstuhl', 'carport', 'gaube', 'holzkonstruktion', 'fachwerk', 'sparren', 'pfetten'],
+    'ZIMM': ['holzbau', 'dachstuhl', 'gaube', 'carport', 'holzkonstruktion', 'fachwerk'],
     'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
     'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
-    'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
+    'AUSS': ['pflaster', 'einfahrt', 'außenanlage', 'randstein', 'rasen'],
     'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
     'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau']
   };
