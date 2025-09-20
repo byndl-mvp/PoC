@@ -1325,6 +1325,12 @@ if (matchedTerm) {
   } else {
     orientationMax = Math.min(18, orientationMax);  // Max 18 für einfache Projekte
   }
+
+  // KRITISCHER FIX: Stelle sicher, dass max > min
+  if (orientationMax <= orientationMin) {
+    orientationMax = orientationMin + 5;  // Mindestens 5 Positionen Unterschied
+    console.log(`[LV-ORIENTATION] WARNUNG: Max war kleiner als Min - korrigiert zu ${orientationMin}-${orientationMax}`);
+  }
   
   console.log(`[LV-ORIENTATION] ${tradeCode}: ${orientationMin}-${orientationMax} positions`);
   console.log(`  Project complexity: ${projectComplexity}, Trade complexity: ${tradeConfig.complexity}`);
