@@ -7884,6 +7884,22 @@ ANALYSIERE NUR was tatsächlich im Projekt enthalten ist!
 - Bei Dachprojekt: KEINE Vorschläge zu Innenräumen
 - Bei Badprojekt: KEINE Vorschläge zur Fassade
 
+KRITISCHE REGELN FÜR REALISTISCHE EINSPARUNGEN:
+1. REALISTISCHE PROZENTSÄTZE vom jeweiligen Gewerk:
+   - Materialwechsel: 5-12% der Gewerksumme
+   - Eigenleistung: 20-40% NUR bei einfachen Vorarbeiten
+   - Mengenreduzierung: 10-25% je nach Umfang
+   
+2. ABSOLUTE GRENZEN:
+   - NIEMALS mehr als 25% eines Gewerks einsparen
+   - Mindestens 200€ pro Vorschlag
+   - Maximal 20% der Gesamtüberschreitung pro Einzelmaßnahme
+
+3. KONKRETE BERECHNUNG für jedes Gewerk:
+${lvBreakdown.map(lv => `   ${lv.tradeCode} (${formatCurrency(lv.total)}):
+   - Material optimieren: ${formatCurrency(Math.round(lv.total * 0.08))} bis ${formatCurrency(Math.round(lv.total * 0.12))}
+   - Menge reduzieren: ${formatCurrency(Math.round(lv.total * 0.10))} bis ${formatCurrency(Math.round(lv.total * 0.20))}`).join('\n')}
+
 ERSTELLE 4-5 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
 
 1. MATERIALOPTIMIERUNG:
@@ -7901,10 +7917,11 @@ ERSTELLE 4-5 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
 - Reduzierte Flächen
 - Bestand erhalten wo möglich
 
-BEISPIELE GUTER VORSCHLÄGE:
-✓ "Standard-Armaturen statt Designermodelle im Bad (spart 1.200€)"
-✓ "Malervorarbeiten in Eigenleistung (spart 600€)"
-✓ "Fliesen nur in Nassbereichen (spart 2.000€)"
+BEISPIELE GUTER VORSCHLÄGE mit REALISTISCHEN Beträgen:
+Wenn Gewerk 10.000€ kostet:
+✓ "Standard-Armaturen statt Designermodelle" (800€ = 8%)
+✓ "Malervorarbeiten in Eigenleistung" (600€ = 6%)
+✗ "Günstigere Materialien" (5.000€ = 50%) - UNREALISTISCH!
 
 EXTREM WICHTIG: 
 Das "trade" Feld MUSS EXAKT einer dieser Codes sein: ${lvBreakdown.map(lv => lv.tradeCode).join(', ')}
@@ -7917,8 +7934,8 @@ OUTPUT als JSON:
       "trade": "${lvBreakdown[0]?.tradeCode || 'DACH'}",
       "tradeName": "${lvBreakdown[0]?.tradeName || 'Dachdeckerarbeiten'}",
       "measure": "Konkrete Maßnahme für ${lvBreakdown[0]?.tradeName || 'dieses Gewerk'}",
-      "savingAmount": 2500,
-      "savingPercent": 15,
+      "savingAmount": ${Math.round((lvBreakdown[0]?.total || 20000) * 0.1)},
+      "savingPercent": 10,
       "difficulty": "mittel",
       "type": "material",
       "impact": "Auswirkung auf Qualität"
@@ -7927,14 +7944,14 @@ OUTPUT als JSON:
       "trade": "${lvBreakdown[1].tradeCode}",
       "tradeName": "${lvBreakdown[1].tradeName}",
       "measure": "Weitere Optimierung für ${lvBreakdown[1].tradeName}",
-      "savingAmount": 1500,
-      "savingPercent": 10,
+      "savingAmount": ${Math.round(lvBreakdown[1].total * 0.08)},
+      "savingPercent": 8,
       "difficulty": "einfach",
       "type": "eigenleistung",
       "impact": "Keine Funktionseinschränkung"
     }` : ''}
   ],
-  "totalPossibleSaving": 12500,
+  "totalPossibleSaving": [Summe aller realistischen savingAmount Werte],
   "summary": "Durch gezielte Optimierungen können die Kosten reduziert werden"
 }
 
@@ -7984,7 +8001,7 @@ Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
     console.log('[OPTIMIZATION] Raw OpenAI response:', response.substring(0, 500));
     
     const optimizations = JSON.parse(response);
-
+    
     // Sofort nach dem Parsen alle Beträge runden
     if (optimizations.optimizations && Array.isArray(optimizations.optimizations)) {
       optimizations.optimizations = optimizations.optimizations.map(opt => ({
