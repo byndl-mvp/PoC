@@ -913,11 +913,11 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
   
   // NEU: Komplexitäts-basierte Anpassung der Fragenanzahl
   const complexityMultiplier = {
-    'SEHR_HOCH': 1.3,
-    'HOCH': 1.2,
+    'SEHR_HOCH': 1.15,
+    'HOCH': 1.1,
     'MITTEL': 1.0,
-    'NIEDRIG': 0.9,
-    'EINFACH': 0.8
+    'NIEDRIG': 0.8,
+    'EINFACH': 0.7
   }[projectComplexity] || 1.0;
   
   // Basis-Range mit Komplexitäts-Multiplikator
