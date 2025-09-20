@@ -7866,7 +7866,7 @@ ANALYSIERE NUR was tatsächlich im Projekt enthalten ist!
 - Bei Dachprojekt: KEINE Vorschläge zu Innenräumen
 - Bei Badprojekt: KEINE Vorschläge zur Fassade
 
-ERSTELLE 5-7 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
+ERSTELLE 4-5 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
 
 1. MATERIALOPTIMIERUNG:
 - Standardprodukte statt Premium
@@ -7918,7 +7918,9 @@ OUTPUT als JSON:
   ],
   "totalPossibleSaving": 12500,
   "summary": "Durch gezielte Optimierungen können die Kosten reduziert werden"
-}`;
+}
+
+WICHTIG: Antworte NUR mit validem JSON, KEINE Markdown-Formatierung wie \`\`\`json!`;
 
     const userPrompt = `Budget: ${formatCurrency(targetBudget)}
 Aktuelle Kosten: ${formatCurrency(currentTotal)}
@@ -7942,44 +7944,28 @@ ${lvPositions.rows.slice(0, 10).map(p => {
 Analysiere JEDES Gewerk und finde konkrete Einsparmöglichkeiten.
 Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
 
-    // DIREKTE OpenAI Ansprache für Optimierungen
-    console.log('[OPTIMIZATION] Using OpenAI gpt-4.1-mini for optimization');
+    // DIREKT OpenAI verwenden
+    console.log('[OPTIMIZATION] Calling OpenAI directly with gpt-4.1-mini');
     
-    let optimizations;
-    try {
-      // Verwende spezifisch OpenAI für diese Route
-      const response = await llmWithPolicy('optimization', [
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
-      ], { 
-        maxTokens: 4000,
-        temperature: 0.3,
-        jsonMode: true,
-        model: 'gpt-4.1-mini', // Explizit OpenAI Model angeben
-        forceProvider: 'openai' // Erzwinge OpenAI Provider
-      });
+      ],
+      max_tokens: 4000,
+      temperature: 0.3,
+      response_format: { type: "json_object" }
+    });
 
-      console.log('[OPTIMIZATION] Raw LLM response:', response.substring(0, 500));
-      optimizations = JSON.parse(response);
-      
-    } catch (parseError) {
-      console.error('[OPTIMIZATION] Parse error:', parseError);
-      // Fallback ohne erneuten LLM Call
-      optimizations = {
-        optimizations: [{
-          trade: lvBreakdown[0]?.tradeCode || 'GENERAL',
-          tradeName: lvBreakdown[0]?.tradeName || 'Allgemein',
-          measure: 'Materialqualität optimieren ohne Funktionseinbußen',
-          savingAmount: Math.max(500, Math.round(overspend * 0.1)),
-          savingPercent: 10,
-          difficulty: 'einfach',
-          type: 'material',
-          impact: 'Geringe optische Einschränkungen'
-        }],
-        totalPossibleSaving: Math.max(500, Math.round(overspend * 0.1)),
-        summary: 'Automatisch generierte Optimierung'
-      };
-    }
+    const response = completion.choices[0].message.content;
+    console.log('[OPTIMIZATION] Raw OpenAI response:', response.substring(0, 500));
+    
+    const optimizations = JSON.parse(response);
 
     // Sofort nach dem Parsen alle Beträge runden
     if (optimizations.optimizations && Array.isArray(optimizations.optimizations)) {
@@ -8001,13 +7987,11 @@ Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
 
     // Runde alle Beträge und korrigiere die Gesamtsumme
     if (optimizations.optimizations && optimizations.optimizations.length > 0) {
-      // Runde alle savingAmount Werte
       optimizations.optimizations = optimizations.optimizations.map(opt => ({
         ...opt,
         savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
       }));
       
-      // Berechne Gesamtsumme aus den gerundeten Werten
       optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
         (sum, opt) => sum + opt.savingAmount, 
         0
@@ -8018,26 +8002,22 @@ Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
     const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
     if (optimizations.optimizations) {
       optimizations.optimizations = optimizations.optimizations.filter(opt => {
-        // Prüfe ob trade überhaupt existiert
         if (!opt.trade || opt.trade === 'undefined') {
           console.log('[OPTIMIZATION] Skipping optimization with undefined trade');
           return false;
         }
         
-        // Prüfe ob Trade im Projekt vorhanden
         const isValid = validTradeCodes.includes(opt.trade);
         if (!isValid) {
           console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
           return false;
         }
         
-        // Prüfe realistische Einsparungen (mindestens 200€)
         if (opt.savingAmount < 200) {
           console.log(`[OPTIMIZATION] Filtered unrealistic low amount: ${opt.savingAmount}€`);
           return false;
         }
         
-        // Prüfe ob Einsparung nicht über 50% des Gewerks liegt
         const tradeLv = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
         if (tradeLv && opt.savingAmount > tradeLv.total * 0.5) {
           console.log(`[OPTIMIZATION] Capped high amount: ${opt.savingAmount}€ to 30% of ${tradeLv.total}€`);
@@ -8048,7 +8028,6 @@ Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
         return true;
       });
       
-      // Stelle sicher dass tradeName korrekt ist
       optimizations.optimizations = optimizations.optimizations.map(opt => {
         const matchingTrade = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
         if (matchingTrade) {
@@ -8058,26 +8037,9 @@ Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
       });
     }
 
-    // Fallback mit realistischem Mindestbetrag
-    if (!optimizations.optimizations || optimizations.optimizations.length === 0) {
-      console.log('[OPTIMIZATION] No valid optimizations found, generating fallback');
-      optimizations.optimizations = [{
-        trade: lvBreakdown[0]?.tradeCode || 'GENERAL',
-        tradeName: lvBreakdown[0]?.tradeName || 'Allgemein',
-        measure: 'Materialqualität leicht reduzieren ohne Funktionseinbußen',
-        savingAmount: Math.max(500, Math.round(overspend * 0.1)), // Mindestens 500€
-        savingPercent: 10,
-        difficulty: 'einfach',
-        type: 'material',
-        impact: 'Geringe optische Einschränkungen'
-      }];
-    }
-
-    // Debug: Zeige alle finalen Beträge
     console.log('[OPTIMIZATION] Final amounts before response:', 
       optimizations.optimizations.map(opt => opt.savingAmount));
 
-    // Stelle sicher, dass die Summe korrekt ist
     optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
       (sum, opt) => sum + opt.savingAmount, 
       0
