@@ -287,7 +287,7 @@ ${systemMessage}`;
         // GEÄNDERT: Verwende task-spezifisches Modell
         const response = await anthropic.messages.create({
           model: modelToUse,
-          max_tokens: Math.min(maxTokens, 8192),
+          max_tokens: Math.min(maxTokens, 16000),
           temperature,
           system: finalSystem,
           messages: claudeMessages
