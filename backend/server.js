@@ -3378,7 +3378,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
     'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
     'AUSS': ['pflaster', 'einfahrt', 'außenanlage', 'randstein', 'rasen'],
-    'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
+    'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'batterie', 'einspeisung'],
     'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau']
   };
 
