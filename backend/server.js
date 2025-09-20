@@ -4339,7 +4339,7 @@ WICHTIG: Antworte NUR mit validem JSON!`;
     
     // Klare Fehlermeldung ohne Reparaturversuche
     throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - OpenAI lieferte trotz JSON-Mode ungültiges JSON`);
-  }
+
 
 // NEUE PREISVALIDIERUNG - HIER EINFÜGEN (Zeile 1921)
 const priceValidation = validateAndFixPrices(lv, trade.code);
