@@ -1258,39 +1258,33 @@ case 'INT':
 function getPositionOrientation(tradeCode, questionCount, projectContext = null) {
   const tradeConfig = TRADE_COMPLEXITY[tradeCode] || DEFAULT_COMPLEXITY;
   
-  // NEU: Hole Projekt-Komplexität
   const projectComplexity = projectContext?.complexity || 
     projectContext?.metadata?.complexity?.level || 'MITTEL';
   
-  // Basis-Orientierung
   let ratio = tradeConfig.targetPositionsRatio;
   
-  // NEU: Komplexitäts-basierte Ratio-Anpassung
   const complexityBonus = {
-    'SEHR_HOCH': 0.15,  // +15% mehr Positionen
-    'HOCH': 0.10,      // +10% mehr Positionen
-    'MITTEL': 0.05,    // +5% mehr Positionen
-    'EINFACH': 0,      // keine Anpassung
+    'SEHR_HOCH': 0.15,
+    'HOCH': 0.10,
+    'MITTEL': 0.05,
+    'EINFACH': 0,
   }[projectComplexity] || 0;
   
   ratio = ratio + complexityBonus;
   
-  // NEU: Spezielle Behandlung für komplexe Bauvorhaben
-const complexProjects = ['aufstockung', 'anbau', 'umbau', 'kernsanierung'];
-const description = projectContext?.description?.toLowerCase() || '';
-
-const matchedTerm = complexProjects.find(term => description.includes(term));
-if (matchedTerm) {
-  ratio += 0.15;  // Zusätzlich 15% mehr Positionen
-  console.log(`[LV-ORIENTATION] "${matchedTerm}" erkannt - erhöhe Positions-Ratio`);
-}
+  const complexProjects = ['aufstockung', 'anbau', 'umbau', 'kernsanierung'];
+  const description = projectContext?.description?.toLowerCase() || '';
+  const matchedTerm = complexProjects.find(term => description.includes(term));
+  if (matchedTerm) {
+    ratio += 0.15;
+    console.log(`[LV-ORIENTATION] "${matchedTerm}" erkannt - erhöhe Positions-Ratio`);
+  }
   
   const baseOrientation = Math.round(questionCount * ratio);
   
-  // NEU: Absolute Minimums basierend auf Projekt-Komplexität
   const COMPLEXITY_MINIMUMS = {
     'SEHR_HOCH': {
-      'SEHR_HOCH': 18,  // Komplexes Projekt + komplexes Gewerk = min 18 Positionen
+      'SEHR_HOCH': 18,
       'HOCH': 15,
       'MITTEL': 12,
       'EINFACH': 8
@@ -1312,24 +1306,21 @@ if (matchedTerm) {
   const minPositions = COMPLEXITY_MINIMUMS[projectComplexity]?.[tradeConfig.complexity] || 8;
   
   const orientationMin = Math.max(minPositions, baseOrientation);
-  // HIER DIE OBERGRENZE EINFÜGEN:
+  
+  // FEHLTE: Berechnung von orientationMax!
   let orientationMax = Math.round(orientationMin * 1.3);
   
-  // Absolute Obergrenzen basierend auf Komplexität
-  if (projectComplexity === 'SEHR_HOCH') {
-    orientationMax = Math.min(35, orientationMax);  // Max 35 für sehr komplexe Projekte
-  } else if (projectComplexity === 'HOCH') {
-    orientationMax = Math.min(28, orientationMax);  // Max 28 für komplexe Projekte
+  // Keine künstliche Begrenzung für komplexe Projekte
+  if (projectComplexity === 'EINFACH') {
+    orientationMax = Math.min(25, orientationMax);
   } else if (projectComplexity === 'MITTEL') {
-    orientationMax = Math.min(22, orientationMax);  // Max 22 für mittlere Projekte
-  } else {
-    orientationMax = Math.min(18, orientationMax);  // Max 18 für einfache Projekte
+    orientationMax = Math.min(35, orientationMax);
   }
-
-  // KRITISCHER FIX: Stelle sicher, dass max > min
+  // Bei HOCH und SEHR_HOCH keine Begrenzung nach oben!
+  
+  // Sicherheitsprüfung
   if (orientationMax <= orientationMin) {
-    orientationMax = orientationMin + 5;  // Mindestens 5 Positionen Unterschied
-    console.log(`[LV-ORIENTATION] WARNUNG: Max war kleiner als Min - korrigiert zu ${orientationMin}-${orientationMax}`);
+    orientationMax = orientationMin + 10;
   }
   
   console.log(`[LV-ORIENTATION] ${tradeCode}: ${orientationMin}-${orientationMax} positions`);
