@@ -3746,30 +3746,30 @@ KRITISCHE REGELN:
 2. NIEMALS leere, "nicht vorhanden" oder "nicht definiert" Positionen
 3. NIEMALS Positionen mit Menge 0, "-" oder ohne Preis
 4. NUR Arbeiten die tatsächlich ausgeführt werden
-5. Bei Bedarf: Unterschreitung um max. 20% erlaubt (Minimum: ${Math.floor(orientation.min * 0.8)} Positionen)
+5. Bei Bedarf: Unterschreitung um max. 30% erlaubt (Minimum: ${Math.floor(orientation.min * 0.7)} Positionen)
 
 ${projectComplexity === 'SEHR_HOCH' ? `
 🔴 SEHR HOHE KOMPLEXITÄT:
 - Ziel: ${orientation.min}-${orientation.max} sinnvolle Positionen
-- Mindestens: ${Math.floor(orientation.min * 0.8)} Positionen (20% Toleranz)
+- Mindestens: ${Math.floor(orientation.min * 0.7)} Positionen (30% Toleranz)
 - Detaillierte Aufschlüsselung wo sinnvoll
 - Zusammenfassung ähnlicher Arbeiten erlaubt
 - Fokus auf Vollständigkeit und Qualität
 ` : projectComplexity === 'HOCH' ? `
 🟡 HOHE KOMPLEXITÄT:
 - Ziel: ${orientation.min}-${orientation.max} sinnvolle Positionen
-- Mindestens: ${Math.floor(orientation.min * 0.8)} Positionen (20% Toleranz)
+- Mindestens: ${Math.floor(orientation.min * 0.7)} Positionen (30% Toleranz)
 - Ausgewogene Detaillierung
 - Wichtige Leistungen einzeln erfassen
 ` : projectComplexity === 'MITTEL' ? `
 🟢 MITTLERE KOMPLEXITÄT:
 - Ziel: ${orientation.min}-${orientation.max} Positionen
-- Mindestens: ${Math.floor(orientation.min * 0.8)} Positionen (20% Toleranz)
+- Mindestens: ${Math.floor(orientation.min * 0.7)} Positionen (30% Toleranz)
 - Standarddetaillierung mit sinnvollen Zusammenfassungen
 ` : `
 ⚪ STANDARD-PROJEKT:
 - Ziel: ${orientation.min}-${orientation.max} Positionen
-- Mindestens: ${Math.floor(orientation.min * 0.8)} Positionen (20% Toleranz)
+- Mindestens: ${Math.floor(orientation.min * 0.7)} Positionen (30% Toleranz)
 - Kompakte, praxisgerechte Darstellung
 `}
 
