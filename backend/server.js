@@ -108,6 +108,24 @@ async function llmWithPolicy(task, messages, options = {}) {
   };
   
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
+
+  // NEU: Für Optimization-Task direkt OpenAI verwenden
+  if (task === 'optimization') {
+    console.log('[LLM] Optimization task - using OpenAI directly');
+    try {
+      const response = await openai.chat.completions.create({
+        model: MODEL_OPENAI,  // sollte 'gpt-4o-mini' sein
+        messages,
+        temperature: options.temperature || 0.3,
+        max_tokens: options.maxTokens || 4000,
+        response_format: { type: "json_object" }
+      });
+      return response.choices[0].message.content;
+    } catch (error) {
+      console.error('[LLM] OpenAI error for optimization:', error.status || error.message);
+      throw error;
+    }
+  }
   
   // DEBUG: Log prompt sizes for questions task
   if (task === 'questions' || task === 'intake') {
