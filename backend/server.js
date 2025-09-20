@@ -913,11 +913,11 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
   
   // NEU: Komplexitäts-basierte Anpassung der Fragenanzahl
   const complexityMultiplier = {
-    'SEHR_HOCH': 1.15,
-    'HOCH': 1.1,
-    'MITTEL': 1.0,
-    'NIEDRIG': 0.8,
-    'EINFACH': 0.7
+    'SEHR_HOCH': 1.25,
+    'HOCH': 1.15,
+    'MITTEL': 1.1,
+    'NIEDRIG': 1.05,
+    'EINFACH': 1.0
   }[projectComplexity] || 1.0;
   
   // Basis-Range mit Komplexitäts-Multiplikator
@@ -946,48 +946,48 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
     switch(tradeCode) {
       case 'MAL': // Malerarbeiten
         if (desc.match(/\d+\s*(m²|qm|quadratmeter)/)) {
-          informationCompleteness += 40; // Fläche ist kritisch!
+          informationCompleteness += 25; // Fläche ist kritisch!
         } else {
           missingCriticalInfo.push('Flächenangabe');
         }
         if (desc.includes('zimmer') || desc.includes('raum') || desc.includes('wohnung')) {
-          informationCompleteness += 20;
+          informationCompleteness += 15;
         }
         if (desc.includes('weiß') || desc.includes('farbe') || desc.includes('farbton')) {
-          informationCompleteness += 20;
+          informationCompleteness += 10;
         }
         // Bei "Zimmer streichen" ist oft schon genug Info da
         if (desc.includes('zimmer') && desc.includes('streichen')) {
-          informationCompleteness += 30;
+          informationCompleteness += 20;
         }
         break;
         
       case 'DACH':
         if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Dachfläche');
-        else informationCompleteness += 30;
+        else informationCompleteness += 20;
         if (!desc.includes('dachform') && !desc.includes('sattel') && !desc.includes('flach')) {
           missingCriticalInfo.push('Dachform');
         } else {
-          informationCompleteness += 20;
+          informationCompleteness += 15;
         }
         break;
         
       case 'ELEKT':
         if (!desc.match(/\d+\s*(steckdose|schalter|dose)/)) missingCriticalInfo.push('Anzahl Elektropunkte');
-        else informationCompleteness += 25;
-        if (!desc.includes('verteiler') && !desc.includes('sicherung')) missingCriticalInfo.push('Verteilerinfo');
         else informationCompleteness += 15;
+        if (!desc.includes('verteiler') && !desc.includes('sicherung')) missingCriticalInfo.push('Verteilerinfo');
+        else informationCompleteness += 10;
         break;
         
       case 'FLI': // Fliesenarbeiten
-        if (desc.match(/\d+\s*(m²|qm)/)) informationCompleteness += 35;
+        if (desc.match(/\d+\s*(m²|qm)/)) informationCompleteness += 25;
         else missingCriticalInfo.push('Fliesenfläche');
-        if (desc.includes('bad') || desc.includes('küche')) informationCompleteness += 20;
+        if (desc.includes('bad') || desc.includes('küche')) informationCompleteness += 10;
         break;
         
       case 'SAN': // Sanitär
         if (desc.includes('bad') || desc.includes('wc') || desc.includes('dusche')) {
-          informationCompleteness += 25;
+          informationCompleteness += 15;
         }
         if (!desc.includes('austausch') && !desc.includes('erneuer') && !desc.includes('neu')) {
           missingCriticalInfo.push('Umfang der Arbeiten');
@@ -995,14 +995,14 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
         break;
         
       case 'GER': // Gerüstbau
-        if (desc.match(/\d+\s*(m|meter)/)) informationCompleteness += 40;
+        if (desc.match(/\d+\s*(m|meter)/)) informationCompleteness += 20;
         else missingCriticalInfo.push('Gebäudehöhe');
-        if (desc.includes('einfamilienhaus') || desc.includes('efh')) informationCompleteness += 30;
+        if (desc.includes('einfamilienhaus') || desc.includes('efh')) informationCompleteness += 10;
         break;
 
       case 'FASS':
   if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Fassadenfläche');
-  else informationCompleteness += 30;
+  else informationCompleteness += 20;
   if (!desc.includes('fassade') && !desc.includes('putz') && !desc.includes('dämmung')) {
     missingCriticalInfo.push('Art der Fassadenarbeiten');
   } else {
@@ -1012,17 +1012,17 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
 
 case 'ABBR':
   if (!desc.match(/\d+\s*(m²|m³|tonnen)/)) missingCriticalInfo.push('Abbruchmenge');
-  else informationCompleteness += 30;
+  else informationCompleteness += 20;
   if (!desc.includes('entkernung') && !desc.includes('teilabbruch') && !desc.includes('komplettabbruch')) {
     missingCriticalInfo.push('Art des Abbruchs');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 10;
   }
   break;
 
 case 'BOD':
   if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Bodenfläche');
-  else informationCompleteness += 30;
+  else informationCompleteness += 20;
   if (!desc.includes('parkett') && !desc.includes('laminat') && !desc.includes('vinyl')) {
     missingCriticalInfo.push('Bodenbelagsart');
   } else {
@@ -1032,70 +1032,70 @@ case 'BOD':
 
 case 'HEI':
   if (!desc.match(/\d+\s*(kw|heizkörper|räume)/)) missingCriticalInfo.push('Heizleistung/Umfang');
-  else informationCompleteness += 30;
+  else informationCompleteness += 10;
   if (!desc.includes('gastherme') && !desc.includes('wärmepumpe') && !desc.includes('ölheizung')) {
     missingCriticalInfo.push('Heizungstyp');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 15;
   }
   break;
 
 case 'KLIMA': // Lüftung- und Klimatechnik
     if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Raumflächen');
-    else informationCompleteness += 30;
+    else informationCompleteness += 20;
     if (!desc.includes('raumhöhe') && !desc.includes('geschoss')) missingCriticalInfo.push('Raumhöhen');
-    else informationCompleteness += 15;
+    else informationCompleteness += 10;
     if (desc.includes('lüftung') || desc.includes('klima') || desc.includes('luftwechsel')) {
-        informationCompleteness += 25;
+        informationCompleteness += 10;
     }
     if (desc.includes('kühlung') || desc.includes('heizung')) informationCompleteness += 20;
     break;
 
 case 'PV': // Photovoltaik
   if (!desc.match(/\d+\s*(kwp|kw)/i)) missingCriticalInfo.push('Anlagengröße');
-  else informationCompleteness += 35;
+  else informationCompleteness += 20;
   if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Dachfläche');
-  else informationCompleteness += 25;
+  else informationCompleteness += 15;
   if (desc.includes('speicher') || desc.includes('batterie')) informationCompleteness += 20;
   break;
         
 case 'FEN':
   if (!desc.match(/\d+\s*(fenster|türen|stück)/)) missingCriticalInfo.push('Anzahl Fenster/Türen');
-  else informationCompleteness += 30;
+  else informationCompleteness += 20;
   if (!desc.includes('kunststoff') && !desc.includes('holz') && !desc.includes('aluminium')) {
     missingCriticalInfo.push('Material Fenster/Türen');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 15;
   }
   break;
 
 case 'TIS':
   if (!desc.match(/\d+\s*(m|schrank|element)/)) missingCriticalInfo.push('Umfang Tischlerarbeiten');
-  else informationCompleteness += 30;
+  else informationCompleteness += 15;
   if (!desc.includes('einbauschrank') && !desc.includes('küche') && !desc.includes('möbel')) {
     missingCriticalInfo.push('Art der Tischlerarbeiten');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 10;
   }
   break;
 
 case 'ROH':
   if (!desc.match(/\d+\s*(m²|m³|qm)/)) missingCriticalInfo.push('Rohbaufläche/Volumen');
-  else informationCompleteness += 30;
+  else informationCompleteness += 15;
   if (!desc.includes('bodenplatte') && !desc.includes('wand') && !desc.includes('decke')) {
     missingCriticalInfo.push('Art der Rohbauarbeiten');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 10;
   }
   break;
 
 case 'ZIMM': // Zimmererarbeiten
   if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Holzkonstruktionsfläche');
-  else informationCompleteness += 30;
+  else informationCompleteness += 10;
   if (!desc.includes('dachstuhl') && !desc.includes('holzbau') && !desc.includes('carport')) {
     missingCriticalInfo.push('Art der Zimmererarbeiten');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 10;
   }
   break;
         
@@ -1111,47 +1111,47 @@ case 'ESTR':
 
 case 'TRO':
   if (!desc.match(/\d+\s*(m²|qm|wände)/)) missingCriticalInfo.push('Trockenbaufläche');
-  else informationCompleteness += 30;
+  else informationCompleteness += 20;
   if (!desc.includes('rigips') && !desc.includes('gipskarton') && !desc.includes('ständerwerk')) {
     missingCriticalInfo.push('Art der Trockenbauarbeiten');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 10;
   }
   break;
 
 case 'SCHL':
   if (!desc.match(/\d+\s*(m|meter|stück)/)) missingCriticalInfo.push('Umfang Schlosserarbeiten');
-  else informationCompleteness += 30;
+  else informationCompleteness += 20;
   if (!desc.includes('geländer') && !desc.includes('zaun') && !desc.includes('tor')) {
     missingCriticalInfo.push('Art der Schlosserarbeiten');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 10;
   }
   break;
 
 case 'AUSS':
   if (!desc.match(/\d+\s*(m²|qm)/)) missingCriticalInfo.push('Außenbereichsfläche');
-  else informationCompleteness += 30;
+  else informationCompleteness += 20;
   if (!desc.includes('pflaster') && !desc.includes('rasen') && !desc.includes('bepflanzung')) {
     missingCriticalInfo.push('Art der Außenarbeiten');
   } else {
-    informationCompleteness += 20;
+    informationCompleteness += 10;
   }
   break;
 
 case 'INT':
   // Spezialfall INT - weniger strenge Anforderungen
   if (!desc.match(/\d+/)) missingCriticalInfo.push('Projektumfang');
-  else informationCompleteness += 30;
-  informationCompleteness += 20; // Bonus für INT
+  else informationCompleteness += 10;
+  informationCompleteness += 10; // Bonus für INT
   break;
     
     }
     
     // Allgemeine hilfreiche Informationen
-    if (desc.match(/\d+\s*(zimmer|räume)/)) informationCompleteness += 15;
-    if (desc.includes('altbau') || desc.includes('neubau')) informationCompleteness += 10;
-    if (desc.includes('komplett') || desc.includes('gesamt')) informationCompleteness += 10;
+    if (desc.match(/\d+\s*(zimmer|räume)/)) informationCompleteness += 10;
+    if (desc.includes('altbau') || desc.includes('neubau')) informationCompleteness += 5;
+    if (desc.includes('komplett') || desc.includes('gesamt')) informationCompleteness += 5;
   }
   
   // Prüfe Intake-Antworten (haben mehr Gewicht)
@@ -1187,31 +1187,31 @@ case 'INT':
   
   if (baseRange.complexity === 'EINFACH') {
     // Einfache Gewerke brauchen weniger Fragen
-    if (informationCompleteness >= 70) {
+    if (informationCompleteness >= 75) {
       targetCount = baseRange.min; // Minimum
-    } else if (informationCompleteness >= 50) {
+    } else if (informationCompleteness >= 60) {
       targetCount = Math.round(baseRange.min + 2);
-    } else if (informationCompleteness >= 30) {
+    } else if (informationCompleteness >= 40) {
       targetCount = Math.round((baseRange.min + baseRange.max) / 2);
     } else {
       targetCount = baseRange.max - 2;
     }
   } else if (baseRange.complexity === 'SEHR_HOCH' || baseRange.complexity === 'HOCH') {
     // Komplexe Gewerke brauchen mehr Details
-    if (informationCompleteness >= 80) {
+    if (informationCompleteness >= 85) {
       targetCount = Math.round(baseRange.min + 5);
-    } else if (informationCompleteness >= 60) {
+    } else if (informationCompleteness >= 70) {
       targetCount = Math.round((baseRange.min + baseRange.max) / 2);
-    } else if (informationCompleteness >= 40) {
+    } else if (informationCompleteness >= 50) {
       targetCount = Math.round(baseRange.max - 5);
     } else {
       targetCount = baseRange.max;
     }
   } else {
     // Mittlere Komplexität
-    if (informationCompleteness >= 70) {
+    if (informationCompleteness >= 80) {
       targetCount = baseRange.min + 2;
-    } else if (informationCompleteness >= 40) {
+    } else if (informationCompleteness >= 60) {
       targetCount = Math.round((baseRange.min + baseRange.max) / 2);
     } else {
       targetCount = baseRange.max - 3;
@@ -1232,9 +1232,9 @@ case 'INT':
     if ((desc.includes('zimmer') || desc.includes('raum')) && 
         (desc.includes('streichen') || desc.includes('malen')) &&
         tradeCode === 'MAL') {
-      targetCount = Math.min(targetCount, 8); // Maximal 8 Fragen
+      targetCount = Math.min(targetCount, 10); // Maximal 10 Fragen
       if (desc.match(/\d+\s*(m²|qm)/)) {
-        targetCount = Math.min(targetCount, 5); // Mit Flächenangabe nur 5 Fragen
+        targetCount = Math.min(targetCount, 8); // Mit Flächenangabe nur 8 Fragen
       }
     }
   }
