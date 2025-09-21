@@ -916,8 +916,8 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
     'SEHR_HOCH': 1.25,
     'HOCH': 1.15,
     'MITTEL': 1.0,
-    'NIEDRIG': 0,8,
-    'EINFACH': 0,7
+    'NIEDRIG': 0.85,
+    'EINFACH': 0.7
   }[projectComplexity] || 1.0;
   
   // Basis-Range mit Komplexitäts-Multiplikator
