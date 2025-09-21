@@ -3771,23 +3771,28 @@ const orientation = getPositionOrientation(trade.code, answeredQuestionCount, {
     description: project.description
 });
 
-// NEU: Erzwinge Mindest-Positionen für komplexe Gewerke
-const MINIMUM_POSITIONS_BY_COMPLEXITY = {
-  'SEHR_HOCH': 18,
-  'HOCH': 15,
-  'MITTEL': 12,
-  'EINFACH': 8,
-  'INTAKE': 0
-};
-
-const tradeComplexity = TRADE_COMPLEXITY[trade.code]?.complexity || 'MITTEL';
-const absoluteMinimum = MINIMUM_POSITIONS_BY_COMPLEXITY[tradeComplexity];
-
-// Überschreibe orientation wenn zu niedrig
-if (orientation.min < absoluteMinimum) {
-  orientation.min = absoluteMinimum;
-  orientation.max = Math.max(absoluteMinimum + 10, orientation.max);
-  console.log(`[LV] OVERRIDE: ${trade.code} minimum positions: ${absoluteMinimum}`);
+// Override NUR bei SEHR_HOCH und HOCH Projekt-Komplexität
+if (projectComplexity === 'SEHR_HOCH' || projectComplexity === 'HOCH') {
+  const MINIMUM_POSITIONS_BY_COMPLEXITY = {
+    'SEHR_HOCH': 18,
+    'HOCH': 15,
+    'MITTEL': 12,
+    'EINFACH': 8,
+    'INTAKE': 0
+  };
+  
+  const tradeComplexity = TRADE_COMPLEXITY[trade.code]?.complexity || 'MITTEL';
+  const absoluteMinimum = MINIMUM_POSITIONS_BY_COMPLEXITY[tradeComplexity];
+  
+  // Überschreibe orientation wenn zu niedrig
+  if (orientation.min < absoluteMinimum) {
+    orientation.min = absoluteMinimum;
+    orientation.max = Math.max(absoluteMinimum + 10, orientation.max);
+    console.log(`[LV] OVERRIDE for ${projectComplexity} project: ${trade.code} minimum positions: ${absoluteMinimum}`);
+  }
+} else {
+  // Bei MITTEL, EINFACH, NIEDRIG: Keine Overrides, nutze Orientierungswerte
+  console.log(`[LV] ${projectComplexity} project - using orientation values without override`);
 }
 
 console.log(`[LV] Final orientation for ${trade.code}: ${orientation.min}-${orientation.max} positions from ${answeredQuestionCount} questions`);
