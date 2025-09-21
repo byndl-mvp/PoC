@@ -1295,6 +1295,27 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
   
   const projectComplexity = projectContext?.complexity || 
     projectContext?.metadata?.complexity?.level || 'MITTEL';
+
+  // NEU: Generelle Anpassung für einfache/niedrige Projekte
+  if (projectComplexity === 'EINFACH' || projectComplexity === 'NIEDRIG') {
+    console.log(`[LV-ORIENTATION] ${projectComplexity} project - reducing position ratio`);
+    
+    // Basis-Ratio aus Fragenanzahl ableiten (weniger Fragen = weniger Positionen)
+    const simplifiedRatio = Math.min(0.8, questionCount / 20);
+    
+    // Berechne reduzierte Min/Max basierend auf Fragenanzahl
+    const baseMin = Math.max(6, Math.floor(questionCount * 0.6));
+    const baseMax = Math.max(8, Math.floor(questionCount * 0.8));
+    
+    return {
+      min: baseMin,
+      max: baseMax,
+      base: Math.floor((baseMin + baseMax) / 2),
+      ratio: simplifiedRatio,
+      projectComplexity: projectComplexity,
+      reason: `${projectComplexity} Projekt mit ${questionCount} Fragen`
+    };
+  }
   
   let ratio = tradeConfig.targetPositionsRatio;
   
@@ -1340,6 +1361,12 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
       'SEHR_HOCH': 12,
       'HOCH': 10,
       'MITTEL': 7,
+      'EINFACH': 5      
+    }
+      'NIEDRIG': {
+      'SEHR_HOCH': 10,
+      'HOCH': 8,
+      'MITTEL': 6,
       'EINFACH': 5      
     }
   };
