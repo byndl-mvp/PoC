@@ -2760,7 +2760,7 @@ try {
   throw detailedError;
 }
   
-  // Zähle Fragen vor Validierung
+// Zähle Fragen vor Validierung
 const beforeValidation = questions.length;
 
 // Gewerke-Validierung NUR für Nicht-Intake Fragen
@@ -2771,11 +2771,43 @@ if (tradeCode !== 'INT') {
   console.log(`[QUESTIONS] INT: Skipping trade validation for intake questions`);
 }
 
+// HIER: VERBESSERTER FILTER mit konkreten Werten
+let filteredQuestions = questions;
+if (projectContext.answeredValues) {
+  filteredQuestions = questions.filter(q => {
+    const qText = (q.question || '').toLowerCase();
+    
+    // Filtere bereits beantwortete Fragen
+    if (projectContext.answeredValues.dimensions && 
+        (qText.includes('abmessung') || qText.includes('maße'))) {
+      console.log('[FILTER] Removed dimension question - already answered');
+      return false;
+    }
+    
+    if (projectContext.answeredValues.area && 
+        qText.includes('fläche')) {
+      console.log('[FILTER] Removed area question - already answered');
+      return false;
+    }
+    
+    if (projectContext.answeredValues.material && 
+        qText.includes('material')) {
+      console.log('[FILTER] Removed material question - already answered');
+      return false;
+    }
+    
+    return true;
+  });
+  
+  console.log(`[FILTER] Removed ${questions.length - filteredQuestions.length} answered questions`);
+  questions = filteredQuestions; // WICHTIG: Zurückschreiben!
+}
+
 // Zähle Fragen vor Duplikat-Filter
 const beforeDuplicates = questions.length;
-    
-// NEU: Post-Processing Filter anwenden
-console.log(`[DEBUG] tradeCode: "${tradeCode}", questions before filter: ${questions.length}`);
+
+// Post-Processing Filter anwenden
+console.log(`[DEBUG] tradeCode: "${tradeCode}", questions before duplicate filter: ${questions.length}`);
 if (tradeCode !== 'INT') {
   questions = filterDuplicateQuestions(questions, allAnsweredInfo.fromIntake);
 } else {
@@ -2783,8 +2815,8 @@ if (tradeCode !== 'INT') {
 }
 console.log(`[QUESTIONS] After duplicate filter: ${questions.length} questions (removed ${beforeDuplicates - questions.length})`);
 console.log(`[DEBUG] Final question count: ${questions.length}`);
-    
-  return Array.isArray(questions) ? questions : [];
+
+return Array.isArray(questions) ? questions : [];
 
 // Entferne problematische Zeichen die Claude manchmal einfügt
 cleanedResponse = cleanedResponse
