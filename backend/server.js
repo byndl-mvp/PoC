@@ -1080,21 +1080,22 @@ case 'TIS':
   break;
 
 case 'ROH':
-  // Spezialfall: NUR bei EINFACHEN Projekten mit Wanddurchbruch
-  if (projectComplexity === 'EINFACH' && 
+  // Spezialfall: Bei EINFACHEN oder NIEDRIGEN Projekten mit Wanddurchbruch
+  if ((projectComplexity === 'EINFACH' || projectComplexity === 'NIEDRIG') && 
       (desc.includes('wanddurchbruch') || 
        desc.includes('türdurchbruch') || 
        (desc.includes('durchbruch') && !desc.includes('mehrere')))) {
     
     // Erhöhe Vollständigkeit stark für einfache Durchbrüche
-    informationCompleteness += 60;
-    console.log('[QUESTIONS] Simple wall opening in SIMPLE project - increasing completeness');
+    informationCompleteness += 50;
+    console.log('[QUESTIONS] Simple wall opening in SIMPLE/LOW project - increasing completeness');
     
     if (desc.match(/\d+\s*(cm|m|mm)/)) {
       informationCompleteness += 20;
     }
     
-  } else if (projectComplexity !== 'EINFACH' && desc.includes('durchbruch')) {
+  } else if ((projectComplexity === 'HOCH' || projectComplexity === 'SEHR_HOCH') && 
+             desc.includes('durchbruch')) {
     // Komplexes Projekt mit Durchbruch - normale Behandlung
     informationCompleteness += 10; // Nur leichte Erhöhung
     console.log('[QUESTIONS] Wall opening in COMPLEX project - standard handling');
@@ -1107,7 +1108,7 @@ case 'ROH':
     }
     
   } else {
-    // Normale Rohbau-Prüfung ohne Durchbruch
+    // Normale Rohbau-Prüfung (MITTEL-Komplexität oder ohne Durchbruch)
     if (!desc.match(/\d+\s*(m²|m³|qm)/)) {
       missingCriticalInfo.push('Rohbaufläche/Volumen');
     } else {
@@ -1259,17 +1260,18 @@ case 'INT':
   targetCount = Math.min(baseRange.max, targetCount);
   
  // SPEZIALFALL: Sehr einfache Projekte
-if (projectContext.description && projectComplexity === 'EINFACH') {
+if (projectContext.description && 
+    (projectComplexity === 'EINFACH' || projectComplexity === 'NIEDRIG')) {
   const desc = projectContext.description.toLowerCase();
   
-  // Wanddurchbruch-Spezialbehandlung NUR bei einfachen Projekten
+  // Wanddurchbruch-Spezialbehandlung bei einfachen/niedrigen Projekten
   if (tradeCode === 'ROH' && 
       (desc.includes('wanddurchbruch') || 
        desc.includes('türdurchbruch') || 
        (desc.includes('durchbruch') && !desc.includes('anbau')))) {
     
     targetCount = Math.min(targetCount, 12);
-    console.log(`[QUESTIONS] SIMPLE ROH wall opening: capped at 12 questions`);
+    console.log(`[QUESTIONS] SIMPLE/LOW ROH wall opening: capped at 12 questions`);
   }
 }
   console.log(`[QUESTIONS] Intelligent count for ${tradeCode}:`);
