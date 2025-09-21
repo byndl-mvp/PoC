@@ -1362,7 +1362,7 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
       'HOCH': 10,
       'MITTEL': 7,
       'EINFACH': 5      
-    }
+    },
     'NIEDRIG': {
       'SEHR_HOCH': 10,
       'HOCH': 8,
