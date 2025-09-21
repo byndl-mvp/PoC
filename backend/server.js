@@ -1087,7 +1087,7 @@ case 'ROH':
        (desc.includes('durchbruch') && !desc.includes('mehrere')))) {
     
     // Erhöhe Vollständigkeit stark für einfache Durchbrüche
-    informationCompleteness += 50;
+    informationCompleteness += 30;
     console.log('[QUESTIONS] Simple wall opening in SIMPLE/LOW project - increasing completeness');
     
     if (desc.match(/\d+\s*(cm|m|mm)/)) {
@@ -1104,7 +1104,7 @@ case 'ROH':
     if (!desc.match(/\d+\s*(m²|m³|qm)/)) {
       missingCriticalInfo.push('Rohbaufläche/Volumen');
     } else {
-      informationCompleteness += 15;
+      informationCompleteness += 10;
     }
     
   } else {
@@ -1112,7 +1112,7 @@ case 'ROH':
     if (!desc.match(/\d+\s*(m²|m³|qm)/)) {
       missingCriticalInfo.push('Rohbaufläche/Volumen');
     } else {
-      informationCompleteness += 15;
+      informationCompleteness += 10;
     }
     
     if (!desc.includes('bodenplatte') && !desc.includes('wand') && !desc.includes('decke')) {
