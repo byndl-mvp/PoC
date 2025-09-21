@@ -3272,6 +3272,18 @@ function extractExactTopic(question) {
     topic.mainSubject = 'mauerwerk';
   } else if (q.includes('betondecke')) {
     topic.mainSubject = 'betondecke';
+  } else if (q.includes('wanddurchbruch') || q.includes('türdurchbruch')) {
+    topic.mainSubject = 'durchbruch';
+  } else if (q.includes('abmessung') || q.includes('maße') || q.includes('breite') && q.includes('höhe')) {
+    topic.mainSubject = 'abmessungen';
+  } else if (q.includes('wandstärke') || q.includes('wanddicke')) {
+    topic.mainSubject = 'wandstärke';
+  } else if (q.includes('tragende wand') || q.includes('tragend')) {
+    topic.mainSubject = 'tragwerk';
+  } else if (q.includes('material der wand') || q.includes('wandmaterial')) {
+    topic.mainSubject = 'wandmaterial';
+  } else if (q.includes('baujahr') || q.includes('alter des')) {
+    topic.mainSubject = 'baujahr';
   }
   
   // Extrahiere Fragetyp
