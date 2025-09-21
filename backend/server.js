@@ -1304,8 +1304,8 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
     const simplifiedRatio = Math.min(0.8, questionCount / 20);
     
     // Berechne reduzierte Min/Max basierend auf Fragenanzahl
-    const baseMin = Math.max(6, Math.floor(questionCount * 0.6));
-    const baseMax = Math.max(8, Math.floor(questionCount * 0.8));
+    const baseMin = Math.max(10, Math.floor(questionCount * 0.8));
+    const baseMax = Math.max(12, Math.floor(questionCount * 1.0));
     
     return {
       min: baseMin,
