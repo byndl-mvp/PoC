@@ -1858,13 +1858,6 @@ WICHTIG BEI IMPLIED TRADES:
 - Bei Badsanierung IMMER Trockenbau (TRO) für Vorwandinstallation einplanen
 - Begründe wenn du ein hochkonfidentes impliedTrade NICHT übernimmst
 
-${allAnsweredInfo?.fromIntake?.length > 0 ? `
-BEREITS IN INTAKE BEANTWORTET (NIEMALS WIEDERHOLEN!):
-${allAnsweredInfo.fromIntake.map(item => 
-  `- ${item.question_text}: ${item.answer_text}`
-).join('\n')}
-` : ''}
-
 VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
 ${tradeList}
 
