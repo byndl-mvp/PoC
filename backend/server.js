@@ -1974,50 +1974,97 @@ async function generateQuestions(tradeId, projectContext = {}) {
   }
 
   // NEU: Sammle ALLE bereits beantworteten Informationen
-  const allAnsweredInfo = {
-    fromDescription: extractedData || {},
-    fromIntake: [],
-    fromOtherTrades: []
-  };
+const allAnsweredInfo = {
+  fromDescription: extractedData || {},
+  fromIntake: [],
+  fromOtherTrades: []
+};
 
-  // Lade Intake-Antworten
-  if (!isIntake && projectContext.projectId) {
-    // Lade aus intake_responses (neue Tabelle)
-    const intakeResponses = await query(
-  `SELECT q.text as question_text, a.answer_text 
-   FROM answers a
-   JOIN questions q ON q.project_id = a.project_id 
-     AND q.trade_id = a.trade_id 
-     AND q.question_id = a.question_id
-   JOIN trades t ON t.id = a.trade_id
-   WHERE a.project_id = $1 
-     AND t.code = 'INT'`,  // INT = Intake Trade
-  [projectContext.projectId]
-);
+// Lade Intake-Antworten
+if (!isIntake && projectContext.projectId) {
+  // Lade aus intake_responses (neue Tabelle)
+  const intakeResponses = await query(
+    `SELECT q.text as question_text, a.answer_text 
+     FROM answers a
+     JOIN questions q ON q.project_id = a.project_id 
+       AND q.trade_id = a.trade_id 
+       AND q.question_id = a.question_id
+     JOIN trades t ON t.id = a.trade_id
+     WHERE a.project_id = $1 
+       AND t.code = 'INT'`,
+    [projectContext.projectId]
+  );
+  
+  if (intakeResponses.rows.length > 0) {
+    allAnsweredInfo.fromIntake = intakeResponses.rows;
+    projectContext.intakeData = intakeResponses.rows;
     
-    if (intakeResponses.rows.length > 0) {
-      allAnsweredInfo.fromIntake = intakeResponses.rows;
-      projectContext.intakeData = intakeResponses.rows;
-    } else {
+    // NEU: Extrahiere konkrete Werte für bessere Duplikatserkennung
+    projectContext.answeredValues = {};
+    intakeResponses.rows.forEach(item => {
+      const q = (item.question_text || '').toLowerCase();
+      const a = item.answer_text || '';
       
-      // Fallback auf answers Tabelle
-      const intTrade = await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`);
-      if (intTrade.rows[0]) {
-        const intakeAnswers = await query(
-          `SELECT q.text as question_text, a.answer_text 
-           FROM answers a
-           JOIN questions q ON q.project_id = a.project_id 
-             AND q.trade_id = a.trade_id 
-             AND q.question_id = a.question_id
-           WHERE a.project_id = $1 AND a.trade_id = $2`,
-          [projectContext.projectId, intTrade.rows[0].id]
-        );
-        allAnsweredInfo.fromIntake = intakeAnswers.rows;
-        projectContext.intakeData = intakeAnswers.rows;
+      // Speichere konkrete Maße
+      if ((q.includes('abmessung') || q.includes('maße') || q.includes('größe')) && a) {
+        const matches = a.match(/(\d+)\s*x\s*(\d+)/);
+        if (matches) {
+          projectContext.answeredValues.dimensions = matches[0];
+        }
+      }
+      
+      // Speichere Wandstärke
+      if ((q.includes('stärke') || q.includes('dicke')) && a) {
+        const matches = a.match(/(\d+)\s*(cm|mm)/);
+        if (matches) {
+          projectContext.answeredValues.wallThickness = matches[0];
+        }
+      }
+      
+      // Speichere Material
+      if (q.includes('material') && a) {
+        projectContext.answeredValues.material = a;
+      }
+      
+      // Speichere Flächen
+      if (q.includes('fläche') && a) {
+        const matches = a.match(/(\d+)\s*(m²|qm)/);
+        if (matches) {
+          projectContext.answeredValues.area = matches[0];
+        }
+      }
+      
+      // Speichere Anzahlen
+      if (q.includes('wie viele') || q.includes('anzahl')) {
+        const matches = a.match(/\d+/);
+        if (matches) {
+          // Identifiziere worum es geht
+          if (q.includes('fenster')) projectContext.answeredValues.windowCount = matches[0];
+          if (q.includes('tür')) projectContext.answeredValues.doorCount = matches[0];
+          if (q.includes('raum') || q.includes('zimmer')) projectContext.answeredValues.roomCount = matches[0];
+        }
+      }
+    });
+    
+  } else {
+    // Fallback auf answers Tabelle
+    const intTrade = await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`);
+    if (intTrade.rows[0]) {
+      const intakeAnswers = await query(
+        `SELECT q.text as question_text, a.answer_text 
+         FROM answers a
+         JOIN questions q ON q.project_id = a.project_id 
+           AND q.trade_id = a.trade_id 
+           AND q.question_id = a.question_id
+         WHERE a.project_id = $1 AND a.trade_id = $2`,
+        [projectContext.projectId, intTrade.rows[0].id]
+      );
+      allAnsweredInfo.fromIntake = intakeAnswers.rows;
+      projectContext.intakeData = intakeAnswers.rows;
       }
     }
   }
-
+    
   // NEU: Füge Intake-Kontext zum System-Prompt hinzu
   if (projectContext.intakeContext && !isIntake) {
     console.log('[QUESTIONS] Adding intake context to prompt');
