@@ -2393,7 +2393,6 @@ INTELLIGENTE FRAGENAUSWAHL BASIEREND AUF GEWERKEN:
    - Breite der Treppe/Treppenhaus?
    - Gibt es Engstellen (schmale Türen, verwinkelte Flure)?
    - Maximale Transportlänge (z.B. für lange Bretter, Rohre)?
-   - Gibt es einen Balkon/Fenster für Kranarbeiten (bei höheren Etagen)?
 
 9. SCHUTZ BEI BEWOHNTEN OBJEKTEN (bei "bewohnt während Bauzeit" = ja):
    - Müssen bestimmte Bereiche staubfrei bleiben?
@@ -2427,7 +2426,7 @@ BEISPIELE INTELLIGENTER ANPASSUNG:
 - DACH+FASS: Alle Außen-relevanten Fragen
 
 KEINE FRAGEN ZU:
-- Technischen Details (Dämmstärke, Verglasungsart, U-Werte)
+- Technischen Details (Dämmstärke, Wandstärke, Verglasungsart, U-Werte)
 - Spezifischen Materialien oder Produkten
 - Detaillierten Maßen (außer grobe Gebäudegröße)
 - Gewerkespezifischen Themen
