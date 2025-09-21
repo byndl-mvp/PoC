@@ -2629,49 +2629,124 @@ BEACHTE:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: targetQuestionCount > 30 ? 8000 : 6000,  // Erhöhe Limit für viele Fragen
+      maxTokens: targetQuestionCount > 30 ? 8000 : 6000,
       temperature: 0.5,
       jsonMode: false 
     });
     
-// Bereinige die Response von Claude
-let cleanedResponse = response
-  .replace(/```json\n?/g, '')
-  .replace(/```\n?/g, '')
-  .trim();
+    // Erweiterte Bereinigung
+    let cleanedResponse = response
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
-// NEU: Prüfe ob die Response abgeschnitten wurde
-if (!cleanedResponse.endsWith(']')) {
-  console.warn('[QUESTIONS] Response appears truncated, attempting to fix...');
-  
-  // Finde das letzte vollständige Objekt
-  const lastCompleteObject = cleanedResponse.lastIndexOf('},');
-  if (lastCompleteObject > 0) {
-    cleanedResponse = cleanedResponse.substring(0, lastCompleteObject + 1) + '\n]';
-    console.log('[QUESTIONS] Truncated response fixed by closing at position', lastCompleteObject);
-  }
-}
+    // 1. Prüfe ob Response mit [ beginnt
+    if (!cleanedResponse.startsWith('[')) {
+      const arrayStart = cleanedResponse.indexOf('[');
+      if (arrayStart > -1) {
+        cleanedResponse = cleanedResponse.substring(arrayStart);
+        console.log('[QUESTIONS] Trimmed non-JSON prefix');
+      }
+    }
 
-// NEU: Escape problematische Zeichen in Strings
-cleanedResponse = cleanedResponse
-  .replace(/\n(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)/g, '\\n')  // Newlines innerhalb von Strings
-  .replace(/\t(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)/g, '\\t'); // Tabs innerhalb von Strings
+    // 2. Prüfe ob Response abgeschnitten wurde
+    if (!cleanedResponse.endsWith(']')) {
+      console.warn('[QUESTIONS] Response appears truncated, attempting to fix...');
+      
+      // Finde das letzte vollständige Objekt
+      const lastCompleteObject = cleanedResponse.lastIndexOf('},');
+      if (lastCompleteObject > 0) {
+        cleanedResponse = cleanedResponse.substring(0, lastCompleteObject + 1) + '\n]';
+        console.log('[QUESTIONS] Truncated response fixed by closing at position', lastCompleteObject);
+      }
+    }
 
-// Parse die Fragen
-let questions;
-try {
-  questions = JSON.parse(cleanedResponse);
-} catch (parseError) {
-  console.error('[QUESTIONS] Failed to parse response:', parseError.message);
-  console.error('[QUESTIONS] Parse error stack:', parseError.stack);
-  console.log('[QUESTIONS] Raw response length:', cleanedResponse?.length || 0);
-  console.log('[QUESTIONS] Raw response first 500 chars:', cleanedResponse?.substring(0, 500) || 'EMPTY');
-  
-  // Den originalen Fehler mit mehr Details werfen
-  const detailedError = new Error(`JSON Parse fehlgeschlagen: ${parseError.message}`);
-  detailedError.originalError = parseError;
-  detailedError.responseSnippet = cleanedResponse?.substring(0, 200);
-  throw detailedError;
+    // 3. Entferne trailing commas und doppelte Kommas
+    cleanedResponse = cleanedResponse
+      .replace(/,(\s*[}\]])/g, '$1')  // Trailing commas vor } oder ]
+      .replace(/,\s*,+/g, ',')         // Mehrfache Kommas
+      .replace(/\}\s*\{/g, '},{');     // Fehlende Kommas zwischen Objekten
+
+    // 4. Versuche mit moderater Bereinigung zu parsen
+    let questions;
+    try {
+      questions = JSON.parse(cleanedResponse);
+      console.log('[QUESTIONS] Successfully parsed after cleaning');
+    } catch (firstError) {
+      console.log('[QUESTIONS] First parse failed, attempting aggressive cleanup...');
+      
+      // 5. Aggressivere Bereinigung bei Fehler
+      // Entferne alle Newlines und extra Whitespace innerhalb des JSON
+      cleanedResponse = cleanedResponse
+        .split('\n')
+        .map(line => line.trim())
+        .join('')
+        .replace(/,\s*}/g, '}')
+        .replace(/,\s*]/g, ']');
+      
+      try {
+        questions = JSON.parse(cleanedResponse);
+        console.log('[QUESTIONS] Successfully parsed after aggressive cleanup');
+      } catch (secondError) {
+        // 6. Letzter Versuch: Objekt-Extraktion
+        console.log('[QUESTIONS] Attempting object extraction...');
+        const objectMatches = cleanedResponse.match(/\{[^{}]*\}/g);
+        
+        if (objectMatches && objectMatches.length > 0) {
+          const validObjects = [];
+          for (const match of objectMatches) {
+            try {
+              const obj = JSON.parse(match);
+              if (obj.question || obj.text) {
+                validObjects.push(obj);
+              }
+            } catch (e) {
+              // Skip invalid object silently
+            }
+          }
+          
+          if (validObjects.length > 0) {
+            questions = validObjects;
+            console.log(`[QUESTIONS] Recovered ${validObjects.length} questions via extraction`);
+          } else {
+            throw secondError;
+          }
+        } else {
+          throw secondError;
+        }
+      }
+    }
+
+    // Validierung der geparsten Fragen
+    if (!Array.isArray(questions)) {
+      throw new Error('Parsed response is not an array');
+    }
+
+    if (questions.length === 0) {
+      throw new Error('No valid questions in response');
+    }
+
+    // Stelle sicher, dass jede Frage die Mindestfelder hat
+    questions = questions.map((q, idx) => {
+      if (!q.id) q.id = `${tradeCode}-${String(idx + 1).padStart(2, '0')}`;
+      if (!q.question && !q.text) q.question = `Frage ${idx + 1}`;
+      if (!q.type) q.type = 'text';
+      if (q.required === undefined) q.required = false;
+      return q;
+    });
+
+    console.log(`[QUESTIONS] Successfully processed ${questions.length} questions`);
+
+} catch (error) {
+    console.error('[QUESTIONS] Generation failed:', error.message);
+    console.error('[QUESTIONS] Error details:', error);
+    
+    // Hier könnte ein Retry-Mechanismus eingebaut werden
+    if (error.message.includes('JSON')) {
+      console.log('[QUESTIONS] JSON parsing issue - consider retry with adjusted prompt');
+    }
+    
+    throw error; // Werfe den Fehler weiter
 }
   
   // Zähle Fragen vor Validierung
