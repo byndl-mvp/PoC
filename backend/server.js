@@ -1853,6 +1853,18 @@ GENERELLE REGELN:
 - NIEMALS "INT" zurückgeben
 - Maximal 7-9 Gewerke pro Projekt (außer Großprojekte)
 
+WICHTIG BEI IMPLIED TRADES:
+- Wenn vorgeschlagene Gewerke mit Konfidenz >= 80% übergeben werden, MÜSSEN diese übernommen werden
+- Bei Badsanierung IMMER Trockenbau (TRO) für Vorwandinstallation einplanen
+- Begründe wenn du ein hochkonfidentes impliedTrade NICHT übernimmst
+
+${allAnsweredInfo?.fromIntake?.length > 0 ? `
+BEREITS IN INTAKE BEANTWORTET (NIEMALS WIEDERHOLEN!):
+${allAnsweredInfo.fromIntake.map(item => 
+  `- ${item.question_text}: ${item.answer_text}`
+).join('\n')}
+` : ''}
+
 VERFÜGBARE GEWERKE (NUR DIESE VERWENDEN!):
 ${tradeList}
 
