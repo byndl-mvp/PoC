@@ -1295,25 +1295,31 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
   
   const projectComplexity = projectContext?.complexity || 
     projectContext?.metadata?.complexity?.level || 'MITTEL';
-
-  // NEU: Generelle Anpassung für einfache/niedrige Projekte
+  
+  // MODERATE Anpassung für NIEDRIG/EINFACH Projekte
   if (projectComplexity === 'EINFACH' || projectComplexity === 'NIEDRIG') {
-    console.log(`[LV-ORIENTATION] ${projectComplexity} project - reducing position ratio`);
+    console.log(`[LV-ORIENTATION] ${projectComplexity} project - angepasste Positionen für ${tradeCode}`);
     
-    // Basis-Ratio aus Fragenanzahl ableiten (weniger Fragen = weniger Positionen)
-    const simplifiedRatio = Math.min(0.8, questionCount / 20);
+    // Moderatere Faktoren: 0.8 - 1.2 der Fragenanzahl
+    const reductionFactor = projectComplexity === 'NIEDRIG' ? 0.8 : 0.9;
+    const maxFactor = projectComplexity === 'NIEDRIG' ? 1.2 : 1.3;
     
-    // Berechne reduzierte Min/Max basierend auf Fragenanzahl
-    const baseMin = Math.max(10, Math.floor(questionCount * 0.8));
-    const baseMax = Math.max(12, Math.floor(questionCount * 1.0));
+    const baseMin = Math.max(5, Math.floor(questionCount * reductionFactor));
+    const baseMax = Math.floor(questionCount * maxFactor);
+    
+    // Sanfte Obergrenze - verhindert Extreme wie 19 bei 10 Fragen
+    const absoluteMax = projectComplexity === 'NIEDRIG' ? 
+      Math.max(12, questionCount + 2) :  // Max: Fragen + 2 oder 12
+      Math.max(15, questionCount + 3);    // Max: Fragen + 3 oder 15
     
     return {
       min: baseMin,
-      max: baseMax,
-      base: Math.floor((baseMin + baseMax) / 2),
-      ratio: simplifiedRatio,
+      max: Math.min(baseMax, absoluteMax),
+      base: Math.floor((baseMin + Math.min(baseMax, absoluteMax)) / 2),
+      ratio: (reductionFactor + maxFactor) / 2,
       projectComplexity: projectComplexity,
-      reason: `${projectComplexity} Projekt mit ${questionCount} Fragen`
+      tradeCode: tradeCode,
+      reason: `${projectComplexity} Projekt - angepasste Positionsanzahl`
     };
   }
   
