@@ -737,12 +737,6 @@ if (desc.includes('dach') &&
     reason: 'Gerüst für Dacharbeiten',
     confidence: 95
   });
-  
-  extractedData.impliedTrades.push({
-    code: 'SCHL',
-    reason: 'Blecharbeiten, Dachrinnen',
-    confidence: 70
-  });
 }
 
 // 10. BALKON/TERRASSEN-SANIERUNG
@@ -1507,8 +1501,8 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
   // FINALE KLASSIFIZIERUNG mit realistischen Schwellenwerten
   console.log(`[COMPLEXITY] Score: ${complexityScore} (Trades: ${tradeCount})`);
   
-  if (complexityScore >= 14) return 'SEHR_HOCH';
-  if (complexityScore >= 10) return 'HOCH';
+  if (complexityScore >= 16) return 'SEHR_HOCH';
+  if (complexityScore >= 12) return 'HOCH';
   if (complexityScore >= 6) return 'MITTEL';
   if (complexityScore >= 3) return 'NIEDRIG';
   return 'EINFACH';
