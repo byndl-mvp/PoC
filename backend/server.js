@@ -1507,9 +1507,9 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
   // FINALE KLASSIFIZIERUNG mit realistischen Schwellenwerten
   console.log(`[COMPLEXITY] Score: ${complexityScore} (Trades: ${tradeCount})`);
   
-  if (complexityScore >= 12) return 'SEHR_HOCH';
-  if (complexityScore >= 8) return 'HOCH';
-  if (complexityScore >= 5) return 'MITTEL';
+  if (complexityScore >= 14) return 'SEHR_HOCH';
+  if (complexityScore >= 10) return 'HOCH';
+  if (complexityScore >= 6) return 'MITTEL';
   if (complexityScore >= 3) return 'NIEDRIG';
   return 'EINFACH';
 }
