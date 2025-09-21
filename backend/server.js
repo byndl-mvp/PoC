@@ -1879,6 +1879,23 @@ Beschreibung: ${project.description || 'Keine Beschreibung'}
 Zeitrahmen: ${project.timeframe || 'Nicht angegeben'}
 Budget: ${project.budget || 'Nicht angegeben'}
 
+${project.extractedData?.impliedTrades?.length > 0 ? `
+VORGESCHLAGENE GEWERKE (aus Analyse):
+${project.extractedData.impliedTrades.map(t => 
+  `- ${t.code}: ${t.reason} (Konfidenz: ${t.confidence}%)`
+).join('\n')}
+
+WICHTIG: Übernimm alle Gewerke mit Konfidenz >= 80%!
+` : ''}
+
+${project.extractedData?.measures?.length > 0 ? `
+Maßnahmen: ${project.extractedData.measures.join(', ')}
+` : ''}
+
+${project.extractedData?.rooms?.length > 0 ? `
+Räume: ${project.extractedData.rooms.join(', ')}
+` : ''}
+
 Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
 
   try {
@@ -2394,9 +2411,9 @@ BEISPIEL-ANPASSUNG:
   → Treppenbreite kritisch
   
 ANPASSUNG AN PROJEKTGRÖSSE:
-- Kleines Projekt (1-2 Gewerke): 10-15 Fragen
-- Mittleres Projekt (3-5 Gewerke): 15-20 Fragen  
-- Großes Projekt (>5 Gewerke): 20-25 Fragen
+- Kleines Projekt (1-2 Gewerke): 12-16 Fragen
+- Mittleres Projekt (3-5 Gewerke): 16-22 Fragen  
+- Großes Projekt (>5 Gewerke): 22-28 Fragen
 
 BEISPIELE INTELLIGENTER ANPASSUNG:
 - Nur ELEKT: Keine Bauwasser-Frage
