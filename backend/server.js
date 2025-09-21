@@ -2772,9 +2772,8 @@ if (tradeCode !== 'INT') {
 }
 
 // HIER: VERBESSERTER FILTER mit konkreten Werten
-let filteredQuestions = questions;
 if (projectContext.answeredValues) {
-  filteredQuestions = questions.filter(q => {
+  const afterAnswerFilter = questions.filter(q => {
     const qText = (q.question || '').toLowerCase();
     
     // Filtere bereits beantwortete Fragen
@@ -2799,8 +2798,8 @@ if (projectContext.answeredValues) {
     return true;
   });
   
-  console.log(`[FILTER] Removed ${questions.length - filteredQuestions.length} answered questions`);
-  questions = filteredQuestions; // WICHTIG: Zurückschreiben!
+  console.log(`[FILTER] Removed ${questions.length - afterAnswerFilter.length} answered questions`);
+  questions = afterAnswerFilter; // WICHTIG: Zurückschreiben!
 }
 
 // Zähle Fragen vor Duplikat-Filter
