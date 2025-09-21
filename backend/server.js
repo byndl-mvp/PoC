@@ -915,9 +915,9 @@ function getIntelligentQuestionCount(tradeCode, projectContext, intakeAnswers = 
   const complexityMultiplier = {
     'SEHR_HOCH': 1.25,
     'HOCH': 1.15,
-    'MITTEL': 1.1,
-    'NIEDRIG': 1.05,
-    'EINFACH': 1.0
+    'MITTEL': 1.0,
+    'NIEDRIG': 0,85,
+    'EINFACH': 0,7
   }[projectComplexity] || 1.0;
   
   // Basis-Range mit Komplexitäts-Multiplikator
@@ -1080,12 +1080,45 @@ case 'TIS':
   break;
 
 case 'ROH':
-  if (!desc.match(/\d+\s*(m²|m³|qm)/)) missingCriticalInfo.push('Rohbaufläche/Volumen');
-  else informationCompleteness += 15;
-  if (!desc.includes('bodenplatte') && !desc.includes('wand') && !desc.includes('decke')) {
-    missingCriticalInfo.push('Art der Rohbauarbeiten');
+  // Spezialfall: NUR bei EINFACHEN Projekten mit Wanddurchbruch
+  if (projectComplexity === 'EINFACH' && 
+      (desc.includes('wanddurchbruch') || 
+       desc.includes('türdurchbruch') || 
+       (desc.includes('durchbruch') && !desc.includes('mehrere')))) {
+    
+    // Erhöhe Vollständigkeit stark für einfache Durchbrüche
+    informationCompleteness += 60;
+    console.log('[QUESTIONS] Simple wall opening in SIMPLE project - increasing completeness');
+    
+    if (desc.match(/\d+\s*(cm|m|mm)/)) {
+      informationCompleteness += 20;
+    }
+    
+  } else if (projectComplexity !== 'EINFACH' && desc.includes('durchbruch')) {
+    // Komplexes Projekt mit Durchbruch - normale Behandlung
+    informationCompleteness += 10; // Nur leichte Erhöhung
+    console.log('[QUESTIONS] Wall opening in COMPLEX project - standard handling');
+    
+    // Normale Prüfungen fortsetzen
+    if (!desc.match(/\d+\s*(m²|m³|qm)/)) {
+      missingCriticalInfo.push('Rohbaufläche/Volumen');
+    } else {
+      informationCompleteness += 15;
+    }
+    
   } else {
-    informationCompleteness += 10;
+    // Normale Rohbau-Prüfung ohne Durchbruch
+    if (!desc.match(/\d+\s*(m²|m³|qm)/)) {
+      missingCriticalInfo.push('Rohbaufläche/Volumen');
+    } else {
+      informationCompleteness += 15;
+    }
+    
+    if (!desc.includes('bodenplatte') && !desc.includes('wand') && !desc.includes('decke')) {
+      missingCriticalInfo.push('Art der Rohbauarbeiten');
+    } else {
+      informationCompleteness += 10;
+    }
   }
   break;
 
@@ -1225,20 +1258,20 @@ case 'INT':
   targetCount = Math.max(baseRange.min, targetCount);
   targetCount = Math.min(baseRange.max, targetCount);
   
-  // SPEZIALFALL: Sehr einfache Projekte
-  if (projectContext.description) {
-    const desc = projectContext.description.toLowerCase();
-    // "Zimmer streichen" oder ähnlich einfache Aufgaben
-    if ((desc.includes('zimmer') || desc.includes('raum')) && 
-        (desc.includes('streichen') || desc.includes('malen')) &&
-        tradeCode === 'MAL') {
-      targetCount = Math.min(targetCount, 10); // Maximal 10 Fragen
-      if (desc.match(/\d+\s*(m²|qm)/)) {
-        targetCount = Math.min(targetCount, 8); // Mit Flächenangabe nur 8 Fragen
-      }
-    }
-  }
+ // SPEZIALFALL: Sehr einfache Projekte
+if (projectContext.description && projectComplexity === 'EINFACH') {
+  const desc = projectContext.description.toLowerCase();
   
+  // Wanddurchbruch-Spezialbehandlung NUR bei einfachen Projekten
+  if (tradeCode === 'ROH' && 
+      (desc.includes('wanddurchbruch') || 
+       desc.includes('türdurchbruch') || 
+       (desc.includes('durchbruch') && !desc.includes('anbau')))) {
+    
+    targetCount = Math.min(targetCount, 12);
+    console.log(`[QUESTIONS] SIMPLE ROH wall opening: capped at 12 questions`);
+  }
+}
   console.log(`[QUESTIONS] Intelligent count for ${tradeCode}:`);
   console.log(`  -> Information completeness: ${informationCompleteness}%`);
   console.log(`  -> Missing critical info: ${missingCriticalInfo.join(', ') || 'none'}`);
@@ -1300,6 +1333,12 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
       'HOCH': 12,
       'MITTEL': 8,
       'EINFACH': 6
+    },
+    'EINFACH': {
+      'SEHR_HOCH': 12,
+      'HOCH': 10,
+      'MITTEL': 7,
+      'EINFACH': 5      
     }
   };
   
