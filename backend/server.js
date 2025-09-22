@@ -5363,6 +5363,104 @@ function validateAndFixPrices(lv, tradeCode) {
   }
  
   lv.positions = lv.positions.map(pos => {
+
+  // Entferne Preisspannen und korrigiere Qualitätsbegriffe
+    const originalTitle = pos.title || '';
+    const originalDesc = pos.description || '';
+    const ep = pos.unitPrice || 0;
+    
+    // Bereinige Titel
+    if (pos.title) {
+      pos.title = pos.title
+        // Entferne Preisspannen
+        .replace(/\(\s*\d+\s*-\s*\d+\s*€?\s*\)/g, '')     // (400-1000€)
+        .replace(/\(\s*ab\s+\d+\s*€?\s*\)/g, '')          // (ab 500€)
+        .replace(/\(\s*bis\s+\d+\s*€?\s*\)/g, '')         // (bis 1000€)
+        .replace(/\(\s*ca\.\s*\d+\s*€?\s*\)/g, '')        // (ca. 250€)
+        .replace(/\d+\s*-\s*\d+\s*€/g, '')                // 400-1000€ ohne Klammern
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    
+    // Bereinige Beschreibung
+    if (pos.description) {
+      pos.description = pos.description
+        // Entferne Preisspannen
+        .replace(/\(\s*\d+\s*-\s*\d+\s*€?\s*\)/g, '')
+        .replace(/\(\s*ab\s+\d+\s*€?\s*\)/g, '')
+        .replace(/\(\s*bis\s+\d+\s*€?\s*\)/g, '')
+        .replace(/\(\s*ca\.\s*\d+\s*€?\s*\)/g, '')
+        .replace(/\d+\s*-\s*\d+\s*€/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    
+    // Korrigiere Qualitätsbegriffe basierend auf EP
+    const fullText = `${pos.title} ${pos.description}`.toLowerCase();
+    
+    // Bei niedrigen Preisen (<150€): Entferne Premium-Begriffe
+    if (ep < 150) {
+      if (fullText.includes('premium') || fullText.includes('luxus') || 
+          fullText.includes('exklusiv') || fullText.includes('erstklassig')) {
+        
+        if (pos.title) {
+          pos.title = pos.title
+            .replace(/Premium(-| )?Qualität/gi, 'Standardausführung')
+            .replace(/Premium(-| )?/gi, 'Standard-')
+            .replace(/Luxus(-| )?/gi, '')
+            .replace(/Exklusiv(-| )?/gi, '')
+            .replace(/erstklassig(e|er|es)?/gi, 'solide');
+        }
+        
+        if (pos.description) {
+          pos.description = pos.description
+            .replace(/Premium(-| )?Qualität/gi, 'Standardausführung')
+            .replace(/hochwertig(e|er|es)?/gi, 'solide')
+            .replace(/Luxus(-| )?/gi, '')
+            .replace(/erstklassig(e|er|es)?/gi, 'bewährt');
+        }
+        
+        warnings.push(`Qualitätsbegriff angepasst bei "${pos.title?.substring(0, 40)}..." (EP: €${ep})`);
+        fixedCount++;
+      }
+    }
+    
+    // Bei hohen Preisen (>500€): Entferne Standard/Einfach-Begriffe
+    else if (ep > 500) {
+      if (fullText.includes('standard') || fullText.includes('einfach') || 
+          fullText.includes('basis') || fullText.includes('baumarkt')) {
+        
+        if (pos.title) {
+          pos.title = pos.title
+            .replace(/Standard(-| )?Qualität/gi, 'gehobene Qualität')
+            .replace(/Standard(-| )?/gi, '')
+            .replace(/einfach(e|er|es)?/gi, 'hochwertig')
+            .replace(/Basis(-| )?/gi, '');
+        }
+        
+        if (pos.description) {
+          pos.description = pos.description
+            .replace(/Standard(-| )?Ausführung/gi, 'gehobene Ausführung')
+            .replace(/Baumarkt(-| )?Qualität/gi, 'Markenqualität')
+            .replace(/einfach(e|er|es)?/gi, 'qualitätsvoll');
+        }
+        
+        warnings.push(`Qualitätsbegriff angepasst bei "${pos.title?.substring(0, 40)}..." (EP: €${ep})`);
+        fixedCount++;
+      }
+    }
+    
+    // Logging bei Änderungen
+    if (originalTitle !== pos.title || originalDesc !== pos.description) {
+      console.log(`[PRICE-CLEAN] ${tradeCode}: Beschreibung bereinigt`);
+      if (originalTitle !== pos.title) {
+        console.log(`  Titel: "${originalTitle.substring(0, 50)}..." → "${pos.title?.substring(0, 50)}..."`);
+      }
+      if (originalDesc !== pos.description) {
+        console.log(`  Desc: "${originalDesc.substring(0, 50)}..." → "${pos.description?.substring(0, 50)}..."`);
+      }
+    }
+    
     // Skip Kleinmaterial
     if (pos.title?.toLowerCase().includes('kleinmaterial')) {
   return pos;
