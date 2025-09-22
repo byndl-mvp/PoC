@@ -392,7 +392,7 @@ const toggleRecommended = (tradeId) => {
   <div className="bg-blue-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-blue-400/30">
     <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
       <span className="text-blue-400 mr-2">💡</span>
-      Empfohlene zusätzliche Gewerke
+      Optionale Gewerke
     </h3>
     <p className="text-gray-200 text-sm mb-4">
       Basierend auf Ihren Antworten könnten diese Gewerke relevant sein:
