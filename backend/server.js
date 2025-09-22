@@ -5684,11 +5684,17 @@ if (titleLower.includes('putz') ||
     if (isMainPosition && pos.unitPrice < 50) {
       const oldPrice = pos.unitPrice;
       
-      if (titleLower.includes('fenster') && !titleLower.includes('reinigung') && 
-    !titleLower.includes('abdichtung') && !titleLower.includes('vermessung')) {
+     // 5. FENSTER-SPEZIFISCHE PREISKORREKTUREN
+if (tradeCode === 'FEN') {
   
-  // NUR für tatsächliche Fenster-Positionen (Lieferung & Montage)
-  if (titleLower.includes('lieferung') || titleLower.includes('montage')) {
+  // Hauptfenster-Positionen (Lieferung und Montage)
+  if (titleLower.includes('fenster') && 
+      (titleLower.includes('lieferung') || titleLower.includes('montage')) &&
+      !titleLower.includes('reinigung') && 
+      !titleLower.includes('abdichtung') && 
+      !titleLower.includes('vermessung')) {
+    
+    const oldPrice = pos.unitPrice;
     const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*x\s*(\d+)/);
     
     if (sizeMatch) {
@@ -5697,79 +5703,76 @@ if (titleLower.includes('putz') ||
       const height = parseInt(sizeMatch[2]);
       const area = (width * height) / 10000; // in m²
       
-       // Realistischere Preisberechnung nach Material
+      // Preisberechnung nach Material
       if (titleLower.includes('kunststoff')) {
-        pos.unitPrice = Math.round(400 + (area * 300)); // Kunststoff: günstigste Variante
+        pos.unitPrice = Math.round(400 + (area * 300));
       } else if (titleLower.includes('holz-alu') || titleLower.includes('holz-aluminium')) {
-        pos.unitPrice = Math.round(800 + (area * 600)); // Holz-Alu: Premium
+        pos.unitPrice = Math.round(800 + (area * 600));
       } else if (titleLower.includes('aluminium') || titleLower.includes('alu')) {
-        pos.unitPrice = Math.round(700 + (area * 500)); // Aluminium: hochwertig
+        pos.unitPrice = Math.round(700 + (area * 500));
       } else if (titleLower.includes('holz')) {
-        pos.unitPrice = Math.round(600 + (area * 500)); // Holz: gehobene Qualität
+        pos.unitPrice = Math.round(600 + (area * 500));
       } else {
-        pos.unitPrice = Math.round(500 + (area * 400)); // Standard/unbekannt
+        pos.unitPrice = Math.round(500 + (area * 400));
       }
+      
+      warnings.push(`Fenster-Preis angepasst: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+      
+    } else if (titleLower.includes('demontage')) {
+      // Demontage ohne Maße
+      pos.unitPrice = 80;
+      warnings.push(`Fenster-Demontage: €${oldPrice} → €80`);
+      fixedCount++;
+      
     } else {
-      // Wenn keine Maße gefunden: Schätze basierend auf Typ
-      if (titleLower.includes('demontage')) {
-        pos.unitPrice = 80;  // Demontage
-      } else {
-        pos.unitPrice = 800; // Standard-Fenster ohne Maße (nicht 900!)
-      }
-    }
-    
-    warnings.push(`Fenster-Preis angepasst: €${oldPrice} → €${pos.unitPrice}`);
-    fixedCount++;
-  }
-}
-
-// ZUSÄTZLICHE SPEZIFISCHE KORREKTUREN für Nebenleistungen
-if (tradeCode === 'FEN') {
-  // Reinigung
-  if (titleLower.includes('reinigung')) {
-    if (pos.unitPrice > 50) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 25;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Fensterreinigung korrigiert: €${oldPrice} → €25`);
+      // Standard-Fenster ohne Maße
+      pos.unitPrice = 800;
+      warnings.push(`Standard-Fenster: €${oldPrice} → €800`);
       fixedCount++;
     }
+  }
+  
+  // Nebenleistungen Fenster
+  
+  // Reinigung
+  if (titleLower.includes('reinigung') && pos.unitPrice > 50) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 25;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Fensterreinigung korrigiert: €${oldPrice} → €25`);
+    fixedCount++;
   }
   
   // Abdichtung (pro lfd. Meter)
-  if (titleLower.includes('abdichtung') && pos.unit === 'm') {
-    if (pos.unitPrice > 60) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 35;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Abdichtung korrigiert: €${oldPrice}/m → €35/m`);
-      fixedCount++;
-    }
+  if (titleLower.includes('abdichtung') && pos.unit === 'm' && pos.unitPrice > 60) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 35;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Abdichtung korrigiert: €${oldPrice}/m → €35/m`);
+    fixedCount++;
   }
   
   // Vermessung/Aufmaß
-  if (titleLower.includes('vermessung') || titleLower.includes('aufmaß')) {
-    if (pos.unitPrice > 150) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 75;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Aufmaß korrigiert: €${oldPrice} → €75`);
-      fixedCount++;
-    }
+  if ((titleLower.includes('vermessung') || titleLower.includes('aufmaß')) && pos.unitPrice > 150) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 75;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Aufmaß korrigiert: €${oldPrice} → €75`);
+    fixedCount++;
   }
   
   // Silikonverfugung
-  if (titleLower.includes('silikon') || titleLower.includes('verfugung')) {
-    if (pos.unit === 'm' && pos.unitPrice > 25) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 15;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Verfugung korrigiert: €${oldPrice}/m → €15/m`);
-      fixedCount++;
-    }
+  if ((titleLower.includes('silikon') || titleLower.includes('verfugung')) && 
+      pos.unit === 'm' && pos.unitPrice > 25) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 15;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Verfugung korrigiert: €${oldPrice}/m → €15/m`);
+    fixedCount++;
   }
-} 
-
+}
+      
 // NEUE REGEL: INNENTÜREN MINDESTPREISE MIT SONDERMASS-BERECHNUNG
 if (tradeCode === 'TIS') {
   // Extrahiere Maße aus Beschreibung für Sondermaß-Berechnung
