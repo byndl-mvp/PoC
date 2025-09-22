@@ -1993,6 +1993,246 @@ if (needsPV && !detectedTrades.some(t => t.code === 'PV')) {
 }
 
 /**
+ * PRÄZISE EXTRAKTION VON KALKULATIONSDATEN AUS INTAKE-ANTWORTEN
+ * Unterscheidet klar zwischen verschiedenen Dimensionen und Kontexten
+ */
+
+function extractCalculationDataFromIntake(intakeAnswers) {
+  const knownData = {
+    flaechen: {},      // m² Angaben
+    laengen: {},       // m/cm Angaben  
+    breiten: {},       // m/cm Angaben
+    hoehen: {},        // m/cm Angaben
+    stueckzahlen: {},  // Anzahl/Stück
+    volumen: {},       // m³ Angaben
+    gewichte: {},      // kg/t Angaben
+    materialien: {},   // Materialangaben
+    rawData: []        // Für Debugging
+  };
+  
+  intakeAnswers.forEach(item => {
+    const question = (item.question_text || '').toLowerCase();
+    const answer = (item.answer_text || '').trim();
+    
+    // Speichere für Debug
+    knownData.rawData.push(`${item.question_text}: ${answer}`);
+    
+    // ========== FLÄCHEN (m²) ==========
+    if (question.includes('fläche')) {
+      // Unterscheide WELCHE Fläche
+      if (question.includes('wohnfläche') || question.includes('gesamtfläche')) {
+        knownData.flaechen.wohnflaeche_gesamt = answer;
+      }
+      else if (question.includes('bad')) {
+        knownData.flaechen.badflaeche_gesamt = answer;
+      }
+      else if (question.includes('dach')) {
+        knownData.flaechen.dachflaeche = answer;
+      }
+      else if (question.includes('fassade')) {
+        knownData.flaechen.fassadenflaeche = answer;
+      }
+      else if (question.includes('garten') || question.includes('grundstück')) {
+        knownData.flaechen.grundstueck = answer;
+      }
+    }
+    
+    // ========== HÖHEN (m/cm) ==========
+    if (question.includes('höhe')) {
+      // Unterscheide WELCHE Höhe
+      if (question.includes('raum') || question.includes('decke')) {
+        knownData.hoehen.raumhoehe = answer;
+      }
+      else if (question.includes('gebäude') || question.includes('first')) {
+        knownData.hoehen.gebaeudehoehe = answer;
+      }
+      else if (question.includes('keller')) {
+        knownData.hoehen.kellerhoehe = answer;
+      }
+      else if (question.includes('geschoss')) {
+        knownData.hoehen.geschosshoehe = answer;
+      }
+    }
+    
+    // ========== LÄNGEN (m/cm) ==========
+    if (question.includes('länge') || question.includes('lang')) {
+      if (question.includes('wand')) {
+        knownData.laengen.wandlaenge = answer;
+      }
+      else if (question.includes('raum')) {
+        knownData.laengen.raumlaenge = answer;
+      }
+      else if (question.includes('flur') || question.includes('gang')) {
+        knownData.laengen.flurlaenge = answer;
+      }
+    }
+    
+    // ========== BREITEN (m/cm) ==========
+    if (question.includes('breite') || question.includes('breit')) {
+      if (question.includes('wand')) {
+        knownData.breiten.wandbreite = answer;
+      }
+      else if (question.includes('raum')) {
+        knownData.breiten.raumbreite = answer;
+      }
+      else if (question.includes('fenster')) {
+        knownData.breiten.fensterbreite = answer;
+      }
+      else if (question.includes('tür')) {
+        knownData.breiten.tuerbreite = answer;
+      }
+    }
+    
+    // ========== SPEZIELLE MASSE ==========
+    // Wandstärke (meist in cm)
+    if (question.includes('wandstärke') || question.includes('wanddicke') || 
+        (question.includes('wand') && question.includes('dick'))) {
+      knownData.hoehen.wandstaerke = answer; // Technisch eine "Dicke"
+    }
+    
+    // ========== KOMBINIERTE MASSE (LxBxH) ==========
+    if (question.includes('maße') || question.includes('abmessung')) {
+      // Versuche zu parsen: "5x3x2,5m" oder "500x300x250cm"
+      const match = answer.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(?:[x×]\s*(\d+(?:[.,]\d+)?))?/i);
+      if (match) {
+        if (question.includes('bad')) {
+          knownData.laengen.bad = match[1];
+          knownData.breiten.bad = match[2];
+          if (match[3]) knownData.hoehen.bad = match[3];
+        }
+        else if (question.includes('raum') || question.includes('zimmer')) {
+          knownData.laengen.raum = match[1];
+          knownData.breiten.raum = match[2];
+          if (match[3]) knownData.hoehen.raum = match[3];
+        }
+      }
+    }
+    
+    // ========== STÜCKZAHLEN ==========
+    if (question.includes('wie viele') || question.includes('anzahl')) {
+      const numberMatch = answer.match(/\d+/);
+      if (numberMatch) {
+        const count = numberMatch[0];
+        
+        if (question.includes('fenster')) {
+          knownData.stueckzahlen.fenster = count;
+        }
+        else if (question.includes('tür')) {
+          knownData.stueckzahlen.tueren = count;
+        }
+        else if (question.includes('raum') || question.includes('zimmer')) {
+          knownData.stueckzahlen.raeume = count;
+        }
+        else if (question.includes('bad') || question.includes('bäder')) {
+          knownData.stueckzahlen.baeder = count;
+        }
+        else if (question.includes('etage') || question.includes('geschoss')) {
+          knownData.stueckzahlen.geschosse = count;
+        }
+      }
+    }
+    
+    // ========== MATERIALIEN ==========
+    if (question.includes('material') || question.includes('ausführung')) {
+      if (question.includes('wand')) {
+        knownData.materialien.wand = answer;
+      }
+      else if (question.includes('boden')) {
+        knownData.materialien.boden = answer;
+      }
+      else if (question.includes('dach')) {
+        knownData.materialien.dach = answer;
+      }
+    }
+  });
+  
+  return knownData;
+}
+
+/**
+ * Generiert klaren Kontext für das LLM
+ */
+function createCalculationContext(knownData, tradeCode) {
+  let context = `
+╔════════════════════════════════════════════════════════════════╗
+║ BEREITS BEKANNTE KALKULATIONSDATEN (NICHT ERNEUT ERFRAGEN!)   ║
+╚════════════════════════════════════════════════════════════════╝
+`;
+  
+  // FLÄCHEN
+  if (Object.keys(knownData.flaechen).length > 0) {
+    context += `\n▶ FLÄCHEN:\n`;
+    Object.entries(knownData.flaechen).forEach(([key, value]) => {
+      context += `  • ${key.replace(/_/g, ' ')}: ${value}\n`;
+    });
+  }
+  
+  // HÖHEN
+  if (Object.keys(knownData.hoehen).length > 0) {
+    context += `\n▶ HÖHEN:\n`;
+    Object.entries(knownData.hoehen).forEach(([key, value]) => {
+      context += `  • ${key.replace(/_/g, ' ')}: ${value}\n`;
+    });
+  }
+  
+  // LÄNGEN
+  if (Object.keys(knownData.laengen).length > 0) {
+    context += `\n▶ LÄNGEN:\n`;
+    Object.entries(knownData.laengen).forEach(([key, value]) => {
+      context += `  • ${key.replace(/_/g, ' ')}: ${value}\n`;
+    });
+  }
+  
+  // BREITEN
+  if (Object.keys(knownData.breiten).length > 0) {
+    context += `\n▶ BREITEN:\n`;
+    Object.entries(knownData.breiten).forEach(([key, value]) => {
+      context += `  • ${key.replace(/_/g, ' ')}: ${value}\n`;
+    });
+  }
+  
+  // STÜCKZAHLEN
+  if (Object.keys(knownData.stueckzahlen).length > 0) {
+    context += `\n▶ ANZAHL/STÜCK:\n`;
+    Object.entries(knownData.stueckzahlen).forEach(([key, value]) => {
+      context += `  • ${key.replace(/_/g, ' ')}: ${value}\n`;
+    });
+  }
+  
+  // MATERIALIEN
+  if (Object.keys(knownData.materialien).length > 0) {
+    context += `\n▶ MATERIALIEN:\n`;
+    Object.entries(knownData.materialien).forEach(([key, value]) => {
+      context += `  • ${key.replace(/_/g, ' ')}: ${value}\n`;
+    });
+  }
+  
+  // GEWERKE-SPEZIFISCHE HINWEISE
+  context += `\n═══════════════════════════════════════════════════════════════\n`;
+  context += `WICHTIG für ${tradeCode}:\n`;
+  
+  // Beispiele was NICHT mehr gefragt werden darf
+  if (knownData.flaechen.badflaeche_gesamt) {
+    context += `❌ NICHT fragen: "Wie groß ist das Bad?" → Bereits bekannt: ${knownData.flaechen.badflaeche_gesamt}\n`;
+    context += `✅ ERLAUBT: "Davon Wandfläche zu fliesen?" oder "Davon Bodenfläche?"\n`;
+  }
+  
+  if (knownData.hoehen.raumhoehe) {
+    context += `❌ NICHT fragen: "Wie hoch sind die Räume?" → Bereits bekannt: ${knownData.hoehen.raumhoehe}\n`;
+    context += `✅ ERLAUBT: Nutze diese Höhe für deine Berechnungen\n`;
+  }
+  
+  if (knownData.stueckzahlen.fenster) {
+    context += `❌ NICHT fragen: "Wie viele Fenster?" → Bereits bekannt: ${knownData.stueckzahlen.fenster}\n`;
+    context += `✅ ERLAUBT: "Welche Maße haben die einzelnen Fenster?"\n`;
+  }
+  
+  context += `\nREGEL: Frage NUR nach DETAILS die für DEIN Gewerk spezifisch sind!`;
+  
+  return context;
+}
+
+/**
  * Intelligente Fragengenerierung mit Mengenerfassung
  */
 async function generateQuestions(tradeId, projectContext = {}) {
