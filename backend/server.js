@@ -5128,59 +5128,17 @@ if (tradeCode === 'TIS') {
       fixedCount++;
     }
   }
-}
   
-  if (titleLower.includes('innentür') || titleLower.includes('tür')) {
-    // Unterscheide zwischen verschiedenen Türtypen
-    if (descLower.includes('massivholz') || titleLower.includes('massivholz')) {
-      const minPrice = Math.round(550 * priceMultiplier);
-      if (pos.unitPrice < minPrice) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = minPrice; // Massivholztür mit Sondermaß-Aufschlag
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Massivholztür ${sizeMatch ? `(${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-        fixedCount++;
-      }
-    } else if (descLower.includes('wohnungseingangstür') || titleLower.includes('wohnungseingang')) {
-      const minPrice = Math.round(950 * priceMultiplier);
-      if (pos.unitPrice < minPrice) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = minPrice; // Wohnungseingangstür mit Sondermaß-Aufschlag
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Wohnungseingangstür ${sizeMatch ? `(${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-        fixedCount++;
-      }
-    } else {
-      // Standard Innentür
-      const minPrice = Math.round(420 * priceMultiplier);
-      if (pos.unitPrice < minPrice) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = minPrice; // Standard Innentür mit Sondermaß-Aufschlag
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        // Spezielle Warnung bei extremen Sondermaßen
-        if (priceMultiplier >= 2) {
-          warnings.push(`SONDERANFERTIGUNG Tür ${sizeMatch[1]}x${sizeMatch[2]}cm korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-        } else if (priceMultiplier > 1) {
-          warnings.push(`Sondermaß Tür ${sizeMatch ? `(${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-        } else {
-          warnings.push(`Innentür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-        }
-        fixedCount++;
-      }
-    }
-  }
-  
-  // Zargen separat prüfen
+  // Zargen separat prüfen (MIT SONDERMASS-AUFSCHLAG!)
 if (titleLower.includes('zarge') && !titleLower.includes('dichtung')) {
-  const minPrice = 120;
-  const maxPrice = 300;
+  const minPrice = 120 * priceMultiplier;  // Mit Multiplikator!
+  const maxPrice = 300 * priceMultiplier;  // Mit Multiplikator!
   
   if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
     const oldPrice = pos.unitPrice;
-    pos.unitPrice = 180;
+    pos.unitPrice = 180 * priceMultiplier;  // Mit Multiplikator!
     pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-    warnings.push(`Zarge korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+    warnings.push(`Zarge ${sizeMatch ? `(${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
     fixedCount++;
   }
 }
@@ -5210,7 +5168,7 @@ if (titleLower.includes('spion')) {
     warnings.push(`Türspion korrigiert: €${oldPrice} → €${pos.unitPrice}`);
     fixedCount++;
   }
-}
+}  
 
 // Zargendichtung
 if (titleLower.includes('zargendichtung') || 
@@ -5223,7 +5181,8 @@ if (titleLower.includes('zargendichtung') ||
     fixedCount++;
   }
 }
-
+} 
+    
 // ZUSÄTZLICHE REGEL: KEINE PREISE UNTER 10€ (außer Kleinmaterial)
 if (!titleLower.includes('kleinmaterial') && 
     !titleLower.includes('befestigungsmaterial') &&
