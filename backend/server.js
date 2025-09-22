@@ -4581,6 +4581,35 @@ KRITISCH FÜR ROHBAUARBEITEN:
    - Nicht-tragende Wände → Gewerk TRO oder ABBR
 ` : ''}
 
+${trade.code === 'HEI' ? `
+KRITISCH FÜR HEIZUNGSARBEITEN:
+
+1. HEIZLASTBERECHNUNG IMMER ZUERST FRAGEN:
+   - "Liegt eine Heizlastberechnung vor?"
+   - Wenn JA: Nach berechneten Leistungen fragen
+   - Wenn NEIN: Nach Raumgrößen fragen, "gemäß Heizlastberechnung" ins LV
+
+2. FUSSBODENHEIZUNG - EXKLUSIVE ZUSTÄNDIGKEIT:
+   ✅ IMMER im Heizungs-LV:
+   - Fußbodenheizung komplett
+   - Heizrohre/Heizkreise verlegen
+   - Verteiler für FBH inkl. Durchflussmesser
+   - Systemplatten/Noppenplatten/Tackerplatten
+   - Heizkreise anschließen und regulieren
+   - Befüllung und Druckprobe FBH
+   - Heizkreisverteiler inkl. Stellantriebe
+   
+   ❌ NIEMALS im Heizungs-LV:
+   - Estrich (gehört zu ESTR)
+   - Dämmung unter Estrich (gehört zu ESTR)
+   - Randdämmstreifen (gehört zu ESTR)
+   
+   KORREKTE FORMULIERUNGEN:
+   - "Lieferung und Verlegung Fußbodenheizung, Noppenplatte"
+   - "FBH-Verteiler 8 Kreise inkl. Durchflussmesser"
+   - NICHT: "Heizestrich" (das macht ESTR)
+` : ''}
+
 ${trade.code === 'ESTR' ? `
 KRITISCH FÜR ESTRICHARBEITEN:
 1. ESTRICH KOMMT NACH ROHBAU:
@@ -4613,6 +4642,33 @@ KRITISCH FÜR ESTRICHARBEITEN:
    - Fläche = Bodenfläche der Räume
    - NICHT Deckenfläche (das ist Rohbau)
    - Dämmung = gleiche Fläche wie Estrich
+` : ''}
+
+${trade.code === 'SAN' ? `
+KRITISCH FÜR SANITÄR:
+
+HAUPTREGEL:
+- Vorwandinstallation → IMMER Trockenbau (TRO)
+- SAN macht NUR Sanitärobjekte, Anschlüsse und Leitungen
+
+REIHENFOLGE:
+1. Rohinstallation (vor Fliesen)
+2. Fliesenleger macht Fliesen
+3. Endmontage (nach Fliesen)
+` : ''}
+
+${trade.code === 'ELEKT' ? `
+KRITISCH FÜR ELEKTRO:
+
+HAUPTREGEL:
+- Schlitze in Wänden → IMMER Elektroinstallation selbst, nie Rohbau (ROH)
+- Endmontage → IMMER nach Malerarbeiten
+- FI-Schutzschalter Bad → PFLICHT
+
+SCHNITTSTELLEN:
+- PV: Elektro macht AC-Seite, PV macht DC-Seite
+- Heizung: Elektro macht Stromanschluss für Kessel/Wärmepumpe
+- Bad: FI-Schutzschalter + Potentialausgleich
 ` : ''}
 
 ${trade.code === 'DACH' ? `
