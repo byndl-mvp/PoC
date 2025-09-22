@@ -69,11 +69,11 @@ export default function IntakeQuestionsPage() {
     }
   }, [loading, error]);
   
-  // Fake Progress für LV-Generierung (60 Sekunden)
+  // Fake Progress für LV-Generierung (90 Sekunden)
   useEffect(() => {
     if (generatingLV) {
       setLvProgress(0);
-      const totalDuration = 60000; // 60 Sekunden
+      const totalDuration = 90000; // 90 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
