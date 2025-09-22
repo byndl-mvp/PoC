@@ -2157,7 +2157,7 @@ function extractCalculationDataFromIntake(intakeAnswers) {
           knownData.stueckzahlen.gauben = count;
         }
       }
-    
+    }  // <-- DIESE KLAMMER FEHLT! 
     // ========== MATERIALIEN ==========
     if (question.includes('material') || question.includes('ausführung')) {
       if (question.includes('wand')) {
@@ -2174,6 +2174,8 @@ function extractCalculationDataFromIntake(intakeAnswers) {
   
   return knownData;
 }
+
+
 
 /**
  * Generiert klaren Kontext für das LLM
