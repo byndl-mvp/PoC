@@ -2250,6 +2250,7 @@ async function generateQuestions(tradeId, projectContext = {}) {
 
   // NEU: Lade extrahierte Projektdaten
   let extractedData = null;
+  let knownCalculationData = null; // NEU HINZUFÜGEN
   if (projectContext.projectId) {
     const projectResult = await query(
       'SELECT metadata FROM projects WHERE id = $1',
