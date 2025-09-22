@@ -4174,6 +4174,26 @@ KRITISCH FÜR DACHARBEITEN:
 - Fokus auf: Dämmung, Eindeckung, Abdichtung, Rinnen
 ` : ''}
 
+${trade.code === 'TIS' ? `
+KRITISCH FÜR TÜRARBEITEN:
+1. DEMONTAGE/ENTSORGUNG:
+   - NUR EINE Sammelposition für ALLE Demontagen
+   - Format: "Demontage und Entsorgung sämtlicher Alttüren, [X] Stück"
+   - NICHT einzeln aufführen!
+   
+2. NEUE TÜREN:
+   - Jede unterschiedliche Größe = eigene Position
+   - IMMER "Lieferung und Montage" in EINER Position
+   - KEINE separaten Montage-Positionen wenn bereits in "Lieferung und Montage" enthalten
+   
+3. REALISTISCHE PREISE:
+   - Demontage + Entsorgung: 60-100€ pro Tür
+   - Innentür Standard (inkl. Montage): 400-800€
+   - Wohnungstür Sicherheit: 1500-3000€
+   - Beschläge Innentür: 60-150€
+   - NIEMALS alle Positionen mit gleichem Preis!
+` : ''}
+
 OUTPUT FORMAT (NUR valides JSON):
 {
   "trade": "${trade.name}",
