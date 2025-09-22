@@ -3885,6 +3885,10 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'farbe': ['MAL', 'FASS', 'TIS', 'FEN'],         // Farben betrifft mehrere
     'montage': ['ALLE'],                             // Montage betrifft alle
     'demontage': ['ALLE'],                           // Demontage betrifft alle
+    'estrich': ['ESTR', 'ABBR'],                     // Beide dürfen generell
+    'heizestrich': ['ESTR', 'HEI'],                   // Beide relevant
+    'estrich vorbereiten': ['BOD', 'FLI'],           // Beide bereiten vor
+    'ausgleichsmasse': ['ESTR', 'BOD', 'FLI'],       // Alle drei
   };
 
   // NUR EXKLUSIVE Begriffe - nur DIESES Gewerk darf fragen
@@ -3904,11 +3908,11 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
     'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
     'ZIMM': ['holzbau', 'dachstuhl', 'gaube', 'carport', 'holzkonstruktion', 'fachwerk'],
-    'ESTR': ['fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
+    'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
     'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
     'AUSS': ['pflaster', 'einfahrt', 'außenanlage', 'randstein', 'rasen'],
     'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'batterie', 'einspeisung'],
-    'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau']
+    'ABBR': ['abriss', 'abbruch', 'entkernung', 'estrich', 'rückbau']
   };
 
   const filteredQuestions = [];
