@@ -828,7 +828,7 @@ export default function IntakeQuestionsPage() {
           {/* Assumption Field */}
           <div className="mt-6">
             <label className="block text-gray-300 text-sm mb-2">
-              Annahme (optional)
+              Anmerkung (optional)
             </label>
             <input
               type="text"
