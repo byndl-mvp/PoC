@@ -5183,7 +5183,6 @@ if (!titleLower.includes('kleinmaterial') &&
       'tuerSpion': { min: 35, max: 80, default: 55 },
       'zargendichtung': { min: 25, max: 50, default: 35 }
     }
-  };
 
   lv.positions = lv.positions.map(pos => {
     const title = pos.title.toLowerCase();
