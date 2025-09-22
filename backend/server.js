@@ -5103,6 +5103,34 @@ if (!titleLower.includes('kleinmaterial') &&
   warnings.push(`Unrealistischer Preis korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
   fixedCount++;
 }
+
+ // Spezifischere Preis-Ranges definieren
+  const priceRanges = {
+    'TIS': {
+      'demontage_einzeln': { min: 40, max: 120, default: 80 },
+      'entsorgung_gesamt': { min: 30, max: 60, default: 45 },
+      'innentuer_standard': { min: 400, max: 800, default: 600 },
+      'innentuer_sondermaß': { min: 500, max: 1000, default: 750 },
+      'wohnungstuer': { min: 1500, max: 3000, default: 2200 },
+      'beschlag_innen': { min: 60, max: 150, default: 95 },
+      'beschlag_sicherheit': { min: 200, max: 400, default: 280 },
+      'tuerSpion': { min: 35, max: 80, default: 55 },
+      'zargendichtung': { min: 25, max: 50, default: 35 }
+    }
+  };
+
+  lv.positions = lv.positions.map(pos => {
+    const title = pos.title.toLowerCase();
+    const desc = pos.description?.toLowerCase() || '';
+    
+    // Präzisere Pattern-Matching
+    if (title.includes('demontage') && title.includes('innentür')) {
+      if (pos.unitPrice < priceRanges.TIS.demontage_einzeln.min || 
+          pos.unitPrice > priceRanges.TIS.demontage_einzeln.max) {
+        pos.unitPrice = priceRanges.TIS.demontage_einzeln.default;
+        corrections.push(`Demontage korrigiert: ${title}`);
+      }
+    }
     
     // SPEZIAL-REGEL FÜR GERÜST
 if (tradeCode === 'GER') {
