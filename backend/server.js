@@ -2290,6 +2290,16 @@ if (!isIntake && projectContext.projectId) {
   if (intakeResponses.rows.length > 0) {
     allAnsweredInfo.fromIntake = intakeResponses.rows;
     projectContext.intakeData = intakeResponses.rows;
+    // NEU: Kalkulationsdaten extrahieren
+  knownCalculationData = extractCalculationDataFromIntake(intakeResponses.rows);
+  projectContext.knownCalculationData = knownCalculationData;
+  
+  console.log('[CALC-DATA] Extracted from intake:', {
+    flaechen: Object.keys(knownCalculationData.flaechen).length,
+    hoehen: Object.keys(knownCalculationData.hoehen).length,
+    laengen: Object.keys(knownCalculationData.laengen).length,
+    stueck: Object.keys(knownCalculationData.stueckzahlen).length
+  });
     
     // NEU: Extrahiere konkrete Werte für bessere Duplikatserkennung
     projectContext.answeredValues = {};
