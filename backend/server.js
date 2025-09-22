@@ -1999,15 +1999,15 @@ if (needsPV && !detectedTrades.some(t => t.code === 'PV')) {
 
 function extractCalculationDataFromIntake(intakeAnswers) {
   const knownData = {
-    flaechen: {},      // m² Angaben
-    laengen: {},       // m/cm Angaben  
-    breiten: {},       // m/cm Angaben
-    hoehen: {},        // m/cm Angaben
-    stueckzahlen: {},  // Anzahl/Stück
-    volumen: {},       // m³ Angaben
-    gewichte: {},      // kg/t Angaben
-    materialien: {},   // Materialangaben
-    rawData: []        // Für Debugging
+    flaechen: {},
+    laengen: {},
+    breiten: {},
+    hoehen: {},
+    stueckzahlen: {},
+    volumen: {},
+    gewichte: {},
+    materialien: {},
+    rawData: []
   };
   
   intakeAnswers.forEach(item => {
@@ -2108,14 +2108,18 @@ function extractCalculationDataFromIntake(intakeAnswers) {
       }
     }
     
-    // ========== STÜCKZAHLEN ==========
+    // ERWEITERTE STÜCKZAHLEN-ERFASSUNG
     if (question.includes('wie viele') || question.includes('anzahl')) {
       const numberMatch = answer.match(/\d+/);
       if (numberMatch) {
         const count = numberMatch[0];
         
-        if (question.includes('fenster')) {
+        // Basis-Stückzahlen (wie bisher)
+        if (question.includes('fenster') && !question.includes('dachfenster')) {
           knownData.stueckzahlen.fenster = count;
+        }
+        else if (question.includes('dachfenster')) {
+          knownData.stueckzahlen.dachfenster = count;
         }
         else if (question.includes('tür')) {
           knownData.stueckzahlen.tueren = count;
@@ -2126,11 +2130,33 @@ function extractCalculationDataFromIntake(intakeAnswers) {
         else if (question.includes('bad') || question.includes('bäder')) {
           knownData.stueckzahlen.baeder = count;
         }
-        else if (question.includes('etage') || question.includes('geschoss')) {
+        else if (question.includes('etage') || question.includes('geschoss') || question.includes('stockwerk')) {
           knownData.stueckzahlen.geschosse = count;
         }
+        // NEU: Zusätzliche Stückzahlen
+        else if (question.includes('wand') || question.includes('wände')) {
+          knownData.stueckzahlen.waende = count;
+        }
+        else if (question.includes('heizkörper')) {
+          knownData.stueckzahlen.heizkoerper = count;
+        }
+        else if (question.includes('steckdose')) {
+          knownData.stueckzahlen.steckdosen = count;
+        }
+        else if (question.includes('schalter')) {
+          knownData.stueckzahlen.schalter = count;
+        }
+        else if (question.includes('leuchte') || question.includes('lampe')) {
+          knownData.stueckzahlen.leuchten = count;
+        }
+        else if (question.includes('rolladen') || question.includes('rollladen')) {
+          knownData.stueckzahlen.rolladen = count;
+        }
+        // NEU: Gauben
+        else if (question.includes('gaube') || question.includes('gauben')) {
+          knownData.stueckzahlen.gauben = count;
+        }
       }
-    }
     
     // ========== MATERIALIEN ==========
     if (question.includes('material') || question.includes('ausführung')) {
