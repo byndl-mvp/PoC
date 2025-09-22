@@ -4596,7 +4596,20 @@ KRITISCH FÜR ESTRICHARBEITEN:
    - Estrich schleifen
    - KEINE Rohdecken oder Betonarbeiten!
 
-3. MENGENERMITTLUNG:
+3. FUSSBODENHEIZUNG - KLARE ABGRENZUNG:
+   ❌ NIEMALS "Fußbodenheizung verlegen" im Estrich-LV!
+   ❌ NIEMALS "Heizrohre verlegen" oder "Heizkreise"!
+   ✅ NUR "Heizestrich" oder "Estrich auf Fußbodenheizung"
+   
+   Die Fußbodenheizung selbst = IMMER Gewerk HEIZUNG
+   Der Estrich darüber = Gewerk ESTRICH
+   
+   KORREKTE FORMULIERUNG:
+   - "Heizestrich auf vorhandener Fußbodenheizung"
+   - "Estrich schwimmend auf FBH-System"
+   - NICHT: "inkl. Fußbodenheizung"!
+
+4. MENGENERMITTLUNG:
    - Fläche = Bodenfläche der Räume
    - NICHT Deckenfläche (das ist Rohbau)
    - Dämmung = gleiche Fläche wie Estrich
