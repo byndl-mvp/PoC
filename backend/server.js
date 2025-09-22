@@ -4505,7 +4505,7 @@ WICHTIG: Antworte NUR mit validem JSON!`;
       { role: 'system', content: systemPrompt },
       { role: 'user', content: enhancedPrompt }
     ], { 
-      maxTokens: 10000, 
+      maxTokens: 16000, 
       temperature: 0.3,
       jsonMode: true
     });
