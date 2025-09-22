@@ -4952,7 +4952,7 @@ function validateAndFixPrices(lv, tradeCode) {
       // Entsorgung pro Stück (Fenster, Türen, etc.)
       if (pos.unit === 'Stk' && pos.unitPrice > 100) {
         const oldPrice = pos.unitPrice;
-        pos.unitPrice = 40; // Realistisch für Fenster/Tür-Entsorgung
+        pos.unitPrice = titleLower.includes('demontage') ? 120 : 40; // 120€ wenn Demontage dabei, sonst 40€
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
         warnings.push(`Entsorgung/Stück korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
         fixedCount++;
@@ -5064,25 +5064,71 @@ if (tradeCode === 'TIS') {
     const width = parseInt(sizeMatch[1]);
     const height = parseInt(sizeMatch[2]);
     
-    // Berechne Aufpreis für Sondermaße
-    // Breiten-Aufpreis
-    if (width > 120) {
-      priceMultiplier *= 2;      // Extreme Überbreite = Sonderanfertigung
-    } else if (width > 100) {
-      priceMultiplier *= 1.5;    // Überbreite
-    } else if (width > 94) {
-      priceMultiplier *= 1.3;     // Leichte Überbreite
+    // Realistischere Aufpreise für Sondermaße
+    if (width > 100 || height > 210) {
+      priceMultiplier = 1.3;  // 30% Aufschlag
     }
-    
-    // Höhen-Aufpreis
-    if (height > 250) {
-      priceMultiplier *= 2;      // Extreme Überhöhe = Sonderanfertigung
-    } else if (height > 230) {
-      priceMultiplier *= 1.5;    // Überhöhe
-    } else if (height > 210) {
-      priceMultiplier *= 1.3;     // Leichte Überhöhe
+    if (width > 120 || height > 230) {
+      priceMultiplier = 1.5;  // 50% Aufschlag für extreme Größen
     }
   }
+  
+  // NUR echte Türen prüfen, NICHT Zubehör
+  const istEchteTuer = (
+    (titleLower.includes('innentür') || 
+     titleLower.includes('wohnungstür') ||
+     (titleLower.includes('tür') && titleLower.includes('lieferung'))) &&
+    !titleLower.includes('drücker') &&
+    !titleLower.includes('beschlag') &&
+    !titleLower.includes('spion') &&
+    !titleLower.includes('dichtung') &&
+    !titleLower.includes('schloss') &&
+    !titleLower.includes('band') &&
+    !titleLower.includes('zubehör')
+  );
+
+  if (istEchteTuer) {
+    // Wohnungstür/Sicherheitstür
+    if (descLower.includes('wohnungseingang') || 
+        titleLower.includes('wohnungstür') ||
+        titleLower.includes('sicherheit')) {
+      const minPrice = Math.round(1500 * priceMultiplier);
+      const maxPrice = Math.round(3000 * priceMultiplier);
+      
+      if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = Math.round(2200 * priceMultiplier);
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Wohnungstür korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    } 
+    // Standard Innentür
+    else {
+      const minPrice = Math.round(400 * priceMultiplier);
+      const maxPrice = Math.round(800 * priceMultiplier);
+      
+      if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = Math.round(600 * priceMultiplier);
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Innentür ${sizeMatch ? `(${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // Demontage speziell prüfen
+  if (titleLower.includes('demontage') && titleLower.includes('tür')) {
+    if (pos.unitPrice < 60 || pos.unitPrice > 150) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 80;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Tür-Demontage korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
+}
   
   if (titleLower.includes('innentür') || titleLower.includes('tür')) {
     // Unterscheide zwischen verschiedenen Türtypen
@@ -5125,27 +5171,56 @@ if (tradeCode === 'TIS') {
     }
   }
   
-  // Zargen separat prüfen (auch mit Sondermaß-Aufschlag)
-  if (titleLower.includes('zarge')) {
-    const minPrice = Math.round(150 * priceMultiplier);
-    if (pos.unitPrice < minPrice) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = minPrice; // Zarge mit Sondermaß-Aufschlag
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Zarge ${sizeMatch ? `(Sondermaß ${sizeMatch[1]}x${sizeMatch[2]}cm)` : ''} korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-      fixedCount++;
-    }
-  }
+  // Zargen separat prüfen
+if (titleLower.includes('zarge') && !titleLower.includes('dichtung')) {
+  const minPrice = 120;
+  const maxPrice = 300;
   
-  // Türdrücker/Beschläge (unabhängig von Sondermaß)
-  if (titleLower.includes('drücker') || titleLower.includes('beschlag')) {
-    if (pos.unitPrice < 30) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 45; // Drücker mindestens 45€
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Türdrücker korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-      fixedCount++;
-    }
+  if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 180;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Zarge korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+    fixedCount++;
+  }
+}
+
+// Türdrücker/Beschläge
+if (titleLower.includes('drücker') || 
+    (titleLower.includes('beschlag') && !titleLower.includes('zarge'))) {
+  const istSicherheit = titleLower.includes('sicherheit') || titleLower.includes('wohnungstür');
+  const minPrice = istSicherheit ? 200 : 60;
+  const maxPrice = istSicherheit ? 400 : 150;
+  
+  if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = istSicherheit ? 280 : 95;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`${istSicherheit ? 'Sicherheits-' : ''}Beschlag korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+    fixedCount++;
+  }
+}
+
+// Türspion
+if (titleLower.includes('spion')) {
+  if (pos.unitPrice < 35 || pos.unitPrice > 80) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 55;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Türspion korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+    fixedCount++;
+  }
+}
+
+// Zargendichtung
+if (titleLower.includes('zargendichtung') || 
+    (titleLower.includes('dichtung') && titleLower.includes('tür'))) {
+  if (pos.unitPrice < 25 || pos.unitPrice > 60) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 35;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Zargendichtung korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+    fixedCount++;
   }
 }
 
@@ -5169,33 +5244,6 @@ if (!titleLower.includes('kleinmaterial') &&
   warnings.push(`Unrealistischer Preis korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
   fixedCount++;
 }
-
- // Spezifischere Preis-Ranges definieren
-  const priceRanges = {
-    'TIS': {
-      'demontage_einzeln': { min: 40, max: 120, default: 80 },
-      'entsorgung_gesamt': { min: 30, max: 60, default: 45 },
-      'innentuer_standard': { min: 400, max: 800, default: 600 },
-      'innentuer_sondermaß': { min: 500, max: 1000, default: 750 },
-      'wohnungstuer': { min: 1500, max: 3000, default: 2200 },
-      'beschlag_innen': { min: 60, max: 150, default: 95 },
-      'beschlag_sicherheit': { min: 200, max: 400, default: 280 },
-      'tuerSpion': { min: 35, max: 80, default: 55 },
-      'zargendichtung': { min: 25, max: 50, default: 35 }
-    }
-
-  lv.positions = lv.positions.map(pos => {
-    const title = pos.title.toLowerCase();
-    const desc = pos.description?.toLowerCase() || '';
-    
-    // Präzisere Pattern-Matching
-    if (title.includes('demontage') && title.includes('innentür')) {
-      if (pos.unitPrice < priceRanges.TIS.demontage_einzeln.min || 
-          pos.unitPrice > priceRanges.TIS.demontage_einzeln.max) {
-        pos.unitPrice = priceRanges.TIS.demontage_einzeln.default;
-        corrections.push(`Demontage korrigiert: ${title}`);
-      }
-    }
     
     // SPEZIAL-REGEL FÜR GERÜST
 if (tradeCode === 'GER') {
