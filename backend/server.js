@@ -5362,7 +5362,25 @@ if (titleLower.includes('putz') ||
   }
 }
     
-    // 3. BESTEHENDE REGEL: Nebenleistungen
+    // 3. VERBESSERTE REGEL: Nebenleistungen mit Ausnahmen für Spezialleistungen
+    // Keywords die TEURE Spezialleistungen kennzeichnen
+    const EXPENSIVE_EQUIPMENT_KEYWORDS = [
+      'kran',
+      'gerüst',
+      'bagger',
+      'aufzug',
+      'hebebühne',
+      'spezialgerät',
+      'schwerlast',
+      'transport'
+    ];
+    
+    // Prüfe ob es eine Spezialleistung ist
+    const isSpecialEquipment = EXPENSIVE_EQUIPMENT_KEYWORDS.some(keyword => 
+      titleLower.includes(keyword)
+    );
+    
+    // Normale Nebenleistungen
     const isNebenleistung = 
       titleLower.includes('anschluss') ||
       titleLower.includes('abdichtung') ||
@@ -5371,12 +5389,36 @@ if (titleLower.includes('putz') ||
       titleLower.includes('dämmstreifen') ||
       titleLower.includes('anarbeiten');
     
-    if (isNebenleistung && pos.unitPrice > 200 && pos.unit !== 'psch') {
+    // NUR korrigieren wenn:
+    // 1. Es ist eine Nebenleistung UND
+    // 2. Es ist KEINE Spezialausrüstung UND
+    // 3. Der Preis ist ungewöhnlich hoch
+    if (isNebenleistung && !isSpecialEquipment && pos.unitPrice > 200 && pos.unit !== 'psch') {
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = pos.unit === 'm' ? 50 : 80;
+      
+      // Differenzierte Preiskorrektur nach Art der Nebenleistung
+      let newPrice;
+      if (titleLower.includes('abdichtung') || titleLower.includes('anschluss')) {
+        // Abdichtungen/Anschlüsse können teurer sein
+        newPrice = pos.unit === 'm' ? 80 : 120;
+      } else {
+        // Einfache Nebenleistungen
+        newPrice = pos.unit === 'm' ? 50 : 80;
+      }
+      
+      pos.unitPrice = newPrice;
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
       warnings.push(`Nebenleistung korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
       fixedCount++;
+    }
+    
+    // NEUE REGEL: Warnung bei teuren Spezialleistungen (ohne Korrektur)
+    if (isSpecialEquipment && pos.unitPrice > 1000) {
+      console.log(`[PRICE-CHECK] Spezialleistung erkannt: "${pos.title}" - €${pos.unitPrice} (keine Korrektur)`);
+      // Optional: Warnung für Review hinzufügen
+      if (pos.unitPrice > 5000) {
+        warnings.push(`REVIEW: Hoher Preis für Spezialleistung "${pos.title}": €${pos.unitPrice}`);
+      }
     }
     
     // 4. BESTEHENDE REGEL: Hauptpositionen Mindestpreise
