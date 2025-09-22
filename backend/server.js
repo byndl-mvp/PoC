@@ -4525,6 +4525,72 @@ WICHTIG: Antworte NUR mit validem JSON!`;
     }
   }
 }
+
+// Post-Processing: Konsolidiere Demontage und entferne Redundanzen
+if (trade.code === 'TIS' && lv.positions) {
+  console.log('[LV-TIS] Starting TIS-specific post-processing...');
+  
+  // 1. Konsolidiere Demontage-Positionen
+  const demontagePositionen = lv.positions.filter(p => 
+    p.title?.toLowerCase().includes('demontage') && 
+    !p.title?.toLowerCase().includes('entsorgung'));
+  
+  const entsorgungsPositionen = lv.positions.filter(p => 
+    p.title?.toLowerCase().includes('entsorgung'));
+  
+  if (demontagePositionen.length > 1) {
+    console.log(`[LV-TIS] Found ${demontagePositionen.length} separate Demontage positions - consolidating...`);
+    
+    const totalQuantity = demontagePositionen.reduce((sum, p) => 
+      sum + (parseFloat(p.quantity) || 0), 0);
+    
+    const sammelPosition = {
+      pos: "01.01",
+      title: "Demontage und Entsorgung sämtlicher Alttüren",
+      description: "Demontage bestehender Innentüren und Wohnungstür inkl. Türblätter aushängen, Zargen ausbauen, Beschläge demontieren und sortieren. Fachgerechte Entsorgung als Altholz Kategorie A II inkl. Transport zur Entsorgungsanlage.",
+      quantity: totalQuantity,
+      unit: "Stk",
+      unitPrice: 120, // Demontage + Entsorgung kombiniert
+      totalPrice: totalQuantity * 120,
+      dataSource: "measured",
+      notes: `Zusammengefasst aus ${demontagePositionen.length} Einzelpositionen`
+    };
+    
+    // Entferne alte Positionen und füge neue hinzu
+    lv.positions = lv.positions.filter(p => 
+      !p.title?.toLowerCase().includes('demontage') && 
+      !p.title?.toLowerCase().includes('entsorgung'));
+    
+    lv.positions.unshift(sammelPosition);
+    console.log(`[LV-TIS] Created consolidated position for ${totalQuantity} doors`);
+  }
+  
+  // 2. Entferne redundante Montage-Positionen
+  const lieferungUndMontageCount = lv.positions.filter(p => 
+    p.title?.toLowerCase().includes('lieferung und montage')).length;
+  
+  if (lieferungUndMontageCount > 0) {
+    const redundantMontage = lv.positions.filter(p => {
+      const title = p.title?.toLowerCase() || '';
+      return (title.includes('montage') || title.includes('justage')) && 
+             !title.includes('lieferung') && 
+             !title.includes('demontage');
+    });
+    
+    if (redundantMontage.length > 0) {
+      console.log(`[LV-TIS] Removing ${redundantMontage.length} redundant Montage positions`);
+      lv.positions = lv.positions.filter(p => !redundantMontage.includes(p));
+    }
+  }
+  
+  // 3. Neuberechnung der Positionsnummern
+  lv.positions = lv.positions.map((pos, index) => ({
+    ...pos,
+    pos: `${String(index + 1).padStart(2, '0')}.01`
+  }));
+  
+  console.log(`[LV-TIS] Post-processing complete. Final position count: ${lv.positions.length}`);
+}
     
 // NEUE PREISVALIDIERUNG - HIER EINFÜGEN (Zeile 1921)
 const priceValidation = validateAndFixPrices(lv, trade.code);
