@@ -8,7 +8,6 @@ export default function TradeConfirmationPage() {
   const [project, setProject] = useState(null);
   const [detectedTrades, setDetectedTrades] = useState([]);
   const [allTrades, setAllTrades] = useState([]);
-  const [selectedTrades, setSelectedTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('Analysiere Projektdaten...');
   const [error, setError] = useState('');
@@ -80,7 +79,6 @@ export default function TradeConfirmationPage() {
               
               // Für Kompatibilität
               setDetectedTrades([...requiredFromSummary, ...recommendedFromSummary]);
-              setSelectedTrades(requiredFromSummary.map(t => t.id));
               
               // 3. Lade alle verfügbaren Trades für manuelle Hinzufügung
               const tradesRes = await fetch(apiUrl('/api/trades'));
@@ -135,7 +133,6 @@ export default function TradeConfirmationPage() {
           setAllTrades(availableTrades);
           
           setDetectedTrades(required);
-          setSelectedTrades(required.map(t => t.id));
         }
         
       } catch (err) {
@@ -183,7 +180,6 @@ export default function TradeConfirmationPage() {
       console.log('Adding manual trade:', trade.id, 'with flag:', manualTrade.isManuallyAdded);
       
       setDetectedTrades(prev => [...prev, manualTrade]);
-      setSelectedTrades(prev => [...prev, trade.id]);
       // Entferne aus verfügbaren Trades
       setAllTrades(prev => prev.filter(t => t.id !== trade.id));
       
