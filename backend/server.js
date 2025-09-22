@@ -4516,6 +4516,64 @@ REALISTISCHE PREISE:
 - NIEMALS über 12 €/m² für Auf-/Abbau!
 ` : ''}
 
+${trade.code === 'ROH' ? `
+KRITISCH FÜR ROHBAUARBEITEN:
+1. KLARE ABGRENZUNG - ROHBAU macht NUR:
+   - Fundamente, Bodenplatte, Kellerwände
+   - Tragende Wände (Mauerwerk, Beton, Stahlbeton)
+   - Rohdecken (Betondecken, Filigrandecken)
+   - Stürze, Ringanker, Betonstützen
+   - Treppen (Rohbau, nicht Ausbau)
+
+2. NIEMALS IM ROHBAU:
+   - KEIN Estrich (gehört zu Gewerk ESTR)
+   - KEINE Dämmung unter Estrich
+   - KEINE Trittschalldämmung
+   - KEINE Bodenbeläge
+   - KEINE Putze (gehört zu MAL oder FASS)
+   - KEINE Abdichtungen (außer Bodenplatte)
+
+3. HÄUFIGE FEHLER VERMEIDEN:
+   - "Estrich" → FALSCH! Rohbau macht nur Rohdecke
+   - "Fließestrich" → FALSCH! Gehört zu ESTR
+   - "Dämmung unter Estrich" → FALSCH! Gehört zu ESTR
+   - "Innenputz" → FALSCH! Gehört zu MAL
+
+4. KORREKTE POSITIONEN:
+   - "Stahlbetondecke d=20cm"
+   - "Filigrandecke verlegen"
+   - "Mauerwerk erstellen, 24cm Poroton"
+   - "Ringanker betonieren"
+   - "Betonstützen 30x30cm"
+
+5. BEI DEMONTAGE/ABBRUCH:
+   - Wanddurchbrüche gehören zu ROH
+   - Deckendurchbrüche gehören zu ROH
+   - Abbruch tragender Teile gehört zu ROH
+   - Nicht-tragende Wände → Gewerk TRO oder ABBR
+` : ''}
+
+${trade.code === 'ESTR' ? `
+KRITISCH FÜR ESTRICHARBEITEN:
+1. ESTRICH KOMMT NACH ROHBAU:
+   - Rohdecke muss fertig sein
+   - Elektro/Sanitär-Leitungen verlegt
+   - Innenputz idealerweise fertig
+
+2. ESTRICH-POSITIONEN:
+   - Dämmung unter Estrich
+   - Trittschalldämmung
+   - Randdämmstreifen
+   - Fließestrich/Zementestrich/Anhydritestrich
+   - Estrich schleifen
+   - KEINE Rohdecken oder Betonarbeiten!
+
+3. MENGENERMITTLUNG:
+   - Fläche = Bodenfläche der Räume
+   - NICHT Deckenfläche (das ist Rohbau)
+   - Dämmung = gleiche Fläche wie Estrich
+` : ''}
+
 ${trade.code === 'DACH' ? `
 KRITISCH FÜR DACHARBEITEN:
 - NUR Dachfenster wenn EXPLIZIT "Dachfenster" erwähnt
