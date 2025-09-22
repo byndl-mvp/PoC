@@ -56,7 +56,7 @@ const TRADE_COMPLEXITY = {
   SAN:   { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 23, targetPositionsRatio: 0.85 },
   HEI:   { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 23, targetPositionsRatio: 0.8 },
   KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 22, targetPositionsRatio: 0.8 },
-  ROH:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 1.0 },
+  ROH:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 25, targetPositionsRatio: 0.9 },
   
   // Komplexe Gewerke (20-30 Fragen)
   TIS:   { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 1.0 }, // Türen: oft 1:1
