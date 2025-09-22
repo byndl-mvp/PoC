@@ -1488,8 +1488,8 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
     else if (category.includes('kernsanierung')) complexityScore += 2.5;
     else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 2;
     else if (category.includes('vollsanierung')) complexityScore += 2;
-    else if (category.includes('renovierung') || category.includes('modernisierung')) complexityScore += 1;
-    else if (category.includes('reparatur') || category.includes('instandhaltung')) complexityScore += 0.5;
+    else if (category.includes('renovierung') || category.includes('modernisierung')) complexityScore += 0.5;
+    else if (category.includes('reparatur') || category.includes('instandhaltung')) complexityScore += 0.1;
   }
   
   // INTAKE-ANTWORTEN (nur wenn vorhanden, geringere Gewichtung)
