@@ -1503,8 +1503,8 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
   
   if (complexityScore >= 16) return 'SEHR_HOCH';
   if (complexityScore >= 12) return 'HOCH';
-  if (complexityScore >= 6) return 'MITTEL';
-  if (complexityScore >= 3) return 'NIEDRIG';
+  if (complexityScore >= 8) return 'MITTEL';
+  if (complexityScore >= 5) return 'NIEDRIG';
   return 'EINFACH';
 }
 
