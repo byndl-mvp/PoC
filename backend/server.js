@@ -3557,7 +3557,7 @@ return filteredQuestions;
     }
     throw err;
   }
-}  // <-- Das ist die schließende Klammer der generateQuestions Funktion
+}  
 
 /**
  * Filtert duplizierte Fragen basierend auf Intake-Antworten
@@ -3565,204 +3565,272 @@ return filteredQuestions;
 function filterDuplicateQuestions(questions, intakeAnswers) {
   if (!intakeAnswers || intakeAnswers.length === 0) return questions;
   
-  // Sammle beantwortete Fragen mit ihren Kernthemen
-  const answeredTopics = [];
-  
-  intakeAnswers.forEach(item => {
-    const q = item.question_text?.toLowerCase().trim() || '';
-    const a = item.answer_text?.toLowerCase().trim() || '';
-    
-    // Nur wenn substantiell beantwortet
-    if (a && a.length > 2 && 
-        a !== 'ja' && 
-        a !== 'nein' && 
-        a !== 'keine angabe' && 
-        a !== 'weiß nicht') {
-      
-      // Speichere das EXAKTE Thema der Frage
-      const topic = extractExactTopic(q);
-      if (topic) {
-        answeredTopics.push({
-          topic: topic,
-          originalQuestion: q,
-          answer: a
-        });
-      }
-    }
-  });
+  // Extrahiere bekannte Kalkulationsdaten
+  const knownData = extractCalculationDataFromIntake(intakeAnswers);
   
   return questions.filter(q => {
-    const questionText = (q.question || q.text || '').toLowerCase().trim();
-    const currentTopic = extractExactTopic(questionText);
+    const qText = (q.question || q.text || '').toLowerCase();
     
-    // Standardmäßig behalten wir die Frage
-    let shouldKeep = true;
-    let removeReason = '';
+    // ============ FLÄCHEN ============
+    if (knownData.flaechen.badflaeche_gesamt && 
+        qText.includes('bad') && 
+        (qText.includes('wie groß') || qText.includes('fläche')) &&
+        !qText.includes('wandfläche') && 
+        !qText.includes('bodenfläche') &&
+        !qText.includes('zu fliesen')) {
+      console.log('[FILTER] Removed: Bad-Gesamtfläche bereits bekannt');
+      return false;
+    }
     
-    // Nur filtern wenn WIRKLICH das gleiche gefragt wird
-    for (const answered of answeredTopics) {
-      if (isActuallySameQuestion(currentTopic, answered.topic, questionText, answered.originalQuestion)) {
-        shouldKeep = false;
-        removeReason = `Bereits beantwortet: "${answered.originalQuestion.substring(0, 50)}..."`;
-        break;
+    if (knownData.flaechen.wohnflaeche_gesamt && 
+        qText.includes('wohnfläche') &&
+        !qText.includes('davon')) {
+      console.log('[FILTER] Removed: Wohnfläche bereits bekannt');
+      return false;
+    }
+    
+    if (knownData.flaechen.dachflaeche && 
+        qText.includes('dachfläche') &&
+        !qText.includes('davon') &&
+        !qText.includes('teilfläche')) {
+      console.log('[FILTER] Removed: Dachfläche bereits bekannt');
+      return false;
+    }
+    
+    if (knownData.flaechen.fassadenflaeche && 
+        qText.includes('fassade') && 
+        qText.includes('fläche')) {
+      console.log('[FILTER] Removed: Fassadenfläche bereits bekannt');
+      return false;
+    }
+    
+    // NEU: Bodenfläche (wichtig für Estrich, Bodenbelag, Fliesen)
+    if (knownData.flaechen.bodenflaeche && 
+        qText.includes('boden') && 
+        (qText.includes('fläche') || qText.includes('wie groß')) &&
+        !qText.includes('teilfläche') &&
+        !qText.includes('welcher raum')) {
+      console.log('[FILTER] Removed: Bodenfläche bereits bekannt');
+      return false;
+    }
+    
+    // Estrichfläche spezifisch
+    if (knownData.flaechen.estrichflaeche && 
+        qText.includes('estrich') && 
+        qText.includes('fläche')) {
+      console.log('[FILTER] Removed: Estrichfläche bereits bekannt');
+      return false;
+    }
+    
+    // ============ HÖHEN ============
+    if (knownData.hoehen.raumhoehe && 
+        (qText.includes('raumhöhe') || 
+         qText.includes('deckenhöhe') || 
+         (qText.includes('wie hoch') && qText.includes('raum')))) {
+      console.log('[FILTER] Removed: Raumhöhe bereits bekannt');
+      return false;
+    }
+    
+    if (knownData.hoehen.wandstaerke && 
+        (qText.includes('wandstärke') || 
+         qText.includes('wanddicke') || 
+         (qText.includes('dick') && qText.includes('wand')))) {
+      console.log('[FILTER] Removed: Wandstärke bereits bekannt');
+      return false;
+    }
+    
+    if (knownData.hoehen.gebaeudehoehe && 
+        (qText.includes('gebäudehöhe') || 
+         qText.includes('firsthöhe') || 
+         (qText.includes('hoch') && qText.includes('gebäude')))) {
+      console.log('[FILTER] Removed: Gebäudehöhe bereits bekannt');
+      return false;
+    }
+    
+    // ============ LÄNGEN ============
+    if (knownData.laengen.wandlaenge && 
+        qText.includes('wand') && 
+        (qText.includes('länge') || qText.includes('lang'))) {
+      console.log('[FILTER] Removed: Wandlänge bereits bekannt');
+      return false;
+    }
+    
+    if (knownData.laengen.raumlaenge && 
+        qText.includes('raum') && 
+        (qText.includes('länge') || qText.includes('lang'))) {
+      console.log('[FILTER] Removed: Raumlänge bereits bekannt');
+      return false;
+    }
+    
+    // ============ BREITEN ============
+    if (knownData.breiten.raumbreite && 
+        qText.includes('raum') && 
+        (qText.includes('breite') || qText.includes('breit'))) {
+      console.log('[FILTER] Removed: Raumbreite bereits bekannt');
+      return false;
+    }
+    
+    if (knownData.breiten.fensterbreite && 
+        qText.includes('fenster') && 
+        (qText.includes('breite') || qText.includes('breit')) &&
+        !qText.includes('einzelne')) {
+      console.log('[FILTER] Removed: Fensterbreite bereits bekannt');
+      return false;
+    }
+    
+    // ============ STÜCKZAHLEN - ERWEITERT ============
+    
+    // Fenster
+    if (knownData.stueckzahlen.fenster && 
+        ((qText.includes('wie viele') && qText.includes('fenster')) ||
+         (qText.includes('anzahl') && qText.includes('fenster')))) {
+      console.log('[FILTER] Removed: Fensteranzahl bereits bekannt');
+      return false;
+    }
+    
+    // Türen
+    if (knownData.stueckzahlen.tueren && 
+        ((qText.includes('wie viele') && qText.includes('tür')) ||
+         (qText.includes('anzahl') && qText.includes('tür')))) {
+      console.log('[FILTER] Removed: Türenanzahl bereits bekannt');
+      return false;
+    }
+    
+    // Räume
+    if (knownData.stueckzahlen.raeume && 
+        ((qText.includes('wie viele') && (qText.includes('raum') || qText.includes('räume') || qText.includes('zimmer'))) ||
+         (qText.includes('anzahl') && (qText.includes('raum') || qText.includes('räume') || qText.includes('zimmer'))))) {
+      console.log('[FILTER] Removed: Raumanzahl bereits bekannt');
+      return false;
+    }
+    
+    // Bäder
+    if (knownData.stueckzahlen.baeder && 
+        ((qText.includes('wie viele') && (qText.includes('bad') || qText.includes('bäder'))) ||
+         (qText.includes('anzahl') && (qText.includes('bad') || qText.includes('bäder'))))) {
+      console.log('[FILTER] Removed: Bäderanzahl bereits bekannt');
+      return false;
+    }
+    
+    // Geschosse/Etagen
+    if (knownData.stueckzahlen.geschosse && 
+        ((qText.includes('wie viele') && (qText.includes('geschoss') || qText.includes('etage') || qText.includes('stockwerk'))) ||
+         (qText.includes('anzahl') && (qText.includes('geschoss') || qText.includes('etage') || qText.includes('stockwerk'))))) {
+      console.log('[FILTER] Removed: Geschossanzahl bereits bekannt');
+      return false;
+    }
+    
+    // ZUSÄTZLICHE STÜCKZAHLEN die aus den Antworten extrahiert werden könnten:
+    
+    // Wände (Intake könnte fragen: "Wie viele Wände sollen verputzt werden?")
+    if (knownData.stueckzahlen.waende && 
+        ((qText.includes('wie viele') && qText.includes('wand')) ||
+         (qText.includes('anzahl') && qText.includes('wand')))) {
+      console.log('[FILTER] Removed: Wandanzahl bereits bekannt');
+      return false;
+    }
+    
+    // Heizkörper
+    if (knownData.stueckzahlen.heizkoerper && 
+        ((qText.includes('wie viele') && qText.includes('heizkörper')) ||
+         (qText.includes('anzahl') && qText.includes('heizkörper')))) {
+      console.log('[FILTER] Removed: Heizkörperanzahl bereits bekannt');
+      return false;
+    }
+    
+    // Steckdosen
+    if (knownData.stueckzahlen.steckdosen && 
+        ((qText.includes('wie viele') && qText.includes('steckdose')) ||
+         (qText.includes('anzahl') && qText.includes('steckdose')))) {
+      console.log('[FILTER] Removed: Steckdosenanzahl bereits bekannt');
+      return false;
+    }
+    
+    // Schalter
+    if (knownData.stueckzahlen.schalter && 
+        ((qText.includes('wie viele') && qText.includes('schalter')) ||
+         (qText.includes('anzahl') && qText.includes('schalter')))) {
+      console.log('[FILTER] Removed: Schalteranzahl bereits bekannt');
+      return false;
+    }
+    
+    // Dachfenster
+    if (knownData.stueckzahlen.dachfenster && 
+        ((qText.includes('wie viele') && qText.includes('dachfenster')) ||
+         (qText.includes('anzahl') && qText.includes('dachfenster')))) {
+      console.log('[FILTER] Removed: Dachfensteranzahl bereits bekannt');
+      return false;
+    }
+    
+    // NEU: Gauben
+    if (knownData.stueckzahlen.gauben && 
+        ((qText.includes('wie viele') && (qText.includes('gaube') || qText.includes('gauben'))) ||
+         (qText.includes('anzahl') && (qText.includes('gaube') || qText.includes('gauben'))))) {
+      console.log('[FILTER] Removed: Gaubenanzahl bereits bekannt');
+      return false;
+    }
+    
+    // ============ MATERIALIEN ============
+    if (knownData.materialien.wand && 
+        qText.includes('wand') && 
+        qText.includes('material') &&
+        !qText.includes('oberfläche') &&
+        !qText.includes('beschichtung')) {
+      console.log('[FILTER] Removed: Wandmaterial bereits bekannt');
+      return false;
+    }
+    
+    if (knownData.materialien.boden && 
+        qText.includes('boden') && 
+        qText.includes('material') &&
+        !qText.includes('neuer') &&
+        !qText.includes('gewünscht')) {
+      console.log('[FILTER] Removed: Bodenmaterial bereits bekannt');
+      return false;
+    }
+    
+    if (knownData.materialien.dach && 
+        qText.includes('dach') && 
+        qText.includes('material')) {
+      console.log('[FILTER] Removed: Dachmaterial bereits bekannt');
+      return false;
+    }
+    
+    // ============ KOMBINIERTE MASSE (LxBxH) ============
+    if ((knownData.laengen.bad && knownData.breiten.bad) &&
+        qText.includes('bad') && 
+        (qText.includes('maße') || qText.includes('abmessung'))) {
+      console.log('[FILTER] Removed: Badmaße bereits bekannt');
+      return false;
+    }
+    
+    if ((knownData.laengen.raum && knownData.breiten.raum) &&
+        qText.includes('raum') && 
+        (qText.includes('maße') || qText.includes('abmessung')) &&
+        !qText.includes('welcher raum') &&
+        !qText.includes('einzelne')) {
+      console.log('[FILTER] Removed: Raummaße bereits bekannt');
+      return false;
+    }
+    
+    // ============ VOLUMEN ============
+    if (knownData.volumen && Object.keys(knownData.volumen).length > 0) {
+      // Prüfe Volumen-bezogene Fragen
+      if (qText.includes('kubikmeter') || qText.includes('m³') || qText.includes('volumen')) {
+        const volumenKeys = Object.keys(knownData.volumen);
+        for (const key of volumenKeys) {
+          if (qText.includes(key)) {
+            console.log(`[FILTER] Removed: ${key}-Volumen bereits bekannt`);
+            return false;
+          }
+        }
       }
     }
     
-    if (!shouldKeep) {
-      console.log(`[FILTER] Removing duplicate: ${questionText.substring(0, 60)}... (${removeReason})`);
-    }
-    
-    return shouldKeep;
+    // Frage ist OK - wird beibehalten
+    return true;
   });
 }
-
-/**
- * Extrahiert das EXAKTE Thema einer Frage
- */
-function extractExactTopic(question) {
-  const q = question.toLowerCase().trim();
-  
-  // Definiere sehr spezifische Themen
-  const topic = {
-    mainSubject: null,  // z.B. "außenwände", "innenwände", "geschoss", "baugenehmigung"
-    queryType: null,    // z.B. "anzahl", "größe", "material", "vorhanden"
-    specific: null      // z.B. "aufstockung", "neu", "bestehend"
-  };
-  
-  // Extrahiere Hauptthema (sehr spezifisch!)
-  if (q.includes('außenwand') || q.includes('außenwände')) {
-    topic.mainSubject = 'außenwände';
-  } else if (q.includes('innenwand') || q.includes('innenwände')) {
-    topic.mainSubject = 'innenwände';
-  } else if (q.includes('geschossdecke')) {
-    topic.mainSubject = 'geschossdecke';
-  } else if (q.includes('fundament')) {
-    topic.mainSubject = 'fundament';
-  } else if (q.includes('baugenehmigung')) {
-    topic.mainSubject = 'baugenehmigung';
-  } else if (q.includes('geschoss') || q.includes('stockwerk') || q.includes('etage')) {
-    topic.mainSubject = 'geschoss';
-  } else if (q.includes('materiallagerung') || q.includes('lagerung')) {
-    topic.mainSubject = 'lagerung';
-  } else if (q.includes('bauschutt') || q.includes('abbruch')) {
-    topic.mainSubject = 'bauschutt';
-  } else if (q.includes('statik') || q.includes('statisch')) {
-    topic.mainSubject = 'statik';
-  } else if (q.includes('wandstärke') || q.includes('wanddicke')) {
-    topic.mainSubject = 'wandstärke';
-  } else if (q.includes('mauerwerk')) {
-    topic.mainSubject = 'mauerwerk';
-  } else if (q.includes('betondecke')) {
-    topic.mainSubject = 'betondecke';
-  } else if (q.includes('wanddurchbruch') || q.includes('türdurchbruch')) {
-    topic.mainSubject = 'durchbruch';
-  } else if (q.includes('abmessung') || q.includes('maße') || q.includes('breite') && q.includes('höhe')) {
-    topic.mainSubject = 'abmessungen';
-  } else if (q.includes('wandstärke') || q.includes('wanddicke')) {
-    topic.mainSubject = 'wandstärke';
-  } else if (q.includes('tragende wand') || q.includes('tragend')) {
-    topic.mainSubject = 'tragwerk';
-  } else if (q.includes('material der wand') || q.includes('wandmaterial')) {
-    topic.mainSubject = 'wandmaterial';
-  } else if (q.includes('baujahr') || q.includes('alter des')) {
-    topic.mainSubject = 'baujahr';
-  }
-  
-  // Extrahiere Fragetyp
-  if (q.includes('wie viele') || q.includes('anzahl')) {
-    topic.queryType = 'anzahl';
-  } else if (q.includes('wie groß') || q.includes('größe') || q.includes('fläche')) {
-    topic.queryType = 'größe';
-  } else if (q.includes('wie dick') || q.includes('stärke') || q.includes('dicke')) {
-    topic.queryType = 'dicke';
-  } else if (q.includes('welche') || q.includes('welcher') || q.includes('welches')) {
-    topic.queryType = 'welche';
-  } else if (q.includes('material')) {
-    topic.queryType = 'material';
-  } else if (q.includes('liegt') || q.includes('vorhanden') || q.includes('gibt es')) {
-    topic.queryType = 'vorhanden';
-  } else if (q.includes('muss') || q.includes('müssen') || q.includes('soll')) {
-    topic.queryType = 'erforderlich';
-  }
-  
-  // Extrahiere Spezifika
-  if (q.includes('aufstockung')) {
-    topic.specific = 'aufstockung';
-  } else if (q.includes('neu')) {
-    topic.specific = 'neu';
-  } else if (q.includes('bestehend') || q.includes('vorhanden')) {
-    topic.specific = 'bestehend';
-  }
-  
-  return topic;
-}
-
-/**
- * Prüft ob zwei Fragen WIRKLICH das Gleiche fragen
- */
-function isActuallySameQuestion(topic1, topic2, fullQ1, fullQ2) {
-  if (!topic1 || !topic2) return false;
-  
-  // BEIDE Hauptthemen müssen identisch sein
-  if (topic1.mainSubject !== topic2.mainSubject) {
-    return false;
-  }
-  
-  // Wenn kein Hauptthema erkannt wurde, vergleiche die vollen Fragen
-  if (!topic1.mainSubject) {
-    // Berechne Wort-Überschneidung
-    const words1 = new Set(fullQ1.split(/\s+/).filter(w => w.length > 3));
-    const words2 = new Set(fullQ2.split(/\s+/).filter(w => w.length > 3));
-    
-    if (words1.size === 0 || words2.size === 0) return false;
-    
-    const intersection = [...words1].filter(w => words2.has(w));
-    const similarity = intersection.length / Math.min(words1.size, words2.size);
-    
-    // Nur bei SEHR hoher Übereinstimmung (>90%) als Duplikat werten
-    return similarity > 0.9;
-  }
-  
-  // Der Fragetyp muss auch gleich sein
-  if (topic1.queryType !== topic2.queryType) {
-    return false;
-  }
-  
-  // Spezifika müssen auch übereinstimmen (wenn vorhanden)
-  if (topic1.specific && topic2.specific && topic1.specific !== topic2.specific) {
-    return false;
-  }
-  
-  // Nur wenn ALLES übereinstimmt, ist es ein Duplikat
-  return true;
-}
-
-/**
- * BEISPIELE was NICHT mehr falsch gefiltert wird:
- * 
- * UNTERSCHIEDLICHE FRAGEN (werden NICHT gefiltert):
- * ✅ "Wie viele Außenwände?" vs "Wie viele Geschosse?" 
- *    → Unterschiedliches Hauptthema (außenwände vs geschoss)
- * 
- * ✅ "Innenwände mauern?" vs "Liegt Baugenehmigung vor?"
- *    → Unterschiedliches Hauptthema (innenwände vs baugenehmigung)
- * 
- * ✅ "Neue Geschossdecke?" vs "Liegt Baugenehmigung vor?"
- *    → Unterschiedliches Hauptthema (geschossdecke vs baugenehmigung)
- * 
- * ✅ "Fundamente verstärken?" vs "Liegt Baugenehmigung vor?"
- *    → Unterschiedliches Hauptthema (fundament vs baugenehmigung)
- * 
- * NUR ECHTE DUPLIKATE werden gefiltert:
- * ❌ "Wie groß ist das Bad?" vs "Welche Größe hat das Badezimmer?"
- *    → Gleiches Hauptthema (bad) + gleicher Typ (größe)
- * 
- * ❌ "Wie viele Stockwerke?" vs "Anzahl der Etagen?"
- *    → Gleiches Hauptthema (geschoss) + gleicher Typ (anzahl)
- */
-
-// Export
-module.exports = filterDuplicateQuestions;
 
 /**
  * Validiert und filtert Fragen basierend auf Gewerke-Zuständigkeit
