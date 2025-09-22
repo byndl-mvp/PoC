@@ -21,141 +21,148 @@ export default function TradeConfirmationPage() {
   const [selectedRequired, setSelectedRequired] = useState([]);
   const [selectedRecommended, setSelectedRecommended] = useState([]);
   
-useEffect(() => {
-  if (isAdditionalTrade) {
-    fetch(apiUrl(`/api/projects/${projectId}`))
-      .then(res => res.json())
-      .then(data => {
-        const existing = data.trades?.map(t => t.id) || [];
-        setExistingTradeIds(existing);
-        // Filtere bereits vorhandene Trades aus der Anzeige
-        setDetectedTrades(prev => prev.filter(t => !existing.includes(t.id)));
-      });
-  }
-}, [isAdditionalTrade, projectId]);
-  useEffect(() => {
-  async function loadData() {
-    try {
-      setLoading(true);
-      setLoadingMessage('Lade Projektdetails...');
-      
-      // 1. Lade Projektdetails
-      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-      if (!projectRes.ok) throw new Error('Projekt nicht gefunden');
-      const projectData = await projectRes.json();
-      setProject(projectData);
-      
-      // 2. Lade Intake-Summary - DAS ist die Hauptquelle!
-      setLoadingMessage('Analysiere Ihre Antworten...');
-      let hasIntakeSummary = false;
-      
-      try {
-        const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
-        if (summaryRes.ok) {
-          const summaryData = await summaryRes.json();
-          setIntakeSummary(summaryData.summary);
-          
-          console.log('Summary data:', summaryData);
-          console.log('Grouped trades:', summaryData.groupedTrades);
-          
-          // WICHTIG: Nutze NUR groupedTrades wenn vorhanden
-          if (summaryData.groupedTrades) {
-            hasIntakeSummary = true;
-            
-            // Setze die Trades direkt aus groupedTrades
-            const requiredFromSummary = summaryData.groupedTrades.required || [];
-            const recommendedFromSummary = summaryData.groupedTrades.recommended || [];
-            
-            setRequiredTrades(requiredFromSummary);
-            setRecommendedTrades(recommendedFromSummary);
-            setSelectedRequired(requiredFromSummary.map(t => t.id));
-            setSelectedRecommended([]); // Empfohlene nicht vorausgewählt
-            
-            // Für Kompatibilität
-            setDetectedTrades([...requiredFromSummary, ...recommendedFromSummary]);
-            setSelectedTrades(requiredFromSummary.map(t => t.id));
-            
-            // 3. Lade alle verfügbaren Trades für manuelle Hinzufügung
-            const tradesRes = await fetch(apiUrl('/api/trades'));
-            const allTradesData = await tradesRes.json();
-            
-            // Filtere bereits zugeordnete aus
-            const assignedIds = new Set([
-              ...requiredFromSummary.map(t => t.id),
-              ...recommendedFromSummary.map(t => t.id)
-            ]);
-            
-            const availableTrades = allTradesData.filter(t => 
-              t.code !== 'INT' && !assignedIds.has(t.id)
-            );
-            setAllTrades(availableTrades);
-            
-            console.log('Trades gesetzt - Required:', requiredFromSummary.length, 
-                       'Recommended:', recommendedFromSummary.length);
-            
-            // WICHTIG: Return hier, damit der alte Code nicht mehr läuft!
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (err) {
-        console.log('Keine Intake-Summary verfügbar');
-      }
-      
-      // NUR FALLBACK wenn keine Summary verfügbar
-      if (!hasIntakeSummary) {
-        console.log('Fallback: Nutze Projekt-Trades');
-        const initialDetected = (projectData.trades || []).filter(t => t.code !== 'INT');
-        
-        const tradesRes = await fetch(apiUrl('/api/trades'));
-        const allTradesData = await tradesRes.json();
-        
-        // Alle initial erkannten als erforderlich
-        const required = initialDetected.map(trade => ({
-          ...trade,
-          category: 'required',
-          reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
-        }));
-        
-        setRequiredTrades(required);
-        setRecommendedTrades([]);
-        setSelectedRequired(required.map(t => t.id));
-        setSelectedRecommended([]);
-        
-        const availableTrades = allTradesData.filter(t => 
-          t.code !== 'INT' && !required.some(r => r.id === t.id)
-        );
-        setAllTrades(availableTrades);
-        
-        setDetectedTrades(required);
-        setSelectedTrades(required.map(t => t.id));
-      }
-      
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // NEUE HILFSFUNKTION - Hier einfügen nach den useState-Hooks
+  const getTotalSelectedCount = () => {
+    const manualCount = detectedTrades.filter(t => t.source === 'manuell').length;
+    return selectedRequired.length + selectedRecommended.length + manualCount;
+  };
   
-  loadData();
-}, [projectId]);
+  useEffect(() => {
+    if (isAdditionalTrade) {
+      fetch(apiUrl(`/api/projects/${projectId}`))
+        .then(res => res.json())
+        .then(data => {
+          const existing = data.trades?.map(t => t.id) || [];
+          setExistingTradeIds(existing);
+          // Filtere bereits vorhandene Trades aus der Anzeige
+          setDetectedTrades(prev => prev.filter(t => !existing.includes(t.id)));
+        });
+    }
+  }, [isAdditionalTrade, projectId]);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        setLoadingMessage('Lade Projektdetails...');
+        
+        // 1. Lade Projektdetails
+        const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+        if (!projectRes.ok) throw new Error('Projekt nicht gefunden');
+        const projectData = await projectRes.json();
+        setProject(projectData);
+        
+        // 2. Lade Intake-Summary - DAS ist die Hauptquelle!
+        setLoadingMessage('Analysiere Ihre Antworten...');
+        let hasIntakeSummary = false;
+        
+        try {
+          const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
+          if (summaryRes.ok) {
+            const summaryData = await summaryRes.json();
+            setIntakeSummary(summaryData.summary);
+            
+            console.log('Summary data:', summaryData);
+            console.log('Grouped trades:', summaryData.groupedTrades);
+            
+            // WICHTIG: Nutze NUR groupedTrades wenn vorhanden
+            if (summaryData.groupedTrades) {
+              hasIntakeSummary = true;
+              
+              // Setze die Trades direkt aus groupedTrades
+              const requiredFromSummary = summaryData.groupedTrades.required || [];
+              const recommendedFromSummary = summaryData.groupedTrades.recommended || [];
+              
+              setRequiredTrades(requiredFromSummary);
+              setRecommendedTrades(recommendedFromSummary);
+              setSelectedRequired(requiredFromSummary.map(t => t.id));
+              setSelectedRecommended([]); // Empfohlene nicht vorausgewählt
+              
+              // Für Kompatibilität
+              setDetectedTrades([...requiredFromSummary, ...recommendedFromSummary]);
+              setSelectedTrades(requiredFromSummary.map(t => t.id));
+              
+              // 3. Lade alle verfügbaren Trades für manuelle Hinzufügung
+              const tradesRes = await fetch(apiUrl('/api/trades'));
+              const allTradesData = await tradesRes.json();
+              
+              // Filtere bereits zugeordnete aus
+              const assignedIds = new Set([
+                ...requiredFromSummary.map(t => t.id),
+                ...recommendedFromSummary.map(t => t.id)
+              ]);
+              
+              const availableTrades = allTradesData.filter(t => 
+                t.code !== 'INT' && !assignedIds.has(t.id)
+              );
+              setAllTrades(availableTrades);
+              
+              console.log('Trades gesetzt - Required:', requiredFromSummary.length, 
+                         'Recommended:', recommendedFromSummary.length);
+              
+              // WICHTIG: Return hier, damit der alte Code nicht mehr läuft!
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.log('Keine Intake-Summary verfügbar');
+        }
+        
+        // NUR FALLBACK wenn keine Summary verfügbar
+        if (!hasIntakeSummary) {
+          console.log('Fallback: Nutze Projekt-Trades');
+          const initialDetected = (projectData.trades || []).filter(t => t.code !== 'INT');
+          
+          const tradesRes = await fetch(apiUrl('/api/trades'));
+          const allTradesData = await tradesRes.json();
+          
+          // Alle initial erkannten als erforderlich
+          const required = initialDetected.map(trade => ({
+            ...trade,
+            category: 'required',
+            reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
+          }));
+          
+          setRequiredTrades(required);
+          setRecommendedTrades([]);
+          setSelectedRequired(required.map(t => t.id));
+          setSelectedRecommended([]);
+          
+          const availableTrades = allTradesData.filter(t => 
+            t.code !== 'INT' && !required.some(r => r.id === t.id)
+          );
+          setAllTrades(availableTrades);
+          
+          setDetectedTrades(required);
+          setSelectedTrades(required.map(t => t.id));
+        }
+        
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
+  }, [projectId]);
 
   const toggleRequired = (tradeId) => {
-  setSelectedRequired(prev => 
-    prev.includes(tradeId) 
-      ? prev.filter(id => id !== tradeId)
-      : [...prev, tradeId]
-  );
-};
+    setSelectedRequired(prev => 
+      prev.includes(tradeId) 
+        ? prev.filter(id => id !== tradeId)
+        : [...prev, tradeId]
+    );
+  };
 
-const toggleRecommended = (tradeId) => {
-  setSelectedRecommended(prev => 
-    prev.includes(tradeId) 
-      ? prev.filter(id => id !== tradeId)
-      : [...prev, tradeId]
-  );
-};
+  const toggleRecommended = (tradeId) => {
+    setSelectedRecommended(prev => 
+      prev.includes(tradeId) 
+        ? prev.filter(id => id !== tradeId)
+        : [...prev, tradeId]
+    );
+  };
   
   const addTrade = async (tradeId) => {
     if (!tradeId) return;
@@ -185,87 +192,87 @@ const toggleRecommended = (tradeId) => {
   };
 
   const handleContinue = async () => {
-  // Sammle manuelle Trades
-  const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
-  const manualTradeIds = manualTrades.map(t => t.id);
-  
-  // Sammle ALLE ausgewählten Trade IDs
-  const allSelectedTrades = [
-    ...selectedRequired,
-    ...selectedRecommended,
-    ...manualTradeIds
-  ];
-  
-  // Entferne Duplikate
-  const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
-  
-  if (uniqueSelectedTrades.length === 0) {
-    alert('Bitte wählen Sie mindestens ein Gewerk aus');
-    return;
-  }
-  
-  // Sammle vollständige Trade-Daten
-  const confirmedTradesData = [
-    ...requiredTrades.filter(t => selectedRequired.includes(t.id)),
-    ...recommendedTrades.filter(t => selectedRecommended.includes(t.id)),
-    ...manualTrades
-  ];
-  
-  const manuallyAddedTradeIds = manualTrades.map(t => t.id);
-  
-  try {
-    setLoading(true);
-    setLoadingMessage('Speichere Gewerkeauswahl...');
+    // Sammle manuelle Trades
+    const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
+    const manualTradeIds = manualTrades.map(t => t.id);
     
-    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        confirmedTrades: uniqueSelectedTrades,
-        manuallyAddedTrades: manuallyAddedTradeIds,
-        isAdditional: isAdditionalTrade
-      })
-    });
+    // Sammle ALLE ausgewählten Trade IDs
+    const allSelectedTrades = [
+      ...selectedRequired,
+      ...selectedRecommended,
+      ...manualTradeIds
+    ];
     
-    if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
+    // Entferne Duplikate
+    const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
     
-    if (confirmedTradesData.length > 0) {
-      // Navigation für zusätzliche Gewerke
-      if (isAdditionalTrade) {
-        const newTrades = confirmedTradesData.filter(t => !existingTradeIds.includes(t.id));
-        if (newTrades.length > 0) {
-          const sortedNew = newTrades.sort((a, b) => a.id - b.id);
-          sessionStorage.removeItem('addingAdditionalTrade');
-          navigate(`/project/${projectId}/trade/${sortedNew[0].id}/questions?additional=true`);
-          return;
-        }
-      }
-      
-      // Speichere Info über manuell hinzugefügte Trades
-      if (manuallyAddedTradeIds.length > 0) {
-        sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
-      }
-      
-      // Sortiere Trades
-      const sortedTrades = [...confirmedTradesData].sort((a, b) => {
-        // Priorität: required > recommended > manual
-        if (selectedRequired.includes(a.id) && !selectedRequired.includes(b.id)) return -1;
-        if (!selectedRequired.includes(a.id) && selectedRequired.includes(b.id)) return 1;
-        if (selectedRecommended.includes(a.id) && manualTradeIds.includes(b.id)) return -1;
-        if (manualTradeIds.includes(a.id) && selectedRecommended.includes(b.id)) return 1;
-        return (a.sort_order || 999) - (b.sort_order || 999);
-      });
-      
-      navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
-    } else {
-      navigate(`/project/${projectId}/result`);
+    if (uniqueSelectedTrades.length === 0) {
+      alert('Bitte wählen Sie mindestens ein Gewerk aus');
+      return;
     }
     
-  } catch (err) {
-    setError(err.message);
-    setLoading(false);
-  }
-};
+    // Sammle vollständige Trade-Daten
+    const confirmedTradesData = [
+      ...requiredTrades.filter(t => selectedRequired.includes(t.id)),
+      ...recommendedTrades.filter(t => selectedRecommended.includes(t.id)),
+      ...manualTrades
+    ];
+    
+    const manuallyAddedTradeIds = manualTrades.map(t => t.id);
+    
+    try {
+      setLoading(true);
+      setLoadingMessage('Speichere Gewerkeauswahl...');
+      
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          confirmedTrades: uniqueSelectedTrades,
+          manuallyAddedTrades: manuallyAddedTradeIds,
+          isAdditional: isAdditionalTrade
+        })
+      });
+      
+      if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
+      
+      if (confirmedTradesData.length > 0) {
+        // Navigation für zusätzliche Gewerke
+        if (isAdditionalTrade) {
+          const newTrades = confirmedTradesData.filter(t => !existingTradeIds.includes(t.id));
+          if (newTrades.length > 0) {
+            const sortedNew = newTrades.sort((a, b) => a.id - b.id);
+            sessionStorage.removeItem('addingAdditionalTrade');
+            navigate(`/project/${projectId}/trade/${sortedNew[0].id}/questions?additional=true`);
+            return;
+          }
+        }
+        
+        // Speichere Info über manuell hinzugefügte Trades
+        if (manuallyAddedTradeIds.length > 0) {
+          sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
+        }
+        
+        // Sortiere Trades
+        const sortedTrades = [...confirmedTradesData].sort((a, b) => {
+          // Priorität: required > recommended > manual
+          if (selectedRequired.includes(a.id) && !selectedRequired.includes(b.id)) return -1;
+          if (!selectedRequired.includes(a.id) && selectedRequired.includes(b.id)) return 1;
+          if (selectedRecommended.includes(a.id) && manualTradeIds.includes(b.id)) return -1;
+          if (manualTradeIds.includes(a.id) && selectedRecommended.includes(b.id)) return 1;
+          return (a.sort_order || 999) - (b.sort_order || 999);
+        });
+        
+        navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
+      } else {
+        navigate(`/project/${projectId}/result`);
+      }
+      
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
@@ -346,177 +353,179 @@ const toggleRecommended = (tradeId) => {
         )}
 
         {/* Erforderliche Gewerke */}
-<div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white/20">
-  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-    <span className="text-green-400 mr-2">✓</span>
-    Erforderliche Gewerke
-  </h3>
-  <p className="text-gray-300 text-sm mb-4">
-    Diese Gewerke wurden direkt aus Ihrer Projektbeschreibung erkannt:
-  </p>
-  
-  {requiredTrades.length > 0 ? (
-    <div className="space-y-3">
-      {requiredTrades.map(trade => (
-        <label
-          key={trade.id}
-          className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
-            selectedRequired.includes(trade.id)
-              ? 'bg-green-500/20 border border-green-500/50'
-              : 'bg-white/5 border border-white/20 opacity-60'
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={selectedRequired.includes(trade.id)}
-            onChange={() => toggleRequired(trade.id)}
-            className="mt-1 mr-3 w-5 h-5 text-green-500 bg-white/10 border-white/30 rounded focus:ring-green-500"
-          />
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-white font-medium">{trade.name}</span>
-              <span className="text-gray-400 text-sm">({trade.code})</span>
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white/20">
+          <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+            <span className="text-green-400 mr-2">✔</span>
+            Erforderliche Gewerke
+          </h3>
+          <p className="text-gray-300 text-sm mb-4">
+            Diese Gewerke wurden direkt aus Ihrer Projektbeschreibung erkannt:
+          </p>
+          
+          {requiredTrades.length > 0 ? (
+            <div className="space-y-3">
+              {requiredTrades.map(trade => (
+                <label
+                  key={trade.id}
+                  className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
+                    selectedRequired.includes(trade.id)
+                      ? 'bg-green-500/20 border border-green-500/50'
+                      : 'bg-white/5 border border-white/20 opacity-60'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedRequired.includes(trade.id)}
+                    onChange={() => toggleRequired(trade.id)}
+                    className="mt-1 mr-3 w-5 h-5 text-green-500 bg-white/10 border-white/30 rounded focus:ring-green-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">{trade.name}</span>
+                      <span className="text-gray-400 text-sm">({trade.code})</span>
+                    </div>
+                    <p className="text-gray-400 text-sm mt-1">{trade.reason}</p>
+                  </div>
+                </label>
+              ))}
             </div>
-            <p className="text-gray-400 text-sm mt-1">{trade.reason}</p>
-          </div>
-        </label>
-      ))}
-    </div>
-  ) : (
-    <p className="text-gray-400">Keine Gewerke direkt erkannt</p>
-  )}
-</div>
+          ) : (
+            <p className="text-gray-400">Keine Gewerke direkt erkannt</p>
+          )}
+        </div>
 
-{/* Empfohlene Gewerke */}
-{recommendedTrades.length > 0 && (
-  <div className="bg-blue-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-blue-400/30">
-    <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-      <span className="text-blue-400 mr-2">💡</span>
-      Optionale Gewerke
-    </h3>
-    <p className="text-gray-200 text-sm mb-4">
-      Basierend auf Ihren Antworten könnten diese Gewerke relevant sein:
-    </p>
-    
-    <div className="space-y-3">
-      {recommendedTrades.map(trade => (
-        <label
-          key={trade.id}
-          className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
-            selectedRecommended.includes(trade.id)
-              ? 'bg-blue-500/30 border border-blue-400/60 shadow-lg'
-              : 'bg-white/10 border border-white/30 hover:bg-white/15'
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={selectedRecommended.includes(trade.id)}
-            onChange={() => toggleRecommended(trade.id)}
-            className="mt-1 mr-3 w-5 h-5 text-blue-500 bg-white/20 border-white/40 rounded focus:ring-blue-500"
-          />
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-white font-medium">{trade.name}</span>
-              <span className="text-gray-300 text-sm">({trade.code})</span>
-              {trade.confidence && trade.confidence >= 80 && (
-                <span className="bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
-                  Sehr wahrscheinlich
-                </span>
-              )}
+        {/* Empfohlene Gewerke */}
+        {recommendedTrades.length > 0 && (
+          <div className="bg-blue-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-blue-400/30">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <span className="text-blue-400 mr-2">💡</span>
+              Optionale Gewerke
+            </h3>
+            <p className="text-gray-200 text-sm mb-4">
+              Basierend auf Ihren Antworten könnten diese Gewerke relevant sein:
+            </p>
+            
+            <div className="space-y-3">
+              {recommendedTrades.map(trade => (
+                <label
+                  key={trade.id}
+                  className={`flex items-start p-4 rounded-lg cursor-pointer transition-all ${
+                    selectedRecommended.includes(trade.id)
+                      ? 'bg-blue-500/30 border border-blue-400/60 shadow-lg'
+                      : 'bg-white/10 border border-white/30 hover:bg-white/15'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedRecommended.includes(trade.id)}
+                    onChange={() => toggleRecommended(trade.id)}
+                    className="mt-1 mr-3 w-5 h-5 text-blue-500 bg-white/20 border-white/40 rounded focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">{trade.name}</span>
+                      <span className="text-gray-300 text-sm">({trade.code})</span>
+                      {trade.confidence && trade.confidence >= 80 && (
+                        <span className="bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
+                          Sehr wahrscheinlich
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-200 text-sm mt-1">{trade.reason}</p>
+                  </div>
+                </label>
+              ))}
             </div>
-            <p className="text-gray-200 text-sm mt-1">{trade.reason}</p>
           </div>
-        </label>
-      ))}
-    </div>
-  </div>
-)}
+        )}
 
-{/* Manuell hinzugefügte Gewerke */}
-{detectedTrades.filter(t => t.source === 'manuell').length > 0 && (
-  <div className="bg-yellow-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-yellow-500/30">
-    <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-      <span className="text-yellow-400 mr-2">✓</span>
-      Manuell hinzugefügte Gewerke
-    </h3>
-    
-    <div className="space-y-3">
-      {detectedTrades.filter(t => t.source === 'manuell').map(trade => (
-        <div
-          key={trade.id}
-          className="flex items-start p-4 rounded-lg bg-yellow-500/20 border border-yellow-500/50"
-        >
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-white font-medium">{trade.name}</span>
-              <span className="text-gray-300 text-sm">({trade.code})</span>
-              <span className="bg-yellow-600/30 text-yellow-300 text-xs px-2 py-1 rounded">
-                Manuell
-              </span>
+        {/* Manuell hinzugefügte Gewerke */}
+        {detectedTrades.filter(t => t.source === 'manuell').length > 0 && (
+          <div className="bg-yellow-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-yellow-500/30">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <span className="text-yellow-400 mr-2">✔</span>
+              Manuell hinzugefügte Gewerke
+            </h3>
+            
+            <div className="space-y-3">
+              {detectedTrades.filter(t => t.source === 'manuell').map(trade => (
+                <div
+                  key={trade.id}
+                  className="flex items-start p-4 rounded-lg bg-yellow-500/20 border border-yellow-500/50"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">{trade.name}</span>
+                      <span className="text-gray-300 text-sm">({trade.code})</span>
+                      <span className="bg-yellow-600/30 text-yellow-300 text-xs px-2 py-1 rounded">
+                        Manuell
+                      </span>
+                    </div>
+                    <p className="text-gray-200 text-sm mt-1">{trade.reason}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-gray-200 text-sm mt-1">{trade.reason}</p>
+          </div>
+        )}
+        
+        {/* Add Additional Trades */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
+          <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+            <span className="text-yellow-400 mr-2">+</span>
+            Weitere Gewerke manuell hinzufügen
+          </h3>
+          
+          {allTrades.length > 0 ? (
+            <div className="flex gap-3">
+              <select
+                onChange={(e) => {
+                  addTrade(e.target.value);
+                  e.target.value = '';
+                }}
+                disabled={addingTrade}
+                className="flex-1 bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                defaultValue=""
+              >
+                <option value="" className="bg-slate-800">Gewerk auswählen...</option>
+                {allTrades.map(trade => (
+                  <option key={trade.id} value={trade.id} className="bg-slate-800">
+                    {trade.name} ({trade.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <p className="text-gray-400">Alle verfügbaren Gewerke wurden bereits hinzugefügt</p>
+          )}
+          <p className="text-blue-300 text-xs mt-2">
+            ℹ️ Bei manuell hinzugefügten Gewerken wird die erste Frage den Arbeitsumfang erfassen.
+          </p>
+        </div>
+
+        {/* Summary - AKTUALISIERT */}
+        <div className="bg-gradient-to-r from-teal-500/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-white font-semibold">Ausgewählte Gewerke:</h3>
+              <p className="text-teal-300 text-2xl font-bold mt-1">
+                {getTotalSelectedCount()} {getTotalSelectedCount() === 1 ? 'Gewerk' : 'Gewerke'}
+              </p>
+              <p className="text-gray-400 text-xs mt-1">
+                {selectedRequired.length} erforderlich, 
+                {selectedRecommended.length} zusätzlich{detectedTrades.filter(t => t.source === 'manuell').length > 0 && 
+                  `, ${detectedTrades.filter(t => t.source === 'manuell').length} manuell`}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-gray-400 text-sm">Geschätzte Bearbeitungszeit:</p>
+              <p className="text-white">~{getTotalSelectedCount() * 2} Minuten</p>
+              <p className="text-gray-400 text-xs mt-1">
+                (Angepasste Fragenanzahl pro Gewerk)
+              </p>
+            </div>
           </div>
         </div>
-      ))}
-    </div>
-  </div>
-)}
-        
-{/* Add Additional Trades - BEHALTEN */}
-<div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
-  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-    <span className="text-yellow-400 mr-2">+</span>
-    Weitere Gewerke manuell hinzufügen
-  </h3>
-  
-  {allTrades.length > 0 ? (
-    <div className="flex gap-3">
-      <select
-        onChange={(e) => {
-          addTrade(e.target.value);
-          e.target.value = '';
-        }}
-        disabled={addingTrade}
-        className="flex-1 bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        defaultValue=""
-      >
-        <option value="" className="bg-slate-800">Gewerk auswählen...</option>
-        {allTrades.map(trade => (
-          <option key={trade.id} value={trade.id} className="bg-slate-800">
-            {trade.name} ({trade.code})
-          </option>
-        ))}
-      </select>
-    </div>
-  ) : (
-    <p className="text-gray-400">Alle verfügbaren Gewerke wurden bereits hinzugefügt</p>
-  )}
-  <p className="text-blue-300 text-xs mt-2">
-    ℹ️ Bei manuell hinzugefügten Gewerken wird die erste Frage den Arbeitsumfang erfassen.
-  </p>
-</div>
-
-{/* Summary - ANGEPASST */}
-<div className="bg-gradient-to-r from-teal-500/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
-  <div className="flex items-center justify-between">
-    <div>
-      <h3 className="text-white font-semibold">Ausgewählte Gewerke:</h3>
-      <p className="text-teal-300 text-2xl font-bold mt-1">
-        {selectedRequired.length + selectedRecommended.length} {(selectedRequired.length + selectedRecommended.length) === 1 ? 'Gewerk' : 'Gewerke'}
-      </p>
-      <p className="text-gray-400 text-xs mt-1">
-        {selectedRequired.length} erforderlich, {selectedRecommended.length} zusätzlich
-      </p>
-    </div>
-    <div className="text-right">
-      <p className="text-gray-400 text-sm">Geschätzte Bearbeitungszeit:</p>
-      <p className="text-white">~{(selectedRequired.length + selectedRecommended.length) * 2} Minuten</p>
-      <p className="text-gray-400 text-xs mt-1">
-        (Angepasste Fragenanzahl pro Gewerk)
-      </p>
-    </div>
-  </div>
-</div>
 
         {/* Action Buttons */}
         <div className="flex justify-between items-center">
@@ -527,9 +536,10 @@ const toggleRecommended = (tradeId) => {
             ← Zurück zu Projektfragen
           </button>
           
+          {/* BUTTON AKTUALISIERT - verwendet jetzt getTotalSelectedCount() */}
           <button
             onClick={handleContinue}
-            disabled={selectedTrades.length === 0 || loading}
+            disabled={getTotalSelectedCount() === 0 || loading}
             className="px-8 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
           >
             {loading ? (
@@ -541,7 +551,7 @@ const toggleRecommended = (tradeId) => {
                 Speichern...
               </span>
             ) : (
-              `Mit ${selectedTrades.length} ${selectedTrades.length === 1 ? 'Gewerk' : 'Gewerken'} fortfahren →`
+              `Mit ${getTotalSelectedCount()} ${getTotalSelectedCount() === 1 ? 'Gewerk' : 'Gewerken'} fortfahren →`
             )}
           </button>
         </div>
