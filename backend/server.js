@@ -5683,6 +5683,11 @@ if (titleLower.includes('putz') ||
     
     if (isMainPosition && pos.unitPrice < 50) {
       const oldPrice = pos.unitPrice;
+      pos.unitPrice = 50;  
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;  
+      warnings.push(`Mindestpreis: €${oldPrice} → €50`);  
+      fixedCount++;  
+      }  
       
      // 5. FENSTER-SPEZIFISCHE PREISKORREKTUREN
 if (tradeCode === 'FEN') {
