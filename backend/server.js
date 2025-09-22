@@ -2684,6 +2684,9 @@ KRITISCH: Stelle NUR relevante Fragen für die erkannten Gewerke!
 
 Diese Informationen werden für die Vorbemerkungen aller LVs verwendet.` : 
 `Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}. 
+
+${knownCalculationData ? createCalculationContext(knownCalculationData, tradeCode) : ''}
+
 WICHTIG: Berücksichtige alle nachfolgenden Regeln und bereits vorhandene Informationen!`}
 
 ${extractedData ? `
