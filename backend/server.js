@@ -5684,20 +5684,91 @@ if (titleLower.includes('putz') ||
     if (isMainPosition && pos.unitPrice < 50) {
       const oldPrice = pos.unitPrice;
       
-      if (titleLower.includes('fenster')) {
-        const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*x\s*(\d+)/);
-        if (sizeMatch) {
-          const width = parseInt(sizeMatch[1]);
-          const height = parseInt(sizeMatch[2]);
-          const area = (width * height) / 10000;
-          pos.unitPrice = Math.round(600 + (area * 500));
-        } else {
-          pos.unitPrice = 900;
-        }
-        warnings.push(`Fenster korrigiert: €${oldPrice} → €${pos.unitPrice}`);
-        fixedCount++;
+      if (titleLower.includes('fenster') && !titleLower.includes('reinigung') && 
+    !titleLower.includes('abdichtung') && !titleLower.includes('vermessung')) {
+  
+  // NUR für tatsächliche Fenster-Positionen (Lieferung & Montage)
+  if (titleLower.includes('lieferung') || titleLower.includes('montage')) {
+    const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*x\s*(\d+)/);
+    
+    if (sizeMatch) {
+      // Berechne Preis basierend auf Größe
+      const width = parseInt(sizeMatch[1]);
+      const height = parseInt(sizeMatch[2]);
+      const area = (width * height) / 10000; // in m²
+      
+       // Realistischere Preisberechnung nach Material
+      if (titleLower.includes('kunststoff')) {
+        pos.unitPrice = Math.round(400 + (area * 300)); // Kunststoff: günstigste Variante
+      } else if (titleLower.includes('holz-alu') || titleLower.includes('holz-aluminium')) {
+        pos.unitPrice = Math.round(800 + (area * 600)); // Holz-Alu: Premium
+      } else if (titleLower.includes('aluminium') || titleLower.includes('alu')) {
+        pos.unitPrice = Math.round(700 + (area * 500)); // Aluminium: hochwertig
+      } else if (titleLower.includes('holz')) {
+        pos.unitPrice = Math.round(600 + (area * 500)); // Holz: gehobene Qualität
+      } else {
+        pos.unitPrice = Math.round(500 + (area * 400)); // Standard/unbekannt
       }
-    }   
+    } else {
+      // Wenn keine Maße gefunden: Schätze basierend auf Typ
+      if (titleLower.includes('demontage')) {
+        pos.unitPrice = 80;  // Demontage
+      } else {
+        pos.unitPrice = 800; // Standard-Fenster ohne Maße (nicht 900!)
+      }
+    }
+    
+    warnings.push(`Fenster-Preis angepasst: €${oldPrice} → €${pos.unitPrice}`);
+    fixedCount++;
+  }
+}
+
+// ZUSÄTZLICHE SPEZIFISCHE KORREKTUREN für Nebenleistungen
+if (tradeCode === 'FEN') {
+  // Reinigung
+  if (titleLower.includes('reinigung')) {
+    if (pos.unitPrice > 50) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 25;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Fensterreinigung korrigiert: €${oldPrice} → €25`);
+      fixedCount++;
+    }
+  }
+  
+  // Abdichtung (pro lfd. Meter)
+  if (titleLower.includes('abdichtung') && pos.unit === 'm') {
+    if (pos.unitPrice > 60) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 35;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Abdichtung korrigiert: €${oldPrice}/m → €35/m`);
+      fixedCount++;
+    }
+  }
+  
+  // Vermessung/Aufmaß
+  if (titleLower.includes('vermessung') || titleLower.includes('aufmaß')) {
+    if (pos.unitPrice > 150) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 75;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Aufmaß korrigiert: €${oldPrice} → €75`);
+      fixedCount++;
+    }
+  }
+  
+  // Silikonverfugung
+  if (titleLower.includes('silikon') || titleLower.includes('verfugung')) {
+    if (pos.unit === 'm' && pos.unitPrice > 25) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 15;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Verfugung korrigiert: €${oldPrice}/m → €15/m`);
+      fixedCount++;
+    }
+  }
+} 
 
 // NEUE REGEL: INNENTÜREN MINDESTPREISE MIT SONDERMASS-BERECHNUNG
 if (tradeCode === 'TIS') {
