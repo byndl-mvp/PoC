@@ -21,56 +21,108 @@ export default function ResultPage() {
     quantity: 1,
     unit: 'Stk',
     unitPrice: 0,
-    isNEP: false  // NEU
-});
+    isNEP: false
+  });
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [modalLvIndex, setModalLvIndex] = useState(null);
   const [modalPosIndex, setModalPosIndex] = useState(null);
   
-// Helper für sichere Zahlenformatierung
-const safeToFixed = (value) => {
-  if (value === null || value === undefined) return '0.00';
-  const num = typeof value === 'number' ? value : parseFloat(value) || 0;
-  return num.toFixed(2);
-};  
-
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(value || 0);
-};
+  // NEU: Zusätzliche States
+  const [projectComplete, setProjectComplete] = useState(false);
+  const [pendingTrades, setPendingTrades] = useState([]);
+  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState('');
+  const [highlightedLv, setHighlightedLv] = useState(null);
   
+  // Helper für sichere Zahlenformatierung
+  const safeToFixed = (value) => {
+    if (value === null || value === undefined) return '0.00';
+    const num = typeof value === 'number' ? value : parseFloat(value) || 0;
+    return num.toFixed(2);
+  };  
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(value || 0);
+  };
+  
+  // ÄNDERUNG: Erweiterte fetchData mit Status-Check
   useEffect(() => {
-  async function fetchData() {
-    try {
-      setLoading(true);
-      
-      // 1. Projekt laden
-      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-      if (projectRes.ok) {
-        const projectData = await projectRes.json();
-        setProject(projectData);
-      }
-      
-      // 2. LVs laden
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
-      if (!res.ok) {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        
+        // 1. Projekt laden (BLEIBT GLEICH)
+        const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+        if (projectRes.ok) {
+          const projectData = await projectRes.json();
+          setProject(projectData);
+        }
+        
+        // 2. ÄNDERUNG: LVs laden mit zusätzlichem Status-Check
+        const res = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Fehler beim Laden der LVs');
+        }
         const data = await res.json();
-        throw new Error(data.error || 'Fehler beim Laden der LVs');
+        
+        // NEU: Filtere nur abgeschlossene LVs (nicht übersprungene)
+        const completedLvs = data.lvs.filter(lv => lv.status !== 'skipped');
+        setLvs(completedLvs || []);
+        
+        // NEU: Check ob alle Gewerke abgeschlossen sind
+        const statusRes = await fetch(apiUrl(`/api/projects/${projectId}/status`));
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          setProjectComplete(statusData.allTradesComplete);
+          setPendingTrades(statusData.pendingTrades || []);
+        }
+        
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-      const data = await res.json();
-      setLvs(data.lvs || []);
-      
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
     }
-  }
-  fetchData();
-}, [projectId]);
+    fetchData();
+  }, [projectId]);
+
+  // NEU: Nach Rückkehr von zusätzlichem Gewerk
+  useEffect(() => {
+    const returnToResults = sessionStorage.getItem('returnToResults');
+    if (returnToResults === 'true') {
+      sessionStorage.removeItem('returnToResults');
+      
+      // Zeige Erfolgsmeldung
+      setShowSuccessMessage('Zusätzliches Gewerk wurde hinzugefügt. Sie können es in der Übersicht bearbeiten.');
+      
+      // Optional: Highlight für neues LV
+      const newTradeId = sessionStorage.getItem('lastAddedTrade');
+      if (newTradeId) {
+        setHighlightedLv(newTradeId);
+        sessionStorage.removeItem('lastAddedTrade');
+      }
+    }
+  }, []);
+
+  // ÄNDERUNG: Erweiterte handleAddAdditionalTrade Funktion
+  const handleAddAdditionalTrade = () => {
+    sessionStorage.setItem('addingAdditionalTrade', 'true');
+    sessionStorage.setItem('returnToResults', 'true');
+    
+    // NEU: Speichere aktuellen Zustand für Rückkehr
+    sessionStorage.setItem('resultsPageData', JSON.stringify({
+      lvs: lvs.map(lv => lv.id),
+      totalCalculated: total
+    }));
+    
+    // Navigiere zum Trade-Auswahl
+    navigate(`/project/${projectId}/add-trade?additional=true&from=results`);
+  };
 
   const handleEditPosition = (lvIndex, posIndex, field, value) => {
     const key = `${lvIndex}-${posIndex}-${field}`;
@@ -80,54 +132,71 @@ const formatCurrency = (value) => {
     }));
   };
 
-  // ERSETZEN Sie die komplette handleSavePosition Funktion:
-const handleSavePosition = async (lvIndex, posIndex) => {
-  const lv = lvs[lvIndex];
-  const position = lv.content.positions[posIndex];
-  const key = `${lvIndex}-${posIndex}`;
-  
-  const updatedPosition = {
-    ...position,
-    title: editedValues[`${key}-title`] !== undefined ? editedValues[`${key}-title`] : position.title,
-    description: editedValues[`${key}-description`] !== undefined ? editedValues[`${key}-description`] : position.description,
-    quantity: editedValues[`${key}-quantity`] !== undefined ? parseFloat(editedValues[`${key}-quantity`]) : position.quantity,
-    unit: editedValues[`${key}-unit`] !== undefined ? editedValues[`${key}-unit`] : position.unit,
-    unitPrice: editedValues[`${key}-unitPrice`] !== undefined ? parseFloat(editedValues[`${key}-unitPrice`]) : position.unitPrice,
-    isNEP: editedValues[`${key}-isNEP`] !== undefined ? editedValues[`${key}-isNEP`] : (position.isNEP || false)  // NEU
+  const recalculateTotalsWithNEP = (positions) => {
+    let totalSum = 0;
+    let nepSum = 0;
+    
+    positions.forEach(pos => {
+      const posTotal = parseFloat(pos.totalPrice) || 0;
+      if (pos.isNEP) {
+        nepSum += posTotal;
+      } else {
+        totalSum += posTotal;
+      }
+    });
+    
+    return {
+      totalSum: Math.round(totalSum * 100) / 100,
+      nepSum: Math.round(nepSum * 100) / 100
+    };
   };
-  
-  updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
-  
-  const updatedPositions = [...lv.content.positions];
-  updatedPositions[posIndex] = updatedPosition;
-  
-  // NEU: Verwende die neue Berechnungsfunktion
-  const totals = recalculateTotalsWithNEP(updatedPositions);
-  
-  const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      positions: updatedPositions,
-      totalSum: totals.totalSum  // Verwende die NEP-bereinigte Summe
-    })
-  });
-  
-  if (res.ok) {
-    const newLvs = [...lvs];
-    newLvs[lvIndex].content.positions = updatedPositions;
-    newLvs[lvIndex].content.totalSum = totals.totalSum;
-    newLvs[lvIndex].content.nepSum = totals.nepSum;  // NEU: Speichere auch NEP-Summe
-    setLvs(newLvs);
+
+  const handleSavePosition = async (lvIndex, posIndex) => {
+    const lv = lvs[lvIndex];
+    const position = lv.content.positions[posIndex];
+    const key = `${lvIndex}-${posIndex}`;
     
-    if (selectedPosition && modalLvIndex === lvIndex && modalPosIndex === posIndex) {
-      setSelectedPosition(updatedPosition);
+    const updatedPosition = {
+      ...position,
+      title: editedValues[`${key}-title`] !== undefined ? editedValues[`${key}-title`] : position.title,
+      description: editedValues[`${key}-description`] !== undefined ? editedValues[`${key}-description`] : position.description,
+      quantity: editedValues[`${key}-quantity`] !== undefined ? parseFloat(editedValues[`${key}-quantity`]) : position.quantity,
+      unit: editedValues[`${key}-unit`] !== undefined ? editedValues[`${key}-unit`] : position.unit,
+      unitPrice: editedValues[`${key}-unitPrice`] !== undefined ? parseFloat(editedValues[`${key}-unitPrice`]) : position.unitPrice,
+      isNEP: editedValues[`${key}-isNEP`] !== undefined ? editedValues[`${key}-isNEP`] : (position.isNEP || false)
+    };
+    
+    updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
+    
+    const updatedPositions = [...lv.content.positions];
+    updatedPositions[posIndex] = updatedPosition;
+    
+    const totals = recalculateTotalsWithNEP(updatedPositions);
+    
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        positions: updatedPositions,
+        totalSum: totals.totalSum
+      })
+    });
+    
+    if (res.ok) {
+      const newLvs = [...lvs];
+      newLvs[lvIndex].content.positions = updatedPositions;
+      newLvs[lvIndex].content.totalSum = totals.totalSum;
+      newLvs[lvIndex].content.nepSum = totals.nepSum;
+      setLvs(newLvs);
+      
+      if (selectedPosition && modalLvIndex === lvIndex && modalPosIndex === posIndex) {
+        setSelectedPosition(updatedPosition);
+      }
+      
+      setEditingPosition(null);
+      setEditedValues({});
     }
-    
-    setEditingPosition(null);
-    setEditedValues({});
-  }
-}; 
+  }; 
   
   const handleDeletePosition = async (lvIndex, posIndex) => {
     if (!window.confirm('Position wirklich löschen?')) return;
@@ -143,47 +212,46 @@ const handleSavePosition = async (lvIndex, posIndex) => {
     if (res.ok) {
       const newLvs = [...lvs];
       const remainingPositions = [...lv.content.positions];
-remainingPositions.splice(posIndex, 1);
-newLvs[lvIndex].content.positions = remainingPositions;
-newLvs[lvIndex].content.totalSum = remainingPositions.reduce((sum, pos) => 
-  sum + (parseFloat(pos.totalPrice) || 0), 0
-);
+      remainingPositions.splice(posIndex, 1);
+      newLvs[lvIndex].content.positions = remainingPositions;
+      newLvs[lvIndex].content.totalSum = remainingPositions.reduce((sum, pos) => 
+        sum + (parseFloat(pos.totalPrice) || 0), 0
+      );
 
-// Backend-LV aktualisieren
-await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    positions: remainingPositions,
-    totalSum: remainingPositions.reduce((sum, pos) => sum + (parseFloat(pos.totalPrice) || 0), 0)
-  })
-});      
+      // Backend-LV aktualisieren
+      await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          positions: remainingPositions,
+          totalSum: remainingPositions.reduce((sum, pos) => sum + (parseFloat(pos.totalPrice) || 0), 0)
+        })
+      });      
       setLvs(newLvs);
     }
   };
 
   const handleAddPosition = async (lvIndex) => {
-  const lv = lvs[lvIndex];
-  
-  if (!newPosition.title) {
-    alert('Bitte geben Sie eine Bezeichnung ein');
-    return;
-  }
-  
-  // NEU: Stelle sicher, dass isNEP mitgesendet wird
-  const positionToAdd = {
-    ...newPosition,
-    isNEP: newPosition.isNEP || false  // Explizit setzen
-  };
-  
-  const res = await fetch(
-    apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/position`),
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(positionToAdd)  // Verwende positionToAdd statt newPosition
+    const lv = lvs[lvIndex];
+    
+    if (!newPosition.title) {
+      alert('Bitte geben Sie eine Bezeichnung ein');
+      return;
     }
-  );
+    
+    const positionToAdd = {
+      ...newPosition,
+      isNEP: newPosition.isNEP || false
+    };
+    
+    const res = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/position`),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(positionToAdd)
+      }
+    );
     
     if (res.ok) {
       // Refresh LVs
@@ -193,98 +261,75 @@ await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`)
         setLvs(lvData.lvs || []);
       }    
      
-     setAddingPosition(null);
-     setNewPosition({
-       title: '',
-       description: '',
-       quantity: 1,
-       unit: 'Stk',
-       unitPrice: 0,
-       isNEP: false  // NEU: Reset auch isNEP
-    });
-   }
- };
-
-// NEU HIER EINFÜGEN:
-const recalculateTotalsWithNEP = (positions) => {
-  let totalSum = 0;
-  let nepSum = 0;
-  
-  positions.forEach(pos => {
-    const posTotal = parseFloat(pos.totalPrice) || 0;
-    if (pos.isNEP) {
-      nepSum += posTotal;
-    } else {
-      totalSum += posTotal;
+      setAddingPosition(null);
+      setNewPosition({
+        title: '',
+        description: '',
+        quantity: 1,
+        unit: 'Stk',
+        unitPrice: 0,
+        isNEP: false
+      });
     }
-  });
-  
-  return {
-    totalSum: Math.round(totalSum * 100) / 100,
-    nepSum: Math.round(nepSum * 100) / 100
   };
-};
 
- const calculateTotal = (lv) => {
-   // Zuerst prüfen ob totalSum vorhanden ist
-   if (lv.content?.totalSum) {
-     return parseFloat(lv.content.totalSum) || 0;
-   }
-   
-   // Fallback: Positionen summieren
-   if (!lv.content || !lv.content.positions) return 0;
-   return lv.content.positions.reduce((sum, pos) => {
-     if (pos.totalPrice) return sum + parseFloat(pos.totalPrice) || 0;
-     if (pos.quantity && pos.unitPrice) {
-       return sum + (parseFloat(pos.quantity) * parseFloat(pos.unitPrice)) || 0;
-     }
-     return sum;
-   }, 0);
- };
+  const calculateTotal = (lv) => {
+    if (lv.content?.totalSum) {
+      return parseFloat(lv.content.totalSum) || 0;
+    }
+    
+    if (!lv.content || !lv.content.positions) return 0;
+    return lv.content.positions.reduce((sum, pos) => {
+      if (pos.totalPrice) return sum + parseFloat(pos.totalPrice) || 0;
+      if (pos.quantity && pos.unitPrice) {
+        return sum + (parseFloat(pos.quantity) * parseFloat(pos.unitPrice)) || 0;
+      }
+      return sum;
+    }, 0);
+  };
 
- // Total berechnen für Budget-Vergleich
-  // eslint-disable-next-line no-unused-vars
+  // Total berechnen für Budget-Vergleich
   const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
 
- // State für Budget-Optimierung
- const [showOptimizations, setShowOptimizations] = useState(false);
- const [optimizations, setOptimizations] = useState(null);
- const [loadingOptimizations, setLoadingOptimizations] = useState(false);
+  // State für Budget-Optimierung
+  const [showOptimizations, setShowOptimizations] = useState(false);
+  const [optimizations, setOptimizations] = useState(null);
+  const [loadingOptimizations, setLoadingOptimizations] = useState(false);
 
- // Funktion zum Laden der Optimierungen
- const loadOptimizations = async () => {
-  setLoadingOptimizations(true);
-  try {
-    const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
-    const grandTotal = total * 1.05 * 1.19; // Mit allen Zuschlägen
-    
-    const response = await fetch(apiUrl(`/api/projects/${projectId}/budget-optimization`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        currentTotal: grandTotal,
-        targetBudget: project.budget, // Jetzt haben wir project.budget!
-        lvBreakdown: lvs.map(lv => ({
-  tradeCode: lv.trade_code || lv.code,  // <-- Fallback auf 'code'
-  tradeName: lv.trade_name || lv.name,  // <-- Fallback auf 'name'
-  total: calculateTotal(lv)
-}))
-      })
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      setOptimizations(data);
-      setShowOptimizations(true);
+  // Funktion zum Laden der Optimierungen
+  const loadOptimizations = async () => {
+    setLoadingOptimizations(true);
+    try {
+      const total = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+      const grandTotal = total * 1.05 * 1.19;
+      
+      const response = await fetch(apiUrl(`/api/projects/${projectId}/budget-optimization`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentTotal: grandTotal,
+          targetBudget: project.budget,
+          lvBreakdown: lvs.map(lv => ({
+            tradeCode: lv.trade_code || lv.code,
+            tradeName: lv.trade_name || lv.name,
+            total: calculateTotal(lv)
+          }))
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setOptimizations(data);
+        setShowOptimizations(true);
+      }
+    } catch (err) {
+      console.error('Failed to load optimizations:', err);
+    } finally {
+      setLoadingOptimizations(false);
     }
-  } catch (err) {
-    console.error('Failed to load optimizations:', err);
-  } finally {
-    setLoadingOptimizations(false);
-  }
-};
+  };
 
-// Budget-Komponenten
+  // Budget-Komponenten
   const BudgetSuccess = ({ totalSum, budget }) => (
     <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-6 shadow-lg">
       <div className="flex items-center gap-3">
@@ -366,15 +411,14 @@ const recalculateTotalsWithNEP = (positions) => {
       <h4 className="text-lg font-bold text-gray-800 mb-4">
         Einsparmöglichkeiten (Potenzial: {formatCurrency(optimizations.totalPossibleSaving)})
       </h4>
-       {/* VEREINFACHTER HINWEISTEXT */}
-    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-      <p className="text-sm text-blue-700">
-        <strong>Hinweis:</strong> Diese Vorschläge sind Richtwerte zur Kostensenkung. 
-        Die konkreten Einsparungen können im Rahmen der Auftragsvergabe mit den jeweiligen 
-        Fachbetrieben individuell abgestimmt werden. Alternativ können Sie die entsprechenden 
-        Positionen direkt in den Leistungsverzeichnissen über die Bearbeitungsfunktion anpassen.
-      </p>
-    </div>
+      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+        <p className="text-sm text-blue-700">
+          <strong>Hinweis:</strong> Diese Vorschläge sind Richtwerte zur Kostensenkung. 
+          Die konkreten Einsparungen können im Rahmen der Auftragsvergabe mit den jeweiligen 
+          Fachbetrieben individuell abgestimmt werden. Alternativ können Sie die entsprechenden 
+          Positionen direkt in den Leistungsverzeichnissen über die Bearbeitungsfunktion anpassen.
+        </p>
+      </div>
       
       <div className="space-y-3">
         {optimizations.optimizations.map((opt, idx) => (
@@ -417,14 +461,10 @@ const recalculateTotalsWithNEP = (positions) => {
     </div>
   );
 
-      
   const handleExportPDF = async (tradeId, withPrices = true) => {
     try {
       const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv.pdf?withPrices=${withPrices}`);
-      
-      // Öffne PDF in neuem Tab
       window.open(url, '_blank');
-      
     } catch (err) {
       alert('PDF-Export fehlgeschlagen: ' + err.message);
     }
@@ -434,13 +474,252 @@ const recalculateTotalsWithNEP = (positions) => {
     try {
       const withPrices = exportMode === 'with-prices';
       const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${withPrices}`);
-      
-      // Öffne PDF in neuem Tab
       window.open(url, '_blank');
-      
     } catch (err) {
       alert('Gesamt-PDF-Export fehlgeschlagen: ' + err.message);
     }
+  };
+
+  const PositionModal = () => {
+    if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
+    
+    const lv = lvs[modalLvIndex];
+    const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
+    
+    const handleSave = async () => {
+      const form = document.getElementById('position-edit-form');
+      const formData = new FormData(form);
+      
+      const updatedPosition = {
+        ...selectedPosition,
+        pos: selectedPosition.pos,
+        title: formData.get('title'),
+        description: formData.get('description'),
+        quantity: parseFloat(formData.get('quantity')) || 0,
+        unit: formData.get('unit'),
+        unitPrice: parseFloat(formData.get('unitPrice')) || 0,
+        isNEP: formData.get('isNEP') === 'on'
+      };
+      updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
+      
+      const updatedPositions = [...lv.content.positions];
+      updatedPositions[modalPosIndex] = updatedPosition;
+      
+      const totals = recalculateTotalsWithNEP(updatedPositions);
+      
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          positions: updatedPositions,
+          totalSum: totals.totalSum
+        })
+      });
+      
+      if (res.ok) {
+        const newLvs = [...lvs];
+        newLvs[modalLvIndex].content.positions = updatedPositions;
+        newLvs[modalLvIndex].content.totalSum = totals.totalSum;
+        newLvs[modalLvIndex].content.nepSum = totals.nepSum;
+        setLvs(newLvs);
+        setSelectedPosition(updatedPosition);
+        setEditingPosition(null);
+        setEditedValues({});
+      }
+    };
+    
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-2xl font-bold">Position {selectedPosition.pos}</h3>
+                <p className="text-blue-100 mt-1">{lv.trade_name || lv.name}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedPosition(null);
+                  setModalLvIndex(null);
+                  setModalPosIndex(null);
+                  setEditingPosition(null);
+                  setEditedValues({});
+                }}
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6">
+            {isEditing ? (
+              <form id="position-edit-form" className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
+                  <input
+                    type="text"
+                    name="title"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    defaultValue={selectedPosition.title}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
+                  <textarea
+                    name="description"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    rows={6}
+                    defaultValue={selectedPosition.description}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
+                    <input
+                      type="number"
+                      name="quantity"
+                      step="0.10"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      defaultValue={selectedPosition.quantity}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Einheit</label>
+                    <input
+                      type="text"
+                      name="unit"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      defaultValue={selectedPosition.unit}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Einzelpreis (€)</label>
+                    <input
+                      type="number"
+                      name="unitPrice"
+                      step="0.10"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      defaultValue={selectedPosition.unitPrice}
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="isNEP"
+                      className="mr-2 w-4 h-4 text-teal-500"
+                      defaultChecked={selectedPosition.isNEP || false}
+                    />
+                    <span className="font-medium text-gray-700">NEP (Nur-Einheits-Preis)</span>
+                    <span className="ml-2 text-sm text-gray-500">Position wird nicht zur Gesamtsumme addiert</span>
+                  </label>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedPosition.title}</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {selectedPosition.description || 'Keine Beschreibung vorhanden'}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4 bg-blue-50 rounded-lg p-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Menge</p>
+                    <p className="text-lg font-semibold">
+                      {safeToFixed(selectedPosition.quantity)} {selectedPosition.unit}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Einzelpreis</p>
+                    <p className="text-lg font-semibold">{formatCurrency(selectedPosition.unitPrice)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Gesamtpreis</p>
+                    <p className="text-lg font-semibold text-teal-600">
+                      {formatCurrency(selectedPosition.totalPrice)}
+                    </p>
+                  </div>
+                </div>
+                
+                {selectedPosition.isNEP && (
+                  <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <p className="text-sm font-medium text-yellow-800">
+                      ⚠️ NEP-Position (Eventualposition)
+                    </p>
+                    <p className="text-xs text-yellow-600 mt-1">
+                      Diese Position wird nur mit Einheitspreis ausgewiesen, aber nicht zur Gesamtsumme addiert.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Footer */}
+          <div className="border-t bg-gray-50 px-6 py-4 rounded-b-2xl">
+            <div className="flex justify-between">
+              <button
+                onClick={() => {
+                  if (window.confirm('Diese Position wirklich löschen?')) {
+                    handleDeletePosition(modalLvIndex, modalPosIndex);
+                    setSelectedPosition(null);
+                    setModalLvIndex(null);
+                    setModalPosIndex(null);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                🗑 Löschen
+              </button>
+              
+              <div className="flex gap-3">
+                {isEditing ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      ✔ Speichern
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingPosition(null);
+                        setEditedValues({});
+                      }}
+                      className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      ✗ Abbrechen
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setEditingPosition(`${modalLvIndex}-${modalPosIndex}`)}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    ✎ Bearbeiten
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) return (
@@ -459,292 +738,81 @@ const recalculateTotalsWithNEP = (positions) => {
       </div>
     </div>
   );
-  
-  const PositionModal = () => {
-  if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
-  
-  const lv = lvs[modalLvIndex];
-  const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
-  
-  const handleSave = async () => {
-    const form = document.getElementById('position-edit-form');
-    const formData = new FormData(form);
-    
-    const updatedPosition = {
-      ...selectedPosition,
-      pos: selectedPosition.pos,
-      title: formData.get('title'),
-      description: formData.get('description'),
-      quantity: parseFloat(formData.get('quantity')) || 0,
-      unit: formData.get('unit'),
-      unitPrice: parseFloat(formData.get('unitPrice')) || 0,
-      isNEP: formData.get('isNEP') === 'on'
-    };
-    updatedPosition.totalPrice = updatedPosition.quantity * updatedPosition.unitPrice;
-    
-    const updatedPositions = [...lv.content.positions];
-    updatedPositions[modalPosIndex] = updatedPosition;
-    
-    // NEU: Verwende recalculateTotalsWithNEP für korrekte Summenberechnung
-    const totals = recalculateTotalsWithNEP(updatedPositions);
-    
-    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        positions: updatedPositions,
-        totalSum: totals.totalSum  // Verwende NEP-bereinigte Summe
-      })
-    });
-    
-    if (res.ok) {
-      const newLvs = [...lvs];
-      newLvs[modalLvIndex].content.positions = updatedPositions;
-      newLvs[modalLvIndex].content.totalSum = totals.totalSum;
-      newLvs[modalLvIndex].content.nepSum = totals.nepSum;
-      setLvs(newLvs);
-      setSelectedPosition(updatedPosition);
-      setEditingPosition(null);
-      setEditedValues({});
-    }
-  };
-  
+
+  // HAUPT-RETURN
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-2xl font-bold">Position {selectedPosition.pos}</h3>
-              <p className="text-blue-100 mt-1">{lv.trade_name || lv.name}</p>
-            </div>
-            <button
-              onClick={() => {
-                setSelectedPosition(null);
-                setModalLvIndex(null);
-                setModalPosIndex(null);
-                setEditingPosition(null);
-                setEditedValues({});
-              }}
-              className="text-white/80 hover:text-white transition-colors"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div className="p-6">
-          {isEditing ? (
-            <form id="position-edit-form" className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
-                <input
-                  type="text"
-                  name="title"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                  defaultValue={selectedPosition.title}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
-                <textarea
-                  name="description"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                  rows={6}
-                  defaultValue={selectedPosition.description}
-                />
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    step="0.10"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    defaultValue={selectedPosition.quantity}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Einheit</label>
-                  <input
-                    type="text"
-                    name="unit"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    defaultValue={selectedPosition.unit}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Einzelpreis (€)</label>
-                  <input
-                    type="number"
-                    name="unitPrice"
-                    step="0.10"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    defaultValue={selectedPosition.unitPrice}
-                  />
-                </div>
-              </div>
-              
-              {/* NEP-Checkbox AUSSERHALB des grid */}
-              <div className="mt-4">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="isNEP"
-                    className="mr-2 w-4 h-4 text-teal-500"
-                    defaultChecked={selectedPosition.isNEP || false}
-                  />
-                  <span className="font-medium text-gray-700">NEP (Nur-Einheits-Preis)</span>
-                  <span className="ml-2 text-sm text-gray-500">Position wird nicht zur Gesamtsumme addiert</span>
-                </label>
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedPosition.title}</h4>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-700 whitespace-pre-wrap">
-                    {selectedPosition.description || 'Keine Beschreibung vorhanden'}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4 bg-blue-50 rounded-lg p-4">
-                <div>
-                  <p className="text-sm text-gray-600">Menge</p>
-                  <p className="text-lg font-semibold">
-                    {safeToFixed(selectedPosition.quantity)} {selectedPosition.unit}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Einzelpreis</p>
-                  <p className="text-lg font-semibold">{formatCurrency(selectedPosition.unitPrice)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Gesamtpreis</p>
-                  <p className="text-lg font-semibold text-teal-600">
-                    {formatCurrency(selectedPosition.totalPrice)}
-                  </p>
-                </div>
-              </div>
-              
-              {/* NEP-Warnung NACH dem grid */}
-              {selectedPosition.isNEP && (
-                <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                  <p className="text-sm font-medium text-yellow-800">
-                    ⚠️ NEP-Position (Eventualposition)
-                  </p>
-                  <p className="text-xs text-yellow-600 mt-1">
-                    Diese Position wird nur mit Einheitspreis ausgewiesen, aber nicht zur Gesamtsumme addiert.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        
-        {/* Footer */}
-        <div className="border-t bg-gray-50 px-6 py-4 rounded-b-2xl">
-          <div className="flex justify-between">
-            <button
-              onClick={() => {
-                if (window.confirm('Diese Position wirklich löschen?')) {
-                  handleDeletePosition(modalLvIndex, modalPosIndex);
-                  setSelectedPosition(null);
-                  setModalLvIndex(null);
-                  setModalPosIndex(null);
-                }
-              }}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              🗑 Löschen
-            </button>
-            
-            <div className="flex gap-3">
-              {isEditing ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    ✔ Speichern
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingPosition(null);
-                      setEditedValues({});
-                    }}
-                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    ✗ Abbrechen
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setEditingPosition(`${modalLvIndex}-${modalPosIndex}`)}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  ✎ Bearbeiten
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      <PositionModal />
+      
+      {/* Background Effects */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 right-10 w-96 h-96 bg-teal-500 rounded-full filter blur-3xl"></div>
+        <div className="absolute bottom-10 left-10 w-96 h-96 bg-blue-600 rounded-full filter blur-3xl"></div>
       </div>
-    </div>
-  );
-};
-
-// HIER KOMMEN DIE LOADING UND ERROR RETURNS
-if (loading) return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-    <div className="text-center">
-      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
-      <p className="mt-4 text-white">Leistungsverzeichnis wird geladen...</p>
-    </div>
-  </div>
-);
-
-if (error) return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-    <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-6 max-w-md">
-      <p className="text-red-200">Fehler: {error}</p>
-    </div>
-  </div>
-);
-
-// HAUPT-RETURN
-return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-    {/* Position Detail Modal verwenden */}
-    <PositionModal />
-    
-    {/* Background Effects */}
-    <div className="absolute inset-0 opacity-10">
-      <div className="absolute top-10 right-10 w-96 h-96 bg-teal-500 rounded-full filter blur-3xl"></div>
-      <div className="absolute bottom-10 left-10 w-96 h-96 bg-blue-600 rounded-full filter blur-3xl"></div>
-    </div>
-   
+     
       <div className="relative max-w-7xl mx-auto px-4 py-12">
-        {/* Header */}
+        {/* ÄNDERUNG: Header mit Vollständigkeits-Indikator */}
         <div className="text-center mb-12">
           <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-            Ihr Leistungsverzeichnis
+            {projectComplete 
+              ? 'Vollständiges Leistungsverzeichnis' 
+              : 'Leistungsverzeichnis (In Bearbeitung)'}
           </h1>
           <p className="text-xl text-gray-300">
             VOB-konform erstellt und bereit zum Export
           </p>
+          
+          {/* NEU: Status-Badge */}
+          {!projectComplete && pendingTrades.length > 0 && (
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 rounded-full">
+              <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-yellow-300">
+                {pendingTrades.length} Gewerk(e) noch nicht bearbeitet
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* NEU: Erfolgs-Nachricht */}
+        {showSuccessMessage && (
+          <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-4 mb-6">
+            <p className="text-green-300">{showSuccessMessage}</p>
+          </div>
+        )}
+
+        {/* NEU: Info-Box für unvollständige Projekte */}
+        {!projectComplete && pendingTrades.length > 0 && (
+          <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-6 mb-8">
+            <div className="flex items-start gap-3">
+              <svg className="w-6 h-6 text-yellow-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-yellow-300 mb-2">
+                  Hinweis: Projekt noch unvollständig
+                </h3>
+                <p className="text-yellow-200 mb-3">
+                  Folgende Gewerke haben noch kein Leistungsverzeichnis:
+                </p>
+                <ul className="list-disc list-inside text-yellow-100 mb-4">
+                  {pendingTrades.map(trade => (
+                    <li key={trade.id}>{trade.name}</li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => navigate(`/project/${projectId}/lv-review`)}
+                  className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                >
+                  Zur Übersicht zurück →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Export Options */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20 mb-8">
@@ -791,7 +859,12 @@ return (
         ) : (
           <div className="grid gap-6 mb-8">
             {lvs.map((lv, idx) => (
-              <div key={idx} className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/20">
+              <div 
+                key={idx} 
+                className={`bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border ${
+                  highlightedLv === lv.trade_id ? 'border-green-400' : 'border-white/20'
+                }`}
+              >
                 <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 px-6 py-4 flex justify-between items-center">
                   <h3 className="text-xl font-bold text-white">
                     {lv.name || lv.trade_name || lv.code}
@@ -833,34 +906,34 @@ return (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm text-white">
                         <thead className="bg-white/10">
-  <tr>
-    <th className="text-left p-3 font-medium">Pos.</th>
-    <th className="text-left p-3 font-medium">Bezeichnung</th>
-    <th className="text-right p-3 font-medium">Menge</th>
-    <th className="text-left p-3 font-medium">Einheit</th>
-    <th className="text-right p-3 font-medium">EP (€)</th>
-    <th className="text-right p-3 font-medium">GP (€)</th>
-    <th className="text-center p-3 font-medium">NEP</th>
-    <th className="text-center p-3 font-medium">Aktionen</th>
-  </tr>
-</thead>
+                          <tr>
+                            <th className="text-left p-3 font-medium">Pos.</th>
+                            <th className="text-left p-3 font-medium">Bezeichnung</th>
+                            <th className="text-right p-3 font-medium">Menge</th>
+                            <th className="text-left p-3 font-medium">Einheit</th>
+                            <th className="text-right p-3 font-medium">EP (€)</th>
+                            <th className="text-right p-3 font-medium">GP (€)</th>
+                            <th className="text-center p-3 font-medium">NEP</th>
+                            <th className="text-center p-3 font-medium">Aktionen</th>
+                          </tr>
+                        </thead>
                         <tbody>
                           {lv.content.positions.map((pos, pidx) => (
                             <tr 
-  key={pidx} 
-  className={`border-t border-white/10 hover:bg-white/5 cursor-pointer ${
-    pos.isNEP ? 'opacity-75 bg-yellow-500/5' : ''
-  }`}
-  onClick={() => {
-    setSelectedPosition(pos);
-    setModalLvIndex(idx);
-    setModalPosIndex(pidx);
-  }}
->
+                              key={pidx} 
+                              className={`border-t border-white/10 hover:bg-white/5 cursor-pointer ${
+                                pos.isNEP ? 'opacity-75 bg-yellow-500/5' : ''
+                              }`}
+                              onClick={() => {
+                                setSelectedPosition(pos);
+                                setModalLvIndex(idx);
+                                setModalPosIndex(pidx);
+                              }}
+                            >
                               <td className="p-3">
-  {pos.pos || `${idx+1}.${pidx+1}`}
-  {pos.isNEP && <span className="ml-1 text-xs text-yellow-400">(NEP)</span>}
-</td>
+                                {pos.pos || `${idx+1}.${pidx+1}`}
+                                {pos.isNEP && <span className="ml-1 text-xs text-yellow-400">(NEP)</span>}
+                              </td>
                               <td className="p-3">
                                 {editingPosition === `${idx}-${pidx}` ? (
                                   <input
@@ -909,40 +982,39 @@ return (
                               <td className="text-right p-3 font-medium text-teal-400">
                                 {pos.totalPrice ? safeToFixed(pos.totalPrice) : '-'}
                               </td>
-                              {/* HIER NEU EINFÜGEN - NACH der totalPrice Spalte, VOR der Aktionen-Spalte: */}
-    <td className="p-3 text-center">
-      <input
-        type="checkbox"
-        checked={pos.isNEP || false}
-        onChange={async (e) => {
-          e.stopPropagation();
-          
-          const updatedPositions = [...lv.content.positions];
-          updatedPositions[pidx] = { ...pos, isNEP: e.target.checked };
-          
-          const totals = recalculateTotalsWithNEP(updatedPositions);
-          
-          const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              positions: updatedPositions,
-              totalSum: totals.totalSum
-            })
-          });
-          
-          if (res.ok) {
-            const newLvs = [...lvs];
-            newLvs[idx].content.positions = updatedPositions;
-            newLvs[idx].content.totalSum = totals.totalSum;
-            newLvs[idx].content.nepSum = totals.nepSum;
-            setLvs(newLvs);
-          }
-        }}
-        className="w-4 h-4 text-teal-500"
-        title={pos.isNEP ? "NEP-Position (nicht in Summe)" : "Normale Position"}
-      />
-    </td>                              
+                              <td className="p-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={pos.isNEP || false}
+                                  onChange={async (e) => {
+                                    e.stopPropagation();
+                                    
+                                    const updatedPositions = [...lv.content.positions];
+                                    updatedPositions[pidx] = { ...pos, isNEP: e.target.checked };
+                                    
+                                    const totals = recalculateTotalsWithNEP(updatedPositions);
+                                    
+                                    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ 
+                                        positions: updatedPositions,
+                                        totalSum: totals.totalSum
+                                      })
+                                    });
+                                    
+                                    if (res.ok) {
+                                      const newLvs = [...lvs];
+                                      newLvs[idx].content.positions = updatedPositions;
+                                      newLvs[idx].content.totalSum = totals.totalSum;
+                                      newLvs[idx].content.nepSum = totals.nepSum;
+                                      setLvs(newLvs);
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-teal-500"
+                                  title={pos.isNEP ? "NEP-Position (nicht in Summe)" : "Normale Position"}
+                                />
+                              </td>                              
                               <td className="p-3 text-center">
                                 {editingPosition === `${idx}-${pidx}` ? (
                                   <div className="flex gap-2 justify-center">
@@ -1033,17 +1105,16 @@ return (
                             value={newPosition.description}
                             onChange={(e) => setNewPosition({...newPosition, description: e.target.value})}
                           />
-                          {/* HIER NEU EINFÜGEN - NACH der textarea, VOR den Buttons: */}
-    <label className="flex items-center text-white cursor-pointer">
-      <input
-        type="checkbox"
-        checked={newPosition.isNEP}
-        onChange={(e) => setNewPosition({...newPosition, isNEP: e.target.checked})}
-        className="mr-2 w-4 h-4 text-teal-500"
-      />
-      <span>NEP (Nur-Einheits-Preis) - Position wird nicht zur Gesamtsumme addiert</span>
-      <span className="ml-2 text-xs text-gray-400">(Eventualposition)</span>
-    </label>                          
+                          <label className="flex items-center text-white cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={newPosition.isNEP}
+                              onChange={(e) => setNewPosition({...newPosition, isNEP: e.target.checked})}
+                              className="mr-2 w-4 h-4 text-teal-500"
+                            />
+                            <span>NEP (Nur-Einheits-Preis) - Position wird nicht zur Gesamtsumme addiert</span>
+                            <span className="ml-2 text-xs text-gray-400">(Eventualposition)</span>
+                          </label>                          
                           <div className="flex gap-2 justify-end">
                             <button
                               onClick={() => handleAddPosition(idx)}
@@ -1086,147 +1157,175 @@ return (
         )}
 
         {/* Cost Summary */}
-<div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-  <h3 className="text-2xl font-bold text-white mb-6">Kostenzusammenfassung</h3>
-  
-  <div className="space-y-3">
-    {/* HIER MODIFIZIEREN - Die Einzelnen Gewerke: */}
-    {lvs.map((lv, idx) => (
-      <div key={idx} className="flex justify-between text-white">
-        <span className="text-gray-300">
-          {lv.trade_name || lv.name || lv.trade_code}
-          {/* NEU: NEP-Hinweis beim Gewerkenamen */}
-          {lv.content?.nepSum > 0 && (
-            <span className="text-xs text-yellow-400 ml-2">
-              (enthält NEP-Positionen)
-            </span>
-          )}
-        </span>
-        <span className="font-medium">
-          {formatCurrency(calculateTotal(lv))}
-          {/* NEU: NEP-Summe separat anzeigen */}
-          {lv.content?.nepSum > 0 && (
-            <span className="text-xs text-gray-400 ml-2">
-              + NEP: {formatCurrency(lv.content.nepSum)}
-            </span>
-          )}
-        </span>
-      </div>
-    ))}
-    
-    {/* Berechnungen */}
-    <div className="border-t border-white/20 pt-4 mt-4 space-y-2">
-      {(() => {
-        const nettoSum = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
-        const contingency = nettoSum * 0.05;
-        const subtotal = nettoSum + contingency;
-        const vat = subtotal * 0.19;
-        const grandTotal = subtotal + vat;
-        
-        return (
-          <>
-            <div className="flex justify-between text-xl font-semibold text-white">
-              <span>Netto-Summe:</span>
-              <span>{formatCurrency(nettoSum)}</span>
-            </div>
+        <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
+          <h3 className="text-2xl font-bold text-white mb-6">Kostenzusammenfassung</h3>
+          
+          <div className="space-y-3">
+            {lvs.map((lv, idx) => (
+              <div key={idx} className="flex justify-between text-white">
+                <span className="text-gray-300">
+                  {lv.trade_name || lv.name || lv.trade_code}
+                  {lv.content?.nepSum > 0 && (
+                    <span className="text-xs text-yellow-400 ml-2">
+                      (enthält NEP-Positionen)
+                    </span>
+                  )}
+                </span>
+                <span className="font-medium">
+                  {formatCurrency(calculateTotal(lv))}
+                  {lv.content?.nepSum > 0 && (
+                    <span className="text-xs text-gray-400 ml-2">
+                      + NEP: {formatCurrency(lv.content.nepSum)}
+                    </span>
+                  )}
+                </span>
+              </div>
+            ))}
             
-            <div className="flex justify-between text-gray-300">
-              <span>Unvorhergesehenes (5%):</span>
-              <span>{formatCurrency(contingency)}</span>
+            <div className="border-t border-white/20 pt-4 mt-4 space-y-2">
+              {(() => {
+                const nettoSum = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+                const contingency = nettoSum * 0.05;
+                const subtotal = nettoSum + contingency;
+                const vat = subtotal * 0.19;
+                const grandTotal = subtotal + vat;
+                
+                return (
+                  <>
+                    <div className="flex justify-between text-xl font-semibold text-white">
+                      <span>Netto-Summe:</span>
+                      <span>{formatCurrency(nettoSum)}</span>
+                    </div>
+                    
+                    <div className="flex justify-between text-gray-300">
+                      <span>Unvorhergesehenes (5%):</span>
+                      <span>{formatCurrency(contingency)}</span>
+                    </div>
+                    
+                    <div className="flex justify-between text-gray-300">
+                      <span>MwSt. (19%):</span>
+                      <span>{formatCurrency(vat)}</span>
+                    </div>
+                    
+                    <div className="flex justify-between text-2xl font-bold text-teal-400 border-t border-white/20 pt-4 mt-4">
+                      <span>Gesamtsumme:</span>
+                      <span>{formatCurrency(grandTotal)}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
-            
-            <div className="flex justify-between text-gray-300">
-              <span>MwSt. (19%):</span>
-              <span>{formatCurrency(vat)}</span>
-            </div>
-            
-            <div className="flex justify-between text-2xl font-bold text-teal-400 border-t border-white/20 pt-4 mt-4">
-              <span>Gesamtsumme:</span>
-              <span>{formatCurrency(grandTotal)}</span>
-            </div>
-          </>
-        );
-      })()}
-    </div>
-  </div>
-</div>
+          </div>
+        </div>
 
-{/* Budget-Vergleich nur wenn Budget vorhanden */}
-{project && project.budget && project.budget > 0 && (
-  <div className="mt-8">
-    {(() => {
-      const nettoSum = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
-      const contingency = nettoSum * 0.05;
-      const subtotal = nettoSum + contingency;
-      const vat = subtotal * 0.19;
-      const grandTotal = subtotal + vat;
-      
-      if (grandTotal <= parseFloat(project.budget)) {
-        return (
-          <BudgetSuccess 
-            totalSum={grandTotal}
-            budget={parseFloat(project.budget)}
-          />
-        );
-      } else {
-        return (
-          <BudgetExceeded
-            totalSum={grandTotal}
-            budget={parseFloat(project.budget)}
-            onLoadOptimizations={loadOptimizations}
-            loadingOptimizations={loadingOptimizations}
-            showOptimizations={showOptimizations}
-            optimizations={optimizations}
-          />
-        );
-      }
-    })()}
-  </div>
-)}
+        {/* Budget-Vergleich nur wenn Budget vorhanden */}
+        {project && project.budget && project.budget > 0 && (
+          <div className="mt-8">
+            {(() => {
+              const nettoSum = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
+              const contingency = nettoSum * 0.05;
+              const subtotal = nettoSum + contingency;
+              const vat = subtotal * 0.19;
+              const grandTotal = subtotal + vat;
+              
+              if (grandTotal <= parseFloat(project.budget)) {
+                return (
+                  <BudgetSuccess 
+                    totalSum={grandTotal}
+                    budget={parseFloat(project.budget)}
+                  />
+                );
+              } else {
+                return (
+                  <BudgetExceeded
+                    totalSum={grandTotal}
+                    budget={parseFloat(project.budget)}
+                    onLoadOptimizations={loadOptimizations}
+                    loadingOptimizations={loadingOptimizations}
+                    showOptimizations={showOptimizations}
+                    optimizations={optimizations}
+                  />
+                );
+              }
+            })()}
+          </div>
+        )}
         
-        {/* Action Buttons */}
-<div className="flex flex-wrap gap-4 justify-center mt-12">
-  <button
-    onClick={() => window.print()}
-    className="px-8 py-4 bg-white/10 backdrop-blur border border-white/30 text-white rounded-lg hover:bg-white/20 transition-all"
-  >
-    🖨 Drucken
-  </button>
-  <button
-    onClick={() => {
-      const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${exportMode === 'with-prices'}`);
-      window.open(url, '_blank');
-    }}
-    className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-  >
-    💾 Als PDF speichern
-  </button>
-  <button
-    onClick={() => {
-      const mailtoLink = `mailto:?subject=Leistungsverzeichnis&body=Bitte finden Sie anbei das Leistungsverzeichnis`;
-      window.location.href = mailtoLink;
-    }}
-    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-  >
-    ✉️ Per E-Mail versenden
-  </button>
-  <button
-    onClick={() => {
-      sessionStorage.setItem('addingAdditionalTrade', 'true');
-      navigate(`/project/${projectId}/add-trade?additional=true`);
-    }}
-    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-  >
-    <span className="text-xl mr-2">+</span> Weiteres Gewerk hinzufügen
-  </button>
-</div>
+        {/* ÄNDERUNG: Erweiterte Action Buttons */}
+        <div className="flex flex-wrap gap-4 justify-center mt-12">
+          <button
+            onClick={() => window.print()}
+            className="px-8 py-4 bg-white/10 backdrop-blur border border-white/30 text-white rounded-lg hover:bg-white/20 transition-all"
+          >
+            🖨 Drucken
+          </button>
+          <button
+            onClick={() => {
+              const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${exportMode === 'with-prices'}`);
+              window.open(url, '_blank');
+            }}
+            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+          >
+            💾 Als PDF speichern
+          </button>
+          <button
+            onClick={() => {
+              const mailtoLink = `mailto:?subject=Leistungsverzeichnis&body=Bitte finden Sie anbei das Leistungsverzeichnis`;
+              window.location.href = mailtoLink;
+            }}
+            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+          >
+            ✉️ Per E-Mail versenden
+          </button>
+          
+          {/* NEU: Zurück zur Übersicht Button */}
+          {!projectComplete && (
+            <button
+              onClick={() => navigate(`/project/${projectId}/lv-review`)}
+              className="px-8 py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+            >
+              ← Zurück zur Bearbeitung
+            </button>
+          )}
+          
+          {/* ERWEITERT: Weiteres Gewerk Button mit besserem Context */}
+          <button
+            onClick={() => {
+              if (!projectComplete) {
+                if (window.confirm('Es sind noch nicht alle Gewerke bearbeitet. Möchten Sie trotzdem ein zusätzliches Gewerk hinzufügen?')) {
+                  handleAddAdditionalTrade();
+                }
+              } else {
+                handleAddAdditionalTrade();
+              }
+            }}
+            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+          >
+            <span className="text-xl mr-2">+</span> 
+            {projectComplete ? 'Weiteres Gewerk hinzufügen' : 'Zusätzliches Gewerk hinzufügen'}
+          </button>
+        </div>
 
-        {/* Footer Navigation */}
+        {/* ÄNDERUNG: Footer mit mehr Optionen */}
         <div className="mt-16 text-center">
           <Link to="/" className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors">
             ← Zur Startseite
           </Link>
           <span className="text-white/30">|</span>
+          
+          {/* NEU: Link zur Review-Page */}
+          {!projectComplete && (
+            <>
+              <Link 
+                to={`/project/${projectId}/lv-review`} 
+                className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors"
+              >
+                Zur Übersicht
+              </Link>
+              <span className="text-white/30">|</span>
+            </>
+          )}
+          
           <Link to="/start" className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors">
             Neues Projekt starten →
           </Link>
