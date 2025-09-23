@@ -7506,6 +7506,289 @@ app.get('/api/projects/:projectId', async (req, res) => {
   }
 });
 
+// Get all selected trades for a project (for LVReviewPage)
+app.get('/api/projects/:projectId/selected-trades', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Hole Projekt
+    const project = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (project.rows.length === 0) {
+      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    }
+    
+    // Hole alle Trades die dem Projekt zugeordnet sind (außer INT)
+    const trades = await query(`
+      SELECT 
+        t.id,
+        t.code,
+        t.name,
+        t.description,
+        pt.is_manual,
+        pt.is_ai_recommended,
+        pt.is_additional,
+        tp.status as progress_status,
+        tp.completed_at,
+        tp.reviewed_at,
+        l.id as lv_id,
+        l.content as lv_content,
+        l.status as lv_status,
+        l.questions_completed,
+        l.skipped
+      FROM trades t
+      JOIN project_trades pt ON t.id = pt.trade_id
+      LEFT JOIN trade_progress tp ON t.id = tp.trade_id AND tp.project_id = $1
+      LEFT JOIN lvs l ON t.id = l.trade_id AND l.project_id = $1
+      WHERE pt.project_id = $1 
+      AND t.code != 'INT'
+      ORDER BY t.name
+    `, [projectId]);
+    
+    // Formatiere Trades mit Status
+    const formattedTrades = trades.rows.map(trade => {
+      let lvContent = null;
+      let totalCost = 0;
+      
+      // Parse LV content wenn vorhanden
+      if (trade.lv_content) {
+        lvContent = typeof trade.lv_content === 'string' 
+          ? JSON.parse(trade.lv_content) 
+          : trade.lv_content;
+        
+        // Berechne Gesamtkosten (ohne NEP)
+        if (lvContent.totalSum) {
+          totalCost = parseFloat(lvContent.totalSum) || 0;
+        } else if (lvContent.positions) {
+          totalCost = lvContent.positions
+            .filter(pos => !pos.isNEP)
+            .reduce((sum, pos) => sum + (parseFloat(pos.totalPrice) || 0), 0);
+        }
+      }
+      
+      return {
+        id: trade.id,
+        name: trade.name,
+        code: trade.code,
+        description: trade.description,
+        isManual: trade.is_manual || false,
+        isAiRecommended: trade.is_ai_recommended || false,
+        isAdditional: trade.is_additional || false,
+        status: trade.progress_status || 'pending',
+        hasLV: !!trade.lv_id,
+        lvId: trade.lv_id,
+        lv: lvContent,
+        totalCost: totalCost,
+        questionsCompleted: trade.questions_completed || false,
+        skipped: trade.skipped || false,
+        completedAt: trade.completed_at,
+        reviewedAt: trade.reviewed_at
+      };
+    });
+    
+    // Kategorisiere nach Status
+    const completedTrades = formattedTrades.filter(t => t.hasLV && !t.skipped);
+    const pendingTrades = formattedTrades.filter(t => !t.hasLV && !t.skipped);
+    const skippedTrades = formattedTrades.filter(t => t.skipped);
+    
+    res.json({ 
+      trades: formattedTrades,
+      summary: {
+        total: formattedTrades.length,
+        completed: completedTrades.length,
+        pending: pendingTrades.length,
+        skipped: skippedTrades.length,
+        totalCost: completedTrades.reduce((sum, t) => sum + t.totalCost, 0)
+      },
+      projectStatus: {
+        id: project.rows[0].id,
+        name: project.rows[0].description,
+        budget: project.rows[0].budget,
+        allTradesCompleted: project.rows[0].all_trades_completed || false
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching selected trades:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Gewerke' });
+  }
+});
+
+// NEU: Navigation Helper Endpoint
+app.get('/api/projects/:projectId/navigation', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Hole alle Trades des Projekts
+    const trades = await query(`
+      SELECT 
+        t.id,
+        t.name,
+        t.code,
+        COALESCE(tp.status, 'pending') as status,
+        l.id as lv_id
+      FROM trades t
+      JOIN project_trades pt ON t.id = pt.trade_id
+      LEFT JOIN trade_progress tp ON t.id = tp.trade_id AND tp.project_id = $1
+      LEFT JOIN lvs l ON t.id = l.trade_id AND l.project_id = $1
+      WHERE pt.project_id = $1
+      AND t.code != 'INT'
+      ORDER BY t.name
+    `, [projectId]);
+    
+    const completedTrades = trades.rows.filter(t => t.lv_id);
+    const pendingTrades = trades.rows.filter(t => !t.lv_id && t.status === 'pending');
+    
+    res.json({
+      totalTrades: trades.rows.length,
+      completedTrades: completedTrades,
+      pendingTrades: pendingTrades,
+      allCompleted: pendingTrades.length === 0,
+      nextTrade: pendingTrades[0] || null
+    });
+    
+  } catch (error) {
+    console.error('Error fetching navigation info:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Navigation' });
+  }
+});
+
+// NEU: Project Status Endpoint
+app.get('/api/projects/:projectId/status', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    
+    if (project.rows.length === 0) {
+      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    }
+    
+    // Detaillierter Status mit LV-Informationen
+    const tradeDetails = await query(`
+      SELECT 
+        t.id,
+        t.name,
+        t.code,
+        tp.status as progress_status,
+        l.id as lv_id,
+        l.content as lv_content,
+        l.skipped
+      FROM trades t
+      JOIN project_trades pt ON t.id = pt.trade_id
+      LEFT JOIN trade_progress tp ON t.id = tp.trade_id AND tp.project_id = $1
+      LEFT JOIN lvs l ON t.id = l.trade_id AND l.project_id = $1
+      WHERE pt.project_id = $1
+      AND t.code != 'INT'
+    `, [projectId]);
+    
+    const pendingTrades = tradeDetails.rows.filter(t => !t.lv_id && !t.skipped);
+    const completedTrades = tradeDetails.rows.filter(t => t.lv_id && !t.skipped);
+    
+    // Berechne Gesamtkosten
+    let totalCost = 0;
+    completedTrades.forEach(trade => {
+      if (trade.lv_content) {
+        const content = typeof trade.lv_content === 'string' 
+          ? JSON.parse(trade.lv_content) 
+          : trade.lv_content;
+        totalCost += parseFloat(content.totalSum) || 0;
+      }
+    });
+    
+    res.json({
+      projectId: projectId,
+      projectName: project.rows[0].description,
+      allTradesComplete: pendingTrades.length === 0,
+      totalTrades: tradeDetails.rows.length,
+      completedCount: completedTrades.length,
+      pendingCount: pendingTrades.length,
+      pendingTrades: pendingTrades.map(t => ({
+        id: t.id,
+        name: t.name,
+        code: t.code
+      })),
+      totalCost: totalCost
+    });
+    
+  } catch (error) {
+    console.error('Error fetching project status:', error);
+    res.status(500).json({ error: 'Fehler beim Laden des Status' });
+  }
+});
+
+// NEU: Mark trade as complete
+app.post('/api/projects/:projectId/trades/:tradeId/complete', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { questionsCompleted, lvGenerated } = req.body;
+    
+    // Upsert in trade_progress
+    await query(`
+      INSERT INTO trade_progress (
+        project_id, 
+        trade_id, 
+        status, 
+        completed_at
+      ) VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (project_id, trade_id)
+      DO UPDATE SET 
+        status = $3,
+        completed_at = NOW()
+    `, [projectId, tradeId, lvGenerated ? 'lv_generated' : 'questions_completed']);
+    
+    // Update LV status wenn vorhanden
+    if (lvGenerated) {
+      await query(
+        'UPDATE lvs SET status = $1, questions_completed = $2 WHERE project_id = $3 AND trade_id = $4',
+        ['generated', true, projectId, tradeId]
+      );
+    }
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Error marking trade complete:', error);
+    res.status(500).json({ error: 'Fehler beim Markieren des Gewerks' });
+  }
+});
+
+// NEU: Skip trade
+app.post('/api/projects/:projectId/trades/:tradeId/skip', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    // Markiere als übersprungen
+    await query(`
+      INSERT INTO trade_progress (
+        project_id,
+        trade_id,
+        status,
+        completed_at
+      ) VALUES ($1, $2, 'skipped', NOW())
+      ON CONFLICT (project_id, trade_id)
+      DO UPDATE SET
+        status = 'skipped',
+        completed_at = NOW()
+    `, [projectId, tradeId]);
+    
+    // Update LV falls vorhanden
+    await query(
+      'UPDATE lvs SET skipped = TRUE WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Error skipping trade:', error);
+    res.status(500).json({ error: 'Fehler beim Überspringen' });
+  }
+});
+
 // Generate Intake Questions
 app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
   try {
