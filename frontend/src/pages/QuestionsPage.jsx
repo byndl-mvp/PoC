@@ -23,6 +23,7 @@ export default function IntakeQuestionsPage() {
   const [finalProgress, setFinalProgress] = useState(0);
   const [generatingLV, setGeneratingLV] = useState(false);
   const [lvProgress, setLvProgress] = useState(0);
+  // eslint-disable-next-line no-unused-vars
   const [nextTradeName, setNextTradeName] = useState('');
   
   // Refs für Interval-Cleanup
