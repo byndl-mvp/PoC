@@ -259,7 +259,7 @@ export default function TradeConfirmationPage() {
           return (a.sort_order || 999) - (b.sort_order || 999);
         });
         
-        navigate(`/project/${projectId}/trade/${sortedTrades[0].id}/questions`);
+        navigate(`/project/${projectId}/lv-review`);
       } else {
         navigate(`/project/${projectId}/result`);
       }
