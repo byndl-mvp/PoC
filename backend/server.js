@@ -7789,6 +7789,78 @@ app.post('/api/projects/:projectId/trades/:tradeId/skip', async (req, res) => {
   }
 });
 
+// NEU: Mark LV as reviewed (nach den anderen neuen Endpoints)
+app.post('/api/projects/:projectId/trades/:tradeId/review-complete', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    // Update trade_progress
+    await query(`
+      UPDATE trade_progress 
+      SET status = 'reviewed', reviewed_at = NOW()
+      WHERE project_id = $1 AND trade_id = $2
+    `, [projectId, tradeId]);
+    
+    // Falls kein Eintrag existiert, erstelle einen
+    const result = await query(
+      'SELECT * FROM trade_progress WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (result.rows.length === 0) {
+      await query(`
+        INSERT INTO trade_progress (project_id, trade_id, status, reviewed_at, completed_at)
+        VALUES ($1, $2, 'reviewed', NOW(), NOW())
+      `, [projectId, tradeId]);
+    }
+    
+    // Update LV
+    await query(
+      'UPDATE lvs SET reviewed_at = NOW(), status = $1 WHERE project_id = $2 AND trade_id = $3',
+      ['reviewed', projectId, tradeId]
+    );
+    
+    // Update project last_reviewed_at
+    await query(
+      'UPDATE projects SET last_reviewed_at = NOW() WHERE id = $1',
+      [projectId]
+    );
+    
+    // Prüfe ob alle Trades reviewed sind
+    const allTrades = await query(`
+      SELECT COUNT(*) as total
+      FROM project_trades pt
+      JOIN trades t ON pt.trade_id = t.id
+      WHERE pt.project_id = $1 AND t.code != 'INT'
+    `, [projectId]);
+    
+    const reviewedTrades = await query(`
+      SELECT COUNT(*) as reviewed
+      FROM trade_progress
+      WHERE project_id = $1 AND status = 'reviewed'
+    `, [projectId]);
+    
+    const allReviewed = allTrades.rows[0].total === reviewedTrades.rows[0].reviewed;
+    
+    if (allReviewed) {
+      await query(
+        'UPDATE projects SET all_trades_completed = TRUE WHERE id = $1',
+        [projectId]
+      );
+    }
+    
+    res.json({ 
+      success: true,
+      allReviewed: allReviewed,
+      message: allReviewed ? 'Alle Gewerke wurden überprüft' : 'Gewerk als überprüft markiert'
+    });
+    
+  } catch (error) {
+    console.error('Error marking review complete:', error);
+    res.status(500).json({ error: 'Fehler beim Markieren der Review' });
+  }
+});
+
 // Generate Intake Questions
 app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
   try {
