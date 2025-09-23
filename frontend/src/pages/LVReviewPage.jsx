@@ -79,28 +79,29 @@ export default function LVReviewPage() {
         const projectData = await projectRes.json();
         setProject(projectData);
         
-        // 2. Gewählte Gewerke laden (aus Session oder Backend)
-        const tradesRes = await fetch(apiUrl(`/api/projects/${projectId}/selected-trades`));
-        if (!tradesRes.ok) throw new Error('Gewerke konnten nicht geladen werden');
-        const tradesData = await tradesRes.json();
-        
-        // 3. LVs für fertige Gewerke laden
-        const lvsRes = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
-        if (lvsRes.ok) {
-          const lvsData = await lvsRes.json();
-          setLvs(lvsData.lvs || []);
-        }
-        
-        // 4. Trade-Status kombinieren
-        const combinedTrades = tradesData.trades.map(trade => {
-          const lv = (lvsData?.lvs || []).find(l => l.trade_id === trade.id);
-          return {
-            ...trade,
-            hasLV: !!lv,
-            lv: lv,
-            totalCost: lv ? calculateTotal(lv) : 0
-          };
-        });
+// 2. Gewählte Gewerke laden (aus Session oder Backend)
+const tradesRes = await fetch(apiUrl(`/api/projects/${projectId}/selected-trades`));
+if (!tradesRes.ok) throw new Error('Gewerke konnten nicht geladen werden');
+const tradesData = await tradesRes.json();
+
+// 3. LVs für fertige Gewerke laden
+let lvsData = { lvs: [] };  // NEU: Variable außerhalb des if-Blocks definieren
+const lvsRes = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
+if (lvsRes.ok) {
+  lvsData = await lvsRes.json();  // ÄNDERN: const entfernen
+  setLvs(lvsData.lvs || []);
+}
+
+// 4. Trade-Status kombinieren
+const combinedTrades = tradesData.trades.map(trade => {
+  const lv = (lvsData?.lvs || []).find(l => l.trade_id === trade.id);  // Jetzt funktioniert es
+  return {
+    ...trade,
+    hasLV: !!lv,
+    lv: lv,
+    totalCost: lv ? calculateTotal(lv) : 0
+  };
+});
         
         setSelectedTrades(combinedTrades);
         
