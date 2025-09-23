@@ -23,6 +23,7 @@ export default function IntakeQuestionsPage() {
   const [finalProgress, setFinalProgress] = useState(0);
   const [generatingLV, setGeneratingLV] = useState(false);
   const [lvProgress, setLvProgress] = useState(0);
+  const [nextTradeName, setNextTradeName] = useState('');
   
   // Refs für Interval-Cleanup
   const loadingIntervalRef = useRef(null);
