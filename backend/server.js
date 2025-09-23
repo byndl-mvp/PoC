@@ -4751,6 +4751,31 @@ KRITISCH FÜR DACHARBEITEN:
 - Fokus auf: Dämmung, Eindeckung, Abdichtung, Rinnen
 ` : ''}
 
+${trade.code === 'FASS' ? `
+KRITISCH FÜR FASSADENARBEITEN:
+
+DÄMMSTÄRKE - ABSOLUT VERBINDLICH:
+${criticalMeasurements.daemmstaerke ? `
+- EXAKTE DÄMMSTÄRKE: ${criticalMeasurements.daemmstaerke.value} cm
+- Diese Stärke MUSS in ALLEN Dämmpositionen verwendet werden
+- KEINE Abweichungen erlaubt!
+- Nutzerangabe war: "${criticalMeasurements.daemmstaerke.original}"
+` : ''}
+
+WICHTIG:
+- NUR gerade Dämmstärken verwenden (10, 12, 14, 16, 18, 20 cm)
+- Ungerade Zahlen sind NICHT handelsüblich
+- Bei ungeraden Angaben: Auf nächste gerade Zahl aufrunden
+- Die angegebene Dämmstärke MUSS exakt übernommen werden
+
+BEISPIEL KORREKT:
+- "Lieferung und Montage WDVS, EPS WLG 035, ${criticalMeasurements.daemmstaerke?.value || 16} cm"
+
+BEISPIEL FALSCH:
+- "WDVS, 15 cm" (ungerade Zahl!)
+- Andere Stärke als angegeben verwenden
+` : ''}
+
 ${trade.code === 'TIS' ? `
 KRITISCH FÜR TÜRARBEITEN:
 1. DEMONTAGE/ENTSORGUNG:
