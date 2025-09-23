@@ -239,7 +239,7 @@ export default function TradeConfirmationPage() {
           if (newTrades.length > 0) {
             const sortedNew = newTrades.sort((a, b) => a.id - b.id);
             sessionStorage.removeItem('addingAdditionalTrade');
-            navigate(`/project/${projectId}/trade/${sortedNew[0].id}/questions?additional=true`);
+            navigate(`/project/${projectId}/lv-review`);  // ZUR REVIEW!
             return;
           }
         }
@@ -248,6 +248,9 @@ export default function TradeConfirmationPage() {
         if (manuallyAddedTradeIds.length > 0) {
           sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
         }
+        if (selectedRecommended.length > 0) {
+        sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(selectedRecommended));
+      }        
         
         // Sortiere Trades
         const sortedTrades = [...confirmedTradesData].sort((a, b) => {
@@ -261,7 +264,7 @@ export default function TradeConfirmationPage() {
         
         navigate(`/project/${projectId}/lv-review`);
       } else {
-        navigate(`/project/${projectId}/result`);
+        navigate(`/project/${projectId}/lv-review`);  // Auch hier zur Review
       }
       
     } catch (err) {
