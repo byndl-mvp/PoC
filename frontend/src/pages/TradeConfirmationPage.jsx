@@ -14,7 +14,6 @@ export default function TradeConfirmationPage() {
   const [intakeSummary, setIntakeSummary] = useState(null);
   const [addingTrade, setAddingTrade] = useState(false);
   const isAdditionalTrade = sessionStorage.getItem('addingAdditionalTrade') === 'true';
-  const [existingTradeIds, setExistingTradeIds] = useState([]);
   const [requiredTrades, setRequiredTrades] = useState([]);
   const [recommendedTrades, setRecommendedTrades] = useState([]);
   const [selectedRequired, setSelectedRequired] = useState([]);
@@ -25,19 +24,6 @@ export default function TradeConfirmationPage() {
     const manualCount = detectedTrades.filter(t => t.source === 'manuell').length;
     return selectedRequired.length + selectedRecommended.length + manualCount;
   };
-  
-  useEffect(() => {
-    if (isAdditionalTrade) {
-      fetch(apiUrl(`/api/projects/${projectId}`))
-        .then(res => res.json())
-        .then(data => {
-          const existing = data.trades?.map(t => t.id) || [];
-          setExistingTradeIds(existing);
-          // Filtere bereits vorhandene Trades aus der Anzeige
-          setDetectedTrades(prev => prev.filter(t => !existing.includes(t.id)));
-        });
-    }
-  }, [isAdditionalTrade, projectId]);
 
   useEffect(() => {
     async function loadData() {
@@ -206,13 +192,6 @@ export default function TradeConfirmationPage() {
       alert('Bitte wählen Sie mindestens ein Gewerk aus');
       return;
     }
-    
-    // Sammle vollständige Trade-Daten
-    const confirmedTradesData = [
-      ...requiredTrades.filter(t => selectedRequired.includes(t.id)),
-      ...recommendedTrades.filter(t => selectedRecommended.includes(t.id)),
-      ...manualTrades
-    ];
     
     const manuallyAddedTradeIds = manualTrades.map(t => t.id);
     
