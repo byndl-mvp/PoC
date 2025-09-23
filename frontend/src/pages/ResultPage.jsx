@@ -30,7 +30,6 @@ export default function ResultPage() {
   // NEU: Zusätzliche States
   const [projectComplete, setProjectComplete] = useState(false);
   const [pendingTrades, setPendingTrades] = useState([]);
-  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
   const [highlightedLv, setHighlightedLv] = useState(null);
   
