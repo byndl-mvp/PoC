@@ -158,7 +158,7 @@ const combinedTrades = tradesData.trades.map(trade => {
     navigate(`/project/${projectId}/add-trade?additional=true`);
   };
   
-  // Alle Bearbeitungsfunktionen aus ResultPage
+  // eslint-disable-next-line no-unused-vars
   const handleEditPosition = (lvIndex, posIndex, field, value) => {
     const key = `${lvIndex}-${posIndex}-${field}`;
     setEditedValues(prev => ({
@@ -166,8 +166,8 @@ const combinedTrades = tradesData.trades.map(trade => {
       [key]: value
     }));
   };
-  
-  const handleSavePosition = async (lvIndex, posIndex) => {
+  // eslint-disable-next-line no-unused-vars
+    const handleSavePosition = async (lvIndex, posIndex) => {
     const lv = lvs[lvIndex];
     const position = lv.content.positions[posIndex];
     const key = `${lvIndex}-${posIndex}`;
