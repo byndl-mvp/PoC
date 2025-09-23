@@ -8996,41 +8996,124 @@ await query(
   }
 });
 
-// Get aggregated LVs for a project
+// ANPASSUNG des bestehenden Endpoints: Get aggregated LVs for a project
 app.get('/api/projects/:projectId/lv', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const rows = (await query(
-      `SELECT l.trade_id, t.code, t.name, l.content
-       FROM lvs l JOIN trades t ON t.id=l.trade_id
-       WHERE l.project_id=$1
-       ORDER BY t.name`,
-      [projectId]
-    )).rows;
+    const { includeSkipped } = req.query; // NEU: Optional Parameter
+    
+    // ANGEPASSTE Query mit Filter für übersprungene Trades
+    let query_string = `
+      SELECT 
+        l.trade_id, 
+        t.code, 
+        t.name, 
+        l.content,
+        l.status as lv_status,
+        l.reviewed_at,
+        l.questions_completed,
+        l.skipped,
+        tp.status as progress_status
+      FROM lvs l 
+      JOIN trades t ON t.id = l.trade_id
+      LEFT JOIN trade_progress tp ON l.trade_id = tp.trade_id AND l.project_id = tp.project_id
+      WHERE l.project_id = $1
+    `;
+    
+    // NEU: Filtere übersprungene, außer explizit angefordert
+    if (includeSkipped !== 'true') {
+      query_string += ` AND (l.skipped = FALSE OR l.skipped IS NULL)`;
+    }
+    
+    query_string += ` ORDER BY t.name`;
+    
+    const rows = (await query(query_string, [projectId])).rows;
 
     const lvs = rows.map(row => ({
       ...row,
-      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+      trade_id: row.trade_id, // Wichtig für Frontend
+      trade_name: row.name,    // Wichtig für Frontend
+      trade_code: row.code,    // Wichtig für Frontend
+      content: typeof row.content === 'string' ? JSON.parse(row.content) : row.content,
+      // NEU: Zusätzliche Status-Informationen
+      isReviewed: !!row.reviewed_at,
+      isSkipped: row.skipped || false,
+      progressStatus: row.progress_status || 'pending'
     }));
     
-    // Berechne Gesamtstatistiken
-    const totalSum = lvs.reduce((sum, lv) => sum + (lv.content.totalSum || 0), 0);
-    const totalPositions = lvs.reduce((sum, lv) => sum + (lv.content.positions?.length || 0), 0);
+    // NEU: Berechne Summen mit NEP-Berücksichtigung
+    let totalSum = 0;
+    let totalNepSum = 0;
+    let totalPositions = 0;
+    
+    lvs.forEach(lv => {
+      if (lv.content) {
+        totalSum += parseFloat(lv.content.totalSum) || 0;
+        totalNepSum += parseFloat(lv.content.nepSum) || 0;
+        totalPositions += lv.content.positions?.length || 0;
+      }
+    });
+    
+    // NEU: Erweiterte Summary
+    const summary = {
+      totalTrades: lvs.length,
+      totalPositions,
+      totalSum,
+      totalNepSum,  // NEU
+      vat: totalSum * 0.19,
+      grandTotal: totalSum * 1.19,
+      reviewedCount: lvs.filter(lv => lv.isReviewed).length,  // NEU
+      skippedCount: lvs.filter(lv => lv.isSkipped).length     // NEU
+    };
     
     res.json({ 
       ok: true, 
       lvs,
-      summary: {
-        totalTrades: lvs.length,
-        totalPositions,
-        totalSum,
-        vat: totalSum * 0.19,
-        grandTotal: totalSum * 1.19
-      }
+      summary
     });
+    
   } catch (err) {
     console.error('aggregate LV failed:', err);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ZUSÄTZLICH: Neuer Endpoint für einzelnes LV (für Review-Page)
+app.get('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const result = await query(`
+      SELECT 
+        l.*,
+        t.name as trade_name,
+        t.code as trade_code,
+        tp.status as progress_status,
+        tp.reviewed_at as review_date
+      FROM lvs l
+      JOIN trades t ON l.trade_id = t.id
+      LEFT JOIN trade_progress tp ON l.trade_id = tp.trade_id AND l.project_id = tp.project_id
+      WHERE l.project_id = $1 AND l.trade_id = $2
+    `, [projectId, tradeId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'LV nicht gefunden' });
+    }
+    
+    const lv = result.rows[0];
+    lv.content = typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content;
+    
+    res.json({ 
+      lv: {
+        ...lv,
+        isReviewed: !!lv.review_date,
+        progressStatus: lv.progress_status || 'pending'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching single LV:', error);
+    res.status(500).json({ error: 'Fehler beim Laden des LVs' });
   }
 });
 
