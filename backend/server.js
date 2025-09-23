@@ -4219,7 +4219,79 @@ console.log(`[LV] Final orientation for ${trade.code}: ${orientation.min}-${orie
     }
   }  // <-- DIESE KLAMMER FEHLT (schließt if measurementMatch)
 });  // <-- DIESE KLAMMER FEHLT (schließt forEach)
+
+// FASS-spezifisch: Extrahiere Dämmstärke
+if (trade.code === 'FASS') {
+  tradeAnswers.forEach(answer => {
+    const question = answer.question.toLowerCase();
+    const answerText = answer.answer;
+    
+    // Suche nach Dämmstärke in cm
+    if (question.includes('dämmstärke') || question.includes('dämmung') || 
+        question.includes('wärmedämmung') || question.includes('stärke')) {
+      const daemmMatch = answerText.match(/(\d+)\s*(cm|mm)/i);
+      if (daemmMatch) {
+        let daemmstaerke = parseInt(daemmMatch[1]);
+        
+        // Konvertiere mm in cm falls nötig
+        if (daemmMatch[2].toLowerCase() === 'mm') {
+          daemmstaerke = Math.round(daemmstaerke / 10);
+        }
+        
+        // Runde auf gerade Zahl (handelsübliche Stärken)
+        if (daemmstaerke % 2 !== 0) {
+          daemmstaerke = daemmstaerke + 1; // Aufrunden auf nächste gerade Zahl
+          console.log(`[FASS] Dämmstärke von ${parseInt(daemmMatch[1])}cm auf ${daemmstaerke}cm (gerade Zahl) korrigiert`);
+        }
+        
+        criticalMeasurements.daemmstaerke = {
+          value: daemmstaerke,
+          unit: 'cm',
+          original: answerText,
+          source: 'trade_answers'
+        };
+        
+        console.log(`[FASS] Dämmstärke erfasst: ${daemmstaerke}cm`);
+      }
+    }
+  });
+}
+
+// GER-spezifisch: Berechne Gerüstfläche aus Fassadenfläche
+if (trade.code === 'GER') {
+  // Suche Fassadenfläche in Intake oder Trade-Antworten
+  let fassadenflaeche = criticalMeasurements.fassadenflaeche?.value;
+  
+  if (!fassadenflaeche) {
+    // Suche in Trade-Antworten
+    tradeAnswers.forEach(answer => {
+      const question = answer.question.toLowerCase();
+      const answerText = answer.answer;
       
+      if (question.includes('fassade') && question.includes('fläche')) {
+        const flaecheMatch = answerText.match(/(\d+(?:\.\d+)?)\s*(m²|qm|m2)/i);
+        if (flaecheMatch) {
+          fassadenflaeche = parseFloat(flaecheMatch[1]);
+        }
+      }
+    });
+  }
+  
+  if (fassadenflaeche) {
+    // Gerüstfläche = Fassadenfläche * 1.1 (10% Zuschlag)
+    const geruestflaeche = Math.round(fassadenflaeche * 1.1);
+    
+    criticalMeasurements.geruestflaeche = {
+      value: geruestflaeche,
+      unit: 'm²',
+      original: `Berechnet aus Fassadenfläche ${fassadenflaeche}m² + 10% Zuschlag`,
+      source: 'calculated'
+    };
+    
+    console.log(`[GER] Gerüstfläche berechnet: ${fassadenflaeche}m² * 1.1 = ${geruestflaeche}m²`);
+  }
+}
+  
   // Validiere und schätze fehlende Werte
   const validationResult = await validateAndEstimateAnswers(
     tradeAnswers,
