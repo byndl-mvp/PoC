@@ -4597,23 +4597,38 @@ KRITISCH - GERÜST-REGEL:
 ` : ''}
 
 ${trade.code === 'GER' ? `
-KRITISCH FÜR GERÜSTBAU - MINDESTENS 5 POSITIONEN:
-- Gerüstfläche MUSS aus Antworten übernommen werden
-- Wenn Fläche nicht vorhanden: Länge x Höhe berechnen
+KRITISCH FÜR GERÜSTBAU - STRIKTE REGELN:
 
-PFLICHT-POSITIONEN:
-1. Auf- und Abbau Arbeitsgerüst (m²) - NUR EINE Position
-2. Standzeit erste 4 Wochen (m²) - NUR EINE Position
-3. Standzeit jede weitere Woche (m²)
-4. An- und Abtransport (pauschal)
-5. Schutznetz/Plane (m²) - bei Bedarf
+${criticalMeasurements.geruestflaeche ? `
+GERÜSTFLÄCHE - VERBINDLICH:
+- EXAKTE GERÜSTFLÄCHE: ${criticalMeasurements.geruestflaeche.value} m²
+- Berechnung: Fassadenfläche + 10% Sicherheitszuschlag
+- Diese Fläche MUSS in allen Positionen verwendet werden
+` : ''}
+
+PFLICHT-POSITIONEN (GENAU DIESE STRUKTUR):
+1. "Lieferung, Auf- und Abbau Arbeitsgerüst" - ${criticalMeasurements.geruestflaeche?.value || '[Fläche]'} m² - 8-12 €/m²
+2. "Gerüst-Standzeit erste 4 Wochen" - ${criticalMeasurements.geruestflaeche?.value || '[Fläche]'} m² - 4-6 €/m²
+3. "Gerüst-Standzeit jede weitere Woche (Eventualposition)" - ${criticalMeasurements.geruestflaeche?.value || '[Fläche]'} m² - max. 1,20 €/m² - MUSS als NEP markiert sein!
+4. "Schutznetz/Plane" - ${criticalMeasurements.geruestflaeche?.value || '[Fläche]'} m² - 2-3 €/m² (optional)
+
+VERBOTEN:
+- KEINE separate Position "An- und Abtransport" (ist in Pos. 1 enthalten!)
+- KEINE höhere Fläche als berechnet
+- KEINE Transportkosten als eigene Position
+
+EVENTUALPOSITION (NEP):
+Die Position "Gerüst-Standzeit jede weitere Woche" MUSS:
+- Als Eventualposition (NEP) markiert werden: "isNEP": true
+- Einheitspreis maximal 1,20 €/m²
+- NICHT in die Hauptsumme einfließen
+- Mit Hinweis "Abrechnung nach tatsächlichem Bedarf"
 
 REALISTISCHE PREISE:
-- Auf-/Abbau: 8-12 €/m²
+- Auf-/Abbau inkl. Transport: 8-12 €/m²
 - Standzeit erste 4 Wochen: 4-6 €/m²
-- Jede weitere Woche: 1-2 €/m²
-- Transport: 300-500 € pauschal
-- NIEMALS über 12 €/m² für Auf-/Abbau!
+- Jede weitere Woche (NEP): max. 1,20 €/m²
+- Schutznetz: 2-3 €/m²
 ` : ''}
 
 ${trade.code === 'ROH' ? `
