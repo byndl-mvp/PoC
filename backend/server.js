@@ -2617,7 +2617,11 @@ if (allAnsweredInfo.fromIntake && allAnsweredInfo.fromIntake.length > 0) {
   
   const systemPrompt = `Du bist ein erfahrener Experte für ${tradeName} mit 20+ Jahren Berufserfahrung.
 ${isIntake ? 
-`WICHTIG: Dies sind ALLGEMEINE PROJEKTFRAGEN zur Erfassung der Baustellenbedingungen.
+`╔══════════════════════════════════════════════════════════════════╗
+║                     INTAKE-FRAGEN MODUS                           ║
+╚══════════════════════════════════════════════════════════════════╝
+
+WICHTIG: Dies sind ALLGEMEINE INTAKE-FRAGEN zur Erfassung der BAUSTELLENBEDINGUNGEN.
 
 ERKANNTE GEWERKE IM PROJEKT:
 ${projectContext.detectedTrades ? projectContext.detectedTrades.map(t => `- ${t.code}: ${t.name}`).join('\n') : 'Keine Gewerke übergeben'}
@@ -2688,8 +2692,8 @@ BEISPIEL-ANPASSUNG:
   → Treppenbreite kritisch
   
 ANPASSUNG AN PROJEKTGRÖSSE:
-- Kleines Projekt (1-2 Gewerke): 12-16 Fragen
-- Mittleres Projekt (3-5 Gewerke): 16-22 Fragen  
+- Kleines Projekt (1-2 Gewerke): 14-19 Fragen
+- Mittleres Projekt (3-5 Gewerke): 17-22 Fragen  
 - Großes Projekt (>5 Gewerke): 22-28 Fragen
 
 BEISPIELE INTELLIGENTER ANPASSUNG:
@@ -2708,10 +2712,26 @@ KEINE FRAGEN ZU:
 - Bevorzugter Vergabeart
 - Ob alles aus einer Hand gewünscht wird
 
-KRITISCH: Stelle NUR relevante Fragen für die erkannten Gewerke!
+BEISPIELE VERBOTENER INTAKE-FRAGEN:
+- "Welche Dämmstärke ist gewünscht?" → GEHÖRT ZU FASS
+- "Welche Putzstruktur?" → GEHÖRT ZU FASS/MAL
+- "Welche Fliesenart?" → GEHÖRT ZU FLI
+- "Welches Heizsystem?" → GEHÖRT ZU HEI
+- "Anzahl Steckdosen?" → GEHÖRT ZU ELEKT
+
+Die Intake-Fragen dienen NUR zur Vorbereitung der Baustelle!
+KRITISCH: Stelle NUR relevante Intake-Fragen für die erkannten Gewerke!
 
 Diese Informationen werden für die Vorbemerkungen aller LVs verwendet.` : 
-`Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}. 
+  
+══════════════════════════════════════════════════════════════════════` 
+: 
+`╔══════════════════════════════════════════════════════════════════╗
+║                   GEWERKE-FRAGEN MODUS                            ║
+║                     Gewerk: ${tradeName}                          ║
+╚══════════════════════════════════════════════════════════════════╝
+
+WICHTIG: Erstelle einen GEZIELTEN Fragenkatalog für ${tradeName}.
 
 ${knownCalculationData ? createCalculationContext(knownCalculationData, tradeCode) : ''}
 
