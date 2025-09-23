@@ -2722,7 +2722,7 @@ BEISPIELE VERBOTENER INTAKE-FRAGEN:
 Die Intake-Fragen dienen NUR zur Vorbereitung der Baustelle!
 KRITISCH: Stelle NUR relevante Intake-Fragen für die erkannten Gewerke!
 
-Diese Informationen werden für die Vorbemerkungen aller LVs verwendet.` : 
+Diese Informationen werden für die Vorbemerkungen aller LVs verwendet. 
   
 ══════════════════════════════════════════════════════════════════════` 
 : 
