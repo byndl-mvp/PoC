@@ -3111,7 +3111,82 @@ try {
   detailedError.responseSnippet = cleanedResponse?.substring(0, 200);
   throw detailedError;
 }
+
+// SPEZIELLE INTAKE-VALIDIERUNG: Entferne gewerkespezifische Fragen
+if (tradeCode === 'INT') {
+  const vorherAnzahl = questions.length;
   
+  questions = questions.filter(q => {
+    const qText = (q.question || '').toLowerCase();
+    
+    // ERLAUBTE Intake-Themen (Whitelist-Ansatz)
+    const erlaubteThemen = [
+      // Gebäudegrundlagen
+      /gebäudetyp|haustyp|objekttyp/,
+      /geschoss|etage|stockwerk/,
+      /wohnfläche|nutzfläche|gesamtfläche/,
+      /baujahr/,
+      
+      // Logistik
+      /zufahrt|zugang|anlieferung|lkw/,
+      /lager|material.*lager|stellplatz|container/,
+      /aufzug|treppenhaus|transport/,
+      /parkplatz|handwerker/,
+      
+      // Versorgung
+      /baustrom|strom.*verfügbar/,
+      /bauwasser|wasser.*verfügbar/,
+      /sanitär.*handwerker|wc.*handwerker/,
+      
+      // Rahmenbedingungen
+      /bewohnt|während.*bau/,
+      /arbeitszeit|zeitliche.*einschränkung/,
+      /lärmschutz|ruhezone/,
+      /denkmalschutz/,
+      /zeitraum|termin|wann/,
+      
+      // Allgemeine Bedingungen
+      /schäden.*sichtbar|allgemein.*zustand/,
+      /hindernisse|engstellen/
+    ];
+    
+    // Prüfe ob Frage zu erlaubten Themen gehört
+    const istErlaubt = erlaubteThemen.some(pattern => qText.match(pattern));
+    
+    // VERBOTENE technische Details (für alle Gewerke)
+    const technischeDetails = [
+      /\d+\s*(cm|mm)\s*(dick|stark|stärke)/, // Spezifische Stärken
+      /material.*auswahl|welches.*material/,   // Materialauswahl
+      /farbe|farbton|ral/,                     // Farben
+      /struktur|körnung|oberfläche/,           // Oberflächendetails
+      /qualität|ausführung.*variant/,          // Qualitätsstufen
+      /produkt|hersteller|marke/,              // Produktspezifika
+      /dämmwert|u-wert|kennwert/,             // Technische Kennwerte
+      /format|maße.*einzel/,                   // Detailmaße
+      /verlegeart|einbauart|montage.*art/      // Ausführungsdetails
+    ];
+    
+    const istTechnisch = technischeDetails.some(pattern => qText.match(pattern));
+    
+    if (istTechnisch && !istErlaubt) {
+      console.log(`[INT-FILTER] Entfernt (technisches Detail): "${q.question.substring(0,60)}..."`);
+      return false;
+    }
+    
+    // Wenn nicht explizit erlaubt und verdächtig spezifisch
+    if (!istErlaubt && qText.includes('welch')) {
+      console.log(`[INT-FILTER] Entfernt (zu spezifisch): "${q.question.substring(0,60)}..."`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  if (vorherAnzahl !== questions.length) {
+    console.log(`[INT-FILTER] ${vorherAnzahl - questions.length} gewerkespezifische Fragen aus Intake entfernt`);
+  }
+}
+
 // Zähle Fragen vor Validierung
 const beforeValidation = questions.length;
 
