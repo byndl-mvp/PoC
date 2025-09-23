@@ -217,61 +217,43 @@ export default function TradeConfirmationPage() {
     const manuallyAddedTradeIds = manualTrades.map(t => t.id);
     
     try {
-      setLoading(true);
-      setLoadingMessage('Speichere Gewerkeauswahl...');
-      
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          confirmedTrades: uniqueSelectedTrades,
-          manuallyAddedTrades: manuallyAddedTradeIds,
-          isAdditional: isAdditionalTrade
-        })
-      });
-      
-      if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
-      
-      if (confirmedTradesData.length > 0) {
-        // Navigation für zusätzliche Gewerke
-        if (isAdditionalTrade) {
-          const newTrades = confirmedTradesData.filter(t => !existingTradeIds.includes(t.id));
-          if (newTrades.length > 0) {
-            const sortedNew = newTrades.sort((a, b) => a.id - b.id);
-            sessionStorage.removeItem('addingAdditionalTrade');
-            navigate(`/project/${projectId}/lv-review`);  // ZUR REVIEW!
-            return;
-          }
-        }
-        
-        // Speichere Info über manuell hinzugefügte Trades
-        if (manuallyAddedTradeIds.length > 0) {
-          sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
-        }
-        if (selectedRecommended.length > 0) {
-        sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(selectedRecommended));
-      }        
-        
-        // Sortiere Trades
-        const sortedTrades = [...confirmedTradesData].sort((a, b) => {
-          // Priorität: required > recommended > manual
-          if (selectedRequired.includes(a.id) && !selectedRequired.includes(b.id)) return -1;
-          if (!selectedRequired.includes(a.id) && selectedRequired.includes(b.id)) return 1;
-          if (selectedRecommended.includes(a.id) && manualTradeIds.includes(b.id)) return -1;
-          if (manualTradeIds.includes(a.id) && selectedRecommended.includes(b.id)) return 1;
-          return (a.sort_order || 999) - (b.sort_order || 999);
-        });
-        
-        navigate(`/project/${projectId}/lv-review`);
-      } else {
-        navigate(`/project/${projectId}/lv-review`);  // Auch hier zur Review
-      }
-      
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
+    setLoading(true);
+    setLoadingMessage('Speichere Gewerkeauswahl...');
+    
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        confirmedTrades: uniqueSelectedTrades,
+        manuallyAddedTrades: manuallyAddedTradeIds,
+        aiRecommendedTrades: selectedRecommended,
+        isAdditional: isAdditionalTrade
+      })
+    });
+    
+    if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
+    
+    // VEREINFACHEN - sortedNew und sortedTrades werden nicht mehr benötigt:
+    if (isAdditionalTrade) {
+      sessionStorage.removeItem('addingAdditionalTrade');
     }
-  };
+    
+    // Speichere Info über Trades
+    if (manuallyAddedTradeIds.length > 0) {
+      sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
+    }
+    if (selectedRecommended.length > 0) {
+      sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(selectedRecommended));
+    }
+    
+    // Immer zur Review navigieren
+    navigate(`/project/${projectId}/lv-review`);
+    
+  } catch (err) {
+    setError(err.message);
+    setLoading(false);
+  }
+};
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
