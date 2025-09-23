@@ -11,6 +11,7 @@ import ResultPage from './pages/ResultPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdditionalTradeSelectionPage from './pages/AdditionalTradeSelectionPage';
+import LVReviewPage from './pages/LVReviewPage';  // NEU: Import hinzufügen
 
 function App() {
   return (
@@ -54,6 +55,7 @@ function App() {
             {/* Project Flow */}
             <Route path="/project/:projectId/intake" element={<IntakeQuestionsPage />} />
             <Route path="/project/:projectId/trades" element={<TradeConfirmationPage />} />
+            <Route path="/project/:projectId/lv-review" element={<LVReviewPage />} />  {/* NEU: Route hinzufügen */}
             <Route path="/project/:projectId/trade/:tradeId/questions" element={<QuestionsPage />} />
             <Route path="/project/:projectId/result" element={<ResultPage />} />
             <Route path="/project/:projectId/add-trade" element={<AdditionalTradeSelectionPage />} />
