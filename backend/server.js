@@ -385,6 +385,13 @@ const DIMENSION_REQUIRED_ITEMS = {
     itemName: 'Sanitärobjekte',
     requireExactDimensions: true
   },
+  'SCHL': {
+    keywords: ['geländer', 'handlauf', 'brüstung'],
+    format: /\d+\s*(m|meter|lfm)/,
+    example: 'Balkongeländer Stahl feuerverzinkt, 12 m, Höhe 110 cm, Lieferung und Montage',
+    itemName: 'Geländer',
+    requireExactDimensions: true
+  },
   'FLI': {
     keywords: ['fliesen', 'platten'],
     format: /\d+\s*x\s*\d+\s*(cm|mm)/,
@@ -4939,6 +4946,20 @@ KRITISCH FÜR TÜRARBEITEN:
    - Wohnungstür Sicherheit: 1500-3000€
    - Beschläge Innentür: 60-150€
    - NIEMALS alle Positionen mit gleichem Preis!
+` : ''}
+
+${trade.code === 'SCHL' ? `
+KRITISCH FÜR GELÄNDER:
+- Jedes Geländer MUSS als einzelne "Lieferung und Montage" Position ausgeschrieben werden
+- Format: "Lieferung und Montage [Typ]geländer [Material] [Länge]"
+- KEINE separaten Positionen für:
+  - Werkstattfertigung
+  - Produktion
+  - Füllungen/Metallstäbe
+  - Verzinkung (außer Pulverbeschichtung als Zusatz)
+  - Montage ohne Lieferung
+- Diese Leistungen sind in der Hauptposition "Lieferung und Montage" enthalten
+- Erlaubte Zusatzpositionen: Demontage Alt, Entsorgung, Pulverbeschichtung, Verankerung, Zusatz- und Nebenarbeiten!
 ` : ''}
 
 OUTPUT FORMAT (NUR valides JSON):
