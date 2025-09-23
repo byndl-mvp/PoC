@@ -5412,6 +5412,80 @@ if (duplicates.length > 0) {
     console.warn(`[LV] Only ${lv.positions.length} valid positions remain (80% minimum: ${Math.floor(orientation.min * 0.8)})`);
     // Optional: Hier könnte ein Retry getriggert werden
   }
+
+// GER-spezifisch: Konsolidiere mehrfache Standzeit-Positionen
+  if (trade.code === 'GER') {
+    console.log('[GER] Prüfe auf mehrfache Standzeit-Positionen...');
+    
+    const weitereWochenPositionen = lv.positions.filter(pos => {
+      const title = (pos.title || '').toLowerCase();
+      return (
+        (title.includes('woche') && 
+         (title.includes('5') || title.includes('6') || title.includes('7') || 
+          title.includes('8') || title.includes('9') || title.includes('10') ||
+          title.includes('11') || title.includes('12'))) ||
+        (title.includes('weitere') && title.includes('woche')) ||
+        (title.includes('zusätzlich') && title.includes('standzeit'))
+      ) && !title.includes('erste');
+    });
+    
+    if (weitereWochenPositionen.length > 1) {
+      console.log(`[GER] ${weitereWochenPositionen.length} Positionen für weitere Wochen - konsolidiere`);
+      
+      const consolidatedPos = {
+        ...weitereWochenPositionen[0],
+        title: "Gerüst-Standzeit jede weitere Woche (Eventualposition)",
+        description: "Gerüstmiete für jede weitere Woche über 4 Wochen hinaus. Eventualposition. Abrechnung nach Bedarf.",
+        unitPrice: 1.20,
+        totalPrice: weitereWochenPositionen[0].quantity * 1.20,
+        isNEP: true
+      };
+      
+      lv.positions = lv.positions.filter(pos => !weitereWochenPositionen.includes(pos));
+      lv.positions.splice(3, 0, consolidatedPos);
+    }
+    
+    // Korrigiere EP
+    lv.positions = lv.positions.map(pos => {
+      const title = (pos.title || '').toLowerCase();
+      if ((title.includes('weitere') || title.includes('eventualposition')) && 
+          title.includes('woche') && pos.unitPrice > 1.20) {
+        pos.unitPrice = 1.20;
+        pos.totalPrice = pos.quantity * 1.20;
+        pos.isNEP = true;
+      }
+      return pos;
+    });
+  }
+
+  // FASS-spezifisch: Korrigiere falsche Dämmstärken
+if (trade.code === 'FASS' && criticalMeasurements.daemmstaerke && lv.positions) {
+  const korrekteDaemmstaerke = criticalMeasurements.daemmstaerke.value;
+  console.log(`[FASS] Erzwinge Dämmstärke ${korrekteDaemmstaerke}cm in allen WDVS-Positionen`);
+  
+  lv.positions = lv.positions.map(pos => {
+    if (pos.title?.toLowerCase().includes('wdvs') || 
+        pos.title?.toLowerCase().includes('dämm') ||
+        pos.description?.toLowerCase().includes('dämmplatte')) {
+      
+      // Regex findet alle Dämmstärken-Angaben
+      const daemmRegex = /\b\d+\s*cm\b/gi;
+      
+      if (pos.title) {
+        const oldTitle = pos.title;
+        pos.title = pos.title.replace(daemmRegex, `${korrekteDaemmstaerke} cm`);
+        if (oldTitle !== pos.title) {
+          console.log(`[FASS] Titel korrigiert: "${oldTitle}" → "${pos.title}"`);
+        }
+      }
+      
+      if (pos.description) {
+        pos.description = pos.description.replace(daemmRegex, `${korrekteDaemmstaerke} cm`);
+      }
+    }
+    return pos;
+  });
+}
       
   let calculatedSum = 0;
   let nepSum = 0; // NEU: Summe der NEP-Positionen
