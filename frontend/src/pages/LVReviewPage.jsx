@@ -92,9 +92,10 @@ if (lvsRes.ok) {
   setLvs(lvsData.lvs || []);
 }
 
-// 4. Trade-Status kombinieren
 const combinedTrades = tradesData.trades.map(trade => {
-  const lv = (lvsData?.lvs || []).find(l => l.trade_id === trade.id);  // Jetzt funktioniert es
+  const lv = (lvsData?.lvs || []).find(l => 
+    parseInt(l.trade_id) === parseInt(trade.id)  // Beide als Number vergleichen!
+  );
   return {
     ...trade,
     hasLV: !!lv,
