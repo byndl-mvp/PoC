@@ -4045,7 +4045,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
     'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
     'ZIMM': ['holzbau', 'dachstuhl', 'gaube', 'carport', 'holzkonstruktion', 'fachwerk'],
-    'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
+    'ESTR': ['fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
     'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
     'AUSS': ['pflaster', 'einfahrt', 'außenanlage', 'randstein', 'rasen'],
     'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'batterie', 'einspeisung'],
