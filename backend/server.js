@@ -1320,9 +1320,9 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
   let ratio = tradeConfig.targetPositionsRatio;
   
   const complexityBonus = {
-    'SEHR_HOCH': 0.15,
-    'HOCH': 0.10,
-    'MITTEL': 0.05,
+    'SEHR_HOCH': 0.20,
+    'HOCH': 0.15,
+    'MITTEL': 0.10,
     'EINFACH': 0,
   }[projectComplexity] || 0;
   
@@ -1349,25 +1349,25 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
       'SEHR_HOCH': 16,
       'HOCH': 14,
       'MITTEL': 11,
-      'EINFACH': 7
+      'EINFACH': 8
     },
     'MITTEL': {
       'SEHR_HOCH': 15,
-      'HOCH': 12,
-      'MITTEL': 8,
-      'EINFACH': 6
+      'HOCH': 13,
+      'MITTEL': 9,
+      'EINFACH': 8
     },
     'EINFACH': {
-      'SEHR_HOCH': 12,
-      'HOCH': 10,
-      'MITTEL': 7,
-      'EINFACH': 5      
+      'SEHR_HOCH': 14,
+      'HOCH': 12,
+      'MITTEL': 8,
+      'EINFACH': 7      
     },
     'NIEDRIG': {
-      'SEHR_HOCH': 10,
-      'HOCH': 8,
-      'MITTEL': 6,
-      'EINFACH': 5      
+      'SEHR_HOCH': 12,
+      'HOCH': 10,
+      'MITTEL': 8,
+      'EINFACH': 6      
     }
   };
   
