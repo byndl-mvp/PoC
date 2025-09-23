@@ -30,15 +30,16 @@ export default function IntakeQuestionsPage() {
   const lvIntervalRef = useRef(null);
   const finalIntervalRef = useRef(null);
   
-  // Skip-Button Funktion
+  // ÄNDERUNG: Skip-Button Funktion angepasst
   const handleSkipTrade = async () => {
     if (window.confirm('Möchten Sie die Fragen für dieses Gewerk überspringen?')) {
-      if (currentTradeIndex !== -1 && currentTradeIndex + 1 < projectTrades.length) {
-        const nextTrade = projectTrades[currentTradeIndex + 1];
-        navigate(`/project/${projectId}/trade/${nextTrade.id}/questions`);
-      } else {
-        navigate(`/project/${projectId}/result`);
-      }
+      // Markiere als übersprungen
+      await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/skip`), {
+        method: 'POST'
+      });
+      
+      // Navigiere zur Review-Page
+      navigate(`/project/${projectId}/lv-review`);
     }
   };
   
@@ -122,6 +123,15 @@ export default function IntakeQuestionsPage() {
       };
     }
   }, [finalizing]);
+
+  // NEU: Check ob von Review-Page zurückgekommen
+  useEffect(() => {
+    const returnFromReview = sessionStorage.getItem('returnFromReview');
+    if (returnFromReview === 'true') {
+      sessionStorage.removeItem('returnFromReview');
+      // Optional: Zeige Info, dass vorherige LVs gespeichert sind
+    }
+  }, []);
   
   useEffect(() => {
     async function initialize() {
@@ -227,7 +237,7 @@ export default function IntakeQuestionsPage() {
             projectCategory: projectData.category,        
             projectBudget: projectData.budget            
           }),
-          keepalive: true  // HIER HINZUFÜGEN
+          keepalive: true
         });
         
         console.log('Generate response status:', generateRes.status);
@@ -319,7 +329,7 @@ export default function IntakeQuestionsPage() {
             contextAnswer: answerText,
             isAdditional: true
           }),
-          keepalive: true  // HIER HINZUFÜGEN
+          keepalive: true
         });
         
         if (response.ok) {
@@ -359,7 +369,7 @@ export default function IntakeQuestionsPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contextAnswer: answerText }),
-          keepalive: true  // ← Hier hinzufügen
+          keepalive: true
         });
         
         if (response.ok) {
@@ -502,6 +512,7 @@ export default function IntakeQuestionsPage() {
     }
   }
 
+  // ÄNDERUNG: generateLvAndContinue() - Navigiert IMMER zur LV-Review Page
   async function generateLvAndContinue() {
     console.log('generateLvAndContinue called');
     try {
@@ -514,34 +525,22 @@ export default function IntakeQuestionsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
-        keepalive: true  // HIER HINZUFÜGEN
+        keepalive: true
       });
 
-      const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true' ||
-                            sessionStorage.getItem('currentTradeIsAdditional') === 'true';
-      const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
-        .includes(parseInt(tradeId));
-
-      if (isAdditionalTrade && !isAiRecommended) {
-        // Cleanup interval
-        if (lvIntervalRef.current) {
-          clearInterval(lvIntervalRef.current);
-        }
-        setLvProgress(100);
-        setGeneratingLV(false);
-        setFinalizing(true);
-        setTimeout(() => {
-          navigate(`/project/${projectId}/result`);
-        }, 3000);
-        return;
-      }
-      
       if (!lvRes.ok) {
         const data = await lvRes.json().catch(() => ({}));
         throw new Error(data.error || 'Fehler beim Generieren des Leistungsverzeichnisses');
       }
       
       console.log('LV generated successfully');
+      
+      // ÄNDERUNG: Markiere Gewerk als abgeschlossen
+      await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/complete`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionsCompleted: true, lvGenerated: true })
+      });
       
       // Cleanup LV interval
       if (lvIntervalRef.current) {
@@ -550,27 +549,33 @@ export default function IntakeQuestionsPage() {
       setLvProgress(100);
       setGeneratingLV(false);
       
-      if (currentTradeIndex !== -1 && currentTradeIndex + 1 < projectTrades.length) {
-        const nextTrade = projectTrades[currentTradeIndex + 1];
-        console.log('Navigating to next detected trade:', nextTrade);
+      // HAUPTÄNDERUNG: IMMER zur LV-Review navigieren
+      console.log('Navigating to LV Review page');
+      setFinalizing(true);
+      
+      // NEU: Lade Info für nächsten Screen
+      const navigationRes = await fetch(apiUrl(`/api/projects/${projectId}/navigation`));
+      if (navigationRes.ok) {
+        const navData = await navigationRes.json();
         
-        // WICHTIG: Warte kurz, damit der neue Ladebalken Zeit hat anzuzeigen
-        setTimeout(() => {
-          window.location.href = `/project/${projectId}/trade/${nextTrade.id}/questions`;
-        }, 500);
-      } else {
-        setFinalizing(true);
-        setTimeout(() => {
-          navigate(`/project/${projectId}/result`);
-        }, 3000);
-        console.log('All detected trades complete, navigating to results');
+        // Setze Text basierend auf verbleibenden Gewerken
+        if (navData.pendingTrades && navData.pendingTrades.length > 0) {
+          setNextTradeName(navData.pendingTrades[0].name);
+        } else {
+          setNextTradeName(null); // Alle Gewerke fertig
+        }
       }
+      
+      setTimeout(() => {
+        // IMMER zur Review-Page
+        navigate(`/project/${projectId}/lv-review`);
+      }, 3000);
+      
     } catch (err) {
       console.error('Error generating LV:', err);
       setError(err.message);
       setSubmitting(false);
       setGeneratingLV(false);
-      // Cleanup interval on error
       if (lvIntervalRef.current) {
         clearInterval(lvIntervalRef.current);
       }
@@ -627,26 +632,25 @@ export default function IntakeQuestionsPage() {
     );
   }
 
-  // Final Screen
+  // ÄNDERUNG: Final Screen Text anpassen
   if (finalizing) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center max-w-lg">
-          <h2 className="text-3xl font-bold text-white mb-6">Fast fertig!</h2>
+          <h2 className="text-3xl font-bold text-white mb-6">
+            Leistungsverzeichnis erstellt!
+          </h2>
           <p className="text-xl text-gray-300 mb-8">
-            {nextTradeName ? 
-              `Lade Fragen für ${nextTradeName}...` :
-              'Wir stellen Ihre Leistungsverzeichnisse zusammen und erstellen die Gesamtkostenübersicht...'
-            }
+            {/* ÄNDERUNG: Immer zur Übersicht */}
+            Weiter zur Übersicht aller Gewerke...
           </p>
           <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur">
             <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out" 
                  style={{ width: `${finalProgress}%` }} />  
           </div>
           <p className="mt-4 text-gray-300">
-            {finalProgress < 30 ? 'Speichere Daten...' :
-             finalProgress < 60 ? 'Bereite nächsten Schritt vor...' :
-             finalProgress < 90 ? 'Fast fertig...' :
+            {finalProgress < 50 ? 'Speichere Leistungsverzeichnis...' :
+             finalProgress < 90 ? 'Bereite Übersicht vor...' :
              'Wird geladen...'}
           </p>
         </div>
@@ -901,13 +905,27 @@ export default function IntakeQuestionsPage() {
           </button>
         </div>
 
-        {/* Info Box */}
+        {/* ÄNDERUNG: Info Box anpassen */}
         <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <p className="text-blue-300 text-sm">
             <strong>ℹ️ Adaptive Befragung:</strong> Die Fragen wurden basierend auf Ihren Antworten 
-            und dem spezifischen Gewerk angepasst. Nach Abschluss wird automatisch ein VOB-konformes 
-            Leistungsverzeichnis erstellt.
+            und dem spezifischen Gewerk angepasst. Nach Abschluss wird ein VOB-konformes 
+            Leistungsverzeichnis erstellt und Sie können es in der Übersicht prüfen und bearbeiten.
           </p>
+        </div>
+        
+        {/* NEU: Zurück zur Übersicht Option */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => {
+              if (window.confirm('Möchten Sie zur Übersicht zurückkehren? Ihre bisherigen Antworten gehen verloren.')) {
+                navigate(`/project/${projectId}/lv-review`);
+              }
+            }}
+            className="text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            ← Zurück zur Übersicht
+          </button>
         </div>
       </div>
     </div>
