@@ -1444,14 +1444,14 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
     
     // Weitere Komplexitäts-Keywords
     const complexKeywords = {
-      'energetisch': 1.5,
+      'energetisch': 2.5,
       'kfw': 1.5,
       'brandschutz': 1.5,
-      'statik': 1.5,
+      'statik': 2.5,
       'asbest': 2,
       'schadstoffe': 2,
       'bewohnt während': 1.2,
-      'koordination': 1
+      'koordination': 2
     };
     
     for (const [keyword, points] of Object.entries(complexKeywords)) {
@@ -1466,6 +1466,41 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
     else if (wordCount > 150) complexityScore += 1.5;
     else if (wordCount > 100) complexityScore += 1;
     else if (wordCount > 50) complexityScore += 0.5;
+  }
+
+  // SPEZIALREGEL 1: Energetische Gebäudehüllensanierung
+  if (projectContext.description) {
+    const description = projectContext.description.toLowerCase();
+    const trades = projectContext.detectedTrades || [];
+    
+    // Energetische Sanierung mit Dach + Fassade
+    if ((description.includes('energetisch') || description.includes('kfw') || description.includes('bafa')) &&
+        trades.includes('DACH') && trades.includes('FASS')) {
+      
+      // Mindest-Komplexität für energetische Gebäudehülle
+      console.log('[COMPLEXITY] Energetische Gebäudehüllensanierung erkannt - Mindestens MITTEL');
+      complexityScore = Math.max(complexityScore, 8); // Garantiert mindestens MITTEL
+      
+      // Bei zusätzlichen Gewerken wie Fenster noch höher
+      if (trades.includes('FEN')) {
+        complexityScore = Math.max(complexityScore, 10);
+        console.log('[COMPLEXITY] + Fenster = erhöhte Komplexität');
+      }
+    }
+    
+    // SPEZIALREGEL 2: Kernsanierung/Vollsanierung sollte nie unter MITTEL sein
+    if ((description.includes('kernsanierung') || description.includes('vollsanierung')) && 
+        trades.length >= 3) {
+      complexityScore = Math.max(complexityScore, 10); // Mindestens oberes MITTEL
+    }
+    
+    // SPEZIALREGEL 3: Gerüst nicht als vollwertiges Gewerk zählen
+    const effectiveTrades = trades.filter(t => t !== 'GER');
+    if (trades.includes('GER') && effectiveTrades.length >= 2) {
+      // Gerüst ist nur Hilfsmittel - reduziere Übergewichtung
+      console.log('[COMPLEXITY] Gerüst als Hilfsgewerk erkannt');
+      // Keine zusätzlichen Punkte nur fürs Gerüst
+    }
   }
   
   // BUDGET-KOMPLEXITÄT (angepasste Bewertung)
