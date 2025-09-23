@@ -1340,33 +1340,33 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
   
   const COMPLEXITY_MINIMUMS = {
     'SEHR_HOCH': {
-      'SEHR_HOCH': 18,
-      'HOCH': 15,
-      'MITTEL': 12,
-      'EINFACH': 8
+      'SEHR_HOCH': 22,
+      'HOCH': 18,
+      'MITTEL': 16,
+      'EINFACH': 10
     },
     'HOCH': {
-      'SEHR_HOCH': 16,
-      'HOCH': 14,
-      'MITTEL': 11,
-      'EINFACH': 8
+      'SEHR_HOCH': 20,
+      'HOCH': 18,
+      'MITTEL': 16,
+      'EINFACH': 10
     },
     'MITTEL': {
-      'SEHR_HOCH': 15,
-      'HOCH': 13,
-      'MITTEL': 9,
+      'SEHR_HOCH': 20,
+      'HOCH': 18,
+      'MITTEL': 16,
       'EINFACH': 8
     },
     'EINFACH': {
-      'SEHR_HOCH': 14,
-      'HOCH': 12,
-      'MITTEL': 8,
-      'EINFACH': 7      
+      'SEHR_HOCH': 16,
+      'HOCH': 14,
+      'MITTEL': 10,
+      'EINFACH': 8      
     },
     'NIEDRIG': {
-      'SEHR_HOCH': 12,
-      'HOCH': 10,
-      'MITTEL': 8,
+      'SEHR_HOCH': 15,
+      'HOCH': 13,
+      'MITTEL': 10,
       'EINFACH': 6      
     }
   };
