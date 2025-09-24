@@ -5888,19 +5888,50 @@ if (trade.code === 'FASS' && lv.positions) {
         }
         
         // Finale Prüfung: Warne wenn immer noch problematische Werte
-        const nachPruefung = (pos.title + ' ' + pos.description).match(/\b\d+\s*cm\b/gi);
-        if (nachPruefung) {
-          nachPruefung.forEach(match => {
-            const zahl = parseInt(match);
-            if (zahl !== korrekteDaemmstaerke && (zahl === 0 || zahl < 10 || zahl % 2 !== 0)) {
-              console.error(`[FASS] KRITISCH: Position ${index+1} enthält noch falsche Dämmstärke: ${match}`);
-            }
-          });
-        }
+const nachPruefung = (pos.title + ' ' + pos.description).match(/\b\d+\s*cm\b/gi);
+if (nachPruefung) {
+  nachPruefung.forEach(match => {
+    const zahl = parseInt(match);
+    if (zahl !== korrekteDaemmstaerke && (zahl === 0 || zahl < 10 || zahl % 2 !== 0)) {
+      console.error(`[FASS] KRITISCH: Position ${index+1} enthält noch falsche Dämmstärke: ${match}`);
+    }
+  });
+}
+
+// Spezialbehandlung für Sockeldämmung (2cm dünner als WDVS)
+if (pos.title?.toLowerCase().includes('sockel')) {
+  const sockeldaemmstaerke = Math.max(8, korrekteDaemmstaerke - 2); // 2cm dünner, min. 8cm
+  console.log(`[FASS] Sockeldämmung: ${sockeldaemmstaerke}cm (WDVS-2cm)`);
+  
+  // Ersetze ALLE Dämmstärken in Sockelpositionen mit angepasster Stärke
+  const alleZahlenRegex = /\b\d+(\.\d+)?\s*cm\b/gi;
+  
+  if (pos.title) {
+    pos.title = pos.title.replace(alleZahlenRegex, `${sockeldaemmstaerke} cm`);
+  }
+  
+  if (pos.description) {
+    pos.description = pos.description.replace(alleZahlenRegex, (match, offset, fullString) => {
+      // Prüfe Kontext - nur Dämmstärken ersetzen, nicht z.B. Sockelhöhe
+      const vorher = fullString.substring(Math.max(0, offset - 20), offset).toLowerCase();
+      if (vorher.includes('höhe') || vorher.includes('sichtbar') || vorher.includes('über')) {
+        return match; // Sockelhöhe nicht ändern
       }
-      return pos;
+      return `${sockeldaemmstaerke} cm`;
     });
     
+    // Explizit "Stärke X cm" ersetzen
+    pos.description = pos.description.replace(/Stärke\s+\d+\s*cm/gi, `Stärke ${sockeldaemmstaerke} cm`);
+    pos.description = pos.description.replace(/Dicke\s+\d+\s*cm/gi, `Dicke ${sockeldaemmstaerke} cm`);
+    pos.description = pos.description.replace(/XPS-Platten.*?\d+\s*cm/gi, `XPS-Platten WLG 035, ${sockeldaemmstaerke} cm`);
+  }
+  
+  console.log(`[FASS] Sockeldämmung korrigiert auf ${sockeldaemmstaerke}cm`);
+} // DIESE KLAMMER FEHLTE!
+
+      } // Ende von istDaemmPosition
+      return pos;
+    });
   } else {
     // KRITISCHER FEHLER: Keine Dämmstärke gefunden
     console.error('[FASS] KRITISCH: Keine Dämmstärke in Antworten gefunden!');
