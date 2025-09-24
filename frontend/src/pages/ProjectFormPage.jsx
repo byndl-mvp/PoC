@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
-// Kategorien-Struktur basierend auf der PDF-Liste
+// Kategorien-Struktur
 const CATEGORIES = {
   'Sanierung': [
     'Teilsanierung',
@@ -35,7 +35,7 @@ const CATEGORIES = {
     'Mauer- und Betonarbeiten (Wände / Decken / Stützen)',
     'Fundamentarbeiten',
     'Statische Veränderungen (Wanddurchbrüche)',
-],
+  ],
   'Rückbau / Abbrucharbeiten': [
     'Abbrucharbeiten (Teil- oder Komplettabriss)',
     'Entkernung'
@@ -55,11 +55,28 @@ const CATEGORIES = {
   ]
 };
 
+// Preismodell
+const PRICING = {
+  small: { price: 9.90, label: '1-2 Gewerke', max: 2 },
+  medium: { price: 19.90, label: '3-5 Gewerke', max: 5 },
+  large: { price: 39.90, label: 'Ab 6 Gewerken', max: 999 }
+};
+
 export default function ProjectFormPage() {
   const navigate = useNavigate();
+  const [currentSection, setCurrentSection] = useState('user'); // 'user' or 'project'
   const [form, setForm] = useState({
+    // Nutzerdaten
+    userName: '',
+    userEmail: '',
+    // Projektadresse
+    projectStreet: '',
+    projectHouseNumber: '',
+    projectZip: '',
+    projectCity: '',
+    // Projektdetails
     category: '',
-    subCategories: [], // NEU: Array für Mehrfachauswahl
+    subCategories: [],
     description: '',
     timeframe: '',
     budget: '',
@@ -67,10 +84,18 @@ export default function ProjectFormPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Berechne Preis basierend auf Anzahl der Unterkategorien
+  const calculatePrice = () => {
+    const count = form.subCategories.length;
+    if (count === 0) return null;
+    if (count <= 2) return PRICING.small;
+    if (count <= 5) return PRICING.medium;
+    return PRICING.large;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Bei Änderung der Hauptkategorie, Unterkategorien zurücksetzen
     if (name === 'category') {
       setForm(prev => ({ ...prev, category: value, subCategories: [] }));
     } else {
@@ -78,7 +103,6 @@ export default function ProjectFormPage() {
     }
   };
 
-  // Handler für Mehrfachauswahl der Unterkategorien
   const handleSubCategoryToggle = (subCategory) => {
     setForm(prev => ({
       ...prev,
@@ -88,10 +112,22 @@ export default function ProjectFormPage() {
     }));
   };
 
+  const handleSectionChange = (section) => {
+    // Validierung für User-Section
+    if (currentSection === 'user' && section === 'project') {
+      if (!form.userName || !form.userEmail || !form.projectStreet || 
+          !form.projectHouseNumber || !form.projectZip || !form.projectCity) {
+        setError('Bitte füllen Sie alle Pflichtfelder aus.');
+        return;
+      }
+    }
+    setError('');
+    setCurrentSection(section);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validierung: Mindestens eine Unterkategorie muss ausgewählt sein
     if (form.category && form.subCategories.length === 0) {
       setError('Bitte wählen Sie mindestens eine Unterkategorie aus.');
       return;
@@ -100,17 +136,35 @@ export default function ProjectFormPage() {
     setLoading(true);
     setError('');
     
+    // Hier würde später die Zahlungsabwicklung kommen
+    // Für MVP: Direkte Weiterleitung nach Projektanlage
+    
     try {
+      const projectData = {
+        // User data
+        userName: form.userName,
+        userEmail: form.userEmail,
+        // Project address
+        address: {
+          street: form.projectStreet,
+          houseNumber: form.projectHouseNumber,
+          zipCode: form.projectZip,
+          city: form.projectCity,
+        },
+        // Project details
+        category: form.category,
+        subCategory: form.subCategories.join(', '),
+        description: form.description,
+        timeframe: form.timeframe,
+        budget: form.budget ? Number(form.budget) : null,
+        // Pricing
+        price: calculatePrice()?.price,
+      };
+
       const res = await fetch(apiUrl('/api/projects'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: form.category,
-          subCategory: form.subCategories.join(', '), // Als kommaseparierter String speichern
-          description: form.description,
-          timeframe: form.timeframe,
-          budget: form.budget ? Number(form.budget) : null,
-        }),
+        body: JSON.stringify(projectData),
       });
       
       if (!res.ok) {
@@ -120,9 +174,10 @@ export default function ProjectFormPage() {
       
       const data = await res.json();
       const { project } = data;
-      const projectId = project.id;
       
-      navigate(`/project/${projectId}/intake`);
+      // TODO: Hier würde Zahlungsabwicklung stattfinden
+      // Nach erfolgreicher Zahlung:
+      navigate(`/project/${project.id}/intake`);
       
     } catch (err) {
       console.error(err);
@@ -132,8 +187,8 @@ export default function ProjectFormPage() {
     }
   };
 
-  // Hole Unterkategorien basierend auf gewählter Hauptkategorie
   const availableSubCategories = form.category ? CATEGORIES[form.category] || [] : [];
+  const priceInfo = calculatePrice();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -145,175 +200,386 @@ export default function ProjectFormPage() {
 
       <div className="relative max-w-2xl mx-auto px-4 py-12">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="mb-8">
+          <a href="/" className="text-white text-2xl font-bold hover:text-teal-400 transition-colors">
+            byndl
+          </a>
+        </div>
+
+        {/* Progress Indicator */}
+        <div className="flex justify-between items-center mb-12 max-w-md mx-auto">
+          <div className="flex items-center">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+              currentSection === 'user' ? 'bg-teal-500' : 'bg-teal-600'
+            }`}>
+              {currentSection === 'project' ? '✓' : '1'}
+            </div>
+            <span className="ml-2 text-white text-sm">Ihre Daten</span>
+          </div>
+          <div className="flex-1 h-0.5 bg-white/20 mx-2"></div>
+          <div className="flex items-center">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+              currentSection === 'project' ? 'bg-teal-500 text-white' : 'bg-white/20 text-white/60'
+            }`}>
+              2
+            </div>
+            <span className={`ml-2 text-sm ${
+              currentSection === 'project' ? 'text-white' : 'text-white/60'
+            }`}>Projektdetails</span>
+          </div>
+        </div>
+
+        {/* Main Title */}
+        <div className="text-center mb-8">
           <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
             Projekt anlegen
           </h1>
           <p className="text-xl text-gray-300">
-            Beschreiben Sie Ihr Bauvorhaben in wenigen Schritten
+            In wenigen Schritten zur professionellen Ausschreibung
           </p>
         </div>
 
         {/* Form Card */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Hauptkategorie */}
-            <div>
-              <label className="block text-white font-medium mb-2">
-                Hauptkategorie *
-              </label>
-              <select
-                name="category"
-                value={form.category}
-                onChange={handleChange}
-                required
-                className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              >
-                <option value="" className="bg-slate-800">Bitte wählen</option>
-                {Object.keys(CATEGORIES).map(cat => (
-                  <option key={cat} value={cat} className="bg-slate-800">{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Unterkategorien - Mehrfachauswahl mit Checkboxen */}
-            {form.category && (
-              <div>
-                <label className="block text-white font-medium mb-2">
-                  Unterkategorien * 
-                  <span className="text-gray-400 font-normal ml-2">(Mehrfachauswahl möglich)</span>
-                </label>
-                <div className="bg-white/10 rounded-lg p-4 max-h-60 overflow-y-auto">
-                  {availableSubCategories.map(subCat => (
-                    <label
-                      key={subCat}
-                      className="flex items-center text-white hover:bg-white/10 rounded p-2 cursor-pointer transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.subCategories.includes(subCat)}
-                        onChange={() => handleSubCategoryToggle(subCat)}
-                        className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500 focus:ring-2"
-                      />
-                      <span>{subCat}</span>
-                    </label>
-                  ))}
+            
+            {/* Section 1: Nutzerdaten */}
+            {currentSection === 'user' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold text-white border-b border-white/20 pb-2">
+                  Ihre Kontaktdaten
+                </h2>
+                
+                {/* Name */}
+                <div>
+                  <label className="block text-white font-medium mb-2">
+                    Ihr Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="userName"
+                    value={form.userName}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="Max Mustermann"
+                  />
                 </div>
-                {form.subCategories.length > 0 && (
-                  <div className="mt-2 text-sm text-gray-400">
-                    Ausgewählt: {form.subCategories.length} Unterkategorie(n)
+
+                {/* Email */}
+                <div>
+                  <label className="block text-white font-medium mb-2">
+                    E-Mail Adresse *
+                  </label>
+                  <input
+                    type="email"
+                    name="userEmail"
+                    value={form.userEmail}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="max.mustermann@email.de"
+                  />
+                  <p className="mt-2 text-sm text-gray-400">
+                    Für Rückfragen und Angebotsübermittlung
+                  </p>
+                </div>
+
+                <h2 className="text-2xl font-semibold text-white border-b border-white/20 pb-2 mt-8">
+                  Projektstandort
+                </h2>
+                
+                {/* Straße und Hausnummer */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-white font-medium mb-2">
+                      Straße *
+                    </label>
+                    <input
+                      type="text"
+                      name="projectStreet"
+                      value={form.projectStreet}
+                      onChange={handleChange}
+                      required
+                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      placeholder="Musterstraße"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      Hausnr. *
+                    </label>
+                    <input
+                      type="text"
+                      name="projectHouseNumber"
+                      value={form.projectHouseNumber}
+                      onChange={handleChange}
+                      required
+                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      placeholder="12a"
+                    />
+                  </div>
+                </div>
+
+                {/* PLZ und Ort */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      PLZ *
+                    </label>
+                    <input
+                      type="text"
+                      name="projectZip"
+                      value={form.projectZip}
+                      onChange={handleChange}
+                      required
+                      pattern="[0-9]{5}"
+                      maxLength="5"
+                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      placeholder="52349"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-white font-medium mb-2">
+                      Ort *
+                    </label>
+                    <input
+                      type="text"
+                      name="projectCity"
+                      value={form.projectCity}
+                      onChange={handleChange}
+                      required
+                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      placeholder="Düren"
+                    />
+                  </div>
+                </div>
+
+                {/* Info Box */}
+                <div className="bg-teal-500/20 border border-teal-500/50 rounded-lg p-4">
+                  <p className="text-teal-200 text-sm">
+                    <strong>💡 Warum brauchen wir die Adresse?</strong><br />
+                    Die genaue Projektadresse ermöglicht uns, Handwerker aus Ihrer Region zu finden 
+                    und ähnliche Projekte in Ihrer Nähe zu bündeln - für bessere Preise und kürzere Wartezeiten.
+                  </p>
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4">
+                    <p className="text-red-200">{error}</p>
                   </div>
                 )}
+
+                {/* Continue Button */}
+                <button
+                  type="button"
+                  onClick={() => handleSectionChange('project')}
+                  className="w-full bg-gradient-to-r from-teal-500 to-blue-600 text-white font-semibold py-4 rounded-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-200"
+                >
+                  Weiter zu Projektdetails →
+                </button>
               </div>
             )}
 
-            {/* Beschreibung */}
-            <div>
-              <label className="block text-white font-medium mb-2">
-                Projektbeschreibung *
-              </label>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                required
-                className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                rows={5}
-                placeholder="Beschreiben Sie Ihr Vorhaben möglichst detailliert..."
-              />
-            </div>
-
-            {/* Zeitrahmen */}
-            <div>
-              <label className="block text-white font-medium mb-2">
-                Gewünschter Ausführungszeitraum
-              </label>
-              <select
-                name="timeframe"
-                value={form.timeframe}
-                onChange={handleChange}
-                className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              >
-                <option value="" className="bg-slate-800">Keine Angabe</option>
-                <option value="asap" className="bg-slate-800">So bald wie möglich</option>
-                <option value="1mon" className="bg-slate-800">Innerhalb 1 Monat</option>
-                <option value="3mon" className="bg-slate-800">In 3 Monaten</option>
-                <option value="6mon" className="bg-slate-800">In 6 Monaten</option>
-                <option value="year" className="bg-slate-800">Innerhalb eines Jahres</option>
-                <option value="planning" className="bg-slate-800">Noch in Planung</option>
-              </select>
-            </div>
-
-            {/* Budget */}
-            <div>
-              <label className="block text-white font-medium mb-2">
-                Geplantes Budget
-                <span className="text-gray-400 font-normal ml-2">(optional)</span>
-              </label>
-              <input
-                type="number"
-                name="budget"
-                value={form.budget}
-                onChange={handleChange}
-                className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                placeholder="Budget in EUR"
-                min="0"
-                step="100"
-              />
-            </div>
-
-            {/* Hinweis bei genehmigungspflichtigen Arbeiten */}
-{(form.category === 'Anbau / Umbau / Aufstockung' || 
-  form.category === 'Rohbauarbeiten / Strukturelle Eingriffe' ||
-  form.subCategories.some(sc => 
-    sc.includes('Anbau') || 
-    sc.includes('Umbau') || 
-    sc.includes('Aufstockung') || 
-    sc.includes('Dachausbau') ||
-    sc.includes('Statische Veränderungen') ||
-    sc.includes('Wanddurchbrüche')
-  )) && (
-  <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
-    <p className="text-yellow-200 text-sm">
-      <strong>⚠️ Hinweis:</strong> Bei strukturellen Änderungen oder Nutzungsänderungen 
-      kann eine Baugenehmigung erforderlich sein. Bitte prüfen Sie die lokale Bauordnung.
-    </p>
-  </div>
-)}
-
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4">
-                <p className="text-red-200">{error}</p>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading || (form.category && form.subCategories.length === 0)}
-              className="w-full bg-gradient-to-r from-teal-500 to-blue-600 text-white font-semibold py-4 rounded-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            {/* Section 2: Projektdetails */}
+            {currentSection === 'project' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold text-white border-b border-white/20 pb-2">
+                  Projektdetails
+                </h2>
+                
+                {/* Back Button */}
+                <button
+                  type="button"
+                  onClick={() => handleSectionChange('user')}
+                  className="text-gray-400 hover:text-white transition-colors flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
                   </svg>
-                  Projekt wird angelegt...
-                </span>
-              ) : (
-                'Weiter zu den Projektfragen →'
-              )}
-            </button>
+                  Zurück
+                </button>
+
+                {/* Hauptkategorie */}
+                <div>
+                  <label className="block text-white font-medium mb-2">
+                    Hauptkategorie *
+                  </label>
+                  <select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  >
+                    <option value="" className="bg-slate-800">Bitte wählen</option>
+                    {Object.keys(CATEGORIES).map(cat => (
+                      <option key={cat} value={cat} className="bg-slate-800">{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Unterkategorien */}
+                {form.category && (
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      Unterkategorien * 
+                      <span className="text-gray-400 font-normal ml-2">(Mehrfachauswahl möglich)</span>
+                    </label>
+                    <div className="bg-white/10 rounded-lg p-4 max-h-60 overflow-y-auto">
+                      {availableSubCategories.map(subCat => (
+                        <label
+                          key={subCat}
+                          className="flex items-center text-white hover:bg-white/10 rounded p-2 cursor-pointer transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.subCategories.includes(subCat)}
+                            onChange={() => handleSubCategoryToggle(subCat)}
+                            className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500 focus:ring-2"
+                          />
+                          <span>{subCat}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {form.subCategories.length > 0 && (
+                      <div className="mt-2 text-sm text-gray-400">
+                        Ausgewählt: {form.subCategories.length} Unterkategorie(n) = {form.subCategories.length} Gewerk(e)
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Beschreibung */}
+                <div>
+                  <label className="block text-white font-medium mb-2">
+                    Projektbeschreibung *
+                  </label>
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    rows={5}
+                    placeholder="Beschreiben Sie Ihr Vorhaben in eigenen Worten. Die KI hilft Ihnen, daraus ein professionelles Leistungsverzeichnis zu erstellen..."
+                  />
+                  <p className="mt-2 text-sm text-gray-400">
+                    Je detaillierter Ihre Beschreibung, desto präziser die Ausschreibung
+                  </p>
+                </div>
+
+                {/* Zeitrahmen */}
+                <div>
+                  <label className="block text-white font-medium mb-2">
+                    Gewünschter Ausführungszeitraum
+                  </label>
+                  <select
+                    name="timeframe"
+                    value={form.timeframe}
+                    onChange={handleChange}
+                    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  >
+                    <option value="" className="bg-slate-800">Keine Angabe</option>
+                    <option value="asap" className="bg-slate-800">So bald wie möglich</option>
+                    <option value="1mon" className="bg-slate-800">Innerhalb 1 Monat</option>
+                    <option value="3mon" className="bg-slate-800">In 3 Monaten</option>
+                    <option value="6mon" className="bg-slate-800">In 6 Monaten</option>
+                    <option value="year" className="bg-slate-800">Innerhalb eines Jahres</option>
+                    <option value="planning" className="bg-slate-800">Noch in Planung</option>
+                  </select>
+                </div>
+
+                {/* Budget */}
+                <div>
+                  <label className="block text-white font-medium mb-2">
+                    Geplantes Budget
+                    <span className="text-gray-400 font-normal ml-2">(optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="budget"
+                    value={form.budget}
+                    onChange={handleChange}
+                    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="Budget in EUR"
+                    min="0"
+                    step="100"
+                  />
+                </div>
+
+                {/* Pricing Info */}
+                {priceInfo && (
+                  <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                    <h3 className="text-lg font-semibold text-white mb-3">
+                      Gebühr für KI-Ausschreibung:
+                    </h3>
+                    <div className="text-2xl font-bold text-teal-400 mb-2">
+                      {priceInfo.price.toFixed(2)} €
+                    </div>
+                    <p className="text-sm text-gray-300">
+                      Einmalige Gebühr für {form.subCategories.length} Gewerk(e) - 
+                      KI-gestützte Erstellung Ihres Leistungsverzeichnisses
+                    </p>
+                  </div>
+                )}
+
+                {/* Hinweis bei genehmigungspflichtigen Arbeiten */}
+                {(form.category === 'Anbau / Umbau / Aufstockung' || 
+                  form.category === 'Rohbauarbeiten / Statisch relevante Eingriffe' ||
+                  form.subCategories.some(sc => 
+                    sc.includes('Anbau') || 
+                    sc.includes('Umbau') || 
+                    sc.includes('Aufstockung') || 
+                    sc.includes('Dachausbau') ||
+                    sc.includes('Statische Veränderungen') ||
+                    sc.includes('Wanddurchbrüche')
+                  )) && (
+                  <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
+                    <p className="text-yellow-200 text-sm">
+                      <strong>⚠️ Hinweis:</strong> Bei strukturellen Änderungen oder Nutzungsänderungen 
+                      kann eine Baugenehmigung erforderlich sein. Bitte prüfen Sie die lokale Bauordnung.
+                    </p>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4">
+                    <p className="text-red-200">{error}</p>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading || (form.category && form.subCategories.length === 0)}
+                  className="w-full bg-gradient-to-r from-teal-500 to-blue-600 text-white font-semibold py-4 rounded-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Projekt wird angelegt...
+                    </span>
+                  ) : (
+                    'Weiter zur Zahlung →'
+                  )}
+                </button>
+              </div>
+            )}
+
           </form>
         </div>
 
         {/* Help Text */}
         <div className="mt-8 text-center">
           <p className="text-gray-400">
-            Nach der Projekterstellung werden Ihnen intelligente Fragen gestellt,
-            um Ihr Leistungsverzeichnis optimal zu erstellen.
+            Nach der Zahlung startet die KI-gestützte Projekterfassung und 
+            erstellt Ihr professionelles Leistungsverzeichnis.
           </p>
         </div>
       </div>
