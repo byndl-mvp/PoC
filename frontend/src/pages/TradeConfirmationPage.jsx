@@ -2,6 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
+// Preismodell
+const PRICING = {
+  small: { price: 9.90, label: '1-2 Gewerke', min: 1, max: 2 },
+  medium: { price: 19.90, label: '3-5 Gewerke', min: 3, max: 5 },
+  large: { price: 39.90, label: 'Ab 6 Gewerken', min: 6, max: 999 }
+};
+
 export default function TradeConfirmationPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -18,11 +25,21 @@ export default function TradeConfirmationPage() {
   const [recommendedTrades, setRecommendedTrades] = useState([]);
   const [selectedRequired, setSelectedRequired] = useState([]);
   const [selectedRecommended, setSelectedRecommended] = useState([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
-  // NEUE HILFSFUNKTION - Hier einfügen nach den useState-Hooks
+  // Hilfsfunktion für Gesamtzahl
   const getTotalSelectedCount = () => {
     const manualCount = detectedTrades.filter(t => t.source === 'manuell').length;
     return selectedRequired.length + selectedRecommended.length + manualCount;
+  };
+
+  // Berechne Preis basierend auf Anzahl der Gewerke
+  const calculatePrice = () => {
+    const count = getTotalSelectedCount();
+    if (count === 0) return null;
+    if (count <= 2) return PRICING.small;
+    if (count <= 5) return PRICING.medium;
+    return PRICING.large;
   };
 
   useEffect(() => {
@@ -31,13 +48,11 @@ export default function TradeConfirmationPage() {
         setLoading(true);
         setLoadingMessage('Lade Projektdetails...');
         
-        // 1. Lade Projektdetails
         const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
         if (!projectRes.ok) throw new Error('Projekt nicht gefunden');
         const projectData = await projectRes.json();
         setProject(projectData);
         
-        // 2. Lade Intake-Summary - DAS ist die Hauptquelle!
         setLoadingMessage('Analysiere Ihre Antworten...');
         let hasIntakeSummary = false;
         
@@ -47,30 +62,22 @@ export default function TradeConfirmationPage() {
             const summaryData = await summaryRes.json();
             setIntakeSummary(summaryData.summary);
             
-            console.log('Summary data:', summaryData);
-            console.log('Grouped trades:', summaryData.groupedTrades);
-            
-            // WICHTIG: Nutze NUR groupedTrades wenn vorhanden
             if (summaryData.groupedTrades) {
               hasIntakeSummary = true;
               
-              // Setze die Trades direkt aus groupedTrades
               const requiredFromSummary = summaryData.groupedTrades.required || [];
               const recommendedFromSummary = summaryData.groupedTrades.recommended || [];
               
               setRequiredTrades(requiredFromSummary);
               setRecommendedTrades(recommendedFromSummary);
               setSelectedRequired(requiredFromSummary.map(t => t.id));
-              setSelectedRecommended([]); // Empfohlene nicht vorausgewählt
+              setSelectedRecommended([]);
               
-              // Für Kompatibilität
               setDetectedTrades([...requiredFromSummary, ...recommendedFromSummary]);
               
-              // 3. Lade alle verfügbaren Trades für manuelle Hinzufügung
               const tradesRes = await fetch(apiUrl('/api/trades'));
               const allTradesData = await tradesRes.json();
               
-              // Filtere bereits zugeordnete aus
               const assignedIds = new Set([
                 ...requiredFromSummary.map(t => t.id),
                 ...recommendedFromSummary.map(t => t.id)
@@ -81,10 +88,6 @@ export default function TradeConfirmationPage() {
               );
               setAllTrades(availableTrades);
               
-              console.log('Trades gesetzt - Required:', requiredFromSummary.length, 
-                         'Recommended:', recommendedFromSummary.length);
-              
-              // WICHTIG: Return hier, damit der alte Code nicht mehr läuft!
               setLoading(false);
               return;
             }
@@ -93,15 +96,12 @@ export default function TradeConfirmationPage() {
           console.log('Keine Intake-Summary verfügbar');
         }
         
-        // NUR FALLBACK wenn keine Summary verfügbar
         if (!hasIntakeSummary) {
-          console.log('Fallback: Nutze Projekt-Trades');
           const initialDetected = (projectData.trades || []).filter(t => t.code !== 'INT');
           
           const tradesRes = await fetch(apiUrl('/api/trades'));
           const allTradesData = await tradesRes.json();
           
-          // Alle initial erkannten als erforderlich
           const required = initialDetected.map(trade => ({
             ...trade,
             category: 'required',
@@ -154,19 +154,15 @@ export default function TradeConfirmationPage() {
     if (trade) {
       setAddingTrade(true);
       
-      // Füge zu erkannten Trades hinzu (als manuell hinzugefügt markiert)
       const manualTrade = { 
         ...trade, 
         source: 'manuell',
-        category: 'manual',  // NEU
-        reason: 'Manuell hinzugefügt für spezifische Anforderungen',  // NEU
-        isManuallyAdded: true  // Wichtig für kontextbezogene Fragen
+        category: 'manual',
+        reason: 'Manuell hinzugefügt für spezifische Anforderungen',
+        isManuallyAdded: true
       };
       
-      console.log('Adding manual trade:', trade.id, 'with flag:', manualTrade.isManuallyAdded);
-      
       setDetectedTrades(prev => [...prev, manualTrade]);
-      // Entferne aus verfügbaren Trades
       setAllTrades(prev => prev.filter(t => t.id !== trade.id));
       
       setAddingTrade(false);
@@ -174,18 +170,15 @@ export default function TradeConfirmationPage() {
   };
 
   const handleContinue = async () => {
-    // Sammle manuelle Trades
     const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
     const manualTradeIds = manualTrades.map(t => t.id);
     
-    // Sammle ALLE ausgewählten Trade IDs
     const allSelectedTrades = [
       ...selectedRequired,
       ...selectedRecommended,
       ...manualTradeIds
     ];
     
-    // Entferne Duplikate
     const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
     
     if (uniqueSelectedTrades.length === 0) {
@@ -193,46 +186,67 @@ export default function TradeConfirmationPage() {
       return;
     }
     
+    // Zeige Zahlungsmodal
+    setShowPaymentModal(true);
+  };
+
+  const processPaymentAndContinue = async () => {
+    // TODO: Hier würde die echte Zahlungsabwicklung stattfinden
+    // Für MVP simulieren wir erfolgreiche Zahlung
+    
+    const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
+    const manualTradeIds = manualTrades.map(t => t.id);
+    
+    const allSelectedTrades = [
+      ...selectedRequired,
+      ...selectedRecommended,
+      ...manualTradeIds
+    ];
+    
+    const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
     const manuallyAddedTradeIds = manualTrades.map(t => t.id);
     
     try {
-    setLoading(true);
-    setLoadingMessage('Speichere Gewerkeauswahl...');
-    
-    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        confirmedTrades: uniqueSelectedTrades,
-        manuallyAddedTrades: manuallyAddedTradeIds,
-        aiRecommendedTrades: selectedRecommended,
-        isAdditional: isAdditionalTrade
-      })
-    });
-    
-    if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
-    
-    // VEREINFACHEN - sortedNew und sortedTrades werden nicht mehr benötigt:
-    if (isAdditionalTrade) {
-      sessionStorage.removeItem('addingAdditionalTrade');
+      setLoading(true);
+      setLoadingMessage('Verarbeite Zahlung und speichere Gewerkeauswahl...');
+      
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          confirmedTrades: uniqueSelectedTrades,
+          manuallyAddedTrades: manuallyAddedTradeIds,
+          aiRecommendedTrades: selectedRecommended,
+          isAdditional: isAdditionalTrade,
+          paymentInfo: {
+            amount: calculatePrice()?.price,
+            tradeCount: getTotalSelectedCount(),
+            paymentMethod: 'pending' // TODO: echte Zahlungsmethode
+          }
+        })
+      });
+      
+      if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
+      
+      if (isAdditionalTrade) {
+        sessionStorage.removeItem('addingAdditionalTrade');
+      }
+      
+      if (manuallyAddedTradeIds.length > 0) {
+        sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
+      }
+      if (selectedRecommended.length > 0) {
+        sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(selectedRecommended));
+      }
+      
+      navigate(`/project/${projectId}/lv-review`);
+      
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+      setShowPaymentModal(false);
     }
-    
-    // Speichere Info über Trades
-    if (manuallyAddedTradeIds.length > 0) {
-      sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
-    }
-    if (selectedRecommended.length > 0) {
-      sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(selectedRecommended));
-    }
-    
-    // Immer zur Review navigieren
-    navigate(`/project/${projectId}/lv-review`);
-    
-  } catch (err) {
-    setError(err.message);
-    setLoading(false);
-  }
-};
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
@@ -253,6 +267,8 @@ export default function TradeConfirmationPage() {
       </div>
     </div>
   );
+
+  const priceInfo = calculatePrice();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -280,35 +296,6 @@ export default function TradeConfirmationPage() {
             <h3 className="text-white font-semibold mb-2">Ihr Projekt:</h3>
             <p className="text-gray-300">{project.category} {project.sub_category && `- ${project.sub_category}`}</p>
             <p className="text-gray-400 text-sm mt-2">{project.description}</p>
-          </div>
-        )}
-
-        {/* KI-Empfehlungen Info */}
-        {intakeSummary && (intakeSummary.recommendations || intakeSummary.risks) && (
-          <div className="bg-yellow-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-yellow-500/30">
-            <h3 className="text-yellow-300 font-semibold mb-3">
-              💡 Zusätzliche Empfehlungen basierend auf Ihren Angaben:
-            </h3>
-            {intakeSummary.recommendations && intakeSummary.recommendations.length > 0 && (
-              <div className="mb-3">
-                <p className="text-gray-300 text-sm mb-2">Empfohlene Experten:</p>
-                <ul className="list-disc list-inside text-gray-400 text-sm">
-                  {intakeSummary.recommendations.map((rec, idx) => (
-                    <li key={idx}>{rec}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {intakeSummary.risks && intakeSummary.risks.length > 0 && (
-              <div>
-                <p className="text-gray-300 text-sm mb-2">Zu beachten:</p>
-                <ul className="list-disc list-inside text-gray-400 text-sm">
-                  {intakeSummary.risks.map((risk, idx) => (
-                    <li key={idx}>{risk}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         )}
 
@@ -385,11 +372,6 @@ export default function TradeConfirmationPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-white font-medium">{trade.name}</span>
                       <span className="text-gray-300 text-sm">({trade.code})</span>
-                      {trade.confidence && trade.confidence >= 80 && (
-                        <span className="bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
-                          Sehr wahrscheinlich
-                        </span>
-                      )}
                     </div>
                     <p className="text-gray-200 text-sm mt-1">{trade.reason}</p>
                   </div>
@@ -429,7 +411,7 @@ export default function TradeConfirmationPage() {
           </div>
         )}
         
-        {/* Add Additional Trades */}
+        {/* Weitere Gewerke hinzufügen */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
           <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
             <span className="text-yellow-400 mr-2">+</span>
@@ -458,12 +440,9 @@ export default function TradeConfirmationPage() {
           ) : (
             <p className="text-gray-400">Alle verfügbaren Gewerke wurden bereits hinzugefügt</p>
           )}
-          <p className="text-blue-300 text-xs mt-2">
-            ℹ️ Bei manuell hinzugefügten Gewerken wird die erste Frage den Arbeitsumfang erfassen.
-          </p>
         </div>
 
-        {/* Summary - AKTUALISIERT */}
+        {/* Kosten-Summary */}
         <div className="bg-gradient-to-r from-teal-500/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-6 mb-8 border border-white/20">
           <div className="flex items-center justify-between">
             <div>
@@ -471,18 +450,13 @@ export default function TradeConfirmationPage() {
               <p className="text-teal-300 text-2xl font-bold mt-1">
                 {getTotalSelectedCount()} {getTotalSelectedCount() === 1 ? 'Gewerk' : 'Gewerke'}
               </p>
-              <p className="text-gray-400 text-xs mt-1">
-                {selectedRequired.length} erforderlich, 
-                {selectedRecommended.length} zusätzlich{detectedTrades.filter(t => t.source === 'manuell').length > 0 && 
-                  `, ${detectedTrades.filter(t => t.source === 'manuell').length} manuell`}
-              </p>
             </div>
             <div className="text-right">
-              <p className="text-gray-400 text-sm">Geschätzte Bearbeitungszeit:</p>
-              <p className="text-white">~{getTotalSelectedCount() * 2} Minuten</p>
-              <p className="text-gray-400 text-xs mt-1">
-                (Angepasste Fragenanzahl pro Gewerk)
+              <p className="text-gray-400 text-sm">Gebühr für KI-Ausschreibung:</p>
+              <p className="text-white text-2xl font-bold">
+                {priceInfo ? `${priceInfo.price.toFixed(2)} €` : '-'}
               </p>
+              <p className="text-gray-400 text-xs mt-1">einmalig</p>
             </div>
           </div>
         </div>
@@ -496,7 +470,6 @@ export default function TradeConfirmationPage() {
             ← Zurück zu Projektfragen
           </button>
           
-          {/* BUTTON AKTUALISIERT - verwendet jetzt getTotalSelectedCount() */}
           <button
             onClick={handleContinue}
             disabled={getTotalSelectedCount() === 0 || loading}
@@ -511,7 +484,7 @@ export default function TradeConfirmationPage() {
                 Speichern...
               </span>
             ) : (
-              `Mit ${getTotalSelectedCount()} ${getTotalSelectedCount() === 1 ? 'Gewerk' : 'Gewerken'} fortfahren →`
+              `Kostenpflichtig fortfahren →`
             )}
           </button>
         </div>
@@ -519,11 +492,75 @@ export default function TradeConfirmationPage() {
         {/* Info Box */}
         <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <p className="text-blue-300 text-sm">
-            <strong>ℹ️ Hinweis:</strong> Als nächstes werden detaillierte Fragen zu jedem ausgewählten Gewerk gestellt.
-            Die Fragen sind auf Laien ausgerichtet und enthalten Erklärungen zu Fachbegriffen.
+            <strong>ℹ️ Hinweis:</strong> Nach Klick auf "Kostenpflichtig fortfahren" werden Sie zur Zahlung weitergeleitet. 
+            Nach erfolgreicher Zahlung startet die KI-gestützte Erstellung Ihres Leistungsverzeichnisses.
           </p>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-white/20">
+            <h2 className="text-2xl font-bold text-white mb-6">Zahlungsinformationen</h2>
+            
+            <div className="bg-white/10 rounded-lg p-4 mb-6">
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-300">Anzahl Gewerke:</span>
+                <span className="text-white font-semibold">{getTotalSelectedCount()}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-300">Leistung:</span>
+                <span className="text-white">KI-Ausschreibung</span>
+              </div>
+              <div className="border-t border-white/20 mt-3 pt-3">
+                <div className="flex justify-between">
+                  <span className="text-white font-semibold">Gesamtbetrag:</span>
+                  <span className="text-teal-400 font-bold text-xl">
+                    {priceInfo?.price.toFixed(2)} €
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-300 text-sm mb-4">
+                Wählen Sie Ihre Zahlungsmethode:
+              </p>
+              <div className="space-y-3">
+                <button className="w-full bg-white/10 border border-white/30 rounded-lg p-3 text-white hover:bg-white/20 transition-all text-left">
+                  💳 Kreditkarte / Debitkarte
+                </button>
+                <button className="w-full bg-white/10 border border-white/30 rounded-lg p-3 text-white hover:bg-white/20 transition-all text-left">
+                  🏦 SEPA-Lastschrift
+                </button>
+                <button className="w-full bg-white/10 border border-white/30 rounded-lg p-3 text-white hover:bg-white/20 transition-all text-left">
+                  💰 PayPal
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="flex-1 px-4 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={processPaymentAndContinue}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
+              >
+                Jetzt zahlen
+              </button>
+            </div>
+
+            <p className="text-gray-400 text-xs mt-4 text-center">
+              Sichere Zahlung über unseren Partner. Ihre Daten sind geschützt.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
