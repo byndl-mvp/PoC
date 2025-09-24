@@ -886,7 +886,7 @@ const combinedTrades = tradesData.trades.map(trade => {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setSelectedPosition(pos);
-                                      setModalLvIndex(lvIndex);
+                                      setModalLvIndex(lvs.findIndex(l => l.trade_id === trade.id));
                                       setModalPosIndex(pidx);
                                       setEditingPosition(`${lvIndex}-${pidx}`);
                                     }}
