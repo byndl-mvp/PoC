@@ -320,6 +320,7 @@ const combinedTrades = tradesData.trades.map(trade => {
     }
   };
   
+  // Position Modal (identisch mit ResultPage)
   const PositionModal = () => {
     if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
     
@@ -362,6 +363,16 @@ const combinedTrades = tradesData.trades.map(trade => {
         newLvs[modalLvIndex].content.totalSum = totals.totalSum;
         newLvs[modalLvIndex].content.nepSum = totals.nepSum;
         setLvs(newLvs);
+        
+        // Update selectedTrades
+        const updatedTrades = [...selectedTrades];
+        const tradeIndex = updatedTrades.findIndex(t => t.id === lv.trade_id);
+        if (tradeIndex !== -1) {
+          updatedTrades[tradeIndex].lv = newLvs[modalLvIndex];
+          updatedTrades[tradeIndex].totalCost = totals.totalSum;
+          setSelectedTrades(updatedTrades);
+        }
+        
         setSelectedPosition(updatedPosition);
         setEditingPosition(null);
         setEditedValues({});
@@ -371,7 +382,6 @@ const combinedTrades = tradesData.trades.map(trade => {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
             <div className="flex justify-between items-start">
               <div>
@@ -509,7 +519,6 @@ const combinedTrades = tradesData.trades.map(trade => {
             )}
           </div>
           
-          {/* Footer */}
           <div className="border-t bg-gray-50 px-6 py-4 rounded-b-2xl">
             <div className="flex justify-between">
               <button
@@ -534,7 +543,7 @@ const combinedTrades = tradesData.trades.map(trade => {
                       onClick={handleSave}
                       className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
-                      ✔ Speichern
+                      ✓ Speichern
                     </button>
                     <button
                       onClick={() => {
@@ -805,7 +814,7 @@ const combinedTrades = tradesData.trades.map(trade => {
                               }`}
                               onClick={() => {
                                 setSelectedPosition(pos);
-                                setModalLvIndex(lvs.findIndex(l => l.trade_id === trade.id)); 
+                                setModalLvIndex(lvIndex);
                                 setModalPosIndex(pidx);
                               }}
                             >
@@ -877,7 +886,7 @@ const combinedTrades = tradesData.trades.map(trade => {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setSelectedPosition(pos);
-                                      setModalLvIndex(lvs.findIndex(l => l.trade_id === trade.id));
+                                      setModalLvIndex(lvIndex);
                                       setModalPosIndex(pidx);
                                       setEditingPosition(`${lvIndex}-${pidx}`);
                                     }}
