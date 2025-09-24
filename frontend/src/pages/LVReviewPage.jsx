@@ -79,30 +79,30 @@ export default function LVReviewPage() {
         const projectData = await projectRes.json();
         setProject(projectData);
         
-// 2. Gewählte Gewerke laden (aus Session oder Backend)
-const tradesRes = await fetch(apiUrl(`/api/projects/${projectId}/selected-trades`));
-if (!tradesRes.ok) throw new Error('Gewerke konnten nicht geladen werden');
-const tradesData = await tradesRes.json();
+        // 2. Gewählte Gewerke laden (aus Session oder Backend)
+        const tradesRes = await fetch(apiUrl(`/api/projects/${projectId}/selected-trades`));
+        if (!tradesRes.ok) throw new Error('Gewerke konnten nicht geladen werden');
+        const tradesData = await tradesRes.json();
 
-// 3. LVs für fertige Gewerke laden
-let lvsData = { lvs: [] };  // NEU: Variable außerhalb des if-Blocks definieren
-const lvsRes = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
-if (lvsRes.ok) {
-  lvsData = await lvsRes.json();  // ÄNDERN: const entfernen
-  setLvs(lvsData.lvs || []);
-}
+        // 3. LVs für fertige Gewerke laden
+        let lvsData = { lvs: [] };  // NEU: Variable außerhalb des if-Blocks definieren
+        const lvsRes = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
+        if (lvsRes.ok) {
+          lvsData = await lvsRes.json();  // ÄNDERN: const entfernen
+          setLvs(lvsData.lvs || []);
+        }
 
-const combinedTrades = tradesData.trades.map(trade => {
-  const lv = (lvsData?.lvs || []).find(l => 
-    parseInt(l.trade_id) === parseInt(trade.id)  // Beide als Number vergleichen!
-  );
-  return {
-    ...trade,
-    hasLV: !!lv,
-    lv: lv,
-    totalCost: lv ? calculateTotal(lv) : 0
-  };
-});
+        const combinedTrades = tradesData.trades.map(trade => {
+          const lv = (lvsData?.lvs || []).find(l => 
+            parseInt(l.trade_id) === parseInt(trade.id)  // Beide als Number vergleichen!
+          );
+          return {
+            ...trade,
+            hasLV: !!lv,
+            lv: lv,
+            totalCost: lv ? calculateTotal(lv) : 0
+          };
+        });
         
         setSelectedTrades(combinedTrades);
         
@@ -167,8 +167,9 @@ const combinedTrades = tradesData.trades.map(trade => {
       [key]: value
     }));
   };
+  
   // eslint-disable-next-line no-unused-vars
-    const handleSavePosition = async (lvIndex, posIndex) => {
+  const handleSavePosition = async (lvIndex, posIndex) => {
     const lv = lvs[lvIndex];
     const position = lv.content.positions[posIndex];
     const key = `${lvIndex}-${posIndex}`;
@@ -224,10 +225,11 @@ const combinedTrades = tradesData.trades.map(trade => {
     }
   };
   
-  const handleDeletePosition = async (lvIndex, posIndex) => {
+  const handleDeletePosition = async (tradeIndex, posIndex) => {
     if (!window.confirm('Position wirklich löschen?')) return;
     
-    const lv = lvs[lvIndex];
+    const trade = selectedTrades[tradeIndex];
+    const lv = trade.lv;
     const position = lv.content.positions[posIndex];
     
     const res = await fetch(
@@ -236,15 +238,12 @@ const combinedTrades = tradesData.trades.map(trade => {
     );
     
     if (res.ok) {
-      const newLvs = [...lvs];
       const remainingPositions = [...lv.content.positions];
       remainingPositions.splice(posIndex, 1);
       
       const totals = recalculateTotalsWithNEP(remainingPositions);
       
-      newLvs[lvIndex].content.positions = remainingPositions;
-      newLvs[lvIndex].content.totalSum = totals.totalSum;
-      
+      // Update backend
       await fetch(apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/lv/update`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -254,21 +253,27 @@ const combinedTrades = tradesData.trades.map(trade => {
         })
       });
       
-      setLvs(newLvs);
-      
       // Update selectedTrades
       const updatedTrades = [...selectedTrades];
-      const tradeIndex = updatedTrades.findIndex(t => t.id === lv.trade_id);
-      if (tradeIndex !== -1) {
-        updatedTrades[tradeIndex].lv = newLvs[lvIndex];
-        updatedTrades[tradeIndex].totalCost = totals.totalSum;
-        setSelectedTrades(updatedTrades);
+      updatedTrades[tradeIndex].lv.content.positions = remainingPositions;
+      updatedTrades[tradeIndex].lv.content.totalSum = totals.totalSum;
+      updatedTrades[tradeIndex].totalCost = totals.totalSum;
+      setSelectedTrades(updatedTrades);
+      
+      // Update lvs array
+      const newLvs = [...lvs];
+      const lvIndex = newLvs.findIndex(l => l.trade_id === lv.trade_id);
+      if (lvIndex !== -1) {
+        newLvs[lvIndex].content.positions = remainingPositions;
+        newLvs[lvIndex].content.totalSum = totals.totalSum;
+        setLvs(newLvs);
       }
     }
   };
   
-  const handleAddPosition = async (lvIndex) => {
-    const lv = lvs[lvIndex];
+  const handleAddPosition = async (tradeIndex) => {
+    const trade = selectedTrades[tradeIndex];
+    const lv = trade.lv;
     
     if (!newPosition.title) {
       alert('Bitte geben Sie eine Bezeichnung ein');
@@ -320,11 +325,14 @@ const combinedTrades = tradesData.trades.map(trade => {
     }
   };
   
-  // Position Modal (identisch mit ResultPage)
+  // Position Modal (angepasst für LVReviewPage)
   const PositionModal = () => {
     if (!selectedPosition || modalLvIndex === null || modalPosIndex === null) return null;
     
-    const lv = lvs[modalLvIndex];
+    // In LVReviewPage müssen wir das LV aus selectedTrades holen
+    const trade = selectedTrades[modalLvIndex];
+    if (!trade || !trade.lv) return null;
+    const lv = trade.lv;
     const isEditing = editingPosition === `${modalLvIndex}-${modalPosIndex}`;
     
     const handleSave = async () => {
@@ -358,19 +366,22 @@ const combinedTrades = tradesData.trades.map(trade => {
       });
       
       if (res.ok) {
-        const newLvs = [...lvs];
-        newLvs[modalLvIndex].content.positions = updatedPositions;
-        newLvs[modalLvIndex].content.totalSum = totals.totalSum;
-        newLvs[modalLvIndex].content.nepSum = totals.nepSum;
-        setLvs(newLvs);
+        // Update selectedTrades direkt
+        const newSelectedTrades = [...selectedTrades];
+        newSelectedTrades[modalLvIndex].lv.content.positions = updatedPositions;
+        newSelectedTrades[modalLvIndex].lv.content.totalSum = totals.totalSum;
+        newSelectedTrades[modalLvIndex].lv.content.nepSum = totals.nepSum;
+        newSelectedTrades[modalLvIndex].totalCost = totals.totalSum;
+        setSelectedTrades(newSelectedTrades);
         
-        // Update selectedTrades
-        const updatedTrades = [...selectedTrades];
-        const tradeIndex = updatedTrades.findIndex(t => t.id === lv.trade_id);
-        if (tradeIndex !== -1) {
-          updatedTrades[tradeIndex].lv = newLvs[modalLvIndex];
-          updatedTrades[tradeIndex].totalCost = totals.totalSum;
-          setSelectedTrades(updatedTrades);
+        // Update lvs array auch
+        const newLvs = [...lvs];
+        const lvIndex = newLvs.findIndex(l => l.trade_id === lv.trade_id);
+        if (lvIndex !== -1) {
+          newLvs[lvIndex].content.positions = updatedPositions;
+          newLvs[lvIndex].content.totalSum = totals.totalSum;
+          newLvs[lvIndex].content.nepSum = totals.nepSum;
+          setLvs(newLvs);
         }
         
         setSelectedPosition(updatedPosition);
@@ -543,7 +554,7 @@ const combinedTrades = tradesData.trades.map(trade => {
                       onClick={handleSave}
                       className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
-                      ✓ Speichern
+                      ✔ Speichern
                     </button>
                     <button
                       onClick={() => {
@@ -709,7 +720,6 @@ const combinedTrades = tradesData.trades.map(trade => {
         <div className="grid gap-6 mb-8">
           {selectedTrades.map((trade, idx) => {
             const lv = trade.lv;
-            const lvIndex = lvs.findIndex(l => l.trade_id === trade.id);
             
             return (
               <div key={trade.id} 
@@ -814,7 +824,7 @@ const combinedTrades = tradesData.trades.map(trade => {
                               }`}
                               onClick={() => {
                                 setSelectedPosition(pos);
-                                setModalLvIndex(lvIndex);
+                                setModalLvIndex(idx);
                                 setModalPosIndex(pidx);
                               }}
                             >
@@ -865,15 +875,21 @@ const combinedTrades = tradesData.trades.map(trade => {
                                     });
                                     
                                     if (res.ok) {
-                                      const newLvs = [...lvs];
-                                      newLvs[lvIndex].content.positions = updatedPositions;
-                                      newLvs[lvIndex].content.totalSum = totals.totalSum;
-                                      newLvs[lvIndex].content.nepSum = totals.nepSum;
-                                      setLvs(newLvs);
-                                      
                                       const updatedTrades = [...selectedTrades];
+                                      updatedTrades[idx].lv.content.positions = updatedPositions;
+                                      updatedTrades[idx].lv.content.totalSum = totals.totalSum;
+                                      updatedTrades[idx].lv.content.nepSum = totals.nepSum;
                                       updatedTrades[idx].totalCost = totals.totalSum;
                                       setSelectedTrades(updatedTrades);
+                                      
+                                      const newLvs = [...lvs];
+                                      const lvIndex = newLvs.findIndex(l => l.trade_id === lv.trade_id);
+                                      if (lvIndex !== -1) {
+                                        newLvs[lvIndex].content.positions = updatedPositions;
+                                        newLvs[lvIndex].content.totalSum = totals.totalSum;
+                                        newLvs[lvIndex].content.nepSum = totals.nepSum;
+                                        setLvs(newLvs);
+                                      }
                                     }
                                   }}
                                   className="w-4 h-4 text-teal-500"
@@ -886,9 +902,9 @@ const combinedTrades = tradesData.trades.map(trade => {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setSelectedPosition(pos);
-                                      setModalLvIndex(lvIndex);
+                                      setModalLvIndex(idx);
                                       setModalPosIndex(pidx);
-                                      setEditingPosition(`${lvIndex}-${pidx}`);
+                                      setEditingPosition(`${idx}-${pidx}`);
                                     }}
                                     className="text-blue-400 hover:text-blue-300"
                                   >
@@ -897,7 +913,7 @@ const combinedTrades = tradesData.trades.map(trade => {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDeletePosition(lvIndex, pidx);
+                                      handleDeletePosition(idx, pidx);
                                     }}
                                     className="text-red-400 hover:text-red-300"
                                   >
@@ -913,9 +929,9 @@ const combinedTrades = tradesData.trades.map(trade => {
                     
                     {/* Add Position Button */}
                     <div className="mt-4">
-                      {addingPosition !== lvIndex ? (
+                      {addingPosition !== idx ? (
                         <button
-                          onClick={() => setAddingPosition(lvIndex)}
+                          onClick={() => setAddingPosition(idx)}
                           className="w-full py-2 bg-green-600/20 border border-green-500/50 text-green-400 rounded-lg hover:bg-green-600/30 transition-all"
                         >
                           + Position hinzufügen
@@ -970,7 +986,7 @@ const combinedTrades = tradesData.trades.map(trade => {
                           </label>
                           <div className="flex gap-2 justify-end">
                             <button
-                              onClick={() => handleAddPosition(lvIndex)}
+                              onClick={() => handleAddPosition(idx)}
                               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
                             >
                               Speichern
