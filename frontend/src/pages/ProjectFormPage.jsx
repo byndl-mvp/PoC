@@ -55,13 +55,6 @@ const CATEGORIES = {
   ]
 };
 
-// Preismodell
-const PRICING = {
-  small: { price: 9.90, label: '1-2 Gewerke', max: 2 },
-  medium: { price: 19.90, label: '3-5 Gewerke', max: 5 },
-  large: { price: 39.90, label: 'Ab 6 Gewerken', max: 999 }
-};
-
 export default function ProjectFormPage() {
   const navigate = useNavigate();
   const [currentSection, setCurrentSection] = useState('user'); // 'user' or 'project'
@@ -83,15 +76,6 @@ export default function ProjectFormPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Berechne Preis basierend auf Anzahl der Unterkategorien
-  const calculatePrice = () => {
-    const count = form.subCategories.length;
-    if (count === 0) return null;
-    if (count <= 2) return PRICING.small;
-    if (count <= 5) return PRICING.medium;
-    return PRICING.large;
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -120,6 +104,17 @@ export default function ProjectFormPage() {
         setError('Bitte füllen Sie alle Pflichtfelder aus.');
         return;
       }
+      // E-Mail Validierung
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.userEmail)) {
+        setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+        return;
+      }
+      // PLZ Validierung
+      if (form.projectZip.length !== 5 || !/^\d{5}$/.test(form.projectZip)) {
+        setError('Bitte geben Sie eine gültige 5-stellige Postleitzahl ein.');
+        return;
+      }
     }
     setError('');
     setCurrentSection(section);
@@ -135,9 +130,6 @@ export default function ProjectFormPage() {
     
     setLoading(true);
     setError('');
-    
-    // Hier würde später die Zahlungsabwicklung kommen
-    // Für MVP: Direkte Weiterleitung nach Projektanlage
     
     try {
       const projectData = {
@@ -157,8 +149,6 @@ export default function ProjectFormPage() {
         description: form.description,
         timeframe: form.timeframe,
         budget: form.budget ? Number(form.budget) : null,
-        // Pricing
-        price: calculatePrice()?.price,
       };
 
       const res = await fetch(apiUrl('/api/projects'), {
@@ -175,8 +165,13 @@ export default function ProjectFormPage() {
       const data = await res.json();
       const { project } = data;
       
-      // TODO: Hier würde Zahlungsabwicklung stattfinden
-      // Nach erfolgreicher Zahlung:
+      // Speichere Nutzerdaten im sessionStorage für spätere Verwendung
+      sessionStorage.setItem('userData', JSON.stringify({
+        name: form.userName,
+        email: form.userEmail
+      }));
+      
+      // Direkt zur Intake-Seite navigieren
       navigate(`/project/${project.id}/intake`);
       
     } catch (err) {
@@ -188,7 +183,6 @@ export default function ProjectFormPage() {
   };
 
   const availableSubCategories = form.category ? CATEGORIES[form.category] || [] : [];
-  const priceInfo = calculatePrice();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -445,7 +439,7 @@ export default function ProjectFormPage() {
                     </div>
                     {form.subCategories.length > 0 && (
                       <div className="mt-2 text-sm text-gray-400">
-                        Ausgewählt: {form.subCategories.length} Unterkategorie(n) = {form.subCategories.length} Gewerk(e)
+                        Ausgewählt: {form.subCategories.length} Unterkategorie(n)
                       </div>
                     )}
                   </div>
@@ -509,21 +503,14 @@ export default function ProjectFormPage() {
                   />
                 </div>
 
-                {/* Pricing Info */}
-                {priceInfo && (
-                  <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-                    <h3 className="text-lg font-semibold text-white mb-3">
-                      Gebühr für KI-Ausschreibung:
-                    </h3>
-                    <div className="text-2xl font-bold text-teal-400 mb-2">
-                      {priceInfo.price.toFixed(2)} €
-                    </div>
-                    <p className="text-sm text-gray-300">
-                      Einmalige Gebühr für {form.subCategories.length} Gewerk(e) - 
-                      KI-gestützte Erstellung Ihres Leistungsverzeichnisses
-                    </p>
-                  </div>
-                )}
+                {/* Info zur Preisgestaltung */}
+                <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4">
+                  <p className="text-blue-200 text-sm">
+                    <strong>ℹ️ Hinweis zur Preisgestaltung:</strong><br />
+                    Die Gebühr für die KI-gestützte Ausschreibung richtet sich nach der Anzahl der Gewerke 
+                    und wird Ihnen nach der automatischen Gewerke-Erkennung angezeigt.
+                  </p>
+                </div>
 
                 {/* Hinweis bei genehmigungspflichtigen Arbeiten */}
                 {(form.category === 'Anbau / Umbau / Aufstockung' || 
@@ -566,7 +553,7 @@ export default function ProjectFormPage() {
                       Projekt wird angelegt...
                     </span>
                   ) : (
-                    'Weiter zur Zahlung →'
+                    'Projekt anlegen und KI-Analyse starten →'
                   )}
                 </button>
               </div>
@@ -578,8 +565,8 @@ export default function ProjectFormPage() {
         {/* Help Text */}
         <div className="mt-8 text-center">
           <p className="text-gray-400">
-            Nach der Zahlung startet die KI-gestützte Projekterfassung und 
-            erstellt Ihr professionelles Leistungsverzeichnis.
+            Nach dem Anlegen analysiert die KI Ihr Projekt und erkennt 
+            automatisch die benötigten Gewerke.
           </p>
         </div>
       </div>
