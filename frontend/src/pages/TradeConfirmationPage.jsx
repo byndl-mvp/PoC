@@ -299,7 +299,34 @@ export default function TradeConfirmationPage() {
           </div>
         )}
 
-        {/* Erforderliche Gewerke */}
+        {/* KI-Empfehlungen Info */}
+        {intakeSummary && (intakeSummary.recommendations || intakeSummary.risks) && (
+          <div className="bg-yellow-500/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-yellow-500/30">
+            <h3 className="text-yellow-300 font-semibold mb-3">
+              💡 Zusätzliche Empfehlungen basierend auf Ihren Angaben:
+            </h3>
+            {intakeSummary.recommendations && intakeSummary.recommendations.length > 0 && (
+              <div className="mb-3">
+                <p className="text-gray-300 text-sm mb-2">Empfohlene Experten:</p>
+                <ul className="list-disc list-inside text-gray-400 text-sm">
+                  {intakeSummary.recommendations.map((rec, idx) => (
+                    <li key={idx}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {intakeSummary.risks && intakeSummary.risks.length > 0 && (
+              <div>
+                <p className="text-gray-300 text-sm mb-2">Zu beachten:</p>
+                <ul className="list-disc list-inside text-gray-400 text-sm">
+                  {intakeSummary.risks.map((risk, idx) => (
+                    <li key={idx}>{risk}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white/20">
           <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
             <span className="text-green-400 mr-2">✔</span>
