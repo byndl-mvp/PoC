@@ -5515,32 +5515,130 @@ if (duplicates.length > 0) {
   }
 
   // FASS-spezifisch: Korrigiere falsche Dämmstärken
-if (trade.code === 'FASS' && criticalMeasurements.daemmstaerke && lv.positions) {
-  const korrekteDaemmstaerke = criticalMeasurements.daemmstaerke.value;
-  console.log(`[FASS] Erzwinge Dämmstärke ${korrekteDaemmstaerke}cm in allen WDVS-Positionen`);
-  
-  lv.positions = lv.positions.map(pos => {
-    if (pos.title?.toLowerCase().includes('wdvs') || 
+if (trade.code === 'FASS' && lv.positions) {
+  // Prüfe ob Dämmstärke aus Antworten extrahiert wurde
+  if (criticalMeasurements.daemmstaerke) {
+    const korrekteDaemmstaerke = criticalMeasurements.daemmstaerke.value;
+    console.log(`[FASS] Erzwinge Dämmstärke ${korrekteDaemmstaerke}cm aus Nutzerangaben`);
+    
+    // Gültige Dämmstärken (für Validierung)
+    const gueltigeDaemmstaerken = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
+    
+    if (!gueltigeDaemmstaerken.includes(korrekteDaemmstaerke)) {
+      console.warn(`[FASS] Unübliche Dämmstärke ${korrekteDaemmstaerke}cm aus Antworten - verwende trotzdem!`);
+    }
+    
+    lv.positions = lv.positions.map((pos, index) => {
+      // Prüfe ob Position Dämmung betrifft
+      const istDaemmPosition = 
         pos.title?.toLowerCase().includes('dämm') ||
-        pos.description?.toLowerCase().includes('dämmplatte')) {
+        pos.title?.toLowerCase().includes('wdvs') ||
+        pos.title?.toLowerCase().includes('eps') ||
+        pos.title?.toLowerCase().includes('xps') ||
+        pos.title?.toLowerCase().includes('sockeldämm') ||
+        pos.title?.toLowerCase().includes('perimeter') ||
+        pos.title?.toLowerCase().includes('steinwolle') ||
+        pos.title?.toLowerCase().includes('mineralwolle');
       
-      // Regex findet alle Dämmstärken-Angaben
-      const daemmRegex = /\b\d+\s*cm\b/gi;
-      
-      if (pos.title) {
-        const oldTitle = pos.title;
-        pos.title = pos.title.replace(daemmRegex, `${korrekteDaemmstaerke} cm`);
-        if (oldTitle !== pos.title) {
-          console.log(`[FASS] Titel korrigiert: "${oldTitle}" → "${pos.title}"`);
+      if (istDaemmPosition) {
+        // Regex findet ALLE Zahlen vor cm (inkl. 0, ungerade, etc.)
+        const daemmRegex = /\b\d+(\.\d+)?\s*cm\b/gi;
+        
+        let aenderungen = [];
+        
+        // Korrigiere Titel
+        if (pos.title) {
+          const oldTitle = pos.title;
+          // Ersetze JEDE Zahl+cm Kombination mit korrektem Wert
+          pos.title = pos.title.replace(daemmRegex, (match) => {
+            const zahl = parseInt(match);
+            // Nur ersetzen wenn: 0, ungerade, unter 10, oder nicht in gültiger Liste
+            if (zahl === 0 || zahl < 10 || zahl % 2 !== 0 || !gueltigeDaemmstaerken.includes(zahl)) {
+              aenderungen.push(`${match} → ${korrekteDaemmstaerke} cm`);
+              return `${korrekteDaemmstaerke} cm`;
+            }
+            // Sonst: Wenn Zahl gültig aber nicht die aus Antworten
+            if (zahl !== korrekteDaemmstaerke) {
+              aenderungen.push(`${match} → ${korrekteDaemmstaerke} cm`);
+              return `${korrekteDaemmstaerke} cm`;
+            }
+            return match;
+          });
+          
+          if (oldTitle !== pos.title) {
+            console.log(`[FASS] Position ${index+1} Titel korrigiert:`, aenderungen.join(', '));
+          }
+        }
+        
+        // Korrigiere Beschreibung mit gleichem Ansatz
+        if (pos.description) {
+          pos.description = pos.description.replace(daemmRegex, (match) => {
+            const zahl = parseInt(match);
+            if (zahl === 0 || zahl < 10 || zahl % 2 !== 0 || zahl !== korrekteDaemmstaerke) {
+              return `${korrekteDaemmstaerke} cm`;
+            }
+            return match;
+          });
+          
+          // Zusätzlich: Spezifische Kontexte korrigieren
+          pos.description = pos.description.replace(/Stärke:\?\s*\d+\s*cm/gi, `Stärke ${korrekteDaemmstaerke} cm`);
+          pos.description = pos.description.replace(/Dicke:\?\s*\d+\s*cm/gi, `Dicke ${korrekteDaemmstaerke} cm`);
+          pos.description = pos.description.replace(/Höhe:\?\s*\d+\s*cm/gi, `Höhe ${korrekteDaemmstaerke} cm`);
+        }
+        
+        // Finale Prüfung: Warne wenn immer noch problematische Werte
+        const nachPruefung = (pos.title + ' ' + pos.description).match(/\b\d+\s*cm\b/gi);
+        if (nachPruefung) {
+          nachPruefung.forEach(match => {
+            const zahl = parseInt(match);
+            if (zahl !== korrekteDaemmstaerke && (zahl === 0 || zahl < 10 || zahl % 2 !== 0)) {
+              console.error(`[FASS] KRITISCH: Position ${index+1} enthält noch falsche Dämmstärke: ${match}`);
+            }
+          });
         }
       }
-      
-      if (pos.description) {
-        pos.description = pos.description.replace(daemmRegex, `${korrekteDaemmstaerke} cm`);
+      return pos;
+    });
+    
+  } else {
+    // KRITISCHER FEHLER: Keine Dämmstärke gefunden
+    console.error('[FASS] KRITISCH: Keine Dämmstärke in Antworten gefunden!');
+    console.error('[FASS] Suche Notfall-Dämmstärke in den LV-Positionen...');
+    
+    // Versuche Dämmstärke aus vorhandenen Positionen zu extrahieren
+    let gefundeneDaemmstaerken = [];
+    lv.positions.forEach(pos => {
+      const matches = (pos.title + ' ' + pos.description).match(/\b(\d+)\s*cm\b/gi);
+      if (matches) {
+        matches.forEach(m => {
+          const zahl = parseInt(m);
+          if (zahl >= 10 && zahl <= 30 && zahl % 2 === 0) {
+            gefundeneDaemmstaerken.push(zahl);
+          }
+        });
       }
-    }
-    return pos;
-  });
+    });
+    
+    // Wenn keine gültige Dämmstärke gefunden, verwende 16cm als Standard
+    const notfallDaemmstaerke = gefundeneDaemmstaerken.length > 0 ? 
+      gefundeneDaemmstaerken[0] : 16;
+    
+    console.warn(`[FASS] Verwende Notfall-Dämmstärke: ${notfallDaemmstaerke}cm`);
+    
+    // Korrigiere alle falschen Werte
+    lv.positions = lv.positions.map(pos => {
+      if (pos.title?.toLowerCase().includes('dämm') || 
+          pos.title?.toLowerCase().includes('wdvs')) {
+        // Ersetze 0cm und alle ungeraden/falschen Werte
+        pos.title = pos.title?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`); // 0-9 cm
+        pos.title = pos.title?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`); // ungerade
+        
+        pos.description = pos.description?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+        pos.description = pos.description?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+      }
+      return pos;
+    });
+  }
 }
       
   let calculatedSum = 0;
