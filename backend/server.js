@@ -1417,137 +1417,416 @@ function getPositionOrientation(tradeCode, questionCount, projectContext = null)
 function determineProjectComplexity(projectContext, intakeAnswers = []) {
   let complexityScore = 0;
   
-  // HAUPTFAKTOR: Gewerke-Anzahl (progressiv steigend)
-  const tradeCount = projectContext.detectedTrades?.length || 0;
+  const combinedText = [
+    projectContext.category || '',
+    projectContext.sub_category || '',
+    projectContext.description || ''
+  ].join(' ').toLowerCase();
   
-  if (tradeCount >= 15) {
-    complexityScore += 12;  // Mega-Projekt
-  } else if (tradeCount >= 10) {
-    complexityScore += 10;  // Großprojekt
+  // TRADE COMPLEXITY DEFINITIONEN (aus deinem Code)
+    const TRADE_COMPLEXITY = {
+    // Sehr komplexe Gewerke
+    DACH:  { complexity: 'SEHR_HOCH', weight: 5, minScore: 13 },
+    ELEKT: { complexity: 'SEHR_HOCH', weight: 5, minScore: 12 },
+    SAN:   { complexity: 'SEHR_HOCH', weight: 5, minScore: 12 },
+    HEI:   { complexity: 'SEHR_HOCH', weight: 5, minScore: 12 },
+    KLIMA: { complexity: 'SEHR_HOCH', weight: 5, minScore: 12 },
+    ROH:   { complexity: 'SEHR_HOCH', weight: 5, minScore: 10 }, // Kontextabhängig
+    
+    // Komplexe Gewerke
+    TIS:   { complexity: 'HOCH', weight: 3, minScore: 8 },
+    FEN:   { complexity: 'HOCH', weight: 3, minScore: 8 },
+    FASS:  { complexity: 'HOCH', weight: 4, minScore: 12 },
+    SCHL:  { complexity: 'HOCH', weight: 3, minScore: 8 },
+    PV:    { complexity: 'HOCH', weight: 4, minScore: 14 },
+    ZIMM:  { complexity: 'HOCH', weight: 3, minScore: 7 },
+    
+    // Mittlere Komplexität
+    FLI:   { complexity: 'MITTEL', weight: 2, minScore: 7 },
+    ESTR:  { complexity: 'MITTEL', weight: 2 },
+    TRO:   { complexity: 'MITTEL', weight: 2, minScore: 7 },
+    BOD:   { complexity: 'MITTEL', weight: 2 },
+    AUSS:  { complexity: 'MITTEL', weight: 2, minScore: 6 },
+    
+    // Einfache Gewerke
+    MAL:   { complexity: 'EINFACH', weight: 1 },
+    GER:   { complexity: 'EINFACH', weight: 0.5 },
+    ABBR:  { complexity: 'EINFACH', weight: 1 }
+  };
+  
+  // KATEGORIE-BASIERTE GRUNDBEWERTUNG
+  const categoryComplexityMap = {
+    'Energetische Sanierung': {
+      baseScore: 8,
+      minComplexity: 'mittel',
+      subCategoryScores: {
+        'Komplettsanierung (Dach, Fassade, Fenster, Heizung)': 15,
+        'Fassadendämmung': 10,
+        'Dachdämmung / Dachsanierung': 12,
+        'Fenstertausch': 6,
+        'Heizungserneuerung (Wärmepumpe, Gas, Pellet)': 8,
+        'Photovoltaik / Solarthermie': 9
+      }
+    },
+    'Sanierung': {
+      baseScore: 6,
+      minComplexity: 'niedrig',
+      subCategoryScores: {
+        'Teilsanierung': 6,
+        'Kernsanierung': 16,
+        'Kellersanierung': 8,
+        'Schadstoffsanierung (Asbest/Schimmel)': 14
+      }
+    },
+    'Innenausbau / Renovierung': {
+      baseScore: 3,
+      minComplexity: 'einfach',
+      subCategoryScores: {
+        'Badsanierung': 7,
+        'Küchensanierung': 7,
+        'Wand- und Bodenrenovierung': 3,
+        'Türen, Zargen, Deckenverkleidungen': 3,
+        'Trockenbau (Raumaufteilung, Schallschutz)': 5
+      }
+    },
+    'Anbau / Umbau / Aufstockung': {
+      baseScore: 12,
+      minComplexity: 'hoch',
+      subCategoryScores: {
+        'Anbau (Raumerweiterung, Wintergarten)': 14,
+        'Umbau (Grundrissänderungen)': 13,
+        'Aufstockung (zusätzlicher Wohnraum)': 18,
+        'Dachausbau (Gauben, Dachflächenfenster)': 11
+      }
+    },
+    'Rohbauarbeiten / Statisch relevante Eingriffe': {
+      baseScore: 8,
+      minComplexity: 'niedrig', // Kann von einfach bis sehr_hoch sein
+      subCategoryScores: {
+        'Mauer- und Betonarbeiten (Wände / Decken / Stützen)': 12,
+        'Fundamentarbeiten': 14,
+        'Statische Veränderungen (Wanddurchbrüche)': 6 // Basis niedrig
+      }
+    },
+    'Rückbau / Abbrucharbeiten': {
+      baseScore: 8,
+      minComplexity: 'mittel',
+      subCategoryScores: {
+        'Abbrucharbeiten (Teil- oder Komplettabriss)': 14,
+        'Entkernung': 16
+      }
+    },
+    'Technische Gebäudeausrüstung (TGA)': {
+      baseScore: 7,
+      minComplexity: 'mittel',
+      subCategoryScores: {
+        'Heizung (Neuinstallation/Austausch)': 8,
+        'Sanitärinstallation': 8,
+        'Elektroinstallation (inkl. Smart Home)': 8,
+        'Lüftungs- oder Klimaanlage': 10
+      }
+    },
+    'Außenanlagen / Garten- und Landschaftsbau': {
+      baseScore: 3,
+      minComplexity: 'einfach',
+      subCategoryScores: {
+        'Terrasse': 4,
+        'Zaunbau / Sichtschutz': 2,
+        'Gartenneugestaltung': 3,
+        'Wege / Pflasterarbeiten / Einfahrten': 3,
+        'Carport / Garage / Gartenhaus': 6
+      }
+    }
+  };
+  
+  // SCHRITT 1: Kategorie-Basis-Score
+  let categoryConfig = categoryComplexityMap[projectContext.category] || { baseScore: 5 };
+  complexityScore = categoryConfig.baseScore;
+  
+  // Unterkategorie berücksichtigen
+  if (projectContext.sub_category && categoryConfig.subCategoryScores) {
+    const subCategories = projectContext.sub_category.split(',').map(s => s.trim());
+    let maxSubScore = 0;
+    
+    for (const subCat of subCategories) {
+      if (categoryConfig.subCategoryScores[subCat]) {
+        maxSubScore = Math.max(maxSubScore, categoryConfig.subCategoryScores[subCat]);
+      }
+    }
+    
+    if (maxSubScore > complexityScore) {
+      complexityScore = maxSubScore;
+    }
+    
+    // Mehrere Unterkategorien = höhere Komplexität
+    if (subCategories.length > 2) {
+      complexityScore += Math.min(subCategories.length - 1, 3);
+    }
+  }
+  
+  // SCHRITT 2: GEWERKE-KOMPLEXITÄT UND -ANZAHL
+  const detectedTrades = projectContext.detectedTrades || [];
+  const tradeCount = detectedTrades.length;
+  
+  // Berechne gewichtete Gewerke-Komplexität
+  let tradeComplexityScore = 0;
+  let maxTradeComplexity = 'EINFACH';
+  let hasVeryComplexTrade = false;
+  
+  detectedTrades.forEach(trade => {
+    const tradeConfig = TRADE_COMPLEXITY[trade.code];
+    if (tradeConfig) {
+      tradeComplexityScore += tradeConfig.weight;
+      
+      // Track höchste Einzelkomplexität
+      if (tradeConfig.complexity === 'SEHR_HOCH') {
+        hasVeryComplexTrade = true;
+        maxTradeComplexity = 'SEHR_HOCH';
+      } else if (tradeConfig.complexity === 'HOCH' && maxTradeComplexity !== 'SEHR_HOCH') {
+        maxTradeComplexity = 'HOCH';
+      } else if (tradeConfig.complexity === 'MITTEL' && 
+                 maxTradeComplexity !== 'SEHR_HOCH' && 
+                 maxTradeComplexity !== 'HOCH') {
+        maxTradeComplexity = 'MITTEL';
+      }
+    }
+  });
+  
+  // Kombiniere Gewerke-Anzahl mit Gewerke-Komplexität
+  let tradeFactor = 0;
+  
+  // Basis: Anzahl der Gewerke
+  if (tradeCount >= 10) {
+    tradeFactor = 8;
   } else if (tradeCount >= 7) {
-    complexityScore += 8;   // Größeres Projekt
+    tradeFactor = 6;
   } else if (tradeCount >= 5) {
-    complexityScore += 6;   // Mittleres Projekt
+    tradeFactor = 4;
   } else if (tradeCount >= 3) {
-    complexityScore += 4;   // Kleines Mehrgewerk-Projekt
+    tradeFactor = 3;
   } else if (tradeCount === 2) {
-    complexityScore += 2;   // Zwei-Gewerk-Projekt
+    tradeFactor = 2;
   } else if (tradeCount === 1) {
-    complexityScore += 1;   // Einzelgewerk
+    tradeFactor = 1;
   }
   
-  // PROJEKTTYP-KEYWORDS (erhöhte Gewichtung für Kernsanierung)
-  if (projectContext.description) {
-    const description = projectContext.description.toLowerCase();
+  // Modifiziere basierend auf Gewerke-Komplexität
+  if (hasVeryComplexTrade) {
+    // Wenn sehr komplexe Gewerke dabei sind, Mindest-Score
+    tradeFactor = Math.max(tradeFactor, 5);
     
-    // Kritische Projekttypen
-    if (description.includes('kernsanierung') || description.includes('aufstockung')) {
-      complexityScore += 4;  // Kernsanierung ist immer komplex
-    } else if (description.includes('vollsanierung') || description.includes('generalsanierung')) {
-      complexityScore += 3.5;
-    } else if (description.includes('anbau')) {
-      complexityScore += 3;  // Anbau erhöht Komplexität erheblich
-    }
-    
-    // Weitere Komplexitäts-Keywords
-    const complexKeywords = {
-      'energetisch': 2.5,
-      'kfw': 1.5,
-      'brandschutz': 1.5,
-      'statik': 2.5,
-      'asbest': 2,
-      'schadstoffe': 2,
-      'bewohnt während': 1.2,
-      'koordination': 2
-    };
-    
-    for (const [keyword, points] of Object.entries(complexKeywords)) {
-      if (description.includes(keyword)) {
-        complexityScore += points;
-      }
-    }
-    
-    // Beschreibungslänge als Indikator
-    const wordCount = description.split(' ').length;
-    if (wordCount > 200) complexityScore += 2;
-    else if (wordCount > 150) complexityScore += 1.5;
-    else if (wordCount > 100) complexityScore += 1;
-    else if (wordCount > 50) complexityScore += 0.5;
-  }
-
-  // SPEZIALREGEL 1: Energetische Gebäudehüllensanierung
-  if (projectContext.description) {
-    const description = projectContext.description.toLowerCase();
-    const trades = projectContext.detectedTrades || [];
-    
-    // Energetische Sanierung mit Dach + Fassade
-    if ((description.includes('energetisch') || description.includes('kfw') || description.includes('bafa')) &&
-        trades.includes('DACH') && trades.includes('FASS')) {
-      
-      // Mindest-Komplexität für energetische Gebäudehülle
-      console.log('[COMPLEXITY] Energetische Gebäudehüllensanierung erkannt - Mindestens MITTEL');
-      complexityScore = Math.max(complexityScore, 8); // Garantiert mindestens MITTEL
-      
-      // Bei zusätzlichen Gewerken wie Fenster noch höher
-      if (trades.includes('FEN')) {
-        complexityScore = Math.max(complexityScore, 10);
-        console.log('[COMPLEXITY] + Fenster = erhöhte Komplexität');
-      }
-    }
-    
-    // SPEZIALREGEL 2: Kernsanierung/Vollsanierung sollte nie unter MITTEL sein
-    if ((description.includes('kernsanierung') || description.includes('vollsanierung')) && 
-        trades.length >= 3) {
-      complexityScore = Math.max(complexityScore, 10); // Mindestens oberes MITTEL
-    }
-    
-    // SPEZIALREGEL 3: Gerüst nicht als vollwertiges Gewerk zählen
-    const effectiveTrades = trades.filter(t => t !== 'GER');
-    if (trades.includes('GER') && effectiveTrades.length >= 2) {
-      // Gerüst ist nur Hilfsmittel - reduziere Übergewichtung
-      console.log('[COMPLEXITY] Gerüst als Hilfsgewerk erkannt');
-      // Keine zusätzlichen Punkte nur fürs Gerüst
+    // Bei einzelnem sehr komplexen Gewerk (z.B. nur Dach)
+    if (tradeCount === 1) {
+      tradeFactor = 4; // Nicht zu niedrig bewerten
     }
   }
   
-  // BUDGET-KOMPLEXITÄT (angepasste Bewertung)
-  if (projectContext.budget) {
-    const budgetStr = projectContext.budget.toLowerCase().replace(/[^\d]/g, '');
-    const budgetNum = parseInt(budgetStr);
+  // Gewichtete Gewerke-Komplexität zur Gesamtwertung
+  complexityScore += tradeFactor;
+  complexityScore += Math.min(tradeComplexityScore / 2, 8); // Cap bei 8
+  
+  // SCHRITT 3: KONTEXT-SPEZIFISCHE ANPASSUNGEN
+  
+  // Wanddurchbruch-Speziallogik
+  const isWanddurchbruch = combinedText.includes('wanddurchbruch') || 
+                           combinedText.includes('durchbruch') ||
+                           projectContext.sub_category?.includes('Wanddurchbrüche');
+  
+  if (isWanddurchbruch) {
+    const isIsolated = tradeCount <= 2 && 
+                      !combinedText.includes('umbau') && 
+                      !combinedText.includes('sanierung') &&
+                      !combinedText.includes('mehrere');
     
-    if (budgetNum >= 500000) complexityScore += 3;
-    else if (budgetNum >= 300000) complexityScore += 2.5;
-    else if (budgetNum >= 200000) complexityScore += 2;
-    else if (budgetNum >= 100000) complexityScore += 1.5;
-    else if (budgetNum >= 50000) complexityScore += 1;
-    else if (budgetNum >= 20000) complexityScore += 0.5;
+    const isPartOfLargerWork = tradeCount >= 5 || 
+                               combinedText.includes('komplett') ||
+                               combinedText.includes('kernsanierung');
+    
+    if (isIsolated) {
+      // Einzelner Wanddurchbruch ohne Kontext
+      complexityScore = Math.min(complexityScore, 6); // Cap bei niedrig
+      console.log('[COMPLEXITY] Isolated Wanddurchbruch - capping complexity');
+    } else if (isPartOfLargerWork) {
+      // Teil größerer Maßnahme
+      complexityScore += 2;
+      console.log('[COMPLEXITY] Wanddurchbruch in larger context - adding complexity');
+    }
   }
   
-  // KATEGORIE-BASIERTE KOMPLEXITÄT
-  if (projectContext.category) {
-    const category = projectContext.category.toLowerCase();
-    if (category.includes('aufstockung')) complexityScore += 3;  // Zusätzlich zur Description
-    else if (category.includes('kernsanierung')) complexityScore += 2.5;
-    else if (category.includes('umbau') || category.includes('anbau')) complexityScore += 2;
-    else if (category.includes('vollsanierung')) complexityScore += 2;
-    else if (category.includes('renovierung') || category.includes('modernisierung')) complexityScore += 0.5;
-    else if (category.includes('reparatur') || category.includes('instandhaltung')) complexityScore += 0.1;
+  // Einzelnes Dach oder Fassade - Mindest-Komplexität
+  if (tradeCount <= 2) {
+    if (detectedTrades.some(t => t.code === 'DACH')) {
+      complexityScore = Math.max(complexityScore, 14); // Mindestens "hoch"
+      console.log('[COMPLEXITY] Single DACH trade - ensuring high complexity');
+    }
+    if (detectedTrades.some(t => t.code === 'FASS')) {
+      complexityScore = Math.max(complexityScore, 12); // Mindestens "mittel-hoch"
+      console.log('[COMPLEXITY] Single FASS trade - ensuring medium-high complexity');
+    }
   }
   
-  // INTAKE-ANTWORTEN (nur wenn vorhanden, geringere Gewichtung)
+  // SCHRITT 4: INTAKE-ANTWORTEN AUSWERTEN
+  let intakeData = { flaechen: {}, stueckzahlen: {} }; // Initialisiere mit leeren Objekten
   if (intakeAnswers && intakeAnswers.length > 0) {
-    if (intakeAnswers.length > 20) complexityScore += 1;
-    else if (intakeAnswers.length > 15) complexityScore += 0.5;
+    intakeData = extractCalculationDataFromIntake(intakeAnswers);
+    
+    // Flächen-basierte Anpassungen
+    if (intakeData.flaechen.dachflaeche) {
+      const area = parseFloat(intakeData.flaechen.dachflaeche);
+      if (area > 300) complexityScore += 2;
+      else if (area > 150) complexityScore += 1;
+    }
+    
+    if (intakeData.flaechen.fassadenflaeche) {
+      const area = parseFloat(intakeData.flaechen.fassadenflaeche);
+      if (area > 400) complexityScore += 2;
+      else if (area > 200) complexityScore += 1;
+    }
+    
+    // Geschoss-Anzahl
+    if (intakeData.stueckzahlen.geschosse) {
+      const floors = parseInt(intakeData.stueckzahlen.geschosse);
+      if (floors > 3) complexityScore += 2;
+      else if (floors > 2) complexityScore += 1;
+    }
+    
+    // Anzahl der Intake-Fragen als Indikator
+    if (intakeAnswers.length > 24) {
+      complexityScore += 2;
+    } else if (intakeAnswers.length > 20) {
+      complexityScore += 1;
+    }
   }
   
-  // FINALE KLASSIFIZIERUNG mit realistischen Schwellenwerten
-  console.log(`[COMPLEXITY] Score: ${complexityScore} (Trades: ${tradeCount})`);
+  // SCHRITT 5: BUDGET
+  if (projectContext.budget) {
+    const budget = parseFloat(projectContext.budget);
+    
+    // Spezielle Bewertung für hochkomplexe Einzelgewerke
+    if (hasVeryComplexTrade && tradeCount <= 3) {
+      if (budget > 80000) complexityScore += 2;
+      else if (budget > 40000) complexityScore += 1;
+    } else {
+      // Standard-Budget-Bewertung
+      if (budget > 500000) complexityScore += 4;
+      else if (budget > 200000) complexityScore += 3;
+      else if (budget > 100000) complexityScore += 2;
+      else if (budget > 50000) complexityScore += 1;
+    }
+  }
   
-  if (complexityScore >= 16) return 'SEHR_HOCH';
-  if (complexityScore >= 12) return 'HOCH';
-  if (complexityScore >= 8) return 'MITTEL';
-  if (complexityScore >= 5) return 'NIEDRIG';
-  return 'EINFACH';
+  // SCHRITT 6: KEYWORD-BONUS (nur additiv)
+  const highKeywords = ['kernsanierung', 'komplettsanierung', 'denkmalschutz', 
+                        'brandschutz', 'statiker', 'architekt', 'asbest'];
+  const mediumKeywords = ['sanierung', 'modernisierung', 'energetisch', 'dämmung'];
+  
+  const foundHigh = highKeywords.filter(k => combinedText.includes(k));
+  const foundMedium = mediumKeywords.filter(k => combinedText.includes(k));
+  
+  if (foundHigh.length > 0) {
+    complexityScore += Math.min(foundHigh.length * 2, 4);
+  }
+  if (foundMedium.length > 0) {
+    complexityScore += Math.min(foundMedium.length, 2);
+  }
+  
+  // FINALE KLASSIFIZIERUNG mit KONTEXT-CAPS
+  console.log(`[COMPLEXITY] Raw Score: ${complexityScore}`);
+  
+  // Spezielle Caps für bestimmte Projekttypen
+  const subCat = (projectContext.sub_category || '').toLowerCase();
+  
+  // === CAPS FÜR BEGRENZTE PROJEKTE ===
+  
+  // Badsanierung
+  if (subCat.includes('badsanierung')) {
+    if (tradeCount <= 6 && !combinedText.includes('mehrere')) {
+      complexityScore = Math.min(complexityScore, 14); // Max "hoch"
+    }
+  }
+  
+  // Küchensanierung
+  if (subCat.includes('küchensanierung')) {
+    if (tradeCount <= 5 && !combinedText.includes('luxus')) {
+      complexityScore = Math.min(complexityScore, 14); // Max "hoch"
+    }
+  }
+  
+  // Wohnungssanierung
+  if ((combinedText.includes('wohnung') && combinedText.includes('sanierung')) ||
+      subCat.includes('teilsanierung')) {
+    if (tradeCount <= 8 && !combinedText.includes('kernsanierung')) {
+      complexityScore = Math.min(complexityScore, 13); // Basis "mittel-hoch"
+      
+      // Modifikatoren
+      if (combinedText.includes('altbau')) complexityScore += 1;
+      if (combinedText.includes('komplett')) complexityScore += 1;
+      if (intakeData?.flaechen?.wohnflaeche > 120) complexityScore += 1;
+    }
+  }
+  
+  // Entkernung Wohnung
+  if (subCat.includes('entkernung')) {
+    if (combinedText.includes('wohnung') || tradeCount <= 2) {
+      complexityScore = Math.min(complexityScore, 10); // Basis "mittel"
+      
+      if (combinedText.includes('asbest')) complexityScore += 4;
+      if (combinedText.includes('tragend')) complexityScore += 2;
+    }
+  }
+  
+  // Dachausbau ohne Gauben
+  if (subCat.includes('dachausbau')) {
+    if (!combinedText.includes('gaube') && !combinedText.includes('aufstockung')) {
+      complexityScore = Math.min(complexityScore, 16); // Max "hoch"
+    }
+  }
+  
+  // === MINDEST-SCORES FÜR KRITISCHE GEWERKE ===
+  
+  detectedTrades.forEach(trade => {
+    const tradeConfig = TRADE_COMPLEXITY[trade.code];
+    if (tradeConfig?.minScore && tradeCount <= 3) {
+      // Bei wenigen Gewerken: Mindest-Score durchsetzen
+      if (complexityScore < tradeConfig.minScore) {
+        complexityScore = tradeConfig.minScore;
+        console.log(`[COMPLEXITY] ${trade.code} raised to minimum ${tradeConfig.minScore}`);
+      }
+    }
+  });
+  
+  // === SPEZIELLE GEWERKE-MODIFIKATOREN ===
+  
+  // PV-Modifikatoren
+  if (detectedTrades.some(t => t.code === 'PV')) {
+    if (combinedText.includes('speicher')) complexityScore += 1;
+    if (combinedText.includes('wallbox')) complexityScore += 1;
+    if (combinedText.includes('notstrom')) complexityScore += 2;
+  }
+  
+  // Klima-Modifikatoren
+  if (detectedTrades.some(t => t.code === 'KLIMA')) {
+    if (combinedText.includes('zentral')) complexityScore += 2;
+    if (combinedText.includes('wärmerückgewinnung')) complexityScore += 1;
+  }
+  
+  // FINALE KLASSIFIZIERUNG
+  console.log(`[COMPLEXITY] Final Score: ${complexityScore}`);
+  
+  let finalComplexity;
+  if (complexityScore >= 20) {
+    finalComplexity = 'sehr_hoch';
+  } else if (complexityScore >= 14) {
+    finalComplexity = 'hoch';
+  } else if (complexityScore >= 10) {
+    finalComplexity = 'mittel';
+  } else if (complexityScore >= 6) {
+    finalComplexity = 'niedrig';
+  } else {
+    finalComplexity = 'einfach';
+  }
+  
+  return finalComplexity;
 }
 
 /**
