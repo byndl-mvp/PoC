@@ -5791,6 +5791,28 @@ if (duplicates.length > 0) {
       }
       return pos;
     });
+    
+    // Entferne separate Demontage/Abtransport-Positionen
+    const vorherAnzahl = lv.positions.length;
+    lv.positions = lv.positions.filter(pos => {
+      const title = (pos.title || '').toLowerCase();
+      const desc = (pos.description || '').toLowerCase();
+      
+      // Entferne reine Demontage/Abbau-Positionen (ohne Aufbau)
+      if ((title.includes('demontage') || title.includes('abbau') || title.includes('abtransport')) &&
+          !title.includes('auf') && 
+          !title.includes('lieferung') &&
+          !title.includes('montage')) {
+        console.log(`[GER] Entferne redundante Position: "${pos.title}"`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    if (vorherAnzahl !== lv.positions.length) {
+      console.log(`[GER] ${vorherAnzahl - lv.positions.length} redundante Abbau/Transport-Positionen entfernt`);
+    }
   }
 
   // FASS-spezifisch: Korrigiere falsche Dämmstärken
