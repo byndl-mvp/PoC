@@ -4,8 +4,15 @@ import { Link } from 'react-router-dom';
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      {/* Simple Header - nur Logo */}
+      <header className="relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <h1 className="text-3xl font-bold text-white">byndl</h1>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden pb-20">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-500 rounded-full filter blur-3xl"></div>
@@ -13,82 +20,143 @@ export default function LandingPage() {
           <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-600 rounded-full filter blur-3xl"></div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
-            {/* Headline - ohne Logo, größerer Schriftzug */}
-            <h1 className="text-7xl lg:text-9xl font-bold text-white mb-4">
+            <h2 className="text-6xl lg:text-8xl font-bold text-white mb-4">
               byndl
-            </h1>
+            </h2>
             <p className="text-3xl lg:text-4xl text-teal-400 font-light mb-8">
               einfach . bauen
             </p>
             
-            <p className="text-xl lg:text-2xl text-gray-200 max-w-3xl mx-auto mb-12">
-              Die digitale Plattform für effiziente und kostensparende
-              Bau- und Sanierungsprojekte
+            <p className="text-xl lg:text-2xl text-gray-200 max-w-4xl mx-auto mb-8">
+              Die KI-gestützte Plattform, die private Bauherren befähigt, 
+              <span className="text-teal-400 font-semibold"> wie Profis auszuschreiben - ohne Fachwissen</span>
+            </p>
+
+            <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-12">
+              Von der ersten Idee bis zum fertigen Leistungsverzeichnis in Minuten. 
+              Automatische VOB-konforme Ausschreibungen, faire Preise durch regionale Projektbündelung.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link
                 to="/start"
-                className="bg-teal-500 hover:bg-teal-400 text-white font-semibold px-8 py-4 rounded-lg shadow-xl transform hover:scale-105 transition-all duration-200 text-lg"
+                className="group relative bg-gradient-to-r from-teal-500 to-teal-400 text-white font-bold px-10 py-5 rounded-xl shadow-2xl transform hover:scale-105 transition-all duration-200 text-lg"
               >
-                Projekt starten →
+                <span className="flex items-center justify-center">
+                  <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                  </svg>
+                  Für Bauherren
+                </span>
+                <span className="block text-sm font-normal mt-1 opacity-90">
+                  Projekt starten & Angebote erhalten
+                </span>
               </Link>
-              <a
-                href="#how-it-works"
-                className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-slate-900 font-semibold px-8 py-4 rounded-lg shadow-xl transform hover:scale-105 transition-all duration-200 text-lg"
+              
+              <button
+                disabled
+                className="group relative bg-white/10 backdrop-blur border-2 border-white/30 text-white font-bold px-10 py-5 rounded-xl shadow-xl cursor-not-allowed opacity-60"
               >
-                So funktioniert's
-              </a>
+                <span className="flex items-center justify-center">
+                  <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                  Für Handwerksbetriebe
+                </span>
+                <span className="block text-sm font-normal mt-1 opacity-90">
+                  Demnächst verfügbar
+                </span>
+              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Value Proposition */}
+      {/* KI Value Proposition */}
       <section className="bg-white/5 backdrop-blur-lg py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-4xl font-bold text-center text-white mb-4">
+            Professionell ausschreiben ohne Fachwissen
+          </h2>
+          <p className="text-xl text-center text-gray-300 mb-16 max-w-3xl mx-auto">
+            Unsere KI verwandelt Ihre einfache Projektbeschreibung in ein vollständiges, 
+            VOB-konformes Leistungsverzeichnis mit realistischer Kostenprognose
+          </p>
+          
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="w-20 h-20 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-teal-500/30 to-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-10 h-10 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">In Minuten erstellt</h3>
-              <p className="text-gray-300">VOB-konforme Leistungsverzeichnisse in kürzester Zeit</p>
+              <h3 className="text-xl font-semibold text-white mb-2">KI-Projektassistent</h3>
+              <p className="text-gray-300">Beschreiben Sie Ihr Vorhaben in eigenen Worten - die KI erkennt automatisch alle nötigen Gewerke und Leistungen</p>
             </div>
             
             <div className="text-center">
-              <div className="w-20 h-20 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-teal-500/30 to-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-10 h-10 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">KI-gestützt</h3>
-              <p className="text-gray-300">Intelligente Fragenführung und automatische Kalkulation</p>
+              <h3 className="text-xl font-semibold text-white mb-2">VOB-konforme LVs</h3>
+              <p className="text-gray-300">Automatische Erstellung professioneller Leistungsverzeichnisse nach VOB/C Standard - rechtssicher und vollständig</p>
             </div>
             
             <div className="text-center">
-              <div className="w-20 h-20 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-teal-500/30 to-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-10 h-10 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Kostenoptimiert</h3>
-              <p className="text-gray-300">Realistische Marktpreise und neutrale Ausschreibungen</p>
+              <h3 className="text-xl font-semibold text-white mb-2">Realistische Preise</h3>
+              <p className="text-gray-300">KI-basierte Kostenschätzung mit aktuellen Marktpreisen - keine bösen Überraschungen mehr</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* USP Bündelung */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-3xl p-12 border border-white/20">
+            <div className="text-center mb-8">
+              <span className="bg-teal-500 text-white text-sm font-bold px-4 py-2 rounded-full">NEU & EINZIGARTIG</span>
+            </div>
+            <h2 className="text-3xl font-bold text-center text-white mb-6">
+              Projektbündelung für bessere Preise
+            </h2>
+            <p className="text-xl text-center text-gray-200 mb-8 max-w-3xl mx-auto">
+              Als erste Plattform bündeln wir ähnliche Projekte in Ihrer Region. 
+              Handwerker sparen Fahrtkosten und geben bessere Preise - Sie profitieren!
+            </p>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="bg-white/10 rounded-lg p-6 text-center">
+                <div className="text-3xl font-bold text-teal-400 mb-2">3-5</div>
+                <p className="text-white">Projekte pro Bündel</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-6 text-center">
+                <div className="text-3xl font-bold text-teal-400 mb-2">15-20%</div>
+                <p className="text-white">Günstigere Angebote</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-6 text-center">
+                <div className="text-3xl font-bold text-teal-400 mb-2">50%</div>
+                <p className="text-white">Kürzere Wartezeiten</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20">
+      <section id="how-it-works" className="bg-white/5 backdrop-blur-lg py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold text-center text-white mb-16">
-            So einfach geht's
+            So funktioniert's für Bauherren
           </h2>
           
           <div className="grid md:grid-cols-4 gap-8">
@@ -96,27 +164,27 @@ export default function LandingPage() {
               {
                 step: "1",
                 title: "Projekt beschreiben",
-                desc: "Geben Sie Ihre Projektdaten in einfachen Worten ein"
+                desc: "Schildern Sie Ihr Vorhaben in eigenen Worten - die KI versteht Sie"
               },
               {
                 step: "2",
-                title: "Fragen beantworten",
-                desc: "KI-gestützte, adaptive Fragenkataloge führen Sie durch den Prozess"
+                title: "KI erstellt LV",
+                desc: "Automatische Erstellung eines professionellen Leistungsverzeichnisses"
               },
               {
                 step: "3",
-                title: "LV generieren",
-                desc: "Automatische Erstellung VOB-konformer Leistungsverzeichnisse"
+                title: "Angebote erhalten",
+                desc: "Qualifizierte Handwerker aus Ihrer Region senden Angebote"
               },
               {
                 step: "4",
-                title: "Exportieren",
-                desc: "Download mit oder ohne Preise für Ausschreibungen"
+                title: "Auftrag vergeben",
+                desc: "Wählen Sie das beste Angebot - wir begleiten Ihr Projekt"
               }
             ].map((item, idx) => (
               <div key={idx} className="relative">
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-2xl font-bold">
+                  <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-2xl font-bold shadow-lg">
                     {item.step}
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">{item.title}</h3>
@@ -135,25 +203,65 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pricing Preview */}
+      <section className="bg-gradient-to-r from-teal-600/10 to-blue-600/10 py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-4xl font-bold text-center text-white mb-6">
+            Transparente Preise
+          </h2>
+          <p className="text-xl text-center text-gray-300 mb-12 max-w-2xl mx-auto">
+            Einmalige Gebühr für die KI-gestützte Ausschreibung. 
+            Keine versteckten Kosten, keine Provisionen für Bauherren.
+          </p>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
+              <h3 className="text-lg font-semibold text-gray-300 mb-2">Kleine Projekte</h3>
+              <div className="text-3xl font-bold text-white mb-1">9,90 €</div>
+              <p className="text-gray-400 mb-4">einmalig</p>
+              <p className="text-gray-300">1-2 Gewerke</p>
+              <p className="text-sm text-gray-400 mt-2">z.B. Malerarbeiten, kleine Reparaturen</p>
+            </div>
+            
+            <div className="bg-gradient-to-br from-teal-600/20 to-blue-600/20 backdrop-blur rounded-2xl p-8 border-2 border-teal-500/50 transform scale-105">
+              <div className="bg-teal-500 text-white text-xs font-bold px-2 py-1 rounded inline-block mb-2">BELIEBT</div>
+              <h3 className="text-lg font-semibold text-gray-300 mb-2">Mittlere Projekte</h3>
+              <div className="text-3xl font-bold text-white mb-1">19,90 €</div>
+              <p className="text-gray-400 mb-4">einmalig</p>
+              <p className="text-gray-300">3-5 Gewerke</p>
+              <p className="text-sm text-gray-400 mt-2">z.B. Badsanierung, Küchenerneuerung</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
+              <h3 className="text-lg font-semibold text-gray-300 mb-2">Große Projekte</h3>
+              <div className="text-3xl font-bold text-white mb-1">39,90 €</div>
+              <p className="text-gray-400 mb-4">einmalig</p>
+              <p className="text-gray-300">Ab 6 Gewerken</p>
+              <p className="text-sm text-gray-400 mt-2">z.B. Kernsanierung, Anbau</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Grid */}
-      <section className="bg-white/5 backdrop-blur-lg py-20">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold text-center text-white mb-16">
-            Ihre Vorteile mit BYNDL
+            Ihre Vorteile auf einen Blick
           </h2>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              "18 Gewerke verfügbar",
-              "VOB/C-konforme Ausschreibung",
-              "Aktuelle Marktpreise",
-              "Neutrale Angebotsanfragen",
-              "Automatische Mengenermittlung",
-              "PDF-Export & Druck"
+              "KI erstellt professionelle Ausschreibungen",
+              "VOB/C-konforme Leistungsverzeichnisse",
+              "Automatische Kostenschätzung",
+              "Regionale Projektbündelung",
+              "Geprüfte Handwerksbetriebe",
+              "Digitales Projektmanagement"
             ].map((feature, idx) => (
-              <div key={idx} className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+              <div key={idx} className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20 hover:bg-white/15 transition-colors">
                 <div className="flex items-center">
-                  <svg className="w-6 h-6 text-teal-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-teal-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                   </svg>
                   <span className="text-white font-medium">{feature}</span>
@@ -164,72 +272,35 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Statistics */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="text-5xl font-bold text-teal-400 mb-2">98%</div>
-              <p className="text-xl text-white">Zeitersparnis</p>
-              <p className="text-gray-400 mt-2">gegenüber herkömmlicher LV-Erstellung</p>
-            </div>
-            <div>
-              <div className="text-5xl font-bold text-teal-400 mb-2">18+</div>
-              <p className="text-xl text-white">Gewerke</p>
-              <p className="text-gray-400 mt-2">von Rohbau bis Außenanlagen</p>
-            </div>
-            <div>
-              <div className="text-5xl font-bold text-teal-400 mb-2">100%</div>
-              <p className="text-xl text-white">VOB-konform</p>
-              <p className="text-gray-400 mt-2">rechtssichere Ausschreibungen</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-teal-600 to-blue-600 py-20">
+      <section className="py-20">
         <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-4xl font-bold text-white mb-6">
             Starten Sie Ihr Projekt jetzt
           </h2>
-          <p className="text-xl text-white/90 mb-8">
-            Keine Registrierung erforderlich. Kostenlos testen.
+          <p className="text-xl text-gray-300 mb-8">
+            In nur 5 Minuten zur professionellen Ausschreibung
           </p>
           <Link
             to="/start"
-            className="inline-block bg-white text-blue-900 font-bold px-10 py-4 rounded-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200 text-lg"
+            className="inline-block bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold px-12 py-5 rounded-xl shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-200 text-lg"
           >
-            Jetzt loslegen →
+            Projekt starten →
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 py-12 border-t border-white/10">
+      <footer className="bg-black/20 py-12 border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-2xl font-bold text-white mb-4">byndl</h3>
-              <p className="text-gray-400">
-                Die intelligente Plattform für Ihr Bauprojekt
-              </p>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Produkt</h4>
-              <ul className="space-y-2">
-                <li><Link to="/start" className="text-gray-400 hover:text-teal-400">Projekt starten</Link></li>
-                <li><a href="#how-it-works" className="text-gray-400 hover:text-teal-400">So funktioniert's</a></li>
-                <li><Link to="/admin" className="text-gray-400 hover:text-teal-400">Admin</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Kontakt</h4>
-              <p className="text-gray-400">
-                info@byndl.de<br/>
-                © 2024 BYNDL
-              </p>
-            </div>
+          <div className="text-center">
+            <h3 className="text-2xl font-bold text-white mb-4">byndl</h3>
+            <p className="text-gray-400 mb-4">
+              Die intelligente Plattform für Ihr Bauprojekt
+            </p>
+            <p className="text-gray-500 text-sm">
+              © 2024 BYNDL - info@byndl.de
+            </p>
           </div>
         </div>
       </footer>
