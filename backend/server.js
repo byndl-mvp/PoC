@@ -6288,14 +6288,36 @@ function validateAndFixPrices(lv, tradeCode) {
     const descLower = pos.description?.toLowerCase() || '';
     
     // NEUE REGEL: "Lieferung und Demontage" ist VERBOTEN
-    if (titleLower.includes('lieferung und demontage')) {
-      console.error(`[KRITISCH] Verbotene Kombination "Lieferung und Demontage" in ${tradeCode}`);
-      
-      // Korrigiere nur den Titel
-      pos.title = pos.title.replace('Lieferung und Demontage', 'Lieferung und Montage');
-      warnings.push(`"Lieferung und Demontage" korrigiert zu "Lieferung und Montage"`);
-      fixedCount++;
-    }
+if (titleLower.includes('lieferung') && titleLower.includes('demontage') && 
+    !titleLower.includes('montage')) {
+  console.error(`[KRITISCH] Verbotene Kombination "Lieferung und Demontage" in ${tradeCode}`);
+  
+  // Korrigiere im Titel (case-insensitive)
+  pos.title = pos.title.replace(/Lieferung\s+(und\s+)?Demontage/gi, 'Lieferung und Montage');
+  
+  // Korrigiere auch in der Beschreibung
+  if (pos.description) {
+    pos.description = pos.description.replace(/Lieferung\s+(und\s+)?Demontage/gi, 'Lieferung und Montage');
+  }
+  
+  warnings.push(`"Lieferung und Demontage" korrigiert zu "Lieferung und Montage"`);
+  fixedCount++;
+}
+
+// Zusätzlich: Demontage ohne Entsorgung ist auch falsch
+if (titleLower.includes('demontage') && 
+    !titleLower.includes('entsorgung') && 
+    !titleLower.includes('lieferung')) {
+  // Füge "und Entsorgung" hinzu
+  pos.title = pos.title.replace(/Demontage\b/gi, 'Demontage und Entsorgung');
+  
+  if (pos.description && !pos.description.toLowerCase().includes('entsorgung')) {
+    pos.description = pos.description.replace(/Demontage\b/gi, 'Demontage und Entsorgung');
+  }
+  
+  warnings.push(`"Demontage" erweitert zu "Demontage und Entsorgung"`);
+  fixedCount++;
+}
     
     // NEUE REGEL: Vorwandinstallation NUR bei Trockenbau
     if (tradeCode !== 'TRO' && 
