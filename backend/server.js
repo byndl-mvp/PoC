@@ -11480,7 +11480,7 @@ app.post('/api/contracts/:contractId/confirm-offer', async (req, res) => {
   }
 });
 
-// ADMIN ROUTES - SIMPLIFIED WITH BASIC TOKEN (FIXED SQL CASTS)
+// ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
 // Simple token storage (in production, use Redis or database)
@@ -11580,6 +11580,378 @@ app.post('/api/admin/logout', requireAdmin, async (req, res) => {
   }
   res.json({ message: 'Logout successful' });
 });
+
+// ===========================================================================
+// DASHBOARD OVERVIEW STATS
+// ===========================================================================
+
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  try {
+    // Get total users (both bauherren and handwerker)
+    const userStats = await query(`
+      SELECT 
+        (SELECT COUNT(*) FROM bauherren) as bauherren_count,
+        (SELECT COUNT(*) FROM handwerker) as handwerker_count
+    `);
+    
+    // Get project stats
+    const projectStats = await query(`
+      SELECT 
+        COUNT(*) as total_projects,
+        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_projects,
+        SUM(budget) as total_value
+      FROM projects
+    `);
+    
+    // Get payment stats
+    const paymentStats = await query(`
+      SELECT 
+        SUM(CASE WHEN status = 'completed' THEN amount END) as total_revenue,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_payments
+      FROM payments
+    `);
+    
+    // Get order stats
+    const orderStats = await query(`
+      SELECT COUNT(CASE WHEN status = 'active' THEN 1 END) as active_orders
+      FROM orders
+    `);
+    
+    // Get verification queue
+    const verificationStats = await query(`
+      SELECT COUNT(*) as verification_queue
+      FROM handwerker
+      WHERE verified = false
+    `);
+    
+    const totalUsers = (userStats.rows[0].bauherren_count || 0) + 
+                      (userStats.rows[0].handwerker_count || 0);
+    
+    res.json({
+      totalUsers: totalUsers,
+      totalProjects: projectStats.rows[0].total_projects || 0,
+      totalRevenue: paymentStats.rows[0].total_revenue || 0,
+      activeOrders: orderStats.rows[0].active_orders || 0,
+      pendingPayments: paymentStats.rows[0].pending_payments || 0,
+      verificationQueue: verificationStats.rows[0].verification_queue || 0
+    });
+  } catch (err) {
+    console.error('Failed to fetch stats:', err);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+// ===========================================================================
+// USER MANAGEMENT
+// ===========================================================================
+
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    // Get Bauherren
+    const bauherrenResult = await query(`
+      SELECT 
+        b.id,
+        b.name,
+        b.email,
+        b.phone,
+        b.street,
+        b.house_number,
+        b.zip,
+        b.city,
+        b.created_at,
+        COUNT(DISTINCT p.id) as project_count
+      FROM bauherren b
+      LEFT JOIN projects p ON p.bauherr_id = b.id
+      GROUP BY b.id
+      ORDER BY b.created_at DESC
+    `);
+    
+    // Get Handwerker
+    const handwerkerResult = await query(`
+      SELECT 
+        h.id,
+        h.company_name,
+        h.email,
+        h.phone,
+        h.street,
+        h.house_number,
+        h.zip,
+        h.city,
+        h.verified,
+        h.rating,
+        h.created_at,
+        STRING_AGG(t.name, ', ' ORDER BY t.name) as trades
+      FROM handwerker h
+      LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
+      LEFT JOIN trades t ON t.id = ht.trade_id
+      GROUP BY h.id
+      ORDER BY h.created_at DESC
+    `);
+    
+    res.json({
+      bauherren: bauherrenResult.rows,
+      handwerker: handwerkerResult.rows
+    });
+  } catch (err) {
+    console.error('Failed to fetch users:', err);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// ===========================================================================
+// PROJECT MANAGEMENT
+// ===========================================================================
+
+app.get('/api/admin/projects', requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let statusFilter = '';
+    const params = [];
+    
+    if (status && status !== 'all') {
+      statusFilter = 'WHERE p.status = $1';
+      params.push(status);
+    }
+    
+    const result = await query(`
+      SELECT 
+        p.id,
+        p.street,
+        p.house_number,
+        p.zip,
+        p.city,
+        p.category,
+        p.budget,
+        p.status,
+        p.start_date,
+        p.created_at,
+        b.name as bauherr_name,
+        COUNT(DISTINCT pt.trade_id) as trade_count
+      FROM projects p
+      LEFT JOIN bauherren b ON b.id = p.bauherr_id
+      LEFT JOIN project_trades pt ON pt.project_id = p.id
+      ${statusFilter}
+      GROUP BY p.id, b.name
+      ORDER BY p.created_at DESC
+    `, params);
+    
+    res.json({ projects: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch projects:', err);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+// ===========================================================================
+// PAYMENT MANAGEMENT
+// ===========================================================================
+
+app.get('/api/admin/payments', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        p.id,
+        p.amount,
+        p.status,
+        p.type,
+        p.date,
+        p.created_at,
+        b.name as from_name,
+        h.company_name as to_name,
+        pr.id as project_id
+      FROM payments p
+      LEFT JOIN bauherren b ON b.id = p.bauherr_id
+      LEFT JOIN handwerker h ON h.id = p.handwerker_id
+      LEFT JOIN projects pr ON pr.id = p.project_id
+      ORDER BY p.created_at DESC
+    `);
+    
+    res.json({ payments: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch payments:', err);
+    res.status(500).json({ error: 'Failed to fetch payments' });
+  }
+});
+
+app.put('/api/admin/payments/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!['pending', 'completed', 'failed'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    const result = await query(
+      `UPDATE payments 
+       SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [status, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    
+    res.json({ payment: result.rows[0] });
+  } catch (err) {
+    console.error('Failed to update payment:', err);
+    res.status(500).json({ error: 'Failed to update payment' });
+  }
+});
+
+// ===========================================================================
+// VERIFICATION MANAGEMENT
+// ===========================================================================
+
+app.get('/api/admin/verifications', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        h.id,
+        h.company_name,
+        h.email,
+        h.phone,
+        h.street,
+        h.house_number,
+        h.zip,
+        h.city,
+        h.verified,
+        h.created_at,
+        STRING_AGG(t.name, ', ' ORDER BY t.name) as trades,
+        ARRAY_AGG(
+          json_build_object(
+            'type', 'Gewerbeschein',
+            'url', h.gewerbeschein_url
+          )
+        ) as documents
+      FROM handwerker h
+      LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
+      LEFT JOIN trades t ON t.id = ht.trade_id
+      WHERE h.verified = false
+      GROUP BY h.id
+      ORDER BY h.created_at DESC
+    `);
+    
+    res.json({ verifications: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch verifications:', err);
+    res.status(500).json({ error: 'Failed to fetch verifications' });
+  }
+});
+
+app.put('/api/admin/verifications/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approved } = req.body;
+    
+    const result = await query(
+      `UPDATE handwerker 
+       SET verified = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [approved, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker not found' });
+    }
+    
+    res.json({ handwerker: result.rows[0] });
+  } catch (err) {
+    console.error('Failed to update verification:', err);
+    res.status(500).json({ error: 'Failed to update verification' });
+  }
+});
+
+// ===========================================================================
+// ORDER MANAGEMENT
+// ===========================================================================
+
+app.get('/api/admin/orders', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        o.id,
+        o.project_id,
+        o.total,
+        o.status,
+        o.created_at,
+        h.company_name as handwerker_name,
+        t.name as trade_name
+      FROM orders o
+      LEFT JOIN handwerker h ON h.id = o.handwerker_id
+      LEFT JOIN trades t ON t.id = o.trade_id
+      ORDER BY o.created_at DESC
+    `);
+    
+    res.json({ orders: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch orders:', err);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+// ===========================================================================
+// TENDER MANAGEMENT
+// ===========================================================================
+
+app.get('/api/admin/tenders', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        te.id,
+        te.project_id,
+        te.status,
+        te.deadline,
+        te.max_offers,
+        te.created_at,
+        t.name as trade_name,
+        COUNT(o.id) as offer_count
+      FROM tenders te
+      LEFT JOIN trades t ON t.id = te.trade_id
+      LEFT JOIN offers o ON o.tender_id = te.id
+      GROUP BY te.id, t.name
+      ORDER BY te.created_at DESC
+    `);
+    
+    res.json({ tenders: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch tenders:', err);
+    res.status(500).json({ error: 'Failed to fetch tenders' });
+  }
+});
+
+// ===========================================================================
+// SUPPLEMENT MANAGEMENT
+// ===========================================================================
+
+app.get('/api/admin/supplements', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        s.id,
+        s.order_id,
+        s.reason,
+        s.amount,
+        s.status,
+        s.created_at
+      FROM supplements s
+      ORDER BY s.created_at DESC
+    `);
+    
+    res.json({ supplements: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch supplements:', err);
+    res.status(500).json({ error: 'Failed to fetch supplements' });
+  }
+});
+
+// ===========================================================================
+// EXISTING ROUTES (from your original code)
+// ===========================================================================
 
 // Get all prompts with full content for editing
 app.get('/api/admin/prompts/full', requireAdmin, async (req, res) => {
@@ -11894,7 +12266,7 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
       [id]
     );
 
-    // Get all questions and answers (bestehender Code)
+    // Get all questions and answers
     const qaResult = await query(
       `SELECT 
         q.*,
@@ -11912,7 +12284,7 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
       [id]
     );
 
-    // NEU: Get Intake-Fragen aus intake_responses
+    // Get Intake-Fragen aus intake_responses
     const intakeResult = await query(
       `SELECT 
         question_text,
@@ -11924,24 +12296,24 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
       [id]
     );
 
-    // NEU: Get Gewerke-Antworten mit Fragen aus der questions Tabelle
-const answersResult = await query(
-  `SELECT 
-    t.name as trade_name,
-    t.code as trade_code,
-    q.text as question_text,
-    a.answer_text,
-    a.assumption,
-    a.created_at
-   FROM answers a
-   JOIN trades t ON t.id = a.trade_id
-   LEFT JOIN questions q ON q.project_id = a.project_id 
-     AND q.trade_id = a.trade_id 
-     AND q.question_id = a.question_id
-   WHERE a.project_id = $1
-   ORDER BY t.sort_order, a.created_at`,
-  [id]
-);
+    // Get Gewerke-Antworten mit Fragen aus der questions Tabelle
+    const answersResult = await query(
+      `SELECT 
+        t.name as trade_name,
+        t.code as trade_code,
+        q.text as question_text,
+        a.answer_text,
+        a.assumption,
+        a.created_at
+       FROM answers a
+       JOIN trades t ON t.id = a.trade_id
+       LEFT JOIN questions q ON q.project_id = a.project_id 
+         AND q.trade_id = a.trade_id 
+         AND q.question_id = a.question_id
+       WHERE a.project_id = $1
+       ORDER BY t.sort_order, a.created_at`,
+      [id]
+    );
 
     // Get LVs
     const lvsResult = await query(
@@ -11958,10 +12330,10 @@ const answersResult = await query(
     res.json({
       project,
       trades: tradesResult.rows,
-      questionsAnswers: qaResult.rows,  // Alt (wahrscheinlich leer)
-      intakeQuestions: intakeResult.rows,  // NEU
-      tradeAnswers: answersResult.rows,    // NEU
-      totalQuestions: intakeResult.rows.length + answersResult.rows.length,  // NEU
+      questionsAnswers: qaResult.rows,
+      intakeQuestions: intakeResult.rows,
+      tradeAnswers: answersResult.rows,
+      totalQuestions: intakeResult.rows.length + answersResult.rows.length,
       lvs: lvsResult.rows.map(lv => {
         try {
           return {
