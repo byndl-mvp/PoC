@@ -1,195 +1,222 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { 
+  Users, Building2, FileText, CreditCard, Shield, AlertCircle, 
+  TrendingUp, Calendar, MapPin, CheckCircle, XCircle, Clock,
+  DollarSign, Package, UserCheck, FileCheck, Settings, Search,
+  Filter, Download, Eye, Edit, Trash2, Plus, RefreshCw, Bell,
+  BarChart3, PieChart, Activity, UserX, Mail, Phone, Home
+} from 'lucide-react';
 
 export default function AdminDashboardPage() {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('projects');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState('');
+  
+  // Data States
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalProjects: 0,
+    totalRevenue: 0,
+    activeOrders: 0,
+    pendingPayments: 0,
+    verificationQueue: 0
+  });
+  
+  const [users, setUsers] = useState({ bauherren: [], handwerker: [] });
   const [projects, setProjects] = useState([]);
-  const [prompts, setPrompts] = useState([]);
-  const [lvs, setLvs] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [editingPrompt, setEditingPrompt] = useState(null);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [payments, setPayments] = useState([]);
+  const [verifications, setVerifications] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [tenders, setTenders] = useState([]);
+  const [supplements, setSupplements] = useState([]);
+  
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   
   const token = localStorage.getItem('adminToken');
 
-  // Check authentication
   useEffect(() => {
     if (!token) {
-      navigate('/admin');
+      // Redirect to login
+      window.location.href = '/admin';
+    } else {
+      setIsAuthenticated(true);
     }
-  }, [token, navigate]);
+  }, [token]);
 
-  // Fetch initial data based on active tab
   useEffect(() => {
-    const fetchData = async () => {
-      if (token) {
-        switch(activeTab) {
-          case 'projects':
-            await fetchProjects();
-            break;
-          case 'prompts':
-            await fetchPrompts();
-            break;
-          case 'lvs':
-            await fetchLVs();
-            break;
-          case 'analytics':
-            await fetchAnalytics();
-            break;
-          default:
-            break;
-        }
-      }
-    };
+    fetchDashboardData();
+  }, [activeTab, filterStatus, dateRange]);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError('');
     
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, activeTab]);
+    try {
+      switch(activeTab) {
+        case 'overview':
+          await fetchOverviewStats();
+          break;
+        case 'users':
+          await fetchUsers();
+          break;
+        case 'projects':
+          await fetchProjects();
+          break;
+        case 'payments':
+          await fetchPayments();
+          break;
+        case 'verifications':
+          await fetchVerifications();
+          break;
+        case 'orders':
+          await fetchOrders();
+          break;
+        case 'tenders':
+          await fetchTenders();
+          break;
+        default:
+          break;
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOverviewStats = async () => {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/stats', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Statistiken');
+    const data = await res.json();
+    setStats(data);
+  };
+
+  const fetchUsers = async () => {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/users', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Nutzer');
+    const data = await res.json();
+    setUsers(data);
+  };
 
   const fetchProjects = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/projects/detailed', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Fehler beim Laden der Projekte');
-      const data = await res.json();
-      setProjects(data.projects || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/projects?status=${filterStatus}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Projekte');
+    const data = await res.json();
+    setProjects(data.projects || []);
   };
 
-  const fetchProjectDetails = async (projectId) => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/projects/${projectId}/full`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Fehler beim Laden der Projektdetails');
-      const data = await res.json();
-      console.log('Projektdetails:', data); // Debug um zu sehen was ankommt
-      setSelectedProject(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const fetchPayments = async () => {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/payments', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Zahlungen');
+    const data = await res.json();
+    setPayments(data.payments || []);
   };
 
-  const fetchPrompts = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/prompts/full', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Fehler beim Laden der Prompts');
-      const data = await res.json();
-      setPrompts(data.prompts || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const fetchVerifications = async () => {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/verifications', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Verifizierungen');
+    const data = await res.json();
+    setVerifications(data.verifications || []);
   };
 
-  const fetchLVs = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/lvs', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Fehler beim Laden der LVs');
-      const data = await res.json();
-      setLvs(data.lvs || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const fetchOrders = async () => {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/orders', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Aufträge');
+    const data = await res.json();
+    setOrders(data.orders || []);
   };
 
-  const fetchAnalytics = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/analytics', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Fehler beim Laden der Analytics');
-      const data = await res.json();
-      setAnalytics(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const fetchTenders = async () => {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/tenders', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibungen');
+    const data = await res.json();
+    setTenders(data.tenders || []);
   };
 
-  const updatePrompt = async (promptId, content, name) => {
+  const handleVerification = async (verificationId, approved) => {
     try {
-      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/prompts/${promptId}`, {
+      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/verifications/${verificationId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ content, name }),
+        body: JSON.stringify({ approved })
       });
-      if (!res.ok) throw new Error('Fehler beim Aktualisieren des Prompts');
       
-      // Update successful
-      setMessage('Prompt erfolgreich aktualisiert');
-      setEditingPrompt(null);
+      if (!res.ok) throw new Error('Fehler bei der Verifizierung');
       
-      // Force reload of prompts
-      await fetchPrompts();
-      
-      // Clear message after 3 seconds
+      setMessage(`${approved ? 'Genehmigt' : 'Abgelehnt'} erfolgreich`);
+      fetchVerifications();
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       setError(err.message);
-      setTimeout(() => setError(''), 5000);
     }
   };
 
-  const deletePrompt = async (promptId) => {
-    if (!window.confirm('Prompt wirklich löschen?')) return;
-    
+  const handlePaymentUpdate = async (paymentId, status) => {
     try {
-      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/prompts/${promptId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/payments/${paymentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
       });
-      if (!res.ok) throw new Error('Fehler beim Löschen des Prompts');
-      setMessage('Prompt erfolgreich gelöscht');
-      fetchPrompts();
+      
+      if (!res.ok) throw new Error('Fehler beim Update der Zahlung');
+      
+      setMessage('Zahlung aktualisiert');
+      fetchPayments();
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const exportData = () => {
+    // Export functionality
+    console.log('Exporting data...');
   };
 
   const logout = () => {
     localStorage.removeItem('adminToken');
-    navigate('/admin');
+    window.location.href = '/admin';
   };
 
   const tabItems = [
-    { id: 'projects', label: 'Projekte', icon: '📋' },
-    { id: 'prompts', label: 'Prompts', icon: '📝' },
-    { id: 'lvs', label: 'LVs', icon: '📊' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
+    { id: 'overview', label: 'Übersicht', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'users', label: 'Nutzer', icon: <Users className="w-4 h-4" /> },
+    { id: 'projects', label: 'Projekte', icon: <Building2 className="w-4 h-4" /> },
+    { id: 'payments', label: 'Zahlungen', icon: <CreditCard className="w-4 h-4" /> },
+    { id: 'verifications', label: 'Verifizierungen', icon: <Shield className="w-4 h-4" /> },
+    { id: 'orders', label: 'Aufträge', icon: <Package className="w-4 h-4" /> },
+    { id: 'tenders', label: 'Ausschreibungen', icon: <FileText className="w-4 h-4" /> },
+    { id: 'supplements', label: 'Nachträge', icon: <Plus className="w-4 h-4" /> },
+    { id: 'analytics', label: 'Analytics', icon: <Activity className="w-4 h-4" /> },
+    { id: 'settings', label: 'Einstellungen', icon: <Settings className="w-4 h-4" /> }
   ];
 
   return (
@@ -199,70 +226,131 @@ export default function AdminDashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-8">
-              <Link to="/" className="text-2xl font-bold text-white">
+              <a href="/" className="text-2xl font-bold text-white">
                 byndl <span className="text-teal-400 text-sm">Admin</span>
-              </Link>
+              </a>
               
               {/* Tab Navigation */}
-              <nav className="hidden md:flex space-x-1">
-                {tabItems.map(tab => (
+              <nav className="hidden lg:flex space-x-1">
+                {tabItems.slice(0, 7).map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    className={`px-3 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
                       activeTab === tab.id
                         ? 'bg-teal-500 text-white'
                         : 'text-white/70 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    <span className="mr-2">{tab.icon}</span>
+                    {tab.icon}
                     {tab.label}
                   </button>
                 ))}
               </nav>
             </div>
 
-            <button
-              onClick={logout}
-              className="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg transition-colors"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-4">
+              <button className="relative p-2 text-white/70 hover:text-white">
+                <Bell className="w-5 h-5" />
+                {stats.verificationQueue > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {stats.verificationQueue}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={logout}
+                className="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile Tab Navigation */}
-      <div className="md:hidden bg-white/5 border-b border-white/10">
-        <div className="flex overflow-x-auto p-2">
+      {/* Mobile Navigation */}
+      <div className="lg:hidden bg-white/5 border-b border-white/10 overflow-x-auto">
+        <div className="flex p-2 gap-2">
           {tabItems.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap mr-2 ${
+              className={`px-3 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${
                 activeTab === tab.id
                   ? 'bg-teal-500 text-white'
                   : 'text-white/70 bg-white/10'
               }`}
             >
-              <span className="mr-2">{tab.icon}</span>
+              {tab.icon}
               {tab.label}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Search and Filter Bar */}
+      {activeTab !== 'overview' && activeTab !== 'analytics' && activeTab !== 'settings' && (
+        <div className="bg-white/5 border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Suchen..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50"
+                  />
+                </div>
+              </div>
+              
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+              >
+                <option value="all">Alle Status</option>
+                <option value="active">Aktiv</option>
+                <option value="pending">Ausstehend</option>
+                <option value="completed">Abgeschlossen</option>
+              </select>
+              
+              <button
+                onClick={exportData}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export
+              </button>
+              
+              <button
+                onClick={fetchDashboardData}
+                className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-white rounded-lg flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Aktualisieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Messages */}
         {message && (
-          <div className="mb-4 bg-green-500/20 border border-green-500/50 rounded-lg px-4 py-3">
+          <div className="mb-4 bg-green-500/20 border border-green-500/50 rounded-lg px-4 py-3 flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-green-400" />
             <p className="text-green-300">{message}</p>
           </div>
         )}
         
         {error && (
-          <div className="mb-4 bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-3">
+          <div className="mb-4 bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-3 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-400" />
             <p className="text-red-300">{error}</p>
           </div>
         )}
@@ -273,500 +361,571 @@ export default function AdminDashboardPage() {
           </div>
         ) : (
           <>
-            {/* Projects Tab */}
-            {activeTab === 'projects' && (
-              <div className="grid lg:grid-cols-2 gap-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-4">Projekte</h2>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                    {projects.map((project) => (
-                      <div
-                        key={project.id}
-                        className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20 hover:bg-white/15 transition-colors cursor-pointer"
-                        onClick={() => fetchProjectDetails(project.id)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-white">
-                              Projekt #{project.id}
-                            </h3>
-                            <p className="text-white/70 text-sm mt-1">
-                              {project.category} {project.sub_category && `- ${project.sub_category}`}
-                            </p>
-                            <p className="text-white/50 text-xs mt-2">
-                              {project.trade_names || 'Keine Gewerke'}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-teal-400 text-sm">
-                              {project.budget ? `${project.budget.toLocaleString()} €` : 'Kein Budget'}
-                            </span>
-                            <div className="flex gap-2 mt-2 text-xs">
-                              <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
-                                {project.trade_count || 0} Gewerke
-                              </span>
-                              <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded">
-                                {project.lv_count || 0} LVs
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                {/* Stats Grid */}
+                <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <Users className="w-5 h-5 text-teal-400" />
+                      <span className="text-xs text-green-400">+12%</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">{stats.totalUsers}</p>
+                    <p className="text-xs text-white/70 mt-1">Gesamte Nutzer</p>
+                  </div>
+                  
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <Building2 className="w-5 h-5 text-blue-400" />
+                      <span className="text-xs text-green-400">+8%</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">{stats.totalProjects}</p>
+                    <p className="text-xs text-white/70 mt-1">Projekte</p>
+                  </div>
+                  
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <DollarSign className="w-5 h-5 text-green-400" />
+                      <span className="text-xs text-green-400">+25%</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">
+                      €{stats.totalRevenue?.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-white/70 mt-1">Umsatz</p>
+                  </div>
+                  
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <Package className="w-5 h-5 text-purple-400" />
+                      <Clock className="w-4 h-4 text-yellow-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-white">{stats.activeOrders}</p>
+                    <p className="text-xs text-white/70 mt-1">Aktive Aufträge</p>
+                  </div>
+                  
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <CreditCard className="w-5 h-5 text-yellow-400" />
+                      <AlertCircle className="w-4 h-4 text-orange-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-white">{stats.pendingPayments}</p>
+                    <p className="text-xs text-white/70 mt-1">Offene Zahlungen</p>
+                  </div>
+                  
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <Shield className="w-5 h-5 text-red-400" />
+                      <Bell className="w-4 h-4 text-red-400" />
+                    </div>
+                    <p className="text-2xl font-bold text-white">{stats.verificationQueue}</p>
+                    <p className="text-xs text-white/70 mt-1">Verifizierungen</p>
                   </div>
                 </div>
 
-                <div>
-                  {selectedProject ? (
-                    <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
-                      <h3 className="text-xl font-bold text-white mb-4">
-                        Projekt #{selectedProject.project?.id} Details
-                      </h3>
+                {/* Quick Actions */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Recent Activities */}
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-teal-400" />
+                      Letzte Aktivitäten
+                    </h3>
+                    <div className="space-y-3">
+                      {[1,2,3,4,5].map(i => (
+                        <div key={i} className="flex items-center gap-3 text-sm">
+                          <div className="w-2 h-2 bg-teal-400 rounded-full animate-pulse"></div>
+                          <div className="flex-1">
+                            <p className="text-white">Neue Registrierung: Handwerker #{i}23</p>
+                            <p className="text-white/50 text-xs">vor {i * 5} Minuten</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pending Actions */}
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-yellow-400" />
+                      Ausstehende Aktionen
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg">
+                        <span className="text-white text-sm">5 Verifizierungen ausstehend</span>
+                        <button className="text-yellow-400 hover:text-yellow-300 text-sm">
+                          Ansehen →
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg">
+                        <span className="text-white text-sm">3 Zahlungen überfällig</span>
+                        <button className="text-orange-400 hover:text-orange-300 text-sm">
+                          Prüfen →
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-blue-500/10 rounded-lg">
+                        <span className="text-white text-sm">12 neue Nachrichten</span>
+                        <button className="text-blue-400 hover:text-blue-300 text-sm">
+                          Lesen →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Users Tab */}
+            {activeTab === 'users' && (
+              <div className="space-y-6">
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {/* Bauherren */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Bauherren</h3>
+                    <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-white/20">
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">ID</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Name</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Email</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Projekte</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {users.bauherren?.map(user => (
+                              <tr key={user.id} className="border-b border-white/10 hover:bg-white/5">
+                                <td className="px-4 py-3 text-sm text-white">#{user.id}</td>
+                                <td className="px-4 py-3 text-sm text-white">{user.name}</td>
+                                <td className="px-4 py-3 text-sm text-white/70">{user.email}</td>
+                                <td className="px-4 py-3 text-sm text-white">{user.project_count || 0}</td>
+                                <td className="px-4 py-3">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300">
+                                    Aktiv
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex gap-2">
+                                    <button className="text-teal-400 hover:text-teal-300">
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                    <button className="text-blue-400 hover:text-blue-300">
+                                      <Edit className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Handwerker */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Handwerker</h3>
+                    <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-white/20">
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">ID</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Firma</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Gewerke</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Bewertung</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {users.handwerker?.map(user => (
+                              <tr key={user.id} className="border-b border-white/10 hover:bg-white/5">
+                                <td className="px-4 py-3 text-sm text-white">#{user.id}</td>
+                                <td className="px-4 py-3 text-sm text-white">{user.company_name}</td>
+                                <td className="px-4 py-3 text-sm text-white/70">{user.trades?.join(', ')}</td>
+                                <td className="px-4 py-3 text-sm text-white">
+                                  ⭐ {user.rating || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`px-2 py-1 text-xs rounded-full ${
+                                    user.verified 
+                                      ? 'bg-green-500/20 text-green-300' 
+                                      : 'bg-yellow-500/20 text-yellow-300'
+                                  }`}>
+                                    {user.verified ? 'Verifiziert' : 'Ausstehend'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex gap-2">
+                                    <button className="text-teal-400 hover:text-teal-300">
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                    <button className="text-blue-400 hover:text-blue-300">
+                                      <Edit className="w-4 h-4" />
+                                    </button>
+                                    {!user.verified && (
+                                      <button className="text-green-400 hover:text-green-300">
+                                        <CheckCircle className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Details Modal */}
+                {selectedItem && modalType === 'user' && (
+                  <div className="fixed inset-0 bg-black/50 backdrop-blur flex items-center justify-center z-50">
+                    <div className="bg-slate-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                      <h3 className="text-xl font-bold text-white mb-4">Nutzer Details</h3>
                       
                       <div className="space-y-4">
-                        <div>
-                          <label className="text-white/70 text-sm">Beschreibung</label>
-                          <p className="text-white">{selectedProject.project?.description}</p>
-                        </div>
-                        
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="text-white/70 text-sm">Zeitrahmen</label>
-                            <p className="text-white">{selectedProject.project?.timeframe || 'Nicht angegeben'}</p>
+                            <label className="text-white/70 text-sm">Name</label>
+                            <p className="text-white">{selectedItem.name}</p>
                           </div>
                           <div>
-                            <label className="text-white/70 text-sm">Budget</label>
-                            <p className="text-white">
-                              {selectedProject.project?.budget 
-                                ? `${selectedProject.project.budget.toLocaleString()} €` 
-                                : 'Nicht angegeben'}
-                            </p>
+                            <label className="text-white/70 text-sm">Email</label>
+                            <p className="text-white">{selectedItem.email}</p>
+                          </div>
+                          <div>
+                            <label className="text-white/70 text-sm">Telefon</label>
+                            <p className="text-white">{selectedItem.phone || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-white/70 text-sm">Registriert</label>
+                            <p className="text-white">{new Date(selectedItem.created_at).toLocaleDateString()}</p>
                           </div>
                         </div>
 
-                        {/* Gewerke & Q&A */}
-<div>
-  <h4 className="text-white font-semibold mb-2">Fragen & Antworten</h4>
-  
-  {/* Intake-Fragen */}
-  {selectedProject.intakeQuestions && selectedProject.intakeQuestions.length > 0 && (
-    <details className="bg-white/5 rounded-lg p-3 mb-2">
-      <summary className="cursor-pointer text-white hover:text-teal-400">
-        Intake-Fragen ({selectedProject.intakeQuestions.length} Fragen)
-      </summary>
-      <div className="mt-2 pl-4 space-y-2">
-        {selectedProject.intakeQuestions.map((qa, idx) => (
-          <div key={idx} className="border-l-2 border-teal-400/30 pl-3">
-            <p className="text-white/90 text-sm font-medium">
-              {qa.question_text}
-            </p>
-            <p className="text-green-300 text-xs mt-1">
-              ✓ {qa.answer_text}
-            </p>
-          </div>
-        ))}
-      </div>
-    </details>
-  )}
-  
-  {/* Gewerke-Fragen */}
-  <div className="space-y-2 max-h-[300px] overflow-y-auto">
-    {selectedProject.trades?.map((trade) => {
-      // Filter Antworten für dieses Gewerk
-      const tradeAnswers = selectedProject.tradeAnswers?.filter(
-        answer => answer.trade_code === trade.code
-      ) || [];
-      
-      return (
-        <details key={trade.id} className="bg-white/5 rounded-lg p-3">
-          <summary className="cursor-pointer text-white hover:text-teal-400">
-            {trade.name} ({tradeAnswers.length} Fragen)
-          </summary>
-          <div className="mt-2 pl-4 space-y-2">
-            {tradeAnswers.length > 0 ? (
-              tradeAnswers.map((answer, idx) => (
-                <div key={idx} className="border-l-2 border-teal-400/30 pl-3">
-                  <p className="text-white/90 text-sm font-medium">
-                    {answer.question_text}
-                  </p>
-                  <p className="text-green-300 text-xs mt-1">
-                    ✓ {answer.answer_text}
-                  </p>
-                  {answer.assumption && (
-                    <p className="text-blue-300 text-xs mt-1">
-                      ℹ Annahme: {answer.assumption}
-                    </p>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="text-white/50 text-sm">Keine Fragen vorhanden</p>
-            )}
-          </div>
-        </details>
-      );
-    })}
-  </div>
-  
-  {/* Gesamt-Statistik */}
-  <div className="mt-3 pt-3 border-t border-white/20">
-    <p className="text-white/70 text-sm">
-      Gesamt: {selectedProject.totalQuestions || 0} Fragen erfasst
-    </p>
-  </div>
-</div>
-                     </div>
-                    </div>
-                  ) : (
-                    <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20 flex items-center justify-center h-[400px]">
-                      <p className="text-white/50">Wählen Sie ein Projekt aus der Liste</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Prompts Tab */}
-            {activeTab === 'prompts' && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Prompt Verwaltung</h2>
-                <div className="grid gap-4">
-                  {prompts.map((prompt) => (
-                    <div key={prompt.id} className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-white">
-                            {prompt.name || `Prompt #${prompt.id}`}
-                          </h3>
-                          <div className="flex gap-2 mt-2">
-                            <span className="bg-teal-500/20 text-teal-300 px-2 py-1 rounded text-xs">
-                              {prompt.type}
-                            </span>
-                            {prompt.trade_name && (
-                              <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
-                                {prompt.trade_name}
-                              </span>
-                            )}
-                          </div>
+                        {/* Address */}
+                        <div>
+                          <label className="text-white/70 text-sm flex items-center gap-2">
+                            <MapPin className="w-4 h-4" /> Adresse
+                          </label>
+                          <p className="text-white">
+                            {selectedItem.street} {selectedItem.house_number}<br />
+                            {selectedItem.zip} {selectedItem.city}
+                          </p>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditingPrompt(prompt)}
-                            className="text-teal-400 hover:text-teal-300"
-                          >
+
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-4 border-t border-white/20">
+                          <button className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-white rounded-lg">
                             Bearbeiten
                           </button>
-                          <button
-                            onClick={() => deletePrompt(prompt.id)}
-                            className="text-red-400 hover:text-red-300"
+                          <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg">
+                            Sperren
+                          </button>
+                          <button 
+                            onClick={() => {setSelectedItem(null); setModalType('')}}
+                            className="ml-auto px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
                           >
-                            Löschen
+                            Schließen
                           </button>
                         </div>
                       </div>
-                      
-                      {editingPrompt?.id === prompt.id && (
-                        <div className="mt-4 space-y-3">
-                          <input
-                            type="text"
-                            value={editingPrompt.name || ''}
-                            onChange={(e) => setEditingPrompt({...editingPrompt, name: e.target.value})}
-                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                            placeholder="Prompt Name"
-                          />
-                          <textarea
-                            value={editingPrompt.content}
-                            onChange={(e) => setEditingPrompt({...editingPrompt, content: e.target.value})}
-                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                            rows="10"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => updatePrompt(prompt.id, editingPrompt.content, editingPrompt.name)}
-                              className="bg-teal-500 hover:bg-teal-400 text-white px-4 py-2 rounded-lg"
-                            >
-                              Speichern
-                            </button>
-                            <button
-                              onClick={() => setEditingPrompt(null)}
-                              className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg"
-                            >
-                              Abbrechen
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Projects Tab */}
+            {activeTab === 'projects' && (
+              <div>
+                <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/20">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Projekt ID</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Bauherr</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Adresse</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Kategorie</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Budget</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Start</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {projects.map(project => (
+                          <tr key={project.id} className="border-b border-white/10 hover:bg-white/5">
+                            <td className="px-4 py-3 text-sm text-white">#{project.id}</td>
+                            <td className="px-4 py-3 text-sm text-white">{project.bauherr_name}</td>
+                            <td className="px-4 py-3 text-sm text-white/70">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {project.street} {project.house_number}, {project.zip} {project.city}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white">{project.category}</td>
+                            <td className="px-4 py-3 text-sm text-teal-400">
+                              €{project.budget?.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {new Date(project.start_date).toLocaleDateString()}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                project.status === 'active' ? 'bg-green-500/20 text-green-300' :
+                                project.status === 'completed' ? 'bg-blue-500/20 text-blue-300' :
+                                'bg-yellow-500/20 text-yellow-300'
+                              }`}>
+                                {project.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => {setSelectedItem(project); setModalType('project')}}
+                                  className="text-teal-400 hover:text-teal-300"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button className="text-blue-400 hover:text-blue-300">
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* LVs Tab */}
-            {activeTab === 'lvs' && (
+            {/* Payments Tab */}
+            {activeTab === 'payments' && (
               <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Leistungsverzeichnisse</h2>
-                <div className="grid gap-4">
-                  {lvs.map((lv) => (
-                    <details key={`${lv.project_id}-${lv.trade_id}`} className="bg-white/10 backdrop-blur rounded-lg border border-white/20">
-                      <summary className="p-4 cursor-pointer hover:bg-white/5 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-semibold text-white">
-                              {lv.trade_name} - Projekt #{lv.project_id}
-                            </h3>
-                            <p className="text-white/70 text-sm mt-1">
-                              {lv.project_description}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-teal-400 font-semibold">
-                              {lv.total_sum && !isNaN(lv.total_sum) 
-                                ? `${Number(lv.total_sum).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}` 
-                                : 'Keine Summe'}
-                            </p>
-                            <p className="text-white/50 text-xs mt-1">
-                              {lv.position_count || 0} Positionen
-                            </p>
-                            <div className={`mt-2 px-2 py-1 rounded text-xs inline-block ${
-                              lv.qualityScore > 80 ? 'bg-green-500/20 text-green-300' :
-                              lv.qualityScore > 50 ? 'bg-yellow-500/20 text-yellow-300' :
-                              'bg-red-500/20 text-red-300'
-                            }`}>
-                              Qualität: {lv.qualityScore}%
-                            </div>
-                          </div>
-                        </div>
-                        {lv.issues?.length > 0 && (
-                          <div className="mt-2 text-yellow-300 text-sm">
-                            Issues: {lv.issues.join(', ')}
-                          </div>
-                        )}
-                      </summary>
-                      
-                      {/* LV Details - Einzelpositionen */}
-                      <div className="p-4 border-t border-white/10">
-                        <h4 className="text-white font-semibold mb-3">Einzelpositionen:</h4>
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {lv.content?.positions && Array.isArray(lv.content.positions) ? (
-                            lv.content.positions.map((pos, idx) => (
-                              <div key={idx} className="bg-white/5 rounded p-3">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <p className="text-white font-medium">
-                                      {pos.positionNumber || idx + 1}. {pos.title || pos.description?.substring(0, 50) || 'Position'}
-                                    </p>
-                                    <p className="text-white/70 text-sm mt-1">
-                                      {pos.description}
-                                    </p>
-                                    <div className="flex gap-4 mt-2 text-xs text-white/50">
-                                      <span>Menge: {pos.quantity} {pos.unit}</span>
-                                      <span>EP: {pos.unitPrice ? `${Number(pos.unitPrice).toFixed(2)} €` : 'N/A'}</span>
-                                    </div>
-                                  </div>
-                                  <div className="text-right ml-4">
-                                    <p className="text-teal-400 font-semibold">
-                                      {pos.totalPrice ? `${Number(pos.totalPrice).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}` : 'N/A'}
-                                    </p>
-                                  </div>
-                                </div>
+                <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/20">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">ID</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Datum</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Von</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">An</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Betrag</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Typ</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payments.map(payment => (
+                          <tr key={payment.id} className="border-b border-white/10 hover:bg-white/5">
+                            <td className="px-4 py-3 text-sm text-white">#{payment.id}</td>
+                            <td className="px-4 py-3 text-sm text-white">
+                              {new Date(payment.date).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white">{payment.from_name}</td>
+                            <td className="px-4 py-3 text-sm text-white">{payment.to_name}</td>
+                            <td className="px-4 py-3 text-sm text-teal-400 font-semibold">
+                              €{payment.amount?.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white">{payment.type}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                payment.status === 'completed' ? 'bg-green-500/20 text-green-300' :
+                                payment.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                                'bg-red-500/20 text-red-300'
+                              }`}>
+                                {payment.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                {payment.status === 'pending' && (
+                                  <>
+                                    <button 
+                                      onClick={() => handlePaymentUpdate(payment.id, 'completed')}
+                                      className="text-green-400 hover:text-green-300"
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                    </button>
+                                    <button 
+                                      onClick={() => handlePaymentUpdate(payment.id, 'failed')}
+                                      className="text-red-400 hover:text-red-300"
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                                <button className="text-teal-400 hover:text-teal-300">
+                                  <Eye className="w-4 h-4" />
+                                </button>
                               </div>
-                            ))
-                          ) : (
-                            <p className="text-white/50">Keine Positionen vorhanden oder Datenformat fehlerhaft</p>
-                          )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Verifications Tab */}
+            {activeTab === 'verifications' && (
+              <div className="grid gap-4">
+                {verifications.map(verification => (
+                  <div key={verification.id} className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <h3 className="text-lg font-semibold text-white">
+                            {verification.company_name}
+                          </h3>
+                          <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-300">
+                            Ausstehend
+                          </span>
                         </div>
                         
-                        {/* Summen */}
-                        <div className="mt-4 pt-4 border-t border-white/20">
-                          <div className="flex justify-between text-white">
-                            <span className="font-semibold">Gesamtsumme (Netto):</span>
-                            <span className="text-xl font-bold text-teal-400">
-                              {lv.content?.totalSum && !isNaN(lv.content.totalSum)
-                                ? Number(lv.content.totalSum).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})
-                                : 'Berechnung ausstehend'}
-                            </span>
+                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <p className="text-white/70 text-sm">Kontakt</p>
+                            <p className="text-white flex items-center gap-2">
+                              <Mail className="w-4 h-4" /> {verification.email}
+                            </p>
+                            <p className="text-white flex items-center gap-2 mt-1">
+                              <Phone className="w-4 h-4" /> {verification.phone}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-white/70 text-sm">Adresse</p>
+                            <p className="text-white flex items-center gap-2">
+                              <Home className="w-4 h-4" />
+                              {verification.street} {verification.house_number}<br />
+                              {verification.zip} {verification.city}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Documents */}
+                        <div className="space-y-2">
+                          <p className="text-white/70 text-sm">Nachweise</p>
+                          <div className="flex flex-wrap gap-2">
+                            {verification.documents?.map((doc, idx) => (
+                              <button
+                                key={idx}
+                                className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-sm text-white flex items-center gap-2"
+                              >
+                                <FileCheck className="w-4 h-4" />
+                                {doc.type}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </div>
-                    </details>
-                  ))}
-                </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVerification(verification.id, true)}
+                          className="px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-lg flex items-center gap-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Genehmigen
+                        </button>
+                        <button
+                          onClick={() => handleVerification(verification.id, false)}
+                          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg flex items-center gap-2"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Ablehnen
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Analytics Tab */}
-            {activeTab === 'analytics' && analytics && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Analytics Dashboard</h2>
-                
-                {/* Stats Cards */}
-                <div className="grid md:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                    <h3 className="text-white/70 text-sm">Gesamt Projekte</h3>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      {analytics.projects?.total_projects || 0}
-                    </p>
-                    <p className="text-teal-400 text-sm mt-1">
-                      +{analytics.projects?.last_week || 0} diese Woche
-                    </p>
-                  </div>
-                  
-                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                    <h3 className="text-white/70 text-sm">Durchschn. Budget</h3>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      {analytics.projects?.avg_budget 
-                        ? `${Math.round(analytics.projects.avg_budget).toLocaleString()} €`
-                        : 'N/A'}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                    <h3 className="text-white/70 text-sm">Aktive Gewerke</h3>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      {analytics.trades?.length || 0}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                    <h3 className="text-white/70 text-sm">Prompts</h3>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      {analytics.prompts?.length || 0}
-                    </p>
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                  <h3 className="text-lg font-semibold text-white mb-4">Platform Einstellungen</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-white/70 text-sm">Provision (%)</label>
+                      <input 
+                        type="number" 
+                        defaultValue="15" 
+                        className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-white/70 text-sm">Max. Angebote pro Ausschreibung</label>
+                      <input 
+                        type="number" 
+                        defaultValue="5" 
+                        className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-white/70 text-sm">Zahlungsfrist (Tage)</label>
+                      <input 
+                        type="number" 
+                        defaultValue="30" 
+                        className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                      />
+                    </div>
+                    <button className="w-full px-4 py-2 bg-teal-500 hover:bg-teal-400 text-white rounded-lg">
+                      Einstellungen speichern
+                    </button>
                   </div>
                 </div>
 
-                {/* Trade Stats - Expandable */}
                 <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
-                  <h3 className="text-xl font-bold text-white mb-4">Gewerke Statistiken</h3>
-                  <div className="space-y-2">
-                    {analytics.trades?.map((trade) => {
-                      const completion = analytics.completion?.find(c => c.trade_name === trade.name);
-                      const tradePrompts = analytics.prompts?.filter(p => p.trade_name === trade.name);
-                      
-                      return (
-                        <details key={trade.code} className="bg-white/5 rounded-lg">
-                          <summary className="p-4 cursor-pointer hover:bg-white/10 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <span className="text-white font-medium">{trade.name}</span>
-                              </div>
-                              <div className="flex gap-8 text-sm">
-                                <div className="text-center">
-                                  <p className="text-white/50">Projekte</p>
-                                  <p className="text-white font-semibold">{trade.usage_count || 0}</p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-white/50">LVs</p>
-                                  <p className="text-white font-semibold">{trade.lv_count || 0}</p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-white/50">Ø LV-Wert</p>
-                                  <p className="text-white font-semibold">
-                                    {trade.avg_lv_value 
-                                      ? `${Math.round(trade.avg_lv_value).toLocaleString()} €`
-                                      : '-'}
-                                  </p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-white/50">Completion</p>
-                                  <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                    completion?.completion_rate > 80 ? 'bg-green-500/20 text-green-300' :
-                                    completion?.completion_rate > 50 ? 'bg-yellow-500/20 text-yellow-300' :
-                                    'bg-red-500/20 text-red-300'
-                                  }`}>
-                                    {completion?.completion_rate || 0}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </summary>
-                          
-                          {/* Detaillierte Gewerk-Statistik */}
-                          <div className="p-4 border-t border-white/10 space-y-4">
-                            {/* Performance Metriken */}
-                            <div className="grid md:grid-cols-3 gap-4">
-                              <div className="bg-white/5 rounded p-3">
-                                <h4 className="text-white/70 text-xs uppercase mb-1">Fragen-Status</h4>
-                                <p className="text-white text-2xl font-bold">
-                                  {completion?.answered_questions || 0} / {completion?.total_questions || 0}
-                                </p>
-                                <div className="w-full bg-white/20 rounded-full h-2 mt-2">
-                                  <div 
-                                    className="bg-teal-400 h-2 rounded-full"
-                                    style={{width: `${completion?.completion_rate || 0}%`}}
-                                  />
-                                </div>
-                              </div>
-                              
-                              <div className="bg-white/5 rounded p-3">
-                                <h4 className="text-white/70 text-xs uppercase mb-1">LV-Qualität</h4>
-                                <p className="text-white text-2xl font-bold">
-                                  {trade.lv_count > 0 ? 'Gut' : 'N/A'}
-                                </p>
-                                <p className="text-white/50 text-xs mt-1">
-                                  Ø {trade.avg_position_count || 0} Positionen/LV
-                                </p>
-                              </div>
-                              
-                              <div className="bg-white/5 rounded p-3">
-                                <h4 className="text-white/70 text-xs uppercase mb-1">Umsatzvolumen</h4>
-                                <p className="text-white text-2xl font-bold">
-                                  {trade.lv_count && trade.avg_lv_value 
-                                    ? `${Math.round(trade.lv_count * trade.avg_lv_value).toLocaleString()} €`
-                                    : 'N/A'}
-                                </p>
-                                <p className="text-white/50 text-xs mt-1">Gesamt aus allen LVs</p>
-                              </div>
-                            </div>
-                            
-                            {/* Prompt Performance */}
-                            {tradePrompts && tradePrompts.length > 0 && (
-                              <div>
-                                <h4 className="text-white font-semibold mb-2">Prompt-Effektivität</h4>
-                                <div className="space-y-1">
-                                  {tradePrompts.map(prompt => (
-                                    <div key={prompt.id} className="flex justify-between text-sm">
-                                      <span className="text-white/70">{prompt.name}</span>
-                                      <div className="flex gap-4">
-                                        <span className="text-white/50">
-                                          {prompt.usage_count} Nutzungen
-                                        </span>
-                                        <span className="text-teal-400">
-                                          Ø {prompt.avg_position_count ? Math.round(prompt.avg_position_count) : 0} Pos.
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Trend Indikator */}
-                            <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                              <span className="text-white/50 text-sm">Performance-Trend</span>
-                              <div className="flex items-center gap-2">
-                                {completion?.completion_rate > 70 ? (
-                                  <>
-                                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                    </svg>
-                                    <span className="text-green-400 text-sm">Steigend</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                                    </svg>
-                                    <span className="text-yellow-400 text-sm">Verbesserung nötig</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </details>
-                      );
-                    })}
+                  <h3 className="text-lg font-semibold text-white mb-4">System Status</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/70">API Server</span>
+                      <span className="flex items-center gap-2 text-green-400">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        Online
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/70">Database</span>
+                      <span className="flex items-center gap-2 text-green-400">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        Connected
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/70">Payment Gateway</span>
+                      <span className="flex items-center gap-2 text-green-400">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        Active
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/70">Email Service</span>
+                      <span className="flex items-center gap-2 text-green-400">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        Operational
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
