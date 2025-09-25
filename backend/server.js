@@ -7320,6 +7320,15 @@ function finalLVValidation(lv, tradeCode) {
   return { lv, issues };
 }
 
+// Helper function to get handwerker ID from company ID
+async function getHandwerkerIdFromCompanyId(companyId) {
+  const result = await query(
+    'SELECT id FROM handwerker WHERE company_id = $1',
+    [companyId]
+  );
+  return result.rows[0]?.id || null;
+}
+
 /**
  * PDF Generation für komplettes Projekt-LV
  */
