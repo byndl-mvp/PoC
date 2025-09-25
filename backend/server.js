@@ -10833,7 +10833,7 @@ app.post('/api/handwerker/register', async (req, res) => {
   try {
     const {
       companyName, email, phone, contactPerson,
-      street, houseNumber, zipCode, city,
+      street, houseNumber, zipCode, city,  // Frontend sendet: zipCode
       trades, actionRadius, maxProjectVolume,
       availableFrom, employees, insurances, certifications
     } = req.body;
@@ -10852,16 +10852,16 @@ app.post('/api/handwerker/register', async (req, res) => {
     await query('BEGIN');
     
     try {
-      // Insert handwerker
+      // Insert handwerker - WICHTIG: zip_code statt zip!
       const result = await query(
         `INSERT INTO handwerker (
           company_id, email, company_name, contact_person, phone,
-          street, house_number, zip, city, action_radius,
+          street, house_number, zip_code, city, action_radius,
           max_project_volume, available_from, employee_count, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
         RETURNING id, company_id, company_name, email`,
         [companyId, email, companyName, contactPerson, phone,
-         street, houseNumber, zipCode, city, actionRadius,
+         street, houseNumber, zipCode, city, actionRadius,  // zipCode wird zu zip_code gemappt
          maxProjectVolume, availableFrom, employees]
       );
       
