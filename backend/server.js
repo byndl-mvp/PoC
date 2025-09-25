@@ -5236,14 +5236,21 @@ KRITISCH FÜR ROHBAUARBEITEN:
    - Rohdecken (Betondecken, Filigrandecken)
    - Stürze, Ringanker, Betonstützen
    - Treppen (Rohbau, nicht Ausbau)
-
+   - Verstärkung/Ertüchtigung von BESTANDSMAUERWERK
+   - Statisch relevante Wanddurchbrüche
+   - Anschlüsse AN Bestandsmauerwerk
+   
 2. NIEMALS IM ROHBAU:
    - KEIN Estrich (gehört zu Gewerk ESTR)
    - KEINE Dämmung unter Estrich
-   - KEINE Trittschalldämmung
+   - KEIN Holzbau (→ ZIMM)
+   - KEINE Holzständerwände (→ ZIMM)
+   - KEINE Holzbalkendecke (→ ZIMM)
+   - KEINE Dachkonstruktion (→ ZIMM)   
+   - KEINE Trittschalldämmung 
    - KEINE Bodenbeläge
    - KEINE Putze (gehört zu MAL oder FASS)
-   - KEINE Abdichtungen (außer Bodenplatte)
+   - KEINE Abdichtungen (außer Bodenplatte, Kellerwände)
 
 3. HÄUFIGE FEHLER VERMEIDEN:
    - "Estrich" → FALSCH! Rohbau macht nur Rohdecke
@@ -6151,6 +6158,74 @@ if (pos.title?.toLowerCase().includes('sockel')) {
       }
       return pos;
     });
+  }
+}
+
+// ROH-spezifisch: Entferne falsche Holzbau-Positionen
+if (trade.code === 'ROH' && lv.positions) {
+  console.log('[ROH] Prüfe auf falsche Holzbau-Positionen...');
+  
+  const vorherCount = lv.positions.length;
+  lv.positions = lv.positions.filter(pos => {
+    const title = (pos.title || '').toLowerCase();
+    const desc = (pos.description || '').toLowerCase();
+    
+    // Holzbau-Keywords die NICHT in ROH gehören
+    const holzbauKeywords = [
+      'holzständer', 'holzrahmen', 'holzbalkendecke', 'holzkonstruktion',
+      'sparren', 'pfetten', 'firstbalken', 'gratbalken', 'windrispen',
+      'konstruktionsvollholz', 'kvh', 'c24', 'balkenschuhe', 'holzschutz'
+    ];
+    
+    // Prüfe ob Position Holzbau enthält
+    const istHolzbau = holzbauKeywords.some(keyword => 
+      title.includes(keyword) || desc.includes(keyword)
+    );
+    
+    if (istHolzbau) {
+      console.log(`[ROH] FEHLER: Holzbau-Position entfernt: "${pos.title}"`);
+      return false; // Position entfernen
+    }
+    
+    // Auch "Aufstockung in Holz" ist Zimmerer-Sache
+    if ((title.includes('aufstockung') || desc.includes('aufstockung')) &&
+        (title.includes('holz') || desc.includes('holz'))) {
+      console.log(`[ROH] FEHLER: Holz-Aufstockung gehört zu ZIMM: "${pos.title}"`);
+      return false;
+    }
+    
+    return true; // Position behalten
+  });
+  
+  if (vorherCount !== lv.positions.length) {
+    console.error(`[ROH] KRITISCH: ${vorherCount - lv.positions.length} Holzbau-Positionen entfernt - gehören zu ZIMMERER!`);
+    
+    // Füge Hinweis-Position ein
+    if (lv.positions.length < orientation.min * 0.7) {
+      lv.positions.push({
+        pos: `${lv.positions.length + 1}.00`,
+        title: "HINWEIS: Holzbauarbeiten",
+        description: "Holzbauarbeiten für Aufstockung siehe separates Gewerk ZIMMERER. Rohbau erstellt nur die Anschlüsse und Verstärkungen am Bestandsmauerwerk.",
+        quantity: 1,
+        unit: "psch",
+        unitPrice: 0,
+        totalPrice: 0,
+        isNEP: true,
+        notes: "Nur zur Information - keine Kosten"
+      });
+    }
+  }
+}
+
+// ZIMM-spezifisch: Prüfe ob Holzbau-Positionen vorhanden sind
+if (trade.code === 'ZIMM' && lv.positions) {
+  const hatHolzbau = lv.positions.some(pos => 
+    pos.title?.toLowerCase().includes('holz') || 
+    pos.description?.toLowerCase().includes('holz')
+  );
+  
+  if (!hatHolzbau) {
+    console.error('[ZIMM] WARNUNG: Zimmerer-LV ohne Holzbau-Positionen!');
   }
 }
       
