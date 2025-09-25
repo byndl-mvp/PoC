@@ -11328,9 +11328,9 @@ app.get('/api/handwerker/:companyId/tenders', async (req, res) => {
     const handwerker = handwerkerResult.rows[0];
     const trades = handwerker.trades || [];
     
-    // Get matching tenders
+    // Get matching tenders - auch hier zip_code verwenden
     const result = await query(
-      `SELECT DISTINCT t.*, p.description, p.budget, p.zip, p.city,
+      `SELECT DISTINCT t.*, p.description, p.budget, p.zip_code, p.city,
               tr.name as trade,
               CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as "isNew"
        FROM tenders t
