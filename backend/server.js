@@ -6237,6 +6237,35 @@ if (trade.code === 'ZIMM' && lv.positions) {
     console.error('[ZIMM] WARNUNG: Zimmerer-LV ohne Holzbau-Positionen!');
   }
 }
+
+// UNIVERSELLE REGEL: Kleber/Klebstoff-Preise
+if (titleLower.includes('kleber') || titleLower.includes('klebstoff')) {
+  if (pos.unit === 'm²' && pos.unitPrice > 15) {
+    const oldPrice = pos.unitPrice;
+    
+    // Bestimme Kleber-Typ
+    let neuerPreis = 5; // Standard
+    if (titleLower.includes('2-komponenten') || titleLower.includes('epoxid')) {
+      neuerPreis = 12; // Teurer Spezialkleber
+    } else if (titleLower.includes('flexkleber') || titleLower.includes('naturstein')) {
+      neuerPreis = 8; // Mittelpreisig
+    }
+    
+    pos.unitPrice = neuerPreis;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Kleber-Preis korrigiert: ${oldPrice}€/m² → ${neuerPreis}€/m²`);
+    fixedCount++;
+  }
+  
+  // Kleber pro kg
+  if (pos.unit === 'kg' && pos.unitPrice > 25) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 8; // Max 8€/kg für Spezialkleber
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Kleber/kg korrigiert: ${oldPrice}€ → 8€`);
+    fixedCount++;
+  }
+}
       
   let calculatedSum = 0;
   let nepSum = 0; // NEU: Summe der NEP-Positionen
