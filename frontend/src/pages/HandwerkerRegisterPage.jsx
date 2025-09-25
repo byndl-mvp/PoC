@@ -230,7 +230,6 @@ export default function HandwerkerRegisterPage() {
   alert(`✅ Registrierung erfolgreich!\n\nIhre Betriebs-ID: ${data.companyId || companyId}\n\n⚠️ WICHTIG: Bitte notieren Sie sich diese ID für den Login!\n\nSie werden nun zum Dashboard weitergeleitet.`);
   
   navigate('/handwerker/dashboard');
-}
       } else {
         const errorData = await res.json();
         throw new Error(errorData.message || 'Registrierung fehlgeschlagen');
