@@ -166,7 +166,7 @@ export default function BauherrenDashboardPage() {
 
   // NEUE FUNKTION: Verbindliche Beauftragung (Stufe 2)
   const handleFinalOrder = async (offer) => {
-    if (!confirm('Möchten Sie diesen Handwerker verbindlich beauftragen? Es entsteht ein rechtsgültiger Werkvertrag.')) {
+    if (!window.confirm('Möchten Sie diesen Handwerker verbindlich beauftragen? Es entsteht ein rechtsgültiger Werkvertrag.')) {
       return;
     }
 
