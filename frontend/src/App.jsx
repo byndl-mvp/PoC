@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 
 // Landing & Auth Pages
 import LandingPage from './pages/LandingPage';
-import BauherrLoginPage from './pages/BauherrLoginPage';
+import BauherrLoginPage from './pages/BauherrenLoginPage';
 import HandwerkerLoginPage from './pages/HandwerkerLoginPage';
 import HandwerkerRegisterPage from './pages/HandwerkerRegisterPage';
 
