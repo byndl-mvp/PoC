@@ -3310,21 +3310,121 @@ ${tradeCode === 'SAN' ? `
    - Nur bei Sondermaß: Nach konkreten Maßen fragen
 ` : ''}
 
+${tradeCode === 'ROH' ? `
+19. SPEZIELLE ROHBAU-REGELN:
+   
+   GRUNDREGEL: Rohbau macht Massivbauarbeiten!
+   
+   STANDARD-ABGRENZUNG (gilt immer):
+   ================================
+   ROHBAU MACHT:
+   - Mauerwerk (Ziegel, Kalksandstein, Porenbeton)
+   - Betonarbeiten (Wände, Decken, Stützen)
+   - Stahlbetonarbeiten
+   - Durchbrüche und Kernbohrungen
+   - Ringanker und Stürze
+   
+   ROHBAU MACHT NICHT:
+   - Trockenbau/Leichtbauwände (→ gehört zu TRO)
+   - Holzkonstruktionen (→ gehört zu ZIMM)
+   - Verputzarbeiten (→ gehört zu MAL/FASS)
+   - Dämmarbeiten (→ gehört zu jeweiligem Gewerk)
+   
+   ${projectContext.istDachaufstockung ? `
+   ╔══════════════════════════════════════════════════════════════════╗
+   ║ SONDERFALL: DACHAUFSTOCKUNG - BEDINGTE AKTIVIERUNG               ║
+   ╚══════════════════════════════════════════════════════════════════╝
+   
+   ${projectContext.aufstockungsBauweise === 'massivbau' ? `
+   MASSIVBAUWEISE GEWÄHLT → Rohbau ist AKTIV:
+   ✓ Komplette Massivwände der Aufstockung
+   ✓ Ringanker/Ringbalken für Dachauflage
+   ✓ Ggf. Betonstützen oder Stahlbetonwände
+   ✓ Neue Geschossdecke falls nötig
+   
+   PFLICHTFRAGEN bei Massivbau-Aufstockung:
+   - "Welches Mauerwerk für die Aufstockung (Ziegel, Kalksandstein, Porenbeton)?"
+   - "Welche Wandstärke für die Aufstockungswände?"
+   - "Wie viele m² Wandfläche in Massivbauweise?"
+   - "Wird eine neue Geschossdecke benötigt?"
+   ` : projectContext.aufstockungsBauweise === 'holzbau' ? `
+   HOLZBAUWEISE GEWÄHLT → Rohbau NUR für Sonderarbeiten:
+   ⚠️ Aufstockungswände macht der Zimmerer!
+   
+   Rohbau NUR falls zusätzlich benötigt:
+   - Verstärkung bestehender Decke
+   - Abbrucharbeiten am Bestand
+   - Anpassungen am Treppenhaus
+   
+   Stelle NUR Fragen zu diesen Zusatzarbeiten!
+   ` : `
+   BAUWEISE NOCH OFFEN → Stelle bedingte Fragen:
+   - "Falls Massivbauweise: Welches Mauerwerk?"
+   - "Falls Massivbauweise: Welche Wandstärke?"
+   - "Unabhängig: Sind Verstärkungen am Bestand nötig?"
+   `}
+   
+   WICHTIG: Bei Holzbau-Aufstockung ist Rohbau meist NICHT beteiligt!
+   ` : ''}
+   
+   GENERELLE ABGRENZUNG:
+   - Leichte Bauweise = Zimmerer/Trockenbau
+   - Schwere Bauweise = Rohbau
+   ${projectContext.istDachaufstockung ? '- Bei Aufstockung: Bauweise entscheidet über Zuständigkeit!' : ''}
+` : ''}
+
 ${tradeCode === 'ZIMM' ? `
 18. SPEZIELLE ZIMMERER-REGELN:
-   WICHTIG: Zimmerer macht NUR Holzkonstruktionen!
    
-   KEINE FRAGEN ZU (gehört zum Dachdecker):
+   GRUNDREGEL: Zimmerer macht NUR Holzkonstruktionen!
+   
+   STANDARD-ABGRENZUNG (gilt immer):
+   ================================
+   ZIMMERER MACHT:
+   - Dachstuhl / Holztragwerk
+   - Holzkonstruktionen
+   - Sparren, Pfetten, First
+   - Gauben-Holzkonstruktion
+   
+   ZIMMERER MACHT NICHT (gehört zum Dachdecker):
    - Dachdämmung
    - Dampfbremse/Dampfsperre
    - Dacheindeckung/Ziegel
    - Unterspannbahn
    - Dachrinnen
    
-   KLARE ABGRENZUNG:
-   - Zimmerer = Holztragwerk
-   - Dachdecker = Dämmung + Abdichtung + Eindeckung
-   - Bei Dachprojekten arbeiten beide Gewerke nacheinander
+   ${projectContext.istDachaufstockung ? `
+   ╔══════════════════════════════════════════════════════════════════╗
+   ║ SONDERFALL: DACHAUFSTOCKUNG - ERWEITERTE REGELN                  ║
+   ╚══════════════════════════════════════════════════════════════════╝
+   
+   ${projectContext.aufstockungsBauweise === 'holzbau' ? `
+   HOLZBAUWEISE → Zimmerer macht ZUSÄTZLICH:
+   ✓ Komplette Holzrahmenwände der Aufstockung
+   ✓ Ständerwerk-Konstruktion der Wände
+   ✓ Beplankung (OSB, Gipskarton)
+   ✓ Wanddämmung im Holzrahmen
+   ✓ PLUS den normalen Dachstuhl obendrauf
+   
+   ZUSÄTZLICHE PFLICHTFRAGEN bei Holzbau-Aufstockung:
+   - "Welche Wandhöhe soll die Aufstockung haben?"
+   - "Wie viele m² Wandfläche in Holzrahmenbauweise?"
+   - "Welche Beplankung gewünscht (OSB, Gipskarton, etc.)?"
+   ` : projectContext.aufstockungsBauweise === 'massivbau' ? `
+   MASSIVBAUWEISE → Zimmerer macht NUR Dachstuhl:
+   ✗ KEINE Wände (macht Rohbau in Massivbauweise)
+   ✓ NUR Standard-Dachstuhl auf der Massiv-Aufstockung
+   
+   Fokussiere NUR auf Dachstuhl-Fragen!
+   ` : `
+   BAUWEISE NOCH OFFEN → Stelle bedingte Fragen:
+   - "Falls Holzbauweise gewählt: [Wandfragen]"
+   - "Falls Massivbauweise: [nur Dachfragen]"
+   - "In beiden Fällen: [Dachstuhl-Details]"
+   `}` : ''}
+   
+   MERKE: Bei normalen Dachprojekten arbeiten Zimmerer und Dachdecker nacheinander.
+   ${projectContext.istDachaufstockung ? 'Bei Aufstockungen kommt ggf. noch Rohbau (Massivbau) oder erweiterter Zimmerer-Umfang (Holzbau) dazu.' : ''}
 ` : ''}
 
 ${['FEN', 'TIS', 'SAN', 'HEI', 'FLI'].includes(tradeCode) ? `
