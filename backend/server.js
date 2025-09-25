@@ -3580,65 +3580,79 @@ if (tradeCode === 'INT') {
   questions = questions.filter(q => {
     const qText = (q.question || '').toLowerCase();
     
-    // ERLAUBTE Intake-Themen (Whitelist-Ansatz)
-    const erlaubteThemen = [
-      // Gebäudegrundlagen
-      /gebäudetyp|haustyp|objekttyp/,
-      /geschoss|etage|stockwerk/,
-      /wohnfläche|nutzfläche|gesamtfläche/,
-      /baujahr/,
-      
-      // Logistik
-      /zufahrt|zugang|anlieferung|lkw/,
-      /lager|material.*lager|stellplatz|container/,
-      /aufzug|treppenhaus|transport/,
-      /parkplatz|handwerker/,
-      
-      // Versorgung
-      /baustrom|strom.*verfügbar/,
-      /bauwasser|wasser.*verfügbar/,
-      /sanitär.*handwerker|wc.*handwerker/,
-      
-      // Rahmenbedingungen
-      /bewohnt|während.*bau/,
-      /arbeitszeit|zeitliche.*einschränkung/,
-      /lärmschutz|ruhezone/,
-      /denkmalschutz/,
-      /zeitraum|termin|wann/,
-      
-      // Allgemeine Bedingungen
-      /schäden.*sichtbar|allgemein.*zustand/,
-      /hindernisse|engstellen/
-    ];
-    
-    // Prüfe ob Frage zu erlaubten Themen gehört
-    const istErlaubt = erlaubteThemen.some(pattern => qText.match(pattern));
-    
     // VERBOTENE technische Details (für alle Gewerke)
     const technischeDetails = [
-      /\d+\s*(cm|mm)\s*(dick|stark|stärke)/, // Spezifische Stärken
-      /material.*auswahl|welches.*material/,   // Materialauswahl
-      /farbe|farbton|ral/,                     // Farben
-      /struktur|körnung|oberfläche/,           // Oberflächendetails
-      /qualität|ausführung.*variant/,          // Qualitätsstufen
-      /produkt|hersteller|marke/,              // Produktspezifika
-      /dämmwert|u-wert|kennwert/,             // Technische Kennwerte
-      /format|maße.*einzel/,                   // Detailmaße
-      /verlegeart|einbauart|montage.*art/      // Ausführungsdetails
+      // Spezifische Stärken
+      /\d+\s*(cm|mm)\s*(dick|stark|stärke)/,
+      /dämmstärke|wandstärke|deckenstärke/,
+      
+      // SPEZIFISCHE FLÄCHEN
+      /fassadenfläche|fassade.*m²|m².*fassade/,
+      /dachfläche|dach.*m²|m².*dach/,
+      /wandfläche|wand.*m²|m².*wand/,
+      /bodenfläche|boden.*m²|m².*boden/,
+      /deckenfläche|decke.*m²|m².*decke/,
+      /fensterfläche|fenster.*m²/,
+      /türfläche|tür.*m²/,
+      /zu dämmende.*fläche/,
+      /zu fliesen.*fläche/,
+      /zu streichen.*fläche/,
+      
+      // ANZAHLEN/STÜCKZAHLEN (NEU)
+      /wie viele.*fenster|anzahl.*fenster|fenster.*anzahl/,
+      /wie viele.*türen|anzahl.*türen|türen.*anzahl/,
+      /wie viele.*heizkörper|anzahl.*heizkörper/,
+      /wie viele.*steckdosen|anzahl.*steckdosen/,
+      /wie viele.*schalter|anzahl.*schalter/,
+      /wie viele.*leuchten|anzahl.*leuchten/,
+      /wie viele.*räume.*streichen/,
+      /wie viele.*wände/,
+      /stückzahl|stück.*fenster|stück.*türen/,
+      // ERLAUBT bleiben: Anzahl Geschosse/Etagen, Anzahl Räume (allgemein)
+      
+      // Materialauswahl
+      /material.*auswahl|welches.*material/,
+      /dämmmaterial|putzmaterial|fugenmaterial/,
+      
+      // Farben
+      /farbe|farbton|ral/,
+      
+      // Oberflächendetails
+      /struktur|körnung|oberfläche/,
+      /putzstruktur|kratzputz|rillenputz/,
+      
+      // Qualitätsstufen
+      /qualität|ausführung.*variant/,
+      /q1|q2|q3|q4/,
+      
+      // Produktspezifika
+      /produkt|hersteller|marke/,
+      
+      // Technische Kennwerte
+      /dämmwert|u-wert|kennwert|lambda/,
+      
+      // Detailmaße
+      /format|maße.*einzel/,
+      /fenster.*\d+.*\d+|tür.*\d+.*\d+/,
+      
+      // Ausführungsdetails
+      /verlegeart|einbauart|montage.*art/
     ];
     
     const istTechnisch = technischeDetails.some(pattern => qText.match(pattern));
     
-    if (istTechnisch && !istErlaubt) {
+    if (istTechnisch) {
       console.log(`[INT-FILTER] Entfernt (technisches Detail): "${q.question.substring(0,60)}..."`);
       return false;
     }
     
-    // Wenn nicht explizit erlaubt und verdächtig spezifisch
-    if (!istErlaubt && qText.includes('welch')) {
-      console.log(`[INT-FILTER] Entfernt (zu spezifisch): "${q.question.substring(0,60)}..."`);
-      return false;
-    }
+    // ALLES ANDERE IST ERLAUBT!
+    // ✓ Wohnfläche, Nutzfläche, Gesamtfläche
+    // ✓ Anzahl Geschosse/Etagen (allgemein)
+    // ✓ Baujahr, Budget, Gebäudetyp
+    // ✓ Bauweise bei Aufstockung
+    // ✓ Konkrete Arbeiten/Projektumfang
+    // ✓ Baustellenbedingungen
     
     return true;
   });
