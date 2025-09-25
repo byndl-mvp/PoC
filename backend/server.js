@@ -2649,6 +2649,24 @@ if (!isIntake && projectContext.projectId) {
     laengen: Object.keys(knownCalculationData.laengen).length,
     stueck: Object.keys(knownCalculationData.stueckzahlen).length
   });
+
+    // EXTRAHIERE Bauweise bei Dachaufstockung
+  if (projectContext.istDachaufstockung) {
+    const bauweiseFrage = intakeResponses.rows.find(r => 
+      r.question_text?.toLowerCase().includes('bauweise') && 
+      r.question_text?.toLowerCase().includes('aufstockung')
+    );
+    
+    if (bauweiseFrage) {
+      projectContext.aufstockungsBauweise = bauweiseFrage.answer_text?.toLowerCase().includes('holz') 
+        ? 'holzbau' 
+        : bauweiseFrage.answer_text?.toLowerCase().includes('massiv') 
+        ? 'massivbau'
+        : 'offen';
+      
+      console.log(`[QUESTIONS] Aufstockungsbauweise: ${projectContext.aufstockungsBauweise}`);
+    }
+  }
     
     // NEU: Extrahiere konkrete Werte für bessere Duplikatserkennung
     projectContext.answeredValues = {};
