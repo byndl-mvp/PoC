@@ -2597,6 +2597,16 @@ async function generateQuestions(tradeId, projectContext = {}) {
   const { name: tradeName, code: tradeCode } = tradeResult.rows[0];
   const isIntake = tradeCode === 'INT';
 
+  // SPEZIAL-ERKENNUNG: Dachaufstockung
+const istDachaufstockung = (projectContext.description || '').toLowerCase().match(
+  /dachaufstockung|aufstockung|geschossaufstockung|dach.*aufstocken|stockwerk.*aufbauen|etage.*draufsetzen/
+);
+
+if (istDachaufstockung) {
+  console.log('[QUESTIONS] Dachaufstockung erkannt - Spezialbehandlung aktiviert');
+  projectContext.istDachaufstockung = true;
+}
+  
   // NEU: Lade extrahierte Projektdaten
   let extractedData = null;
   let knownCalculationData = null; // NEU HINZUFÜGEN
