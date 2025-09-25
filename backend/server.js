@@ -10975,11 +10975,12 @@ app.post('/api/handwerker/verify', async (req, res) => {
     const handwerker = result.rows[0];
     
     res.json({
+      id: handwerker.id,
       companyId: handwerker.company_id,
       companyName: handwerker.company_name,
       email: handwerker.email,
       trades: handwerker.trades || [],
-      region: `${handwerker.zip} ${handwerker.city}`,
+      region: `${handwerker.zip_code} ${handwerker.city}`, // zip_code statt zip
       actionRadius: handwerker.action_radius
     });
     
