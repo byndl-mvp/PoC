@@ -1,11 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Users, Building2, FileText, CreditCard, Shield, AlertCircle, 
-  TrendingUp, Calendar, MapPin, CheckCircle, XCircle, Clock,
-  DollarSign, Package, UserCheck, FileCheck, Settings, Search,
-  Filter, Download, Eye, Edit, Trash2, Plus, RefreshCw, Bell,
-  BarChart3, PieChart, Activity, UserX, Mail, Phone, Home
-} from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -207,16 +200,16 @@ export default function AdminDashboardPage() {
   };
 
   const tabItems = [
-    { id: 'overview', label: 'Übersicht', icon: <BarChart3 className="w-4 h-4" /> },
-    { id: 'users', label: 'Nutzer', icon: <Users className="w-4 h-4" /> },
-    { id: 'projects', label: 'Projekte', icon: <Building2 className="w-4 h-4" /> },
-    { id: 'payments', label: 'Zahlungen', icon: <CreditCard className="w-4 h-4" /> },
-    { id: 'verifications', label: 'Verifizierungen', icon: <Shield className="w-4 h-4" /> },
-    { id: 'orders', label: 'Aufträge', icon: <Package className="w-4 h-4" /> },
-    { id: 'tenders', label: 'Ausschreibungen', icon: <FileText className="w-4 h-4" /> },
-    { id: 'supplements', label: 'Nachträge', icon: <Plus className="w-4 h-4" /> },
-    { id: 'analytics', label: 'Analytics', icon: <Activity className="w-4 h-4" /> },
-    { id: 'settings', label: 'Einstellungen', icon: <Settings className="w-4 h-4" /> }
+    { id: 'overview', label: 'Übersicht', icon: '📊' },
+    { id: 'users', label: 'Nutzer', icon: '👥' },
+    { id: 'projects', label: 'Projekte', icon: '🏗️' },
+    { id: 'payments', label: 'Zahlungen', icon: '💳' },
+    { id: 'verifications', label: 'Verifizierungen', icon: '🛡️' },
+    { id: 'orders', label: 'Aufträge', icon: '📦' },
+    { id: 'tenders', label: 'Ausschreibungen', icon: '📄' },
+    { id: 'supplements', label: 'Nachträge', icon: '➕' },
+    { id: 'analytics', label: 'Analytics', icon: '📈' },
+    { id: 'settings', label: 'Einstellungen', icon: '⚙️' }
   ];
 
   return (
@@ -242,7 +235,7 @@ export default function AdminDashboardPage() {
                         : 'text-white/70 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    {tab.icon}
+                    <span>{tab.icon}</span>
                     {tab.label}
                   </button>
                 ))}
@@ -251,7 +244,7 @@ export default function AdminDashboardPage() {
 
             <div className="flex items-center gap-4">
               <button className="relative p-2 text-white/70 hover:text-white">
-                <Bell className="w-5 h-5" />
+                <span className="text-xl">🔔</span>
                 {stats.verificationQueue > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {stats.verificationQueue}
@@ -282,7 +275,7 @@ export default function AdminDashboardPage() {
                   : 'text-white/70 bg-white/10'
               }`}
             >
-              {tab.icon}
+              <span>{tab.icon}</span>
               {tab.label}
             </button>
           ))}
@@ -296,7 +289,7 @@ export default function AdminDashboardPage() {
             <div className="flex flex-wrap gap-4 items-center">
               <div className="flex-1 min-w-[200px]">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 w-4 h-4" />
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50">🔍</span>
                   <input
                     type="text"
                     placeholder="Suchen..."
@@ -322,16 +315,14 @@ export default function AdminDashboardPage() {
                 onClick={exportData}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white flex items-center gap-2"
               >
-                <Download className="w-4 h-4" />
-                Export
+                <span>📥</span> Export
               </button>
               
               <button
                 onClick={fetchDashboardData}
                 className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-white rounded-lg flex items-center gap-2"
               >
-                <RefreshCw className="w-4 h-4" />
-                Aktualisieren
+                <span>🔄</span> Aktualisieren
               </button>
             </div>
           </div>
@@ -343,14 +334,14 @@ export default function AdminDashboardPage() {
         {/* Messages */}
         {message && (
           <div className="mb-4 bg-green-500/20 border border-green-500/50 rounded-lg px-4 py-3 flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span>✅</span>
             <p className="text-green-300">{message}</p>
           </div>
         )}
         
         {error && (
           <div className="mb-4 bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-3 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-400" />
+            <span>⚠️</span>
             <p className="text-red-300">{error}</p>
           </div>
         )}
@@ -368,7 +359,7 @@ export default function AdminDashboardPage() {
                 <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
                   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
                     <div className="flex items-center justify-between mb-2">
-                      <Users className="w-5 h-5 text-teal-400" />
+                      <span className="text-2xl">👥</span>
                       <span className="text-xs text-green-400">+12%</span>
                     </div>
                     <p className="text-2xl font-bold text-white">{stats.totalUsers}</p>
@@ -377,7 +368,7 @@ export default function AdminDashboardPage() {
                   
                   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
                     <div className="flex items-center justify-between mb-2">
-                      <Building2 className="w-5 h-5 text-blue-400" />
+                      <span className="text-2xl">🏗️</span>
                       <span className="text-xs text-green-400">+8%</span>
                     </div>
                     <p className="text-2xl font-bold text-white">{stats.totalProjects}</p>
@@ -386,7 +377,7 @@ export default function AdminDashboardPage() {
                   
                   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
                     <div className="flex items-center justify-between mb-2">
-                      <DollarSign className="w-5 h-5 text-green-400" />
+                      <span className="text-2xl">💰</span>
                       <span className="text-xs text-green-400">+25%</span>
                     </div>
                     <p className="text-2xl font-bold text-white">
@@ -397,8 +388,8 @@ export default function AdminDashboardPage() {
                   
                   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
                     <div className="flex items-center justify-between mb-2">
-                      <Package className="w-5 h-5 text-purple-400" />
-                      <Clock className="w-4 h-4 text-yellow-400" />
+                      <span className="text-2xl">📦</span>
+                      <span className="text-sm">⏰</span>
                     </div>
                     <p className="text-2xl font-bold text-white">{stats.activeOrders}</p>
                     <p className="text-xs text-white/70 mt-1">Aktive Aufträge</p>
@@ -406,8 +397,8 @@ export default function AdminDashboardPage() {
                   
                   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
                     <div className="flex items-center justify-between mb-2">
-                      <CreditCard className="w-5 h-5 text-yellow-400" />
-                      <AlertCircle className="w-4 h-4 text-orange-400" />
+                      <span className="text-2xl">💳</span>
+                      <span className="text-sm">⚠️</span>
                     </div>
                     <p className="text-2xl font-bold text-white">{stats.pendingPayments}</p>
                     <p className="text-xs text-white/70 mt-1">Offene Zahlungen</p>
@@ -415,8 +406,8 @@ export default function AdminDashboardPage() {
                   
                   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
                     <div className="flex items-center justify-between mb-2">
-                      <Shield className="w-5 h-5 text-red-400" />
-                      <Bell className="w-4 h-4 text-red-400" />
+                      <span className="text-2xl">🛡️</span>
+                      <span className="text-sm">🔔</span>
                     </div>
                     <p className="text-2xl font-bold text-white">{stats.verificationQueue}</p>
                     <p className="text-xs text-white/70 mt-1">Verifizierungen</p>
@@ -428,8 +419,7 @@ export default function AdminDashboardPage() {
                   {/* Recent Activities */}
                   <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <Activity className="w-5 h-5 text-teal-400" />
-                      Letzte Aktivitäten
+                      <span>📊</span> Letzte Aktivitäten
                     </h3>
                     <div className="space-y-3">
                       {[1,2,3,4,5].map(i => (
@@ -447,19 +437,24 @@ export default function AdminDashboardPage() {
                   {/* Pending Actions */}
                   <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <AlertCircle className="w-5 h-5 text-yellow-400" />
-                      Ausstehende Aktionen
+                      <span>⚠️</span> Ausstehende Aktionen
                     </h3>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 bg-yellow-500/10 rounded-lg">
                         <span className="text-white text-sm">5 Verifizierungen ausstehend</span>
-                        <button className="text-yellow-400 hover:text-yellow-300 text-sm">
+                        <button 
+                          onClick={() => setActiveTab('verifications')}
+                          className="text-yellow-400 hover:text-yellow-300 text-sm"
+                        >
                           Ansehen →
                         </button>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg">
                         <span className="text-white text-sm">3 Zahlungen überfällig</span>
-                        <button className="text-orange-400 hover:text-orange-300 text-sm">
+                        <button 
+                          onClick={() => setActiveTab('payments')}
+                          className="text-orange-400 hover:text-orange-300 text-sm"
+                        >
                           Prüfen →
                         </button>
                       </div>
@@ -509,11 +504,14 @@ export default function AdminDashboardPage() {
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex gap-2">
-                                    <button className="text-teal-400 hover:text-teal-300">
-                                      <Eye className="w-4 h-4" />
+                                    <button 
+                                      onClick={() => {setSelectedItem(user); setModalType('user')}}
+                                      className="text-teal-400 hover:text-teal-300"
+                                    >
+                                      👁️
                                     </button>
                                     <button className="text-blue-400 hover:text-blue-300">
-                                      <Edit className="w-4 h-4" />
+                                      ✏️
                                     </button>
                                   </div>
                                 </td>
@@ -561,15 +559,21 @@ export default function AdminDashboardPage() {
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex gap-2">
-                                    <button className="text-teal-400 hover:text-teal-300">
-                                      <Eye className="w-4 h-4" />
+                                    <button 
+                                      onClick={() => {setSelectedItem(user); setModalType('user')}}
+                                      className="text-teal-400 hover:text-teal-300"
+                                    >
+                                      👁️
                                     </button>
                                     <button className="text-blue-400 hover:text-blue-300">
-                                      <Edit className="w-4 h-4" />
+                                      ✏️
                                     </button>
                                     {!user.verified && (
-                                      <button className="text-green-400 hover:text-green-300">
-                                        <CheckCircle className="w-4 h-4" />
+                                      <button 
+                                        onClick={() => handleVerification(user.id, true)}
+                                        className="text-green-400 hover:text-green-300"
+                                      >
+                                        ✅
                                       </button>
                                     )}
                                   </div>
@@ -593,7 +597,7 @@ export default function AdminDashboardPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-white/70 text-sm">Name</label>
-                            <p className="text-white">{selectedItem.name}</p>
+                            <p className="text-white">{selectedItem.name || selectedItem.company_name}</p>
                           </div>
                           <div>
                             <label className="text-white/70 text-sm">Email</label>
@@ -605,14 +609,14 @@ export default function AdminDashboardPage() {
                           </div>
                           <div>
                             <label className="text-white/70 text-sm">Registriert</label>
-                            <p className="text-white">{new Date(selectedItem.created_at).toLocaleDateString()}</p>
+                            <p className="text-white">{new Date(selectedItem.created_at || Date.now()).toLocaleDateString()}</p>
                           </div>
                         </div>
 
                         {/* Address */}
                         <div>
                           <label className="text-white/70 text-sm flex items-center gap-2">
-                            <MapPin className="w-4 h-4" /> Adresse
+                            📍 Adresse
                           </label>
                           <p className="text-white">
                             {selectedItem.street} {selectedItem.house_number}<br />
@@ -667,7 +671,7 @@ export default function AdminDashboardPage() {
                             <td className="px-4 py-3 text-sm text-white">{project.bauherr_name}</td>
                             <td className="px-4 py-3 text-sm text-white/70">
                               <div className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
+                                <span>📍</span>
                                 {project.street} {project.house_number}, {project.zip} {project.city}
                               </div>
                             </td>
@@ -677,8 +681,8 @@ export default function AdminDashboardPage() {
                             </td>
                             <td className="px-4 py-3 text-sm text-white">
                               <div className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                {new Date(project.start_date).toLocaleDateString()}
+                                <span>📅</span>
+                                {new Date(project.start_date || Date.now()).toLocaleDateString()}
                               </div>
                             </td>
                             <td className="px-4 py-3">
@@ -687,7 +691,7 @@ export default function AdminDashboardPage() {
                                 project.status === 'completed' ? 'bg-blue-500/20 text-blue-300' :
                                 'bg-yellow-500/20 text-yellow-300'
                               }`}>
-                                {project.status}
+                                {project.status || 'Ausstehend'}
                               </span>
                             </td>
                             <td className="px-4 py-3">
@@ -696,10 +700,10 @@ export default function AdminDashboardPage() {
                                   onClick={() => {setSelectedItem(project); setModalType('project')}}
                                   className="text-teal-400 hover:text-teal-300"
                                 >
-                                  <Eye className="w-4 h-4" />
+                                  👁️
                                 </button>
                                 <button className="text-blue-400 hover:text-blue-300">
-                                  <Edit className="w-4 h-4" />
+                                  ✏️
                                 </button>
                               </div>
                             </td>
@@ -735,7 +739,7 @@ export default function AdminDashboardPage() {
                           <tr key={payment.id} className="border-b border-white/10 hover:bg-white/5">
                             <td className="px-4 py-3 text-sm text-white">#{payment.id}</td>
                             <td className="px-4 py-3 text-sm text-white">
-                              {new Date(payment.date).toLocaleDateString()}
+                              {new Date(payment.date || Date.now()).toLocaleDateString()}
                             </td>
                             <td className="px-4 py-3 text-sm text-white">{payment.from_name}</td>
                             <td className="px-4 py-3 text-sm text-white">{payment.to_name}</td>
@@ -759,19 +763,21 @@ export default function AdminDashboardPage() {
                                     <button 
                                       onClick={() => handlePaymentUpdate(payment.id, 'completed')}
                                       className="text-green-400 hover:text-green-300"
+                                      title="Genehmigen"
                                     >
-                                      <CheckCircle className="w-4 h-4" />
+                                      ✅
                                     </button>
                                     <button 
                                       onClick={() => handlePaymentUpdate(payment.id, 'failed')}
                                       className="text-red-400 hover:text-red-300"
+                                      title="Ablehnen"
                                     >
-                                      <XCircle className="w-4 h-4" />
+                                      ❌
                                     </button>
                                   </>
                                 )}
-                                <button className="text-teal-400 hover:text-teal-300">
-                                  <Eye className="w-4 h-4" />
+                                <button className="text-teal-400 hover:text-teal-300" title="Ansehen">
+                                  👁️
                                 </button>
                               </div>
                             </td>
@@ -804,18 +810,20 @@ export default function AdminDashboardPage() {
                           <div>
                             <p className="text-white/70 text-sm">Kontakt</p>
                             <p className="text-white flex items-center gap-2">
-                              <Mail className="w-4 h-4" /> {verification.email}
+                              <span>✉️</span> {verification.email}
                             </p>
                             <p className="text-white flex items-center gap-2 mt-1">
-                              <Phone className="w-4 h-4" /> {verification.phone}
+                              <span>📞</span> {verification.phone}
                             </p>
                           </div>
                           <div>
                             <p className="text-white/70 text-sm">Adresse</p>
-                            <p className="text-white flex items-center gap-2">
-                              <Home className="w-4 h-4" />
-                              {verification.street} {verification.house_number}<br />
-                              {verification.zip} {verification.city}
+                            <p className="text-white flex items-start gap-2">
+                              <span>🏠</span>
+                              <span>
+                                {verification.street} {verification.house_number}<br />
+                                {verification.zip} {verification.city}
+                              </span>
                             </p>
                           </div>
                         </div>
@@ -829,7 +837,7 @@ export default function AdminDashboardPage() {
                                 key={idx}
                                 className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-sm text-white flex items-center gap-2"
                               >
-                                <FileCheck className="w-4 h-4" />
+                                <span>📄</span>
                                 {doc.type}
                               </button>
                             ))}
@@ -842,15 +850,13 @@ export default function AdminDashboardPage() {
                           onClick={() => handleVerification(verification.id, true)}
                           className="px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-lg flex items-center gap-2"
                         >
-                          <CheckCircle className="w-4 h-4" />
-                          Genehmigen
+                          <span>✅</span> Genehmigen
                         </button>
                         <button
                           onClick={() => handleVerification(verification.id, false)}
                           className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg flex items-center gap-2"
                         >
-                          <XCircle className="w-4 h-4" />
-                          Ablehnen
+                          <span>❌</span> Ablehnen
                         </button>
                       </div>
                     </div>
