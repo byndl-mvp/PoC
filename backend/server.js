@@ -6792,6 +6792,68 @@ if (tradeCode === 'ZIMM') {
     }
   }
 }    
+
+  // SPEZIAL-REGEL FÜR ROHBAU - Betonstahl-Preise
+if (tradeCode === 'ROH') {
+  // Betonstahl BSt 500 - Stabstahl
+  if ((titleLower.includes('betonstahl') || titleLower.includes('bst 500')) && 
+      !titleLower.includes('matte')) {
+    
+    // Prüfe ob Einheit kg ist
+    if (pos.unit === 'kg') {
+      const korrektPreis = 1.85; // €/kg für Stabstahl
+      
+      if (pos.unitPrice < korrektPreis * 0.8 || pos.unitPrice > korrektPreis * 1.5) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = korrektPreis;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Betonstahl BSt 500 korrigiert: ${oldPrice}€/kg → ${korrektPreis}€/kg`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // Betonstahlmatten
+  if (titleLower.includes('betonstahlmatte') || 
+      (titleLower.includes('matte') && titleLower.includes('stahl'))) {
+    
+    if (pos.unit === 'kg' || pos.unit === 'm²') {
+      const korrektPreis = pos.unit === 'kg' ? 2.20 : 35.00; // €/kg oder €/m²
+      
+      if (pos.unitPrice < korrektPreis * 0.8 || pos.unitPrice > korrektPreis * 1.5) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = korrektPreis;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Betonstahlmatten korrigiert: ${oldPrice}€/${pos.unit} → ${korrektPreis}€/${pos.unit}`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // Weitere Rohbau-Preise
+  const rohbauPreise = {
+    'beton c25/30': { unit: 'm³', price: 135 },
+    'beton c20/25': { unit: 'm³', price: 125 },
+    'schalung': { unit: 'm²', price: 45 },
+    'mauerwerk': { unit: 'm²', price: 95 },
+    'poroton': { unit: 'm²', price: 85 },
+    'kalksandstein': { unit: 'm²', price: 75 }
+  };
+  
+  // Prüfe gegen definierte Preise
+  Object.entries(rohbauPreise).forEach(([material, config]) => {
+    if (titleLower.includes(material) && pos.unit === config.unit) {
+      if (pos.unitPrice < config.price * 0.7 || pos.unitPrice > config.price * 1.3) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = config.price;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`${material} korrigiert: ${oldPrice}€/${config.unit} → ${config.price}€/${config.unit}`);
+        fixedCount++;
+      }
+    }
+  });
+}
+    
     // 5. GENERELLE ABSURDITÄTSPRÜFUNG
     if (pos.unit === 'm' && pos.unitPrice > 500) {
       const oldPrice = pos.unitPrice;
