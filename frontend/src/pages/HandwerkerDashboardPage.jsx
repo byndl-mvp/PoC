@@ -14,7 +14,7 @@ export default function HandwerkerDashboardPage() {
   const [offers, setOffers] = useState([]);
   const [contracts, setContracts] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [schedule, setSchedule] = useState([]);
+  const [schedule, setSchedule] = useState([]); // eslint-disable-line no-unused-vars
   
   // Modal states
   const [showOfferModal, setShowOfferModal] = useState(false);
@@ -779,8 +779,8 @@ export default function HandwerkerDashboardPage() {
 }
 
 // Helper function for week number
-Date.prototype.getWeek = function() {
-  const d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
+const getWeek = (date) => {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
