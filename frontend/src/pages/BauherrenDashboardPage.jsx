@@ -9,7 +9,7 @@ export default function BauherrenDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState(null);
-  const [tenders, setTenders] = useState([]);
+  const [tenders, setTenders] = useState([]); // eslint-disable-line no-unused-vars
   const [offers, setOffers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [supplements, setSupplements] = useState([]); // Nachträge
@@ -26,7 +26,7 @@ export default function BauherrenDashboardPage() {
     const user = JSON.parse(storedUserData);
     setUserData(user);
     loadUserProjects(user.email);
-  }, [navigate]);
+  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUserProjects = async (email) => {
     try {
