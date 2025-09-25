@@ -114,7 +114,7 @@ export default function HandwerkerRegisterPage() {
         setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
         return false;
       }
-      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      const phoneRegex = /^[\d\s\-+()]+$/;
       if (!phoneRegex.test(formData.phone)) {
         setError('Bitte geben Sie eine gültige Telefonnummer ein.');
         return false;
