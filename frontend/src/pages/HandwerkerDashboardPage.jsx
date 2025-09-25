@@ -622,7 +622,7 @@ export default function HandwerkerDashboardPage() {
               
               <div className="grid gap-4">
                 {[...Array(4)].map((_, weekOffset) => {
-                  const weekNumber = new Date().getWeek() + weekOffset;
+                  const weekNumber = getWeek(new Date()) + weekOffset;
                   const weekOrders = orders.filter(o => o.executionWeek === weekNumber);
                   
                   return (
