@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
 
 export default function AdminDashboardPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedItem, setSelectedItem] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   
   // Data States
@@ -24,9 +21,6 @@ export default function AdminDashboardPage() {
   const [projects, setProjects] = useState([]);
   const [payments, setPayments] = useState([]);
   const [verifications, setVerifications] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [tenders, setTenders] = useState([]);
-  const [supplements, setSupplements] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,51 +32,49 @@ export default function AdminDashboardPage() {
     if (!token) {
       // Redirect to login
       window.location.href = '/admin';
-    } else {
-      setIsAuthenticated(true);
     }
   }, [token]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [activeTab, filterStatus, dateRange]);
-
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      switch(activeTab) {
-        case 'overview':
-          await fetchOverviewStats();
-          break;
-        case 'users':
-          await fetchUsers();
-          break;
-        case 'projects':
-          await fetchProjects();
-          break;
-        case 'payments':
-          await fetchPayments();
-          break;
-        case 'verifications':
-          await fetchVerifications();
-          break;
-        case 'orders':
-          await fetchOrders();
-          break;
-        case 'tenders':
-          await fetchTenders();
-          break;
-        default:
-          break;
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      setError('');
+      
+      try {
+        switch(activeTab) {
+          case 'overview':
+            await fetchOverviewStats();
+            break;
+          case 'users':
+            await fetchUsers();
+            break;
+          case 'projects':
+            await fetchProjects();
+            break;
+          case 'payments':
+            await fetchPayments();
+            break;
+          case 'verifications':
+            await fetchVerifications();
+            break;
+          case 'orders':
+            // await fetchOrders();
+            break;
+          case 'tenders':
+            // await fetchTenders();
+            break;
+          default:
+            break;
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    
+    fetchDashboardData();
+  }, [activeTab, filterStatus]);
 
   const fetchOverviewStats = async () => {
     const res = await fetch('https://poc-rvrj.onrender.com/api/admin/stats', {
@@ -127,24 +119,6 @@ export default function AdminDashboardPage() {
     if (!res.ok) throw new Error('Fehler beim Laden der Verifizierungen');
     const data = await res.json();
     setVerifications(data.verifications || []);
-  };
-
-  const fetchOrders = async () => {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/orders', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Aufträge');
-    const data = await res.json();
-    setOrders(data.orders || []);
-  };
-
-  const fetchTenders = async () => {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/tenders', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibungen');
-    const data = await res.json();
-    setTenders(data.tenders || []);
   };
 
   const handleVerification = async (verificationId, approved) => {
@@ -319,7 +293,7 @@ export default function AdminDashboardPage() {
               </button>
               
               <button
-                onClick={fetchDashboardData}
+                onClick={() => window.location.reload()}
                 className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-white rounded-lg flex items-center gap-2"
               >
                 <span>🔄</span> Aktualisieren
