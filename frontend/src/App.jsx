@@ -1,17 +1,28 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 
-// Pages
+// Landing & Auth Pages
 import LandingPage from './pages/LandingPage';
+import BauherrLoginPage from './pages/BauherrLoginPage';
+import HandwerkerLoginPage from './pages/HandwerkerLoginPage';
+import HandwerkerRegisterPage from './pages/HandwerkerRegisterPage';
+
+// Bauherren Pages
 import ProjectFormPage from './pages/ProjectFormPage';
 import IntakeQuestionsPage from './pages/IntakeQuestionsPage';
 import TradeConfirmationPage from './pages/TradeConfirmationPage';
 import QuestionsPage from './pages/QuestionsPage';
 import ResultPage from './pages/ResultPage';
-import AdminLoginPage from './pages/AdminLoginPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdditionalTradeSelectionPage from './pages/AdditionalTradeSelectionPage';
 import LVReviewPage from './pages/LVReviewPage';
+import BauherrenDashboardPage from './pages/BauherrenDashboardPage';
+
+// Handwerker Pages
+import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
+
+// Admin Pages
+import AdminLoginPage from './pages/AdminLoginPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 // Layout Component mit bedingtem Header
 function Layout({ children }) {
@@ -82,6 +93,10 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/start" element={<ProjectFormPage />} />
           
+          {/* Bauherren Routes - ohne Header/Footer */}
+          <Route path="/bauherr/login" element={<BauherrLoginPage />} />
+          <Route path="/bauherr/dashboard" element={<BauherrenDashboardPage />} />
+          
           {/* Project Flow - ohne Header/Footer */}
           <Route path="/project/:projectId/intake" element={<IntakeQuestionsPage />} />
           <Route path="/project/:projectId/trades" element={<TradeConfirmationPage />} />
@@ -89,6 +104,11 @@ function App() {
           <Route path="/project/:projectId/trade/:tradeId/questions" element={<QuestionsPage />} />
           <Route path="/project/:projectId/result" element={<ResultPage />} />
           <Route path="/project/:projectId/add-trade" element={<AdditionalTradeSelectionPage />} />
+          
+          {/* Handwerker Routes - ohne Header/Footer */}
+          <Route path="/handwerker/login" element={<HandwerkerLoginPage />} />
+          <Route path="/handwerker/register" element={<HandwerkerRegisterPage />} />
+          <Route path="/handwerker/dashboard" element={<HandwerkerDashboardPage />} />
           
           {/* Admin Routes - mit Header/Footer */}
           <Route path="/admin" element={<AdminLoginPage />} />
