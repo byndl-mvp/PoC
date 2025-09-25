@@ -46,19 +46,20 @@ export default function HandwerkerLoginPage() {
       });
       
       if (res.ok) {
-        const handwerkerData = await res.json();
-        
-        // Speichere Handwerker-Daten in Session
-        sessionStorage.setItem('handwerkerData', JSON.stringify({
-          companyName: handwerkerData.companyName,
-          email: handwerkerData.email,
-          companyId: handwerkerData.companyId,
-          trades: handwerkerData.trades || [],
-          region: handwerkerData.region
-        }));
-        
-        // Navigiere zum Handwerker-Dashboard
-        navigate('/handwerker/dashboard');
+  const handwerkerData = await res.json();
+  
+  // Speichere ALLE Daten inkl. DB-ID
+  sessionStorage.setItem('handwerkerData', JSON.stringify({
+    id: handwerkerData.id, // NEU: DB-ID
+    companyName: handwerkerData.companyName,
+    email: handwerkerData.email,
+    companyId: handwerkerData.companyId,
+    trades: handwerkerData.trades || [],
+    region: handwerkerData.region,
+    actionRadius: handwerkerData.actionRadius
+  }));
+  
+  navigate('/handwerker/dashboard');
       } else if (res.status === 404) {
         setError('Betrieb nicht gefunden. Bitte registrieren Sie sich zuerst.');
       } else if (res.status === 401) {
