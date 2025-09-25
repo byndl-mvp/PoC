@@ -10741,6 +10741,745 @@ KRITISCH:
   }
 });
 
+// ============================================================================
+// NEUE ROUTEN FÜR DIE ERWEITERTE PLATTFORM
+// ============================================================================
+
+// 1. AUTH ROUTES - Registrierung & Login für Bauherren/Handwerker
+// ----------------------------------------------------------------------------
+
+// Bauherr Registrierung
+app.post('/api/auth/register/bauherr', async (req, res) => {
+  try {
+    const { email, password, name, phone, street, house_number, zip, city } = req.body;
+    
+    // Check if user exists
+    const userCheck = await query('SELECT * FROM bauherren WHERE email = $1', [email]);
+    if (userCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Email bereits registriert' });
+    }
+    
+    // Hash password with bcrypt
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Insert bauherr
+    const result = await query(
+      `INSERT INTO bauherren (email, password, name, phone, street, house_number, zip, city, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       RETURNING id, email, name`,
+      [email, hashedPassword, name, phone, street, house_number, zip, city]
+    );
+    
+    // Generate JWT token
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { id: result.rows[0].id, type: 'bauherr' },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+    
+    res.status(201).json({
+      success: true,
+      token,
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Bauherr registration error:', error);
+    res.status(500).json({ error: 'Registrierung fehlgeschlagen' });
+  }
+});
+
+// Handwerker Registrierung
+app.post('/api/handwerker/register', async (req, res) => {
+  try {
+    const {
+      companyName, email, phone, contactPerson,
+      street, houseNumber, zipCode, city,
+      trades, actionRadius, maxProjectVolume,
+      availableFrom, employees, insurances, certifications
+    } = req.body;
+    
+    // Check if already exists
+    const existingCheck = await query('SELECT * FROM handwerker WHERE email = $1', [email]);
+    if (existingCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Email bereits registriert' });
+    }
+    
+    // Generate company ID
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 9000) + 1000;
+    const companyId = `HW-${year}-${random}`;
+    
+    await query('BEGIN');
+    
+    try {
+      // Insert handwerker
+      const result = await query(
+        `INSERT INTO handwerker (
+          company_id, email, company_name, contact_person, phone,
+          street, house_number, zip, city, action_radius,
+          max_project_volume, available_from, employee_count, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+        RETURNING id, company_id, company_name, email`,
+        [companyId, email, companyName, contactPerson, phone,
+         street, houseNumber, zipCode, city, actionRadius,
+         maxProjectVolume, availableFrom, employees]
+      );
+      
+      const handwerkerId = result.rows[0].id;
+      
+      // Insert trades
+      if (trades && trades.length > 0) {
+        for (const tradeCode of trades) {
+          await query(
+            'INSERT INTO handwerker_trades (handwerker_id, trade_code) VALUES ($1, $2)',
+            [handwerkerId, tradeCode]
+          );
+        }
+      }
+      
+      // Insert insurances
+      if (insurances && insurances.length > 0) {
+        for (const insurance of insurances) {
+          await query(
+            'INSERT INTO handwerker_insurances (handwerker_id, insurance_type) VALUES ($1, $2)',
+            [handwerkerId, insurance]
+          );
+        }
+      }
+      
+      // Insert certifications
+      if (certifications && certifications.length > 0) {
+        for (const cert of certifications) {
+          await query(
+            'INSERT INTO handwerker_certifications (handwerker_id, certification) VALUES ($1, $2)',
+            [handwerkerId, cert]
+          );
+        }
+      }
+      
+      await query('COMMIT');
+      
+      res.status(201).json({
+        success: true,
+        companyId,
+        message: 'Registrierung erfolgreich'
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (error) {
+    console.error('Handwerker registration error:', error);
+    res.status(500).json({ error: 'Registrierung fehlgeschlagen' });
+  }
+});
+
+// Bauherr Login/Verify
+app.get('/api/users/verify', async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email erforderlich' });
+    }
+    
+    // Check if bauherr exists with projects
+    const result = await query(
+      `SELECT b.*, COUNT(p.id) as project_count
+       FROM bauherren b
+       LEFT JOIN projects p ON p.bauherr_id = b.id
+       WHERE b.email = $1
+       GROUP BY b.id`,
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Nutzer nicht gefunden' });
+    }
+    
+    const user = result.rows[0];
+    
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      projectCount: user.project_count
+    });
+    
+  } catch (error) {
+    console.error('User verification error:', error);
+    res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
+  }
+});
+
+// Handwerker Verify
+app.post('/api/handwerker/verify', async (req, res) => {
+  try {
+    const { email, companyId } = req.body;
+    
+    const result = await query(
+      `SELECT h.*, array_agg(ht.trade_code) as trades
+       FROM handwerker h
+       LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
+       WHERE h.email = $1 AND h.company_id = $2
+       GROUP BY h.id`,
+      [email, companyId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Betrieb nicht gefunden' });
+    }
+    
+    const handwerker = result.rows[0];
+    
+    res.json({
+      companyId: handwerker.company_id,
+      companyName: handwerker.company_name,
+      email: handwerker.email,
+      trades: handwerker.trades || [],
+      region: `${handwerker.zip} ${handwerker.city}`,
+      actionRadius: handwerker.action_radius
+    });
+    
+  } catch (error) {
+    console.error('Handwerker verify error:', error);
+    res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
+  }
+});
+
+// 2. PROJECT MANAGEMENT ROUTES
+// ----------------------------------------------------------------------------
+
+// Get user projects (for Bauherr Dashboard)
+app.get('/api/projects/user/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const result = await query(
+      `SELECT p.* 
+       FROM projects p
+       JOIN bauherren b ON p.bauherr_id = b.id
+       WHERE b.email = $1
+       ORDER BY p.created_at DESC`,
+      [email]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching user projects:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Projekte' });
+  }
+});
+
+// Get project trades
+app.get('/api/projects/:projectId/trades', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT t.*, pt.is_manual, pt.is_ai_recommended
+       FROM trades t
+       JOIN project_trades pt ON t.id = pt.trade_id
+       WHERE pt.project_id = $1
+       ORDER BY t.name`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching project trades:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Gewerke' });
+  }
+});
+
+// 3. TENDER & OFFER ROUTES
+// ----------------------------------------------------------------------------
+
+// Start tender for project
+app.post('/api/projects/:projectId/tender/start', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { trades } = req.body;
+    
+    await query('BEGIN');
+    
+    try {
+      // Create tenders for each trade
+      for (const tradeId of trades) {
+        const tradeInfo = await query('SELECT code, name FROM trades WHERE id = $1', [tradeId]);
+        
+        await query(
+          `INSERT INTO tenders (project_id, trade_code, status, created_at, deadline)
+           VALUES ($1, $2, 'open', NOW(), NOW() + INTERVAL '14 days')`,
+          [projectId, tradeInfo.rows[0].code]
+        );
+      }
+      
+      // Update project status
+      await query(
+        'UPDATE projects SET tender_started = true, tender_started_at = NOW() WHERE id = $1',
+        [projectId]
+      );
+      
+      await query('COMMIT');
+      
+      res.json({ success: true, message: 'Ausschreibung gestartet' });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (error) {
+    console.error('Error starting tender:', error);
+    res.status(500).json({ error: 'Fehler beim Starten der Ausschreibung' });
+  }
+});
+
+// Get project tenders
+app.get('/api/projects/:projectId/tenders', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT t.*, tr.name as trade_name
+       FROM tenders t
+       JOIN trades tr ON t.trade_code = tr.code
+       WHERE t.project_id = $1
+       ORDER BY t.created_at DESC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching tenders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+  }
+});
+
+// Get project offers
+app.get('/api/projects/:projectId/offers', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT o.*, h.company_name, h.email, h.phone, t.name as trade_name
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_code = t.code
+       WHERE tn.project_id = $1
+       ORDER BY o.created_at DESC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
+  }
+});
+
+// Create offer (Handwerker)
+app.post('/api/offers/create', async (req, res) => {
+  try {
+    const { tenderId, handwerkerId, amount, executionTime, notes, bundleDiscount, includeMaterial, includeAnfahrt } = req.body;
+    
+    const result = await query(
+      `INSERT INTO offers (
+        tender_id, handwerker_id, amount, execution_time, notes,
+        bundle_discount, include_material, include_anfahrt, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())
+      RETURNING id`,
+      [tenderId, handwerkerId, amount, executionTime, notes, bundleDiscount, includeMaterial, includeAnfahrt]
+    );
+    
+    res.json({ success: true, offerId: result.rows[0].id });
+    
+  } catch (error) {
+    console.error('Error creating offer:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen des Angebots' });
+  }
+});
+
+// 4. ORDER ROUTES - Zweistufige Vergabe
+// ----------------------------------------------------------------------------
+
+// Preliminary order (Stufe 1)
+app.post('/api/offers/:offerId/preliminary-order', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { projectId } = req.body;
+    
+    await query('BEGIN');
+    
+    try {
+      // Update offer status
+      await query(
+        `UPDATE offers SET 
+         status = 'preliminary',
+         preliminary_date = NOW()
+         WHERE id = $1`,
+        [offerId]
+      );
+      
+      // Get offer details
+      const offerResult = await query(
+        `SELECT o.*, h.id as handwerker_id, tn.trade_code
+         FROM offers o
+         JOIN handwerker h ON o.handwerker_id = h.id
+         JOIN tenders tn ON o.tender_id = tn.id
+         WHERE o.id = $1`,
+        [offerId]
+      );
+      
+      const offer = offerResult.rows[0];
+      
+      // Create order entry
+      await query(
+        `INSERT INTO orders (
+          project_id, handwerker_id, offer_id, trade_code,
+          amount, status, stage, created_at
+        ) VALUES ($1, $2, $3, $4, $5, 'preliminary', 1, NOW())`,
+        [projectId, offer.handwerker_id, offerId, offer.trade_code, offer.amount]
+      );
+      
+      await query('COMMIT');
+      
+      res.json({ success: true, message: 'Vorläufige Beauftragung erfolgreich' });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (error) {
+    console.error('Error creating preliminary order:', error);
+    res.status(500).json({ error: 'Fehler bei vorläufiger Beauftragung' });
+  }
+});
+
+// Final order (Stufe 2)
+app.post('/api/offers/:offerId/final-order', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query('BEGIN');
+    
+    try {
+      // Update offer status
+      await query(
+        `UPDATE offers SET 
+         status = 'accepted',
+         accepted_date = NOW()
+         WHERE id = $1`,
+        [offerId]
+      );
+      
+      // Update order to final
+      await query(
+        `UPDATE orders SET 
+         status = 'active',
+         stage = 2,
+         finalized_at = NOW()
+         WHERE offer_id = $1`,
+        [offerId]
+      );
+      
+      await query('COMMIT');
+      
+      res.json({ success: true, message: 'Verbindliche Beauftragung erfolgreich' });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (error) {
+    console.error('Error creating final order:', error);
+    res.status(500).json({ error: 'Fehler bei verbindlicher Beauftragung' });
+  }
+});
+
+// Get project orders
+app.get('/api/projects/:projectId/orders', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT o.*, h.company_name, t.name as trade_name
+       FROM orders o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN trades t ON o.trade_code = t.code
+       WHERE o.project_id = $1
+       ORDER BY o.created_at DESC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Aufträge' });
+  }
+});
+
+// Get project supplements
+app.get('/api/projects/:projectId/supplements', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT s.*, h.company_name
+       FROM supplements s
+       JOIN orders o ON s.order_id = o.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE o.project_id = $1
+       ORDER BY s.created_at DESC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching supplements:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Nachträge' });
+  }
+});
+
+// 5. HANDWERKER DASHBOARD ROUTES
+// ----------------------------------------------------------------------------
+
+// Get matching tenders for handwerker
+app.get('/api/handwerker/:companyId/tenders', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // Get handwerker details with trades
+    const handwerkerResult = await query(
+      `SELECT h.*, array_agg(ht.trade_code) as trades
+       FROM handwerker h
+       LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
+       WHERE h.company_id = $1
+       GROUP BY h.id`,
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerker = handwerkerResult.rows[0];
+    const trades = handwerker.trades || [];
+    
+    // Get matching tenders
+    const result = await query(
+      `SELECT DISTINCT t.*, p.description, p.budget, p.zip, p.city,
+              tr.name as trade,
+              CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as "isNew"
+       FROM tenders t
+       JOIN projects p ON t.project_id = p.id
+       JOIN trades tr ON t.trade_code = tr.code
+       WHERE t.trade_code = ANY($1::text[])
+       AND t.status = 'open'
+       AND t.deadline > NOW()
+       ORDER BY t.created_at DESC`,
+      [trades]
+    );
+    
+    // Calculate distance and filter by radius (simplified)
+    const tenders = result.rows.map(tender => ({
+      ...tender,
+      projectType: tender.description?.substring(0, 50),
+      location: `${tender.zip} ${tender.city}`,
+      distance: Math.round(Math.random() * handwerker.action_radius), // Simplified
+      estimatedVolume: tender.budget || Math.round(Math.random() * 50000 + 10000),
+      executionDate: 'KW ' + (15 + Math.round(Math.random() * 10)) + '/2025',
+      deadline: tender.deadline
+    }));
+    
+    res.json(tenders);
+    
+  } catch (error) {
+    console.error('Error fetching handwerker tenders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+  }
+});
+
+// Get handwerker bundles
+app.get('/api/handwerker/:companyId/bundles', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // Simplified bundle response - in real implementation would check for actual bundles
+    const bundles = [];
+    
+    res.json(bundles);
+    
+  } catch (error) {
+    console.error('Error fetching bundles:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Bündel' });
+  }
+});
+
+// Get handwerker offers
+app.get('/api/handwerker/:companyId/offers', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    const result = await query(
+      `SELECT o.*, t.name as trade, p.description as "projectType", 
+              p.zip || ' ' || p.city as location,
+              o.created_at as "submittedDate"
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_code = t.code
+       JOIN projects p ON tn.project_id = p.id
+       WHERE h.company_id = $1
+       ORDER BY o.created_at DESC`,
+      [companyId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching handwerker offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
+  }
+});
+
+// Get handwerker contracts
+app.get('/api/handwerker/:companyId/contracts', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    const result = await query(
+      `SELECT o.*, p.description as "projectType", b.name as "clientName",
+              b.email as "clientEmail", b.phone as "clientPhone",
+              p.street || ' ' || p.house_number || ', ' || p.zip || ' ' || p.city as "projectAddress",
+              of.amount, of.preliminary_date as "preliminaryDate", t.name as trade
+       FROM orders o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN projects p ON o.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN offers of ON o.offer_id = of.id
+       JOIN trades t ON o.trade_code = t.code
+       WHERE h.company_id = $1
+       AND o.status = 'preliminary'
+       ORDER BY o.created_at DESC`,
+      [companyId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching contracts:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Verträge' });
+  }
+});
+
+// Get handwerker orders
+app.get('/api/handwerker/:companyId/orders', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    const result = await query(
+      `SELECT o.*, p.description as "projectType", b.name as "clientName",
+              p.street || ' ' || p.house_number || ', ' || p.zip || ' ' || p.city as "projectAddress",
+              o.created_at as "orderDate", t.name as trade,
+              EXTRACT(WEEK FROM o.created_at) + 2 as "executionWeek"
+       FROM orders o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN projects p ON o.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON o.trade_code = t.code
+       WHERE h.company_id = $1
+       AND o.status = 'active'
+       ORDER BY o.created_at DESC`,
+      [companyId]
+    );
+    
+    res.json(result.rows.map(order => ({
+      ...order,
+      status: order.status === 'active' ? 'aktiv' : order.status,
+      progress: Math.round(Math.random() * 100)
+    })));
+    
+  } catch (error) {
+    console.error('Error fetching handwerker orders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Aufträge' });
+  }
+});
+
+// Withdraw offer
+app.post('/api/offers/:offerId/withdraw', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query(
+      `UPDATE offers SET status = 'withdrawn', withdrawn_at = NOW() WHERE id = $1`,
+      [offerId]
+    );
+    
+    res.json({ success: true, message: 'Angebot zurückgezogen' });
+    
+  } catch (error) {
+    console.error('Error withdrawing offer:', error);
+    res.status(500).json({ error: 'Fehler beim Zurückziehen' });
+  }
+});
+
+// Accept preliminary contract
+app.post('/api/contracts/:contractId/accept-preliminary', async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    
+    await query(
+      `UPDATE orders SET 
+       handwerker_accepted = true,
+       handwerker_accepted_at = NOW()
+       WHERE id = $1`,
+      [contractId]
+    );
+    
+    res.json({ success: true, message: 'Vorläufige Beauftragung angenommen' });
+    
+  } catch (error) {
+    console.error('Error accepting preliminary:', error);
+    res.status(500).json({ error: 'Fehler bei der Annahme' });
+  }
+});
+
+// Confirm offer after inspection
+app.post('/api/contracts/:contractId/confirm-offer', async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    
+    await query(
+      `UPDATE orders SET 
+       offer_confirmed = true,
+       offer_confirmed_at = NOW()
+       WHERE id = $1`,
+      [contractId]
+    );
+    
+    res.json({ success: true, message: 'Angebot bestätigt' });
+    
+  } catch (error) {
+    console.error('Error confirming offer:', error);
+    res.status(500).json({ error: 'Fehler bei der Bestätigung' });
+  }
+});
+
 // ADMIN ROUTES - SIMPLIFIED WITH BASIC TOKEN (FIXED SQL CASTS)
 // ===========================================================================
 
