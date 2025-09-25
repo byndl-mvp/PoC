@@ -3051,8 +3051,20 @@ KEINE FRAGEN ZU:
 - Bevorzugter Vergabeart
 - Ob alles aus einer Hand gewünscht wird
 
+10. SPEZIAL: DACHAUFSTOCKUNG (NUR bei erkannter Aufstockung):
+   - Bauweise der Aufstockung (Holzbau vs. Massivbau)
+   - Statisches Gutachten vorhanden?
+   - Maximale zusätzliche Last bekannt?
+
+${istDachaufstockung ? `
+PFLICHTFRAGE BEI DACHAUFSTOCKUNG:
+"Welche Bauweise ist für die Aufstockung geplant?"
+- Optionen: ["Holzbauweise/Holzrahmenbau (leichter)", "Massivbau (Mauerwerk/Beton)", "Noch offen - Beratung gewünscht"]
+- WICHTIG: Diese Antwort bestimmt die weiteren Gewerke-Fragen!
+` : ''}
+
 BEISPIELE VERBOTENER INTAKE-FRAGEN:
-- "Welche Dämmstärke ist gewünscht?" → GEHÖRT ZU FASS
+- "Welche Dämmstärke ist gewünscht?" → GEHÖRT ZU FASS/DACH
 - "Welche Putzstruktur?" → GEHÖRT ZU FASS/MAL
 - "Welche Fliesenart?" → GEHÖRT ZU FLI
 - "Welches Heizsystem?" → GEHÖRT ZU HEI
