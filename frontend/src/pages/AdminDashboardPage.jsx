@@ -21,6 +21,9 @@ export default function AdminDashboardPage() {
   const [projects, setProjects] = useState([]);
   const [payments, setPayments] = useState([]);
   const [verifications, setVerifications] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [tenders, setTenders] = useState([]);
+  const [supplements, setSupplements] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,10 +61,10 @@ export default function AdminDashboardPage() {
             await fetchVerifications();
             break;
           case 'orders':
-            // await fetchOrders();
+            await fetchOrders();
             break;
           case 'tenders':
-            // await fetchTenders();
+            await fetchTenders();
             break;
           default:
             break;
@@ -119,6 +122,24 @@ export default function AdminDashboardPage() {
     if (!res.ok) throw new Error('Fehler beim Laden der Verifizierungen');
     const data = await res.json();
     setVerifications(data.verifications || []);
+  };
+
+  const fetchOrders = async () => {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/orders', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Aufträge');
+    const data = await res.json();
+    setOrders(data.orders || []);
+  };
+
+  const fetchTenders = async () => {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/tenders', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibungen');
+    const data = await res.json();
+    setTenders(data.tenders || []);
   };
 
   const handleVerification = async (verificationId, approved) => {
@@ -767,7 +788,7 @@ export default function AdminDashboardPage() {
             {/* Verifications Tab */}
             {activeTab === 'verifications' && (
               <div className="grid gap-4">
-                {verifications.map(verification => (
+                {verifications.length > 0 ? verifications.map(verification => (
                   <div key={verification.id} className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -835,7 +856,173 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
+                    <p className="text-white/50">Keine ausstehenden Verifizierungen</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Orders Tab */}
+            {activeTab === 'orders' && (
+              <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/20">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Auftrag ID</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Projekt</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Handwerker</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Gewerk</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Summe</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.length > 0 ? orders.map(order => (
+                        <tr key={order.id} className="border-b border-white/10 hover:bg-white/5">
+                          <td className="px-4 py-3 text-sm text-white">#{order.id}</td>
+                          <td className="px-4 py-3 text-sm text-white">Projekt #{order.project_id}</td>
+                          <td className="px-4 py-3 text-sm text-white">{order.handwerker_name}</td>
+                          <td className="px-4 py-3 text-sm text-white/70">{order.trade_name}</td>
+                          <td className="px-4 py-3 text-sm text-teal-400 font-semibold">
+                            €{order.total?.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              order.status === 'completed' ? 'bg-green-500/20 text-green-300' :
+                              order.status === 'in_progress' ? 'bg-blue-500/20 text-blue-300' :
+                              'bg-yellow-500/20 text-yellow-300'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button className="text-teal-400 hover:text-teal-300">
+                              👁️
+                            </button>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan="7" className="px-4 py-8 text-center text-white/50">
+                            Keine Aufträge vorhanden
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Tenders Tab */}
+            {activeTab === 'tenders' && (
+              <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/20">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Ausschreibung ID</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Projekt</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Gewerk</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Angebote</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Deadline</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tenders.length > 0 ? tenders.map(tender => (
+                        <tr key={tender.id} className="border-b border-white/10 hover:bg-white/5">
+                          <td className="px-4 py-3 text-sm text-white">#{tender.id}</td>
+                          <td className="px-4 py-3 text-sm text-white">Projekt #{tender.project_id}</td>
+                          <td className="px-4 py-3 text-sm text-white">{tender.trade_name}</td>
+                          <td className="px-4 py-3 text-sm text-white">
+                            <span className="text-teal-400">{tender.offer_count || 0}</span> / {tender.max_offers || 5}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-white">
+                            {new Date(tender.deadline || Date.now()).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              tender.status === 'closed' ? 'bg-gray-500/20 text-gray-300' :
+                              tender.status === 'awarded' ? 'bg-green-500/20 text-green-300' :
+                              'bg-blue-500/20 text-blue-300'
+                            }`}>
+                              {tender.status || 'Offen'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button className="text-teal-400 hover:text-teal-300">
+                              👁️
+                            </button>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan="7" className="px-4 py-8 text-center text-white/50">
+                            Keine Ausschreibungen vorhanden
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Supplements Tab */}
+            {activeTab === 'supplements' && (
+              <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/20">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Nachtrag ID</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Auftrag</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Grund</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Betrag</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supplements.length > 0 ? supplements.map(supplement => (
+                        <tr key={supplement.id} className="border-b border-white/10 hover:bg-white/5">
+                          <td className="px-4 py-3 text-sm text-white">#{supplement.id}</td>
+                          <td className="px-4 py-3 text-sm text-white">Auftrag #{supplement.order_id}</td>
+                          <td className="px-4 py-3 text-sm text-white/70">{supplement.reason}</td>
+                          <td className="px-4 py-3 text-sm text-teal-400 font-semibold">
+                            €{supplement.amount?.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              supplement.status === 'approved' ? 'bg-green-500/20 text-green-300' :
+                              supplement.status === 'rejected' ? 'bg-red-500/20 text-red-300' :
+                              'bg-yellow-500/20 text-yellow-300'
+                            }`}>
+                              {supplement.status || 'Ausstehend'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button className="text-teal-400 hover:text-teal-300">
+                              👁️
+                            </button>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan="6" className="px-4 py-8 text-center text-white/50">
+                            Keine Nachträge vorhanden
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
