@@ -39,6 +39,78 @@ export default function AdminDashboardPage() {
   }, [token]);
 
   useEffect(() => {
+    const fetchOverviewStats = async () => {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/stats', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Statistiken');
+      const data = await res.json();
+      setStats(data);
+    };
+
+    const fetchUsers = async () => {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/users', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Nutzer');
+      const data = await res.json();
+      setUsers(data);
+    };
+
+    const fetchProjects = async () => {
+      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/projects?status=${filterStatus}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Projekte');
+      const data = await res.json();
+      setProjects(data.projects || []);
+    };
+
+    const fetchPayments = async () => {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/payments', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Zahlungen');
+      const data = await res.json();
+      setPayments(data.payments || []);
+    };
+
+    const fetchVerifications = async () => {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/verifications', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Verifizierungen');
+      const data = await res.json();
+      setVerifications(data.verifications || []);
+    };
+
+    const fetchOrders = async () => {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/orders', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Aufträge');
+      const data = await res.json();
+      setOrders(data.orders || []);
+    };
+
+    const fetchTenders = async () => {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/tenders', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibungen');
+      const data = await res.json();
+      setTenders(data.tenders || []);
+    };
+
+    const fetchSupplements = async () => {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/supplements', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Nachträge');
+      const data = await res.json();
+      setSupplements(data.supplements || []);
+    };
+
     const fetchDashboardData = async () => {
       setLoading(true);
       setError('');
@@ -66,6 +138,9 @@ export default function AdminDashboardPage() {
           case 'tenders':
             await fetchTenders();
             break;
+          case 'supplements':
+            await fetchSupplements();
+            break;
           default:
             break;
         }
@@ -77,70 +152,7 @@ export default function AdminDashboardPage() {
     };
     
     fetchDashboardData();
-  }, [activeTab, filterStatus]);
-
-  const fetchOverviewStats = async () => {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/stats', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Statistiken');
-    const data = await res.json();
-    setStats(data);
-  };
-
-  const fetchUsers = async () => {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/users', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Nutzer');
-    const data = await res.json();
-    setUsers(data);
-  };
-
-  const fetchProjects = async () => {
-    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/projects?status=${filterStatus}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Projekte');
-    const data = await res.json();
-    setProjects(data.projects || []);
-  };
-
-  const fetchPayments = async () => {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/payments', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Zahlungen');
-    const data = await res.json();
-    setPayments(data.payments || []);
-  };
-
-  const fetchVerifications = async () => {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/verifications', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Verifizierungen');
-    const data = await res.json();
-    setVerifications(data.verifications || []);
-  };
-
-  const fetchOrders = async () => {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/orders', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Aufträge');
-    const data = await res.json();
-    setOrders(data.orders || []);
-  };
-
-  const fetchTenders = async () => {
-    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/tenders', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibungen');
-    const data = await res.json();
-    setTenders(data.tenders || []);
-  };
+  }, [activeTab, filterStatus, token]);
 
   const handleVerification = async (verificationId, approved) => {
     try {
@@ -156,7 +168,16 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error('Fehler bei der Verifizierung');
       
       setMessage(`${approved ? 'Genehmigt' : 'Abgelehnt'} erfolgreich`);
-      fetchVerifications();
+      
+      // Reload verifications
+      const reloadRes = await fetch('https://poc-rvrj.onrender.com/api/admin/verifications', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (reloadRes.ok) {
+        const data = await reloadRes.json();
+        setVerifications(data.verifications || []);
+      }
+      
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       setError(err.message);
@@ -177,7 +198,16 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error('Fehler beim Update der Zahlung');
       
       setMessage('Zahlung aktualisiert');
-      fetchPayments();
+      
+      // Reload payments
+      const reloadRes = await fetch('https://poc-rvrj.onrender.com/api/admin/payments', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (reloadRes.ok) {
+        const data = await reloadRes.json();
+        setPayments(data.payments || []);
+      }
+      
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       setError(err.message);
