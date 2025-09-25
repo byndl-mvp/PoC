@@ -199,22 +199,38 @@ export default function HandwerkerRegisterPage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        
-        // Speichere Handwerker-Daten in Session
-        sessionStorage.setItem('handwerkerData', JSON.stringify({
-          companyName: formData.companyName,
-          email: formData.email,
-          companyId: data.companyId || companyId,
-          trades: formData.trades,
-          region: `${formData.zipCode} ${formData.city}`,
-          actionRadius: formData.actionRadius
-        }));
-        
-        // Zeige Erfolgs-Modal mit Betriebs-ID
-        alert(`✅ Registrierung erfolgreich!\n\nIhre Betriebs-ID: ${data.companyId || companyId}\n\n⚠️ WICHTIG: Bitte notieren Sie sich diese ID für den Login!\n\nSie werden nun zum Dashboard weitergeleitet.`);
-        
-        navigate('/handwerker/dashboard');
+  const data = await res.json();
+  
+  // Hole die DB-ID direkt nach Registrierung
+  const verifyRes = await fetch(apiUrl('/api/handwerker/verify'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: formData.email,
+      companyId: data.companyId || companyId
+    })
+  });
+  
+  let handwerkerData = {
+    companyName: formData.companyName,
+    email: formData.email,
+    companyId: data.companyId || companyId,
+    trades: formData.trades,
+    region: `${formData.zipCode} ${formData.city}`,
+    actionRadius: formData.actionRadius
+  };
+  
+  if (verifyRes.ok) {
+    const verifyData = await verifyRes.json();
+    handwerkerData.id = verifyData.id; // DB-ID hinzufügen
+  }
+  
+  sessionStorage.setItem('handwerkerData', JSON.stringify(handwerkerData));
+  
+  alert(`✅ Registrierung erfolgreich!\n\nIhre Betriebs-ID: ${data.companyId || companyId}\n\n⚠️ WICHTIG: Bitte notieren Sie sich diese ID für den Login!\n\nSie werden nun zum Dashboard weitergeleitet.`);
+  
+  navigate('/handwerker/dashboard');
+}
       } else {
         const errorData = await res.json();
         throw new Error(errorData.message || 'Registrierung fehlgeschlagen');
