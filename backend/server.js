@@ -3659,6 +3659,33 @@ if (tradeCode !== 'INT') {
   console.log(`[QUESTIONS] INT: Skipping trade validation for intake questions`);
 }
 
+// SPEZIAL-VALIDIERUNG bei Dachaufstockung
+if (projectContext.istDachaufstockung) {
+  if (tradeCode === 'ROH' && projectContext.aufstockungsBauweise === 'holzbau') {
+    // Bei Holzbau sollte Rohbau minimal oder gar keine Fragen stellen
+    questions = questions.filter(q => {
+      const qText = q.question.toLowerCase();
+      if (qText.includes('aufstockung') || qText.includes('wand') || qText.includes('mauerwerk')) {
+        console.log(`[AUFSTOCKUNG] ROH-Frage entfernt bei Holzbau: ${q.question}`);
+        return false;
+      }
+      return true;
+    });
+  }
+  
+  if (tradeCode === 'ZIMM' && projectContext.aufstockungsBauweise === 'massivbau') {
+    // Bei Massivbau macht Zimmerer nur Dachstuhl
+    questions = questions.filter(q => {
+      const qText = q.question.toLowerCase();
+      if (qText.includes('wand') || qText.includes('holzrahmen') || qText.includes('beplankung')) {
+        console.log(`[AUFSTOCKUNG] ZIMM-Wandfrage entfernt bei Massivbau: ${q.question}`);
+        return false;
+      }
+      return true;
+    });
+  }
+}
+    
 // HIER: VERBESSERTER FILTER mit konkreten Werten
 if (projectContext.answeredValues) {
   const afterAnswerFilter = questions.filter(q => {
