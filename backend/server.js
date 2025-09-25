@@ -11954,14 +11954,14 @@ app.get('/api/admin/tenders', requireAdmin, async (req, res) => {
         te.project_id,
         te.status,
         te.deadline,
-        te.max_offers,
         te.created_at,
+        te.trade_code,
         t.name as trade_name,
         COUNT(o.id) as offer_count
       FROM tenders te
-      LEFT JOIN trades t ON t.id = te.trade_id
+      LEFT JOIN trades t ON t.code = te.trade_code
       LEFT JOIN offers o ON o.tender_id = te.id
-      GROUP BY te.id, t.name
+      GROUP BY te.id, t.name, te.trade_code
       ORDER BY te.created_at DESC
     `);
     
