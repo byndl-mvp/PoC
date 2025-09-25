@@ -87,44 +87,52 @@ export default function HandwerkerDashboardPage() {
   };
 
   const handleSubmitOffer = async () => {
-    if (!selectedTender || !offerData.amount || !offerData.executionTime) {
-      alert('Bitte füllen Sie alle Pflichtfelder aus.');
-      return;
-    }
+  if (!selectedTender || !offerData.amount || !offerData.executionTime) {
+    alert('Bitte füllen Sie alle Pflichtfelder aus.');
+    return;
+  }
 
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl('/api/offers/create'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenderId: selectedTender.id,
-          handwerkerId: handwerkerData.companyId,
-          ...offerData,
-          timestamp: new Date().toISOString()
-        })
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl('/api/offers/create'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenderId: selectedTender.id,
+        handwerkerId: handwerkerData.id || handwerkerData.companyId, // Verwende DB-ID wenn vorhanden
+        amount: parseFloat(offerData.amount), // Sicherstellen dass es eine Zahl ist
+        executionTime: offerData.executionTime,
+        notes: offerData.notes,
+        bundleDiscount: parseFloat(offerData.bundleDiscount) || 0,
+        includeMaterial: offerData.includeMaterial,
+        includeAnfahrt: offerData.includeAnfahrt,
+        timestamp: new Date().toISOString()
+      })
+    });
+
+    if (res.ok) {
+      alert('Angebot erfolgreich abgegeben!');
+      setShowOfferModal(false);
+      setOfferData({
+        amount: '',
+        executionTime: '',
+        notes: '',
+        bundleDiscount: 0,
+        includeMaterial: true,
+        includeAnfahrt: true
       });
-
-      if (res.ok) {
-        alert('Angebot erfolgreich abgegeben!');
-        setShowOfferModal(false);
-        setOfferData({
-          amount: '',
-          executionTime: '',
-          notes: '',
-          bundleDiscount: 0,
-          includeMaterial: true,
-          includeAnfahrt: true
-        });
-        loadDashboardData(handwerkerData);
-      }
-    } catch (err) {
-      console.error('Fehler beim Abgeben des Angebots:', err);
-      alert('Fehler beim Abgeben des Angebots.');
-    } finally {
-      setLoading(false);
+      loadDashboardData(handwerkerData);
+    } else {
+      const error = await res.json();
+      alert(`Fehler: ${error.error || 'Angebot konnte nicht abgegeben werden'}`);
     }
-  };
+  } catch (err) {
+    console.error('Fehler beim Abgeben des Angebots:', err);
+    alert('Fehler beim Abgeben des Angebots.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleAcceptPreliminary = async (contractId) => {
     if (!window.confirm('Möchten Sie die vorläufige Beauftragung annehmen? Die Kontaktdaten werden freigegeben.')) {
