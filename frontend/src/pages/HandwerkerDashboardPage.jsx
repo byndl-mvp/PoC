@@ -127,7 +127,7 @@ export default function HandwerkerDashboardPage() {
   };
 
   const handleAcceptPreliminary = async (contractId) => {
-    if (!confirm('Möchten Sie die vorläufige Beauftragung annehmen? Die Kontaktdaten werden freigegeben.')) {
+    if (!window.confirm('Möchten Sie die vorläufige Beauftragung annehmen? Die Kontaktdaten werden freigegeben.')) {
       return;
     }
 
@@ -150,7 +150,7 @@ export default function HandwerkerDashboardPage() {
   };
 
   const handleConfirmOffer = async (contractId) => {
-    if (!confirm('Bestätigen Sie Ihr Angebot nach der Besichtigung? Dies ermöglicht die verbindliche Beauftragung.')) {
+    if (!window.confirm('Bestätigen Sie Ihr Angebot nach der Besichtigung? Dies ermöglicht die verbindliche Beauftragung.')) {
       return;
     }
 
@@ -173,7 +173,7 @@ export default function HandwerkerDashboardPage() {
   };
 
   const handleWithdrawOffer = async (offerId) => {
-    if (!confirm('Möchten Sie Ihr Angebot wirklich zurückziehen?')) {
+    if (!window.confirm('Möchten Sie Ihr Angebot wirklich zurückziehen?')) {
       return;
     }
 
