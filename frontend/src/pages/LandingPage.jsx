@@ -78,20 +78,20 @@ export default function LandingPage() {
                 </span>
               </Link>
               
-              <button
-                disabled
-                className="group relative bg-white/10 backdrop-blur border-2 border-white/30 text-white font-bold px-10 py-5 rounded-xl shadow-xl cursor-not-allowed opacity-60"
-              >
-                <span className="flex items-center justify-center">
-                  <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                  </svg>
-                  Für Handwerksbetriebe
-                </span>
-                <span className="block text-sm font-normal mt-1 opacity-90">
-                  Demnächst verfügbar
-                </span>
-              </button>
+              <Link
+  to="/handwerker/register"
+  className="group relative bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold px-10 py-5 rounded-xl shadow-2xl transform hover:scale-105 transition-all duration-200 text-lg"
+>
+  <span className="flex items-center justify-center">
+    <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+    </svg>
+    Für Handwerksbetriebe
+  </span>
+  <span className="block text-sm font-normal mt-1 opacity-90">
+    Jetzt registrieren & Aufträge erhalten
+  </span>
+</Link>
             </div>
           </div>
         </div>
