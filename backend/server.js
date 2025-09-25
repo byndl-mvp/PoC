@@ -5270,6 +5270,15 @@ KRITISCH FÜR ROHBAUARBEITEN:
    - Deckendurchbrüche gehören zu ROH
    - Abbruch tragender Teile gehört zu ROH
    - Nicht-tragende Wände → Gewerk TRO oder ABBR
+
+6. BEI AUFSTOCKUNG IN HOLZBAUWEISE:
+   - Rohbau macht NUR: Verstärkung Bestandsmauerwerk, Ringanker aus Beton
+   - Zimmerer macht: KOMPLETTE Holzkonstruktion der Aufstockung
+   - KEINE Vermischung der Gewerke!
+
+WENN HOLZBAU ERWÄHNT WIRD:
+→ Schreibe: "Holzbauarbeiten siehe Gewerk ZIMMERER"
+→ KEINE Holz-Positionen im Rohbau-LV!
 ` : ''}
 
 ${trade.code === 'HEI' ? `
