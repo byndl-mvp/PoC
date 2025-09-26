@@ -233,78 +233,41 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
-      <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
-                byndl
-              </Link>
-              <span className="text-gray-400">|</span>
-              <h1 className="text-xl text-white">Handwerker-Dashboard</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="relative profile-menu-container">
-  <button
-    onClick={() => setShowProfileMenu(!showProfileMenu)}
-    className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
-  >
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-    </svg>
-    {handwerkerData?.companyName}
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
-    </svg>
-  </button>
-  
-  {showProfileMenu && (
-    <div className="absolute right-0 mt-2 w-64 bg-slate-800 rounded-lg shadow-xl border border-white/20 z-50">
-      <div className="p-4 border-b border-white/20">
-        <p className="text-white font-semibold">{handwerkerData?.companyName}</p>
-        <p className="text-gray-400 text-sm">{handwerkerData?.email}</p>
-        <p className="text-gray-400 text-xs mt-1">ID: {handwerkerData?.companyId}</p>
+<header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="flex justify-between items-center">
+      <div className="flex items-center gap-4">
+        <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+          byndl
+        </Link>
+        <span className="text-gray-400">|</span>
+        <h1 className="text-xl text-white">Handwerker-Dashboard</h1>
       </div>
       
-      <div className="p-2">
-  <Link 
-    to="/handwerker/settings" 
-    className="block w-full text-left px-4 py-2 text-white hover:bg-white/10 rounded"
-  >
-    👤 Mein Profil
-  </Link>
-  <Link 
-    to="/handwerker/settings" 
-    className="block w-full text-left px-4 py-2 text-white hover:bg-white/10 rounded"
-  >
-    ⚙️ Einstellungen
-  </Link>
-</div>
-      
-      <div className="border-t border-white/20 p-2">
-        <button 
-          onClick={handleLogout}
-          className="w-full text-left px-4 py-2 text-red-400 hover:bg-red-500/10 rounded"
+      <div className="flex items-center gap-4">
+        <div className="text-right">
+          <p className="text-white font-semibold">{handwerkerData?.companyName}</p>
+          <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
+        </div>
+        <div className="text-gray-400 text-sm">
+          Region: {handwerkerData?.region} | Radius: {handwerkerData?.actionRadius} km
+        </div>
+        <Link 
+          to="/handwerker/settings" 
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
         >
-          🚪 Abmelden
+          ⚙️ Einstellungen
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors"
+        >
+          Abmelden
         </button>
       </div>
     </div>
-  )}
-</div>
-              <div className="text-gray-400 text-sm">
-                Region: {handwerkerData?.region} | Radius: {handwerkerData?.actionRadius} km
-              </div>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
-              >
-                Abmelden
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+  </div>
+</header>
 
       {/* Verifizierungs-Status Banner */}
 {handwerkerData?.verificationStatus === 'pending' && (
