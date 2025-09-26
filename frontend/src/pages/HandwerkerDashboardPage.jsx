@@ -15,7 +15,6 @@ export default function HandwerkerDashboardPage() {
   const [contracts, setContracts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [schedule, setSchedule] = useState([]); // eslint-disable-line no-unused-vars
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   
   // Modal states
   const [showOfferModal, setShowOfferModal] = useState(false);
@@ -40,18 +39,6 @@ export default function HandwerkerDashboardPage() {
     setHandwerkerData(data);
     loadDashboardData(data);
   }, [navigate]);
-
-// NEUER useEffect HIER EINFÜGEN:
-useEffect(() => {
-  const handleClickOutside = (e) => {
-    if (!e.target.closest('.profile-menu-container')) {
-      setShowProfileMenu(false);
-    }
-  };
-  
-  document.addEventListener('click', handleClickOutside);
-  return () => document.removeEventListener('click', handleClickOutside);
-}, []);  // Leeres dependency array, nicht [navigate]
   
   const loadDashboardData = async (handwerker) => {
     try {
