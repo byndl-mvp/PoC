@@ -12375,7 +12375,6 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
              verification_status = 'verified',
              company_id = $2,
              verified_at = NOW(),
-             verified_by = 'admin'
          WHERE id = $1`,
         [id, finalId]
       );
