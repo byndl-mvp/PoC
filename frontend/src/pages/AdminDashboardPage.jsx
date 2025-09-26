@@ -24,6 +24,7 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState([]);
   const [tenders, setTenders] = useState([]);
   const [supplements, setSupplements] = useState([]);
+  const [pendingHandwerker, setPendingHandwerker] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -111,6 +112,42 @@ export default function AdminDashboardPage() {
       setSupplements(data.supplements || []);
     };
 
+    const fetchPendingHandwerker = async () => {
+  setLoading(true);
+  try {
+    const res = await fetch('https://poc-rvrj.onrender.com/api/admin/pending-handwerker', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setPendingHandwerker(data);
+    }
+  } catch (err) {
+    setError('Fehler beim Laden der Verifizierungen');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const verifyHandwerker = async (id, approved) => {
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/verify-handwerker/${id}`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}` 
+      },
+      body: JSON.stringify({ approved })
+    });
+    if (res.ok) {
+      alert(approved ? 'Handwerker verifiziert!' : 'Handwerker abgelehnt');
+      fetchPendingHandwerker();
+    }
+  } catch (err) {
+    setError('Verifizierung fehlgeschlagen');
+  }
+};
+    
     const fetchDashboardData = async () => {
       setLoading(true);
       setError('');
@@ -235,6 +272,7 @@ export default function AdminDashboardPage() {
     { id: 'supplements', label: 'Nachträge', icon: '➕' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
     { id: 'settings', label: 'Einstellungen', icon: '⚙️' }
+    { id: 'verifications', label: 'Verifizierungen', icon: '✅' }, // NEU
   ];
 
   return (
