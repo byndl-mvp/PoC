@@ -862,15 +862,39 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* Placeholder for remaining tabs */}
-            {(activeTab === 'payments' || activeTab === 'orders' || activeTab === 'tenders') && (
-              <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
-                <h2 className="text-2xl font-bold text-white mb-4">
-                  {activeTab === 'payments' && 'Zahlungen'}
-                  {activeTab === 'orders' && 'Aufträge'}
-                  {activeTab === 'tenders' && 'Ausschreibungen'}
-                </h2>
-                <p className="text-white/50">Diese Sektion wird noch implementiert</p>
+            {/* Payments Tab */}
+            {activeTab === 'payments' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-4">Zahlungen</h2>
+                <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20">
+                  <p className="text-white/50 text-center">
+                    {payments.length > 0 ? `${payments.length} Zahlungen vorhanden` : 'Keine Zahlungen vorhanden'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Orders Tab */}
+            {activeTab === 'orders' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-4">Aufträge</h2>
+                <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20">
+                  <p className="text-white/50 text-center">
+                    {orders.length > 0 ? `${orders.length} Aufträge vorhanden` : 'Keine Aufträge vorhanden'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Tenders Tab */}
+            {activeTab === 'tenders' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-4">Ausschreibungen</h2>
+                <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20">
+                  <p className="text-white/50 text-center">
+                    {tenders.length > 0 ? `${tenders.length} Ausschreibungen vorhanden` : 'Keine Ausschreibungen vorhanden'}
+                  </p>
+                </div>
               </div>
             )}
           </>
