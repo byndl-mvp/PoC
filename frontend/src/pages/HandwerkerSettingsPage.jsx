@@ -71,18 +71,27 @@ export default function HandwerkerSettingsPage() {
     confirmPassword: ''
   });
 
-  useEffect(() => {
-    const storedData = sessionStorage.getItem('handwerkerData');
-    if (!storedData) {
-      navigate('/handwerker/login');
-      return;
-    }
-    
-    const data = JSON.parse(storedData);
-    setHandwerkerData(data);
-    loadSettings(data.id || data.companyId);
+useEffect(() => {
+  const storedData = sessionStorage.getItem('handwerkerData');
+  if (!storedData) {
+    navigate('/handwerker/login');
+    return;
+  }
+  
+  const data = JSON.parse(storedData);
+  setHandwerkerData(data);
+  loadSettings(data.id || data.companyId);
+  // loadDocuments() kann hier noch nicht aufgerufen werden, da handwerkerData noch null ist
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [navigate]);
+
+// Separater useEffect für loadDocuments
+useEffect(() => {
+  if (handwerkerData) {
     loadDocuments();
-  }, [navigate]);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [handwerkerData]);
 
   const loadSettings = async (handwerkerId) => {
     try {
