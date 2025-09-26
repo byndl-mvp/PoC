@@ -737,7 +737,7 @@ export default function HandwerkerRegisterPage() {
                 </button>
               )}
               
-              {step < 4 ? (
+              {step < 5 ? (
                 <button
                   type="button"
                   onClick={handleNext}
