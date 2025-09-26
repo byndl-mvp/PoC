@@ -10868,14 +10868,24 @@ app.post('/api/handwerker/register', async (req, res) => {
       const handwerkerId = result.rows[0].id;
       
       // Insert trades
-      if (trades && trades.length > 0) {
-        for (const tradeCode of trades) {
-          await query(
-            'INSERT INTO handwerker_trades (handwerker_id, trade_code) VALUES ($1, $2)',
-            [handwerkerId, tradeCode]
-          );
-        }
-      }
+if (trades && trades.length > 0) {
+  for (const tradeCode of trades) {
+    // Hole den trade_name aus der trades Tabelle
+    const tradeInfo = await query(
+      'SELECT name FROM trades WHERE code = $1',
+      [tradeCode]
+    );
+    
+    if (tradeInfo.rows.length > 0) {
+      const tradeName = tradeInfo.rows[0].name;
+      
+      await query(
+        'INSERT INTO handwerker_trades (handwerker_id, trade_code, trade_name) VALUES ($1, $2, $3)',
+        [handwerkerId, tradeCode, tradeName]
+      );
+    }
+  }
+}
       
       // Insert insurances
       if (insurances && insurances.length > 0) {
