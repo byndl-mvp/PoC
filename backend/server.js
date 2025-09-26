@@ -11346,7 +11346,7 @@ app.get('/api/projects/:projectId/orders', async (req, res) => {
       `SELECT o.*, h.company_name, t.name as trade_name
        FROM orders o
        JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN trades t ON o.trade_code = t.code
+       JOIN trades t ON o.trade_id = t.id
        WHERE o.project_id = $1
        ORDER BY o.created_at DESC`,
       [projectId]
@@ -11500,7 +11500,7 @@ app.get('/api/handwerker/:companyId/contracts', async (req, res) => {
        JOIN projects p ON o.project_id = p.id
        JOIN bauherren b ON p.bauherr_id = b.id
        JOIN offers of ON o.offer_id = of.id
-       JOIN trades t ON o.trade_code = t.code
+       JOIN trades t ON o.trade_id = t.id
        WHERE h.company_id = $1
        AND o.status = 'preliminary'
        ORDER BY o.created_at DESC`,
@@ -11529,7 +11529,7 @@ app.get('/api/handwerker/:companyId/orders', async (req, res) => {
        JOIN handwerker h ON o.handwerker_id = h.id
        JOIN projects p ON o.project_id = p.id
        JOIN bauherren b ON p.bauherr_id = b.id
-       JOIN trades t ON o.trade_code = t.code
+       JOIN trades t ON o.trade_id = t.id
        WHERE h.company_id = $1
        AND o.status = 'active'
        ORDER BY o.created_at DESC`,
