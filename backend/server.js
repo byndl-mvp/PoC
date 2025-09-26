@@ -11596,6 +11596,233 @@ app.post('/api/contracts/:contractId/confirm-offer', async (req, res) => {
   }
 });
 
+// ============================================
+// HANDWERKER SETTINGS ENDPOINTS
+// ============================================
+
+// Settings laden
+app.get('/api/handwerker/:id/settings', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT 
+        company_name as "companyName",
+        email, phone, street, house_number as "houseNumber",
+        zip_code as "zipCode", city, website,
+        action_radius as "actionRadius",
+        min_order_value as "minOrderValue",
+        hourly_rates as "hourlyRates",
+        payment_terms as "paymentTerms",
+        vacation_dates as "vacationDates",
+        notification_settings as "notificationSettings",
+        bank_iban as "bankIban",
+        bank_bic as "bankBic",
+        invoice_address as "invoiceAddress",
+        two_factor_enabled as "twoFactorEnabled",
+        excluded_areas as "excludedAreas",
+        travel_cost_per_km as "travelCostPerKm"
+       FROM handwerker WHERE id = $1`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Fehler beim Laden der Einstellungen' });
+  }
+});
+
+// Firmendaten updaten
+app.put('/api/handwerker/:id/firmendaten', async (req, res) => {
+  try {
+    const { companyName, email, phone, street, houseNumber, zipCode, city, website } = req.body;
+    
+    await query(
+      `UPDATE handwerker SET
+        company_name = $2,
+        email = $3,
+        phone = $4,
+        street = $5,
+        house_number = $6,
+        zip_code = $7,
+        city = $8,
+        website = $9
+       WHERE id = $1`,
+      [req.params.id, companyName, email, phone, street, houseNumber, zipCode, city, website]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Einsatzgebiet updaten
+app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
+  try {
+    const { actionRadius, excludedAreas } = req.body;
+    
+    await query(
+      `UPDATE handwerker SET
+        action_radius = $2,
+        excluded_areas = $3
+       WHERE id = $1`,
+      [req.params.id, actionRadius, JSON.stringify(excludedAreas)]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Verfügbarkeit updaten
+app.put('/api/handwerker/:id/verfuegbarkeit', async (req, res) => {
+  try {
+    const { earliestStart, capacity, vacationDates } = req.body;
+    
+    await query(
+      `UPDATE handwerker SET
+        available_from = $2,
+        vacation_dates = $3
+       WHERE id = $1`,
+      [req.params.id, earliestStart, JSON.stringify(vacationDates)]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Preise updaten
+app.put('/api/handwerker/:id/preise', async (req, res) => {
+  try {
+    const { minOrderValue, travelCostPerKm, hourlyRates } = req.body;
+    
+    await query(
+      `UPDATE handwerker SET
+        min_order_value = $2,
+        travel_cost_per_km = $3,
+        hourly_rates = $4
+       WHERE id = $1`,
+      [req.params.id, minOrderValue, travelCostPerKm, JSON.stringify(hourlyRates)]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Benachrichtigungen updaten
+app.put('/api/handwerker/:id/benachrichtigungen', async (req, res) => {
+  try {
+    const { emailNotifications, smsNotifications, newsletterSubscribed } = req.body;
+    
+    const notificationSettings = {
+      email: emailNotifications,
+      sms: smsNotifications,
+      newsletter: newsletterSubscribed
+    };
+    
+    await query(
+      `UPDATE handwerker SET
+        notification_settings = $2
+       WHERE id = $1`,
+      [req.params.id, JSON.stringify(notificationSettings)]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Zahlungsdaten updaten
+app.put('/api/handwerker/:id/zahlungsdaten', async (req, res) => {
+  try {
+    const { bankIban, bankBic, paymentTerms, invoiceAddress } = req.body;
+    
+    await query(
+      `UPDATE handwerker SET
+        bank_iban = $2,
+        bank_bic = $3,
+        payment_terms = $4,
+        invoice_address = $5
+       WHERE id = $1`,
+      [req.params.id, bankIban, bankBic, paymentTerms, invoiceAddress]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Passwort ändern
+app.put('/api/handwerker/:id/password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Hier würde normalerweise das alte Passwort verifiziert werden
+    // Für POC vereinfacht
+    
+    await query(
+      `UPDATE handwerker SET password = $2 WHERE id = $1`,
+      [req.params.id, newPassword] // In Produktion: Hash verwenden!
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Passwort-Update fehlgeschlagen' });
+  }
+});
+
+// Zwei-Faktor-Auth updaten
+app.put('/api/handwerker/:id/two-factor', async (req, res) => {
+  try {
+    const { twoFactorEnabled } = req.body;
+    
+    await query(
+      `UPDATE handwerker SET two_factor_enabled = $2 WHERE id = $1`,
+      [req.params.id, twoFactorEnabled]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Account löschen
+app.delete('/api/handwerker/:id/account', async (req, res) => {
+  try {
+    await query('DELETE FROM handwerker WHERE id = $1', [req.params.id]);
+    res.json({ success: true, message: 'Account gelöscht' });
+  } catch (err) {
+    res.status(500).json({ error: 'Löschen fehlgeschlagen' });
+  }
+});
+
+// Logo upload
+app.post('/api/handwerker/:id/logo', upload.single('logo'), async (req, res) => {
+  try {
+    const fileBuffer = req.file.buffer;
+    
+    await query(
+      `UPDATE handwerker SET logo_url = $2 WHERE id = $1`,
+      [req.params.id, `data:${req.file.mimetype};base64,${fileBuffer.toString('base64')}`]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Logo-Upload fehlgeschlagen' });
+  }
+});
+
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
