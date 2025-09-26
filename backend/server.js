@@ -10898,14 +10898,14 @@ if (trades && trades.length > 0) {
       }
       
       // Insert certifications
-      if (certifications && certifications.length > 0) {
-        for (const cert of certifications) {
-          await query(
-            'INSERT INTO handwerker_certifications (handwerker_id, certification) VALUES ($1, $2)',
-            [handwerkerId, cert]
-          );
-        }
-      }
+if (certifications && certifications.length > 0) {
+  for (const cert of certifications) {
+    await query(
+      'INSERT INTO handwerker_certifications (handwerker_id, certification_name) VALUES ($1, $2)',
+      [handwerkerId, cert]
+    );
+  }
+}
       
       await query('COMMIT');
       
