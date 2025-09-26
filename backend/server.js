@@ -12065,6 +12065,55 @@ app.get('/api/admin/supplements', requireAdmin, async (req, res) => {
   }
 });
 
+// Alias für pending-handwerker (Frontend compatibility)
+app.get('/api/admin/pending-handwerker', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        h.id,
+        h.company_name,
+        h.company_id,
+        h.contact_person,
+        h.email,
+        h.phone,
+        h.created_at
+      FROM handwerker h
+      WHERE h.verified = false
+      ORDER BY h.created_at DESC
+    `);
+    
+    res.json(result.rows); // Direkt als Array, nicht wrapped
+  } catch (err) {
+    console.error('Failed to fetch pending handwerker:', err);
+    res.status(500).json({ error: 'Failed to fetch pending handwerker' });
+  }
+});
+
+// Verify Handwerker (Frontend compatibility)
+app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approved } = req.body;
+    
+    const result = await query(
+      `UPDATE handwerker 
+       SET verified = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [approved, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker not found' });
+    }
+    
+    res.json({ handwerker: result.rows[0] });
+  } catch (err) {
+    console.error('Failed to verify handwerker:', err);
+    res.status(500).json({ error: 'Failed to verify handwerker' });
+  }
+});
+
 // ===========================================================================
 // EXISTING ROUTES (from your original code)
 // ===========================================================================
