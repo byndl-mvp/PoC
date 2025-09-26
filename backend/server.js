@@ -20,6 +20,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const PDFDocument = require('pdfkit');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+const multer = require('multer');
 
 const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
