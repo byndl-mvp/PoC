@@ -16,6 +16,7 @@ export default function HandwerkerDashboardPage() {
   const [orders, setOrders] = useState([]);
   const [schedule, setSchedule] = useState([]); // eslint-disable-line no-unused-vars
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   
   // Modal states
   const [showOfferModal, setShowOfferModal] = useState(false);
