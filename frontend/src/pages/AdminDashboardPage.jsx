@@ -315,7 +315,7 @@ export default function AdminDashboardPage() {
     { id: 'lvs', label: 'LVs', icon: '📋' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
     { id: 'handwerker-verify', label: 'Verifizierungen', icon: '✅' },
-    { id: 'payments', label: 'Zahlungen', icon: '💳' },
+    { id: 'payments', label: 'Zahlungsverwaltung', icon: '💳' },
     { id: 'orders', label: 'Aufträge', icon: '📦' },
     { id: 'tenders', label: 'Ausschreibungen', icon: '📄' },
   ];
@@ -323,75 +323,117 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
-      <header className="bg-white/10 backdrop-blur-lg border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-8">
-              <Link to="/" className="text-2xl font-bold text-white">
-                byndl <span className="text-teal-400 text-sm">Admin</span>
-              </Link>
-              
-              {/* Desktop Navigation */}
-              <nav className="hidden lg:flex space-x-1">
-                {tabItems.slice(0, 6).map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                      activeTab === tab.id
-                        ? 'bg-teal-500 text-white'
-                        : 'text-white/70 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {pendingHandwerker.length > 0 && (
-                <button 
-                  onClick={() => setActiveTab('handwerker-verify')}
-                  className="relative p-2 text-white/70 hover:text-white"
-                >
-                  <span className="text-xl">🔔</span>
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {pendingHandwerker.length}
-                  </span>
-                </button>
-              )}
+<header className="bg-white/10 backdrop-blur-lg border-b border-white/20">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex justify-between items-center py-4">
+      <div className="flex items-center space-x-8">
+        <Link to="/" className="text-2xl font-bold text-white">
+          byndl <span className="text-teal-400 text-sm">Admin</span>
+        </Link>
+        
+        {/* Desktop Navigation - Zwei Zeilen */}
+        <nav className="hidden lg:block">
+          {/* Erste Zeile */}
+          <div className="flex space-x-1 mb-2">
+            {tabItems.slice(0, 5).map(tab => (
               <button
-                onClick={logout}
-                className="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg transition-colors"
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                  activeTab === tab.id
+                    ? 'bg-teal-500 text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
               >
-                Logout
+                <span className="text-sm">{tab.icon}</span>
+                <span className="text-sm">{tab.label}</span>
               </button>
-            </div>
+            ))}
           </div>
-        </div>
-      </header>
+          {/* Zweite Zeile */}
+          <div className="flex space-x-1">
+            {tabItems.slice(5).map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                  activeTab === tab.id
+                    ? 'bg-teal-500 text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <span className="text-sm">{tab.icon}</span>
+                <span className="text-sm">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
 
-      {/* Mobile Navigation */}
-      <div className="lg:hidden bg-white/5 border-b border-white/10 overflow-x-auto">
-        <div className="flex p-2 gap-2">
-          {tabItems.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${
-                activeTab === tab.id
-                  ? 'bg-teal-500 text-white'
-                  : 'text-white/70 bg-white/10'
-              }`}
-            >
-              <span>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Tablet Navigation - Drei Zeilen für mittlere Bildschirme */}
+        <nav className="hidden md:block lg:hidden">
+          <div className="flex flex-wrap gap-1">
+            {tabItems.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-2 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1 text-xs ${
+                  activeTab === tab.id
+                    ? 'bg-teal-500 text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
       </div>
+
+      <div className="flex items-center gap-4">
+        {pendingHandwerker.length > 0 && (
+          <button 
+            onClick={() => setActiveTab('handwerker-verify')}
+            className="relative p-2 text-white/70 hover:text-white"
+          >
+            <span className="text-xl">🔔</span>
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {pendingHandwerker.length}
+            </span>
+          </button>
+        )}
+        <button
+          onClick={logout}
+          className="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg transition-colors"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+{/* Mobile Navigation - Scrollbar mit allen Tabs */}
+<div className="md:hidden bg-white/5 border-b border-white/10">
+  <div className="overflow-x-auto">
+    <div className="flex p-2 gap-2 min-w-max">
+      {tabItems.map(tab => (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`px-3 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 text-sm ${
+            activeTab === tab.id
+              ? 'bg-teal-500 text-white'
+              : 'text-white/70 bg-white/10'
+          }`}
+        >
+          <span>{tab.icon}</span>
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  </div>
+</div>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
