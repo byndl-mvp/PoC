@@ -27,6 +27,10 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState([]);
   const [tenders, setTenders] = useState([]);
   const [pendingHandwerker, setPendingHandwerker] = useState([]);
+  const [rejectDialogs, setRejectDialogs] = useState({});
+  const [deleteDialogs, setDeleteDialogs] = useState({});
+  const [rejectReasons, setRejectReasons] = useState({});
+  const [deleteReasons, setDeleteReasons] = useState({});
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -243,25 +247,40 @@ export default function AdminDashboardPage() {
   }, [activeTab, filterStatus, token]);
 
   // Action Functions
-  const verifyHandwerker = async (id, approved) => {
-    try {
-      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/verify-handwerker/${id}`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify({ approved })
-      });
-      if (!res.ok) throw new Error('Verifizierung fehlgeschlagen');
-      
-      setMessage(approved ? '✅ Handwerker verifiziert!' : '❌ Handwerker abgelehnt');
-      await fetchPendingHandwerker();
-      setTimeout(() => setMessage(''), 3000);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+  // Ersetze die alte verifyHandwerker Funktion komplett mit:
+const verifyHandwerker = async (id, action, reason = '') => {
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/verify-handwerker/${id}`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}` 
+      },
+      body: JSON.stringify({ action, reason })
+    });
+    
+    if (!res.ok) throw new Error('Aktion fehlgeschlagen');
+    
+    const messages = {
+      approve: '✅ Handwerker erfolgreich verifiziert!',
+      reject: '⚠️ Handwerker zur Nachbesserung aufgefordert',
+      delete: '🗑️ Handwerker vollständig entfernt'
+    };
+    
+    setMessage(messages[action]);
+    
+    // Dialoge zurücksetzen
+    setRejectDialogs({});
+    setDeleteDialogs({});
+    setRejectReasons({});
+    setDeleteReasons({});
+    
+    await fetchPendingHandwerker();
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    setError(err.message);
+  }
+};
 
   const updatePrompt = async (promptId, content, name) => {
     try {
@@ -789,51 +808,129 @@ export default function AdminDashboardPage() {
 
             {/* Handwerker Verification Tab */}
             {activeTab === 'handwerker-verify' && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Handwerker-Verifizierungen</h2>
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-4">Handwerker-Verifizierungen</h2>
+    
+    {pendingHandwerker.length === 0 ? (
+      <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
+        <p className="text-white/50">Keine ausstehenden Verifizierungen</p>
+      </div>
+    ) : (
+      <div className="grid gap-4">
+        {pendingHandwerker.map((hw) => (
+          <div key={hw.id} className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <h3 className="font-semibold text-white text-lg">{hw.company_name}</h3>
+                <div className="mt-2 space-y-1">
+                  <p className="text-white/70 text-sm">ID: {hw.company_id || 'PENDING'}</p>
+                  <p className="text-white/70 text-sm">Kontakt: {hw.contact_person}</p>
+                  <p className="text-white/70 text-sm">E-Mail: {hw.email}</p>
+                  <p className="text-white/70 text-sm">Telefon: {hw.phone}</p>
+                  <p className="text-white/70 text-sm">
+                    Registriert: {new Date(hw.created_at).toLocaleDateString('de-DE')}
+                  </p>
+                  {hw.rejection_reason && (
+                    <div className="mt-2 p-2 bg-red-500/20 rounded">
+                      <p className="text-red-300 text-sm">
+                        <span className="font-semibold">Vorheriger Grund:</span> {hw.rejection_reason}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => verifyHandwerker(hw.id, 'approve')}
+                  className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+                >
+                  ✓ Genehmigen
+                </button>
                 
-                {pendingHandwerker.length === 0 ? (
-                  <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
-                    <p className="text-white/50">Keine ausstehenden Verifizierungen</p>
+                <button
+                  onClick={() => setRejectDialogs({...rejectDialogs, [hw.id]: true})}
+                  className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg"
+                >
+                  ⚠ Nachbesserung
+                </button>
+                
+                <button
+                  onClick={() => setDeleteDialogs({...deleteDialogs, [hw.id]: true})}
+                  className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                >
+                  ✗ Löschen
+                </button>
+              </div>
+            </div>
+            
+            {/* Ablehnungs-Dialog */}
+            {rejectDialogs[hw.id] && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
+                  <h3 className="text-xl font-bold text-white mb-4">Nachbesserung erforderlich</h3>
+                  <textarea
+                    value={rejectReasons[hw.id] || ''}
+                    onChange={(e) => setRejectReasons({...rejectReasons, [hw.id]: e.target.value})}
+                    placeholder="z.B. Gewerbeschein fehlt..."
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                    rows="4"
+                  />
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => verifyHandwerker(hw.id, 'reject', rejectReasons[hw.id])}
+                      disabled={!rejectReasons[hw.id]?.trim()}
+                      className="flex-1 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white rounded-lg"
+                    >
+                      Ablehnen
+                    </button>
+                    <button
+                      onClick={() => setRejectDialogs({...rejectDialogs, [hw.id]: false})}
+                      className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+                    >
+                      Abbrechen
+                    </button>
                   </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {pendingHandwerker.map((hw) => (
-                      <div key={hw.id} className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-white text-lg">{hw.company_name}</h3>
-                            <div className="mt-2 space-y-1">
-                              <p className="text-white/70 text-sm">ID: {hw.company_id}</p>
-                              <p className="text-white/70 text-sm">Kontakt: {hw.contact_person}</p>
-                              <p className="text-white/70 text-sm">E-Mail: {hw.email}</p>
-                              <p className="text-white/70 text-sm">Telefon: {hw.phone}</p>
-                              <p className="text-white/70 text-sm">
-                                Registriert: {new Date(hw.created_at).toLocaleDateString('de-DE')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <button
-                              onClick={() => verifyHandwerker(hw.id, true)}
-                              className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
-                            >
-                              ✓ Verifizieren
-                            </button>
-                            <button
-                              onClick={() => verifyHandwerker(hw.id, false)}
-                              className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
-                            >
-                              ✗ Ablehnen
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                </div>
               </div>
             )}
+            
+            {/* Lösch-Dialog */}
+            {deleteDialogs[hw.id] && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
+                  <h3 className="text-xl font-bold text-red-400 mb-4">⚠️ Handwerker löschen?</h3>
+                  <p className="text-white mb-4">{hw.company_name} wird vollständig entfernt.</p>
+                  <textarea
+                    value={deleteReasons[hw.id] || ''}
+                    onChange={(e) => setDeleteReasons({...deleteReasons, [hw.id]: e.target.value})}
+                    placeholder="Optional: Grund..."
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                    rows="3"
+                  />
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => verifyHandwerker(hw.id, 'delete', deleteReasons[hw.id])}
+                      className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                    >
+                      Löschen
+                    </button>
+                    <button
+                      onClick={() => setDeleteDialogs({...deleteDialogs, [hw.id]: false})}
+                      className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
             {/* Users Tab */}
             {activeTab === 'users' && (
