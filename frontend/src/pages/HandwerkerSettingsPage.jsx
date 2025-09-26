@@ -117,34 +117,49 @@ useEffect(() => {
   };
 
   const handleSave = async (section) => {
-    try {
-      setSaving(true); // Hinzufügen
-      setLoading(true);
-      setError('');
-      
-      const endpoint = `/api/handwerker/${handwerkerData.id || handwerkerData.companyId}/${section}`;
-      const res = await fetch(apiUrl(endpoint), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      if (res.ok) {
-        setMessage('Einstellungen gespeichert!');
-        setTimeout(() => setMessage(''), 3000);
-      } else {
-        throw new Error('Speichern fehlgeschlagen');
-      }
-    } catch (err) {
-      setError('Fehler beim Speichern');
-    } finally {
-      setSaving(false); // Hinzufügen
-      setLoading(false);
+  try {
+    setSaving(true);
+    setLoading(true);
+    setError('');
+    
+    // Map Frontend-Namen zu Backend-Endpoints
+    const endpointMap = {
+      'einsatzgebiet': 'einsatzgebiet',
+      'einzugsgebiet': 'einsatzgebiet',
+      'dokumente': 'documents',
+      'firmendaten': 'firmendaten',
+      'verfuegbarkeit': 'verfuegbarkeit',
+      'preise': 'preise',
+      'benachrichtigungen': 'benachrichtigungen',
+      'zahlungsdaten': 'zahlungsdaten',
+      'account': 'account'
+    };
+    
+    const endpointSection = endpointMap[section] || section;
+    const endpoint = `/api/handwerker/${handwerkerData.id || handwerkerData.companyId}/${endpointSection}`;
+    
+    const res = await fetch(apiUrl(endpoint), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    if (res.ok) {
+      setMessage('Einstellungen gespeichert!');
+      setTimeout(() => setMessage(''), 3000);
+    } else {
+      throw new Error('Speichern fehlgeschlagen');
     }
-  };
+  } catch (err) {
+    setError('Fehler beim Speichern');
+  } finally {
+    setSaving(false);
+    setLoading(false);
+  }
+};
 
   const uploadDocument = async (file) => {
   const formData = new FormData();
