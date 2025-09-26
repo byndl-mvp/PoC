@@ -124,6 +124,7 @@ export default function HandwerkerSettingsPage() {
   };
 
   const tabs = [
+    { id: 'profil', label: 'Mein Profil', icon: '👤' }, // NEU
     { id: 'firmendaten', label: 'Firmendaten', icon: '🏢' },
     { id: 'einsatzgebiet', label: 'Einsatzgebiet', icon: '📍' },
     { id: 'verfuegbarkeit', label: 'Verfügbarkeit', icon: '📅' },
@@ -283,6 +284,51 @@ export default function HandwerkerSettingsPage() {
             </div>
           )}
 
+          {/* Mein Profil Tab */}
+{activeTab === 'profil' && (
+  <div className="space-y-4">
+    <h2 className="text-2xl font-bold text-white mb-4">Mein Profil</h2>
+    
+    <div className="bg-white/5 rounded-lg p-6">
+      <div className="flex items-center gap-6 mb-6">
+        <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center">
+          <span className="text-3xl">👷</span>
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-white">{handwerkerData?.companyName}</h3>
+          <p className="text-gray-400">ID: {handwerkerData?.companyId}</p>
+          <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm ${
+            handwerkerData?.verificationStatus === 'verified' 
+              ? 'bg-green-500/20 text-green-300' 
+              : 'bg-yellow-500/20 text-yellow-300'
+          }`}>
+            {handwerkerData?.verificationStatus === 'verified' ? '✓ Verifiziert' : '⏳ In Prüfung'}
+          </span>
+        </div>
+      </div>
+      
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <p className="text-gray-400 text-sm">Registriert seit</p>
+          <p className="text-white">{new Date(handwerkerData?.createdAt || Date.now()).toLocaleDateString('de-DE')}</p>
+        </div>
+        <div>
+          <p className="text-gray-400 text-sm">Aktive Aufträge</p>
+          <p className="text-white">0</p>
+        </div>
+        <div>
+          <p className="text-gray-400 text-sm">Abgeschlossene Projekte</p>
+          <p className="text-white">0</p>
+        </div>
+        <div>
+          <p className="text-gray-400 text-sm">Bewertung</p>
+          <p className="text-white">⭐ Noch keine Bewertungen</p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+          
           {/* Einsatzgebiet Tab */}
           {activeTab === 'einsatzgebiet' && (
             <div className="space-y-4">
