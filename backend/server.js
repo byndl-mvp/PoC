@@ -12048,37 +12048,24 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/projects', requireAdmin, async (req, res) => {
   try {
-    const { status } = req.query;
-    
-    let statusFilter = '';
-    const params = [];
-    
-    if (status && status !== 'all') {
-      statusFilter = 'WHERE p.status = $1';
-      params.push(status);
-    }
-    
     const result = await query(`
       SELECT 
         p.id,
-        p.street,
-        p.house_number,
-        p.zip,
-        p.city,
         p.category,
+        p.sub_category,
+        p.description,
         p.budget,
-        p.status,
-        p.start_date,
+        p.timeframe,
         p.created_at,
+        p.metadata,  -- Enthält vermutlich die Adressdaten
         b.name as bauherr_name,
         COUNT(DISTINCT pt.trade_id) as trade_count
       FROM projects p
       LEFT JOIN bauherren b ON b.id = p.bauherr_id
       LEFT JOIN project_trades pt ON pt.project_id = p.id
-      ${statusFilter}
       GROUP BY p.id, b.name
       ORDER BY p.created_at DESC
-    `, params);
+    `);
     
     res.json({ projects: result.rows });
   } catch (err) {
