@@ -11930,7 +11930,7 @@ app.post('/api/admin/logout', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
-    // Get total users (both bauherren and handwerker)
+    // Get total users
     const userStats = await query(`
       SELECT 
         (SELECT COUNT(*) FROM bauherren) as bauherren_count,
@@ -11964,19 +11964,19 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     const verificationStats = await query(`
       SELECT COUNT(*) as verification_queue
       FROM handwerker
-      WHERE verified = false
+      WHERE verified = false OR verification_status = 'pending'
     `);
     
-    const totalUsers = (userStats.rows[0].bauherren_count || 0) + 
-                      (userStats.rows[0].handwerker_count || 0);
+    const totalUsers = parseInt(userStats.rows[0].bauherren_count || 0) + 
+                      parseInt(userStats.rows[0].handwerker_count || 0);
     
     res.json({
       totalUsers: totalUsers,
-      totalProjects: projectStats.rows[0].total_projects || 0,
-      totalRevenue: paymentStats.rows[0].total_revenue || 0,
-      activeOrders: orderStats.rows[0].active_orders || 0,
-      pendingPayments: paymentStats.rows[0].pending_payments || 0,
-      verificationQueue: verificationStats.rows[0].verification_queue || 0
+      totalProjects: parseInt(projectStats.rows[0].total_projects || 0),
+      totalRevenue: parseFloat(paymentStats.rows[0].total_revenue || 0),
+      activeOrders: parseInt(orderStats.rows[0].active_orders || 0),
+      pendingPayments: parseInt(paymentStats.rows[0].pending_payments || 0),
+      verificationQueue: parseInt(verificationStats.rows[0].verification_queue || 0)
     });
   } catch (err) {
     console.error('Failed to fetch stats:', err);
@@ -11990,7 +11990,7 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
-    // Get Bauherren
+    // Bauherren - hat sowohl zip als auch zip_code
     const bauherrenResult = await query(`
       SELECT 
         b.id,
@@ -11999,7 +11999,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
         b.phone,
         b.street,
         b.house_number,
-        b.zip,
+        b.zip,  -- Verwende zip (existiert in der Tabelle)
         b.city,
         b.created_at,
         COUNT(DISTINCT p.id) as project_count
@@ -12009,24 +12009,25 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
       ORDER BY b.created_at DESC
     `);
     
-    // Get Handwerker
+    // Handwerker - hat zip_code
     const handwerkerResult = await query(`
       SELECT 
         h.id,
         h.company_name,
+        h.company_id,
+        h.contact_person,
         h.email,
         h.phone,
         h.street,
         h.house_number,
-        h.zip,
+        h.zip_code,  -- Korrekt: zip_code
         h.city,
         h.verified,
-        h.rating,
+        h.verification_status,
         h.created_at,
-        STRING_AGG(t.name, ', ' ORDER BY t.name) as trades
+        STRING_AGG(ht.trade_name, ', ' ORDER BY ht.trade_name) as trades
       FROM handwerker h
       LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
-      LEFT JOIN trades t ON t.id = ht.trade_id
       GROUP BY h.id
       ORDER BY h.created_at DESC
     `);
@@ -12092,21 +12093,23 @@ app.get('/api/admin/projects', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/payments', requireAdmin, async (req, res) => {
   try {
+    // payments hat: id, project_id, amount, payment_type, status, stripe_payment_id, created_at
     const result = await query(`
       SELECT 
         p.id,
+        p.project_id,
         p.amount,
+        p.payment_type,
         p.status,
-        p.type,
-        p.date,
+        p.stripe_payment_id,
         p.created_at,
-        b.name as from_name,
-        h.company_name as to_name,
-        pr.id as project_id
+        pr.description as project_description,
+        pr.category as project_category,
+        b.name as bauherr_name,
+        b.email as bauherr_email
       FROM payments p
-      LEFT JOIN bauherren b ON b.id = p.bauherr_id
-      LEFT JOIN handwerker h ON h.id = p.handwerker_id
       LEFT JOIN projects pr ON pr.id = p.project_id
+      LEFT JOIN bauherren b ON b.id = pr.bauherr_id
       ORDER BY p.created_at DESC
     `);
     
@@ -12215,18 +12218,27 @@ app.put('/api/admin/verifications/:id', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
   try {
+    // orders hat: id, offer_id, project_id, handwerker_id, status, progress, is_bundle, created_at, trade_id
     const result = await query(`
       SELECT 
         o.id,
+        o.offer_id,
         o.project_id,
-        o.total,
+        o.handwerker_id,
         o.status,
+        o.progress,
+        o.is_bundle,
         o.created_at,
+        o.trade_id,
+        pr.description as project_description,
         h.company_name as handwerker_name,
-        t.name as trade_name
+        t.name as trade_name,
+        of.amount as total  -- Hole amount aus offers Tabelle
       FROM orders o
+      LEFT JOIN projects pr ON pr.id = o.project_id
       LEFT JOIN handwerker h ON h.id = o.handwerker_id
       LEFT JOIN trades t ON t.id = o.trade_id
+      LEFT JOIN offers of ON of.id = o.offer_id
       ORDER BY o.created_at DESC
     `);
     
@@ -12243,21 +12255,49 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/tenders', requireAdmin, async (req, res) => {
   try {
+    // Da tenders nicht in der Liste war, prüfen wir ob sie existiert
+    const tableCheck = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'tenders'
+      )
+    `);
+    
+    if (!tableCheck.rows[0].exists) {
+      // Erstelle tenders Tabelle
+      await query(`
+        CREATE TABLE tenders (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER REFERENCES projects(id),
+          trade_id INTEGER REFERENCES trades(id),
+          trade_code VARCHAR(10),
+          status VARCHAR(50) DEFAULT 'open',
+          deadline TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('Created tenders table');
+    }
+    
+    // Hole tenders mit offers count
     const result = await query(`
       SELECT 
-        te.id,
-        te.project_id,
-        te.status,
-        te.deadline,
-        te.created_at,
-        te.trade_code,
-        t.name as trade_name,
+        t.id,
+        t.project_id,
+        t.trade_id,
+        t.trade_code,
+        t.status,
+        t.deadline,
+        t.created_at,
+        pr.description as project_description,
+        tr.name as trade_name,
         COUNT(o.id) as offer_count
-      FROM tenders te
-      LEFT JOIN trades t ON t.code = te.trade_code
-      LEFT JOIN offers o ON o.tender_id = te.id
-      GROUP BY te.id, t.name, te.trade_code
-      ORDER BY te.created_at DESC
+      FROM tenders t
+      LEFT JOIN projects pr ON pr.id = t.project_id
+      LEFT JOIN trades tr ON tr.id = t.trade_id OR tr.code = t.trade_code
+      LEFT JOIN offers o ON o.tender_id = t.id
+      GROUP BY t.id, pr.description, tr.name
+      ORDER BY t.created_at DESC
     `);
     
     res.json({ tenders: result.rows });
@@ -12295,15 +12335,31 @@ app.get('/api/admin/supplements', requireAdmin, async (req, res) => {
 // Pending Handwerker abrufen
 app.get('/api/admin/pending-handwerker', requireAdmin, async (req, res) => {
   try {
-    const result = await query(
-      `SELECT h.*, 
-        array_agg(DISTINCT ht.trade_code) as trades
-       FROM handwerker h
-       LEFT JOIN handwerker_trades ht ON h.id = ht.handwerker_id
-       WHERE h.verification_status = 'pending'
-       GROUP BY h.id
-       ORDER BY h.created_at DESC`
-    );
+    // Nutze verification_status oder verified=false
+    const result = await query(`
+      SELECT 
+        h.id,
+        h.company_name,
+        h.company_id,
+        h.contact_person,
+        h.email,
+        h.phone,
+        h.street,
+        h.house_number,
+        h.zip_code,
+        h.city,
+        h.created_at,
+        h.verified,
+        h.verification_status,
+        array_agg(DISTINCT ht.trade_code) as trades,
+        array_agg(DISTINCT ht.trade_name) as trade_names
+      FROM handwerker h
+      LEFT JOIN handwerker_trades ht ON h.id = ht.handwerker_id
+      WHERE h.verified = false OR h.verification_status = 'pending'
+      GROUP BY h.id
+      ORDER BY h.created_at DESC
+    `);
+    
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching pending handwerker:', err);
@@ -12318,34 +12374,50 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
     const { approved, reason } = req.body;
     
     if (approved) {
-      // Generiere finale ID
-      const year = new Date().getFullYear();
-      const random = Math.floor(Math.random() * 9000) + 1000;
-      const finalId = `HW-${year}-${random}`;
+      // Check if company_id exists
+      const checkId = await query(
+        'SELECT company_id FROM handwerker WHERE id = $1',
+        [id]
+      );
       
+      let finalId = checkId.rows[0]?.company_id;
+      
+      // Generate new ID if needed
+      if (!finalId || finalId === 'PENDING') {
+        const year = new Date().getFullYear();
+        const random = Math.floor(Math.random() * 9000) + 1000;
+        finalId = `HW-${year}-${random}`;
+      }
+      
+      // Update both verified and verification_status
       await query(
         `UPDATE handwerker 
-         SET verification_status = 'verified',
+         SET verified = true,
+             verification_status = 'verified',
              company_id = $2,
              verified_at = NOW(),
-             verified = true
+             verified_by = 'admin'
          WHERE id = $1`,
         [id, finalId]
       );
       
-      // Optional: E-Mail senden
       console.log(`Handwerker ${id} verifiziert mit ID: ${finalId}`);
+      res.json({ success: true, message: 'Handwerker erfolgreich verifiziert' });
+      
     } else {
+      // Update rejection status
       await query(
         `UPDATE handwerker 
-         SET verification_status = 'rejected',
+         SET verified = false,
+             verification_status = 'rejected',
              rejection_reason = $2
          WHERE id = $1`,
         [id, reason || 'Abgelehnt durch Admin']
       );
+      
+      res.json({ success: true, message: 'Handwerker abgelehnt' });
     }
     
-    res.json({ success: true });
   } catch (err) {
     console.error('Error verifying handwerker:', err);
     res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
