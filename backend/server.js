@@ -12556,6 +12556,167 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Einzelnen Handwerker abrufen
+app.get('/api/admin/handwerker/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Hauptdaten
+    const handwerkerResult = await query(
+      `SELECT * FROM handwerker WHERE id = $1`,
+      [id]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    // Gewerke
+    const tradesResult = await query(
+      `SELECT * FROM handwerker_trades WHERE handwerker_id = $1`,
+      [id]
+    );
+    
+    // Dokumente
+    const documentsResult = await query(
+      `SELECT * FROM handwerker_documents WHERE handwerker_id = $1`,
+      [id]
+    );
+    
+    // Zertifikate
+    const certificationsResult = await query(
+      `SELECT * FROM handwerker_certifications WHERE handwerker_id = $1`,
+      [id]
+    );
+    
+    // Versicherungen
+    const insurancesResult = await query(
+      `SELECT * FROM handwerker_insurances WHERE handwerker_id = $1`,
+      [id]
+    );
+    
+    res.json({
+      handwerker: handwerkerResult.rows[0],
+      trades: tradesResult.rows,
+      documents: documentsResult.rows,
+      certifications: certificationsResult.rows,
+      insurances: insurancesResult.rows
+    });
+  } catch (err) {
+    console.error('Failed to fetch handwerker details:', err);
+    res.status(500).json({ error: 'Fehler beim Laden der Details' });
+  }
+});
+
+// Handwerker aktualisieren
+app.put('/api/admin/handwerker/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    // Dynamisch UPDATE Query bauen
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (key !== 'id' && key !== 'created_at') {
+        fields.push(`${key} = $${paramCount}`);
+        values.push(value);
+        paramCount++;
+      }
+    }
+    
+    values.push(id);
+    
+    const updateQuery = `
+      UPDATE handwerker 
+      SET ${fields.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    `;
+    
+    const result = await query(updateQuery, values);
+    
+    res.json({ handwerker: result.rows[0] });
+  } catch (err) {
+    console.error('Failed to update handwerker:', err);
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Einzelnen Bauherr abrufen
+app.get('/api/admin/bauherren/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const bauherrResult = await query(
+      `SELECT b.*, 
+        COUNT(DISTINCT p.id) as project_count,
+        SUM(p.budget) as total_budget
+       FROM bauherren b
+       LEFT JOIN projects p ON p.bauherr_id = b.id
+       WHERE b.id = $1
+       GROUP BY b.id`,
+      [id]
+    );
+    
+    if (bauherrResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    }
+    
+    // Projekte des Bauherrn
+    const projectsResult = await query(
+      `SELECT * FROM projects WHERE bauherr_id = $1 ORDER BY created_at DESC`,
+      [id]
+    );
+    
+    res.json({
+      bauherr: bauherrResult.rows[0],
+      projects: projectsResult.rows
+    });
+  } catch (err) {
+    console.error('Failed to fetch bauherr details:', err);
+    res.status(500).json({ error: 'Fehler beim Laden der Details' });
+  }
+});
+
+// Bauherr aktualisieren
+app.put('/api/admin/bauherren/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (key !== 'id' && key !== 'created_at') {
+        fields.push(`${key} = $${paramCount}`);
+        values.push(value);
+        paramCount++;
+      }
+    }
+    
+    values.push(id);
+    
+    const updateQuery = `
+      UPDATE bauherren 
+      SET ${fields.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    `;
+    
+    const result = await query(updateQuery, values);
+    
+    res.json({ bauherr: result.rows[0] });
+  } catch (err) {
+    console.error('Failed to update bauherr:', err);
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
 // ===========================================================================
 // EXISTING ROUTES (from your original code)
 // ===========================================================================
