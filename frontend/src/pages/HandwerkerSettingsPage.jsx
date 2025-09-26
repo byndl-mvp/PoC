@@ -19,6 +19,12 @@ export default function HandwerkerSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  // HIER NEU:
+  const [documents, setDocuments] = useState({
+    gewerbeschein: null,
+    handwerkskarte: null,
+    others: []
+  });
   
   const [handwerkerData, setHandwerkerData] = useState(null);
   const [formData, setFormData] = useState({
@@ -74,6 +80,7 @@ export default function HandwerkerSettingsPage() {
     const data = JSON.parse(storedData);
     setHandwerkerData(data);
     loadSettings(data.id || data.companyId);
+    loadDocuments();
   }, [navigate]);
 
   const loadSettings = async (handwerkerId) => {
@@ -127,6 +134,86 @@ export default function HandwerkerSettingsPage() {
     }
   };
 
+  const uploadDocument = async (file) => {
+  const formData = new FormData();
+  formData.append('document', file);
+  
+  // Dokumententyp bestimmen
+  let docType = 'other';
+  if (file.name.toLowerCase().includes('gewerbe')) {
+    docType = 'gewerbeschein';
+  } else if (file.name.toLowerCase().includes('handwerk')) {
+    docType = 'handwerkskarte';
+  }
+  
+  formData.append('document_type', docType);
+  
+  try {
+    const res = await fetch('/api/handwerker/documents/upload', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (res.ok) {
+      setMessage('Dokument erfolgreich hochgeladen');
+      loadDocuments(); // Dokumente neu laden
+    } else {
+      setError('Upload fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Upload-Fehler: ' + err.message);
+  }
+};
+
+const downloadDocument = async (docId) => {
+  try {
+    const res = await fetch(`/api/handwerker/documents/${docId}`);
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dokument_${docId}.pdf`;
+      a.click();
+    }
+  } catch (err) {
+    setError('Download fehlgeschlagen');
+  }
+};
+
+const deleteDocument = async (docId, docType) => {
+  if (!window.confirm('Dokument wirklich löschen?')) return;
+  
+  try {
+    const res = await fetch(`/api/handwerker/documents/${docId}`, {
+      method: 'DELETE'
+    });
+    
+    if (res.ok) {
+      setMessage('Dokument gelöscht');
+      loadDocuments();
+    }
+  } catch (err) {
+    setError('Löschen fehlgeschlagen');
+  }
+};
+
+const loadDocuments = async () => {
+  try {
+    const res = await fetch('/api/handwerker/documents');
+    if (res.ok) {
+      const data = await res.json();
+      setDocuments({
+        gewerbeschein: data.find(d => d.document_type === 'gewerbeschein'),
+        handwerkskarte: data.find(d => d.document_type === 'handwerkskarte'),
+        others: data.filter(d => !['gewerbeschein', 'handwerkskarte'].includes(d.document_type))
+      });
+    }
+  } catch (err) {
+    console.error('Fehler beim Laden der Dokumente:', err);
+  }
+};
+  
   const handleChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -818,50 +905,154 @@ export default function HandwerkerSettingsPage() {
             </div>
           )}
 
-          {/* Dokumente Tab */}
-          {activeTab === 'dokumente' && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white mb-4">Dokumente verwalten</h2>
-              
-              <div className="space-y-4">
-                <div className="bg-white/5 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-white font-medium">Meisterbrief</p>
-                      <p className="text-gray-400 text-sm">Hochgeladen am: 15.03.2024</p>
-                    </div>
-                    <button className="text-teal-400 hover:text-teal-300">
-                      Aktualisieren
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="bg-white/5 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-white font-medium">Betriebshaftpflichtversicherung</p>
-                      <p className="text-gray-400 text-sm">Gültig bis: 31.12.2025</p>
-                    </div>
-                    <button className="text-teal-400 hover:text-teal-300">
-                      Aktualisieren
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="bg-white/5 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-white font-medium">AGBs</p>
-                      <p className="text-gray-400 text-sm">Version 2.1</p>
-                    </div>
-                    <button className="text-teal-400 hover:text-teal-300">
-                      Hochladen
-                    </button>
-                  </div>
+          {activeTab === 'documents' && (
+  <div className="space-y-6">
+    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+      <h2 className="text-2xl font-bold text-white mb-6">Dokumente & Nachweise</h2>
+      
+      {/* Upload Bereich */}
+      <div className="mb-8">
+        <div className="border-2 border-dashed border-white/30 rounded-lg p-8 text-center">
+          <input
+            type="file"
+            id="doc-upload"
+            multiple
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={async (e) => {
+              const files = Array.from(e.target.files);
+              for (const file of files) {
+                await uploadDocument(file);
+              }
+            }}
+            className="hidden"
+          />
+          <label htmlFor="doc-upload" className="cursor-pointer">
+            <div className="text-white/60 hover:text-white transition-colors">
+              <p className="text-4xl mb-4">📁</p>
+              <p className="text-lg font-medium">Dokumente hochladen</p>
+              <p className="text-sm mt-2">PDF, JPG, PNG (max. 5MB)</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* Dokumenten-Kategorien */}
+      <div className="space-y-6">
+        {/* Gewerbeschein */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-3">Gewerbeschein</h3>
+          {documents.gewerbeschein ? (
+            <div className="bg-white/5 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📄</span>
+                <div>
+                  <p className="text-white">{documents.gewerbeschein.file_name}</p>
+                  <p className="text-white/60 text-sm">
+                    Hochgeladen: {new Date(documents.gewerbeschein.uploaded_at).toLocaleDateString('de-DE')}
+                  </p>
                 </div>
               </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => downloadDocument(documents.gewerbeschein.id)}
+                  className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/30"
+                >
+                  Ansehen
+                </button>
+                <button
+                  onClick={() => deleteDocument(documents.gewerbeschein.id, 'gewerbeschein')}
+                  className="px-3 py-1 bg-red-500/20 text-red-300 rounded hover:bg-red-500/30"
+                >
+                  Löschen
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+              <p className="text-yellow-300">⚠️ Noch nicht hochgeladen - Erforderlich für Verifizierung</p>
             </div>
           )}
+        </div>
+
+        {/* Handwerkskarte */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-3">Handwerkskarte</h3>
+          {documents.handwerkskarte ? (
+            <div className="bg-white/5 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🎫</span>
+                <div>
+                  <p className="text-white">{documents.handwerkskarte.file_name}</p>
+                  <p className="text-white/60 text-sm">
+                    Hochgeladen: {new Date(documents.handwerkskarte.uploaded_at).toLocaleDateString('de-DE')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => downloadDocument(documents.handwerkskarte.id)}
+                  className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/30"
+                >
+                  Ansehen
+                </button>
+                <button
+                  onClick={() => deleteDocument(documents.handwerkskarte.id, 'handwerkskarte')}
+                  className="px-3 py-1 bg-red-500/20 text-red-300 rounded hover:bg-red-500/30"
+                >
+                  Löschen
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white/5 rounded-lg p-4">
+              <p className="text-white/60">Optional - Erhöht Vertrauenswürdigkeit</p>
+            </div>
+          )}
+        </div>
+
+        {/* Weitere Dokumente */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-3">Weitere Dokumente</h3>
+          {documents.others && documents.others.length > 0 ? (
+            <div className="space-y-2">
+              {documents.others.map(doc => (
+                <div key={doc.id} className="bg-white/5 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📎</span>
+                    <div>
+                      <p className="text-white">{doc.file_name}</p>
+                      <p className="text-white/60 text-sm">
+                        {doc.document_type} • {new Date(doc.uploaded_at).toLocaleDateString('de-DE')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => downloadDocument(doc.id)}
+                      className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/30"
+                    >
+                      Ansehen
+                    </button>
+                    <button
+                      onClick={() => deleteDocument(doc.id, 'other')}
+                      className="px-3 py-1 bg-red-500/20 text-red-300 rounded hover:bg-red-500/30"
+                    >
+                      Löschen
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white/5 rounded-lg p-4">
+              <p className="text-white/60">Keine weiteren Dokumente hochgeladen</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         </div>
       </div>
