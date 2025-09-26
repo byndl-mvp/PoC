@@ -141,7 +141,6 @@ export default function HandwerkerSettingsPage() {
   const formData = new FormData();
   formData.append('document', file);
   
-  // Dokumententyp bestimmen
   let docType = 'other';
   if (file.name.toLowerCase().includes('gewerbe')) {
     docType = 'gewerbeschein';
@@ -152,14 +151,17 @@ export default function HandwerkerSettingsPage() {
   formData.append('document_type', docType);
   
   try {
-    const res = await fetch('/api/handwerker/documents/upload', {
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/documents/upload`), {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      },
       body: formData
     });
     
     if (res.ok) {
       setMessage('Dokument erfolgreich hochgeladen');
-      loadDocuments(); // Dokumente neu laden
+      loadDocuments();
     } else {
       setError('Upload fehlgeschlagen');
     }
@@ -170,7 +172,11 @@ export default function HandwerkerSettingsPage() {
 
 const downloadDocument = async (docId) => {
   try {
-    const res = await fetch(`/api/handwerker/documents/${docId}`);
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/documents/${docId}`), {
+      headers: {
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      }
+    });
     if (res.ok) {
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -188,8 +194,11 @@ const deleteDocument = async (docId, docType) => {
   if (!window.confirm('Dokument wirklich löschen?')) return;
   
   try {
-    const res = await fetch(`/api/handwerker/documents/${docId}`, {
-      method: 'DELETE'
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/documents/${docId}`), {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      }
     });
     
     if (res.ok) {
@@ -203,7 +212,13 @@ const deleteDocument = async (docId, docType) => {
 
 const loadDocuments = async () => {
   try {
-    const res = await fetch('/api/handwerker/documents');
+    if (!handwerkerData) return;
+    
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/documents`), {
+      headers: {
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      }
+    });
     if (res.ok) {
       const data = await res.json();
       setDocuments({
