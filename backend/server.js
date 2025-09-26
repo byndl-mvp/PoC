@@ -12358,13 +12358,14 @@ app.get('/api/admin/pending-handwerker', requireAdmin, async (req, res) => {
   }
 });
 
-// Handwerker verifizieren mit E-Mail-Benachrichtigung
+// Handwerker verifizieren, ablehnen oder löschen
+// Diese Route ersetzt die komplette app.post('/api/admin/verify-handwerker/:id' Route in server.js
 app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { approved, reason } = req.body;
+    const { action, reason } = req.body; // action: 'approve', 'reject', 'delete'
     
-    // Hole Handwerker-Details für E-Mail
+    // Hole Handwerker-Details
     const handwerkerResult = await query(
       `SELECT company_name, contact_person, email, company_id 
        FROM handwerker 
@@ -12378,167 +12379,180 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
     
     const handwerker = handwerkerResult.rows[0];
     
-    if (approved) {
-      // Generiere finale ID falls nötig
-      let finalId = handwerker.company_id;
-      
-      if (!finalId || finalId === 'PENDING') {
-        const year = new Date().getFullYear();
-        const random = Math.floor(Math.random() * 9000) + 1000;
-        finalId = `HW-${year}-${random}`;
-      }
-      
-      // Update Verifizierungsstatus
-      await query(
-        `UPDATE handwerker 
-         SET verified = true,
-             verification_status = 'verified',
-             company_id = $2,
-             verified_at = NOW()
-         WHERE id = $1`,
-        [id, finalId]
-      );
-      
-      // Sende Bestätigungs-E-Mail
-      const approvalEmailOptions = {
-        to: handwerker.email,
-        subject: 'Ihre Registrierung bei byndl wurde bestätigt',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #14b8a6;">Willkommen bei byndl!</h2>
-            <p>Sehr geehrte/r ${handwerker.contact_person},</p>
-            
-            <p>Ihre Registrierung für <strong>${handwerker.company_name}</strong> wurde erfolgreich verifiziert.</p>
-            
-            <div style="background-color: #f0fdfa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Ihre Handwerker-ID:</strong> ${finalId}</p>
-              <p>Bitte bewahren Sie diese ID für Ihre Unterlagen auf.</p>
-            </div>
-            
-            <h3>Nächste Schritte:</h3>
-            <ul>
-              <li>Loggen Sie sich in Ihr Dashboard ein</li>
-              <li>Vervollständigen Sie Ihr Firmenprofil</li>
-              <li>Laden Sie Ihre Zertifikate und Versicherungsnachweise hoch</li>
-              <li>Aktivieren Sie die gewünschten Gewerke</li>
-            </ul>
-            
-            <p>Sie können nun auf Ausschreibungen zugreifen und Angebote abgeben.</p>
-            
-            <div style="margin-top: 30px;">
-              <a href="https://byndl.de/handwerker/login" 
-                 style="background-color: #14b8a6; color: white; padding: 12px 24px; 
-                        text-decoration: none; border-radius: 6px; display: inline-block;">
-                Zum Dashboard
-              </a>
-            </div>
-            
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e5e5;">
-            <p style="color: #666; font-size: 14px;">
-              Bei Fragen wenden Sie sich an: support@byndl.de
-            </p>
-          </div>
-        `
-      };
-      
-      try {
-        await transporter.sendMail(approvalEmailOptions);
-        console.log(`Bestätigungs-E-Mail gesendet an: ${handwerker.email}`);
-      } catch (emailError) {
-        console.error('E-Mail-Versand fehlgeschlagen:', emailError);
-        // Verifizierung trotzdem erfolgreich
-      }
-      
-      console.log(`Handwerker ${id} verifiziert mit ID: ${finalId}`);
-      res.json({ 
-        success: true, 
-        message: 'Handwerker erfolgreich verifiziert und benachrichtigt' 
-      });
-      
-    } else {
-      // Bei Ablehnung: Markieren als abgelehnt
-      await query(
-        `UPDATE handwerker 
-         SET verified = false,
-             verification_status = 'rejected',
-             rejection_reason = $2
-         WHERE id = $1`,
-        [id, reason || 'Nicht den Anforderungen entsprechend']
-      );
-      
-      // Sende Ablehnungs-E-Mail
-      const rejectionEmailOptions = {
-        to: handwerker.email,
-        subject: 'Ihre Registrierung bei byndl wurde abgelehnt',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #dc2626;">Registrierung abgelehnt</h2>
-            <p>Sehr geehrte/r ${handwerker.contact_person},</p>
-            
-            <p>Leider müssen wir Ihnen mitteilen, dass Ihre Registrierung für 
-               <strong>${handwerker.company_name}</strong> nicht genehmigt werden konnte.</p>
-            
-            ${reason ? `
-              <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>Grund der Ablehnung:</strong></p>
-                <p>${reason}</p>
-              </div>
-            ` : ''}
-            
-            <h3>Was können Sie tun?</h3>
-            <ul>
-              <li>Prüfen Sie die Vollständigkeit Ihrer Unterlagen</li>
-              <li>Stellen Sie sicher, dass alle erforderlichen Nachweise vorliegen:
-                <ul>
-                  <li>Gültiger Gewerbeschein</li>
-                  <li>Handwerkskarte (falls zutreffend)</li>
-                  <li>Versicherungsnachweise</li>
-                  <li>Steuerliche Unbedenklichkeitsbescheinigung</li>
-                </ul>
-              </li>
-              <li>Sie können sich nach Behebung der Mängel erneut registrieren</li>
-            </ul>
-            
-            <p>Bei Fragen zu Ihrer Ablehnung kontaktieren Sie uns unter:</p>
-            <p><a href="mailto:verifizierung@byndl.de">verifizierung@byndl.de</a></p>
-            
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e5e5;">
-            <p style="color: #666; font-size: 14px;">
-              Mit freundlichen Grüßen<br>
-              Ihr byndl-Team
-            </p>
-          </div>
-        `
-      };
-      
-      try {
-        await transporter.sendMail(rejectionEmailOptions);
-        console.log(`Ablehnungs-E-Mail gesendet an: ${handwerker.email}`);
-      } catch (emailError) {
-        console.error('E-Mail-Versand fehlgeschlagen:', emailError);
-      }
-      
-      // Optional: Nach 30 Tagen automatisch löschen
-      await query(
-        `UPDATE handwerker 
-         SET deletion_scheduled = NOW() + INTERVAL '30 days'
-         WHERE id = $1`,
-        [id]
-      ).catch(err => {
-        // Falls Spalte nicht existiert, ignorieren
-        console.log('Deletion scheduling skipped');
-      });
-      
-      console.log(`Handwerker ${id} abgelehnt. Grund: ${reason || 'Kein Grund angegeben'}`);
-      res.json({ 
-        success: true, 
-        message: 'Handwerker abgelehnt und benachrichtigt' 
-      });
+    switch(action) {
+      case 'approve':
+        // === GENEHMIGUNG ===
+        let finalId = handwerker.company_id;
+        
+        if (!finalId || finalId === 'PENDING') {
+          const year = new Date().getFullYear();
+          const random = Math.floor(Math.random() * 9000) + 1000;
+          finalId = `HW-${year}-${random}`;
+        }
+        
+        await query(
+          `UPDATE handwerker 
+           SET verified = true,
+               verification_status = 'verified',
+               company_id = $2,
+               verified_at = NOW(),
+               rejection_reason = NULL
+           WHERE id = $1`,
+          [id, finalId]
+        );
+        
+        // Bestätigungs-E-Mail
+        if (transporter) {
+          try {
+            await transporter.sendMail({
+              to: handwerker.email,
+              subject: 'Ihre Registrierung bei byndl wurde bestätigt',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                  <h2 style="color: #14b8a6;">Willkommen bei byndl!</h2>
+                  <p>Sehr geehrte/r ${handwerker.contact_person},</p>
+                  <p>Ihre Registrierung für <strong>${handwerker.company_name}</strong> wurde erfolgreich verifiziert.</p>
+                  <p><strong>Ihre Handwerker-ID:</strong> ${finalId}</p>
+                  <p>Sie können sich nun in Ihr Dashboard einloggen und auf Ausschreibungen zugreifen.</p>
+                  <a href="https://byndl.de/handwerker/login" style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #14b8a6; color: white; text-decoration: none; border-radius: 6px;">Zum Dashboard</a>
+                </div>
+              `
+            });
+            console.log(`Bestätigungs-E-Mail gesendet an: ${handwerker.email}`);
+          } catch (emailError) {
+            console.log('E-Mail-Versand fehlgeschlagen:', emailError.message);
+          }
+        }
+        
+        console.log(`Handwerker ${id} (${handwerker.company_name}) genehmigt mit ID: ${finalId}`);
+        res.json({ 
+          success: true, 
+          message: 'Handwerker erfolgreich verifiziert',
+          handwerkerId: finalId
+        });
+        break;
+        
+      case 'reject':
+        // === ABLEHNUNG MIT BEGRÜNDUNG (NICHT LÖSCHEN) ===
+        if (!reason || reason.trim() === '') {
+          return res.status(400).json({ error: 'Begründung für Ablehnung erforderlich' });
+        }
+        
+        await query(
+          `UPDATE handwerker 
+           SET verified = false,
+               verification_status = 'rejected',
+               rejection_reason = $2
+           WHERE id = $1`,
+          [id, reason]
+        );
+        
+        // Ablehnungs-E-Mail mit Begründung
+        if (transporter) {
+          try {
+            await transporter.sendMail({
+              to: handwerker.email,
+              subject: 'Ihre Registrierung bei byndl - Nachbesserung erforderlich',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                  <h2 style="color: #dc2626;">Nachbesserung erforderlich</h2>
+                  <p>Sehr geehrte/r ${handwerker.contact_person},</p>
+                  <p>Ihre Registrierung für <strong>${handwerker.company_name}</strong> konnte noch nicht genehmigt werden.</p>
+                  
+                  <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Grund:</strong></p>
+                    <p>${reason}</p>
+                  </div>
+                  
+                  <h3>Was können Sie tun?</h3>
+                  <p>Bitte beheben Sie die genannten Punkte und ergänzen Sie Ihre Unterlagen entsprechend. 
+                     Sie können die fehlenden Dokumente in Ihrem Dashboard hochladen.</p>
+                  
+                  <a href="https://byndl.de/handwerker/login" style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #14b8a6; color: white; text-decoration: none; border-radius: 6px;">Zum Dashboard</a>
+                  
+                  <p style="margin-top: 30px; color: #666;">Bei Fragen wenden Sie sich an: verifizierung@byndl.de</p>
+                </div>
+              `
+            });
+            console.log(`Ablehnungs-E-Mail gesendet an: ${handwerker.email}`);
+          } catch (emailError) {
+            console.log('E-Mail-Versand fehlgeschlagen:', emailError.message);
+          }
+        }
+        
+        console.log(`Handwerker ${id} (${handwerker.company_name}) abgelehnt. Grund: ${reason}`);
+        res.json({ 
+          success: true, 
+          message: 'Handwerker wurde zur Nachbesserung aufgefordert',
+          reason: reason
+        });
+        break;
+        
+      case 'delete':
+        // === VOLLSTÄNDIGE LÖSCHUNG (NUR BEI VÖLLIG UNGEEIGNET) ===
+        console.log(`LÖSCHE Handwerker ${id} (${handwerker.company_name}) vollständig...`);
+        
+        // Lösche alle abhängigen Einträge
+        await query('DELETE FROM handwerker_trades WHERE handwerker_id = $1', [id])
+          .catch(() => {});
+        await query('DELETE FROM handwerker_documents WHERE handwerker_id = $1', [id])
+          .catch(() => {});
+        await query('DELETE FROM handwerker_certifications WHERE handwerker_id = $1', [id])
+          .catch(() => {});
+        await query('DELETE FROM handwerker_insurances WHERE handwerker_id = $1', [id])
+          .catch(() => {});
+        await query('DELETE FROM offers WHERE handwerker_id = $1', [id])
+          .catch(() => {});
+        await query('DELETE FROM orders WHERE handwerker_id = $1', [id])
+          .catch(() => {});
+        
+        // Lösche den Handwerker selbst
+        await query('DELETE FROM handwerker WHERE id = $1', [id]);
+        
+        // Lösch-E-Mail
+        if (transporter) {
+          try {
+            await transporter.sendMail({
+              to: handwerker.email,
+              subject: 'Ihre Registrierung bei byndl wurde abgelehnt',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                  <h2 style="color: #dc2626;">Registrierung abgelehnt</h2>
+                  <p>Sehr geehrte/r ${handwerker.contact_person},</p>
+                  <p>Ihre Registrierung für <strong>${handwerker.company_name}</strong> wurde abgelehnt.</p>
+                  ${reason ? `
+                    <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                      <p><strong>Grund:</strong> ${reason}</p>
+                    </div>
+                  ` : ''}
+                  <p>Ihre Daten wurden aus unserem System entfernt.</p>
+                  <p style="margin-top: 30px; color: #666;">Bei Fragen wenden Sie sich an: support@byndl.de</p>
+                </div>
+              `
+            });
+          } catch (emailError) {
+            console.log('E-Mail-Versand fehlgeschlagen:', emailError.message);
+          }
+        }
+        
+        console.log(`✓ Handwerker ${handwerker.company_name} vollständig gelöscht`);
+        res.json({ 
+          success: true, 
+          message: 'Handwerker vollständig aus dem System entfernt',
+          deletedCompany: handwerker.company_name
+        });
+        break;
+        
+      default:
+        return res.status(400).json({ error: 'Ungültige Aktion. Verwende: approve, reject oder delete' });
     }
     
   } catch (err) {
-    console.error('Error verifying handwerker:', err);
-    res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
+    console.error('Fehler bei Handwerker-Verifizierung:', err);
+    res.status(500).json({ 
+      error: 'Verifizierung fehlgeschlagen',
+      details: err.message 
+    });
   }
 });
 
