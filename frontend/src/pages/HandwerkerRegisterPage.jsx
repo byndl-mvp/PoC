@@ -295,7 +295,7 @@ export default function HandwerkerRegisterPage() {
 
         {/* Progress Steps */}
         <div className="flex justify-between items-center mb-8 max-w-md mx-auto">
-          {[1, 2, 3, 4].map((s) => (
+          {[1, 2, 3, 4, 5].map((s) => (
             <div key={s} className="flex items-center">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                 s < step ? 'bg-teal-600 text-white' :
