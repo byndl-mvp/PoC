@@ -70,7 +70,8 @@ export default function HandwerkerRegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
+  const [uploadedDocuments, setUploadedDocuments] = useState({}); // NEU
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -174,6 +175,38 @@ export default function HandwerkerRegisterPage() {
     return `HW-${year}-${random}`;
   };
 
+  const handleFileUpload = async (e, documentType) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Datei ist zu groß (max. 5MB)');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('document', file);
+  formData.append('documentType', documentType);
+  formData.append('handwerkerId', 'temp'); // Temporär, wird nach Registrierung aktualisiert
+  
+  try {
+    const res = await fetch(apiUrl('/api/handwerker/upload-document'), {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (res.ok) {
+      setUploadedDocuments(prev => ({
+        ...prev,
+        [documentType]: file.name
+      }));
+      alert(`${documentType} erfolgreich hochgeladen`);
+    }
+  } catch (err) {
+    alert('Upload fehlgeschlagen');
+  }
+};
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -642,6 +675,49 @@ export default function HandwerkerRegisterPage() {
               </div>
             )}
 
+// In Step 5
+{step === 5 && (
+  <div className="space-y-6">
+    <h3 className="text-xl font-semibold text-white mb-4">
+      Schritt 5: Nachweise hochladen
+    </h3>
+    
+    <div className="space-y-4">
+      <div className="bg-white/5 rounded-lg p-4">
+        <label className="block text-white font-medium mb-2">
+          Meisterbrief / Gesellenbrief *
+        </label>
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => handleFileUpload(e, 'meisterbrief')}
+          className="w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-500 file:text-white hover:file:bg-teal-600"
+          required
+        />
+        {uploadedDocuments.meisterbrief && (
+          <p className="text-green-400 text-sm mt-2">✓ {uploadedDocuments.meisterbrief}</p>
+        )}
+      </div>
+      
+      <div className="bg-white/5 rounded-lg p-4">
+        <label className="block text-white font-medium mb-2">
+          Betriebshaftpflichtversicherung *
+        </label>
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => handleFileUpload(e, 'versicherung')}
+          className="w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-500 file:text-white hover:file:bg-teal-600"
+          required
+        />
+        {uploadedDocuments.versicherung && (
+          <p className="text-green-400 text-sm mt-2">✓ {uploadedDocuments.versicherung}</p>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+            
             {/* Error Message */}
             {error && (
               <div className="mt-6 bg-red-500/20 border border-red-500/50 rounded-lg p-4">
