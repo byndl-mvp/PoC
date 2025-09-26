@@ -25,6 +25,22 @@ const multer = require('multer');
 const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
 
+// ===========================================================================
+// FILE UPLOAD CONFIGURATION
+// ===========================================================================
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Ungültiger Dateityp'));
+    }
+  }
+});
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
