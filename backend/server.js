@@ -11896,13 +11896,10 @@ app.post('/api/handwerker/documents/upload', upload.single('document'), async (r
   }
 });
 
-// Dokumente abrufen
-app.get('/api/handwerker/documents', async (req, res) => {
+// Dokumente abrufen - KORRIGIERT
+app.get('/api/handwerker/:id/documents', async (req, res) => {
   try {
-    const handwerkerId = req.session?.handwerkerId;
-    if (!handwerkerId) {
-      return res.status(401).json({ error: 'Nicht authentifiziert' });
-    }
+    const handwerkerId = req.params.id; // :id aus der URL
     
     const result = await query(
       `SELECT id, document_type, file_name, uploaded_at
@@ -11919,17 +11916,42 @@ app.get('/api/handwerker/documents', async (req, res) => {
   }
 });
 
-// Dokument herunterladen
-app.get('/api/handwerker/documents/:id', async (req, res) => {
+// Dokument hochladen - KORRIGIERT
+app.post('/api/handwerker/:id/documents/upload', upload.single('document'), async (req, res) => {
   try {
-    const handwerkerId = req.session?.handwerkerId;
-    const { id } = req.params;
+    const handwerkerId = req.params.id; // :id aus der URL
+    const { document_type } = req.body;
+    const file = req.file;
+    
+    if (!file) {
+      return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+    }
+    
+    const result = await query(
+      `INSERT INTO handwerker_documents 
+       (handwerker_id, document_type, file_name, file_data, uploaded_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       RETURNING id, document_type, file_name, uploaded_at`,
+      [handwerkerId, document_type, file.originalname, file.buffer]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload fehlgeschlagen' });
+  }
+});
+
+// Dokument herunterladen - KORRIGIERT
+app.get('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) => {
+  try {
+    const { handwerkerId, docId } = req.params;
     
     const result = await query(
       `SELECT file_name, file_data
        FROM handwerker_documents
        WHERE id = $1 AND handwerker_id = $2`,
-      [id, handwerkerId]
+      [docId, handwerkerId]
     );
     
     if (result.rows.length === 0) {
@@ -11946,15 +11968,14 @@ app.get('/api/handwerker/documents/:id', async (req, res) => {
   }
 });
 
-// Dokument löschen
-app.delete('/api/handwerker/documents/:id', async (req, res) => {
+// Dokument löschen - KORRIGIERT
+app.delete('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) => {
   try {
-    const handwerkerId = req.session?.handwerkerId;
-    const { id } = req.params;
+    const { handwerkerId, docId } = req.params;
     
     await query(
       'DELETE FROM handwerker_documents WHERE id = $1 AND handwerker_id = $2',
-      [id, handwerkerId]
+      [docId, handwerkerId]
     );
     
     res.json({ success: true });
