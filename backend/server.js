@@ -12065,52 +12065,63 @@ app.get('/api/admin/supplements', requireAdmin, async (req, res) => {
   }
 });
 
-// Alias für pending-handwerker (Frontend compatibility)
+// Pending Handwerker abrufen
 app.get('/api/admin/pending-handwerker', requireAdmin, async (req, res) => {
   try {
-    const result = await query(`
-      SELECT 
-        h.id,
-        h.company_name,
-        h.company_id,
-        h.contact_person,
-        h.email,
-        h.phone,
-        h.created_at
-      FROM handwerker h
-      WHERE h.verified = false
-      ORDER BY h.created_at DESC
-    `);
-    
-    res.json(result.rows); // Direkt als Array, nicht wrapped
+    const result = await query(
+      `SELECT h.*, 
+        array_agg(DISTINCT ht.trade_code) as trades
+       FROM handwerker h
+       LEFT JOIN handwerker_trades ht ON h.id = ht.handwerker_id
+       WHERE h.verification_status = 'pending'
+       GROUP BY h.id
+       ORDER BY h.created_at DESC`
+    );
+    res.json(result.rows);
   } catch (err) {
-    console.error('Failed to fetch pending handwerker:', err);
-    res.status(500).json({ error: 'Failed to fetch pending handwerker' });
+    console.error('Error fetching pending handwerker:', err);
+    res.status(500).json({ error: 'Fehler beim Laden' });
   }
 });
 
-// Verify Handwerker (Frontend compatibility)
+// Handwerker verifizieren
 app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { approved } = req.body;
+    const { approved, reason } = req.body;
     
-    const result = await query(
-      `UPDATE handwerker 
-       SET verified = $1, updated_at = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [approved, id]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Handwerker not found' });
+    if (approved) {
+      // Generiere finale ID
+      const year = new Date().getFullYear();
+      const random = Math.floor(Math.random() * 9000) + 1000;
+      const finalId = `HW-${year}-${random}`;
+      
+      await query(
+        `UPDATE handwerker 
+         SET verification_status = 'verified',
+             company_id = $2,
+             verified_at = NOW(),
+             verified = true
+         WHERE id = $1`,
+        [id, finalId]
+      );
+      
+      // Optional: E-Mail senden
+      console.log(`Handwerker ${id} verifiziert mit ID: ${finalId}`);
+    } else {
+      await query(
+        `UPDATE handwerker 
+         SET verification_status = 'rejected',
+             rejection_reason = $2
+         WHERE id = $1`,
+        [id, reason || 'Abgelehnt durch Admin']
+      );
     }
     
-    res.json({ handwerker: result.rows[0] });
+    res.json({ success: true });
   } catch (err) {
-    console.error('Failed to verify handwerker:', err);
-    res.status(500).json({ error: 'Failed to verify handwerker' });
+    console.error('Error verifying handwerker:', err);
+    res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
   }
 });
 
