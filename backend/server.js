@@ -11671,17 +11671,47 @@ app.put('/api/handwerker/:id/firmendaten', async (req, res) => {
   }
 });
 
-// Einsatzgebiet updaten
+// ERSETZE die bestehende Einsatzgebiet-Route mit dieser:
 app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
   try {
-    const { actionRadius, excludedAreas } = req.body;
+    const { 
+      actionRadius, 
+      excludedAreas,
+      travelCostPerKm,
+      preferred_zip_codes,
+      min_order_value_10km,
+      min_order_value_25km,
+      min_order_value_50km,
+      min_order_value_over50km,
+      latitude,
+      longitude
+    } = req.body;
     
+    // Basis-Update
     await query(
       `UPDATE handwerker SET
         action_radius = $2,
-        excluded_areas = $3
+        excluded_areas = $3,
+        travel_cost_per_km = $4
        WHERE id = $1`,
-      [req.params.id, actionRadius, JSON.stringify(excludedAreas)]
+      [req.params.id, actionRadius, JSON.stringify(excludedAreas), travelCostPerKm]
+    );
+    
+    // Erweiterte Einstellungen als JSON speichern (falls keine separaten Spalten existieren)
+    const coverageSettings = {
+      preferred_zip_codes,
+      min_order_values: {
+        up_to_10km: min_order_value_10km,
+        up_to_25km: min_order_value_25km,
+        up_to_50km: min_order_value_50km,
+        over_50km: min_order_value_over50km
+      },
+      coordinates: { latitude, longitude }
+    };
+    
+    await query(
+      `UPDATE handwerker SET coverage_settings = $2 WHERE id = $1`,
+      [req.params.id, JSON.stringify(coverageSettings)]
     );
     
     res.json({ success: true });
@@ -11832,6 +11862,105 @@ app.post('/api/handwerker/:id/logo', upload.single('logo'), async (req, res) => 
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Logo-Upload fehlgeschlagen' });
+  }
+});
+
+// Dokument hochladen
+app.post('/api/handwerker/documents/upload', upload.single('document'), async (req, res) => {
+  try {
+    const handwerkerId = req.session?.handwerkerId;
+    if (!handwerkerId) {
+      return res.status(401).json({ error: 'Nicht authentifiziert' });
+    }
+    
+    const { document_type } = req.body;
+    const file = req.file;
+    
+    if (!file) {
+      return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+    }
+    
+    // Speichere in DB
+    const result = await query(
+      `INSERT INTO handwerker_documents 
+       (handwerker_id, document_type, file_name, file_data, uploaded_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       RETURNING id, document_type, file_name, uploaded_at`,
+      [handwerkerId, document_type, file.originalname, file.buffer]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload fehlgeschlagen' });
+  }
+});
+
+// Dokumente abrufen
+app.get('/api/handwerker/documents', async (req, res) => {
+  try {
+    const handwerkerId = req.session?.handwerkerId;
+    if (!handwerkerId) {
+      return res.status(401).json({ error: 'Nicht authentifiziert' });
+    }
+    
+    const result = await query(
+      `SELECT id, document_type, file_name, uploaded_at
+       FROM handwerker_documents
+       WHERE handwerker_id = $1
+       ORDER BY uploaded_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching documents:', err);
+    res.status(500).json({ error: 'Fehler beim Laden' });
+  }
+});
+
+// Dokument herunterladen
+app.get('/api/handwerker/documents/:id', async (req, res) => {
+  try {
+    const handwerkerId = req.session?.handwerkerId;
+    const { id } = req.params;
+    
+    const result = await query(
+      `SELECT file_name, file_data
+       FROM handwerker_documents
+       WHERE id = $1 AND handwerker_id = $2`,
+      [id, handwerkerId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Dokument nicht gefunden' });
+    }
+    
+    const doc = result.rows[0];
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${doc.file_name}"`);
+    res.send(doc.file_data);
+  } catch (err) {
+    console.error('Download error:', err);
+    res.status(500).json({ error: 'Download fehlgeschlagen' });
+  }
+});
+
+// Dokument löschen
+app.delete('/api/handwerker/documents/:id', async (req, res) => {
+  try {
+    const handwerkerId = req.session?.handwerkerId;
+    const { id } = req.params;
+    
+    await query(
+      'DELETE FROM handwerker_documents WHERE id = $1 AND handwerker_id = $2',
+      [id, handwerkerId]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete error:', err);
+    res.status(500).json({ error: 'Löschen fehlgeschlagen' });
   }
 });
 
