@@ -31,7 +31,10 @@ export default function AdminDashboardPage() {
   const [deleteDialogs, setDeleteDialogs] = useState({});
   const [rejectReasons, setRejectReasons] = useState({});
   const [deleteReasons, setDeleteReasons] = useState({});
-  
+  const [selectedHandwerker, setSelectedHandwerker] = useState(null);
+  const [selectedBauherr, setSelectedBauherr] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editedData, setEditedData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -246,6 +249,88 @@ export default function AdminDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, filterStatus, token]);
 
+const fetchHandwerkerDetails = async (id) => {
+  setLoading(true);
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/handwerker/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden');
+    const data = await res.json();
+    setSelectedHandwerker(data);
+    setEditedData(data.handwerker);
+    setEditMode(false);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const fetchBauherrDetails = async (id) => {
+  setLoading(true);
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/bauherren/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden');
+    const data = await res.json();
+    setSelectedBauherr(data);
+    setEditedData(data.bauherr);
+    setEditMode(false);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const updateHandwerker = async () => {
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/handwerker/${selectedHandwerker.handwerker.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(editedData)
+    });
+    
+    if (!res.ok) throw new Error('Update fehlgeschlagen');
+    
+    setMessage('✅ Handwerker erfolgreich aktualisiert');
+    setEditMode(false);
+    await fetchHandwerkerDetails(selectedHandwerker.handwerker.id);
+    await fetchUsers();
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    setError(err.message);
+  }
+};
+
+const updateBauherr = async () => {
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/bauherren/${selectedBauherr.bauherr.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(editedData)
+    });
+    
+    if (!res.ok) throw new Error('Update fehlgeschlagen');
+    
+    setMessage('✅ Bauherr erfolgreich aktualisiert');
+    setEditMode(false);
+    await fetchBauherrDetails(selectedBauherr.bauherr.id);
+    await fetchUsers();
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    setError(err.message);
+  }
+};
+  
   // Action Functions
   // Ersetze die alte verifyHandwerker Funktion komplett mit:
 const verifyHandwerker = async (id, action, reason = '') => {
@@ -281,7 +366,7 @@ const verifyHandwerker = async (id, action, reason = '') => {
     setError(err.message);
   }
 };
-
+  
   const updatePrompt = async (promptId, content, name) => {
     try {
       const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/prompts/${promptId}`, {
@@ -934,72 +1019,365 @@ const verifyHandwerker = async (id, action, reason = '') => {
 
             {/* Users Tab */}
             {activeTab === 'users' && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white mb-4">Nutzerverwaltung</h2>
-                
-                <div className="grid lg:grid-cols-2 gap-6">
-                  {/* Bauherren */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-4">Bauherren</h3>
-                    <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-white/20">
-                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Name</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Email</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Projekte</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {users.bauherren?.map(user => (
-                              <tr key={user.id} className="border-b border-white/10 hover:bg-white/5">
-                                <td className="px-4 py-3 text-sm text-white">{user.name}</td>
-                                <td className="px-4 py-3 text-sm text-white/70">{user.email}</td>
-                                <td className="px-4 py-3 text-sm text-white">{user.project_count || 0}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Nutzerverwaltung</h2>
+    
+    <div className="grid lg:grid-cols-2 gap-6">
+      {/* Bauherren */}
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-4">Bauherren</h3>
+        <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+          <div className="max-h-[600px] overflow-y-auto">
+            <table className="w-full">
+              <thead className="sticky top-0 bg-slate-800/90">
+                <tr className="border-b border-white/20">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Projekte</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.bauherren?.map(user => (
+                  <tr 
+                    key={user.id} 
+                    className="border-b border-white/10 hover:bg-white/5 cursor-pointer"
+                    onClick={() => fetchBauherrDetails(user.id)}
+                  >
+                    <td className="px-4 py-3 text-sm text-white">{user.name}</td>
+                    <td className="px-4 py-3 text-sm text-white/70">{user.email}</td>
+                    <td className="px-4 py-3 text-sm text-white">{user.project_count || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-                  {/* Handwerker */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-4">Handwerker</h3>
-                    <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-white/20">
-                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Firma</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {users.handwerker?.map(user => (
-                              <tr key={user.id} className="border-b border-white/10 hover:bg-white/5">
-                                <td className="px-4 py-3 text-sm text-white">{user.company_name}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`px-2 py-1 text-xs rounded-full ${
-                                    user.verified 
-                                      ? 'bg-green-500/20 text-green-300' 
-                                      : 'bg-yellow-500/20 text-yellow-300'
-                                  }`}>
-                                    {user.verified ? 'Verifiziert' : 'Ausstehend'}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
+      {/* Handwerker */}
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-4">Handwerker</h3>
+        <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+          <div className="max-h-[600px] overflow-y-auto">
+            <table className="w-full">
+              <thead className="sticky top-0 bg-slate-800/90">
+                <tr className="border-b border-white/20">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Firma</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/70">ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.handwerker?.map(user => (
+                  <tr 
+                    key={user.id} 
+                    className="border-b border-white/10 hover:bg-white/5 cursor-pointer"
+                    onClick={() => fetchHandwerkerDetails(user.id)}
+                  >
+                    <td className="px-4 py-3 text-sm text-white">{user.company_name}</td>
+                    <td className="px-4 py-3 text-sm text-white/70">{user.company_id}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        user.verified 
+                          ? 'bg-green-500/20 text-green-300' 
+                          : 'bg-yellow-500/20 text-yellow-300'
+                      }`}>
+                        {user.verified ? 'Verifiziert' : 'Ausstehend'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    {/* Handwerker Details Modal */}
+    {selectedHandwerker && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-slate-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-slate-800 border-b border-white/20 p-6 flex justify-between items-center">
+            <h2 className="text-xl font-bold text-white">
+              {selectedHandwerker.handwerker.company_name}
+            </h2>
+            <div className="flex gap-2">
+              {!editMode ? (
+                <button
+                  onClick={() => setEditMode(true)}
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
+                >
+                  Bearbeiten
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={updateHandwerker}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+                  >
+                    Speichern
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditMode(false);
+                      setEditedData(selectedHandwerker.handwerker);
+                    }}
+                    className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
+                  >
+                    Abbrechen
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setSelectedHandwerker(null)}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6 space-y-6">
+            {/* Basis Informationen */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Basis Informationen</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-white/70 text-sm">Firmenname</label>
+                  <input
+                    type="text"
+                    value={editedData.company_name || ''}
+                    onChange={(e) => setEditedData({...editedData, company_name: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">Firma ID</label>
+                  <input
+                    type="text"
+                    value={editedData.company_id || ''}
+                    onChange={(e) => setEditedData({...editedData, company_id: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">Kontaktperson</label>
+                  <input
+                    type="text"
+                    value={editedData.contact_person || ''}
+                    onChange={(e) => setEditedData({...editedData, contact_person: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">E-Mail</label>
+                  <input
+                    type="email"
+                    value={editedData.email || ''}
+                    onChange={(e) => setEditedData({...editedData, email: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">Telefon</label>
+                  <input
+                    type="tel"
+                    value={editedData.phone || ''}
+                    onChange={(e) => setEditedData({...editedData, phone: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">Status</label>
+                  <select
+                    value={editedData.verified ? 'verified' : 'pending'}
+                    onChange={(e) => setEditedData({...editedData, verified: e.target.value === 'verified'})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  >
+                    <option value="verified">Verifiziert</option>
+                    <option value="pending">Ausstehend</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            {/* Adresse */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Adresse</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-white/70 text-sm">Straße</label>
+                  <input
+                    type="text"
+                    value={editedData.street || ''}
+                    onChange={(e) => setEditedData({...editedData, street: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">Hausnummer</label>
+                  <input
+                    type="text"
+                    value={editedData.house_number || ''}
+                    onChange={(e) => setEditedData({...editedData, house_number: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">PLZ</label>
+                  <input
+                    type="text"
+                    value={editedData.zip_code || ''}
+                    onChange={(e) => setEditedData({...editedData, zip_code: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">Stadt</label>
+                  <input
+                    type="text"
+                    value={editedData.city || ''}
+                    onChange={(e) => setEditedData({...editedData, city: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Gewerke */}
+            {selectedHandwerker.trades?.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Gewerke</h3>
+                <div className="flex flex-wrap gap-2">
+                  {selectedHandwerker.trades.map((trade, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-teal-500/20 text-teal-300 rounded-lg">
+                      {trade.trade_name}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Bauherr Details Modal */}
+    {selectedBauherr && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-slate-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-slate-800 border-b border-white/20 p-6 flex justify-between items-center">
+            <h2 className="text-xl font-bold text-white">
+              {selectedBauherr.bauherr.name}
+            </h2>
+            <div className="flex gap-2">
+              {!editMode ? (
+                <button
+                  onClick={() => setEditMode(true)}
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
+                >
+                  Bearbeiten
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={updateBauherr}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+                  >
+                    Speichern
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditMode(false);
+                      setEditedData(selectedBauherr.bauherr);
+                    }}
+                    className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
+                  >
+                    Abbrechen
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setSelectedBauherr(null)}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6 space-y-6">
+            {/* Basis Informationen */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Kontaktdaten</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-white/70 text-sm">Name</label>
+                  <input
+                    type="text"
+                    value={editedData.name || ''}
+                    onChange={(e) => setEditedData({...editedData, name: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">E-Mail</label>
+                  <input
+                    type="email"
+                    value={editedData.email || ''}
+                    onChange={(e) => setEditedData({...editedData, email: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm">Telefon</label>
+                  <input
+                    type="tel"
+                    value={editedData.phone || ''}
+                    onChange={(e) => setEditedData({...editedData, phone: e.target.value})}
+                    disabled={!editMode}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Projekte */}
+            {selectedBauherr.projects?.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  Projekte ({selectedBauherr.projects.length})
+                </h3>
+                <div className="space-y-2">
+                  {selectedBauherr.projects.map(project => (
+                    <div key={project.id} className="bg-white/10 rounded-lg p-4">
+                      <p className="text-white font-medium">{project.category} - {project.sub_category}</p>
+                      <p className="text-white/70 text-sm">{project.description}</p>
+                      <p className="text-teal-400 text-sm">Budget: {formatCurrency(project.budget)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
             {/* Payments Tab */}
             {activeTab === 'payments' && (
