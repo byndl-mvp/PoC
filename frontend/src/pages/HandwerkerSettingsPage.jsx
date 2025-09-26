@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
+import { MapContainer, TileLayer, Circle, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix für Leaflet Marker Icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 export default function HandwerkerSettingsPage() {
   const navigate = useNavigate();
@@ -332,39 +343,208 @@ export default function HandwerkerSettingsPage() {
           {/* Einzugsgebiet Tab */}
 {activeTab === 'coverage' && (
   <div className="space-y-6">
-    <h2 className="text-2xl font-bold text-white mb-4">Einzugsgebiet</h2>
-    
-    <div className="bg-white/10 rounded-lg p-6">
-      <label className="block text-white mb-2">Aktionsradius (km)</label>
-      <input
-        type="number"
-        value={formData.action_radius || 25}
-        onChange={(e) => setFormData({...formData, action_radius: e.target.value})}
-        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-        placeholder="z.B. 50"
-      />
-      <p className="text-white/60 text-sm mt-2">
-        Maximale Entfernung für Aufträge von Ihrem Standort
-      </p>
+    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+      <h2 className="text-2xl font-bold text-white mb-6">Einzugsgebiet & Arbeitsbereich</h2>
+      
+      {/* Aktionsradius */}
+      <div className="mb-6">
+        <label className="block text-white font-medium mb-2">
+          Aktionsradius
+          <span className="text-red-400 ml-1">*</span>
+        </label>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="5"
+            max="200"
+            value={formData.action_radius || 25}
+            onChange={(e) => setFormData({...formData, action_radius: parseInt(e.target.value)})}
+            className="flex-1"
+          />
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="5"
+              max="200"
+              value={formData.action_radius || 25}
+              onChange={(e) => setFormData({...formData, action_radius: parseInt(e.target.value)})}
+              className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-center"
+            />
+            <span className="text-white">km</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Live Karte */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Ihr Arbeitsbereich</h3>
+        <div className="h-[400px] rounded-lg overflow-hidden border border-white/20">
+          <MapContainer
+            center={[
+              parseFloat(formData.latitude) || 50.9375, 
+              parseFloat(formData.longitude) || 6.9603
+            ]}
+            zoom={10}
+            style={{ height: '100%', width: '100%' }}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; OpenStreetMap contributors'
+            />
+            
+            {/* Firmensitz Marker */}
+            <Marker position={[
+              parseFloat(formData.latitude) || 50.9375,
+              parseFloat(formData.longitude) || 6.9603
+            ]}>
+              <Popup>
+                <strong>{formData.company_name}</strong><br />
+                {formData.street} {formData.house_number}<br />
+                {formData.zip_code} {formData.city}
+              </Popup>
+            </Marker>
+            
+            {/* Arbeitsbereich Kreis */}
+            <Circle
+              center={[
+                parseFloat(formData.latitude) || 50.9375,
+                parseFloat(formData.longitude) || 6.9603
+              ]}
+              radius={(formData.action_radius || 25) * 1000}
+              fillColor="#14b8a6"
+              fillOpacity={0.2}
+              color="#14b8a6"
+              weight={2}
+            />
+          </MapContainer>
+        </div>
+      </div>
+
+      {/* Adresse für Kartenzentrum */}
+      <div className="mb-6 grid md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-white font-medium mb-2">Straße & Hausnummer</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={formData.street || ''}
+              onChange={(e) => setFormData({...formData, street: e.target.value})}
+              className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+              placeholder="Straße"
+            />
+            <input
+              type="text"
+              value={formData.house_number || ''}
+              onChange={(e) => setFormData({...formData, house_number: e.target.value})}
+              className="w-24 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+              placeholder="Nr."
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-white font-medium mb-2">PLZ & Stadt</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={formData.zip_code || ''}
+              onChange={(e) => setFormData({...formData, zip_code: e.target.value})}
+              className="w-24 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+              placeholder="PLZ"
+            />
+            <input
+              type="text"
+              value={formData.city || ''}
+              onChange={(e) => setFormData({...formData, city: e.target.value})}
+              className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+              placeholder="Stadt"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Button zum Geocoding */}
+      <button
+        onClick={async () => {
+          const address = `${formData.street} ${formData.house_number}, ${formData.zip_code} ${formData.city}, Germany`;
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
+            );
+            const data = await response.json();
+            if (data && data[0]) {
+              setFormData({
+                ...formData,
+                latitude: data[0].lat,
+                longitude: data[0].lon
+              });
+            }
+          } catch (err) {
+            console.error('Geocoding failed:', err);
+          }
+        }}
+        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg mb-6"
+      >
+        📍 Adresse auf Karte anzeigen
+      </button>
+
+      {/* Bevorzugte PLZ-Bereiche */}
+      <div className="mb-6">
+        <label className="block text-white font-medium mb-2">
+          Bevorzugte PLZ-Bereiche
+        </label>
+        <textarea
+          value={formData.preferred_zip_codes || ''}
+          onChange={(e) => setFormData({...formData, preferred_zip_codes: e.target.value})}
+          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+          rows="2"
+          placeholder="z.B. 50667, 50668, 50670-50679"
+        />
+      </div>
+
+      {/* Ausgeschlossene Gebiete */}
+      <div className="mb-6">
+        <label className="block text-white font-medium mb-2">
+          Ausgeschlossene Gebiete
+        </label>
+        <textarea
+          value={formData.excluded_areas || ''}
+          onChange={(e) => setFormData({...formData, excluded_areas: e.target.value})}
+          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+          rows="2"
+          placeholder="z.B. Stadtteile oder PLZ-Bereiche"
+        />
+      </div>
+
+      {/* Fahrtkosten */}
+      <div className="mb-6">
+        <label className="block text-white font-medium mb-2">
+          Fahrtkosten pro Kilometer
+        </label>
+        <div className="flex items-center gap-4">
+          <input
+            type="number"
+            min="0"
+            max="5"
+            step="0.1"
+            value={formData.travel_cost_per_km || 0.5}
+            onChange={(e) => setFormData({...formData, travel_cost_per_km: parseFloat(e.target.value)})}
+            className="w-32 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+          />
+          <span className="text-white">€/km</span>
+        </div>
+      </div>
+
+      {/* Speichern Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => handleSave('coverage')}
+          disabled={saving}
+          className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:from-teal-600 hover:to-blue-700 transition-all disabled:opacity-50"
+        >
+          {saving ? 'Wird gespeichert...' : 'Einzugsgebiet speichern'}
+        </button>
+      </div>
     </div>
-    
-    <div className="bg-white/10 rounded-lg p-6">
-      <label className="block text-white mb-2">Ausgeschlossene Gebiete</label>
-      <textarea
-        value={formData.excluded_areas || ''}
-        onChange={(e) => setFormData({...formData, excluded_areas: e.target.value})}
-        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-        rows="3"
-        placeholder="PLZ-Bereiche, die Sie nicht bedienen (kommagetrennt)"
-      />
-    </div>
-    
-    <button
-      onClick={() => handleSave('coverage')}
-      className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
-    >
-      Speichern
-    </button>
   </div>
 )}
 
