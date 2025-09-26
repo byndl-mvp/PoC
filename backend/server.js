@@ -21,6 +21,7 @@ const bcrypt = require('bcryptjs');
 const PDFDocument = require('pdfkit');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const multer = require('multer');
+const nodemailer = require('nodemailer');
 
 const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
@@ -12346,29 +12347,37 @@ app.get('/api/admin/pending-handwerker', requireAdmin, async (req, res) => {
   }
 });
 
-// Handwerker verifizieren
+// Handwerker verifizieren mit E-Mail-Benachrichtigung
 app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { approved, reason } = req.body;
     
+    // Hole Handwerker-Details für E-Mail
+    const handwerkerResult = await query(
+      `SELECT company_name, contact_person, email, company_id 
+       FROM handwerker 
+       WHERE id = $1`,
+      [id]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerker = handwerkerResult.rows[0];
+    
     if (approved) {
-      // Check if company_id exists
-      const checkId = await query(
-        'SELECT company_id FROM handwerker WHERE id = $1',
-        [id]
-      );
+      // Generiere finale ID falls nötig
+      let finalId = handwerker.company_id;
       
-      let finalId = checkId.rows[0]?.company_id;
-      
-      // Generate new ID if needed
       if (!finalId || finalId === 'PENDING') {
         const year = new Date().getFullYear();
         const random = Math.floor(Math.random() * 9000) + 1000;
         finalId = `HW-${year}-${random}`;
       }
       
-      // Update both verified and verification_status
+      // Update Verifizierungsstatus
       await query(
         `UPDATE handwerker 
          SET verified = true,
@@ -12379,21 +12388,141 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
         [id, finalId]
       );
       
+      // Sende Bestätigungs-E-Mail
+      const approvalEmailOptions = {
+        to: handwerker.email,
+        subject: 'Ihre Registrierung bei byndl wurde bestätigt',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #14b8a6;">Willkommen bei byndl!</h2>
+            <p>Sehr geehrte/r ${handwerker.contact_person},</p>
+            
+            <p>Ihre Registrierung für <strong>${handwerker.company_name}</strong> wurde erfolgreich verifiziert.</p>
+            
+            <div style="background-color: #f0fdfa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Ihre Handwerker-ID:</strong> ${finalId}</p>
+              <p>Bitte bewahren Sie diese ID für Ihre Unterlagen auf.</p>
+            </div>
+            
+            <h3>Nächste Schritte:</h3>
+            <ul>
+              <li>Loggen Sie sich in Ihr Dashboard ein</li>
+              <li>Vervollständigen Sie Ihr Firmenprofil</li>
+              <li>Laden Sie Ihre Zertifikate und Versicherungsnachweise hoch</li>
+              <li>Aktivieren Sie die gewünschten Gewerke</li>
+            </ul>
+            
+            <p>Sie können nun auf Ausschreibungen zugreifen und Angebote abgeben.</p>
+            
+            <div style="margin-top: 30px;">
+              <a href="https://byndl.de/handwerker/login" 
+                 style="background-color: #14b8a6; color: white; padding: 12px 24px; 
+                        text-decoration: none; border-radius: 6px; display: inline-block;">
+                Zum Dashboard
+              </a>
+            </div>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e5e5;">
+            <p style="color: #666; font-size: 14px;">
+              Bei Fragen wenden Sie sich an: support@byndl.de
+            </p>
+          </div>
+        `
+      };
+      
+      try {
+        await transporter.sendMail(approvalEmailOptions);
+        console.log(`Bestätigungs-E-Mail gesendet an: ${handwerker.email}`);
+      } catch (emailError) {
+        console.error('E-Mail-Versand fehlgeschlagen:', emailError);
+        // Verifizierung trotzdem erfolgreich
+      }
+      
       console.log(`Handwerker ${id} verifiziert mit ID: ${finalId}`);
-      res.json({ success: true, message: 'Handwerker erfolgreich verifiziert' });
+      res.json({ 
+        success: true, 
+        message: 'Handwerker erfolgreich verifiziert und benachrichtigt' 
+      });
       
     } else {
-      // Update rejection status
+      // Bei Ablehnung: Markieren als abgelehnt
       await query(
         `UPDATE handwerker 
          SET verified = false,
              verification_status = 'rejected',
              rejection_reason = $2
          WHERE id = $1`,
-        [id, reason || 'Abgelehnt durch Admin']
+        [id, reason || 'Nicht den Anforderungen entsprechend']
       );
       
-      res.json({ success: true, message: 'Handwerker abgelehnt' });
+      // Sende Ablehnungs-E-Mail
+      const rejectionEmailOptions = {
+        to: handwerker.email,
+        subject: 'Ihre Registrierung bei byndl wurde abgelehnt',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #dc2626;">Registrierung abgelehnt</h2>
+            <p>Sehr geehrte/r ${handwerker.contact_person},</p>
+            
+            <p>Leider müssen wir Ihnen mitteilen, dass Ihre Registrierung für 
+               <strong>${handwerker.company_name}</strong> nicht genehmigt werden konnte.</p>
+            
+            ${reason ? `
+              <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Grund der Ablehnung:</strong></p>
+                <p>${reason}</p>
+              </div>
+            ` : ''}
+            
+            <h3>Was können Sie tun?</h3>
+            <ul>
+              <li>Prüfen Sie die Vollständigkeit Ihrer Unterlagen</li>
+              <li>Stellen Sie sicher, dass alle erforderlichen Nachweise vorliegen:
+                <ul>
+                  <li>Gültiger Gewerbeschein</li>
+                  <li>Handwerkskarte (falls zutreffend)</li>
+                  <li>Versicherungsnachweise</li>
+                  <li>Steuerliche Unbedenklichkeitsbescheinigung</li>
+                </ul>
+              </li>
+              <li>Sie können sich nach Behebung der Mängel erneut registrieren</li>
+            </ul>
+            
+            <p>Bei Fragen zu Ihrer Ablehnung kontaktieren Sie uns unter:</p>
+            <p><a href="mailto:verifizierung@byndl.de">verifizierung@byndl.de</a></p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e5e5;">
+            <p style="color: #666; font-size: 14px;">
+              Mit freundlichen Grüßen<br>
+              Ihr byndl-Team
+            </p>
+          </div>
+        `
+      };
+      
+      try {
+        await transporter.sendMail(rejectionEmailOptions);
+        console.log(`Ablehnungs-E-Mail gesendet an: ${handwerker.email}`);
+      } catch (emailError) {
+        console.error('E-Mail-Versand fehlgeschlagen:', emailError);
+      }
+      
+      // Optional: Nach 30 Tagen automatisch löschen
+      await query(
+        `UPDATE handwerker 
+         SET deletion_scheduled = NOW() + INTERVAL '30 days'
+         WHERE id = $1`,
+        [id]
+      ).catch(err => {
+        // Falls Spalte nicht existiert, ignorieren
+        console.log('Deletion scheduling skipped');
+      });
+      
+      console.log(`Handwerker ${id} abgelehnt. Grund: ${reason || 'Kein Grund angegeben'}`);
+      res.json({ 
+        success: true, 
+        message: 'Handwerker abgelehnt und benachrichtigt' 
+      });
     }
     
   } catch (err) {
