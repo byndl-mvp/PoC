@@ -1,16 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [modalType, setModalType] = useState('');
+  const [filterStatus] = useState('all');
   const [editingPrompt, setEditingPrompt] = useState(null);
   
-  // Data States - ALLE
+  // Data States
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalProjects: 0,
@@ -27,10 +24,8 @@ export default function AdminDashboardPage() {
   const [lvs, setLvs] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [payments, setPayments] = useState([]);
-  const [verifications, setVerifications] = useState([]);
   const [orders, setOrders] = useState([]);
   const [tenders, setTenders] = useState([]);
-  const [supplements, setSupplements] = useState([]);
   const [pendingHandwerker, setPendingHandwerker] = useState([]);
   
   const [loading, setLoading] = useState(false);
@@ -46,8 +41,8 @@ export default function AdminDashboardPage() {
     }
   }, [token, navigate]);
 
-  // Fetch Functions
-  const fetchOverviewStats = async () => {
+  // Fetch Functions with useCallback
+  const fetchOverviewStats = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/stats', {
         headers: { Authorization: `Bearer ${token}` }
@@ -58,9 +53,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       console.error('Stats error:', err);
     }
-  };
+  }, [token]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/users', {
         headers: { Authorization: `Bearer ${token}` }
@@ -71,9 +66,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/projects/detailed', {
         headers: { Authorization: `Bearer ${token}` }
@@ -84,9 +79,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchProjectDetails = async (projectId) => {
+  const fetchProjectDetails = useCallback(async (projectId) => {
     setLoading(true);
     try {
       const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/projects/${projectId}/full`, {
@@ -100,9 +95,9 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const fetchPrompts = async () => {
+  const fetchPrompts = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/prompts/full', {
         headers: { Authorization: `Bearer ${token}` }
@@ -113,9 +108,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchLVs = async () => {
+  const fetchLVs = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/lvs', {
         headers: { Authorization: `Bearer ${token}` }
@@ -126,9 +121,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/analytics', {
         headers: { Authorization: `Bearer ${token}` }
@@ -139,9 +134,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/payments', {
         headers: { Authorization: `Bearer ${token}` }
@@ -152,9 +147,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchPendingHandwerker = async () => {
+  const fetchPendingHandwerker = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/pending-handwerker', {
         headers: { Authorization: `Bearer ${token}` }
@@ -165,9 +160,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/orders', {
         headers: { Authorization: `Bearer ${token}` }
@@ -178,9 +173,9 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchTenders = async () => {
+  const fetchTenders = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/tenders', {
         headers: { Authorization: `Bearer ${token}` }
@@ -191,7 +186,7 @@ export default function AdminDashboardPage() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
   // Main Data Fetching Effect
   useEffect(() => {
@@ -244,6 +239,7 @@ export default function AdminDashboardPage() {
     if (token) {
       fetchDashboardData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, filterStatus, token]);
 
   // Action Functions
@@ -453,7 +449,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* Projects Tab - MIT Q&A */}
+            {/* Projects Tab */}
             {activeTab === 'projects' && (
               <div className="grid lg:grid-cols-2 gap-6">
                 <div>
@@ -866,7 +862,17 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* Other tabs can be added here following same pattern */}
+            {/* Placeholder for remaining tabs */}
+            {(activeTab === 'payments' || activeTab === 'orders' || activeTab === 'tenders') && (
+              <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  {activeTab === 'payments' && 'Zahlungen'}
+                  {activeTab === 'orders' && 'Aufträge'}
+                  {activeTab === 'tenders' && 'Ausschreibungen'}
+                </h2>
+                <p className="text-white/50">Diese Sektion wird noch implementiert</p>
+              </div>
+            )}
           </>
         )}
       </main>
