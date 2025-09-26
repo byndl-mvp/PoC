@@ -244,7 +244,7 @@ useEffect(() => {
               <h1 className="text-xl text-white">Handwerker-Dashboard</h1>
             </div>
             <div className="flex items-center gap-4">
-              <div className="relative">
+              <div className="relative profile-menu-container">
   <button
     onClick={() => setShowProfileMenu(!showProfileMenu)}
     className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
