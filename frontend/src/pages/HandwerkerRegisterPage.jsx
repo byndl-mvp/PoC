@@ -675,7 +675,7 @@ export default function HandwerkerRegisterPage() {
               </div>
             )}
 
-// In Step 5
+{/* In Step 5 */}
 {step === 5 && (
   <div className="space-y-6">
     <h3 className="text-xl font-semibold text-white mb-4">
