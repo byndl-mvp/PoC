@@ -329,51 +329,44 @@ export default function HandwerkerSettingsPage() {
   </div>
 )}
           
-          {/* Einsatzgebiet Tab */}
-          {activeTab === 'einsatzgebiet' && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white mb-4">Einsatzgebiet</h2>
-              
-              <div>
-                <label className="block text-white font-medium mb-2">
-                  Aktionsradius: {formData.actionRadius} km
-                </label>
-                <input
-                  type="range"
-                  min="5"
-                  max="200"
-                  value={formData.actionRadius}
-                  onChange={(e) => handleChange('actionRadius', e.target.value)}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-gray-400 text-sm">
-                  <span>5 km</span>
-                  <span>200 km</span>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-white font-medium mb-2">
-                  Ausschlussgebiete (PLZ, kommagetrennt)
-                </label>
-                <textarea
-                  value={formData.excludedAreas.join(', ')}
-                  onChange={(e) => handleChange('excludedAreas', e.target.value.split(',').map(s => s.trim()))}
-                  rows="3"
-                  placeholder="z.B. 12345, 67890"
-                  className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                />
-              </div>
-              
-              <button
-                onClick={() => handleSave('einsatzgebiet')}
-                disabled={loading}
-                className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
-              >
-                Speichern
-              </button>
-            </div>
-          )}
+          {/* Einzugsgebiet Tab */}
+{activeTab === 'coverage' && (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Einzugsgebiet</h2>
+    
+    <div className="bg-white/10 rounded-lg p-6">
+      <label className="block text-white mb-2">Aktionsradius (km)</label>
+      <input
+        type="number"
+        value={formData.action_radius || 25}
+        onChange={(e) => setFormData({...formData, action_radius: e.target.value})}
+        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+        placeholder="z.B. 50"
+      />
+      <p className="text-white/60 text-sm mt-2">
+        Maximale Entfernung für Aufträge von Ihrem Standort
+      </p>
+    </div>
+    
+    <div className="bg-white/10 rounded-lg p-6">
+      <label className="block text-white mb-2">Ausgeschlossene Gebiete</label>
+      <textarea
+        value={formData.excluded_areas || ''}
+        onChange={(e) => setFormData({...formData, excluded_areas: e.target.value})}
+        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+        rows="3"
+        placeholder="PLZ-Bereiche, die Sie nicht bedienen (kommagetrennt)"
+      />
+    </div>
+    
+    <button
+      onClick={() => handleSave('coverage')}
+      className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
+    >
+      Speichern
+    </button>
+  </div>
+)}
 
           {/* Verfügbarkeit Tab */}
           {activeTab === 'verfuegbarkeit' && (
