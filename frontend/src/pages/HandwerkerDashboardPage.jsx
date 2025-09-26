@@ -267,19 +267,19 @@ useEffect(() => {
       </div>
       
       <div className="p-2">
-        <button className="w-full text-left px-4 py-2 text-white hover:bg-white/10 rounded">
-          👤 Mein Profil
-        </button>
-        <button className="w-full text-left px-4 py-2 text-white hover:bg-white/10 rounded">
-          📄 Dokumente
-        </button>
-        <button className="w-full text-left px-4 py-2 text-white hover:bg-white/10 rounded">
-          ⚙️ Einstellungen
-        </button>
-        <button className="w-full text-left px-4 py-2 text-white hover:bg-white/10 rounded">
-          📊 Statistiken
-        </button>
-      </div>
+  <Link 
+    to="/handwerker/settings" 
+    className="block w-full text-left px-4 py-2 text-white hover:bg-white/10 rounded"
+  >
+    👤 Mein Profil
+  </Link>
+  <Link 
+    to="/handwerker/settings" 
+    className="block w-full text-left px-4 py-2 text-white hover:bg-white/10 rounded"
+  >
+    ⚙️ Einstellungen
+  </Link>
+</div>
       
       <div className="border-t border-white/20 p-2">
         <button 
