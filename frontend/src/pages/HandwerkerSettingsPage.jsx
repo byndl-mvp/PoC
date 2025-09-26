@@ -455,7 +455,7 @@ const loadDocuments = async () => {
 )}
           
           {/* Einzugsgebiet Tab */}
-{activeTab === 'coverage' && (
+{(activeTab === 'einsatzgebiet' || activeTab === 'einzugsgebiet') && (
   <div className="space-y-6">
     <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
       <h2 className="text-2xl font-bold text-white mb-6">Einzugsgebiet & Arbeitsbereich</h2>
@@ -932,7 +932,7 @@ const loadDocuments = async () => {
             </div>
           )}
 
-          {activeTab === 'documents' && (
+          {activeTab === 'dokumente' && (
   <div className="space-y-6">
     <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
       <h2 className="text-2xl font-bold text-white mb-6">Dokumente & Nachweise</h2>
