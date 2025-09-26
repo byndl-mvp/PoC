@@ -11868,7 +11868,7 @@ app.post('/api/handwerker/:id/logo', upload.single('logo'), async (req, res) => 
 // Dokument hochladen
 app.post('/api/handwerker/documents/upload', upload.single('document'), async (req, res) => {
   try {
-    const handwerkerId = req.session?.handwerkerId;
+    const handwerkerId = req.params.id;
     if (!handwerkerId) {
       return res.status(401).json({ error: 'Nicht authentifiziert' });
     }
