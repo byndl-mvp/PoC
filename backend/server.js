@@ -12125,21 +12125,13 @@ app.put('/api/admin/payments/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     
-    if (!['pending', 'completed', 'failed'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
-    
     const result = await query(
       `UPDATE payments 
-       SET status = $1, updated_at = NOW()
+       SET status = $1  -- KEIN updated_at, da Spalte nicht existiert
        WHERE id = $2
        RETURNING *`,
       [status, id]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Payment not found' });
-    }
     
     res.json({ payment: result.rows[0] });
   } catch (err) {
