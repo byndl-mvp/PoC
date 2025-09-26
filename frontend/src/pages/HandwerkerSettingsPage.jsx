@@ -19,6 +19,7 @@ export default function HandwerkerSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false); // DIESE ZEILE HINZUFÜGEN
   // HIER NEU:
   const [documents, setDocuments] = useState({
     gewerbeschein: null,
@@ -108,6 +109,7 @@ export default function HandwerkerSettingsPage() {
 
   const handleSave = async (section) => {
     try {
+      setSaving(true); // Hinzufügen
       setLoading(true);
       setError('');
       
@@ -130,6 +132,7 @@ export default function HandwerkerSettingsPage() {
     } catch (err) {
       setError('Fehler beim Speichern');
     } finally {
+      setSaving(false); // Hinzufügen
       setLoading(false);
     }
   };
