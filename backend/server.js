@@ -10943,6 +10943,47 @@ if (certifications && certifications.length > 0) {
   }
 });
 
+// Dokument Upload
+app.post('/api/handwerker/upload-document', upload.single('document'), async (req, res) => {
+  try {
+    const { handwerkerId, documentType } = req.body;
+    const fileBuffer = req.file.buffer;
+    
+    await query(
+      `INSERT INTO handwerker_documents 
+       (handwerker_id, document_type, file_data, file_name, file_size, mime_type) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [handwerkerId, documentType, fileBuffer, req.file.originalname, req.file.size, req.file.mimetype]
+    );
+    
+    res.json({ success: true, message: 'Dokument erfolgreich hochgeladen' });
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload fehlgeschlagen' });
+  }
+});
+
+// Dokument abrufen
+app.get('/api/handwerker/document/:id', async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT file_data, file_name, mime_type FROM handwerker_documents WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length > 0) {
+      const doc = result.rows[0];
+      res.setHeader('Content-Type', doc.mime_type);
+      res.setHeader('Content-Disposition', `inline; filename="${doc.file_name}"`);
+      res.send(doc.file_data);
+    } else {
+      res.status(404).json({ error: 'Dokument nicht gefunden' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Fehler beim Abrufen' });
+  }
+});
+
 // Bauherr Login/Verify
 app.get('/api/users/verify', async (req, res) => {
   try {
