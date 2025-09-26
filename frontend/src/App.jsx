@@ -19,6 +19,7 @@ import BauherrenDashboardPage from './pages/BauherrenDashboardPage';
 
 // Handwerker Pages
 import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
+import HandwerkerSettingsPage from './pages/HandwerkerSettingsPage';
 
 // Admin Pages
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -109,6 +110,7 @@ function App() {
           <Route path="/handwerker/login" element={<HandwerkerLoginPage />} />
           <Route path="/handwerker/register" element={<HandwerkerRegisterPage />} />
           <Route path="/handwerker/dashboard" element={<HandwerkerDashboardPage />} />
+          <Route path="/handwerker/settings" element={<HandwerkerSettingsPage />} />
           
           {/* Admin Routes - mit Header/Footer */}
           <Route path="/admin" element={<AdminLoginPage />} />
