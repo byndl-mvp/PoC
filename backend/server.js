@@ -12162,7 +12162,7 @@ app.get('/api/admin/verifications', requireAdmin, async (req, res) => {
         h.phone,
         h.street,
         h.house_number,
-        h.zip,
+        h.zip_code,
         h.city,
         h.verified,
         h.created_at,
