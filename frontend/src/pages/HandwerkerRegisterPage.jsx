@@ -41,6 +41,8 @@ const CERTIFICATIONS = [
 export default function HandwerkerRegisterPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     // Firmendaten
     companyName: '',
@@ -50,6 +52,8 @@ export default function HandwerkerRegisterPage() {
     // Kontaktdaten
     contactPerson: '',
     email: '',
+    password: '',         // NEU
+    confirmPassword: '',  // NEU
     phone: '',
     website: '',
     // Adresse
@@ -73,10 +77,47 @@ export default function HandwerkerRegisterPage() {
   const [uploadedDocuments, setUploadedDocuments] = useState({}); // NEU
   
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const { name, value } = e.target;
+  setFormData(prev => ({ ...prev, [name]: value }));
+};
 
+const getPasswordStrength = (password) => {
+  let strength = 0;
+  if (password.length >= 8) strength += 25;
+  if (password.length >= 12) strength += 25;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
+  if (/\d/.test(password)) strength += 12.5;
+  if (/[^a-zA-Z\d]/.test(password)) strength += 12.5;
+  return Math.min(100, strength);
+};
+
+const getPasswordStrengthText = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'Sehr schwach';
+  if (strength < 50) return 'Schwach';
+  if (strength < 70) return 'Mittel';
+  if (strength < 90) return 'Stark';
+  return 'Sehr stark';
+};
+
+const getPasswordStrengthColor = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'text-red-400';
+  if (strength < 50) return 'text-orange-400';
+  if (strength < 70) return 'text-yellow-400';
+  if (strength < 90) return 'text-green-400';
+  return 'text-green-500';
+};
+
+const getPasswordStrengthClass = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'bg-red-500';
+  if (strength < 50) return 'bg-orange-500';
+  if (strength < 70) return 'bg-yellow-500';
+  if (strength < 90) return 'bg-green-500';
+  return 'bg-green-600';
+};
+  
   const handleTradeToggle = (tradeId) => {
     setFormData(prev => ({
       ...prev,
@@ -313,119 +354,286 @@ export default function HandwerkerRegisterPage() {
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
           <form onSubmit={handleSubmit}>
             
-            {/* Step 1: Firmendaten */}
-            {step === 1 && (
-              <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-white mb-4">Schritt 1: Firmendaten</h3>
-                
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-white font-medium mb-2">Firmenname *</label>
-                    <input
-                      type="text"
-                      name="companyName"
-                      value={formData.companyName}
-                      onChange={handleChange}
-                      placeholder="Mustermann GmbH"
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white font-medium mb-2">Rechtsform</label>
-                    <select
-                      name="companyType"
-                      value={formData.companyType}
-                      onChange={handleChange}
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    >
-                      <option value="" className="bg-slate-800">Bitte wählen</option>
-                      <option value="einzelunternehmen" className="bg-slate-800">Einzelunternehmen</option>
-                      <option value="gbr" className="bg-slate-800">GbR</option>
-                      <option value="gmbh" className="bg-slate-800">GmbH</option>
-                      <option value="ug" className="bg-slate-800">UG</option>
-                      <option value="gmbh_co_kg" className="bg-slate-800">GmbH & Co. KG</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white font-medium mb-2">Handelsregisternummer</label>
-                    <input
-                      type="text"
-                      name="registrationNumber"
-                      value={formData.registrationNumber}
-                      onChange={handleChange}
-                      placeholder="HRB 12345"
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white font-medium mb-2">Steuernummer</label>
-                    <input
-                      type="text"
-                      name="taxNumber"
-                      value={formData.taxNumber}
-                      onChange={handleChange}
-                      placeholder="123/456/78901"
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white font-medium mb-2">Ansprechpartner *</label>
-                    <input
-                      type="text"
-                      name="contactPerson"
-                      value={formData.contactPerson}
-                      onChange={handleChange}
-                      placeholder="Max Mustermann"
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white font-medium mb-2">E-Mail *</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="info@handwerk.de"
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white font-medium mb-2">Telefon *</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="0221 123456"
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white font-medium mb-2">Website</label>
-                    <input
-                      type="url"
-                      name="website"
-                      value={formData.website}
-                      onChange={handleChange}
-                      placeholder="www.handwerk.de"
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
-                  </div>
-                </div>
+            {/* Step 1: Firmendaten mit Passwort */}
+{step === 1 && (
+  <div className="space-y-6">
+    <h3 className="text-xl font-semibold text-white mb-4">Schritt 1: Firmendaten & Zugangsdaten</h3>
+    
+    <div className="grid md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-white font-medium mb-2">Firmenname *</label>
+        <input
+          type="text"
+          name="companyName"
+          value={formData.companyName}
+          onChange={handleChange}
+          placeholder="Mustermann GmbH"
+          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          required
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">Rechtsform</label>
+        <select
+          name="companyType"
+          value={formData.companyType}
+          onChange={handleChange}
+          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+        >
+          <option value="" className="bg-slate-800">Bitte wählen</option>
+          <option value="einzelunternehmen" className="bg-slate-800">Einzelunternehmen</option>
+          <option value="gbr" className="bg-slate-800">GbR</option>
+          <option value="gmbh" className="bg-slate-800">GmbH</option>
+          <option value="ug" className="bg-slate-800">UG</option>
+          <option value="gmbh_co_kg" className="bg-slate-800">GmbH & Co. KG</option>
+        </select>
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">Ansprechpartner *</label>
+        <input
+          type="text"
+          name="contactPerson"
+          value={formData.contactPerson}
+          onChange={handleChange}
+          placeholder="Max Mustermann"
+          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          required
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">Telefon *</label>
+        <input
+          type="tel"
+          name="phone"
+          value={formData.phone}
+          onChange={handleChange}
+          placeholder="0221 123456"
+          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          required
+        />
+      </div>
+    </div>
+
+    {/* Zugangsdaten Section */}
+    <div className="mt-6 pt-6 border-t border-white/20">
+      <h4 className="text-lg font-semibold text-white mb-4">Zugangsdaten für Ihr Konto</h4>
+      
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-white font-medium mb-2">E-Mail-Adresse *</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="info@handwerk.de"
+            className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            required
+          />
+          <p className="text-gray-400 text-xs mt-1">
+            Diese E-Mail wird für den Login und wichtige Benachrichtigungen verwendet
+          </p>
+        </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">Passwort *</label>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Mindestens 8 Zeichen"
+              className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 pr-12"
+              required
+              minLength="8"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
+            >
+              {showPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
+          
+          {/* Passwort-Stärke-Anzeige */}
+          {formData.password && (
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-white/60 text-xs">Passwortstärke:</span>
+                <span className={`text-xs ${getPasswordStrengthColor(formData.password)}`}>
+                  {getPasswordStrengthText(formData.password)}
+                </span>
               </div>
-            )}
+              <div className="w-full bg-white/10 rounded-full h-1.5">
+                <div 
+                  className={`h-full rounded-full transition-all ${getPasswordStrengthClass(formData.password)}`}
+                  style={{ width: `${getPasswordStrength(formData.password)}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">Passwort bestätigen *</label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="Passwort wiederholen"
+              className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 pr-12"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
+            >
+              {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
+          {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+            <p className="text-red-400 text-xs mt-1">Die Passwörter stimmen nicht überein</p>
+          )}
+        </div>
+      </div>
+      
+      <div className="mt-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+        <p className="text-blue-300 text-sm">
+          <strong>💡 Tipp für ein sicheres Passwort:</strong>
+        </p>
+        <ul className="text-blue-200 text-xs mt-1 space-y-0.5 list-disc list-inside">
+          <li>Mindestens 8 Zeichen lang</li>
+          <li>Kombination aus Groß- und Kleinbuchstaben</li>
+          <li>Mindestens eine Zahl</li>
+          <li>Idealerweise ein Sonderzeichen (!@#$%^&*)</li>
+        </ul>
+      </div>
+    </div>
+
+    {/* Weitere Felder */}
+    <div className="grid md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-white font-medium mb-2">Handelsregisternummer</label>
+        <input
+          type="text"
+          name="registrationNumber"
+          value={formData.registrationNumber}
+          onChange={handleChange}
+          placeholder="HRB 12345"
+          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">Steuernummer</label>
+        <input
+          type="text"
+          name="taxNumber"
+          value={formData.taxNumber}
+          onChange={handleChange}
+          placeholder="123/456/78901"
+          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        />
+      </div>
+      
+      <div className="md:col-span-2">
+        <label className="block text-white font-medium mb-2">Website</label>
+        <input
+          type="url"
+          name="website"
+          value={formData.website}
+          onChange={handleChange}
+          placeholder="www.handwerk.de"
+          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        />
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Fügen Sie diese Hilfsfunktionen und States am Anfang der Komponente hinzu: */}
+const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+// Passwort-Stärke Funktionen
+const getPasswordStrength = (password) => {
+  let strength = 0;
+  if (password.length >= 8) strength += 25;
+  if (password.length >= 12) strength += 25;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
+  if (/\d/.test(password)) strength += 12.5;
+  if (/[^a-zA-Z\d]/.test(password)) strength += 12.5;
+  return Math.min(100, strength);
+};
+
+const getPasswordStrengthText = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'Sehr schwach';
+  if (strength < 50) return 'Schwach';
+  if (strength < 70) return 'Mittel';
+  if (strength < 90) return 'Stark';
+  return 'Sehr stark';
+};
+
+const getPasswordStrengthColor = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'text-red-400';
+  if (strength < 50) return 'text-orange-400';
+  if (strength < 70) return 'text-yellow-400';
+  if (strength < 90) return 'text-green-400';
+  return 'text-green-500';
+};
+
+const getPasswordStrengthClass = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'bg-red-500';
+  if (strength < 50) return 'bg-orange-500';
+  if (strength < 70) return 'bg-yellow-500';
+  if (strength < 90) return 'bg-green-500';
+  return 'bg-green-600';
+};
+
+// Erweiterte Validierung in validateStep()
+const validateStep = () => {
+  if (step === 1) {
+    if (!formData.companyName || !formData.contactPerson || !formData.email || !formData.phone || !formData.password) {
+      setError('Bitte füllen Sie alle Pflichtfelder aus.');
+      return false;
+    }
+    
+    // E-Mail Validierung
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+      return false;
+    }
+    
+    // Passwort-Validierung
+    if (formData.password.length < 8) {
+      setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
+      return false;
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      setError('Die Passwörter stimmen nicht überein.');
+      return false;
+    }
+    
+    // Telefon-Validierung
+    const phoneRegex = /^[\d\s\-+()]+$/;
+    if (!phoneRegex.test(formData.phone)) {
+      setError('Bitte geben Sie eine gültige Telefonnummer ein.');
+      return false;
+    }
+  }
 
             {/* Step 2: Firmenadresse */}
             {step === 2 && (
