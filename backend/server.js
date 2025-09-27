@@ -6267,6 +6267,9 @@ if (trade.code === 'ZIMM' && lv.positions) {
   }
 }
 
+// Variable definieren BEVOR sie verwendet wird
+const titleLower = (pos.title || pos.bezeichnung || '').toLowerCase();
+
 // UNIVERSELLE REGEL: Kleber/Klebstoff-Preise
 if (titleLower.includes('kleber') || titleLower.includes('klebstoff')) {
   if (pos.unit === 'm²' && pos.unitPrice > 15) {
