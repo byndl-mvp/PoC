@@ -6183,21 +6183,50 @@ if (pos.title?.toLowerCase().includes('sockel')) {
     
     console.warn(`[FASS] Verwende Notfall-Dämmstärke: ${notfallDaemmstaerke}cm`);
     
-    // Korrigiere alle falschen Werte
-    lv.positions = lv.positions.map(pos => {
-      if (pos.title?.toLowerCase().includes('dämm') || 
-          pos.title?.toLowerCase().includes('wdvs')) {
-        // Ersetze 0cm und alle ungeraden/falschen Werte
-        pos.title = pos.title?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`); // 0-9 cm
-        pos.title = pos.title?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`); // ungerade
-        
-        pos.description = pos.description?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
-        pos.description = pos.description?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
-      }
-      return pos;
-    });
+   // Korrigiere alle falschen Werte
+lv.positions = lv.positions.map(pos => {
+  if (pos.title?.toLowerCase().includes('dämm') || 
+      pos.title?.toLowerCase().includes('wdvs')) {
+    // Ersetze 0cm und alle ungeraden/falschen Werte
+    pos.title = pos.title?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`); // 0-9 cm
+    pos.title = pos.title?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`); // ungerade
+    
+    pos.description = pos.description?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+    pos.description = pos.description?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
   }
-}
+  
+  // Variable definieren BEVOR sie verwendet wird
+  const titleLower = (pos.title || pos.bezeichnung || '').toLowerCase();
+  
+  // UNIVERSELLE REGEL: Kleber/Klebstoff-Preise
+  if (titleLower.includes('kleber') || titleLower.includes('klebstoff')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 15) {
+      const oldPrice = pos.unitPrice;
+      
+      // Bestimme Kleber-Typ
+      let neuerPreis = 5; // Standard
+      if (titleLower.includes('2-komponenten') || titleLower.includes('epoxid')) {
+        neuerPreis = 12; // Teurer Spezialkleber
+      } else if (titleLower.includes('flexkleber') || titleLower.includes('naturstein')) {
+        neuerPreis = 8; // Mittelpreisig
+      }
+      
+      pos.unitPrice = neuerPreis;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      console.log(`[KLEBER] Preis korrigiert: ${oldPrice}€/m² → ${neuerPreis}€/m²`);
+    }
+    
+    // Kleber pro kg
+    if (pos.unit === 'kg' && pos.unitPrice > 25) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 8; // Max 8€/kg für Spezialkleber
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      console.log(`[KLEBER] Preis/kg korrigiert: ${oldPrice}€ → 8€`);
+    }
+  }
+  
+  return pos;
+});
 
 // ROH-spezifisch: Entferne falsche Holzbau-Positionen
 if (trade.code === 'ROH' && lv.positions) {
@@ -6264,38 +6293,6 @@ if (trade.code === 'ZIMM' && lv.positions) {
   
   if (!hatHolzbau) {
     console.error('[ZIMM] WARNUNG: Zimmerer-LV ohne Holzbau-Positionen!');
-  }
-}
-
-// Variable definieren BEVOR sie verwendet wird
-const titleLower = (pos.title || pos.bezeichnung || '').toLowerCase();
-
-// UNIVERSELLE REGEL: Kleber/Klebstoff-Preise
-if (titleLower.includes('kleber') || titleLower.includes('klebstoff')) {
-  if (pos.unit === 'm²' && pos.unitPrice > 15) {
-    const oldPrice = pos.unitPrice;
-    
-    // Bestimme Kleber-Typ
-    let neuerPreis = 5; // Standard
-    if (titleLower.includes('2-komponenten') || titleLower.includes('epoxid')) {
-      neuerPreis = 12; // Teurer Spezialkleber
-    } else if (titleLower.includes('flexkleber') || titleLower.includes('naturstein')) {
-      neuerPreis = 8; // Mittelpreisig
-    }
-    
-    pos.unitPrice = neuerPreis;
-    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-    warnings.push(`Kleber-Preis korrigiert: ${oldPrice}€/m² → ${neuerPreis}€/m²`);
-    fixedCount++;
-  }
-  
-  // Kleber pro kg
-  if (pos.unit === 'kg' && pos.unitPrice > 25) {
-    const oldPrice = pos.unitPrice;
-    pos.unitPrice = 8; // Max 8€/kg für Spezialkleber
-    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-    warnings.push(`Kleber/kg korrigiert: ${oldPrice}€ → 8€`);
-    fixedCount++;
   }
 }
       
