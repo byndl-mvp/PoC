@@ -146,56 +146,74 @@ const getPasswordStrengthClass = (password) => {
   };
 
   const validateStep = () => {
-    if (step === 1) {
-      if (!formData.companyName || !formData.contactPerson || !formData.email || !formData.phone) {
-        setError('Bitte füllen Sie alle Pflichtfelder aus.');
-        return false;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
-        return false;
-      }
-      const phoneRegex = /^[\d\s\-+()]+$/;
-      if (!phoneRegex.test(formData.phone)) {
-        setError('Bitte geben Sie eine gültige Telefonnummer ein.');
-        return false;
-      }
+  if (step === 1) {
+    // Erweiterte Validierung mit Passwort
+    if (!formData.companyName || !formData.contactPerson || !formData.email || 
+        !formData.phone || !formData.password || !formData.confirmPassword) {
+      setError('Bitte füllen Sie alle Pflichtfelder aus.');
+      return false;
     }
     
-    if (step === 2) {
-      if (!formData.street || !formData.houseNumber || !formData.zipCode || !formData.city) {
-        setError('Bitte geben Sie die vollständige Firmenadresse an.');
-        return false;
-      }
-      if (formData.zipCode.length !== 5 || !/^\d{5}$/.test(formData.zipCode)) {
-        setError('Bitte geben Sie eine gültige 5-stellige Postleitzahl ein.');
-        return false;
-      }
+    // E-Mail Validierung
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+      return false;
     }
     
-    if (step === 3) {
-      if (formData.trades.length === 0) {
-        setError('Bitte wählen Sie mindestens ein Gewerk aus.');
-        return false;
-      }
-      if (!formData.availableFrom) {
-        setError('Bitte geben Sie an, ab wann Sie Aufträge annehmen können.');
-        return false;
-      }
-      // Datum darf nicht in der Vergangenheit liegen
-      const selectedDate = new Date(formData.availableFrom);
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      if (selectedDate < today) {
-        setError('Das Verfügbarkeitsdatum kann nicht in der Vergangenheit liegen.');
-        return false;
-      }
+    // Passwort-Validierung
+    if (formData.password.length < 8) {
+      setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
+      return false;
     }
     
-    setError('');
-    return true;
-  };
+    // Passwörter müssen übereinstimmen
+    if (formData.password !== formData.confirmPassword) {
+      setError('Die Passwörter stimmen nicht überein.');
+      return false;
+    }
+    
+    // Telefon-Validierung
+    const phoneRegex = /^[\d\s\-+()]+$/;
+    if (!phoneRegex.test(formData.phone)) {
+      setError('Bitte geben Sie eine gültige Telefonnummer ein.');
+      return false;
+    }
+  }
+  
+  if (step === 2) {
+    if (!formData.street || !formData.houseNumber || !formData.zipCode || !formData.city) {
+      setError('Bitte geben Sie die vollständige Firmenadresse an.');
+      return false;
+    }
+    if (formData.zipCode.length !== 5 || !/^\d{5}$/.test(formData.zipCode)) {
+      setError('Bitte geben Sie eine gültige 5-stellige Postleitzahl ein.');
+      return false;
+    }
+  }
+  
+  if (step === 3) {
+    if (formData.trades.length === 0) {
+      setError('Bitte wählen Sie mindestens ein Gewerk aus.');
+      return false;
+    }
+    if (!formData.availableFrom) {
+      setError('Bitte geben Sie an, ab wann Sie Aufträge annehmen können.');
+      return false;
+    }
+    // Datum darf nicht in der Vergangenheit liegen
+    const selectedDate = new Date(formData.availableFrom);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    if (selectedDate < today) {
+      setError('Das Verfügbarkeitsdatum kann nicht in der Vergangenheit liegen.');
+      return false;
+    }
+  }
+  
+  setError('');
+  return true;
+};
 
   const handleNext = () => {
     if (validateStep()) {
