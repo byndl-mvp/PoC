@@ -6183,19 +6183,24 @@ if (pos.title?.toLowerCase().includes('sockel')) {
     
     console.warn(`[FASS] Verwende Notfall-Dämmstärke: ${notfallDaemmstaerke}cm`);
     
-   // Korrigiere alle falschen Werte
-lv.positions = lv.positions.map(pos => {
-  if (pos.title?.toLowerCase().includes('dämm') || 
-      pos.title?.toLowerCase().includes('wdvs')) {
-    // Ersetze 0cm und alle ungeraden/falschen Werte
-    pos.title = pos.title?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`); // 0-9 cm
-    pos.title = pos.title?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`); // ungerade
-    
-    pos.description = pos.description?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
-    pos.description = pos.description?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+    // Korrigiere alle falschen Werte NUR FÜR DÄMMUNG
+    lv.positions = lv.positions.map(pos => {
+      if (pos.title?.toLowerCase().includes('dämm') || 
+          pos.title?.toLowerCase().includes('wdvs')) {
+        // Ersetze 0cm und alle ungeraden/falschen Werte
+        pos.title = pos.title?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+        pos.title = pos.title?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+        
+        pos.description = pos.description?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+        pos.description = pos.description?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+      }
+      return pos;
+    });
   }
-  
-  // Variable definieren BEVOR sie verwendet wird
+} // <-- ENDE DES GROSSEN DÄMMSTÄRKEN-BLOCKS
+
+// KLEBER-REGELN HIER, AUSSERHALB!
+lv.positions = lv.positions.map(pos => {
   const titleLower = (pos.title || pos.bezeichnung || '').toLowerCase();
   
   // UNIVERSELLE REGEL: Kleber/Klebstoff-Preise
