@@ -20,6 +20,12 @@ export default function HandwerkerSettingsPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false); // DIESE ZEILE HINZUFÜGEN
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const crypto = require('crypto');
   // HIER NEU:
   const [documents, setDocuments] = useState({
     gewerbeschein: null,
@@ -276,6 +282,269 @@ const loadDocuments = async () => {
     { id: 'account', label: 'Account', icon: '⚙️' }
   ];
 
+  const handlePasswordChange = async () => {
+  if (!formData.currentPassword || !formData.newPassword || !formData.confirmPassword) {
+    setError('Bitte füllen Sie alle Passwortfelder aus');
+    return;
+  }
+  
+  if (formData.newPassword !== formData.confirmPassword) {
+    setError('Die neuen Passwörter stimmen nicht überein');
+    return;
+  }
+  
+  if (formData.newPassword.length < 8) {
+    setError('Das neue Passwort muss mindestens 8 Zeichen lang sein');
+    return;
+  }
+  
+  try {
+    setSaving(true);
+    setError('');
+    
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/password`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      },
+      body: JSON.stringify({
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok) {
+      setMessage('Passwort erfolgreich geändert');
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }));
+      setTimeout(() => setMessage(''), 3000);
+    } else {
+      setError(data.error || 'Passwortänderung fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Fehler beim Ändern des Passworts');
+  } finally {
+    setSaving(false);
+  }
+};
+
+const handleSaveTwoFactor = async (enabled) => {
+  try {
+    setSaving(true);
+    
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/two-factor`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      },
+      body: JSON.stringify({ twoFactorEnabled: enabled })
+    });
+    
+    if (res.ok) {
+      setMessage(enabled ? '2FA aktiviert' : '2FA deaktiviert');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  } catch (err) {
+    setError('Fehler beim Ändern der 2FA-Einstellung');
+  } finally {
+    setSaving(false);
+  }
+};
+
+const handleAccountDelete = async () => {
+  if (!deletePassword) {
+    setError('Bitte geben Sie Ihr Passwort ein');
+    return;
+  }
+  
+  if (!window.confirm('Sind Sie WIRKLICH sicher? Diese Aktion kann nicht rückgängig gemacht werden!')) {
+    return;
+  }
+  
+  try {
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/account`), {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      },
+      body: JSON.stringify({ password: deletePassword })
+    });
+    
+    if (res.ok) {
+      sessionStorage.clear();
+      localStorage.clear();
+      navigate('/');
+    } else {
+      const data = await res.json();
+      setError(data.error || 'Account-Löschung fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Fehler beim Löschen des Accounts');
+  }
+};
+
+  // Passwort-Stärke-Funktionen
+const getPasswordStrength = (password) => {
+  let strength = 0;
+  if (password.length >= 8) strength += 25;
+  if (password.length >= 12) strength += 25;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
+  if (/\d/.test(password)) strength += 12.5;
+  if (/[^a-zA-Z\d]/.test(password)) strength += 12.5;
+  return Math.min(100, strength);
+};
+
+const getPasswordStrengthText = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'Sehr schwach';
+  if (strength < 50) return 'Schwach';
+  if (strength < 70) return 'Mittel';
+  if (strength < 90) return 'Stark';
+  return 'Sehr stark';
+};
+
+const getPasswordStrengthColor = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'text-red-400';
+  if (strength < 50) return 'text-orange-400';
+  if (strength < 70) return 'text-yellow-400';
+  if (strength < 90) return 'text-green-400';
+  return 'text-green-500';
+};
+
+const getPasswordStrengthClass = (password) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 30) return 'bg-red-500';
+  if (strength < 50) return 'bg-orange-500';
+  if (strength < 70) return 'bg-yellow-500';
+  if (strength < 90) return 'bg-green-500';
+  return 'bg-green-600';
+};
+
+  // Account-Handler
+const handlePasswordChange = async () => {
+  if (!formData.currentPassword || !formData.newPassword || !formData.confirmPassword) {
+    setError('Bitte füllen Sie alle Passwortfelder aus');
+    return;
+  }
+  
+  if (formData.newPassword !== formData.confirmPassword) {
+    setError('Die neuen Passwörter stimmen nicht überein');
+    return;
+  }
+  
+  if (formData.newPassword.length < 8) {
+    setError('Das neue Passwort muss mindestens 8 Zeichen lang sein');
+    return;
+  }
+  
+  try {
+    setSaving(true);
+    setError('');
+    
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/password`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      },
+      body: JSON.stringify({
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok) {
+      setMessage('Passwort erfolgreich geändert');
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }));
+      setTimeout(() => setMessage(''), 3000);
+    } else {
+      setError(data.error || 'Passwortänderung fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Fehler beim Ändern des Passworts');
+  } finally {
+    setSaving(false);
+  }
+};
+
+const handleSaveTwoFactor = async (enabled) => {
+  try {
+    setSaving(true);
+    
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/two-factor`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      },
+      body: JSON.stringify({ twoFactorEnabled: enabled })
+    });
+    
+    if (res.ok) {
+      setMessage(enabled ? '2FA aktiviert' : '2FA deaktiviert');
+      setTimeout(() => setMessage(''), 3000);
+    } else {
+      setError('Fehler beim Ändern der 2FA-Einstellung');
+    }
+  } catch (err) {
+    setError('Fehler beim Ändern der 2FA-Einstellung');
+  } finally {
+    setSaving(false);
+  }
+};
+
+const handleAccountDelete = async () => {
+  if (!deletePassword) {
+    setError('Bitte geben Sie Ihr Passwort ein');
+    return;
+  }
+  
+  if (!window.confirm('Sind Sie WIRKLICH sicher? Diese Aktion kann nicht rückgängig gemacht werden!')) {
+    return;
+  }
+  
+  try {
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/account`), {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      },
+      body: JSON.stringify({ password: deletePassword })
+    });
+    
+    if (res.ok) {
+      sessionStorage.clear();
+      localStorage.clear();
+      navigate('/');
+    } else {
+      const data = await res.json();
+      setError(data.error || 'Account-Löschung fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Fehler beim Löschen des Accounts');
+  }
+};
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
@@ -980,81 +1249,289 @@ const loadDocuments = async () => {
           )}
 
           {/* Account Tab */}
-          {activeTab === 'account' && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white mb-4">Account-Einstellungen</h2>
-              
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <p className="text-yellow-300 text-sm">
-                  ⚠️ Vorsicht: Änderungen in diesem Bereich können Ihren Zugang beeinflussen.
-                </p>
+{activeTab === 'account' && (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Account-Einstellungen</h2>
+    
+    {/* Sicherheitswarnung */}
+    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">⚠️</span>
+        <div>
+          <p className="text-yellow-300 font-medium">Sicherheitshinweis</p>
+          <p className="text-yellow-300/80 text-sm">
+            Änderungen in diesem Bereich können Ihren Zugang zum System beeinflussen. 
+            Stellen Sie sicher, dass Sie sich Ihre neuen Zugangsdaten merken.
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    {/* Passwort ändern */}
+    <div className="bg-white/5 rounded-lg p-6">
+      <h3 className="text-lg font-semibold text-white mb-4">Passwort ändern</h3>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="block text-white font-medium mb-2">
+            Aktuelles Passwort
+            <span className="text-red-400 ml-1">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showCurrentPassword ? "text" : "password"}
+              value={formData.currentPassword || ''}
+              onChange={(e) => handleChange('currentPassword', e.target.value)}
+              className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white pr-12"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
+            >
+              {showCurrentPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
+        </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">
+            Neues Passwort
+            <span className="text-red-400 ml-1">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showNewPassword ? "text" : "password"}
+              value={formData.newPassword || ''}
+              onChange={(e) => handleChange('newPassword', e.target.value)}
+              className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white pr-12"
+              placeholder="Min. 8 Zeichen"
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
+            >
+              {showNewPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
+          
+          {/* Passwort-Stärke-Anzeige */}
+          {formData.newPassword && (
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-white/60 text-xs">Passwortstärke:</span>
+                <span className={`text-xs ${getPasswordStrengthColor(formData.newPassword)}`}>
+                  {getPasswordStrengthText(formData.newPassword)}
+                </span>
               </div>
-              
-              <div>
-                <label className="flex items-center text-white mb-4">
-                  <input
-                    type="checkbox"
-                    checked={formData.twoFactorEnabled}
-                    onChange={(e) => handleChange('twoFactorEnabled', e.target.checked)}
-                    className="mr-3"
-                  />
-                  Zwei-Faktor-Authentifizierung aktivieren
-                </label>
+              <div className="w-full bg-white/10 rounded-full h-1.5">
+                <div 
+                  className={`h-full rounded-full transition-all ${getPasswordStrengthClass(formData.newPassword)}`}
+                  style={{ width: `${getPasswordStrength(formData.newPassword)}%` }}
+                />
               </div>
-              
-              <hr className="border-white/20" />
-              
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-white">Passwort ändern</h3>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">Aktuelles Passwort</label>
-                  <input
-                    type="password"
-                    value={formData.currentPassword}
-                    onChange={(e) => handleChange('currentPassword', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">Neues Passwort</label>
-                  <input
-                    type="password"
-                    value={formData.newPassword}
-                    onChange={(e) => handleChange('newPassword', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">Neues Passwort bestätigen</label>
-                  <input
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <button
-                  onClick={() => handleSave('password')}
-                  disabled={loading}
-                  className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-                >
-                  Passwort ändern
-                </button>
-              </div>
-              
-              <hr className="border-white/20" />
-              
-              <div className="pt-4">
-                <button className="px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg">
-                  Account löschen
-                </button>
-              </div>
+              <p className="text-white/60 text-xs mt-1">
+                Mindestens 8 Zeichen, idealerweise mit Groß- und Kleinbuchstaben, Zahlen und Sonderzeichen
+              </p>
             </div>
           )}
+        </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">
+            Neues Passwort bestätigen
+            <span className="text-red-400 ml-1">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              value={formData.confirmPassword || ''}
+              onChange={(e) => handleChange('confirmPassword', e.target.value)}
+              className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white pr-12"
+              placeholder="Passwort wiederholen"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
+            >
+              {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
+          {formData.newPassword && formData.confirmPassword && formData.newPassword !== formData.confirmPassword && (
+            <p className="text-red-400 text-xs mt-1">Die Passwörter stimmen nicht überein</p>
+          )}
+        </div>
+        
+        <div className="flex justify-end gap-4">
+          <button
+            onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+              }));
+            }}
+            className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handlePasswordChange}
+            disabled={
+              saving || 
+              !formData.currentPassword || 
+              !formData.newPassword || 
+              !formData.confirmPassword ||
+              formData.newPassword !== formData.confirmPassword ||
+              formData.newPassword.length < 8
+            }
+            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Wird geändert...' : 'Passwort ändern'}
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    {/* Zwei-Faktor-Authentifizierung */}
+    <div className="bg-white/5 rounded-lg p-6">
+      <h3 className="text-lg font-semibold text-white mb-4">Zwei-Faktor-Authentifizierung</h3>
+      
+      <div className="space-y-4">
+        <label className="flex items-center justify-between">
+          <div className="flex items-center text-white">
+            <input
+              type="checkbox"
+              checked={formData.twoFactorEnabled || false}
+              onChange={(e) => {
+                handleChange('twoFactorEnabled', e.target.checked);
+                handleSaveTwoFactor(e.target.checked);
+              }}
+              className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
+            />
+            <div>
+              <span className="font-medium">2FA aktivieren</span>
+              <p className="text-white/60 text-sm">
+                Erhöht die Sicherheit Ihres Accounts durch eine zusätzliche Verifizierung
+              </p>
+            </div>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-sm ${
+            formData.twoFactorEnabled 
+              ? 'bg-green-500/20 text-green-300' 
+              : 'bg-gray-500/20 text-gray-300'
+          }`}>
+            {formData.twoFactorEnabled ? 'Aktiv' : 'Inaktiv'}
+          </span>
+        </label>
+        
+        {formData.twoFactorEnabled && (
+          <div className="mt-4 p-4 bg-white/5 rounded-lg">
+            <p className="text-white/80 text-sm">
+              📱 SMS-Verifizierung wird an Ihre hinterlegte Nummer gesendet: 
+              <span className="text-teal-300 ml-2">{formData.phone || 'Keine Nummer hinterlegt'}</span>
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+    
+    {/* Login-Informationen */}
+    <div className="bg-white/5 rounded-lg p-6">
+      <h3 className="text-lg font-semibold text-white mb-4">Login-Informationen</h3>
+      
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <p className="text-white/60 text-sm">Betriebs-ID</p>
+          <p className="text-white font-mono">
+            {handwerkerData?.companyId || 'Nicht verfügbar'}
+          </p>
+        </div>
+        <div>
+          <p className="text-white/60 text-sm">E-Mail-Adresse</p>
+          <p className="text-white">
+            {handwerkerData?.email || formData.email}
+          </p>
+        </div>
+        <div>
+          <p className="text-white/60 text-sm">Letzter Login</p>
+          <p className="text-white">
+            {formData.lastLogin 
+              ? new Date(formData.lastLogin).toLocaleString('de-DE')
+              : 'Keine Daten vorhanden'}
+          </p>
+        </div>
+        <div>
+          <p className="text-white/60 text-sm">Account erstellt</p>
+          <p className="text-white">
+            {handwerkerData?.createdAt 
+              ? new Date(handwerkerData.createdAt).toLocaleDateString('de-DE')
+              : 'Keine Daten vorhanden'}
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    {/* Account löschen */}
+    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6">
+      <h3 className="text-lg font-semibold text-red-300 mb-4">Gefahrenzone</h3>
+      
+      <div className="space-y-4">
+        <p className="text-white/80">
+          Das Löschen Ihres Accounts ist endgültig und kann nicht rückgängig gemacht werden. 
+          Alle Ihre Daten, Projekte und Bewertungen werden unwiderruflich gelöscht.
+        </p>
+        
+        {showDeleteConfirm ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-white font-medium mb-2">
+                Geben Sie Ihr Passwort zur Bestätigung ein:
+              </label>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                className="w-full bg-white/20 border border-red-500/50 rounded-lg px-4 py-2 text-white"
+                placeholder="Passwort zur Bestätigung"
+              />
+            </div>
+            
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeletePassword('');
+                }}
+                className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleAccountDelete}
+                disabled={!deletePassword}
+                className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50"
+              >
+                Account endgültig löschen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button 
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-6 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors"
+          >
+            Account löschen
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 
           {activeTab === 'dokumente' && (
   <div className="space-y-6">
