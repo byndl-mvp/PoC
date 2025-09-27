@@ -11675,38 +11675,46 @@ app.put('/api/handwerker/:id/firmendaten', async (req, res) => {
 app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
   try {
     const { 
-      actionRadius, 
+      actionRadius,           // Frontend: CamelCase
       excludedAreas,
       travelCostPerKm,
-      preferred_zip_codes,
-      min_order_value_10km,
-      min_order_value_25km,
-      min_order_value_50km,
-      min_order_value_over50km,
+      preferredZipCodes,      // Frontend: CamelCase (geändert von preferred_zip_codes)
+      minOrderValue10km,      // Frontend: CamelCase (geändert von min_order_value_10km)
+      minOrderValue25km,      // Frontend: CamelCase (geändert von min_order_value_25km)
+      minOrderValue50km,      // Frontend: CamelCase (geändert von min_order_value_50km)
+      minOrderValueOver50km,  // Frontend: CamelCase (geändert von min_order_value_over50km)
       latitude,
       longitude
     } = req.body;
     
-    // Basis-Update
+    // Basis-Update mit Transformation zu snake_case für DB
     await query(
       `UPDATE handwerker SET
-        action_radius = $2,
+        action_radius = $2,      -- DB: snake_case
         excluded_areas = $3,
         travel_cost_per_km = $4
        WHERE id = $1`,
-      [req.params.id, actionRadius, JSON.stringify(excludedAreas), travelCostPerKm]
+      [
+        req.params.id, 
+        actionRadius || 25,                    // Default-Wert
+        JSON.stringify(excludedAreas || []),   // Default leeres Array
+        travelCostPerKm || 0.5                 // Default-Wert
+      ]
     );
     
-    // Erweiterte Einstellungen als JSON speichern (falls keine separaten Spalten existieren)
+    // Erweiterte Einstellungen mit snake_case für DB-JSON
     const coverageSettings = {
-      preferred_zip_codes,
+      preferred_zip_codes: preferredZipCodes || [],  // Transformation zu snake_case
       min_order_values: {
-        up_to_10km: min_order_value_10km,
-        up_to_25km: min_order_value_25km,
-        up_to_50km: min_order_value_50km,
-        over_50km: min_order_value_over50km
+        up_to_10km: minOrderValue10km || 0,
+        up_to_25km: minOrderValue25km || 0,
+        up_to_50km: minOrderValue50km || 0,
+        over_50km: minOrderValueOver50km || 0
       },
-      coordinates: { latitude, longitude }
+      coordinates: { 
+        latitude: latitude || null, 
+        longitude: longitude || null 
+      }
     };
     
     await query(
@@ -11716,6 +11724,7 @@ app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
     
     res.json({ success: true });
   } catch (err) {
+    console.error('Update Einsatzgebiet Error:', err);
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
