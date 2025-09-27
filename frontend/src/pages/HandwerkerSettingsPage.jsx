@@ -1062,7 +1062,7 @@ const getPasswordStrengthClass = (password) => {
       </button>
       <button
         onClick={() => handleSave('benachrichtigungen')}
-        disabled={loading || !formData.notificationEmail}
+        disabled={loading || (!formData.notificationEmail && !formData.email)}
         className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
       >
         {loading ? 'Wird gespeichert...' : 'Speichern'}
