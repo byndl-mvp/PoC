@@ -267,72 +267,71 @@ const getPasswordStrengthClass = (password) => {
 };
   
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  if (!validateStep()) return;
+  
+  setLoading(true);
+  setError('');
+  
+  try {
+    // Generiere Betriebs-ID
+    const companyId = generateCompanyId();
     
-    if (!validateStep()) return;
+    // SCHRITT 6: Entferne confirmPassword vor dem Senden
+    const { confirmPassword, ...submitDataWithoutConfirm } = formData;
     
-    setLoading(true);
-    setError('');
-
-    try {
-      // Generiere Betriebs-ID
-      const companyId = generateCompanyId();
+    const submitData = {
+      ...submitDataWithoutConfirm,  // Verwende die Daten ohne confirmPassword
+      companyId,
+      registeredAt: new Date().toISOString()
+    };
+    
+    const res = await fetch(apiUrl('/api/handwerker/register'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(submitData)
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
       
-      const submitData = {
-        ...formData,
-        companyId,
-        registeredAt: new Date().toISOString()
-      };
-
-      const res = await fetch(apiUrl('/api/handwerker/register'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submitData)
-      });
-
-      if (res.ok) {
-  const data = await res.json();
-  
-  // Hole die DB-ID direkt nach Registrierung
-  const verifyRes = await fetch(apiUrl('/api/handwerker/verify'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: formData.email,
-      companyId: data.companyId || companyId
-    })
-  });
-  
-  let handwerkerData = {
-    companyName: formData.companyName,
-    email: formData.email,
-    companyId: data.companyId || companyId,
-    trades: formData.trades,
-    region: `${formData.zipCode} ${formData.city}`,
-    actionRadius: formData.actionRadius
-  };
-  
-  if (verifyRes.ok) {
-    const verifyData = await verifyRes.json();
-    handwerkerData.id = verifyData.id; // DB-ID hinzufügen
-  }
-  
-  sessionStorage.setItem('handwerkerData', JSON.stringify(handwerkerData));
-  
-  alert(`✅ Registrierung erfolgreich!\n\nIhre Betriebs-ID: ${data.companyId || companyId}\n\n⚠️ WICHTIG: Bitte notieren Sie sich diese ID für den Login!\n\nSie werden nun zum Dashboard weitergeleitet.`);
-  
-  navigate('/handwerker/dashboard');
-      } else {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Registrierung fehlgeschlagen');
+      // Token speichern falls vorhanden (von der neuen Backend-Route)
+      if (data.token) {
+        sessionStorage.setItem('handwerkerToken', data.token);
       }
-    } catch (err) {
-      console.error('Registrierungsfehler:', err);
-      setError(err.message || 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
-    } finally {
-      setLoading(false);
+      
+      // Handwerker-Daten speichern
+      if (data.handwerker) {
+        sessionStorage.setItem('handwerkerData', JSON.stringify(data.handwerker));
+      } else {
+        // Fallback für alte Backend-Version
+        let handwerkerData = {
+          id: data.id,
+          companyName: formData.companyName,
+          email: formData.email,
+          companyId: data.companyId || companyId,
+          trades: formData.trades,
+          region: `${formData.zipCode} ${formData.city}`,
+          actionRadius: formData.actionRadius
+        };
+        sessionStorage.setItem('handwerkerData', JSON.stringify(handwerkerData));
+      }
+      
+      alert(`✅ Registrierung erfolgreich!\n\nIhre Betriebs-ID: ${data.companyId || companyId}\n\n⚠️ WICHTIG: Notieren Sie sich diese ID als Backup!\n\nSie können sich nun mit Ihrer E-Mail und Passwort anmelden.`);
+      
+      navigate('/handwerker/dashboard');
+    } else {
+      const errorData = await res.json();
+      throw new Error(errorData.error || errorData.message || 'Registrierung fehlgeschlagen');
     }
-  };
+  } catch (err) {
+    console.error('Registrierungsfehler:', err);
+    setError(err.message || 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
