@@ -762,51 +762,159 @@ const loadDocuments = async () => {
           )}
 
           {/* Benachrichtigungen Tab */}
-          {activeTab === 'benachrichtigungen' && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white mb-4">Benachrichtigungen</h2>
-              
-              <div className="space-y-3">
-                <label className="flex items-center text-white">
-                  <input
-                    type="checkbox"
-                    checked={formData.emailNotifications}
-                    onChange={(e) => handleChange('emailNotifications', e.target.checked)}
-                    className="mr-3"
-                  />
-                  E-Mail-Benachrichtigungen bei neuen Ausschreibungen
-                </label>
-                
-                <label className="flex items-center text-white">
-                  <input
-                    type="checkbox"
-                    checked={formData.smsNotifications}
-                    onChange={(e) => handleChange('smsNotifications', e.target.checked)}
-                    className="mr-3"
-                  />
-                  SMS-Benachrichtigungen für dringende Anfragen
-                </label>
-                
-                <label className="flex items-center text-white">
-                  <input
-                    type="checkbox"
-                    checked={formData.newsletterSubscribed}
-                    onChange={(e) => handleChange('newsletterSubscribed', e.target.checked)}
-                    className="mr-3"
-                  />
-                  Newsletter abonnieren
-                </label>
-              </div>
-              
-              <button
-                onClick={() => handleSave('benachrichtigungen')}
-                disabled={loading}
-                className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
-              >
-                Speichern
-              </button>
-            </div>
-          )}
+{activeTab === 'benachrichtigungen' && (
+  <div className="space-y-4">
+    <h2 className="text-2xl font-bold text-white mb-4">Benachrichtigungen</h2>
+    
+    {/* Kontaktdaten für Benachrichtigungen */}
+    <div className="bg-white/5 rounded-lg p-4 mb-6">
+      <h3 className="text-lg font-semibold text-white mb-4">Kontaktdaten für Benachrichtigungen</h3>
+      
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-white font-medium mb-2">
+            E-Mail für Benachrichtigungen
+            <span className="text-red-400 ml-1">*</span>
+          </label>
+          <input
+            type="email"
+            value={formData.notificationEmail || formData.email}
+            onChange={(e) => handleChange('notificationEmail', e.target.value)}
+            placeholder="benachrichtigungen@firma.de"
+            className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white placeholder-white/50"
+          />
+          <p className="text-white/60 text-sm mt-1">
+            An diese E-Mail werden alle Benachrichtigungen gesendet
+          </p>
+        </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">
+            Telefonnummer für SMS
+            <span className="text-white/60 ml-1">(optional)</span>
+          </label>
+          <input
+            type="tel"
+            value={formData.notificationPhone || formData.phone}
+            onChange={(e) => handleChange('notificationPhone', e.target.value)}
+            placeholder="+49 151 12345678"
+            className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white placeholder-white/50"
+          />
+          <p className="text-white/60 text-sm mt-1">
+            Für dringende Benachrichtigungen per SMS
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    {/* Benachrichtigungsarten */}
+    <div className="bg-white/5 rounded-lg p-4">
+      <h3 className="text-lg font-semibold text-white mb-4">Benachrichtigungsarten</h3>
+      
+      <div className="space-y-3">
+        <label className="flex items-center text-white cursor-pointer hover:text-teal-300 transition-colors">
+          <input
+            type="checkbox"
+            checked={formData.emailNotifications}
+            onChange={(e) => handleChange('emailNotifications', e.target.checked)}
+            className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
+          />
+          <div>
+            <span className="font-medium">E-Mail-Benachrichtigungen</span>
+            <p className="text-white/60 text-sm">Erhalten Sie E-Mails bei neuen Ausschreibungen in Ihrem Bereich</p>
+          </div>
+        </label>
+        
+        <label className="flex items-center text-white cursor-pointer hover:text-teal-300 transition-colors">
+          <input
+            type="checkbox"
+            checked={formData.smsNotifications}
+            onChange={(e) => handleChange('smsNotifications', e.target.checked)}
+            disabled={!formData.notificationPhone}
+            className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500 disabled:opacity-50"
+          />
+          <div>
+            <span className="font-medium">SMS-Benachrichtigungen</span>
+            <p className="text-white/60 text-sm">
+              Für dringende Anfragen und zeitkritische Projekte
+              {!formData.notificationPhone && <span className="text-yellow-300"> (Telefonnummer erforderlich)</span>}
+            </p>
+          </div>
+        </label>
+        
+        <label className="flex items-center text-white cursor-pointer hover:text-teal-300 transition-colors">
+          <input
+            type="checkbox"
+            checked={formData.newsletterSubscribed}
+            onChange={(e) => handleChange('newsletterSubscribed', e.target.checked)}
+            className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
+          />
+          <div>
+            <span className="font-medium">Newsletter</span>
+            <p className="text-white/60 text-sm">Tipps, Updates und neue Features per E-Mail</p>
+          </div>
+        </label>
+      </div>
+    </div>
+    
+    {/* Benachrichtigungszeiten */}
+    <div className="bg-white/5 rounded-lg p-4">
+      <h3 className="text-lg font-semibold text-white mb-4">Benachrichtigungszeiten</h3>
+      
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-white font-medium mb-2">
+            Früheste Benachrichtigung
+          </label>
+          <input
+            type="time"
+            value={formData.notificationStartTime || '08:00'}
+            onChange={(e) => handleChange('notificationStartTime', e.target.value)}
+            className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-white font-medium mb-2">
+            Späteste Benachrichtigung
+          </label>
+          <input
+            type="time"
+            value={formData.notificationEndTime || '18:00'}
+            onChange={(e) => handleChange('notificationEndTime', e.target.value)}
+            className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+          />
+        </div>
+      </div>
+      <p className="text-white/60 text-sm mt-2">
+        Außerhalb dieser Zeiten werden nur kritische Benachrichtigungen versendet
+      </p>
+    </div>
+    
+    {/* Speichern Button */}
+    <div className="flex justify-end gap-4">
+      <button
+        onClick={() => {
+          setFormData(prev => ({
+            ...prev,
+            notificationEmail: handwerkerData?.email || '',
+            notificationPhone: handwerkerData?.phone || ''
+          }));
+        }}
+        className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+      >
+        Zurücksetzen
+      </button>
+      <button
+        onClick={() => handleSave('benachrichtigungen')}
+        disabled={loading || !formData.notificationEmail}
+        className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
+      >
+        {loading ? 'Wird gespeichert...' : 'Speichern'}
+      </button>
+    </div>
+  </div>
+)}
 
           {/* Zahlungsdaten Tab */}
           {activeTab === 'zahlungsdaten' && (
