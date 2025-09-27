@@ -11779,29 +11779,72 @@ app.put('/api/handwerker/:id/preise', async (req, res) => {
   }
 });
 
-// Benachrichtigungen updaten
+// Benachrichtigungen updaten - ERWEITERTE VERSION
 app.put('/api/handwerker/:id/benachrichtigungen', async (req, res) => {
   try {
-    const { emailNotifications, smsNotifications, newsletterSubscribed } = req.body;
+    const { 
+      emailNotifications, 
+      smsNotifications, 
+      newsletterSubscribed,
+      notificationEmail,
+      notificationPhone 
+    } = req.body;
+    
+    // Validierung der E-Mail
+    if (notificationEmail && !isValidEmail(notificationEmail)) {
+      return res.status(400).json({ error: 'Ungültige E-Mail-Adresse' });
+    }
+    
+    // Validierung der Telefonnummer
+    if (notificationPhone && !isValidPhone(notificationPhone)) {
+      return res.status(400).json({ error: 'Ungültige Telefonnummer' });
+    }
     
     const notificationSettings = {
       email: emailNotifications,
       sms: smsNotifications,
-      newsletter: newsletterSubscribed
+      newsletter: newsletterSubscribed,
+      notificationEmail: notificationEmail,
+      notificationPhone: notificationPhone
     };
     
+    // Update der Datenbank mit zusätzlichen Feldern
     await query(
       `UPDATE handwerker SET
-        notification_settings = $2
+        notification_settings = $2,
+        notification_email = $3,
+        notification_phone = $4,
+        updated_at = CURRENT_TIMESTAMP
        WHERE id = $1`,
-      [req.params.id, JSON.stringify(notificationSettings)]
+      [
+        req.params.id, 
+        JSON.stringify(notificationSettings),
+        notificationEmail || null,
+        notificationPhone || null
+      ]
     );
     
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      message: 'Benachrichtigungseinstellungen erfolgreich aktualisiert'
+    });
   } catch (err) {
+    console.error('Fehler beim Update der Benachrichtigungen:', err);
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
+
+// Hilfsfunktionen für Validierung
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function isValidPhone(phone) {
+  // Erlaubt deutsche Telefonnummern mit verschiedenen Formaten
+  const phoneRegex = /^(\+49|0049|0)?[1-9]\d{1,14}$/;
+  return phoneRegex.test(phone.replace(/[\s\-\/\(\)]/g, ''));
+}
 
 // Zahlungsdaten updaten
 app.put('/api/handwerker/:id/zahlungsdaten', async (req, res) => {
