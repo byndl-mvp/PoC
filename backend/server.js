@@ -11674,37 +11674,40 @@ app.put('/api/handwerker/:id/firmendaten', async (req, res) => {
 // ERSETZE die bestehende Einsatzgebiet-Route mit dieser:
 app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
   try {
+    const handwerkerId = req.params.id;
+    console.log('Update Einsatzgebiet für Handwerker ID:', handwerkerId);
+    
     const { 
-      actionRadius,           // Frontend: CamelCase
+      actionRadius,
       excludedAreas,
       travelCostPerKm,
-      preferredZipCodes,      // Frontend: CamelCase (geändert von preferred_zip_codes)
-      minOrderValue10km,      // Frontend: CamelCase (geändert von min_order_value_10km)
-      minOrderValue25km,      // Frontend: CamelCase (geändert von min_order_value_25km)
-      minOrderValue50km,      // Frontend: CamelCase (geändert von min_order_value_50km)
-      minOrderValueOver50km,  // Frontend: CamelCase (geändert von min_order_value_over50km)
+      preferredZipCodes,
+      minOrderValue10km,
+      minOrderValue25km,
+      minOrderValue50km,
+      minOrderValueOver50km,
       latitude,
       longitude
     } = req.body;
     
-    // Basis-Update mit Transformation zu snake_case für DB
+    // Basis-Update - WICHTIG: excluded_areas ist JSONB, nicht TEXT!
     await query(
       `UPDATE handwerker SET
-        action_radius = $2,      -- DB: snake_case
-        excluded_areas = $3,
+        action_radius = $2,
+        excluded_areas = $3::jsonb,  -- Cast zu JSONB
         travel_cost_per_km = $4
        WHERE id = $1`,
       [
-        req.params.id, 
-        actionRadius || 25,                    // Default-Wert
-        JSON.stringify(excludedAreas || []),   // Default leeres Array
-        travelCostPerKm || 0.5                 // Default-Wert
+        handwerkerId, 
+        actionRadius || 25,
+        JSON.stringify(excludedAreas || []),  // JSON.stringify für JSONB
+        travelCostPerKm || 0.5
       ]
     );
     
-    // Erweiterte Einstellungen mit snake_case für DB-JSON
+    // Erweiterte Einstellungen
     const coverageSettings = {
-      preferred_zip_codes: preferredZipCodes || [],  // Transformation zu snake_case
+      preferred_zip_codes: preferredZipCodes || [],
       min_order_values: {
         up_to_10km: minOrderValue10km || 0,
         up_to_25km: minOrderValue25km || 0,
@@ -11717,15 +11720,23 @@ app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
       }
     };
     
+    // Update coverage_settings (auch JSONB)
     await query(
-      `UPDATE handwerker SET coverage_settings = $2 WHERE id = $1`,
-      [req.params.id, JSON.stringify(coverageSettings)]
+      `UPDATE handwerker SET coverage_settings = $2::jsonb WHERE id = $1`,
+      [handwerkerId, JSON.stringify(coverageSettings)]
     );
     
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      message: 'Einsatzgebiet erfolgreich aktualisiert'
+    });
+    
   } catch (err) {
     console.error('Update Einsatzgebiet Error:', err);
-    res.status(500).json({ error: 'Update fehlgeschlagen' });
+    res.status(500).json({ 
+      error: 'Update fehlgeschlagen',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
