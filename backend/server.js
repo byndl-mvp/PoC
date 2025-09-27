@@ -12245,48 +12245,317 @@ app.put('/api/handwerker/:id/zahlungsdaten', async (req, res) => {
   }
 });
 
-// Passwort ändern
+const bcryptjs = require('bcryptjs');
+
+// Passwort ändern - PRODUKTIONSREIFE VERSION
 app.put('/api/handwerker/:id/password', async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
     
-    // Hier würde normalerweise das alte Passwort verifiziert werden
-    // Für POC vereinfacht
+    // Validierung
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ 
+        error: 'Alle Passwortfelder müssen ausgefüllt sein' 
+      });
+    }
     
-    await query(
-      `UPDATE handwerker SET password = $2 WHERE id = $1`,
-      [req.params.id, newPassword] // In Produktion: Hash verwenden!
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ 
+        error: 'Die neuen Passwörter stimmen nicht überein' 
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        error: 'Das neue Passwort muss mindestens 8 Zeichen lang sein' 
+      });
+    }
+    
+    // Hole aktuelles Passwort-Hash aus DB
+    const result = await query(
+      'SELECT password_hash FROM handwerker WHERE id = $1',
+      [req.params.id]
     );
     
-    res.json({ success: true });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden' 
+      });
+    }
+    
+    // Prüfe ob das aktuelle Passwort korrekt ist
+    const isPasswordValid = await bcryptjs.compare(
+      currentPassword, 
+      result.rows[0].password_hash
+    );
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: 'Das aktuelle Passwort ist falsch' 
+      });
+    }
+    
+    // Hashe das neue Passwort
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
+    
+    // Update Passwort in DB
+    await query(
+      `UPDATE handwerker 
+       SET password_hash = $2, 
+           password_changed_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [req.params.id, hashedPassword]
+    );
+    
+    res.json({ 
+      success: true, 
+      message: 'Passwort erfolgreich geändert' 
+    });
+    
   } catch (err) {
-    res.status(500).json({ error: 'Passwort-Update fehlgeschlagen' });
+    console.error('Passwort-Update Fehler:', err);
+    res.status(500).json({ 
+      error: 'Passwortänderung fehlgeschlagen' 
+    });
   }
 });
 
-// Zwei-Faktor-Auth updaten
+// Zwei-Faktor-Authentifizierung aktivieren/deaktivieren
 app.put('/api/handwerker/:id/two-factor', async (req, res) => {
   try {
     const { twoFactorEnabled } = req.body;
     
+    // Validierung
+    if (typeof twoFactorEnabled !== 'boolean') {
+      return res.status(400).json({ 
+        error: 'Ungültiger Wert für Zwei-Faktor-Authentifizierung' 
+      });
+    }
+    
+    // Prüfe ob Handwerker existiert
+    const checkResult = await query(
+      'SELECT id, phone FROM handwerker WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden' 
+      });
+    }
+    
+    // Wenn 2FA aktiviert werden soll, prüfe ob Telefonnummer vorhanden
+    if (twoFactorEnabled && !checkResult.rows[0].phone) {
+      return res.status(400).json({ 
+        error: 'Für 2FA muss eine Telefonnummer hinterlegt sein' 
+      });
+    }
+    
+    // Update 2FA Status
     await query(
-      `UPDATE handwerker SET two_factor_enabled = $2 WHERE id = $1`,
+      `UPDATE handwerker 
+       SET two_factor_enabled = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
       [req.params.id, twoFactorEnabled]
     );
     
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      message: twoFactorEnabled 
+        ? 'Zwei-Faktor-Authentifizierung wurde aktiviert' 
+        : 'Zwei-Faktor-Authentifizierung wurde deaktiviert'
+    });
+    
   } catch (err) {
-    res.status(500).json({ error: 'Update fehlgeschlagen' });
+    console.error('2FA Update Fehler:', err);
+    res.status(500).json({ 
+      error: 'Änderung der Zwei-Faktor-Authentifizierung fehlgeschlagen' 
+    });
   }
 });
 
-// Account löschen
+// Account löschen - MIT PASSWORT-BESTÄTIGUNG
 app.delete('/api/handwerker/:id/account', async (req, res) => {
   try {
-    await query('DELETE FROM handwerker WHERE id = $1', [req.params.id]);
-    res.json({ success: true, message: 'Account gelöscht' });
+    const { password } = req.body;
+    
+    // Passwort ist erforderlich für Account-Löschung
+    if (!password) {
+      return res.status(400).json({ 
+        error: 'Passwort zur Bestätigung erforderlich' 
+      });
+    }
+    
+    // Hole Passwort-Hash aus DB
+    const result = await query(
+      'SELECT password_hash, company_name FROM handwerker WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Account nicht gefunden' 
+      });
+    }
+    
+    // Prüfe Passwort
+    const isPasswordValid = await bcryptjs.compare(
+      password, 
+      result.rows[0].password_hash
+    );
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: 'Falsches Passwort. Account-Löschung abgebrochen.' 
+      });
+    }
+    
+    // Start Transaction für sichere Löschung
+    await query('BEGIN');
+    
+    try {
+      // Lösche zuerst alle abhängigen Daten
+      await query('DELETE FROM handwerker_trades WHERE handwerker_id = $1', [req.params.id]);
+      await query('DELETE FROM handwerker_insurances WHERE handwerker_id = $1', [req.params.id]);
+      await query('DELETE FROM handwerker_certifications WHERE handwerker_id = $1', [req.params.id]);
+      await query('DELETE FROM handwerker_documents WHERE handwerker_id = $1', [req.params.id]);
+      
+      // Optional: Soft Delete (markiere als gelöscht statt zu löschen)
+      // await query(
+      //   `UPDATE handwerker 
+      //    SET deleted_at = CURRENT_TIMESTAMP,
+      //        active = false,
+      //        email = CONCAT(email, '_deleted_', $2)
+      //    WHERE id = $1`,
+      //   [req.params.id, Date.now()]
+      // );
+      
+      // Hard Delete - endgültiges Löschen
+      await query('DELETE FROM handwerker WHERE id = $1', [req.params.id]);
+      
+      await query('COMMIT');
+      
+      res.json({ 
+        success: true, 
+        message: `Account '${result.rows[0].company_name}' wurde erfolgreich gelöscht` 
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
   } catch (err) {
-    res.status(500).json({ error: 'Löschen fehlgeschlagen' });
+    console.error('Account-Löschung Fehler:', err);
+    res.status(500).json({ 
+      error: 'Account konnte nicht gelöscht werden' 
+    });
+  }
+});
+
+// Account-Einstellungen abrufen (für initiales Laden)
+app.get('/api/handwerker/:id/account', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT 
+        two_factor_enabled,
+        last_login,
+        created_at,
+        password_changed_at
+       FROM handwerker 
+       WHERE id = $1`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden' 
+      });
+    }
+    
+    res.json({
+      twoFactorEnabled: result.rows[0].two_factor_enabled || false,
+      lastLogin: result.rows[0].last_login,
+      createdAt: result.rows[0].created_at,
+      passwordChangedAt: result.rows[0].password_changed_at
+    });
+    
+  } catch (err) {
+    console.error('Account-Daten Abruf Fehler:', err);
+    res.status(500).json({ 
+      error: 'Abrufen der Account-Daten fehlgeschlagen' 
+    });
+  }
+});
+
+// Allgemeine Settings-Route (für alle Tabs)
+app.get('/api/handwerker/:id/settings', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT 
+        company_name,
+        email,
+        phone,
+        street,
+        house_number,
+        zip_code,
+        city,
+        website,
+        action_radius,
+        two_factor_enabled,
+        last_login,
+        created_at,
+        notification_settings
+       FROM handwerker 
+       WHERE id = $1`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden' 
+      });
+    }
+    
+    const data = result.rows[0];
+    const notificationSettings = data.notification_settings 
+      ? JSON.parse(data.notification_settings) 
+      : {};
+    
+    res.json({
+      // Firmendaten
+      companyName: data.company_name,
+      email: data.email,
+      phone: data.phone,
+      street: data.street,
+      houseNumber: data.house_number,
+      zipCode: data.zip_code,
+      city: data.city,
+      website: data.website,
+      
+      // Einsatzgebiet
+      actionRadius: data.action_radius,
+      
+      // Account
+      twoFactorEnabled: data.two_factor_enabled || false,
+      lastLogin: data.last_login,
+      createdAt: data.created_at,
+      
+      // Benachrichtigungen
+      emailNotifications: notificationSettings.email || true,
+      smsNotifications: notificationSettings.sms || false,
+      newsletterSubscribed: notificationSettings.newsletter || false,
+      notificationEmail: notificationSettings.notificationEmail || data.email,
+      notificationPhone: notificationSettings.notificationPhone || data.phone
+    });
+    
+  } catch (err) {
+    console.error('Settings Abruf Fehler:', err);
+    res.status(500).json({ 
+      error: 'Abrufen der Einstellungen fehlgeschlagen' 
+    });
   }
 });
 
