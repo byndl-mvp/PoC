@@ -17,12 +17,12 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs');  // oder require('bcrypt')
+const crypto = require('crypto');  // Für Reset-Token
 const PDFDocument = require('pdfkit');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const multer = require('multer');
 const nodemailer = require('nodemailer');
-
 const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
 
@@ -10861,16 +10861,70 @@ app.post('/api/auth/register/bauherr', async (req, res) => {
 app.post('/api/handwerker/register', async (req, res) => {
   try {
     const {
-      companyName, email, phone, contactPerson,
-      street, houseNumber, zipCode, city,  // Frontend sendet: zipCode
-      trades, actionRadius, maxProjectVolume,
-      availableFrom, employees, insurances, certifications
+      // Basis-Daten
+      companyName, 
+      email, 
+      password, // NEU: Passwort hinzugefügt
+      phone, 
+      contactPerson,
+      
+      // Adresse
+      street, 
+      houseNumber, 
+      zipCode, // Frontend sendet: zipCode
+      city,
+      
+      // Firmendaten (optional)
+      companyType,
+      registrationNumber,
+      taxNumber,
+      website,
+      references, // Frontend sendet "references"
+      
+      // Matching-relevante Daten
+      trades, 
+      actionRadius, 
+      maxProjectVolume,
+      availableFrom, 
+      
+      // Zusatz-Infos
+      employees, 
+      insurances, 
+      certifications
     } = req.body;
     
-    // Check if already exists
-    const existingCheck = await query('SELECT * FROM handwerker WHERE email = $1', [email]);
+    // Validierung der Pflichtfelder
+    if (!companyName || !email || !password || !phone || !contactPerson) {
+      return res.status(400).json({ 
+        error: 'Pflichtfelder fehlen: Firmenname, E-Mail, Passwort, Telefon und Ansprechpartner sind erforderlich' 
+      });
+    }
+
+    // E-Mail Validierung
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        error: 'Ungültige E-Mail-Adresse' 
+      });
+    }
+
+    // NEU: Passwort-Validierung
+    if (password.length < 8) {
+      return res.status(400).json({ 
+        error: 'Das Passwort muss mindestens 8 Zeichen lang sein' 
+      });
+    }
+    
+    // Check if email already exists
+    const existingCheck = await query(
+      'SELECT * FROM handwerker WHERE email = $1', 
+      [email.toLowerCase()]
+    );
+    
     if (existingCheck.rows.length > 0) {
-      return res.status(400).json({ error: 'Email bereits registriert' });
+      return res.status(400).json({ 
+        error: 'Diese E-Mail-Adresse ist bereits registriert' 
+      });
     }
     
     // Generate company ID
@@ -10878,43 +10932,97 @@ app.post('/api/handwerker/register', async (req, res) => {
     const random = Math.floor(Math.random() * 9000) + 1000;
     const companyId = `HW-${year}-${random}`;
     
+    // NEU: Passwort hashen
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Start transaction
     await query('BEGIN');
     
     try {
-      // Insert handwerker - WICHTIG: zip_code statt zip!
+      // Insert handwerker - mit password_hash und allen optionalen Feldern
+      // WICHTIG: "company_references" statt "references" in DB
       const result = await query(
         `INSERT INTO handwerker (
-          company_id, email, company_name, contact_person, phone,
-          street, house_number, zip_code, city, action_radius,
-          max_project_volume, available_from, employee_count, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+          company_id, 
+          email, 
+          password_hash,
+          company_name, 
+          contact_person, 
+          phone,
+          street, 
+          house_number, 
+          zip_code, 
+          city, 
+          company_type,
+          registration_number,
+          tax_number,
+          website,
+          action_radius,
+          max_project_volume, 
+          available_from, 
+          employee_count, 
+          company_references,
+          verification_status,
+          active,
+          created_at,
+          updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
+          $11, $12, $13, $14, $15, $16, $17, $18, $19,
+          'pending', true, NOW(), NOW()
+        )
         RETURNING id, company_id, company_name, email`,
-        [companyId, email, companyName, contactPerson, phone,
-         street, houseNumber, zipCode, city, actionRadius,  // zipCode wird zu zip_code gemappt
-         maxProjectVolume, availableFrom, employees]
+        [
+          companyId, 
+          email.toLowerCase(), 
+          hashedPassword, // NEU: Passwort-Hash
+          companyName, 
+          contactPerson, 
+          phone,
+          street, 
+          houseNumber, 
+          zipCode, // zipCode wird zu zip_code gemappt
+          city, 
+          companyType || null,
+          registrationNumber || null,
+          taxNumber || null,
+          website || null,
+          actionRadius || 25,
+          maxProjectVolume || 50000, 
+          availableFrom || null, 
+          employees || null,
+          references || null  // Frontend "references" wird zu DB "company_references" gemappt
+        ]
       );
       
       const handwerkerId = result.rows[0].id;
       
-      // Insert trades
-if (trades && trades.length > 0) {
-  for (const tradeCode of trades) {
-    // Hole den trade_name aus der trades Tabelle
-    const tradeInfo = await query(
-      'SELECT name FROM trades WHERE code = $1',
-      [tradeCode]
-    );
-    
-    if (tradeInfo.rows.length > 0) {
-      const tradeName = tradeInfo.rows[0].name;
-      
-      await query(
-        'INSERT INTO handwerker_trades (handwerker_id, trade_code, trade_name) VALUES ($1, $2, $3)',
-        [handwerkerId, tradeCode, tradeName]
-      );
-    }
-  }
-}
+      // Insert trades mit trade_name aus trades Tabelle
+      if (trades && trades.length > 0) {
+        for (const tradeCode of trades) {
+          // Hole den trade_name aus der trades Tabelle
+          const tradeInfo = await query(
+            'SELECT name FROM trades WHERE code = $1',
+            [tradeCode]
+          );
+          
+          if (tradeInfo.rows.length > 0) {
+            const tradeName = tradeInfo.rows[0].name;
+            
+            await query(
+              'INSERT INTO handwerker_trades (handwerker_id, trade_code, trade_name) VALUES ($1, $2, $3)',
+              [handwerkerId, tradeCode, tradeName]
+            );
+          } else {
+            console.warn(`Trade code ${tradeCode} nicht in trades Tabelle gefunden`);
+            // Fallback: Nur mit Code einfügen
+            await query(
+              'INSERT INTO handwerker_trades (handwerker_id, trade_code, trade_name) VALUES ($1, $2, $3)',
+              [handwerkerId, tradeCode, tradeCode]
+            );
+          }
+        }
+      }
       
       // Insert insurances
       if (insurances && insurances.length > 0) {
@@ -10927,31 +11035,173 @@ if (trades && trades.length > 0) {
       }
       
       // Insert certifications
-if (certifications && certifications.length > 0) {
-  for (const cert of certifications) {
-    await query(
-      'INSERT INTO handwerker_certifications (handwerker_id, certification_name) VALUES ($1, $2)',
-      [handwerkerId, cert]
-    );
-  }
-}
+      if (certifications && certifications.length > 0) {
+        for (const cert of certifications) {
+          await query(
+            'INSERT INTO handwerker_certifications (handwerker_id, certification_name) VALUES ($1, $2)',
+            [handwerkerId, cert]
+          );
+        }
+      }
       
+      // Commit transaction
       await query('COMMIT');
       
+      // JWT Token direkt nach Registrierung erstellen
+      const token = jwt.sign(
+        {
+          id: handwerkerId,
+          companyId: companyId,
+          email: email,
+          companyName: companyName
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+      
+      // Erfolgreiche Response
       res.status(201).json({
         success: true,
         companyId,
-        message: 'Registrierung erfolgreich'
+        token, // NEU: Token für direkten Login nach Registrierung
+        handwerker: {
+          id: handwerkerId,
+          companyId: companyId,
+          companyName: companyName,
+          email: result.rows[0].email
+        },
+        message: 'Registrierung erfolgreich! Ihre Betriebs-ID lautet: ' + companyId
       });
       
     } catch (innerErr) {
       await query('ROLLBACK');
+      console.error('Transaction error:', innerErr);
       throw innerErr;
     }
     
   } catch (error) {
     console.error('Handwerker registration error:', error);
-    res.status(500).json({ error: 'Registrierung fehlgeschlagen' });
+    res.status(500).json({ 
+      error: 'Registrierung fehlgeschlagen. Bitte versuchen Sie es später erneut.' 
+    });
+  }
+});
+
+// NEU: Passwort-Reset Route
+app.post('/api/handwerker/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        error: 'E-Mail-Adresse erforderlich' 
+      });
+    }
+    
+    // Prüfe ob E-Mail existiert
+    const result = await query(
+      'SELECT id, company_name, contact_person FROM handwerker WHERE LOWER(email) = LOWER($1)',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      // Aus Sicherheitsgründen geben wir keinen Hinweis, ob die E-Mail existiert
+      return res.json({ 
+        message: 'Falls ein Account mit dieser E-Mail existiert, wurde eine Nachricht versendet.' 
+      });
+    }
+    
+    const handwerker = result.rows[0];
+    
+    // Generiere Reset-Token
+    const crypto = require('crypto');
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 Stunde
+    
+    // Speichere Reset-Token
+    await query(
+      `UPDATE handwerker 
+       SET reset_token = $2, 
+           reset_token_expiry = $3,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [handwerker.id, resetToken, resetTokenExpiry]
+    );
+    
+    // TODO: E-Mail senden mit Reset-Link
+    // const resetUrl = `https://ihredomain.de/handwerker/reset-password?token=${resetToken}`;
+    // await sendResetEmail(email, handwerker.contact_person, resetUrl);
+    
+    res.json({ 
+      message: 'Falls ein Account mit dieser E-Mail existiert, wurde eine Nachricht versendet.' 
+    });
+    
+  } catch (err) {
+    console.error('Passwort-Reset Fehler:', err);
+    res.status(500).json({ 
+      error: 'Ein Fehler ist aufgetreten' 
+    });
+  }
+});
+
+// NEU: Passwort zurücksetzen mit Token
+app.post('/api/handwerker/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({ 
+        error: 'Token und neues Passwort erforderlich' 
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        error: 'Das neue Passwort muss mindestens 8 Zeichen lang sein' 
+      });
+    }
+    
+    // Finde Handwerker mit gültigem Reset-Token
+    const result = await query(
+      `SELECT id FROM handwerker 
+       WHERE reset_token = $1 
+       AND reset_token_expiry > NOW()`,
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ 
+        error: 'Ungültiger oder abgelaufener Reset-Link' 
+      });
+    }
+    
+    const handwerkerId = result.rows[0].id;
+    
+    // Hashe neues Passwort
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update Passwort und lösche Reset-Token
+    await query(
+      `UPDATE handwerker 
+       SET password_hash = $2,
+           reset_token = NULL,
+           reset_token_expiry = NULL,
+           password_changed_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [handwerkerId, hashedPassword]
+    );
+    
+    res.json({ 
+      success: true,
+      message: 'Passwort erfolgreich zurückgesetzt. Sie können sich jetzt mit dem neuen Passwort anmelden.' 
+    });
+    
+  } catch (err) {
+    console.error('Reset-Passwort Fehler:', err);
+    res.status(500).json({ 
+      error: 'Passwort konnte nicht zurückgesetzt werden' 
+    });
   }
 });
 
@@ -11067,6 +11317,134 @@ app.post('/api/handwerker/verify', async (req, res) => {
   } catch (error) {
     console.error('Handwerker verify error:', error);
     res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
+  }
+});
+
+// Handwerker Login mit Passwort
+app.post('/api/handwerker/login', async (req, res) => {
+  try {
+    const { email, password, rememberMe } = req.body;
+
+    // Validierung
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'E-Mail und Passwort sind erforderlich' 
+      });
+    }
+
+    // Finde Handwerker in Datenbank
+    const result = await query(
+      `SELECT 
+        id,
+        company_id,
+        company_name,
+        email,
+        password_hash,
+        phone,
+        contact_person,
+        street,
+        house_number,
+        zip_code,
+        city,
+        trades,
+        action_radius,
+        verification_status,
+        two_factor_enabled,
+        active
+       FROM handwerker 
+       WHERE LOWER(email) = LOWER($1) 
+       AND deleted_at IS NULL`,
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ 
+        error: 'Ungültige E-Mail oder Passwort' 
+      });
+    }
+
+    const handwerker = result.rows[0];
+
+    // Prüfe ob Account aktiv ist
+    if (!handwerker.active) {
+      return res.status(403).json({ 
+        error: 'Ihr Account wurde deaktiviert. Bitte kontaktieren Sie den Support.' 
+      });
+    }
+
+    // Passwort prüfen
+    const isPasswordValid = await bcrypt.compare(password, handwerker.password_hash);
+    
+    if (!isPasswordValid) {
+      // Log fehlgeschlagenen Login-Versuch
+      await query(
+        `INSERT INTO login_attempts (handwerker_id, ip_address, success, attempted_at) 
+         VALUES ($1, $2, false, CURRENT_TIMESTAMP)`,
+        [handwerker.id, req.ip]
+      );
+      
+      return res.status(401).json({ 
+        error: 'Ungültige E-Mail oder Passwort' 
+      });
+    }
+
+    // Update last_login
+    await query(
+      `UPDATE handwerker 
+       SET last_login = CURRENT_TIMESTAMP 
+       WHERE id = $1`,
+      [handwerker.id]
+    );
+
+    // Generiere JWT Token
+    const tokenExpiry = rememberMe ? '30d' : '24h';
+    const token = jwt.sign(
+      {
+        id: handwerker.id,
+        companyId: handwerker.company_id,
+        email: handwerker.email,
+        companyName: handwerker.company_name
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: tokenExpiry }
+    );
+
+    // Log erfolgreichen Login
+    await query(
+      `INSERT INTO login_attempts (handwerker_id, ip_address, success, attempted_at) 
+       VALUES ($1, $2, true, CURRENT_TIMESTAMP)`,
+      [handwerker.id, req.ip]
+    );
+
+    // Response
+    res.json({
+      success: true,
+      token,
+      handwerker: {
+        id: handwerker.id,
+        companyId: handwerker.company_id,
+        companyName: handwerker.company_name,
+        email: handwerker.email,
+        phone: handwerker.phone,
+        contactPerson: handwerker.contact_person,
+        address: {
+          street: handwerker.street,
+          houseNumber: handwerker.house_number,
+          zipCode: handwerker.zip_code,
+          city: handwerker.city
+        },
+        trades: handwerker.trades,
+        actionRadius: handwerker.action_radius,
+        verificationStatus: handwerker.verification_status,
+        twoFactorEnabled: handwerker.two_factor_enabled
+      }
+    });
+
+  } catch (err) {
+    console.error('Login-Fehler:', err);
+    res.status(500).json({ 
+      error: 'Login fehlgeschlagen' 
+    });
   }
 });
 
