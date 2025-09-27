@@ -6282,7 +6282,6 @@ if (trade.code === 'ROH' && lv.positions) {
       });
     }
   }
-}
 
 // ZIMM-spezifisch: Prüfe ob Holzbau-Positionen vorhanden sind
 if (trade.code === 'ZIMM' && lv.positions) {
