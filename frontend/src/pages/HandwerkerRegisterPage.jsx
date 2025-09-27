@@ -333,40 +333,6 @@ const getPasswordStrengthClass = (password) => {
   }
 };
   
-// Erweiterte Validierung in validateStep()
-const validateStep = () => {
-  if (step === 1) {
-    if (!formData.companyName || !formData.contactPerson || !formData.email || !formData.phone || !formData.password) {
-      setError('Bitte füllen Sie alle Pflichtfelder aus.');
-      return false;
-    }
-    
-    // E-Mail Validierung
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
-      return false;
-    }
-    
-    // Passwort-Validierung
-    if (formData.password.length < 8) {
-      setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
-      return false;
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      setError('Die Passwörter stimmen nicht überein.');
-      return false;
-    }
-    
-    // Telefon-Validierung
-    const phoneRegex = /^[\d\s\-+()]+$/;
-    if (!phoneRegex.test(formData.phone)) {
-      setError('Bitte geben Sie eine gültige Telefonnummer ein.');
-      return false;
-    }
-  }
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Background Effects */}
