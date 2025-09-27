@@ -25,7 +25,7 @@ export default function HandwerkerSettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
-  const crypto = require('crypto');
+  
   // HIER NEU:
   const [documents, setDocuments] = useState({
     gewerbeschein: null,
