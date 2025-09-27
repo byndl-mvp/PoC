@@ -126,6 +126,7 @@ useEffect(() => {
     const endpointMap = {
       'einsatzgebiet': 'einsatzgebiet',
       'einzugsgebiet': 'einsatzgebiet',
+      'coverage': 'einsatzgebiet',  
       'dokumente': 'documents',
       'firmendaten': 'firmendaten',
       'verfuegbarkeit': 'verfuegbarkeit',
