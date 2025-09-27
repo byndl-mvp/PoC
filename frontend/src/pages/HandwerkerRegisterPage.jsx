@@ -332,45 +332,7 @@ const getPasswordStrengthClass = (password) => {
     setLoading(false);
   }
 };
-
-// Passwort-Stärke Funktionen
-const getPasswordStrength = (password) => {
-  let strength = 0;
-  if (password.length >= 8) strength += 25;
-  if (password.length >= 12) strength += 25;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
-  if (/\d/.test(password)) strength += 12.5;
-  if (/[^a-zA-Z\d]/.test(password)) strength += 12.5;
-  return Math.min(100, strength);
-};
-
-const getPasswordStrengthText = (password) => {
-  const strength = getPasswordStrength(password);
-  if (strength < 30) return 'Sehr schwach';
-  if (strength < 50) return 'Schwach';
-  if (strength < 70) return 'Mittel';
-  if (strength < 90) return 'Stark';
-  return 'Sehr stark';
-};
-
-const getPasswordStrengthColor = (password) => {
-  const strength = getPasswordStrength(password);
-  if (strength < 30) return 'text-red-400';
-  if (strength < 50) return 'text-orange-400';
-  if (strength < 70) return 'text-yellow-400';
-  if (strength < 90) return 'text-green-400';
-  return 'text-green-500';
-};
-
-const getPasswordStrengthClass = (password) => {
-  const strength = getPasswordStrength(password);
-  if (strength < 30) return 'bg-red-500';
-  if (strength < 50) return 'bg-orange-500';
-  if (strength < 70) return 'bg-yellow-500';
-  if (strength < 90) return 'bg-green-500';
-  return 'bg-green-600';
-};
-
+  
 // Erweiterte Validierung in validateStep()
 const validateStep = () => {
   if (step === 1) {
