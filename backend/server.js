@@ -6216,11 +6216,12 @@ if (pos.title?.toLowerCase().includes('sockel')) {
   }
 } // <-- ENDE DES GROSSEN DÄMMSTÄRKEN-BLOCKS
 
-// KLEBER-REGELN HIER, AUSSERHALB!
+// MATERIAL-PREISKORREKTUREN (Kleber, Kabel, etc.)
 lv.positions = lv.positions.map(pos => {
   const titleLower = (pos.title || pos.bezeichnung || '').toLowerCase();
+  const descLower = (pos.description || '').toLowerCase();
   
-  // UNIVERSELLE REGEL: Kleber/Klebstoff-Preise
+  // UNIVERSELLE REGEL 1: Kleber/Klebstoff-Preise
   if (titleLower.includes('kleber') || titleLower.includes('klebstoff')) {
     if (pos.unit === 'm²' && pos.unitPrice > 15) {
       const oldPrice = pos.unitPrice;
@@ -6244,6 +6245,83 @@ lv.positions = lv.positions.map(pos => {
       pos.unitPrice = 8; // Max 8€/kg für Spezialkleber
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
       console.log(`[KLEBER] Preis/kg korrigiert: ${oldPrice}€ → 8€`);
+    }
+  }
+  
+  // UNIVERSELLE REGEL 2: Kabel/Leitungs-Preise
+  if (titleLower.includes('nym') || titleLower.includes('kabel') || 
+      titleLower.includes('leitung') || descLower.includes('nym')) {
+    
+    // NYM-J Kabel nach Querschnitt
+    if (titleLower.includes('nym-j') || titleLower.includes('nym j') || 
+        descLower.includes('nym-j')) {
+      
+      // Suche Querschnitt in Title oder Description
+      const fullText = titleLower + ' ' + descLower;
+      const querschnittMatch = fullText.match(/(\d+)\s*x\s*([\d,\.]+)\s*mm/);
+      
+      if (querschnittMatch) {
+        const adern = parseInt(querschnittMatch[1]);
+        const querschnitt = parseFloat(querschnittMatch[2].replace(',', '.'));
+        
+        let maxPreis = 15; // Basis
+        
+        // Preise nach Querschnitt (inkl. Verlegung)
+        if (querschnitt <= 1.5) {
+          maxPreis = 12; 
+        } else if (querschnitt <= 2.5) {
+          maxPreis = 15;
+        } else if (querschnitt <= 4) {
+          maxPreis = 20;
+        } else if (querschnitt <= 6) {
+          maxPreis = 25;
+        } else if (querschnitt <= 10) {
+          maxPreis = 35;
+        } else {
+          maxPreis = 45; // Große Querschnitte
+        }
+        
+        // 5-adrig ist teurer
+        if (adern === 5) {
+          maxPreis = Math.round(maxPreis * 1.3);
+        }
+        
+        if (pos.unit === 'm' && pos.unitPrice > maxPreis) {
+          const oldPrice = pos.unitPrice;
+          pos.unitPrice = maxPreis;
+          pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+          console.log(`[KABEL] NYM-J ${adern}x${querschnitt}mm² korrigiert: ${oldPrice}€/m → ${maxPreis}€/m`);
+        }
+      }
+    }
+    
+    // Datenkabel
+    if (titleLower.includes('cat') || titleLower.includes('netzwerk') || 
+        titleLower.includes('lan')) {
+      if (pos.unit === 'm' && pos.unitPrice > 25) {
+        const oldPrice = pos.unitPrice;
+        let neuerPreis = 12; // Standard CAT
+        
+        if (titleLower.includes('cat7') || titleLower.includes('cat 7')) {
+          neuerPreis = 18; // CAT7 teurer
+        } else if (titleLower.includes('cat6') || titleLower.includes('cat 6')) {
+          neuerPreis = 15; // CAT6 mittel
+        }
+        
+        pos.unitPrice = neuerPreis;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        console.log(`[KABEL] Datenkabel korrigiert: ${oldPrice}€/m → ${neuerPreis}€/m`);
+      }
+    }
+    
+    // Erdkabel NYY
+    if (titleLower.includes('nyy') || titleLower.includes('erdkabel')) {
+      if (pos.unit === 'm' && pos.unitPrice > 50) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 35; // Erdkabel max 35€/m inkl. Verlegung
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        console.log(`[KABEL] Erdkabel korrigiert: ${oldPrice}€/m → 35€/m`);
+      }
     }
   }
   
