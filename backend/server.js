@@ -4541,7 +4541,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'KLIMA': ['klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
     'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton'],
     'FLI': ['verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
-    'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'farbe', 'lackieren', 'grundierung'],
+    'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'lackieren', 'grundierung'],
     'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden'],
     'ROH': ['mauerwerk', 'ziegelmauerwerk', 'durchbruch', 'beton', 'maurerarbeiten', 'sturz', 'kalksandstein'],
     'SAN': ['wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn', 'armatur'],
