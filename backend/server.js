@@ -1768,11 +1768,28 @@ function determineProjectComplexity(projectContext, intakeAnswers = []) {
   // === CAPS FÜR BEGRENZTE PROJEKTE ===
   
   // Badsanierung
-  if (subCat.includes('badsanierung')) {
-    if (tradeCount <= 6 && !combinedText.includes('mehrere')) {
-      complexityScore = Math.min(complexityScore, 14); // Max "hoch"
-    }
+if (subCat.includes('badsanierung')) {
+  // Luxus-Bad oder barrierefrei: KEIN Cap, kann hoch bleiben
+  if (combinedText.includes('luxus') || combinedText.includes('barrierefrei')) {
+    complexityScore = Math.max(complexityScore, 14); // Mindestens "hoch"
   }
+  // Mehrere Bäder: auch komplex
+  else if (combinedText.includes('mehrere')) {
+    complexityScore = Math.max(complexityScore, 14); // Mindestens "hoch"
+  }
+  // Standard-Bad mit wenigen Gewerken
+  else if (tradeCount <= 4) {
+    complexityScore = Math.min(complexityScore, 11); // Mittleres "mittel"
+  }
+  // Standard-Bad mit mehreren Gewerken
+  else if (tradeCount <= 6) {
+    complexityScore = Math.min(complexityScore, 13); // Oberes "mittel"
+  }
+  // Sehr große Badsanierung (>6 Gewerke)
+  else {
+    complexityScore = Math.min(complexityScore, 16); // Unteres "hoch"
+  }
+}
   
   // Küchensanierung
   if (subCat.includes('küchensanierung')) {
