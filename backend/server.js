@@ -3280,27 +3280,171 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 12. GEWERKEABGRENZUNG & SCHNITTSTELLENKLARHEIT:
    - KEINE Doppelungen zwischen Gewerken
    - Hierarchie: Spezialgewerk > Hauptgewerk > Nebengewerk
-   - KRITISCHE ZUORDNUNGEN (IMMER EINHALTEN):
-     * Fliesenarbeiten: AUSSCHLIESSLICH Gewerk FLI (Fliesenarbeiten), NIEMALS BOD (Bodenbelagsarbeiten)
-     * Innentüren/Zargen: AUSSCHLIESSLICH Gewerk TIS (Tischlerarbeiten), NIEMALS TRO (Trockenbau) oder FEN (Fenster/Türen)
-     * Rigips/Gipskartonwände: AUSSCHLIESSLICH Gewerk TRO (Trockenbau), NIEMALS ROH (Rohbau)
-     * Putzqualitäten Q1-Q3: NUR bei Innenputz im Gewerk MAL (Malerarbeiten), NIEMALS bei FASS (Fassade)
-     * Fassadenputz: Nur Struktur (Glattputz, Kratzputz, Scheibenputz) und Körnung bei FASS
-     * Durchbrüche: NUR Abbruch ODER Rohbau, nie beide
-     * Gerüst: NUR Gerüstbau ODER einmalig in anderem Gewerk
-     * Entsorgung: Beim verursachenden Gewerk
-     * Elektroschlitze: NUR bei ELEKT, nicht bei ROH oder ABBR
-     * Sanitärschlitze: NUR bei SAN, nicht bei ROH oder ABBR
-     * Fenster: Nur im Gewerk FEN, Dachfenster nur im Gewerk DACH
+   
+   KRITISCHE ZUORDNUNGEN (IMMER EINHALTEN):
+   * Fliesenarbeiten: AUSSCHLIESSLICH Gewerk FLI (Fliesenarbeiten), NIEMALS BOD (Bodenbelagsarbeiten)
+   * Innentüren/Zargen: AUSSCHLIESSLICH Gewerk TIS (Tischlerarbeiten), NIEMALS TRO (Trockenbau) oder FEN (Fenster/Türen)
+   * Rigips/Gipskartonwände: AUSSCHLIESSLICH Gewerk TRO (Trockenbau), NIEMALS ROH (Rohbau)
+   * Putzqualitäten Q1-Q3: NUR bei Innenputz im Gewerk MAL (Malerarbeiten), NIEMALS bei FASS (Fassade)
+   * Fassadenputz: Nur Struktur (Glattputz, Kratzputz, Scheibenputz) und Körnung bei FASS
+   * Durchbrüche: NUR Abbruch ODER Rohbau, nie beide
+   * Gerüst: NUR Gerüstbau ODER einmalig in anderem Gewerk
+   * Entsorgung: Beim verursachenden Gewerk
+   * Elektroschlitze: NUR bei ELEKT, nicht bei ROH oder ABBR
+   * Sanitärschlitze: NUR bei SAN, nicht bei ROH oder ABBR
+   * Fenster: Nur im Gewerk FEN, Dachfenster nur im Gewerk DACH
+   * Elektrische Fußbodenheizung: NUR bei ELEKT oder FLI, NIEMALS bei SAN
+   * Elektrischer Handtuchheizkörper: Gerät bei SAN, Stromanschluss bei ELEKT
+   * Warmwasser-Fußbodenheizung: NUR bei HEI (Heizung), nicht bei SAN
+   * Vorwandinstallation: NUR bei TRO (Trockenbau), nicht bei SAN
+   * Abdichtungen Bad: NUR bei FLI (unter Fliesen), nicht bei SAN
+   * Dämmung Dach: NUR bei DACH oder ZIMM (je nach Konstruktion), nicht bei FASS
+   * Sockeldämmung: NUR bei FASS (Teil des WDVS), nicht separat
    
    GEWERK-SPEZIFISCHE REGELN:
-   - FLI (Fliesenarbeiten): Fliesen, Mosaikarbeiten, Natursteinbeläge in Bad/Küche
-   - BOD (Bodenbelagsarbeiten): Parkett, Laminat, Vinyl, Teppich, PVC - KEINE Fliesen!
-   - TIS (Tischlerarbeiten): Türen, Zargen, Einbaumöbel, Holzarbeiten
-   - TRO (Trockenbau): Rigipswände, Gipskarton, Metallständerwerk, abgehängte Decken
-   - ROH (Rohbau): Mauerwerk, Beton, Stahlbeton - KEINE Leichtbauwände!
-   - MAL (Malerarbeiten): Innenputz mit Q1-Q3, Anstriche, Tapeten
-   - FASS (Fassade): Außenputz mit Struktur/Körnung, WDVS - KEINE Q-Stufen!
+   - FLI (Fliesenarbeiten): 
+     * Fliesen, Mosaikarbeiten, Natursteinbeläge in Bad/Küche
+     * Abdichtungen unter Fliesen (Verbundabdichtung)
+     * Elektrische Fußbodenheizung (optional, alternativ ELEKT)
+     * Gefälleestrich in Duschen
+   
+   - BOD (Bodenbelagsarbeiten): 
+     * Parkett, Laminat, Vinyl, Teppich, PVC, Linoleum
+     * KEINE Fliesen oder Naturstein!
+     * Sockelleisten passend zum Bodenbelag
+   
+   - TIS (Tischlerarbeiten): 
+     * Innentüren und Zargen (IMMER)
+     * Einbaumöbel, Holzarbeiten
+     * Holztreppen (nicht Beton)
+     * KEINE Fenster oder Außentüren
+   
+   - TRO (Trockenbau): 
+     * Rigipswände, Gipskarton, Metallständerwerk
+     * Abgehängte Decken
+     * Vorwandinstallationen für Sanitär
+     * Schachtverkleidungen
+     * KEINE tragenden Wände!
+   
+   - ROH (Rohbau): 
+     * Mauerwerk, Beton, Stahlbeton
+     * Tragende Konstruktionen
+     * Ringanker, Stürze, Decken
+     * KEINE Leichtbauwände oder Holzkonstruktionen!
+   
+   - MAL (Malerarbeiten): 
+     * Innenputz mit Q1-Q3 Qualitäten
+     * Anstriche, Tapeten, Spachteltechniken
+     * Grundierungen
+     * KEINE Fassadenarbeiten!
+   
+   - FASS (Fassade): 
+     * Außenputz mit Struktur/Körnung
+     * WDVS komplett inkl. Sockeldämmung
+     * Fassadenanstrich
+     * KEINE Q-Stufen, nur Strukturangaben!
+   
+   - ELEKT (Elektroarbeiten):
+     * Alle Elektroinstallationen
+     * Schlitze für Elektroleitungen (IMMER)
+     * Elektrische Fußbodenheizung (Anschluss/komplett)
+     * FI-Schutzschalter, Potentialausgleich
+     * PV-AC-Seite, Wallbox
+     * Smart Home Verkabelung
+   
+   - SAN (Sanitär):
+     * Sanitärobjekte (WC, Waschbecken, Dusche, Wanne)
+     * Wasser-/Abwasserleitungen
+     * Elektrische Handtuchheizkörper (Gerät)
+     * Armaturen
+     * KEINE Vorwandinstallation (→ TRO)
+     * KEINE elektrische Fußbodenheizung (→ ELEKT/FLI)
+   
+   - HEI (Heizung):
+     * Heizkessel, Wärmepumpe, Brennwertgerät
+     * Warmwasser-Fußbodenheizung
+     * Heizkörper (wasserbetrieben)
+     * Heizungsverrohrung
+     * KEINE elektrischen Heizsysteme
+   
+   - ZIMM (Zimmerer):
+     * Dachstuhl, Holzkonstruktionen
+     * Holzbalkendecken
+     * Gauben (Holzkonstruktion)
+     * Carport, Holzständerwerk
+     * Bei Holzbau: auch Dämmung
+   
+   - DACH (Dachdecker):
+     * Dacheindeckung, Dachziegel
+     * Dachrinnen, Fallrohre
+     * Dachfenster (IMMER, nicht FEN)
+     * Dachdämmung (bei Massivbau)
+     * Flachdachabdichtung
+   
+   WICHTIGE SCHNITTSTELLEN-MATRIX:
+   
+   - Bad-Sanierung: 
+     SAN/ELEKT/HEI (Rohinstallation) → TRO (Vorwand) → FLI (Abdichtung + Fliesen) → MAL (Anstrich) → SAN/ELEKT/HEI (Endmontage)
+     
+   - Dachausbau: 
+     ZIMM/DACH (Konstruktion) → ELEKT/SAN/HEI (Leitungen) → TRO (Verkleidung) → MAL/BOD/FLI (Finish) → SAN/ELEKT/HEI (Endmontage)
+     
+   - Fassade mit WDVS: 
+     GER (Gerüst) → FASS (WDVS + Dämmung) → FASS (Putz + Anstrich)
+   
+   - Heizungstausch: 
+     HEI (Heizung) → ELEKT (Stromanschluss) → MAL (Anstrich Heizungsraum)
+   
+   - Kernsanierung Wohnung:
+     ABBR (Entkernung) → ELEKT/SAN (Grundleitungen) → ROH (Wanddurchbrüche) → TRO (neue Raumaufteilung) → ESTR (Estrich) → FLI/BOD (Bodenbeläge) → TIS (Türen) → MAL (Komplettanstrich)
+   
+   - Kellersanierung (feucht):
+     ABBR (Putz entfernen) → ROH (Abdichtung) → SAN/ELEKT (neue Leitungen) → TRO/MAL (Wandaufbau) → BOD (Bodenbelag)
+   
+   - Energetische Komplettsanierung:
+     GER (Gerüst) → DACH (Dachdämmung) → FEN (Fenstertausch) → FASS (Fassadendämmung) → HEI (neue Heizung) → PV (Solaranlage)
+   
+   - Aufstockung:
+     ROH (Verstärkung Bestand) → ZIMM (Holzaufbau) → DACH (Eindeckung) → FEN (Fenster) → ELEKT/SAN/HEI (Installation) → TRO (Innenausbau) → MAL/BOD/FLI (Finish) → SAN/ELEKT/HEI (Endmontage)   
+   
+   - Küchensanierung:
+     ELEKT/SAN (Anschlüsse verlegen) → FLI (Fliesenspiegel) → TIS (Küchenmontage) → ELEKT (E-Geräte anschließen)
+   
+   - Balkon-/Terrassensanierung:
+     ABBR (Altbelag entfernen) → ROH (Gefälle/Abdichtung) → FLI (Belag + Randabschluss) → SCHL (Geländer)
+   
+   - Altbau-Deckensanierung:
+     ABBR (Fehlboden öffnen) → ZIMM (Balkenverstärkung) → TRO (Schallschutz + Verkleidung) → MAL (Stuck + Anstrich)
+   
+   - Wanddurchbruch mit Sturz:
+     ROH (Statik + Durchbruch + Sturz) → MAL (Putz + Anstrich)
+   
+   - Dachterrasse neu:
+     DACH (Abdichtung) → FLI (Plattenbelag) → SCHL (Geländer) → ELEKT (Außenbeleuchtung)
+   
+   - Smart-Home-Nachrüstung:
+     ELEKT (KNX/Bus-Leitungen) → TRO (Kabelkanäle verkleiden) → MAL (Spachtel + Anstrich) → ELEKT (Endgeräte)
+   
+   - Schimmelsanierung:
+     ABBR (befallene Teile entfernen) → ROH (Ursache beheben) → MAL (Spezialgrundierung) → TRO/MAL (Neuaufbau)
+   
+   - Barrierefreier Umbau:
+     ROH (Türverbreiterung) → SAN (bodengleiche Dusche) → FLI (rutschfeste Fliesen) → TIS (breite Türen) → ELEKT (Notrufsystem)
+   
+   - PV-Installation Bestand:
+     DACH (Dachhaken) → PV (Module + DC) → ELEKT (AC + Zähler + Speicher) → ELEKT (Wallbox)
+   
+   - Wintergarten-Anbau:
+     ROH (Fundament + Bodenplatte) → FEN (Wintergarten-Konstruktion) → ELEKT/HEI (Anschlüsse) → FLI/BOD (Bodenbelag)
+   
+   REIHENFOLGE-PRINZIPIEN:
+   1. Abbruch/Rückbau immer zuerst
+   2. Rohbau/Statik vor Ausbau
+   3. Installationen (ELEKT/SAN/HEI) vor Verkleidung
+   4. Trockenbau vor Nassarbeiten wo möglich
+   5. Bodenbeläge nach Wänden
+   6. Malerarbeiten als Finish
+   7. Endmontage Sanitär/Elektro ganz zum Schluss
    
 13. MANUELL HINZUGEFÜGTE UND DURCH KI-EMPFOHLENE GEWERKE:
    - ERSTE FRAGE MUSS IMMER SEIN: "Welche konkreten ${tradeName}-Arbeiten sollen durchgeführt werden?"
