@@ -5392,29 +5392,42 @@ KRITISCH FÜR ESTRICHARBEITEN:
 
 ${trade.code === 'SAN' ? `
 KRITISCH FÜR SANITÄR:
-
 HAUPTREGEL:
 - Vorwandinstallation → IMMER Trockenbau (TRO)
 - SAN macht NUR Sanitärobjekte, Anschlüsse und Leitungen
-
+- Elektrische Handtuchheizkörper → SAN (da Sanitärobjekt)
 REIHENFOLGE:
 1. Rohinstallation (vor Fliesen)
 2. Fliesenleger macht Fliesen
 3. Endmontage (nach Fliesen)
+NICHT VON SAN:
+- Elektrische Fußbodenheizung → ELEKT oder FLI
 ` : ''}
 
 ${trade.code === 'ELEKT' ? `
 KRITISCH FÜR ELEKTRO:
-
 HAUPTREGEL:
 - Schlitze in Wänden → IMMER Elektroinstallation selbst, nie Rohbau (ROH)
 - Endmontage → IMMER nach Malerarbeiten
 - FI-Schutzschalter Bad → PFLICHT
-
+- Elektrische Fußbodenheizung → ELEKT macht Anschluss + Thermostat
 SCHNITTSTELLEN:
 - PV: Elektro macht AC-Seite, PV macht DC-Seite
 - Heizung: Elektro macht Stromanschluss für Kessel/Wärmepumpe
 - Bad: FI-Schutzschalter + Potentialausgleich
+- Fußbodenheizung elektrisch: ELEKT (Anschluss) oder FLI (Komplett inkl. Verlegung)
+- Handtuchheizkörper elektrisch: Stromanschluss von ELEKT, Gerät von SAN
+` : ''}
+
+${trade.code === 'FLI' ? `
+KRITISCH FÜR FLIESENLEGER:
+HAUPTREGEL:
+- Elektrische Fußbodenheizung → FLI kann komplett machen (nach Estrich, vor Fliesen)
+- Alternative: ELEKT macht Anschluss, FLI verlegt Heizmatten
+REIHENFOLGE:
+1. Estrich fertig
+2. Elektrische Fußbodenheizung verlegen (falls vorhanden)
+3. Fliesen verlegen
 ` : ''}
 
 ${trade.code === 'DACH' ? `
