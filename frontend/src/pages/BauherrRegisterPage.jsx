@@ -131,7 +131,7 @@ export default function BauherrRegisterPage() {
     navigate('/bauherr/dashboard');
   } else {
     // Fehler vom Server
-    setError(data.message || 'Registrierung fehlgeschlagen');
+    setError(data.error || 'Registrierung fehlgeschlagen');
   }
 } catch (err) {
   // Netzwerk- oder andere Fehler
