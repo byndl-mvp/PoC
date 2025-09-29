@@ -11073,32 +11073,95 @@ KRITISCH:
 // ----------------------------------------------------------------------------
 
 // Bauherr Registrierung
-app.post('/api/auth/register/bauherr', async (req, res) => {
+app.post('/api/bauherr/register', async (req, res) => {
   try {
-    const { email, password, name, phone, street, house_number, zip, city } = req.body;
+    const { 
+      email, 
+      password, 
+      name, 
+      phone, 
+      street, 
+      houseNumber, 
+      zipCode, 
+      city,
+      projectId // Wird von TradeConfirmationPage mitgeschickt
+    } = req.body;
     
-    // Check if user exists
-    const userCheck = await query('SELECT * FROM bauherren WHERE email = $1', [email]);
-    if (userCheck.rows.length > 0) {
-      return res.status(400).json({ error: 'Email bereits registriert' });
+    // Validierung
+    if (!email || !password || !name || !phone) {
+      return res.status(400).json({ 
+        error: 'Pflichtfelder fehlen' 
+      });
     }
     
-    // Hash password with bcrypt
-    const bcrypt = require('bcryptjs');
+    // Check if user exists
+    const userCheck = await query(
+      'SELECT * FROM bauherren WHERE email = $1', 
+      [email.toLowerCase()]
+    );
+    
+    if (userCheck.rows.length > 0) {
+      return res.status(400).json({ 
+        error: 'E-Mail bereits registriert' 
+      });
+    }
+    
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
     // Insert bauherr
     const result = await query(
-      `INSERT INTO bauherren (email, password, name, phone, street, house_number, zip, city, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-       RETURNING id, email, name`,
-      [email, hashedPassword, name, phone, street, house_number, zip, city]
+      `INSERT INTO bauherren (
+        email, 
+        password, 
+        name, 
+        phone, 
+        street, 
+        house_number, 
+        zip, 
+        city,
+        created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      RETURNING id, email, name`,
+      [
+        email.toLowerCase(), 
+        hashedPassword, 
+        name, 
+        phone, 
+        street || null, 
+        houseNumber || null, 
+        zipCode || null, 
+        city || null
+      ]
     );
     
-    // Generate JWT token
-    const jwt = require('jsonwebtoken');
+    const bauherrId = result.rows[0].id;
+    
+    // Wenn projectId vorhanden, verknüpfe Projekt mit Bauherr
+    if (projectId) {
+      await query(
+        'UPDATE projects SET bauherr_id = $1 WHERE id = $2',
+        [bauherrId, projectId]
+      );
+    }
+    
+    // E-Mail senden
+    const emailService = require('./emailService');
+    await emailService.sendBauherrRegistrationEmail({
+      id: bauherrId,
+      name: name,
+      email: email,
+      projectTitle: projectId ? 'Ihr Bauprojekt' : null
+    });
+    
+    // JWT Token
     const token = jwt.sign(
-      { id: result.rows[0].id, type: 'bauherr' },
+      { 
+        id: bauherrId, 
+        type: 'bauherr',
+        email: email,
+        name: name
+      },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
@@ -11106,11 +11169,19 @@ app.post('/api/auth/register/bauherr', async (req, res) => {
     res.status(201).json({
       success: true,
       token,
-      user: result.rows[0]
+      user: {
+        id: bauherrId,
+        email: email,
+        name: name
+      },
+      message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.'
     });
+    
   } catch (error) {
     console.error('Bauherr registration error:', error);
-    res.status(500).json({ error: 'Registrierung fehlgeschlagen' });
+    res.status(500).json({ 
+      error: 'Registrierung fehlgeschlagen' 
+    });
   }
 });
 
@@ -11503,41 +11574,270 @@ app.get('/api/handwerker/document/:id', async (req, res) => {
   }
 });
 
-// Bauherr Login/Verify
-app.get('/api/users/verify', async (req, res) => {
+// Bauherr Login mit Passwort ODER nur E-Mail (Rückwärtskompatibilität)
+app.post('/api/bauherr/login', async (req, res) => {
   try {
-    const { email } = req.query;
+    const { email, password } = req.body;
     
     if (!email) {
-      return res.status(400).json({ error: 'Email erforderlich' });
+      return res.status(400).json({ 
+        error: 'E-Mail erforderlich' 
+      });
     }
     
-    // Check if bauherr exists with projects
     const result = await query(
-      `SELECT b.*, COUNT(p.id) as project_count
-       FROM bauherren b
-       LEFT JOIN projects p ON p.bauherr_id = b.id
-       WHERE b.email = $1
-       GROUP BY b.id`,
+      `SELECT id, name, email, password, phone, 
+       street, house_number, zip, city,
+       email_verified, last_login
+       FROM bauherren WHERE LOWER(email) = LOWER($1)`,
       [email]
     );
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Nutzer nicht gefunden' });
+      return res.status(401).json({ 
+        error: 'Account nicht gefunden' 
+      });
     }
     
-    const user = result.rows[0];
+    const bauherr = result.rows[0];
+    
+    // Passwort-Logik für Rückwärtskompatibilität
+    if (bauherr.password && password) {
+      const isPasswordValid = await bcrypt.compare(password, bauherr.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ 
+          error: 'Ungültiges Passwort' 
+        });
+      }
+    } else if (bauherr.password && !password) {
+      return res.status(401).json({ 
+        error: 'Passwort erforderlich' 
+      });
+    }
+    // Wenn kein Passwort gesetzt (alte Accounts), erlaube Login nur mit E-Mail
+    
+    // Update last_login
+    await query(
+      'UPDATE bauherren SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [bauherr.id]
+    );
+    
+    // JWT Token
+    const token = jwt.sign(
+      {
+        id: bauherr.id,
+        type: 'bauherr',
+        email: bauherr.email,
+        name: bauherr.name
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+    
+    // Projekte holen
+    const projectsResult = await query(
+      'SELECT id, category, sub_category, created_at FROM projects WHERE bauherr_id = $1 ORDER BY created_at DESC',
+      [bauherr.id]
+    );
     
     res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      projectCount: user.project_count
+      success: true,
+      token,
+      user: {
+        id: bauherr.id,
+        name: bauherr.name,
+        email: bauherr.email,
+        phone: bauherr.phone,
+        emailVerified: bauherr.email_verified,
+        projects: projectsResult.rows
+      }
+    });
+    
+  } catch (err) {
+    console.error('Bauherr Login-Fehler:', err);
+    res.status(500).json({ 
+      error: 'Login fehlgeschlagen' 
+    });
+  }
+});
+
+// Bauherr Passwort vergessen
+app.post('/api/bauherr/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        error: 'E-Mail-Adresse erforderlich' 
+      });
+    }
+    
+    // Rate Limiting
+    const rateLimitCheck = await query(
+      'SELECT check_email_rate_limit($1, $2, 3, 60) as allowed',
+      [email, 'password_reset']
+    );
+    
+    if (!rateLimitCheck.rows[0].allowed) {
+      return res.status(429).json({ 
+        error: 'Zu viele Anfragen. Bitte versuchen Sie es später erneut.' 
+      });
+    }
+    
+    // Prüfe ob E-Mail existiert
+    const result = await query(
+      'SELECT id, name FROM bauherren WHERE LOWER(email) = LOWER($1)',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.json({ 
+        message: 'Falls ein Account existiert, wurde eine E-Mail versendet.' 
+      });
+    }
+    
+    const bauherr = result.rows[0];
+    
+    // Reset-Token generieren
+    const crypto = require('crypto');
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000);
+    
+    // Token speichern
+    await query(
+      `UPDATE bauherren 
+       SET reset_token = $2, 
+           reset_token_expiry = $3
+       WHERE id = $1`,
+      [bauherr.id, resetToken, resetTokenExpiry]
+    );
+    
+    // E-Mail senden
+    const emailService = require('./emailService');
+    await emailService.sendBauherrPasswordResetEmail(
+      email,
+      resetToken,
+      {
+        name: bauherr.name
+      }
+    );
+    
+    res.json({ 
+      message: 'Falls ein Account existiert, wurde eine E-Mail versendet.' 
+    });
+    
+  } catch (err) {
+    console.error('Passwort-Reset Fehler:', err);
+    res.status(500).json({ 
+      error: 'Ein Fehler ist aufgetreten' 
+    });
+  }
+});
+
+// Bauherr Passwort zurücksetzen
+app.post('/api/bauherr/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({ 
+        error: 'Token und neues Passwort erforderlich' 
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        error: 'Passwort muss mindestens 8 Zeichen lang sein' 
+      });
+    }
+    
+    // Finde Bauherr mit gültigem Token
+    const result = await query(
+      `SELECT id FROM bauherren 
+       WHERE reset_token = $1 
+       AND reset_token_expiry > NOW()`,
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ 
+        error: 'Ungültiger oder abgelaufener Reset-Link' 
+      });
+    }
+    
+    const bauherrId = result.rows[0].id;
+    
+    // Hashe neues Passwort
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update Passwort
+    await query(
+      `UPDATE bauherren 
+       SET password = $2,
+           reset_token = NULL,
+           reset_token_expiry = NULL,
+           password_changed_at = NOW()
+       WHERE id = $1`,
+      [bauherrId, hashedPassword]
+    );
+    
+    res.json({ 
+      success: true,
+      message: 'Passwort erfolgreich zurückgesetzt' 
+    });
+    
+  } catch (err) {
+    console.error('Reset-Passwort Fehler:', err);
+    res.status(500).json({ 
+      error: 'Passwort konnte nicht zurückgesetzt werden' 
+    });
+  }
+});
+
+// E-Mail verifizieren
+app.get('/api/bauherr/verify-email', async (req, res) => {
+  try {
+    const { token } = req.query;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Token erforderlich' });
+    }
+    
+    const result = await query(
+      `SELECT id, name, email FROM bauherren 
+       WHERE email_verification_token = $1 
+       AND email_verification_expires > NOW()`,
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ 
+        error: 'Ungültiger oder abgelaufener Token' 
+      });
+    }
+    
+    const bauherr = result.rows[0];
+    
+    await query(
+      `UPDATE bauherren 
+       SET email_verified = true,
+           email_verification_token = NULL,
+           email_verification_expires = NULL
+       WHERE id = $1`,
+      [bauherr.id]
+    );
+    
+    res.json({ 
+      success: true, 
+      message: 'E-Mail erfolgreich verifiziert',
+      name: bauherr.name
     });
     
   } catch (error) {
-    console.error('User verification error:', error);
-    res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
+    console.error('E-Mail-Verifikationsfehler:', error);
+    res.status(500).json({ 
+      error: 'Verifikation fehlgeschlagen' 
+    });
   }
 });
 
