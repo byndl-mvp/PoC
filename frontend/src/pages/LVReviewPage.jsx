@@ -1070,7 +1070,6 @@ export default function LVReviewPage() {
           >
             Zur Gesamtübersicht →
           </button>
-        </div>
 
         {/* NEU: Zurück zum Dashboard Button */}
   <button
