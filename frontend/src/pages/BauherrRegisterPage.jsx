@@ -104,28 +104,42 @@ export default function BauherrRegisterPage() {
     setError('');
     
     try {
-      // Registrierung mit Projekt-ID falls vorhanden
-      const res = await fetch(apiUrl('/api/bauherr/register'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          projectId: projectId // Projekt-ID mitschicken wenn vorhanden
-        })
-      });
-      
-      const data = await res.json();
-      
-      if (res.ok) {
-        // Token und Daten speichern
-        if (data.token) {
-          sessionStorage.setItem('bauherrToken', data.token);
-          sessionStorage.setItem('userData', JSON.stringify({
-            id: data.user.id,
-            name: data.user.name,
-            email: data.user.email
-          }));
-        }
+  // Registrierung mit Projekt-ID falls vorhanden
+  const res = await fetch(apiUrl('/api/bauherr/register'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...formData,
+      projectId: projectId // Projekt-ID mitschicken wenn vorhanden
+    })
+  });
+  
+  const data = await res.json();
+  
+  if (res.ok) {
+    // Token und Daten speichern
+    if (data.token) {
+      sessionStorage.setItem('bauherrToken', data.token);
+      sessionStorage.setItem('userData', JSON.stringify({
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email
+      }));
+    }
+    
+    // Weiterleitung nach erfolgreicher Registrierung
+    navigate('/bauherr/dashboard');
+  } else {
+    // Fehler vom Server
+    setError(data.message || 'Registrierung fehlgeschlagen');
+  }
+} catch (err) {
+  // Netzwerk- oder andere Fehler
+  console.error('Registrierungsfehler:', err);
+  setError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');
+} finally {
+  setLoading(false);
+}
         
         // Projekt-ID für Dashboard speichern falls vorhanden
   if (projectId) {
