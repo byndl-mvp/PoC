@@ -23,17 +23,6 @@ export default function HandwerkerDashboardPage() {
   const [contracts, setContracts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [schedule, setSchedule] = useState([]); // eslint-disable-line no-unused-vars
-  
-  // Modal states
-  const [showOfferModal, setShowOfferModal] = useState(false);
-  const [offerData, setOfferData] = useState({
-    amount: '',
-    executionTime: '',
-    notes: '',
-    bundleDiscount: 0,
-    includeMaterial: true,
-    includeAnfahrt: true
-  });
 
   useEffect(() => {
     const storedData = sessionStorage.getItem('handwerkerData');
@@ -92,54 +81,6 @@ export default function HandwerkerDashboardPage() {
       setLoading(false);
     }
   };
-
-  const handleSubmitOffer = async () => {
-  if (!selectedTender || !offerData.amount || !offerData.executionTime) {
-    alert('Bitte füllen Sie alle Pflichtfelder aus.');
-    return;
-  }
-
-  try {
-    setLoading(true);
-    const res = await fetch(apiUrl('/api/offers/create'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tenderId: selectedTender.id,
-        handwerkerId: handwerkerData.id || handwerkerData.companyId, // Verwende DB-ID wenn vorhanden
-        amount: parseFloat(offerData.amount), // Sicherstellen dass es eine Zahl ist
-        executionTime: offerData.executionTime,
-        notes: offerData.notes,
-        bundleDiscount: parseFloat(offerData.bundleDiscount) || 0,
-        includeMaterial: offerData.includeMaterial,
-        includeAnfahrt: offerData.includeAnfahrt,
-        timestamp: new Date().toISOString()
-      })
-    });
-
-    if (res.ok) {
-      alert('Angebot erfolgreich abgegeben!');
-      setShowOfferModal(false);
-      setOfferData({
-        amount: '',
-        executionTime: '',
-        notes: '',
-        bundleDiscount: 0,
-        includeMaterial: true,
-        includeAnfahrt: true
-      });
-      loadDashboardData(handwerkerData);
-    } else {
-      const error = await res.json();
-      alert(`Fehler: ${error.error || 'Angebot konnte nicht abgegeben werden'}`);
-    }
-  } catch (err) {
-    console.error('Fehler beim Abgeben des Angebots:', err);
-    alert('Fehler beim Abgeben des Angebots.');
-  } finally {
-    setLoading(false);
-  }
-};
 
   const handleAcceptPreliminary = async (contractId) => {
     if (!window.confirm('Möchten Sie die vorläufige Beauftragung annehmen? Die Kontaktdaten werden freigegeben.')) {
@@ -704,118 +645,6 @@ export default function HandwerkerDashboardPage() {
           )}
         </div>
       </div>
-
-      {/* Angebot abgeben Modal */}
-      {showOfferModal && selectedTender && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full p-8 border border-white/20 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-white mb-6">Angebot erstellen</h2>
-            
-            <div className="bg-white/10 rounded-lg p-4 mb-6">
-              <p className="text-gray-300 mb-2">Projekt: {selectedTender.projectType}</p>
-              <p className="text-gray-400 text-sm">Gewerk: {selectedTender.trade}</p>
-              <p className="text-gray-400 text-sm">Ort: {selectedTender.location}</p>
-              {selectedTender.isBundle && (
-                <p className="text-blue-300 text-sm mt-2">
-                  ⚠️ Dies ist Teil eines Bündels mit {selectedTender.bundleCount} Projekten
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-white font-medium mb-2">Angebotssumme (brutto) *</label>
-                <input
-                  type="number"
-                  value={offerData.amount}
-                  onChange={(e) => setOfferData({...offerData, amount: e.target.value})}
-                  placeholder="z.B. 15000"
-                  className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-white font-medium mb-2">Ausführungszeitraum *</label>
-                <input
-                  type="text"
-                  value={offerData.executionTime}
-                  onChange={(e) => setOfferData({...offerData, executionTime: e.target.value})}
-                  placeholder="z.B. KW 25-26/2025"
-                  className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400"
-                  required
-                />
-              </div>
-
-              {selectedTender.isBundle && (
-                <div>
-                  <label className="block text-white font-medium mb-2">Bündelrabatt (%)</label>
-                  <input
-                    type="number"
-                    value={offerData.bundleDiscount}
-                    onChange={(e) => setOfferData({...offerData, bundleDiscount: e.target.value})}
-                    min="0"
-                    max="30"
-                    placeholder="z.B. 10"
-                    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400"
-                  />
-                  <p className="text-gray-400 text-xs mt-1">
-                    Rabatt gilt nur bei Beauftragung aller Bündel-Projekte
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="flex items-center text-white">
-                  <input
-                    type="checkbox"
-                    checked={offerData.includeMaterial}
-                    onChange={(e) => setOfferData({...offerData, includeMaterial: e.target.checked})}
-                    className="mr-3"
-                  />
-                  Material inklusive
-                </label>
-                <label className="flex items-center text-white">
-                  <input
-                    type="checkbox"
-                    checked={offerData.includeAnfahrt}
-                    onChange={(e) => setOfferData({...offerData, includeAnfahrt: e.target.checked})}
-                    className="mr-3"
-                  />
-                  Anfahrt inklusive
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-white font-medium mb-2">Anmerkungen</label>
-                <textarea
-                  value={offerData.notes}
-                  onChange={(e) => setOfferData({...offerData, notes: e.target.value})}
-                  rows="3"
-                  placeholder="Zusätzliche Informationen zum Angebot..."
-                  className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4 mt-8">
-              <button
-                onClick={() => setShowOfferModal(false)}
-                className="flex-1 px-4 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleSubmitOffer}
-                disabled={loading}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold disabled:opacity-50"
-              >
-                {loading ? 'Wird gesendet...' : 'Angebot abgeben'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
