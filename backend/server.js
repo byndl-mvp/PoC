@@ -12939,6 +12939,66 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   }
 });
 
+// Erweiterte Route für Angebote mit mehr Details
+app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.*,
+        h.company_name,
+        h.email,
+        h.phone,
+        h.street,
+        h.house_number,
+        h.zip_code,
+        h.city,
+        h.rating,
+        t.name as trade_name,
+        tn.estimated_value,
+        tn.timeframe,
+        o.lv_data,
+        o.notes,
+        CASE 
+          WHEN o.viewed_at IS NULL THEN false 
+          ELSE true 
+        END as viewed
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE tn.project_id = $1
+       ORDER BY t.name, o.amount ASC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching detailed offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
+  }
+});
+
+// Angebot als gelesen markieren
+app.post('/api/offers/:offerId/mark-viewed', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query(
+      'UPDATE offers SET viewed_at = NOW() WHERE id = $1',
+      [offerId]
+    );
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Error marking offer as viewed:', error);
+    res.status(500).json({ error: 'Fehler beim Markieren' });
+  }
+});
+
 // ============================================
 // HANDWERKER SETTINGS ENDPOINTS
 // ============================================
