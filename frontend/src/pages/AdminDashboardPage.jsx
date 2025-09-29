@@ -1387,66 +1387,64 @@ const verifyHandwerker = async (id, action, reason = '') => {
           </button>
         </div>
       </div>
-          
-          <div className="p-6 space-y-6">
-            {/* Basis Informationen */}
+      
+      <div className="p-6 space-y-6">
+        {/* Basis Informationen */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-4">Kontaktdaten</h3>
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-white mb-4">Kontaktdaten</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-white/70 text-sm">Name</label>
-                  <input
-                    type="text"
-                    value={editedData.name || ''}
-                    onChange={(e) => setEditedData({...editedData, name: e.target.value})}
-                    disabled={!editMode}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label className="text-white/70 text-sm">E-Mail</label>
-                  <input
-                    type="email"
-                    value={editedData.email || ''}
-                    onChange={(e) => setEditedData({...editedData, email: e.target.value})}
-                    disabled={!editMode}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label className="text-white/70 text-sm">Telefon</label>
-                  <input
-                    type="tel"
-                    value={editedData.phone || ''}
-                    onChange={(e) => setEditedData({...editedData, phone: e.target.value})}
-                    disabled={!editMode}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
-                  />
-                </div>
-              </div>
+              <label className="text-white/70 text-sm">Name</label>
+              <input
+                type="text"
+                value={editedData.name || ''}
+                onChange={(e) => setEditedData({...editedData, name: e.target.value})}
+                disabled={!editMode}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+              />
             </div>
-            
-            {/* Projekte */}
-            {selectedBauherr.projects?.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-4">
-                  Projekte ({selectedBauherr.projects.length})
-                </h3>
-                <div className="space-y-2">
-                  {selectedBauherr.projects.map(project => (
-                    <div key={project.id} className="bg-white/10 rounded-lg p-4">
-                      <p className="text-white font-medium">{project.category} - {project.sub_category}</p>
-                      <p className="text-white/70 text-sm">{project.description}</p>
-                      <p className="text-teal-400 text-sm">Budget: {formatCurrency(project.budget)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div>
+              <label className="text-white/70 text-sm">E-Mail</label>
+              <input
+                type="email"
+                value={editedData.email || ''}
+                onChange={(e) => setEditedData({...editedData, email: e.target.value})}
+                disabled={!editMode}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="text-white/70 text-sm">Telefon</label>
+              <input
+                type="tel"
+                value={editedData.phone || ''}
+                onChange={(e) => setEditedData({...editedData, phone: e.target.value})}
+                disabled={!editMode}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50"
+              />
+            </div>
           </div>
         </div>
+        
+        {/* Projekte */}
+        {selectedBauherr.projects?.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Projekte ({selectedBauherr.projects.length})
+            </h3>
+            <div className="space-y-2">
+              {selectedBauherr.projects.map(project => (
+                <div key={project.id} className="bg-white/10 rounded-lg p-4">
+                  <p className="text-white font-medium">{project.category} - {project.sub_category}</p>
+                  <p className="text-white/70 text-sm">{project.description}</p>
+                  <p className="text-teal-400 text-sm">Budget: {formatCurrency(project.budget)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    )}
+    </div>
   </div>
 )}
 
