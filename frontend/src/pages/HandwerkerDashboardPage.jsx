@@ -321,66 +321,69 @@ export default function HandwerkerDashboardPage() {
         {/* Content */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
           
-          {/* Ausschreibungen Tab */}
-          {activeTab === 'ausschreibungen' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Passende Ausschreibungen</h2>
-              
-              <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <p className="text-blue-300 text-sm">
-                  <strong>ℹ️ Tipp:</strong> Diese Ausschreibungen passen zu Ihren Gewerken, Ihrer Region und Ihrem Aktionsradius.
-                </p>
-              </div>
-              
-              {tenders.length === 0 ? (
-                <p className="text-gray-400">Aktuell keine passenden Ausschreibungen verfügbar.</p>
-              ) : (
-                <div className="space-y-4">
-                  {tenders.map((tender) => (
-                    <div key={tender.id} className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-white">{tender.trade}</h3>
-                            {tender.isNew && (
-                              <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
-                            )}
-                            {tender.isBundle && (
-                              <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded">BÜNDEL</span>
-                            )}
-                          </div>
-                          <p className="text-gray-300">{tender.projectType}</p>
-                          <p className="text-sm text-gray-400 mt-1">
-                            📍 {tender.location} | {tender.distance} km entfernt
-                          </p>
-                          <p className="text-sm text-gray-400">
-                            📅 Ausführung: {tender.executionDate}
-                          </p>
-                          <p className="text-sm text-gray-400">
-                            💰 Geschätztes Volumen: {tender.estimatedVolume?.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <button
-                            onClick={() => {
-                              setSelectedTender(tender);
-                              setShowOfferModal(true);
-                            }}
-                            className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
-                          >
-                            Angebot abgeben
-                          </button>
-                          <p className="text-xs text-gray-400 mt-2">
-                            Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+          {/* Ausschreibungen Tab - ERWEITERT */}
+{activeTab === 'ausschreibungen' && (
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Passende Ausschreibungen</h2>
+    
+    <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+      <p className="text-blue-300 text-sm">
+        <strong>ℹ️ Tipp:</strong> Klicken Sie auf eine Ausschreibung, um das Leistungsverzeichnis 
+        einzusehen und ein Angebot zu erstellen.
+      </p>
+    </div>
+    
+    {tenders.length === 0 ? (
+      <p className="text-gray-400">Aktuell keine passenden Ausschreibungen verfügbar.</p>
+    ) : (
+      <div className="space-y-4">
+        {tenders.map((tender) => (
+          <div key={tender.id} className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-lg font-semibold text-white">{tender.trade_name}</h3>
+                  {!tender.viewed_at && (
+                    <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
+                  )}
                 </div>
-              )}
+                <p className="text-gray-300">{tender.project_description}</p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm text-gray-400">
+                    📍 PLZ: {tender.project_zip}
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    📅 Zeitraum: {tender.timeframe || 'Nach Absprache'}
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    💰 Geschätztes Volumen: {formatCurrency(tender.estimated_value)}
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    ⏰ Angebotsfrist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <button
+                  onClick={() => {
+                    // Öffne Angebots-Modal oder navigiere zur Angebotsseite
+                    navigate(`/handwerker/tender/${tender.id}/offer`);
+                  }}
+                  className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+                >
+                  LV ansehen & Angebot erstellen
+                </button>
+                {tender.handwerker_status === 'offered' && (
+                  <p className="text-green-400 text-sm mt-2">✓ Angebot abgegeben</p>
+                )}
+              </div>
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
           {/* Projektbündel Tab */}
           {activeTab === 'bundles' && (
