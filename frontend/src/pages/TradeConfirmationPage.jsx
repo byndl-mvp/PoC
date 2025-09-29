@@ -193,6 +193,19 @@ export default function TradeConfirmationPage() {
   const processPaymentAndContinue = async () => {
     // TODO: Hier würde die echte Zahlungsabwicklung stattfinden
     // Für MVP simulieren wir erfolgreiche Zahlung
+
+    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+  
+  if (!userData.id) {
+    // Nicht eingeloggt - zur Registrierung
+    navigate('/bauherr/register', {
+      state: {
+        projectId: projectId,
+        fromTradeConfirmation: true
+      }
+    });
+    return;
+  }
     
     const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
     const manualTradeIds = manualTrades.map(t => t.id);
