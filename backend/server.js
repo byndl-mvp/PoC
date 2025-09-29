@@ -23,6 +23,7 @@ const PDFDocument = require('pdfkit');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const multer = require('multer');
 const nodemailer = require('nodemailer');
+const emailService = require('./emailService');
 const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
 
