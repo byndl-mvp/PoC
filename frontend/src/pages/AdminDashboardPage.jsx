@@ -1449,8 +1449,9 @@ const verifyHandwerker = async (id, action, reason = '') => {
       </div>
     </div>
   </div>
-)}
-
+  )}
+</div>
+)}            
             {/* Payments Tab */}
             {activeTab === 'payments' && (
               <div>
