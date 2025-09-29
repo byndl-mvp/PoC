@@ -76,70 +76,78 @@ export default function BauherrRegisterPage() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validierung
-    if (!formData.email || !formData.password || !formData.name || !formData.phone) {
-      setError('Bitte füllen Sie alle Pflichtfelder aus.');
-      return;
-    }
-    
-    if (formData.password.length < 8) {
-      setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
-      return;
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      setError('Die Passwörter stimmen nicht überein.');
-      return;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
-      return;
-    }
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-  // Registrierung mit Projekt-ID falls vorhanden
-  const res = await fetch(apiUrl('/api/bauherr/register'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...formData,
-      projectId: projectId // Projekt-ID mitschicken wenn vorhanden
-    })
-  });
+  e.preventDefault();
   
-  const data = await res.json();
-  
-  if (res.ok) {
-    // Token und Daten speichern
-    if (data.token) {
-      sessionStorage.setItem('bauherrToken', data.token);
-      sessionStorage.setItem('userData', JSON.stringify({
-        id: data.user.id,
-        name: data.user.name,
-        email: data.user.email
-      }));
-    }
-    
-    // Weiterleitung nach erfolgreicher Registrierung
-    navigate('/bauherr/dashboard');
-  } else {
-    // Fehler vom Server
-    setError(data.error || 'Registrierung fehlgeschlagen');
+  // Validierung
+  if (!formData.email || !formData.password || !formData.name || !formData.phone) {
+    setError('Bitte füllen Sie alle Pflichtfelder aus.');
+    return;
   }
-} catch (err) {
-  // Netzwerk- oder andere Fehler
-  console.error('Registrierungsfehler:', err);
-  setError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');
-} finally {
-  setLoading(false);
-}
+  
+  if (formData.password.length < 8) {
+    setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
+    return;
+  }
+  
+  if (formData.password !== formData.confirmPassword) {
+    setError('Die Passwörter stimmen nicht überein.');
+    return;
+  }
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(formData.email)) {
+    setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+    return;
+  }
+  
+  setLoading(true);
+  setError('');
+  
+  try {
+    // Registrierung mit Projekt-ID falls vorhanden
+    const res = await fetch(apiUrl('/api/bauherr/register'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...formData,
+        projectId: projectId // Projekt-ID mitschicken wenn vorhanden
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok) {
+      // Token und Daten speichern
+      if (data.token) {
+        sessionStorage.setItem('bauherrToken', data.token);
+        sessionStorage.setItem('userData', JSON.stringify({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email
+        }));
+      }
+      
+      // Projekt-ID für Dashboard speichern falls vorhanden
+      if (projectId) {
+        sessionStorage.setItem('pendingLvProject', projectId);
+      }
+      
+      alert('Registrierung erfolgreich!');
+      
+      // Weiterleitung zum Dashboard
+      navigate('/bauherr/dashboard');
+    } else {
+      // Fehler vom Server
+      setError(data.error || 'Registrierung fehlgeschlagen');
+    }
+  } catch (err) {
+    // Netzwerk- oder andere Fehler
+    console.error('Registrierungsfehler:', err);
+    setError('Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
+  } finally {
+    setLoading(false);
+  }
+}; // Ende der handleSubmit Funktion
         
         // Projekt-ID für Dashboard speichern falls vorhanden
   if (projectId) {
