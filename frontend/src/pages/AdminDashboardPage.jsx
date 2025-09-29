@@ -338,6 +338,50 @@ const updateBauherr = async () => {
     setError(err.message);
   }
 };
+
+const deleteHandwerker = async (id, companyName) => {
+  if (!window.confirm(`Wirklich löschen?\n\nFirma: ${companyName}\n\nAlle Daten werden unwiderruflich gelöscht!`)) {
+    return;
+  }
+  
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/handwerker/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (!res.ok) throw new Error('Löschen fehlgeschlagen');
+    
+    setMessage('✅ Handwerker erfolgreich gelöscht');
+    setSelectedHandwerker(null);
+    await fetchUsers();
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    setError(err.message);
+  }
+};
+
+const deleteBauherr = async (id, name) => {
+  if (!window.confirm(`Wirklich löschen?\n\n${name}\n\nAlle Projekte und Daten werden unwiderruflich gelöscht!`)) {
+    return;
+  }
+  
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/bauherren/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (!res.ok) throw new Error('Löschen fehlgeschlagen');
+    
+    setMessage('✅ Bauherr erfolgreich gelöscht');
+    setSelectedBauherr(null);
+    await fetchUsers();
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    setError(err.message);
+  }
+};
   
   // Action Functions
   // Ersetze die alte verifyHandwerker Funktion komplett mit:
@@ -1102,23 +1146,31 @@ const verifyHandwerker = async (id, action, reason = '') => {
       </div>
     </div>
     
-    {/* Handwerker Details Modal */}
-    {selectedHandwerker && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 bg-slate-800 border-b border-white/20 p-6 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-white">
-              {selectedHandwerker.handwerker.company_name}
-            </h2>
-            <div className="flex gap-2">
-              {!editMode ? (
-                <button
-                  onClick={() => setEditMode(true)}
-                  className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
-                >
-                  Bearbeiten
-                </button>
-              ) : (
+    {/* Handwerker Details Modal - Header erweitern */}
+<div className="sticky top-0 bg-slate-800 border-b border-white/20 p-6 flex justify-between items-center">
+  <h2 className="text-xl font-bold text-white">
+    {selectedHandwerker.handwerker.company_name}
+  </h2>
+  <div className="flex gap-2">
+    {!editMode ? (
+      <>
+        <button
+          onClick={() => setEditMode(true)}
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
+        >
+          Bearbeiten
+        </button>
+        <button
+          onClick={() => deleteHandwerker(
+            selectedHandwerker.handwerker.id,
+            selectedHandwerker.handwerker.company_name
+          )}
+          className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+        >
+          🗑️ Löschen
+        </button>
+      </>
+    ) : (
                 <>
                   <button
                     onClick={updateHandwerker}
@@ -1282,48 +1334,59 @@ const verifyHandwerker = async (id, action, reason = '') => {
     )}
     
     {/* Bauherr Details Modal */}
-    {selectedBauherr && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 bg-slate-800 border-b border-white/20 p-6 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-white">
-              {selectedBauherr.bauherr.name}
-            </h2>
-            <div className="flex gap-2">
-              {!editMode ? (
-                <button
-                  onClick={() => setEditMode(true)}
-                  className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
-                >
-                  Bearbeiten
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={updateBauherr}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
-                  >
-                    Speichern
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditMode(false);
-                      setEditedData(selectedBauherr.bauherr);
-                    }}
-                    className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
-                  >
-                    Abbrechen
-                  </button>
-                </>
-              )}
+{selectedBauherr && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="bg-slate-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="sticky top-0 bg-slate-800 border-b border-white/20 p-6 flex justify-between items-center">
+        <h2 className="text-xl font-bold text-white">
+          {selectedBauherr.bauherr.name}
+        </h2>
+        <div className="flex gap-2">
+          {!editMode ? (
+            <>
               <button
-                onClick={() => setSelectedBauherr(null)}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+                onClick={() => setEditMode(true)}
+                className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
               >
-                Schließen
+                Bearbeiten
               </button>
-            </div>
-          </div>
+              <button
+                onClick={() => deleteBauherr(
+                  selectedBauherr.bauherr.id,
+                  selectedBauherr.bauherr.name
+                )}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+              >
+                🗑️ Löschen
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={updateBauherr}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+              >
+                Speichern
+              </button>
+              <button
+                onClick={() => {
+                  setEditMode(false);
+                  setEditedData(selectedBauherr.bauherr);
+                }}
+                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
+              >
+                Abbrechen
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setSelectedBauherr(null)}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+          >
+            Schließen
+          </button>
+        </div>
+      </div>
           
           <div className="p-6 space-y-6">
             {/* Basis Informationen */}
