@@ -1476,17 +1476,51 @@ const verifyHandwerker = async (id, action, reason = '') => {
               </div>
             )}
 
-            {/* Tenders Tab */}
-            {activeTab === 'tenders' && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Ausschreibungen</h2>
-                <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20">
-                  <p className="text-white/50 text-center">
-                    {tenders.length > 0 ? `${tenders.length} Ausschreibungen vorhanden` : 'Keine Ausschreibungen vorhanden'}
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Tenders Tab - ERWEITERT */}
+{activeTab === 'tenders' && (
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-4">Ausschreibungen</h2>
+    
+    <div className="space-y-4">
+      {tenders.map(tender => (
+        <div key={tender.id} className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-semibold text-white">
+                {tender.project_description} - {tender.trade_name}
+              </h3>
+              <p className="text-gray-400 text-sm mt-1">
+                Projekt #{tender.project_id} | Erstellt: {new Date(tender.created_at).toLocaleDateString('de-DE')}
+              </p>
+              <p className="text-gray-400 text-sm">
+                Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-teal-400 font-semibold">
+                {formatCurrency(tender.estimated_value)}
+              </p>
+              <p className="text-sm text-gray-400">
+                {tender.offer_count || 0} Angebote
+              </p>
+              <span className={`text-xs px-2 py-1 rounded mt-2 inline-block ${
+                tender.status === 'open' ? 'bg-green-600 text-green-200' :
+                tender.status === 'closed' ? 'bg-gray-600 text-gray-300' :
+                'bg-yellow-600 text-yellow-200'
+              }`}>
+                {tender.status}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
+      
+      {tenders.length === 0 && (
+        <p className="text-white/50 text-center">Keine Ausschreibungen vorhanden</p>
+      )}
+    </div>
+  </div>
+)}
           </> 
           )}
       </main>
