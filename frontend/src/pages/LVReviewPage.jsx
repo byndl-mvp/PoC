@@ -1071,7 +1071,24 @@ export default function LVReviewPage() {
             Zur Gesamtübersicht →
           </button>
         </div>
-        
+
+        {/* NEU: Zurück zum Dashboard Button */}
+  <button
+    onClick={() => {
+      const userData = sessionStorage.getItem('userData');
+      if (userData) {
+        navigate('/bauherr/dashboard');
+      } else {
+        navigate('/bauherr/login');
+      }
+    }}
+    className="px-8 py-4 bg-gradient-to-r from-gray-600 to-slate-700 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+  >
+    <span className="text-xl mr-2">🏠</span>
+    Zurück zum Dashboard
+  </button>
+</div>
+      
         {/* Info Text */}
         <div className="mt-8 text-center text-gray-400 text-sm">
           <p>
