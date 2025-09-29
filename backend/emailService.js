@@ -475,19 +475,6 @@ class EmailService {
       const crypto = require('crypto');
       const verificationToken = crypto.randomBytes(32).toString('hex');
       
-      // Token in DB speichern (muss in Ihrer DB-Route implementiert werden)
-      await query(
-        `UPDATE handwerker 
-         SET email_verification_token = $1,
-             email_verification_expires = $2
-         WHERE id = $3`,
-        [
-          verificationToken,
-          new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 Stunden
-          handwerkerData.id
-        ]
-      );
-      
       // E-Mail Template abrufen
       const template = emailTemplates.handwerkerRegistration({
         ...handwerkerData,
