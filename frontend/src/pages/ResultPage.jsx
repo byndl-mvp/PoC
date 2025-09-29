@@ -1286,6 +1286,23 @@ export default function ResultPage() {
               ← Zurück zur Bearbeitung
             </button>
           )}
+        
+          {/* ERWEITERT: Weiteres Gewerk Button mit besserem Context */}
+          <button
+            onClick={() => {
+              if (!projectComplete) {
+                if (window.confirm('Es sind noch nicht alle Gewerke bearbeitet. Möchten Sie trotzdem ein zusätzliches Gewerk hinzufügen?')) {
+                  handleAddAdditionalTrade();
+                }
+              } else {
+                handleAddAdditionalTrade();
+              }
+            }}
+            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+          >
+            <span className="text-xl mr-2">+</span> 
+            {projectComplete ? 'Weiteres Gewerk hinzufügen' : 'Zusätzliches Gewerk hinzufügen'}
+          </button>
 
           {/* NEU: Zurück zum Dashboard Button */}
   <button
@@ -1304,24 +1321,6 @@ export default function ResultPage() {
   </button>
 </div>
         
-          {/* ERWEITERT: Weiteres Gewerk Button mit besserem Context */}
-          <button
-            onClick={() => {
-              if (!projectComplete) {
-                if (window.confirm('Es sind noch nicht alle Gewerke bearbeitet. Möchten Sie trotzdem ein zusätzliches Gewerk hinzufügen?')) {
-                  handleAddAdditionalTrade();
-                }
-              } else {
-                handleAddAdditionalTrade();
-              }
-            }}
-            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-          >
-            <span className="text-xl mr-2">+</span> 
-            {projectComplete ? 'Weiteres Gewerk hinzufügen' : 'Zusätzliches Gewerk hinzufügen'}
-          </button>
-        </div>
-
         {/* ÄNDERUNG: Footer mit mehr Optionen */}
         <div className="mt-16 text-center">
           <Link to="/" className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors">
