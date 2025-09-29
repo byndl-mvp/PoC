@@ -26,7 +26,6 @@ export default function HandwerkerDashboardPage() {
   
   // Modal states
   const [showOfferModal, setShowOfferModal] = useState(false);
-  const [selectedTender, setSelectedTender] = useState(null);
   const [offerData, setOfferData] = useState({
     amount: '',
     executionTime: '',
