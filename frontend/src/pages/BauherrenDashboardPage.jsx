@@ -15,7 +15,8 @@ export default function BauherrenDashboardPage() {
   const [supplements, setSupplements] = useState([]); // Nachträge
   const [showContractModal, setShowContractModal] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState(null);
-
+  const [pendingLvProjectId, setPendingLvProjectId] = useState(null);
+  
   useEffect(() => {
     const storedUserData = sessionStorage.getItem('userData');
     if (!storedUserData) {
@@ -26,7 +27,14 @@ export default function BauherrenDashboardPage() {
     const user = JSON.parse(storedUserData);
     setUserData(user);
     loadUserProjects(user.email);
-  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // NEU: Check für pending LV-Projekt
+  const pendingProjectId = sessionStorage.getItem('pendingLvProject');
+  if (pendingProjectId) {
+    setPendingLvProjectId(pendingProjectId);
+    // Optional: sessionStorage.removeItem('pendingLvProject');
+  }
+}, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUserProjects = async (email) => {
     try {
@@ -260,6 +268,27 @@ export default function BauherrenDashboardPage() {
         </div>
       </header>
 
+      // Nach dem Header, vor der Projekt-Auswahl (ca. Zeile 220), einfügen:
+{pendingLvProjectId && projects.find(p => p.id === parseInt(pendingLvProjectId)) && (
+  <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6">
+    <h3 className="text-yellow-300 font-semibold text-lg mb-2">
+      📋 Unvollständiges Projekt
+    </h3>
+    <p className="text-gray-300 mb-4">
+      Sie haben Gewerke für Ihr Projekt ausgewählt. Die KI-generierten Leistungsverzeichnisse warten auf Ihre Bearbeitung.
+    </p>
+    <button
+      onClick={() => {
+        navigate(`/project/${pendingLvProjectId}/lv-review`);
+        sessionStorage.removeItem('pendingLvProject');
+      }}
+      className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
+    >
+      Projekt fortsetzen und LVs bearbeiten →
+    </button>
+  </div>
+)}
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Projekt-Auswahl */}
         {projects.length > 0 && (
