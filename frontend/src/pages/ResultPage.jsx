@@ -1217,6 +1217,109 @@ export default function ResultPage() {
           </div>
         </div>
 
+        {/* NEUE SEKTION: Ausschreibungs-Buttons */}
+<div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20 mt-8">
+  <h3 className="text-2xl font-bold text-white mb-6">Ausschreibung starten</h3>
+  
+  <div className="mb-6 bg-blue-50/10 border border-blue-400/30 rounded-lg p-4">
+    <p className="text-blue-200 text-sm">
+      <strong>ℹ️ So funktioniert's:</strong> Wir senden Ihre Leistungsverzeichnisse automatisch an passende, 
+      verifizierte Handwerker in Ihrer Region. Diese können dann direkt Angebote abgeben, 
+      die Sie in Ihrem Dashboard vergleichen können.
+    </p>
+  </div>
+  
+  {/* Gesamt-Ausschreibung Button */}
+  <div className="mb-6">
+    <button
+      onClick={async () => {
+        if (!window.confirm('Möchten Sie alle Gewerke an passende Handwerker ausschreiben?')) return;
+        
+        try {
+          const res = await fetch(apiUrl(`/api/projects/${projectId}/tender/create`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tradeIds: 'all',
+              timeframe: project?.timeframe || 'Nach Absprache'
+            })
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            alert(`✅ Erfolgreich! ${data.message}\n\nDie Handwerker wurden benachrichtigt und können nun Angebote abgeben.`);
+            
+            // Weiterleitung zum Dashboard
+            setTimeout(() => {
+              navigate('/bauherr/dashboard');
+            }, 2000);
+          } else {
+            throw new Error('Fehler beim Erstellen der Ausschreibung');
+          }
+        } catch (error) {
+          alert('Fehler: ' + error.message);
+        }
+      }}
+      className="w-full px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-lg font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+    >
+      🚀 Alle Gewerke jetzt an geeignete Handwerker ausschreiben
+    </button>
+  </div>
+  
+  {/* Einzelne Gewerke */}
+  <div className="border-t border-white/20 pt-6">
+    <h4 className="text-lg font-semibold text-white mb-4">Oder einzelne Gewerke ausschreiben:</h4>
+    <div className="space-y-3">
+      {lvs.map((lv, idx) => (
+        <div key={idx} className="flex justify-between items-center bg-white/5 rounded-lg p-4">
+          <div>
+            <span className="text-white font-medium">{lv.trade_name || lv.name}</span>
+            <span className="text-gray-400 ml-3">
+              (~{formatCurrency(calculateTotal(lv))})
+            </span>
+          </div>
+          <button
+            onClick={async () => {
+              if (!window.confirm(`Möchten Sie ${lv.trade_name || lv.name} ausschreiben?`)) return;
+              
+              try {
+                const res = await fetch(apiUrl(`/api/projects/${projectId}/tender/create`), {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    tradeIds: [lv.trade_id],
+                    timeframe: project?.timeframe || 'Nach Absprache'
+                  })
+                });
+                
+                if (res.ok) {
+                  const data = await res.json();
+                  const matchedCount = data.tenders[0]?.matchedHandwerker || 0;
+                  
+                  if (matchedCount === 0) {
+                    alert(`⚠️ Aktuell keine passenden Handwerker für ${lv.trade_name} verfügbar.\n\nSobald neue Handwerker registriert sind, werden diese automatisch benachrichtigt.`);
+                  } else if (matchedCount === 1) {
+                    alert(`✅ 1 Handwerker für ${lv.trade_name} gefunden und benachrichtigt.\n\nHinweis: Aktuell nur ein Anbieter verfügbar. Weitere werden benachrichtigt, sobald verfügbar.`);
+                  } else {
+                    alert(`✅ ${matchedCount} Handwerker für ${lv.trade_name} gefunden und benachrichtigt!`);
+                  }
+                } else {
+                  throw new Error('Fehler beim Erstellen der Ausschreibung');
+                }
+              } catch (error) {
+                alert('Fehler: ' + error.message);
+              }
+            }}
+            className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+          >
+            Ausschreiben →
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+        
         {/* Budget-Vergleich nur wenn Budget vorhanden */}
         {project && project.budget && project.budget > 0 && (
           <div className="mt-8">
