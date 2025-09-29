@@ -298,6 +298,169 @@ const emailTemplates = {
       ${process.env.FRONTEND_URL}/handwerker/security
     `
   })
+
+// Bauherr Registrierungs-Bestätigung
+  bauherrRegistration: (data) => ({
+    subject: 'Willkommen bei byndl - Ihr Bauprojekt kann starten',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #0ea5e9 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; padding: 12px 30px; background: #14b8a6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .info-box { background: white; padding: 20px; border-left: 4px solid #14b8a6; margin: 20px 0; }
+          .footer { text-align: center; color: #666; margin-top: 30px; font-size: 12px; }
+          h1 { margin: 0; font-size: 32px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>byndl</h1>
+            <p style="margin-top: 10px;">Ihre Plattform für erfolgreiche Bauprojekte</p>
+          </div>
+          
+          <div class="content">
+            <h2>Herzlich Willkommen, ${data.name}!</h2>
+            
+            <p>Vielen Dank für Ihre Registrierung bei byndl. Ihr Konto wurde erfolgreich erstellt.</p>
+            
+            <div class="info-box">
+              <strong>Ihr Projekt:</strong>
+              <p>${data.projectTitle || 'Ihr Bauprojekt wartet auf Sie'}</p>
+              <p style="color: #666; font-size: 14px;">Sie können nun passende Handwerker für Ihr Projekt finden.</p>
+            </div>
+            
+            <h3>Nächste Schritte:</h3>
+            <ol>
+              <li><strong>E-Mail-Adresse bestätigen:</strong> Klicken Sie auf den Button unten</li>
+              <li><strong>Anmelden:</strong> Mit Ihrer E-Mail und Ihrem Passwort</li>
+              <li><strong>Handwerker finden:</strong> Starten Sie Ihre erste Ausschreibung</li>
+            </ol>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL}/bauherr/verify?token=${data.verificationToken}" class="button">
+                E-Mail-Adresse bestätigen
+              </a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">
+              Der Bestätigungslink ist 48 Stunden gültig. Falls der Button nicht funktioniert:
+            </p>
+            <p style="word-break: break-all; color: #0066cc; font-size: 12px;">
+              ${process.env.FRONTEND_URL}/bauherr/verify?token=${data.verificationToken}
+            </p>
+            
+            <h3>Ihre Vorteile bei byndl:</h3>
+            <ul>
+              <li>✅ KI-generierte Leistungsverzeichnisse in Minuten</li>
+              <li>✅ Qualifizierte Handwerker aus Ihrer Region</li>
+              <li>✅ Transparente Angebote vergleichen</li>
+              <li>✅ Digitale Projektverwaltung</li>
+            </ul>
+          </div>
+          
+          <div class="footer">
+            <p>Diese E-Mail wurde automatisch generiert.</p>
+            <p>Bei Fragen: support@byndl.de</p>
+            <p>&copy; 2024 byndl - Alle Rechte vorbehalten</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+      Willkommen bei byndl, ${data.name}!
+      
+      Ihre Registrierung war erfolgreich.
+      
+      Bitte bestätigen Sie Ihre E-Mail-Adresse:
+      ${process.env.FRONTEND_URL}/bauherr/verify?token=${data.verificationToken}
+      
+      Bei Fragen: support@byndl.de
+    `
+  }),
+
+  // Bauherr Passwort-Reset
+  bauherrPasswordReset: (data) => ({
+    subject: 'byndl - Passwort zurücksetzen',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #0ea5e9 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; padding: 12px 30px; background: #ef4444; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .warning-box { background: #fef2f2; border: 1px solid #fecaca; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; color: #666; margin-top: 30px; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>byndl</h1>
+            <p>Passwort zurücksetzen</p>
+          </div>
+          
+          <div class="content">
+            <h2>Hallo ${data.name},</h2>
+            
+            <p>Sie haben eine Anfrage zum Zurücksetzen Ihres Passworts gestellt.</p>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL}/bauherr/reset-password?token=${data.resetToken}" class="button">
+                Neues Passwort festlegen
+              </a>
+            </div>
+            
+            <div class="warning-box">
+              <strong>⚠️ Sicherheitshinweis:</strong>
+              <ul style="margin: 10px 0;">
+                <li>Dieser Link ist nur 1 Stunde gültig</li>
+                <li>Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail</li>
+                <li>Ihr Passwort bleibt unverändert, solange Sie nicht auf den Link klicken</li>
+              </ul>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">
+              Falls der Button nicht funktioniert:
+            </p>
+            <p style="word-break: break-all; color: #0066cc; font-size: 12px;">
+              ${process.env.FRONTEND_URL}/bauherr/reset-password?token=${data.resetToken}
+            </p>
+          </div>
+          
+          <div class="footer">
+            <p>Diese E-Mail wurde automatisch generiert.</p>
+            <p>Bei Fragen: support@byndl.de</p>
+            <p>&copy; 2024 byndl</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+      Passwort zurücksetzen
+      
+      Hallo ${data.name},
+      
+      Klicken Sie auf diesen Link um ein neues Passwort festzulegen:
+      ${process.env.FRONTEND_URL}/bauherr/reset-password?token=${data.resetToken}
+      
+      Der Link ist 1 Stunde gültig.
+      
+      Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail.
+    `
+  }),
 };
 
 // ============================================================================
@@ -427,4 +590,72 @@ class EmailService {
       return false;
     }
   }
+
+  // Bauherr Registrierungs-E-Mail senden
+  async sendBauherrRegistrationEmail(bauherrData, query) {
+    try {
+      const crypto = require('crypto');
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      
+      // Token in DB speichern
+      await query(
+        `UPDATE bauherren 
+         SET email_verification_token = $1,
+             email_verification_expires = $2
+         WHERE id = $3`,
+        [
+          verificationToken,
+          new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 Stunden
+          bauherrData.id
+        ]
+      );
+      
+      // E-Mail Template abrufen
+      const template = emailTemplates.bauherrRegistration({
+        ...bauherrData,
+        verificationToken
+      });
+      
+      // E-Mail senden
+      const info = await transporter.sendMail({
+        from: `"byndl Platform" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
+        to: bauherrData.email,
+        subject: template.subject,
+        text: template.text,
+        html: template.html
+      });
+      
+      console.log('Bauherr-Registrierungs-E-Mail gesendet:', info.messageId);
+      return { success: true, messageId: info.messageId };
+      
+    } catch (error) {
+      console.error('Fehler beim E-Mail-Versand:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  // Bauherr Passwort-Reset E-Mail senden
+  async sendBauherrPasswordResetEmail(email, resetToken, bauherrData) {
+    try {
+      const template = emailTemplates.bauherrPasswordReset({
+        ...bauherrData,
+        resetToken
+      });
+      
+      const info = await transporter.sendMail({
+        from: `"byndl Security" <${process.env.EMAIL_FROM || 'security@byndl.de'}>`,
+        to: email,
+        subject: template.subject,
+        text: template.text,
+        html: template.html
+      });
+      
+      console.log('Bauherr Passwort-Reset E-Mail gesendet:', info.messageId);
+      return { success: true, messageId: info.messageId };
+      
+    } catch (error) {
+      console.error('Fehler beim E-Mail-Versand:', error);
+      return { success: false, error: error.message };
+    }
+  }  
 }
