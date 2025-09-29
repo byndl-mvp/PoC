@@ -4,8 +4,13 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 // Landing & Auth Pages
 import LandingPage from './pages/LandingPage';
 import BauherrLoginPage from './pages/BauherrenLoginPage';
+import BauherrRegisterPage from './pages/BauherrRegisterPage';
+import BauherrEmailVerification from './pages/BauherrEmailVerification';
+import BauherrPasswordResetPage from './pages/BauherrPasswordResetPage';
 import HandwerkerLoginPage from './pages/HandwerkerLoginPage';
 import HandwerkerRegisterPage from './pages/HandwerkerRegisterPage';
+import HandwerkerEmailVerification from './pages/HandwerkerEmailVerification';
+import HandwerkerPasswordResetPage from './pages/HandwerkerPasswordResetPage';
 
 // Bauherren Pages
 import ProjectFormPage from './pages/ProjectFormPage';
@@ -24,6 +29,9 @@ import HandwerkerSettingsPage from './pages/HandwerkerSettingsPage';
 // Admin Pages
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+
+// Protected Route Component
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Layout Component mit bedingtem Header
 function Layout({ children }) {
@@ -90,34 +98,83 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          {/* Public Routes */}
+          {/* ============= Öffentliche Routen ============= */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/start" element={<ProjectFormPage />} />
           
-          {/* Bauherren Routes - ohne Header/Footer */}
+          {/* ============= Bauherren Routen ============= */}
+          {/* Auth-Routen */}
           <Route path="/bauherr/login" element={<BauherrLoginPage />} />
-          <Route path="/bauherr/dashboard" element={<BauherrenDashboardPage />} />
+          <Route path="/bauherr/register" element={<BauherrRegisterPage />} />
+          <Route path="/bauherr/verify" element={<BauherrEmailVerification />} />
+          <Route path="/bauherr/reset-password" element={<BauherrPasswordResetPage />} />
           
-          {/* Project Flow - ohne Header/Footer */}
+          {/* Geschützte Bauherren-Routen */}
+          <Route 
+            path="/bauherr/dashboard" 
+            element={
+              <ProtectedRoute userType="bauherr">
+                <BauherrenDashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Legacy/Alternative Routen für Bauherren */}
+          <Route path="/bauherren/login" element={<BauherrLoginPage />} />
+          <Route path="/bauherren/dashboard" element={<BauherrenDashboardPage />} />
+          
+          {/* ============= Projekt-Workflow Routen ============= */}
           <Route path="/project/:projectId/intake" element={<IntakeQuestionsPage />} />
           <Route path="/project/:projectId/trades" element={<TradeConfirmationPage />} />
+          <Route path="/project/:projectId/trades/confirm" element={<TradeConfirmationPage />} />
           <Route path="/project/:projectId/lv-review" element={<LVReviewPage />} />
           <Route path="/project/:projectId/trade/:tradeId/questions" element={<QuestionsPage />} />
           <Route path="/project/:projectId/result" element={<ResultPage />} />
           <Route path="/project/:projectId/add-trade" element={<AdditionalTradeSelectionPage />} />
           
-          {/* Handwerker Routes - ohne Header/Footer */}
+          {/* Alternative Projekt-Routen (mit :id statt :projectId) */}
+          <Route path="/project/:id/intake" element={<IntakeQuestionsPage />} />
+          <Route path="/project/:id/trades/confirm" element={<TradeConfirmationPage />} />
+          <Route path="/project/:id/lv-review" element={<LVReviewPage />} />
+          
+          {/* ============= Handwerker Routen ============= */}
+          {/* Auth-Routen */}
           <Route path="/handwerker/login" element={<HandwerkerLoginPage />} />
           <Route path="/handwerker/register" element={<HandwerkerRegisterPage />} />
-          <Route path="/handwerker/dashboard" element={<HandwerkerDashboardPage />} />
-          <Route path="/handwerker/settings" element={<HandwerkerSettingsPage />} />
+          <Route path="/handwerker/verify" element={<HandwerkerEmailVerification />} />
+          <Route path="/handwerker/reset-password" element={<HandwerkerPasswordResetPage />} />
           
-          {/* Admin Routes - mit Header/Footer */}
+          {/* Geschützte Handwerker-Routen */}
+          <Route 
+            path="/handwerker/dashboard" 
+            element={
+              <ProtectedRoute userType="handwerker">
+                <HandwerkerDashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/handwerker/settings" 
+            element={
+              <ProtectedRoute userType="handwerker">
+                <HandwerkerSettingsPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* ============= Admin Routen - mit Header/Footer ============= */}
           <Route path="/admin" element={<AdminLoginPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
-          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route 
+            path="/admin/dashboard" 
+            element={
+              <ProtectedRoute userType="admin">
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* 404 Fallback */}
+          {/* ============= 404 Fallback ============= */}
           <Route path="*" element={
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
               <div className="text-center">
