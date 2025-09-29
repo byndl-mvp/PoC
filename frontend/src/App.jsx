@@ -25,6 +25,7 @@ import BauherrenDashboardPage from './pages/BauherrenDashboardPage';
 // Handwerker Pages
 import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
 import HandwerkerSettingsPage from './pages/HandwerkerSettingsPage';
+import HandwerkerOfferPage from './pages/HandwerkerOfferPage';
 
 // Admin Pages
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -161,6 +162,16 @@ function App() {
               </ProtectedRoute>
             } 
           />
+
+          {/* Handwerker Routen - ergänze diese Route */}
+<Route 
+  path="/handwerker/tender/:tenderId/offer" 
+  element={
+    <ProtectedRoute userType="handwerker">
+      <HandwerkerOfferPage />
+    </ProtectedRoute>
+  } 
+/>
           
           {/* ============= Admin Routen - mit Header/Footer ============= */}
           <Route path="/admin" element={<AdminLoginPage />} />
