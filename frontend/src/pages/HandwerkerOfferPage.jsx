@@ -14,38 +14,39 @@ export default function HandwerkerOfferPage() {
   const [handwerkerData, setHandwerkerData] = useState(null);
   
   useEffect(() => {
-    const storedData = sessionStorage.getItem('handwerkerData');
-    if (!storedData) {
-      navigate('/handwerker/login');
-      return;
-    }
-    setHandwerkerData(JSON.parse(storedData));
-    loadTenderData();
-  }, [tenderId, navigate]);
-  
-  const loadTenderData = useCallback(async () => {
-  try {
-    setLoading(true);
-    const res = await fetch(apiUrl(`/api/tenders/${tenderId}/lv`));
-    if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibung');
-    
-    const data = await res.json();
-    setTender(data);
-    
-    // Initialisiere Positionen ohne Preise
-    const initialPositions = data.lv.positions.map(pos => ({
-      ...pos,
-      unitPrice: 0,
-      totalPrice: 0
-    }));
-    setPositions(initialPositions);
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Fehler beim Laden der Ausschreibung');
-  } finally {
-    setLoading(false);
+  const storedData = sessionStorage.getItem('handwerkerData');
+  if (!storedData) {
+    navigate('/handwerker/login');
+    return;
   }
-}, [tenderId]); // tenderId als Dependency
+  setHandwerkerData(JSON.parse(storedData));
+  
+  // Funktion innerhalb useEffect definieren
+  const loadTenderData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(apiUrl(`/api/tenders/${tenderId}/lv`));
+      if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibung');
+      
+      const data = await res.json();
+      setTender(data);
+      
+      const initialPositions = data.lv.positions.map(pos => ({
+        ...pos,
+        unitPrice: 0,
+        totalPrice: 0
+      }));
+      setPositions(initialPositions);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Fehler beim Laden der Ausschreibung');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  loadTenderData();
+}, [tenderId, navigate]);
   
   const updatePosition = (index, field, value) => {
     const updated = [...positions];
