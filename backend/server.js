@@ -12664,6 +12664,281 @@ app.post('/api/contracts/:contractId/confirm-offer', async (req, res) => {
   }
 });
 
+// ============= AUSSCHREIBUNGS-SYSTEM =============
+
+// Gewerk ausschreiben (einzeln oder alle)
+app.post('/api/projects/:projectId/tender/create', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { tradeIds, timeframe } = req.body; // tradeIds kann Array sein oder 'all'
+    
+    // Projekt-Details laden
+    const projectResult = await query(
+      `SELECT p.*, b.zip as bauherr_zip
+       FROM projects p
+       JOIN bauherren b ON p.bauherr_id = b.id
+       WHERE p.id = $1`,
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    }
+    
+    const project = projectResult.rows[0];
+    
+    // Gewerke bestimmen
+    let trades;
+    if (tradeIds === 'all') {
+      trades = await query(
+        `SELECT DISTINCT t.* FROM trades t
+         JOIN project_trades pt ON t.id = pt.trade_id
+         WHERE pt.project_id = $1 AND t.code != 'INT'`,
+        [projectId]
+      );
+    } else {
+      trades = await query(
+        `SELECT * FROM trades WHERE id = ANY($1::int[])`,
+        [tradeIds]
+      );
+    }
+    
+    const createdTenders = [];
+    
+    for (const trade of trades.rows) {
+      // LV-Daten für dieses Gewerk holen
+      const lvResult = await query(
+        `SELECT content FROM lvs 
+         WHERE project_id = $1 AND trade_id = $2`,
+        [projectId, trade.id]
+      );
+      
+      if (lvResult.rows.length === 0) continue;
+      
+      const lv = typeof lvResult.rows[0].content === 'string' 
+        ? JSON.parse(lvResult.rows[0].content) 
+        : lvResult.rows[0].content;
+      
+      // Tender erstellen
+      const tenderResult = await query(
+        `INSERT INTO tenders (
+          project_id, trade_id, trade_code, 
+          status, deadline, estimated_value,
+          timeframe, project_zip, lv_data,
+          created_at
+        ) VALUES ($1, $2, $3, 'open', 
+          NOW() + INTERVAL '14 days', $4, $5, $6, $7, NOW())
+        RETURNING id`,
+        [
+          projectId, 
+          trade.id, 
+          trade.code,
+          lv.totalSum || 0,
+          timeframe || project.timeframe,
+          project.bauherr_zip,
+          JSON.stringify(lv)
+        ]
+      );
+      
+      const tenderId = tenderResult.rows[0].id;
+      
+      // Passende Handwerker finden (Matching-Logik)
+      const matchingHandwerker = await query(
+        `SELECT h.* FROM handwerker h
+         JOIN handwerker_trades ht ON h.id = ht.handwerker_id
+         WHERE ht.trade_id = $1
+         AND h.verified = true
+         AND ST_DWithin(
+           ST_MakePoint(
+             (SELECT longitude FROM zip_codes WHERE zip = $2),
+             (SELECT latitude FROM zip_codes WHERE zip = $2)
+           )::geography,
+           ST_MakePoint(
+             (SELECT longitude FROM zip_codes WHERE zip = h.zip_code),
+             (SELECT latitude FROM zip_codes WHERE zip = h.zip_code)
+           )::geography,
+           h.action_radius * 1000
+         )`,
+        [trade.id, project.bauherr_zip]
+      );
+      
+      // Tender-Handwerker-Verknüpfungen erstellen
+      for (const handwerker of matchingHandwerker.rows) {
+        await query(
+          `INSERT INTO tender_handwerker (
+            tender_id, handwerker_id, status, notified_at
+          ) VALUES ($1, $2, 'pending', NOW())`,
+          [tenderId, handwerker.id]
+        );
+      }
+      
+      createdTenders.push({
+        tenderId,
+        tradeName: trade.name,
+        matchedHandwerker: matchingHandwerker.rows.length
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: `${createdTenders.length} Ausschreibung(en) erstellt`,
+      tenders: createdTenders
+    });
+    
+  } catch (error) {
+    console.error('Error creating tender:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen der Ausschreibung' });
+  }
+});
+
+// Handwerker: Ausschreibungen abrufen
+app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // Handwerker-ID ermitteln
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    // Zugewiesene Ausschreibungen abrufen
+    const tenders = await query(
+      `SELECT 
+        t.*,
+        tr.name as trade_name,
+        p.description as project_description,
+        p.timeframe,
+        p.zip as project_zip,
+        p.city as project_city,
+        th.status as handwerker_status,
+        th.viewed_at,
+        t.lv_data
+      FROM tenders t
+      JOIN tender_handwerker th ON t.id = th.tender_id
+      JOIN trades tr ON t.trade_id = tr.id
+      JOIN projects p ON t.project_id = p.id
+      WHERE th.handwerker_id = $1
+      AND t.status = 'open'
+      AND t.deadline > NOW()
+      ORDER BY t.created_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(tenders.rows);
+    
+  } catch (error) {
+    console.error('Error fetching handwerker tenders:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Ausschreibungen' });
+  }
+});
+
+// Handwerker: LV für Angebot abrufen
+app.get('/api/tenders/:tenderId/lv', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        t.lv_data,
+        t.project_id,
+        t.trade_id,
+        tr.name as trade_name,
+        p.description as project_description
+      FROM tenders t
+      JOIN trades tr ON t.trade_id = tr.id
+      JOIN projects p ON t.project_id = p.id
+      WHERE t.id = $1`,
+      [tenderId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
+    const tender = result.rows[0];
+    const lv = typeof tender.lv_data === 'string' 
+      ? JSON.parse(tender.lv_data) 
+      : tender.lv_data;
+    
+    // Preise entfernen für Handwerker-Ansicht
+    const lvWithoutPrices = {
+      ...lv,
+      positions: lv.positions.map(pos => ({
+        ...pos,
+        unitPrice: 0,
+        totalPrice: 0
+      }))
+    };
+    
+    res.json({
+      tenderId,
+      projectId: tender.project_id,
+      tradeId: tender.trade_id,
+      tradeName: tender.trade_name,
+      projectDescription: tender.project_description,
+      lv: lvWithoutPrices
+    });
+    
+  } catch (error) {
+    console.error('Error fetching tender LV:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen des LV' });
+  }
+});
+
+// Handwerker: Angebot abgeben
+app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId, positions, notes, totalSum } = req.body;
+    
+    // Prüfen ob bereits ein Angebot existiert
+    const existingOffer = await query(
+      'SELECT id FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
+      [tenderId, handwerkerId]
+    );
+    
+    if (existingOffer.rows.length > 0) {
+      // Update existing offer
+      await query(
+        `UPDATE offers 
+         SET lv_data = $1, notes = $2, amount = $3, updated_at = NOW()
+         WHERE id = $4`,
+        [JSON.stringify(positions), notes, totalSum, existingOffer.rows[0].id]
+      );
+    } else {
+      // Create new offer
+      await query(
+        `INSERT INTO offers (
+          tender_id, handwerker_id, amount, 
+          lv_data, notes, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, 'submitted', NOW())`,
+        [tenderId, handwerkerId, totalSum, JSON.stringify(positions), notes]
+      );
+    }
+    
+    // Update tender_handwerker status
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'offered', offered_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    res.json({ success: true, message: 'Angebot erfolgreich abgegeben' });
+    
+  } catch (error) {
+    console.error('Error submitting offer:', error);
+    res.status(500).json({ error: 'Fehler beim Abgeben des Angebots' });
+  }
+});
+
 // ============================================
 // HANDWERKER SETTINGS ENDPOINTS
 // ============================================
@@ -13589,6 +13864,64 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch users:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Admin: User löschen
+app.delete('/api/admin/handwerker/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await query('BEGIN');
+    
+    // Lösche alle abhängigen Einträge
+    await query('DELETE FROM handwerker_trades WHERE handwerker_id = $1', [id]);
+    await query('DELETE FROM handwerker_documents WHERE handwerker_id = $1', [id]);
+    await query('DELETE FROM offers WHERE handwerker_id = $1', [id]);
+    await query('DELETE FROM tender_handwerker WHERE handwerker_id = $1', [id]);
+    await query('DELETE FROM orders WHERE handwerker_id = $1', [id]);
+    
+    // Lösche Handwerker
+    await query('DELETE FROM handwerker WHERE id = $1', [id]);
+    
+    await query('COMMIT');
+    
+    res.json({ success: true, message: 'Handwerker gelöscht' });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error deleting handwerker:', error);
+    res.status(500).json({ error: 'Fehler beim Löschen' });
+  }
+});
+
+app.delete('/api/admin/bauherren/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await query('BEGIN');
+    
+    // Lösche alle Projekte und abhängige Daten
+    const projects = await query('SELECT id FROM projects WHERE bauherr_id = $1', [id]);
+    
+    for (const project of projects.rows) {
+      await query('DELETE FROM project_trades WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM lvs WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM tenders WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM trade_progress WHERE project_id = $1', [project.id]);
+    }
+    
+    await query('DELETE FROM projects WHERE bauherr_id = $1', [id]);
+    await query('DELETE FROM bauherren WHERE id = $1', [id]);
+    
+    await query('COMMIT');
+    
+    res.json({ success: true, message: 'Bauherr gelöscht' });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error deleting bauherr:', error);
+    res.status(500).json({ error: 'Fehler beim Löschen' });
   }
 });
 
