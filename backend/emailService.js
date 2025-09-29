@@ -6,50 +6,133 @@
 const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs').promises;
+const crypto = require('crypto');
 
 // ============================================================================
 // KONFIGURATION
 // ============================================================================
 
+// Globale Variable für den Transporter
+let transporter = null;
+
 // E-Mail Transporter erstellen (z.B. für Gmail, SendGrid, oder andere)
-const createTransporter = () => {
-  // Option 1: Gmail (für Entwicklung/Test)
-  if (process.env.EMAIL_SERVICE === 'gmail') {
-    return nodemailer.createTransporter({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD // App-spezifisches Passwort verwenden!
-      }
-    });
-  }
-  
-  // Option 2: SendGrid (empfohlen für Produktion)
-  if (process.env.EMAIL_SERVICE === 'sendgrid') {
-    return nodemailer.createTransporter({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      auth: {
-        user: 'apikey',
-        pass: process.env.SENDGRID_API_KEY
-      }
-    });
-  }
-  
-  // Option 3: Generischer SMTP Server
-  return nodemailer.createTransporter({
-    host: process.env.SMTP_HOST || 'smtp.example.com',
-    port: process.env.SMTP_PORT || 587,
-    secure: process.env.SMTP_SECURE === 'true', // true für 465, false für andere Ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
+const createTransporter = async () => {
+  try {
+    // Option 1: Gmail (für Entwicklung/Test)
+    if (process.env.EMAIL_SERVICE === 'gmail') {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.GMAIL_USER,
+          pass: process.env.GMAIL_APP_PASSWORD // App-spezifisches Passwort verwenden!
+        }
+      });
     }
-  });
+    
+    // Option 2: SendGrid (empfohlen für Produktion)
+    if (process.env.EMAIL_SERVICE === 'sendgrid') {
+      return nodemailer.createTransport({
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        auth: {
+          user: 'apikey',
+          pass: process.env.SENDGRID_API_KEY
+        }
+      });
+    }
+    
+    // Option 3: Entwicklungsumgebung - Ethereal Email (Fake SMTP)
+    if (process.env.NODE_ENV === 'development' || !process.env.EMAIL_SERVICE) {
+      // Test Account erstellen für Entwicklung
+      const testAccount = await nodemailer.createTestAccount().catch(err => {
+        console.log('Could not create test account:', err);
+        return null;
+      });
+      
+      if (testAccount) {
+        console.log('Ethereal test account created:');
+        console.log('User:', testAccount.user);
+        console.log('Pass:', testAccount.pass);
+        console.log('View sent emails at: https://ethereal.email/messages');
+        
+        return nodemailer.createTransport({
+          host: 'smtp.ethereal.email',
+          port: 587,
+          secure: false,
+          auth: {
+            user: testAccount.user,
+            pass: testAccount.pass
+          }
+        });
+      }
+    }
+    
+    // Option 4: Generischer SMTP Server
+    if (process.env.SMTP_HOST) {
+      return nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true', // true für 465, false für andere Ports
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+    }
+    
+    // Fallback: Console-only transporter
+    console.warn('No email service configured. Emails will be logged to console only.');
+    return {
+      sendMail: async (mailOptions) => {
+        console.log('=== EMAIL WOULD BE SENT ===');
+        console.log('From:', mailOptions.from);
+        console.log('To:', mailOptions.to);
+        console.log('Subject:', mailOptions.subject);
+        console.log('Preview URL: [Console Mode - No URL]');
+        console.log('===========================');
+        return { 
+          messageId: 'console-' + Date.now(),
+          preview: 'Console mode - check logs'
+        };
+      },
+      verify: async () => {
+        console.log('Email transporter in console-only mode');
+        return true;
+      }
+    };
+  } catch (error) {
+    console.error('Error creating email transporter:', error);
+    // Fallback: Console-only transporter
+    return {
+      sendMail: async (mailOptions) => {
+        console.log('=== EMAIL WOULD BE SENT (ERROR FALLBACK) ===');
+        console.log('To:', mailOptions.to);
+        console.log('Subject:', mailOptions.subject);
+        console.log('=============================================');
+        return { messageId: 'error-fallback-' + Date.now() };
+      },
+      verify: async () => false
+    };
+  }
 };
 
-// Transporter initialisieren
-const transporter = createTransporter();
+// Transporter initialisieren (lazy loading)
+const getTransporter = async () => {
+  if (!transporter) {
+    transporter = await createTransporter();
+    
+    // Verifiziere Verbindung
+    if (transporter && transporter.verify) {
+      try {
+        await transporter.verify();
+        console.log('✅ Email service is ready');
+      } catch (error) {
+        console.error('⚠️ Email service verification failed:', error.message);
+      }
+    }
+  }
+  return transporter;
+};
 
 // ============================================================================
 // E-MAIL TEMPLATES
@@ -102,7 +185,7 @@ const emailTemplates = {
             </ol>
             
             <div style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL}/handwerker/verify?token=${data.verificationToken}" class="button">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/handwerker/verify?token=${data.verificationToken}" class="button">
                 E-Mail-Adresse bestätigen
               </a>
             </div>
@@ -111,7 +194,7 @@ const emailTemplates = {
               Der Bestätigungslink ist 48 Stunden gültig. Falls der Button nicht funktioniert, kopieren Sie bitte diesen Link in Ihren Browser:
             </p>
             <p style="word-break: break-all; color: #0066cc; font-size: 12px;">
-              ${process.env.FRONTEND_URL}/handwerker/verify?token=${data.verificationToken}
+              ${process.env.FRONTEND_URL || 'http://localhost:3000'}/handwerker/verify?token=${data.verificationToken}
             </p>
             
             <h3>Ihre Vorteile bei byndl:</h3>
@@ -138,7 +221,7 @@ const emailTemplates = {
       Ihre Registrierung war erfolgreich. Ihre Betriebs-ID lautet: ${data.companyId}
       
       Bitte bestätigen Sie Ihre E-Mail-Adresse:
-      ${process.env.FRONTEND_URL}/handwerker/verify?token=${data.verificationToken}
+      ${process.env.FRONTEND_URL || 'http://localhost:3000'}/handwerker/verify?token=${data.verificationToken}
       
       Bei Fragen: support@byndl.de
     `
@@ -175,7 +258,7 @@ const emailTemplates = {
             <p>Sie haben eine Anfrage zum Zurücksetzen Ihres Passworts gestellt.</p>
             
             <div style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL}/handwerker/reset-password?token=${data.resetToken}" class="button">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/handwerker/reset-password?token=${data.resetToken}" class="button">
                 Neues Passwort festlegen
               </a>
             </div>
@@ -193,7 +276,7 @@ const emailTemplates = {
               Falls der Button nicht funktioniert, kopieren Sie diesen Link:
             </p>
             <p style="word-break: break-all; color: #0066cc; font-size: 12px;">
-              ${process.env.FRONTEND_URL}/handwerker/reset-password?token=${data.resetToken}
+              ${process.env.FRONTEND_URL || 'http://localhost:3000'}/handwerker/reset-password?token=${data.resetToken}
             </p>
           </div>
           
@@ -210,7 +293,7 @@ const emailTemplates = {
       Passwort zurücksetzen für ${data.companyName}
       
       Klicken Sie auf diesen Link, um ein neues Passwort festzulegen:
-      ${process.env.FRONTEND_URL}/handwerker/reset-password?token=${data.resetToken}
+      ${process.env.FRONTEND_URL || 'http://localhost:3000'}/handwerker/reset-password?token=${data.resetToken}
       
       Der Link ist 1 Stunde gültig.
       
@@ -274,7 +357,7 @@ const emailTemplates = {
             <p>Sichern Sie sofort Ihr Konto:</p>
             
             <div style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL}/handwerker/security" class="button">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/handwerker/security" class="button">
                 Passwort ändern
               </a>
             </div>
@@ -295,11 +378,11 @@ const emailTemplates = {
       IP: ${data.ipAddress}
       
       Waren Sie das nicht? Ändern Sie sofort Ihr Passwort:
-      ${process.env.FRONTEND_URL}/handwerker/security
+      ${process.env.FRONTEND_URL || 'http://localhost:3000'}/handwerker/security
     `
   }),
 
-// Bauherr Registrierungs-Bestätigung
+  // Bauherr Registrierungs-Bestätigung
   bauherrRegistration: (data) => ({
     subject: 'Willkommen bei byndl - Ihr Bauprojekt kann starten',
     html: `
@@ -344,7 +427,7 @@ const emailTemplates = {
             </ol>
             
             <div style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL}/bauherr/verify?token=${data.verificationToken}" class="button">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/bauherr/verify?token=${data.verificationToken}" class="button">
                 E-Mail-Adresse bestätigen
               </a>
             </div>
@@ -353,7 +436,7 @@ const emailTemplates = {
               Der Bestätigungslink ist 48 Stunden gültig. Falls der Button nicht funktioniert:
             </p>
             <p style="word-break: break-all; color: #0066cc; font-size: 12px;">
-              ${process.env.FRONTEND_URL}/bauherr/verify?token=${data.verificationToken}
+              ${process.env.FRONTEND_URL || 'http://localhost:3000'}/bauherr/verify?token=${data.verificationToken}
             </p>
             
             <h3>Ihre Vorteile bei byndl:</h3>
@@ -380,7 +463,7 @@ const emailTemplates = {
       Ihre Registrierung war erfolgreich.
       
       Bitte bestätigen Sie Ihre E-Mail-Adresse:
-      ${process.env.FRONTEND_URL}/bauherr/verify?token=${data.verificationToken}
+      ${process.env.FRONTEND_URL || 'http://localhost:3000'}/bauherr/verify?token=${data.verificationToken}
       
       Bei Fragen: support@byndl.de
     `
@@ -417,7 +500,7 @@ const emailTemplates = {
             <p>Sie haben eine Anfrage zum Zurücksetzen Ihres Passworts gestellt.</p>
             
             <div style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL}/bauherr/reset-password?token=${data.resetToken}" class="button">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/bauherr/reset-password?token=${data.resetToken}" class="button">
                 Neues Passwort festlegen
               </a>
             </div>
@@ -435,7 +518,7 @@ const emailTemplates = {
               Falls der Button nicht funktioniert:
             </p>
             <p style="word-break: break-all; color: #0066cc; font-size: 12px;">
-              ${process.env.FRONTEND_URL}/bauherr/reset-password?token=${data.resetToken}
+              ${process.env.FRONTEND_URL || 'http://localhost:3000'}/bauherr/reset-password?token=${data.resetToken}
             </p>
           </div>
           
@@ -454,7 +537,7 @@ const emailTemplates = {
       Hallo ${data.name},
       
       Klicken Sie auf diesen Link um ein neues Passwort festzulegen:
-      ${process.env.FRONTEND_URL}/bauherr/reset-password?token=${data.resetToken}
+      ${process.env.FRONTEND_URL || 'http://localhost:3000'}/bauherr/reset-password?token=${data.resetToken}
       
       Der Link ist 1 Stunde gültig.
       
@@ -471,8 +554,7 @@ class EmailService {
   // Handwerker Registrierungs-E-Mail senden
   async sendHandwerkerRegistrationEmail(handwerkerData) {
     try {
-      // Verification Token generieren
-      const crypto = require('crypto');
+      const transport = await getTransporter();
       const verificationToken = crypto.randomBytes(32).toString('hex');
       
       // E-Mail Template abrufen
@@ -482,7 +564,7 @@ class EmailService {
       });
       
       // E-Mail senden
-      const info = await transporter.sendMail({
+      const info = await transport.sendMail({
         from: `"byndl Platform" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
         to: handwerkerData.email,
         subject: template.subject,
@@ -491,7 +573,18 @@ class EmailService {
       });
       
       console.log('Registrierungs-E-Mail gesendet:', info.messageId);
-      return { success: true, messageId: info.messageId };
+      
+      // Ethereal Preview URL anzeigen wenn in Entwicklung
+      if (info.preview) {
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+      }
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        verificationToken,
+        previewUrl: nodemailer.getTestMessageUrl(info) 
+      };
       
     } catch (error) {
       console.error('Fehler beim E-Mail-Versand:', error);
@@ -502,12 +595,13 @@ class EmailService {
   // Passwort-Reset E-Mail senden
   async sendPasswordResetEmail(email, resetToken, handwerkerData) {
     try {
+      const transport = await getTransporter();
       const template = emailTemplates.passwordReset({
         ...handwerkerData,
         resetToken
       });
       
-      const info = await transporter.sendMail({
+      const info = await transport.sendMail({
         from: `"byndl Security" <${process.env.EMAIL_FROM || 'security@byndl.de'}>`,
         to: email,
         subject: template.subject,
@@ -516,7 +610,16 @@ class EmailService {
       });
       
       console.log('Passwort-Reset E-Mail gesendet:', info.messageId);
-      return { success: true, messageId: info.messageId };
+      
+      if (info.preview) {
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+      }
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        previewUrl: nodemailer.getTestMessageUrl(info) 
+      };
       
     } catch (error) {
       console.error('Fehler beim E-Mail-Versand:', error);
@@ -527,12 +630,13 @@ class EmailService {
   // Login-Benachrichtigung senden
   async sendLoginNotification(handwerkerData, loginDetails) {
     try {
+      const transport = await getTransporter();
       const template = emailTemplates.loginNotification({
         ...handwerkerData,
         ...loginDetails
       });
       
-      const info = await transporter.sendMail({
+      const info = await transport.sendMail({
         from: `"byndl Security" <${process.env.EMAIL_FROM || 'security@byndl.de'}>`,
         to: handwerkerData.email,
         subject: template.subject,
@@ -541,7 +645,12 @@ class EmailService {
       });
       
       console.log('Login-Benachrichtigung gesendet:', info.messageId);
-      return { success: true, messageId: info.messageId };
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        previewUrl: nodemailer.getTestMessageUrl(info) 
+      };
       
     } catch (error) {
       console.error('Fehler beim E-Mail-Versand:', error);
@@ -552,7 +661,8 @@ class EmailService {
   // Allgemeine E-Mail senden
   async sendEmail(to, subject, html, text) {
     try {
-      const info = await transporter.sendMail({
+      const transport = await getTransporter();
+      const info = await transport.sendMail({
         from: `"byndl" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
         to,
         subject,
@@ -560,7 +670,14 @@ class EmailService {
         html
       });
       
-      return { success: true, messageId: info.messageId };
+      console.log('E-Mail gesendet:', info.messageId);
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        previewUrl: nodemailer.getTestMessageUrl(info) 
+      };
+      
     } catch (error) {
       console.error('Fehler beim E-Mail-Versand:', error);
       return { success: false, error: error.message };
@@ -570,7 +687,8 @@ class EmailService {
   // E-Mail-Adresse verifizieren
   async verifyEmail(email) {
     try {
-      const verify = await transporter.verify();
+      const transport = await getTransporter();
+      const verify = await transport.verify();
       return verify;
     } catch (error) {
       console.error('E-Mail-Verifikation fehlgeschlagen:', error);
@@ -581,21 +699,28 @@ class EmailService {
   // Bauherr Registrierungs-E-Mail senden
   async sendBauherrRegistrationEmail(bauherrData, query) {
     try {
-      const crypto = require('crypto');
+      const transport = await getTransporter();
       const verificationToken = crypto.randomBytes(32).toString('hex');
       
-      // Token in DB speichern
-      await query(
-        `UPDATE bauherren 
-         SET email_verification_token = $1,
-             email_verification_expires = $2
-         WHERE id = $3`,
-        [
-          verificationToken,
-          new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 Stunden
-          bauherrData.id
-        ]
-      );
+      // Token in DB speichern wenn query function übergeben wurde
+      if (query && bauherrData.id) {
+        try {
+          await query(
+            `UPDATE bauherren 
+             SET email_verification_token = $1,
+                 email_verification_expires = $2
+             WHERE id = $3`,
+            [
+              verificationToken,
+              new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 Stunden
+              bauherrData.id
+            ]
+          );
+        } catch (dbError) {
+          console.error('DB Update fehlgeschlagen:', dbError);
+          // Fortfahren auch wenn DB Update fehlschlägt
+        }
+      }
       
       // E-Mail Template abrufen
       const template = emailTemplates.bauherrRegistration({
@@ -604,7 +729,7 @@ class EmailService {
       });
       
       // E-Mail senden
-      const info = await transporter.sendMail({
+      const info = await transport.sendMail({
         from: `"byndl Platform" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
         to: bauherrData.email,
         subject: template.subject,
@@ -613,7 +738,17 @@ class EmailService {
       });
       
       console.log('Bauherr-Registrierungs-E-Mail gesendet:', info.messageId);
-      return { success: true, messageId: info.messageId };
+      
+      if (info.preview) {
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+      }
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        verificationToken,
+        previewUrl: nodemailer.getTestMessageUrl(info) 
+      };
       
     } catch (error) {
       console.error('Fehler beim E-Mail-Versand:', error);
@@ -624,12 +759,13 @@ class EmailService {
   // Bauherr Passwort-Reset E-Mail senden
   async sendBauherrPasswordResetEmail(email, resetToken, bauherrData) {
     try {
+      const transport = await getTransporter();
       const template = emailTemplates.bauherrPasswordReset({
         ...bauherrData,
         resetToken
       });
       
-      const info = await transporter.sendMail({
+      const info = await transport.sendMail({
         from: `"byndl Security" <${process.env.EMAIL_FROM || 'security@byndl.de'}>`,
         to: email,
         subject: template.subject,
@@ -638,11 +774,65 @@ class EmailService {
       });
       
       console.log('Bauherr Passwort-Reset E-Mail gesendet:', info.messageId);
-      return { success: true, messageId: info.messageId };
+      
+      if (info.preview) {
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+      }
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        previewUrl: nodemailer.getTestMessageUrl(info) 
+      };
       
     } catch (error) {
       console.error('Fehler beim E-Mail-Versand:', error);
       return { success: false, error: error.message };
     }
-  }  
+  }
+  
+  // Test-E-Mail senden (für Entwicklung)
+  async sendTestEmail(to) {
+    try {
+      const transport = await getTransporter();
+      
+      const info = await transport.sendMail({
+        from: `"byndl Test" <${process.env.EMAIL_FROM || 'test@byndl.de'}>`,
+        to: to,
+        subject: 'byndl - Test E-Mail',
+        text: 'Dies ist eine Test-E-Mail von byndl.',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1 style="color: #0ea5e9;">Test E-Mail</h1>
+            <p>Dies ist eine Test-E-Mail von byndl.</p>
+            <p>Wenn Sie diese E-Mail erhalten, funktioniert der E-Mail-Versand korrekt.</p>
+            <hr>
+            <p style="color: #666; font-size: 12px;">
+              Gesendet am: ${new Date().toLocaleString('de-DE')}
+            </p>
+          </div>
+        `
+      });
+      
+      console.log('Test-E-Mail gesendet:', info.messageId);
+      
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        console.log('Preview URL:', previewUrl);
+      }
+      
+      return { 
+        success: true, 
+        messageId: info.messageId,
+        previewUrl: previewUrl 
+      };
+      
+    } catch (error) {
+      console.error('Fehler beim Test-E-Mail-Versand:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
+
+// Exportiere eine Instanz der EmailService Klasse
+module.exports = new EmailService();
