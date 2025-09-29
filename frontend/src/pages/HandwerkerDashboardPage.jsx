@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 
+function formatCurrency(amount) {
+  if (!amount && amount !== 0) return '0 €';
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(amount);
+}
+
 export default function HandwerkerDashboardPage() {
   const navigate = useNavigate();
   const [handwerkerData, setHandwerkerData] = useState(null);
