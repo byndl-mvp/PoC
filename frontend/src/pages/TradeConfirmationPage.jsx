@@ -191,10 +191,9 @@ export default function TradeConfirmationPage() {
   };
 
   const processPaymentAndContinue = async () => {
-    // TODO: Hier würde die echte Zahlungsabwicklung stattfinden
-    // Für MVP simulieren wir erfolgreiche Zahlung
-
-    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+  // TODO: Hier würde die echte Zahlungsabwicklung stattfinden
+  // Für MVP simulieren wir erfolgreiche Zahlung
+  const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
   
   if (!userData.id) {
     // Nicht eingeloggt - zur Registrierung
@@ -206,60 +205,64 @@ export default function TradeConfirmationPage() {
     });
     return;
   }
+  
+  const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
+  const manualTradeIds = manualTrades.map(t => t.id);
+  
+  const allSelectedTrades = [
+    ...selectedRequired,
+    ...selectedRecommended,
+    ...manualTradeIds
+  ];
+  
+  const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
+  const manuallyAddedTradeIds = manualTrades.map(t => t.id);
+  
+  try {
+    setLoading(true);
+    setLoadingMessage('Verarbeite Zahlung und speichere Gewerkeauswahl...');
     
-    const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
-    const manualTradeIds = manualTrades.map(t => t.id);
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        confirmedTrades: uniqueSelectedTrades,
+        manuallyAddedTrades: manuallyAddedTradeIds,
+        aiRecommendedTrades: selectedRecommended,
+        isAdditional: isAdditionalTrade,
+        paymentInfo: {
+          amount: calculatePrice()?.price,
+          tradeCount: getTotalSelectedCount(),
+          paymentMethod: 'pending' // TODO: echte Zahlungsmethode
+        }
+      })
+    });
     
-    const allSelectedTrades = [
-      ...selectedRequired,
-      ...selectedRecommended,
-      ...manualTradeIds
-    ];
+    if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
     
-    const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
-    const manuallyAddedTradeIds = manualTrades.map(t => t.id);
-    
-    try {
-      setLoading(true);
-      setLoadingMessage('Verarbeite Zahlung und speichere Gewerkeauswahl...');
-      
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          confirmedTrades: uniqueSelectedTrades,
-          manuallyAddedTrades: manuallyAddedTradeIds,
-          aiRecommendedTrades: selectedRecommended,
-          isAdditional: isAdditionalTrade,
-          paymentInfo: {
-            amount: calculatePrice()?.price,
-            tradeCount: getTotalSelectedCount(),
-            paymentMethod: 'pending' // TODO: echte Zahlungsmethode
-          }
-        })
-      });
-      
-      if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
-      
-      if (isAdditionalTrade) {
-        sessionStorage.removeItem('addingAdditionalTrade');
-      }
-      
-      if (manuallyAddedTradeIds.length > 0) {
-        sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
-      }
-      if (selectedRecommended.length > 0) {
-        sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(selectedRecommended));
-      }
-      
-      navigate(`/project/${projectId}/lv-review`);
-      
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
-      setShowPaymentModal(false);
+    if (isAdditionalTrade) {
+      sessionStorage.removeItem('addingAdditionalTrade');
     }
-  };
+    
+    if (manuallyAddedTradeIds.length > 0) {
+      sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
+    }
+    if (selectedRecommended.length > 0) {
+      sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(selectedRecommended));
+    }
+    
+    // NEU: Projekt als pending markieren für Dashboard
+    sessionStorage.setItem('pendingLvProject', projectId.toString());
+    
+    // NEU: Zum Dashboard statt direkt zu LV-Review
+    navigate('/bauherr/dashboard');
+    
+  } catch (err) {
+    setError(err.message);
+    setLoading(false);
+    setShowPaymentModal(false);
+  }
+};
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
