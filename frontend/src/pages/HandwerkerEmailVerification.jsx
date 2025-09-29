@@ -13,17 +13,14 @@ export default function HandwerkerEmailVerification() {
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    
-    if (!token) {
-      setStatus('error');
-      setMessage('Kein Verifizierungs-Token vorhanden.');
-      return;
-    }
-
-    verifyEmail(token);
-  }, [searchParams]);
-
+  const token = searchParams.get('token');
+  
+  if (!token) {
+    setStatus('error');
+    setMessage('Kein Verifizierungs-Token vorhanden.');
+    return;
+  }
+  
   const verifyEmail = async (token) => {
     try {
       const response = await fetch(apiUrl('/api/handwerker/verify-email?token=' + token));
@@ -48,6 +45,9 @@ export default function HandwerkerEmailVerification() {
       setMessage('Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
     }
   };
+  
+  verifyEmail(token);
+}, [searchParams, navigate]);
 
   const handleResend = async () => {
     if (!resendEmail) {
