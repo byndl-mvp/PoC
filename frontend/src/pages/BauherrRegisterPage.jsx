@@ -158,7 +158,6 @@ export default function BauherrRegisterPage() {
   
   // IMMER zum Dashboard
   navigate('/bauherr/dashboard');
-}
       } else {
         setError(data.error || 'Registrierung fehlgeschlagen');
       }
