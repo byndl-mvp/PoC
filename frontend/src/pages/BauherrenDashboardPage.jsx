@@ -138,11 +138,80 @@ export default function BauherrenDashboardPage() {
     }
   };
 
-  // NEUE FUNKTION: Vorläufige Beauftragung (Stufe 1)
-  const handlePreliminaryOrder = async (offer) => {
-    setSelectedOffer(offer);
-    setShowContractModal(true);
-  };
+  // Erweiterte Funktion für vorläufige Beauftragung
+const handlePreliminaryOrder = async (offer) => {
+  setSelectedOffer(offer);
+  setShowContractModal(true);
+};
+
+// Erweiterte Modal-Komponente
+const ContractNegotiationModal = () => {
+  if (!selectedOffer) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full p-8 border border-white/20">
+        <h2 className="text-2xl font-bold text-white mb-6">
+          Vorläufige Beauftragung - Stufe 1
+        </h2>
+        
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+          <h3 className="text-blue-300 font-semibold mb-2">
+            Was passiert bei der vorläufigen Beauftragung?
+          </h3>
+          <ul className="text-blue-200 text-sm space-y-2">
+            <li>✓ Kontaktdaten werden beiderseitig freigegeben</li>
+            <li>✓ Sie können einen Ortstermin vereinbaren</li>
+            <li>✓ Der Handwerker kann sein Angebot nach Besichtigung anpassen</li>
+            <li>✓ Die 24-monatige Nachwirkfrist beginnt</li>
+            <li>✓ Sie behalten faire Ausstiegsmöglichkeiten</li>
+          </ul>
+        </div>
+        
+        <div className="bg-white/10 rounded-lg p-4 mb-6">
+          <h4 className="text-white font-semibold mb-2">Angebot von:</h4>
+          <p className="text-gray-300">{selectedOffer.companyName}</p>
+          <p className="text-gray-400">{selectedOffer.tradeName}</p>
+          <p className="text-teal-400 font-bold mt-2">
+            {formatCurrency(selectedOffer.amount)}
+          </p>
+        </div>
+        
+        <div className="flex gap-4">
+          <button
+            onClick={() => setShowContractModal(false)}
+            className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch(apiUrl(`/api/offers/${selectedOffer.id}/preliminary-accept`), {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ projectId: selectedProject.id })
+                });
+                
+                if (res.ok) {
+                  const data = await res.json();
+                  alert('✅ Vorläufige Beauftragung erfolgreich!\n\nKontaktdaten wurden freigegeben.');
+                  setShowContractModal(false);
+                  loadProjectDetails(selectedProject.id);
+                }
+              } catch (error) {
+                alert('Fehler: ' + error.message);
+              }
+            }}
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg"
+          >
+            Vorläufig beauftragen (Stufe 1)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
   // NEUE FUNKTION: Vorläufige Beauftragung bestätigen
   const confirmPreliminaryOrder = async () => {
@@ -396,79 +465,219 @@ export default function BauherrenDashboardPage() {
             </div>
           )}
 
-          {/* Angebote Tab - MIT ZWEISTUFIGER VERGABE */}
-          {activeTab === 'offers' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Eingegangene Angebote</h2>
-              
-              <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <p className="text-blue-300 text-sm">
-                  <strong>ℹ️ Zweistufige Vergabe:</strong> Wählen Sie zunächst "Vorläufig beauftragen" für eine Kennenlernphase. 
-                  Nach erfolgreicher Prüfung können Sie verbindlich beauftragen.
-                </p>
-              </div>
-              
-              {offers.length === 0 ? (
-                <p className="text-gray-400">Noch keine Angebote eingegangen.</p>
-              ) : (
-                <div className="space-y-4">
-                  {offers.map((offer, idx) => (
-                    <div key={idx} className="bg-white/5 rounded-lg p-4">
-                      <div className="flex justify-between items-start">
+          {/* Angebote Tab - ERWEITERT */}
+{activeTab === 'offers' && (
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Eingegangene Angebote</h2>
+    
+    {/* Status-Übersicht */}
+    <div className="grid md:grid-cols-4 gap-4 mb-6">
+      <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+        <p className="text-gray-400 text-sm">Neue Angebote</p>
+        <p className="text-2xl font-bold text-teal-400">
+          {offers.filter(o => !o.viewed).length}
+        </p>
+      </div>
+      <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+        <p className="text-gray-400 text-sm">In Prüfung</p>
+        <p className="text-2xl font-bold text-yellow-400">
+          {offers.filter(o => o.status === 'reviewing').length}
+        </p>
+      </div>
+      <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+        <p className="text-gray-400 text-sm">Vertragsanbahnung</p>
+        <p className="text-2xl font-bold text-blue-400">
+          {offers.filter(o => o.status === 'preliminary').length}
+        </p>
+      </div>
+      <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+        <p className="text-gray-400 text-sm">Beauftragt</p>
+        <p className="text-2xl font-bold text-green-400">
+          {offers.filter(o => o.status === 'accepted').length}
+        </p>
+      </div>
+    </div>
+    
+    <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+      <p className="text-blue-300 text-sm">
+        <strong>ℹ️ Zweistufige Vergabe:</strong> Wählen Sie zunächst "Vorläufig beauftragen" für eine Kennenlernphase. 
+        Nach erfolgreicher Prüfung können Sie verbindlich beauftragen.
+      </p>
+    </div>
+    
+    {offers.length === 0 ? (
+      <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
+        <p className="text-gray-400 mb-4">Noch keine Angebote eingegangen.</p>
+        <button
+          onClick={() => setActiveTab('overview')}
+          className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+        >
+          Zur Übersicht
+        </button>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {/* Gruppierung nach Gewerk */}
+        {Object.entries(
+          offers.reduce((grouped, offer) => {
+            const key = offer.tradeName || offer.trade_name || 'Unbekannt';
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(offer);
+            return grouped;
+          }, {})
+        ).map(([tradeName, tradeOffers]) => (
+          <div key={tradeName} className="bg-white/5 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+              <span>{tradeName}</span>
+              <span className="text-sm text-gray-400">
+                {tradeOffers.length} Angebot(e)
+              </span>
+            </h3>
+            
+            <div className="space-y-3">
+              {tradeOffers.map((offer, idx) => (
+                <div key={idx} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h4 className="font-semibold text-white">
+                          {offer.companyName || offer.company_name}
+                        </h4>
+                        {!offer.viewed && (
+                          <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
+                        )}
+                        {offer.bundleDiscount > 0 && (
+                          <span className="bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
+                            Bündelrabatt: {offer.bundleDiscount}%
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
                         <div>
-                          <h3 className="text-lg font-semibold text-white">{offer.tradeName}</h3>
-                          <p className="text-gray-300">{offer.companyName}</p>
-                          <p className="text-sm text-gray-400 mt-1">
-                            Eingegangen: {new Date(offer.date).toLocaleDateString('de-DE')}
-                          </p>
-                          {offer.bundleDiscount && (
-                            <span className="inline-block mt-2 bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
-                              Bündelrabatt: {offer.bundleDiscount}% bei Komplettbeauftragung
-                            </span>
-                          )}
+                          <p>📅 Eingegangen: {new Date(offer.created_at || offer.date).toLocaleDateString('de-DE')}</p>
+                          <p>⏱️ Ausführung: {offer.executionTime || 'Nach Absprache'}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-teal-400">
-                            {offer.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </p>
-                          
-                          {/* Status-basierte Aktionen */}
-                          {offer.status === 'offen' && (
-                            <button 
-                              onClick={() => handlePreliminaryOrder(offer)}
-                              className="mt-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors text-sm"
-                            >
-                              Vorläufig beauftragen
-                            </button>
-                          )}
-                          
-                          {offer.status === 'vertragsanbahnung' && (
-                            <div className="mt-2 space-y-2">
-                              <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
-                                In Vertragsanbahnung
-                              </span>
-                              <button 
-                                onClick={() => handleFinalOrder(offer)}
-                                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                              >
-                                Verbindlich beauftragen
-                              </button>
-                            </div>
-                          )}
-                          
-                          {offer.status === 'beauftragt' && (
-                            <span className="block mt-2 text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
-                              Beauftragt
-                            </span>
-                          )}
+                        <div>
+                          <p>📞 Tel: {offer.phone || 'Wird nach Beauftragung mitgeteilt'}</p>
+                          <p>✉️ Email: {offer.email || 'Wird nach Beauftragung mitgeteilt'}</p>
                         </div>
                       </div>
+                      
+                      {offer.notes && (
+                        <div className="mt-3 p-3 bg-white/5 rounded">
+                          <p className="text-xs text-gray-500 mb-1">Anmerkungen:</p>
+                          <p className="text-sm text-gray-300">{offer.notes}</p>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    
+                    <div className="text-right ml-4">
+                      <p className="text-2xl font-bold text-teal-400">
+                        {formatCurrency(offer.amount)}
+                      </p>
+                      <p className="text-xs text-gray-400 mb-3">Netto</p>
+                      
+                      {/* Status-basierte Aktionen */}
+                      {offer.status === 'submitted' && (
+                        <div className="space-y-2">
+                          <button
+                            onClick={async () => {
+                              // Markiere als gelesen
+                              await fetch(apiUrl(`/api/offers/${offer.id}/mark-viewed`), {
+                                method: 'POST'
+                              });
+                              
+                              // Öffne Detail-Ansicht
+                              navigate(`/project/${projectId}/offer/${offer.id}`);
+                            }}
+                            className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                          >
+                            LV-Details ansehen
+                          </button>
+                          <button 
+                            onClick={() => handlePreliminaryOrder(offer)}
+                            className="w-full px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors text-sm"
+                          >
+                            Vorläufig beauftragen
+                          </button>
+                          <button
+                            className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                          >
+                            Ablehnen
+                          </button>
+                        </div>
+                      )}
+                      
+                      {offer.status === 'preliminary' && (
+                        <div className="space-y-2">
+                          <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
+                            In Vertragsanbahnung
+                          </span>
+                          <button 
+                            onClick={() => handleFinalOrder(offer)}
+                            className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+                          >
+                            Verbindlich beauftragen
+                          </button>
+                        </div>
+                      )}
+                      
+                      {offer.status === 'accepted' && (
+                        <span className="block text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
+                          ✓ Beauftragt
+                        </span>
+                      )}
+                      
+                      {offer.status === 'rejected' && (
+                        <span className="block text-xs bg-red-600 text-red-200 px-2 py-1 rounded">
+                          Abgelehnt
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Vergleichszeile */}
+                  {idx < tradeOffers.length - 1 && (
+                    <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+                      <span className="text-xs text-gray-500">
+                        Preisunterschied zum nächsten Angebot:
+                      </span>
+                      <span className="text-sm font-semibold text-yellow-400">
+                        {formatCurrency(Math.abs(offer.amount - tradeOffers[idx + 1].amount))}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Zusammenfassung pro Gewerk */}
+              {tradeOffers.length > 1 && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-blue-600/10 to-teal-600/10 rounded-lg border border-white/20">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-gray-400">Preisrahmen für {tradeName}:</p>
+                      <p className="text-white">
+                        {formatCurrency(Math.min(...tradeOffers.map(o => o.amount)))} - 
+                        {formatCurrency(Math.max(...tradeOffers.map(o => o.amount)))}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-400">Durchschnittspreis:</p>
+                      <p className="text-xl font-bold text-teal-400">
+                        {formatCurrency(tradeOffers.reduce((sum, o) => sum + o.amount, 0) / tradeOffers.length)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
           {/* NEU: Vertragsanbahnung Tab */}
           {activeTab === 'contracts' && (
