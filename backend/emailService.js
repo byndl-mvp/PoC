@@ -297,7 +297,7 @@ const emailTemplates = {
       Waren Sie das nicht? Ändern Sie sofort Ihr Passwort:
       ${process.env.FRONTEND_URL}/handwerker/security
     `
-  })
+  }),
 
 // Bauherr Registrierungs-Bestätigung
   bauherrRegistration: (data) => ({
