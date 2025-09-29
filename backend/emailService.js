@@ -201,7 +201,7 @@ const emailTemplates = {
             <ul>
               <li>✅ Qualifizierte Anfragen mit vollständigen Leistungsverzeichnissen</li>
               <li>✅ Regionale Projektbündelung für optimale Auslastung</li>
-              <li>✅ Keine Akquisekosten - nur Provision bei erfolgreichem Auftrag</li>
+              <li>✅ Keine Akquisekosten - geringe Provision von 3 - 5 % nur bei erfolgreichem Auftrag!</li>
               <li>✅ Digitale Abwicklung spart Zeit und Ressourcen</li>
             </ul>
           </div>
