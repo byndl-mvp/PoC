@@ -1486,7 +1486,8 @@ const verifyHandwerker = async (id, action, reason = '') => {
                 </div>
               </div>
             )}
-        )}
+          </> 
+          )}
       </main>
     </div>
   );
