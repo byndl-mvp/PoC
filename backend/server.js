@@ -11190,46 +11190,36 @@ app.post('/api/bauherr/register', async (req, res) => {
 app.post('/api/handwerker/register', async (req, res) => {
   try {
     const {
-      // Basis-Daten
       companyName, 
       email, 
-      password, // NEU: Passwort hinzugefügt
+      password,
       phone, 
       contactPerson,
-      
-      // Adresse
       street, 
       houseNumber, 
-      zipCode, // Frontend sendet: zipCode
+      zipCode,
       city,
-      
-      // Firmendaten (optional)
       companyType,
       registrationNumber,
       taxNumber,
       website,
-      references, // Frontend sendet "references"
-      
-      // Matching-relevante Daten
+      references,
       trades, 
       actionRadius, 
       maxProjectVolume,
-      availableFrom, 
-      
-      // Zusatz-Infos
+      availableFrom,
       employees, 
       insurances, 
       certifications
     } = req.body;
     
-    // Validierung der Pflichtfelder
+    // Validierung
     if (!companyName || !email || !password || !phone || !contactPerson) {
       return res.status(400).json({ 
-        error: 'Pflichtfelder fehlen: Firmenname, E-Mail, Passwort, Telefon und Ansprechpartner sind erforderlich' 
+        error: 'Pflichtfelder fehlen' 
       });
     }
 
-    // E-Mail Validierung
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ 
@@ -11237,14 +11227,13 @@ app.post('/api/handwerker/register', async (req, res) => {
       });
     }
 
-    // NEU: Passwort-Validierung
     if (password.length < 8) {
       return res.status(400).json({ 
         error: 'Das Passwort muss mindestens 8 Zeichen lang sein' 
       });
     }
     
-    // Check if email already exists
+    // Check if email exists
     const existingCheck = await query(
       'SELECT * FROM handwerker WHERE email = $1', 
       [email.toLowerCase()]
@@ -11261,15 +11250,14 @@ app.post('/api/handwerker/register', async (req, res) => {
     const random = Math.floor(Math.random() * 9000) + 1000;
     const companyId = `HW-${year}-${random}`;
     
-    // NEU: Passwort hashen
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
     // Start transaction
     await query('BEGIN');
     
     try {
-      // Insert handwerker - mit password_hash und allen optionalen Feldern
-      // WICHTIG: "company_references" statt "references" in DB
+      // Insert handwerker
       const result = await query(
         `INSERT INTO handwerker (
           company_id, 
@@ -11304,13 +11292,13 @@ app.post('/api/handwerker/register', async (req, res) => {
         [
           companyId, 
           email.toLowerCase(), 
-          hashedPassword, // NEU: Passwort-Hash
+          hashedPassword,
           companyName, 
           contactPerson, 
           phone,
           street, 
           houseNumber, 
-          zipCode, // zipCode wird zu zip_code gemappt
+          zipCode,
           city, 
           companyType || null,
           registrationNumber || null,
@@ -11320,16 +11308,15 @@ app.post('/api/handwerker/register', async (req, res) => {
           maxProjectVolume || 50000, 
           availableFrom || null, 
           employees || null,
-          references || null  // Frontend "references" wird zu DB "company_references" gemappt
+          references || null
         ]
       );
       
       const handwerkerId = result.rows[0].id;
       
-      // Insert trades mit trade_name aus trades Tabelle
+      // Insert trades
       if (trades && trades.length > 0) {
         for (const tradeCode of trades) {
-          // Hole den trade_name aus der trades Tabelle
           const tradeInfo = await query(
             'SELECT name FROM trades WHERE code = $1',
             [tradeCode]
@@ -11337,17 +11324,9 @@ app.post('/api/handwerker/register', async (req, res) => {
           
           if (tradeInfo.rows.length > 0) {
             const tradeName = tradeInfo.rows[0].name;
-            
             await query(
               'INSERT INTO handwerker_trades (handwerker_id, trade_code, trade_name) VALUES ($1, $2, $3)',
               [handwerkerId, tradeCode, tradeName]
-            );
-          } else {
-            console.warn(`Trade code ${tradeCode} nicht in trades Tabelle gefunden`);
-            // Fallback: Nur mit Code einfügen
-            await query(
-              'INSERT INTO handwerker_trades (handwerker_id, trade_code, trade_name) VALUES ($1, $2, $3)',
-              [handwerkerId, tradeCode, tradeCode]
             );
           }
         }
@@ -11376,7 +11355,21 @@ app.post('/api/handwerker/register', async (req, res) => {
       // Commit transaction
       await query('COMMIT');
       
-      // JWT Token direkt nach Registrierung erstellen
+      // E-MAIL VERSENDEN - NEU!
+      const emailResult = await emailService.sendHandwerkerRegistrationEmail({
+        id: handwerkerId,
+        companyId: companyId,
+        companyName: companyName,
+        email: email,
+        contactPerson: contactPerson
+      });
+      
+      if (!emailResult.success) {
+        console.error('E-Mail konnte nicht gesendet werden:', emailResult.error);
+        // Trotzdem fortfahren - E-Mail ist nicht kritisch
+      }
+      
+      // JWT Token erstellen
       const token = jwt.sign(
         {
           id: handwerkerId,
@@ -11388,18 +11381,18 @@ app.post('/api/handwerker/register', async (req, res) => {
         { expiresIn: '24h' }
       );
       
-      // Erfolgreiche Response
       res.status(201).json({
         success: true,
         companyId,
-        token, // NEU: Token für direkten Login nach Registrierung
+        token,
         handwerker: {
           id: handwerkerId,
           companyId: companyId,
           companyName: companyName,
           email: result.rows[0].email
         },
-        message: 'Registrierung erfolgreich! Ihre Betriebs-ID lautet: ' + companyId
+        message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.',
+        emailSent: emailResult.success
       });
       
     } catch (innerErr) {
@@ -11411,12 +11404,14 @@ app.post('/api/handwerker/register', async (req, res) => {
   } catch (error) {
     console.error('Handwerker registration error:', error);
     res.status(500).json({ 
-      error: 'Registrierung fehlgeschlagen. Bitte versuchen Sie es später erneut.' 
+      error: 'Registrierung fehlgeschlagen' 
     });
   }
 });
 
-// NEU: Passwort-Reset Route
+// ============================================================================
+// PASSWORT RESET - AKTUALISIERT MIT E-MAIL
+// ============================================================================
 app.post('/api/handwerker/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -11427,6 +11422,18 @@ app.post('/api/handwerker/forgot-password', async (req, res) => {
       });
     }
     
+    // Rate Limiting prüfen
+    const rateLimitCheck = await query(
+      'SELECT check_email_rate_limit($1, $2, 3, 60) as allowed',
+      [email, 'password_reset']
+    );
+    
+    if (!rateLimitCheck.rows[0].allowed) {
+      return res.status(429).json({ 
+        error: 'Zu viele Anfragen. Bitte versuchen Sie es später erneut.' 
+      });
+    }
+    
     // Prüfe ob E-Mail existiert
     const result = await query(
       'SELECT id, company_name, contact_person FROM handwerker WHERE LOWER(email) = LOWER($1)',
@@ -11434,7 +11441,7 @@ app.post('/api/handwerker/forgot-password', async (req, res) => {
     );
     
     if (result.rows.length === 0) {
-      // Aus Sicherheitsgründen geben wir keinen Hinweis, ob die E-Mail existiert
+      // Aus Sicherheitsgründen keine Info ob E-Mail existiert
       return res.json({ 
         message: 'Falls ein Account mit dieser E-Mail existiert, wurde eine Nachricht versendet.' 
       });
@@ -11442,12 +11449,11 @@ app.post('/api/handwerker/forgot-password', async (req, res) => {
     
     const handwerker = result.rows[0];
     
-    // Generiere Reset-Token
-    const crypto = require('crypto');
+    // Reset-Token generieren
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 Stunde
     
-    // Speichere Reset-Token
+    // Token in DB speichern
     await query(
       `UPDATE handwerker 
        SET reset_token = $2, 
@@ -11457,9 +11463,22 @@ app.post('/api/handwerker/forgot-password', async (req, res) => {
       [handwerker.id, resetToken, resetTokenExpiry]
     );
     
-    // TODO: E-Mail senden mit Reset-Link
-    // const resetUrl = `https://ihredomain.de/handwerker/reset-password?token=${resetToken}`;
-    // await sendResetEmail(email, handwerker.contact_person, resetUrl);
+    // E-MAIL VERSENDEN - NEU!
+    const emailResult = await emailService.sendPasswordResetEmail(
+      email,
+      resetToken,
+      {
+        companyName: handwerker.company_name,
+        contactPerson: handwerker.contact_person
+      }
+    );
+    
+    // E-Mail Log erstellen
+    await query(
+      `INSERT INTO email_logs (recipient_email, email_type, subject, status, handwerker_id, sent_at)
+       VALUES ($1, 'password_reset', 'Passwort zurücksetzen', $2, $3, $4)`,
+      [email, emailResult.success ? 'sent' : 'failed', handwerker.id, emailResult.success ? new Date() : null]
+    );
     
     res.json({ 
       message: 'Falls ein Account mit dieser E-Mail existiert, wurde eine Nachricht versendet.' 
@@ -11473,64 +11492,59 @@ app.post('/api/handwerker/forgot-password', async (req, res) => {
   }
 });
 
-// NEU: Passwort zurücksetzen mit Token
-app.post('/api/handwerker/reset-password', async (req, res) => {
+// ============================================================================
+// E-MAIL VERIFIZIERUNG - NEU!
+// ============================================================================
+app.get('/api/handwerker/verify-email', async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
+    const { token } = req.query;
     
-    if (!token || !newPassword) {
-      return res.status(400).json({ 
-        error: 'Token und neues Passwort erforderlich' 
-      });
+    if (!token) {
+      return res.status(400).json({ error: 'Token erforderlich' });
     }
     
-    if (newPassword.length < 8) {
-      return res.status(400).json({ 
-        error: 'Das neue Passwort muss mindestens 8 Zeichen lang sein' 
-      });
-    }
-    
-    // Finde Handwerker mit gültigem Reset-Token
+    // Handwerker mit Token finden
     const result = await query(
-      `SELECT id FROM handwerker 
-       WHERE reset_token = $1 
-       AND reset_token_expiry > NOW()`,
+      `SELECT id, company_name, email FROM handwerker 
+       WHERE email_verification_token = $1 
+       AND email_verification_expires > NOW()`,
       [token]
     );
     
     if (result.rows.length === 0) {
-      return res.status(400).json({ 
-        error: 'Ungültiger oder abgelaufener Reset-Link' 
-      });
+      return res.status(400).json({ error: 'Ungültiger oder abgelaufener Token' });
     }
     
-    const handwerkerId = result.rows[0].id;
+    const handwerker = result.rows[0];
     
-    // Hashe neues Passwort
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    // Update Passwort und lösche Reset-Token
+    // E-Mail als verifiziert markieren
     await query(
       `UPDATE handwerker 
-       SET password_hash = $2,
-           reset_token = NULL,
-           reset_token_expiry = NULL,
-           password_changed_at = NOW(),
+       SET email_verified = true,
+           email_verification_token = NULL,
+           email_verification_expires = NULL,
+           verification_status = 'verified',
            updated_at = NOW()
        WHERE id = $1`,
-      [handwerkerId, hashedPassword]
+      [handwerker.id]
+    );
+    
+    // Log erstellen
+    await query(
+      `INSERT INTO email_logs (recipient_email, email_type, subject, status, handwerker_id, sent_at)
+       VALUES ($1, 'verification_success', 'E-Mail verifiziert', 'sent', $2, NOW())`,
+      [handwerker.email, handwerker.id]
     );
     
     res.json({ 
-      success: true,
-      message: 'Passwort erfolgreich zurückgesetzt. Sie können sich jetzt mit dem neuen Passwort anmelden.' 
+      success: true, 
+      message: 'E-Mail erfolgreich verifiziert. Sie können sich jetzt anmelden.',
+      companyName: handwerker.company_name
     });
     
-  } catch (err) {
-    console.error('Reset-Passwort Fehler:', err);
-    res.status(500).json({ 
-      error: 'Passwort konnte nicht zurückgesetzt werden' 
-    });
+  } catch (error) {
+    console.error('E-Mail-Verifikationsfehler:', error);
+    res.status(500).json({ error: 'Verifikation fehlgeschlagen' });
   }
 });
 
@@ -11883,32 +11897,19 @@ app.post('/api/handwerker/login', async (req, res) => {
   try {
     const { email, password, rememberMe } = req.body;
 
-    // Validierung
     if (!email || !password) {
       return res.status(400).json({ 
         error: 'E-Mail und Passwort sind erforderlich' 
       });
     }
 
-    // Finde Handwerker in Datenbank
+    // Handwerker finden
     const result = await query(
       `SELECT 
-        id,
-        company_id,
-        company_name,
-        email,
-        password_hash,
-        phone,
-        contact_person,
-        street,
-        house_number,
-        zip_code,
-        city,
-        trades,
-        action_radius,
-        verification_status,
-        two_factor_enabled,
-        active
+        id, company_id, company_name, email, password_hash,
+        phone, contact_person, street, house_number, zip_code, city,
+        action_radius, verification_status, two_factor_enabled,
+        active, email_verified, login_notification_enabled
        FROM handwerker 
        WHERE LOWER(email) = LOWER($1) 
        AND deleted_at IS NULL`,
@@ -11916,6 +11917,13 @@ app.post('/api/handwerker/login', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      // Log fehlgeschlagenen Versuch mit unbekannter E-Mail
+      await query(
+        `INSERT INTO login_attempts (handwerker_id, ip_address, success, attempted_at) 
+         VALUES (NULL, $1, false, CURRENT_TIMESTAMP)`,
+        [req.ip]
+      );
+      
       return res.status(401).json({ 
         error: 'Ungültige E-Mail oder Passwort' 
       });
@@ -11923,18 +11931,24 @@ app.post('/api/handwerker/login', async (req, res) => {
 
     const handwerker = result.rows[0];
 
-    // Prüfe ob Account aktiv ist
+    // Account-Status prüfen
     if (!handwerker.active) {
       return res.status(403).json({ 
-        error: 'Ihr Account wurde deaktiviert. Bitte kontaktieren Sie den Support.' 
+        error: 'Ihr Account wurde deaktiviert.' 
       });
+    }
+
+    // E-Mail-Verifikation prüfen (optional - je nach Anforderung)
+    if (!handwerker.email_verified) {
+      // Trotzdem Login erlauben, aber mit Warnung
+      console.log('Login ohne E-Mail-Verifikation:', email);
     }
 
     // Passwort prüfen
     const isPasswordValid = await bcrypt.compare(password, handwerker.password_hash);
     
     if (!isPasswordValid) {
-      // Log fehlgeschlagenen Login-Versuch
+      // Log fehlgeschlagenen Versuch
       await query(
         `INSERT INTO login_attempts (handwerker_id, ip_address, success, attempted_at) 
          VALUES ($1, $2, false, CURRENT_TIMESTAMP)`,
@@ -11946,7 +11960,14 @@ app.post('/api/handwerker/login', async (req, res) => {
       });
     }
 
-    // Update last_login
+    // Erfolgreichen Login loggen
+    await query(
+      `INSERT INTO login_attempts (handwerker_id, ip_address, success, attempted_at, user_agent) 
+       VALUES ($1, $2, true, CURRENT_TIMESTAMP, $3)`,
+      [handwerker.id, req.ip, req.headers['user-agent']]
+    );
+
+    // Last Login aktualisieren
     await query(
       `UPDATE handwerker 
        SET last_login = CURRENT_TIMESTAMP 
@@ -11954,24 +11975,47 @@ app.post('/api/handwerker/login', async (req, res) => {
       [handwerker.id]
     );
 
-    // Generiere JWT Token
+    // Prüfe auf verdächtigen Login (neue IP, neue Location, etc.)
+    const previousLogins = await query(
+      `SELECT DISTINCT ip_address 
+       FROM login_attempts 
+       WHERE handwerker_id = $1 
+       AND success = true 
+       AND attempted_at > NOW() - INTERVAL '30 days'
+       LIMIT 5`,
+      [handwerker.id]
+    );
+    
+    const isNewLocation = !previousLogins.rows.some(row => row.ip_address === req.ip);
+    
+    // Bei neuem Standort und aktivierter Benachrichtigung: E-Mail senden
+    if (isNewLocation && handwerker.login_notification_enabled) {
+      await emailService.sendLoginNotification(
+        {
+          companyName: handwerker.company_name,
+          email: handwerker.email
+        },
+        {
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          loginTime: new Date(),
+          location: 'Deutschland' // Kann mit IP-Geolocation Service erweitert werden
+        }
+      );
+    }
+
+    // JWT Token generieren
     const tokenExpiry = rememberMe ? '30d' : '24h';
     const token = jwt.sign(
       {
         id: handwerker.id,
         companyId: handwerker.company_id,
         email: handwerker.email,
-        companyName: handwerker.company_name
+        companyName: handwerker.company_name,
+        emailVerified: handwerker.email_verified
       },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: tokenExpiry }
-    );
-
-    // Log erfolgreichen Login
-    await query(
-      `INSERT INTO login_attempts (handwerker_id, ip_address, success, attempted_at) 
-       VALUES ($1, $2, true, CURRENT_TIMESTAMP)`,
-      [handwerker.id, req.ip]
     );
 
     // Response
@@ -11991,11 +12035,12 @@ app.post('/api/handwerker/login', async (req, res) => {
           zipCode: handwerker.zip_code,
           city: handwerker.city
         },
-        trades: handwerker.trades,
         actionRadius: handwerker.action_radius,
         verificationStatus: handwerker.verification_status,
+        emailVerified: handwerker.email_verified,
         twoFactorEnabled: handwerker.two_factor_enabled
-      }
+      },
+      warnings: !handwerker.email_verified ? ['E-Mail-Adresse noch nicht verifiziert'] : []
     });
 
   } catch (err) {
@@ -12003,6 +12048,81 @@ app.post('/api/handwerker/login', async (req, res) => {
     res.status(500).json({ 
       error: 'Login fehlgeschlagen' 
     });
+  }
+});
+
+// ============================================================================
+// E-MAIL ERNEUT SENDEN - NEU!
+// ============================================================================
+app.post('/api/handwerker/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'E-Mail erforderlich' });
+    }
+    
+    // Rate Limiting
+    const rateLimitCheck = await query(
+      'SELECT check_email_rate_limit($1, $2, 3, 60) as allowed',
+      [email, 'verification']
+    );
+    
+    if (!rateLimitCheck.rows[0].allowed) {
+      return res.status(429).json({ 
+        error: 'Zu viele Anfragen. Bitte warten Sie eine Stunde.' 
+      });
+    }
+    
+    // Handwerker finden
+    const result = await query(
+      'SELECT id, company_id, company_name, contact_person, email_verified FROM handwerker WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Account nicht gefunden' });
+    }
+    
+    const handwerker = result.rows[0];
+    
+    if (handwerker.email_verified) {
+      return res.json({ message: 'E-Mail bereits verifiziert' });
+    }
+    
+    // Neuen Verification Token generieren
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    
+    await query(
+      `UPDATE handwerker 
+       SET email_verification_token = $1,
+           email_verification_expires = $2
+       WHERE id = $3`,
+      [
+        verificationToken,
+        new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 Stunden
+        handwerker.id
+      ]
+    );
+    
+    // E-Mail senden
+    await emailService.sendHandwerkerRegistrationEmail({
+      id: handwerker.id,
+      companyId: handwerker.company_id,
+      companyName: handwerker.company_name,
+      email: email,
+      contactPerson: handwerker.contact_person,
+      verificationToken: verificationToken
+    });
+    
+    res.json({ 
+      success: true,
+      message: 'Verifizierungs-E-Mail wurde erneut gesendet' 
+    });
+    
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ error: 'Fehler beim E-Mail-Versand' });
   }
 });
 
