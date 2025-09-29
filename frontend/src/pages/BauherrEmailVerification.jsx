@@ -13,17 +13,14 @@ export default function BauherrEmailVerification() {
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    
-    if (!token) {
-      setStatus('error');
-      setMessage('Kein Verifizierungs-Token vorhanden.');
-      return;
-    }
-
-    verifyEmail(token);
-  }, [searchParams]);
-
+  const token = searchParams.get('token');
+  
+  if (!token) {
+    setStatus('error');
+    setMessage('Kein Verifizierungs-Token vorhanden.');
+    return;
+  }
+  
   const verifyEmail = async (token) => {
     try {
       const response = await fetch(apiUrl('/api/bauherr/verify-email?token=' + token));
@@ -48,6 +45,9 @@ export default function BauherrEmailVerification() {
       setMessage('Ein Fehler ist aufgetreten.');
     }
   };
+  
+  verifyEmail(token);
+}, [searchParams, navigate]); // navigate als dependency hinzufügen
 
   const handleResend = async () => {
     if (!resendEmail) {
