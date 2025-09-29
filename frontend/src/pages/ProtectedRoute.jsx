@@ -8,9 +8,6 @@ export default function ProtectedRoute({ children, userType }) {
   const [emailVerified, setEmailVerified] = useState(true);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
   const checkAuth = async () => {
     try {
       // Token aus Session oder Local Storage holen
@@ -22,7 +19,6 @@ export default function ProtectedRoute({ children, userType }) {
         setLoading(false);
         return;
       }
-
       // Token validieren (optional - Backend-Call)
       // Für jetzt prüfen wir nur ob Token existiert
       const userData = JSON.parse(
@@ -45,6 +41,9 @@ export default function ProtectedRoute({ children, userType }) {
       setLoading(false);
     }
   };
+  
+  checkAuth();
+}, [userType]); // userType als dependency, da es in der Funktion verwendet wird
 
   // Lade-Zustand
   if (loading) {
