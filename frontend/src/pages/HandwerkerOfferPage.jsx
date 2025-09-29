@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -21,31 +21,31 @@ export default function HandwerkerOfferPage() {
     }
     setHandwerkerData(JSON.parse(storedData));
     loadTenderData();
-  }, [tenderId]);
+  }, [tenderId, navigate]);
   
-  const loadTenderData = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/tenders/${tenderId}/lv`));
-      if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibung');
-      
-      const data = await res.json();
-      setTender(data);
-      
-      // Initialisiere Positionen ohne Preise
-      const initialPositions = data.lv.positions.map(pos => ({
-        ...pos,
-        unitPrice: 0,
-        totalPrice: 0
-      }));
-      setPositions(initialPositions);
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Fehler beim Laden der Ausschreibung');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadTenderData = useCallback(async () => {
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/tenders/${tenderId}/lv`));
+    if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibung');
+    
+    const data = await res.json();
+    setTender(data);
+    
+    // Initialisiere Positionen ohne Preise
+    const initialPositions = data.lv.positions.map(pos => ({
+      ...pos,
+      unitPrice: 0,
+      totalPrice: 0
+    }));
+    setPositions(initialPositions);
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Fehler beim Laden der Ausschreibung');
+  } finally {
+    setLoading(false);
+  }
+}, [tenderId]); // tenderId als Dependency
   
   const updatePosition = (index, field, value) => {
     const updated = [...positions];
