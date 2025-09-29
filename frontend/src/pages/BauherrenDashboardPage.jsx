@@ -268,28 +268,28 @@ export default function BauherrenDashboardPage() {
         </div>
       </header>
 
-      // Nach dem Header, vor der Projekt-Auswahl (ca. Zeile 220), einfügen:
-{pendingLvProjectId && projects.find(p => p.id === parseInt(pendingLvProjectId)) && (
-  <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6">
-    <h3 className="text-yellow-300 font-semibold text-lg mb-2">
-      📋 Unvollständiges Projekt
-    </h3>
-    <p className="text-gray-300 mb-4">
-      Sie haben Gewerke für Ihr Projekt ausgewählt. Die KI-generierten Leistungsverzeichnisse warten auf Ihre Bearbeitung.
-    </p>
-    <button
-      onClick={() => {
-        navigate(`/project/${pendingLvProjectId}/lv-review`);
-        sessionStorage.removeItem('pendingLvProject');
-      }}
-      className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
-    >
-      Projekt fortsetzen und LVs bearbeiten →
-    </button>
-  </div>
-)}
-      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Pending LV-Projekt Hinweis */}
+        {pendingLvProjectId && projects.find(p => p.id === parseInt(pendingLvProjectId)) && (
+          <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6">
+            <h3 className="text-yellow-300 font-semibold text-lg mb-2">
+              📋 Unvollständiges Projekt
+            </h3>
+            <p className="text-gray-300 mb-4">
+              Sie haben Gewerke für Ihr Projekt ausgewählt. Die KI-generierten Leistungsverzeichnisse warten auf Ihre Bearbeitung.
+            </p>
+            <button
+              onClick={() => {
+                navigate(`/project/${pendingLvProjectId}/lv-review`);
+                sessionStorage.removeItem('pendingLvProject');
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
+            >
+              Projekt fortsetzen und LVs bearbeiten →
+            </button>
+          </div>
+        )}
+     
         {/* Projekt-Auswahl */}
         {projects.length > 0 && (
           <div className="mb-8">
