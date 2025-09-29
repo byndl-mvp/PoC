@@ -152,7 +152,7 @@ const handlePreliminaryOrder = async (offer) => {
   setShowContractModal(true);
 };
 
-// Erweiterte Modal-Komponente
+/// Erweiterte Modal-Komponente (ca. Zeile 156)
 const ContractNegotiationModal = () => {
   if (!selectedOffer) return null;
   
@@ -178,8 +178,8 @@ const ContractNegotiationModal = () => {
         
         <div className="bg-white/10 rounded-lg p-4 mb-6">
           <h4 className="text-white font-semibold mb-2">Angebot von:</h4>
-          <p className="text-gray-300">{selectedOffer.companyName}</p>
-          <p className="text-gray-400">{selectedOffer.tradeName}</p>
+          <p className="text-gray-300">{selectedOffer.companyName || selectedOffer.company_name}</p>
+          <p className="text-gray-400">{selectedOffer.tradeName || selectedOffer.trade_name}</p>
           <p className="text-teal-400 font-bold mt-2">
             {formatCurrency(selectedOffer.amount)}
           </p>
@@ -193,24 +193,7 @@ const ContractNegotiationModal = () => {
             Abbrechen
           </button>
           <button
-            onClick={async () => {
-              try {
-                const res = await fetch(apiUrl(`/api/offers/${selectedOffer.id}/preliminary-accept`), {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ projectId: selectedProject.id })
-                });
-                
-                if (res.ok) {
-                  const data = await res.json();
-                  alert('✅ Vorläufige Beauftragung erfolgreich!\n\nKontaktdaten wurden freigegeben.');
-                  setShowContractModal(false);
-                  loadProjectDetails(selectedProject.id);
-                }
-              } catch (error) {
-                alert('Fehler: ' + error.message);
-              }
-            }}
+            onClick={confirmPreliminaryOrder}
             className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg"
           >
             Vorläufig beauftragen (Stufe 1)
@@ -919,51 +902,7 @@ const ContractNegotiationModal = () => {
       </div>
 
       {/* Modal für Vertragsanbahnung */}
-      {showContractModal && selectedOffer && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-4">Vorläufige Beauftragung</h2>
-            
-            <div className="bg-white/10 rounded-lg p-4 mb-6">
-              <p className="text-gray-300 mb-3">
-                Sie beauftragen vorläufig:
-              </p>
-              <p className="text-white font-semibold">{selectedOffer.companyName}</p>
-              <p className="text-gray-400">{selectedOffer.tradeName}</p>
-              <p className="text-teal-400 font-bold mt-2">
-                {selectedOffer.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-              </p>
-            </div>
-
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
-              <p className="text-yellow-300 text-sm">
-                <strong>⚠️ Wichtige Hinweise:</strong>
-              </p>
-              <ul className="text-yellow-200 text-sm mt-2 space-y-1 list-disc list-inside">
-                <li>Kontaktdaten werden freigegeben</li>
-                <li>Kennenlernphase beginnt (Ortstermin möglich)</li>
-                <li>Nachwirkfrist von 24 Monaten wird aktiviert</li>
-                <li>Faire Ausstiegsmöglichkeiten bestehen weiterhin</li>
-              </ul>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowContractModal(false)}
-                className="flex-1 px-4 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={confirmPreliminaryOrder}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
-              >
-                Vorläufig beauftragen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showContractModal && <ContractNegotiationModal />}
     </div>
   );
 }
