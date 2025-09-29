@@ -31,7 +31,7 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 
 // Protected Route Component
-import ProtectedRoute from './components/ProtectedRoute.jsx';
+import ProtectedRoute from './pages/ProtectedRoute.jsx';
 
 // Layout Component mit bedingtem Header
 function Layout({ children }) {
