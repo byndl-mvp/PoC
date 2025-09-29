@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 
+function formatCurrency(value) {
+  if (!value && value !== 0) return '0 €';
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value);
+}
+
 export default function BauherrenDashboardPage() {
   const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
@@ -589,7 +597,7 @@ const ContractNegotiationModal = () => {
                               });
                               
                               // Öffne Detail-Ansicht
-                              navigate(`/project/${projectId}/offer/${offer.id}`);
+                              navigate(`/project/${selectedProject.id}/offer/${offer.id}`);
                             }}
                             className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                           >
