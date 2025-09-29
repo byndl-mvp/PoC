@@ -148,26 +148,6 @@ export default function BauherrRegisterPage() {
     setLoading(false);
   }
 }; // Ende der handleSubmit Funktion
-        
-        // Projekt-ID für Dashboard speichern falls vorhanden
-  if (projectId) {
-    sessionStorage.setItem('pendingLvProject', projectId);
-  }
-  
-  alert('Registrierung erfolgreich!');
-  
-  // IMMER zum Dashboard
-  navigate('/bauherr/dashboard');
-      } else {
-        setError(data.error || 'Registrierung fehlgeschlagen');
-      }
-    } catch (err) {
-      console.error('Registrierungsfehler:', err);
-      setError('Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
