@@ -127,15 +127,16 @@ export default function BauherrRegisterPage() {
           }));
         }
         
-        alert('Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.');
-        
-        // Wenn von TradeConfirmation, zurück zum LV-Review
-        if (fromTradeConfirmation && projectId) {
-          navigate(`/project/${projectId}/lv-review`);
-        } else {
-          // Sonst zum Dashboard
-          navigate('/bauherr/dashboard');
-        }
+        // Projekt-ID für Dashboard speichern falls vorhanden
+  if (projectId) {
+    sessionStorage.setItem('pendingLvProject', projectId);
+  }
+  
+  alert('Registrierung erfolgreich!');
+  
+  // IMMER zum Dashboard
+  navigate('/bauherr/dashboard');
+}
       } else {
         setError(data.error || 'Registrierung fehlgeschlagen');
       }
