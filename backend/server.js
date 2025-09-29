@@ -12294,104 +12294,282 @@ app.post('/api/offers/create', async (req, res) => {
   }
 });
 
-// 4. ORDER ROUTES - Zweistufige Vergabe
-// ----------------------------------------------------------------------------
+// ============= ZWEISTUFIGE VERGABE SYSTEM =============
 
-// Preliminary order (Stufe 1)
-app.post('/api/offers/:offerId/preliminary-order', async (req, res) => {
+// Stufe 1: Vorläufige Beauftragung mit Kontaktfreigabe
+app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
   try {
     const { offerId } = req.params;
     const { projectId } = req.body;
     
     await query('BEGIN');
     
-    try {
-      // Update offer status
-      await query(
-        `UPDATE offers SET 
-         status = 'preliminary',
-         preliminary_date = NOW()
-         WHERE id = $1`,
-        [offerId]
-      );
-      
-      // Get offer details
-      const offerResult = await query(
-        `SELECT o.*, h.id as handwerker_id, tn.trade_code
-         FROM offers o
-         JOIN handwerker h ON o.handwerker_id = h.id
-         JOIN tenders tn ON o.tender_id = tn.id
-         WHERE o.id = $1`,
-        [offerId]
-      );
-      
-      const offer = offerResult.rows[0];
-      
-      // Create order entry
-      await query(
-        `INSERT INTO orders (
-          project_id, handwerker_id, offer_id, trade_code,
-          amount, status, stage, created_at
-        ) VALUES ($1, $2, $3, $4, $5, 'preliminary', 1, NOW())`,
-        [projectId, offer.handwerker_id, offerId, offer.trade_code, offer.amount]
-      );
-      
-      await query('COMMIT');
-      
-      res.json({ success: true, message: 'Vorläufige Beauftragung erfolgreich' });
-      
-    } catch (innerErr) {
-      await query('ROLLBACK');
-      throw innerErr;
+    // Hole Angebotsdaten
+    const offerResult = await query(
+      `SELECT o.*, h.*, t.name as trade_name
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = $1`,
+      [offerId]
+    );
+    
+    if (offerResult.rows.length === 0) {
+      throw new Error('Angebot nicht gefunden');
     }
     
+    const offer = offerResult.rows[0];
+    
+    // Update Offer Status zu Stufe 1
+    await query(
+      `UPDATE offers 
+       SET status = 'preliminary',
+           stage = 1,
+           preliminary_accepted_at = NOW(),
+           nachwirkfrist_expires_at = NOW() + INTERVAL '24 months'
+       WHERE id = $1`,
+      [offerId]
+    );
+    
+    // Protokolliere Kontaktfreigabe
+    await query(
+      `INSERT INTO contract_negotiations 
+       (offer_id, action_type, action_by, action_data)
+       VALUES ($1, 'contact_shared', 'system', $2)`,
+      [offerId, JSON.stringify({
+        bauherr_contact: true,
+        handwerker_contact: true,
+        timestamp: new Date().toISOString()
+      })]
+    );
+    
+    // Sende E-Mail-Benachrichtigungen
+    if (transporter) {
+      // Email an Handwerker
+      await transporter.sendMail({
+        to: offer.email,
+        subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
+        html: `
+          <h2>Glückwunsch! Sie haben eine vorläufige Beauftragung erhalten</h2>
+          <p>Der Bauherr möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
+          <h3>Nächste Schritte:</h3>
+          <ul>
+            <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
+            <li>Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</li>
+            <li>Die Nachwirkfrist von 24 Monaten ist nun aktiv</li>
+          </ul>
+          <p><strong>Projektdetails:</strong> ${offer.trade_name}</p>
+          <a href="https://byndl.de/handwerker/dashboard">Zum Dashboard</a>
+        `
+      });
+    }
+    
+    await query('COMMIT');
+    
+    res.json({
+      success: true,
+      message: 'Vorläufige Beauftragung erfolgreich',
+      contactDetails: {
+        handwerker: {
+          company: offer.company_name,
+          contact: offer.contact_person,
+          phone: offer.phone,
+          email: offer.email
+        }
+      }
+    });
+    
   } catch (error) {
-    console.error('Error creating preliminary order:', error);
-    res.status(500).json({ error: 'Fehler bei vorläufiger Beauftragung' });
+    await query('ROLLBACK');
+    console.error('Error in preliminary acceptance:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Final order (Stufe 2)
-app.post('/api/offers/:offerId/final-order', async (req, res) => {
+// Handwerker bestätigt Angebot nach Ortstermin
+app.post('/api/offers/:offerId/confirm-after-inspection', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { adjustedAmount, notes } = req.body;
+    
+    // Update offer
+    const updateData = {
+      offer_confirmed_at: new Date(),
+      status: 'confirmed'
+    };
+    
+    if (adjustedAmount) {
+      updateData.amount = adjustedAmount;
+      updateData.adjusted_amount = adjustedAmount;
+    }
+    
+    await query(
+      `UPDATE offers 
+       SET offer_confirmed_at = NOW(),
+           amount = COALESCE($2, amount),
+           notes = COALESCE($3, notes)
+       WHERE id = $1`,
+      [offerId, adjustedAmount, notes]
+    );
+    
+    // Protokolliere
+    await query(
+      `INSERT INTO contract_negotiations 
+       (offer_id, action_type, action_by, action_data)
+       VALUES ($1, 'offer_confirmed', 'handwerker', $2)`,
+      [offerId, JSON.stringify({ adjustedAmount, notes })]
+    );
+    
+    res.json({ success: true, message: 'Angebot bestätigt' });
+    
+  } catch (error) {
+    console.error('Error confirming offer:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Stufe 2: Verbindliche Beauftragung
+app.post('/api/offers/:offerId/final-accept', async (req, res) => {
   try {
     const { offerId } = req.params;
     
     await query('BEGIN');
     
-    try {
-      // Update offer status
-      await query(
-        `UPDATE offers SET 
-         status = 'accepted',
-         accepted_date = NOW()
-         WHERE id = $1`,
-        [offerId]
-      );
-      
-      // Update order to final
-      await query(
-        `UPDATE orders SET 
-         status = 'active',
-         stage = 2,
-         finalized_at = NOW()
-         WHERE offer_id = $1`,
-        [offerId]
-      );
-      
-      await query('COMMIT');
-      
-      res.json({ success: true, message: 'Verbindliche Beauftragung erfolgreich' });
-      
-    } catch (innerErr) {
-      await query('ROLLBACK');
-      throw innerErr;
-    }
+    // Update zu Stufe 2
+    await query(
+      `UPDATE offers 
+       SET status = 'accepted',
+           stage = 2,
+           final_accepted_at = NOW()
+       WHERE id = $1`,
+      [offerId]
+    );
+    
+    // Erstelle Werkvertrag
+    const contractResult = await query(
+      `INSERT INTO orders 
+       (offer_id, project_id, handwerker_id, trade_id, amount, status, created_at)
+       SELECT o.id, tn.project_id, o.handwerker_id, tn.trade_id, o.amount, 'active', NOW()
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       WHERE o.id = $1
+       RETURNING id`,
+      [offerId]
+    );
+    
+    // Aktiviere Premium-Features
+    await query(
+      `UPDATE projects 
+       SET premium_features_active = true 
+       WHERE id = (
+         SELECT tn.project_id 
+         FROM offers o 
+         JOIN tenders tn ON o.tender_id = tn.id 
+         WHERE o.id = $1
+       )`,
+      [offerId]
+    );
+    
+    // Erstelle Rechnung für BYNDL-Provision
+    const provisionAmount = await calculateProvision(offerId);
+    await query(
+      `INSERT INTO invoices 
+       (type, reference_id, amount, status, due_date)
+       VALUES ('provision', $1, $2, 'pending', NOW() + INTERVAL '14 days')`,
+      [offerId, provisionAmount]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({
+      success: true,
+      message: 'Verbindliche Beauftragung erfolgreich',
+      contractId: contractResult.rows[0].id,
+      premiumFeaturesActivated: true
+    });
     
   } catch (error) {
-    console.error('Error creating final order:', error);
-    res.status(500).json({ error: 'Fehler bei verbindlicher Beauftragung' });
+    await query('ROLLBACK');
+    console.error('Error in final acceptance:', error);
+    res.status(500).json({ error: error.message });
   }
 });
+
+// Bundle-Erkennung und Vorschlag
+app.post('/api/bundles/analyze', async (req, res) => {
+  try {
+    // Finde potenzielle Bündel
+    const bundles = await query(
+      `SELECT 
+        p.zip as region,
+        pt.trade_id,
+        t.name as trade_name,
+        COUNT(*) as project_count,
+        STRING_AGG(p.id::text, ',') as project_ids
+       FROM projects p
+       JOIN project_trades pt ON p.id = pt.project_id
+       JOIN trades t ON pt.trade_id = t.id
+       WHERE p.status = 'active'
+       AND p.created_at > NOW() - INTERVAL '30 days'
+       GROUP BY p.zip, pt.trade_id, t.name
+       HAVING COUNT(*) >= 2
+       ORDER BY COUNT(*) DESC`
+    );
+    
+    // Erstelle Bundle-Vorschläge
+    for (const bundle of bundles.rows) {
+      const existingBundle = await query(
+        `SELECT id FROM project_bundles 
+         WHERE region = $1 AND trade_id = $2 
+         AND created_at > NOW() - INTERVAL '7 days'`,
+        [bundle.region, bundle.trade_id]
+      );
+      
+      if (existingBundle.rows.length === 0) {
+        // Neues Bundle erstellen
+        const bundleResult = await query(
+          `INSERT INTO project_bundles 
+           (region, trade_id, min_projects_for_discount)
+           VALUES ($1, $2, $3)
+           RETURNING id`,
+          [bundle.region, bundle.trade_id, Math.min(3, bundle.project_count)]
+        );
+        
+        // Projekte zum Bundle hinzufügen
+        const projectIds = bundle.project_ids.split(',');
+        for (const projectId of projectIds) {
+          await query(
+            `INSERT INTO bundle_projects (bundle_id, project_id)
+             VALUES ($1, $2)`,
+            [bundleResult.rows[0].id, projectId]
+          );
+        }
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      bundlesFound: bundles.rows.length 
+    });
+    
+  } catch (error) {
+    console.error('Error analyzing bundles:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper-Funktion für Provisionsberechnung
+async function calculateProvision(offerId) {
+  const result = await query(
+    'SELECT amount FROM offers WHERE id = $1',
+    [offerId]
+  );
+  
+  const amount = result.rows[0].amount;
+  const provisionRate = 0.05; // 5% Provision
+  return amount * provisionRate;
+}
 
 // Get project orders
 app.get('/api/projects/:projectId/orders', async (req, res) => {
