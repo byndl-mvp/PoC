@@ -60,7 +60,8 @@ export default function BauherrEmailVerification() {
 };
 
 verifyEmail(token);
-
+}, [searchParams, navigate]); // <-- HIER FEHLTE DIE SCHLIEßENDE KLAMMER UND DEPENDENCIES
+  
   const handleResend = async () => {
     if (!resendEmail) {
       alert('Bitte geben Sie Ihre E-Mail-Adresse ein.');
