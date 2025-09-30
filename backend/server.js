@@ -12553,11 +12553,11 @@ app.post('/api/bauherr/resend-verification', async (req, res) => {
     // E-Mail senden
     const emailService = require('./emailService');
     const emailResult = await emailService.sendBauherrRegistrationEmail({
-      id: bauherr.id,
-      name: bauherr.name,
-      email: email,
-      verificationToken: verificationToken
-    });
+    id: bauherrId,  // Auch hier: bauherrId statt bauherr.id
+    name: name,
+    email: email,
+    verificationToken: emailVerificationToken  // RICHTIGE Variable!
+  });
     
     // Log erstellen
     await query(
