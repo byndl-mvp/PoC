@@ -89,7 +89,7 @@ const handleResendVerificationEmail = async () => {
       })
     });
     
-    const data = await res.json();
+    await res.json(); // data nicht benötigt
     return { success: res.ok };
   } catch (error) {
     console.error('Resend email error:', error);
