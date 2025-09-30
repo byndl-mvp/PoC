@@ -11586,12 +11586,16 @@ if (projectId) {
     // E-Mail senden mit Token
     const emailService = require('./emailService');
     const emailResult = await emailService.sendBauherrRegistrationEmail({
-      id: bauherrId,
-      name: name,
-      email: email,
-      verificationToken: emailVerificationToken,
-      projectTitle: projectDetails
-    });
+    id: bauherrId,
+    name: name,
+    email: email,
+    verificationToken: emailVerificationToken,
+    projectDetails: projectResult.rows.length > 0 ? {
+    category: projectResult.rows[0].category,
+    subCategory: projectResult.rows[0].sub_category,
+    description: projectResult.rows[0].description
+  } : null
+});
     
     // JWT Token für Session (aber E-Mail noch nicht verifiziert)
     const token = jwt.sign(
