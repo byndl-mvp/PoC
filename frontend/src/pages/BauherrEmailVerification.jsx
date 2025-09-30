@@ -123,7 +123,7 @@ export default function BauherrEmailVerification() {
                 <p className="text-lg text-gray-300 mb-4">Willkommen, {name}!</p>
               )}
               <p className="text-gray-400 mb-6">
-                Sie werden in 5 Sekunden zur Login-Seite weitergeleitet...
+              Sie werden in 3 Sekunden zum Dashboard weitergeleitet...
               </p>
               <Link
                 to="/bauherr/login"
