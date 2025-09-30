@@ -11979,7 +11979,7 @@ app.get('/api/handwerker/verify-email', async (req, res) => {
     
     // Handwerker mit Token finden
     const result = await query(
-      `SELECT id, company_name, email FROM handwerker 
+      `SELECT id, company_id, company_name, email FROM handwerker 
        WHERE email_verification_token = $1 
        AND email_verification_expires > NOW()`,
       [token]
@@ -12010,10 +12010,27 @@ app.get('/api/handwerker/verify-email', async (req, res) => {
       [handwerker.email, handwerker.id]
     );
     
+    // JWT Token generieren
+    const jwtToken = jwt.sign(
+      {
+        id: handwerker.id,
+        companyId: handwerker.company_id,
+        email: handwerker.email,
+        companyName: handwerker.company_name,
+        emailVerified: true
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+    
     res.json({ 
       success: true, 
       message: 'E-Mail erfolgreich verifiziert. Sie können sich jetzt anmelden.',
-      companyName: handwerker.company_name
+      id: handwerker.id,
+      companyId: handwerker.company_id,
+      companyName: handwerker.company_name,
+      email: handwerker.email,
+      token: jwtToken  // JWT Token mitschicken
     });
     
   } catch (error) {
