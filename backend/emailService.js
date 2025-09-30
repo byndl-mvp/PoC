@@ -553,44 +553,44 @@ const emailTemplates = {
 class EmailService {
   // Handwerker Registrierungs-E-Mail senden
   async sendHandwerkerRegistrationEmail(handwerkerData) {
-    try {
-      const transport = await getTransporter();
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      
-      // E-Mail Template abrufen
-      const template = emailTemplates.handwerkerRegistration({
-        ...handwerkerData,
-        verificationToken
-      });
-      
-      // E-Mail senden
-      const info = await transport.sendMail({
-        from: `"byndl Platform" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
-        to: handwerkerData.email,
-        subject: template.subject,
-        text: template.text,
-        html: template.html
-      });
-      
-      console.log('Registrierungs-E-Mail gesendet:', info.messageId);
-      
-      // Ethereal Preview URL anzeigen wenn in Entwicklung
-      if (info.preview) {
-        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
-      }
-      
-      return { 
-        success: true, 
-        messageId: info.messageId,
-        verificationToken,
-        previewUrl: nodemailer.getTestMessageUrl(info) 
-      };
-      
-    } catch (error) {
-      console.error('Fehler beim E-Mail-Versand:', error);
-      return { success: false, error: error.message };
+  try {
+    const transport = await getTransporter();
+    // KEIN neuer Token - verwende den übergebenen!
+    
+    // E-Mail Template abrufen mit übergebenem Token
+    const template = emailTemplates.handwerkerRegistration({
+      ...handwerkerData,
+      verificationToken: handwerkerData.verificationToken // Nutze übergebenen Token
+    });
+    
+    // E-Mail senden
+    const info = await transport.sendMail({
+      from: `"byndl Platform" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
+      to: handwerkerData.email,
+      subject: template.subject,
+      text: template.text,
+      html: template.html
+    });
+    
+    console.log('Handwerker-Registrierungs-E-Mail gesendet:', info.messageId);
+    console.log('Mit Token:', handwerkerData.verificationToken); // Debug
+    
+    // Ethereal Preview URL anzeigen wenn in Entwicklung
+    if (info.preview) {
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
     }
+    
+    return { 
+      success: true, 
+      messageId: info.messageId,
+      previewUrl: nodemailer.getTestMessageUrl(info) 
+    };
+    
+  } catch (error) {
+    console.error('Fehler beim E-Mail-Versand:', error);
+    return { success: false, error: error.message };
   }
+}
   
   // Passwort-Reset E-Mail senden
   async sendPasswordResetEmail(email, resetToken, handwerkerData) {
@@ -697,64 +697,44 @@ class EmailService {
   }
 
   // Bauherr Registrierungs-E-Mail senden
-  async sendBauherrRegistrationEmail(bauherrData, query) {
-    try {
-      const transport = await getTransporter();
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      
-      // Token in DB speichern wenn query function übergeben wurde
-      if (query && bauherrData.id) {
-        try {
-          await query(
-            `UPDATE bauherren 
-             SET email_verification_token = $1,
-                 email_verification_expires = $2
-             WHERE id = $3`,
-            [
-              verificationToken,
-              new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 Stunden
-              bauherrData.id
-            ]
-          );
-        } catch (dbError) {
-          console.error('DB Update fehlgeschlagen:', dbError);
-          // Fortfahren auch wenn DB Update fehlschlägt
-        }
-      }
-      
-      // E-Mail Template abrufen
-      const template = emailTemplates.bauherrRegistration({
-        ...bauherrData,
-        verificationToken
-      });
-      
-      // E-Mail senden
-      const info = await transport.sendMail({
-        from: `"byndl Platform" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
-        to: bauherrData.email,
-        subject: template.subject,
-        text: template.text,
-        html: template.html
-      });
-      
-      console.log('Bauherr-Registrierungs-E-Mail gesendet:', info.messageId);
-      
-      if (info.preview) {
-        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
-      }
-      
-      return { 
-        success: true, 
-        messageId: info.messageId,
-        verificationToken,
-        previewUrl: nodemailer.getTestMessageUrl(info) 
-      };
-      
-    } catch (error) {
-      console.error('Fehler beim E-Mail-Versand:', error);
-      return { success: false, error: error.message };
+  async sendBauherrRegistrationEmail(bauherrData) {
+  try {
+    const transport = await getTransporter();
+    // KEIN neuer Token - verwende den übergebenen!
+    
+    // E-Mail Template abrufen mit übergebenem Token
+    const template = emailTemplates.bauherrRegistration({
+      ...bauherrData,
+      verificationToken: bauherrData.verificationToken // Nutze übergebenen Token
+    });
+    
+    // E-Mail senden
+    const info = await transport.sendMail({
+      from: `"byndl Platform" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
+      to: bauherrData.email,
+      subject: template.subject,
+      text: template.text,
+      html: template.html
+    });
+    
+    console.log('Bauherr-Registrierungs-E-Mail gesendet:', info.messageId);
+    console.log('Mit Token:', bauherrData.verificationToken); // Debug
+    
+    if (info.preview) {
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
     }
+    
+    return { 
+      success: true, 
+      messageId: info.messageId,
+      previewUrl: nodemailer.getTestMessageUrl(info) 
+    };
+    
+  } catch (error) {
+    console.error('Fehler beim E-Mail-Versand:', error);
+    return { success: false, error: error.message };
   }
+}
   
   // Bauherr Passwort-Reset E-Mail senden
   async sendBauherrPasswordResetEmail(email, resetToken, bauherrData) {
