@@ -569,7 +569,7 @@ class EmailService {
     
     // E-Mail senden
     const info = await transport.sendMail({
-      from: `"byndl Platform" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
+      from: `"byndl" <${process.env.EMAIL_FROM || 'noreply@byndl.de'}>`,
       to: handwerkerData.email,
       subject: template.subject,
       text: template.text,
