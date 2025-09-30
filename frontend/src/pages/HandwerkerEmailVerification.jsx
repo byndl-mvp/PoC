@@ -122,14 +122,14 @@ export default function HandwerkerEmailVerification() {
                 <p className="text-lg text-gray-300 mb-4">Willkommen, {companyName}!</p>
               )}
               <p className="text-gray-400 mb-6">
-                Sie werden in 5 Sekunden zur Login-Seite weitergeleitet...
+              Sie werden in 3 Sekunden zum Dashboard weitergeleitet...
               </p>
               <Link
-                to="/handwerker/login"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
-              >
-                Jetzt anmelden
-              </Link>
+  to="/handwerker/dashboard"  // statt '/handwerker/login'
+  className="..."
+>
+  Zum Dashboard  // statt 'Jetzt anmelden'
+</Link>
             </div>
           )}
 
