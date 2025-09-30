@@ -35,6 +35,7 @@ export default function BauherrEmailVerification() {
         sessionStorage.setItem('bauherrToken', data.token);
         sessionStorage.setItem('userData', JSON.stringify({
           id: data.id,
+          userId: data.id,  
           name: data.name,
           email: data.email,
           emailVerified: true
