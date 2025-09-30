@@ -25,7 +25,6 @@ export default function TradeConfirmationPage() {
   const [recommendedTrades, setRecommendedTrades] = useState([]);
   const [selectedRequired, setSelectedRequired] = useState([]);
   const [selectedRecommended, setSelectedRecommended] = useState([]);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   // Hilfsfunktion für Gesamtzahl
   const getTotalSelectedCount = () => {
@@ -186,83 +185,62 @@ export default function TradeConfirmationPage() {
       return;
     }
     
-    // Zeige Zahlungsmodal
-    setShowPaymentModal(true);
+    // Direkt zur processPaymentAndContinue
+    processPaymentAndContinue();
   };
 
   const processPaymentAndContinue = async () => {
-  // TODO: Hier würde die echte Zahlungsabwicklung stattfinden
-  // Für MVP simulieren wir erfolgreiche Zahlung
-  const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
-  
-  if (!userData.id) {
-    // Nicht eingeloggt - zur Registrierung
-    navigate('/bauherr/register', {
-      state: {
-        projectId: projectId,
-        fromTradeConfirmation: true
-      }
-    });
-    return;
-  }
-  
-  const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
-  const manualTradeIds = manualTrades.map(t => t.id);
-  
-  const allSelectedTrades = [
-    ...selectedRequired,
-    ...selectedRecommended,
-    ...manualTradeIds
-  ];
-  
-  const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
-  const manuallyAddedTradeIds = manualTrades.map(t => t.id);
-  
-  try {
-    setLoading(true);
-    setLoadingMessage('Verarbeite Zahlung und speichere Gewerkeauswahl...');
+    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
     
-    const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        confirmedTrades: uniqueSelectedTrades,
-        manuallyAddedTrades: manuallyAddedTradeIds,
-        aiRecommendedTrades: selectedRecommended,
-        isAdditional: isAdditionalTrade,
-        paymentInfo: {
-          amount: calculatePrice()?.price,
-          tradeCount: getTotalSelectedCount(),
-          paymentMethod: 'pending' // TODO: echte Zahlungsmethode
+    if (!userData.id) {
+      // Nicht eingeloggt - zur Registrierung
+      navigate('/bauherr/register', {
+        state: {
+          projectId: projectId,
+          fromTradeConfirmation: true
         }
-      })
-    });
-    
-    if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
-    
-    if (isAdditionalTrade) {
-      sessionStorage.removeItem('addingAdditionalTrade');
+      });
+      return;
     }
     
-    if (manuallyAddedTradeIds.length > 0) {
-      sessionStorage.setItem('manuallyAddedTrades', JSON.stringify(manuallyAddedTradeIds));
+    // Eingeloggt - speichere Trades und weiter zu Dashboard
+    const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
+    const manualTradeIds = manualTrades.map(t => t.id);
+    
+    const allSelectedTrades = [
+      ...selectedRequired,
+      ...selectedRecommended,
+      ...manualTradeIds
+    ];
+    
+    const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
+    
+    try {
+      setLoading(true);
+      setLoadingMessage('Speichere Gewerkeauswahl...');
+      
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          confirmedTrades: uniqueSelectedTrades,
+          manuallyAddedTrades: manualTradeIds,
+          aiRecommendedTrades: selectedRecommended,
+          isAdditional: isAdditionalTrade
+        })
+      });
+      
+      if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
+      
+      sessionStorage.setItem('pendingLvProject', projectId.toString());
+      sessionStorage.setItem('pendingPayment', 'true');
+      navigate('/bauherr/dashboard');
+      
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
     }
-    if (selectedRecommended.length > 0) {
-      sessionStorage.setItem('aiRecommendedTrades', JSON.stringify(selectedRecommended));
-    }
-    
-    // NEU: Projekt als pending markieren für Dashboard
-    sessionStorage.setItem('pendingLvProject', projectId.toString());
-    
-    // NEU: Zum Dashboard statt direkt zu LV-Review
-    navigate('/bauherr/dashboard');
-    
-  } catch (err) {
-    setError(err.message);
-    setLoading(false);
-    setShowPaymentModal(false);
-  }
-};
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
@@ -527,7 +505,7 @@ export default function TradeConfirmationPage() {
                 Speichern...
               </span>
             ) : (
-              `Kostenpflichtig fortfahren →`
+              `Weiter zur Registrierung →`
             )}
           </button>
         </div>
@@ -535,75 +513,10 @@ export default function TradeConfirmationPage() {
         {/* Info Box */}
         <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <p className="text-blue-300 text-sm">
-            <strong>ℹ️ Hinweis:</strong> Nach Klick auf "Kostenpflichtig fortfahren" werden Sie zur Zahlung weitergeleitet. 
-            Nach erfolgreicher Zahlung startet die KI-gestützte Erstellung Ihres Leistungsverzeichnisses.
+            <strong>ℹ️ Hinweis:</strong> Nach der Registrierung können Sie die KI-gestützte Erstellung Ihres Leistungsverzeichnisses starten.
           </p>
         </div>
       </div>
-
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-6">Zahlungsinformationen</h2>
-            
-            <div className="bg-white/10 rounded-lg p-4 mb-6">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-300">Anzahl Gewerke:</span>
-                <span className="text-white font-semibold">{getTotalSelectedCount()}</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-300">Leistung:</span>
-                <span className="text-white">KI-Ausschreibung</span>
-              </div>
-              <div className="border-t border-white/20 mt-3 pt-3">
-                <div className="flex justify-between">
-                  <span className="text-white font-semibold">Gesamtbetrag:</span>
-                  <span className="text-teal-400 font-bold text-xl">
-                    {priceInfo?.price.toFixed(2)} €
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <p className="text-gray-300 text-sm mb-4">
-                Wählen Sie Ihre Zahlungsmethode:
-              </p>
-              <div className="space-y-3">
-                <button className="w-full bg-white/10 border border-white/30 rounded-lg p-3 text-white hover:bg-white/20 transition-all text-left">
-                  💳 Kreditkarte / Debitkarte
-                </button>
-                <button className="w-full bg-white/10 border border-white/30 rounded-lg p-3 text-white hover:bg-white/20 transition-all text-left">
-                  🏦 SEPA-Lastschrift
-                </button>
-                <button className="w-full bg-white/10 border border-white/30 rounded-lg p-3 text-white hover:bg-white/20 transition-all text-left">
-                  💰 PayPal
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="flex-1 px-4 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={processPaymentAndContinue}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
-              >
-                Jetzt zahlen
-              </button>
-            </div>
-
-            <p className="text-gray-400 text-xs mt-4 text-center">
-              Sichere Zahlung über unseren Partner. Ihre Daten sind geschützt.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
