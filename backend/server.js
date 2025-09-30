@@ -2543,8 +2543,6 @@ function extractCalculationDataFromIntake(intakeAnswers) {
   return knownData;
 }
 
-
-
 /**
  * Generiert klaren Kontext für das LLM
  */
@@ -2626,6 +2624,453 @@ function createCalculationContext(knownData, tradeCode) {
   context += `\nREGEL: Frage NUR nach DETAILS die für DEIN Gewerk spezifisch sind!`;
   
   return context;
+}
+
+/**
+ * Vollständige Gewerke-Validierung aus Intake-Antworten
+ * NUR mit existierenden Gewerke-Codes aus dem System
+ */
+
+// KOMPLETTE GEWERKE-ZUORDNUNGSREGELN für alle 20 vorhandenen Gewerke
+const TRADE_DETECTION_RULES = {
+  // EXKLUSIVE Keywords - NUR dieses Gewerk darf diese Begriffe beanspruchen
+  exclusive: {
+    'DACH': [
+      'dach neu', 'dacheindeckung', 'dachziegel', 'dachpfanne', 'dachstein',
+      'dachrinne', 'fallrohr', 'dachfenster', 'schneefang', 'kehle', 'first',
+      'gauben', 'gaube abdichten', 'eindeckung', 'dampfbremse', 'unterspannbahn',
+      'dachsparren ersetzen', 'sparren austauschen', 'sparren reparieren',
+      'dachstuhl sanieren', 'dachabdichtung', 'klempnerarbeiten dach',
+      'dachentlüftung', 'dachhaube', 'attika', 'flachdach', 'bitumenbahn'
+    ],
+    
+    'FASS': [
+      'fassade', 'wdvs', 'wärmedämmverbundsystem', 'fassadendämmung', 
+      'außenputz', 'verblendung', 'klinker', 'fassadenfarbe', 'außendämmung',
+      'vorgehängte fassade', 'reibeputz außen', 'fassadenanstrich',
+      'fassadensanierung', 'fassadenverkleidung', 'hinterlüftete fassade',
+      'putzfassade', 'wärmedämmung außen', 'sockelputz', 'außenwand dämmen'
+    ],
+    
+    'ZIMM': [
+      'holzbau', 'dachstuhl neu', 'gaube bauen', 'neue gaube', 'gaube konstruktion',
+      'carport', 'holzkonstruktion', 'fachwerk', 'holzrahmenbau', 'blockhaus',
+      'dachstuhl errichten', 'aufstockung holz', 'holzbalken', 'sparren neu',
+      'pfetten', 'kehlbalken', 'schwelle', 'holzständerbau', 'pergola',
+      'holzterrasse überdacht', 'zimmererarbeiten', 'holzbauweise'
+    ],
+    
+    'ROH': [
+      'mauerwerk', 'ziegelmauerwerk', 'durchbruch', 'wanddurchbruch',
+      'beton', 'maurerarbeiten', 'sturz', 'kalksandstein', 'neue wand mauern',
+      'wand mauern', 'tragende wand', 'decke durchbrechen', 'fundament',
+      'sturz einbauen', 'ziegelwand', 'porenbeton', 'ytong', 'betondecke',
+      'stahlbeton', 'bewehrung', 'schalung', 'kernbohrung groß', 'statik',
+      'unterfangen', 'ringanker', 'betontreppe', 'mauern'
+    ],
+    
+    'TRO': [
+      'rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton',
+      'ständerwand', 'vorwandinstallation', 'abgehängte decke', 'vorsatzschale',
+      'metallständer', 'trockenbauwand', 'cw-profil', 'uw-profil',
+      'gipskartonwand', 'installationswand', 'schallschutzwand',
+      'brandschutzwand f90', 'revisionsöffnung', 'trockenbauwände'
+    ],
+    
+    'TIS': [
+      'innentür', 'zarge', 'möbel', 'einbauschrank', 'küche einbauen',
+      'wohnungseingangstür', 'arbeitsplatte', 'zimmertür', 'wohnungstür',
+      'küchenmöbel', 'holzverkleidung innen', 'schiebetür innen', 'falttür',
+      'raumteiler holz', 'einbauküche', 'schranksystem', 'holztreppe innen',
+      'treppengeländer holz', 'handlauf holz', 'tischlerarbeiten'
+    ],
+    
+    'FEN': [
+      'verglasung', 'haustür', 'rolladen', 'jalousie', 'außentür',
+      'terrassentür', 'isolierglas', 'neue fenster', 'fenster austauschen',
+      'kunststofffenster', 'holzfenster', 'alufenster', 'eingangstür',
+      'balkontür', 'fensterbank außen', 'fensterbank innen',
+      'dreifachverglasung', 'schallschutzfenster', 'einbruchschutz fenster'
+    ],
+    
+    'SAN': [
+      'wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn',
+      'armatur', 'sanitär', 'bad komplett', 'toilette', 'waschtisch',
+      'wasserleitung', 'abwasser', 'fallleitung', 'hebeanlage', 'rückstauklappe',
+      'wasseranschluss', 'sanitärobjekte', 'urinal', 'bidet', 'dusch-wc',
+      'sanitärinstallation', 'bad sanieren', 'badezimmer'
+    ],
+    
+    'ELEKT': [
+      'schalter', 'steckdose', 'leuchte', 'lampe', 'sicherung', 'verteiler',
+      'fi-schalter', 'elektro', 'kabel', 'leitung elektro', 'stromleitung',
+      'unterverteiler', 'zählerschrank', 'hausanschluss strom', 'sat-anlage',
+      'netzwerk', 'lan-kabel', 'smart home', 'bus-system', 'knx', 'dimmer',
+      'bewegungsmelder', 'elektroinstallation', 'elektriker'
+    ],
+    
+    'HEI': [
+      'thermostat', 'warmwasser', 'kessel', 'brenner', 'radiator', 'heizung',
+      'heizkörper', 'fußbodenheizung', 'heizungsrohr', 'wärmepumpe',
+      'gasheizung', 'ölheizung', 'pelletheizung', 'brennwertkessel',
+      'pufferspeicher', 'solaranlage heizung', 'heizkreisverteiler',
+      'heizungspumpe', 'heizungsinstallation'
+    ],
+    
+    'KLIMA': [
+      'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage',
+      'wärmerückgewinnung', 'lüftung', 'lüftungsanlage',
+      'kontrollierte wohnraumlüftung', 'kwl', 'luftkanal', 'luftauslass',
+      'luftfilter', 'enthalpietauscher', 'dezentrale lüftung', 'badlüfter',
+      'dunstabzug', 'klimatechnik'
+    ],
+    
+    'FLI': [
+      'verfugen', 'mosaik', 'naturstein bad', 'feinsteinzeug', 'bodenfliesen',
+      'wandfliesen', 'fliesen', 'kacheln', 'fliesenspiegel', 'bordüre',
+      'großformat fliesen', 'terracotta', 'zementfliesen', 'metro fliesen',
+      'hexagon fliesen', 'fugenlos bad', 'fliesenarbeiten', 'fliesenleger'
+    ],
+    
+    'BOD': [
+      'parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork',
+      'designboden', 'bodenbelag', 'klick-vinyl', 'massivholzdielen',
+      'landhausdielen', 'industrieparkett', 'bambusparkett', 'pvc-boden',
+      'kautschuk', 'nadelvlies', 'bodenbelagsarbeiten'
+    ],
+    
+    'MAL': [
+      'streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln',
+      'lackieren', 'grundierung', 'malerarbeiten', 'wandfarbe', 'deckenfarbe',
+      'lasieren', 'raufaser', 'vliestapete', 'strukturputz innen',
+      'streichputz', 'silikatfarbe', 'dispersionsfarbe', 'kalkputz innen',
+      'malerarbeiten innen'
+    ],
+    
+    'ESTR': [
+      'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich',
+      'ausgleichsmasse', 'estrich', 'heizestrich', 'calciumsulfatestrich',
+      'schnellestrich', 'verbundestrich', 'schwimmender estrich',
+      'dämmung unter estrich', 'trittschalldämmung', 'randdämmstreifen',
+      'estricharbeiten'
+    ],
+    
+    'GER': [
+      'gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst',
+      'dachgerüst', 'schutzgerüst', 'fanggerüst', 'hängegerüst', 'modulgerüst',
+      'gerüstbau', 'einrüstung', 'gerüststellung', 'gerüstmiete'
+    ],
+    
+    'SCHL': [
+      'geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe',
+      'schlosserarbeiten', 'balkongeländer', 'treppengeländer metall',
+      'französischer balkon', 'einbruchschutz gitter', 'kellerschacht',
+      'metalltür', 'brandschutztür', 'fluchttreppe', 'gitter'
+    ],
+    
+    'AUSS': [
+      'pflaster', 'einfahrt', 'außenanlage', 'randstein', 'rasen',
+      'terrasse pflaster', 'hofeinfahrt', 'garagenzufahrt', 'gehweg',
+      'stellplatz', 'gartenmauer', 'stützmauer', 'gabionen', 'sickermulde',
+      'regenwasserversickerung', 'gartengestaltung'
+    ],
+    
+    'PV': [
+      'solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'batterie',
+      'einspeisung', 'pv-anlage', 'solarmodule', 'solarpanel',
+      'balkonkraftwerk', 'energiespeicher', 'wallbox', 'notstrom',
+      'inselanlage', 'pv-installation'
+    ],
+    
+    'ABBR': [
+      'abriss', 'abbruch', 'entkernung', 'rückbau', 'teilabbruch',
+      'komplettabriss', 'entkernen', 'schadstoffsanierung', 'asbestsanierung',
+      'entsorgung bauschutt', 'containerstellung', 'bauschuttcontainer',
+      'entrümpelung', 'rückbau komplett', 'abbrucharbeiten'
+    ]
+  },
+  
+  // VERBOTENE Zuordnungen - diese Begriffe dürfen NICHT zu diesem Gewerk führen
+  forbidden: {
+    'TRO': ['wdvs', 'fassade', 'außendämmung', 'außenputz', 'fassadenanstrich', 'gaube'],
+    'ROH': ['dach', 'sparren', 'dachstuhl', 'gaube', 'dachrinne', 'eindeckung'],
+    'TIS': ['gaube', 'dachfenster', 'außenfenster', 'haustür', 'dachstuhl', 'balkontür'],
+    'FEN': ['dachfenster', 'gaube', 'dachsparren'],
+    'ZIMM': ['dämmung', 'eindeckung', 'dachziegel', 'dachrinne', 'wdvs'],
+    'MAL': ['fassade', 'außenputz', 'wdvs', 'außendämmung'],
+    'BOD': ['fliesen', 'naturstein', 'wandfliesen', 'fliesenspiegel'],
+    'ELEKT': ['heizung', 'sanitär', 'wasser', 'abwasser', 'klima'],
+    'SAN': ['elektro', 'strom', 'heizung', 'heizkörper', 'thermostat'],
+    'HEI': ['elektro', 'sanitär', 'klima', 'lüftung', 'bad'],
+    'KLIMA': ['heizung', 'sanitär', 'elektro'],
+    'FASS': ['innenputz', 'tapete', 'malerarbeiten innen', 'gaube'],
+    'DACH': ['wdvs', 'fassadendämmung', 'außenputz'],
+    'FLI': ['parkett', 'laminat', 'vinyl', 'teppich'],
+    'ESTR': ['fliesen', 'parkett', 'bodenbelag'],
+    'GER': ['bauarbeiten', 'sanierung', 'renovierung'],
+    'ABBR': ['neubau', 'anbau', 'aufstockung'],
+    'SCHL': ['holzgeländer', 'holztreppe', 'carport'],
+    'AUSS': ['innenausbau', 'bad', 'küche'],
+    'PV': ['heizung', 'warmwasser', 'sanitär']
+  }
+};
+
+/**
+ * Hauptfunktion zur Gewerke-Erkennung mit strenger Validierung
+ */
+function detectAndValidateTradesFromIntake(intakeAnswers, existingTrades = [], projectDescription = '') {
+  const detectedTrades = new Map();
+  const existingCodes = new Set(existingTrades.map(t => t.code));
+  const rejectedTrades = [];
+  
+  // Kombiniere alle relevanten Texte
+  const fullText = intakeAnswers
+    .map(item => `${item.question} ${item.answer}`)
+    .concat([projectDescription])
+    .join(' ')
+    .toLowerCase();
+  
+  console.log('[TRADE-DETECT] Analysiere Text mit', fullText.length, 'Zeichen');
+  
+  // 1. PHASE: Keyword-Erkennung
+  for (const [tradeCode, keywords] of Object.entries(TRADE_DETECTION_RULES.exclusive)) {
+    if (existingCodes.has(tradeCode)) continue;
+    
+    const matchedKeywords = [];
+    
+    for (const keyword of keywords) {
+      if (fullText.includes(keyword)) {
+        matchedKeywords.push(keyword);
+      }
+    }
+    
+    if (matchedKeywords.length > 0) {
+      // 2. PHASE: Validierung gegen verbotene Begriffe
+      const forbidden = TRADE_DETECTION_RULES.forbidden[tradeCode] || [];
+      const forbiddenMatches = [];
+      
+      for (const term of forbidden) {
+        if (matchedKeywords.some(kw => kw.includes(term))) {
+          forbiddenMatches.push(term);
+        }
+      }
+      
+      if (forbiddenMatches.length > 0) {
+        rejectedTrades.push({
+          code: tradeCode,
+          keywords: matchedKeywords,
+          reason: `Enthält verbotene Begriffe: ${forbiddenMatches.join(', ')}`
+        });
+        console.log(`[TRADE-DETECT] ❌ ${tradeCode} abgelehnt: ${forbiddenMatches.join(', ')}`);
+        continue;
+      }
+      
+      // 3. PHASE: Konfidenz-Berechnung
+      const confidence = calculateTradeConfidence(tradeCode, matchedKeywords);
+      
+      detectedTrades.set(tradeCode, {
+        confidence,
+        keywords: matchedKeywords,
+        reason: generateTradeReason(tradeCode, matchedKeywords, intakeAnswers)
+      });
+      
+      console.log(`[TRADE-DETECT] ✓ ${tradeCode}: ${matchedKeywords.length} Keywords, ${confidence}% Konfidenz`);
+    }
+  }
+  
+  // 4. PHASE: Kreuz-Validierung und Korrektur falscher Zuordnungen
+  const corrections = new Map();
+  
+  for (const [code, data] of detectedTrades) {
+    let shouldCorrect = false;
+    let correctToCode = null;
+    
+    // Spezifische Korrekturen basierend auf bekannten Fehlern
+    for (const keyword of data.keywords) {
+      // WDVS/Fassade: TRO → FASS
+      if (code === 'TRO' && (keyword.includes('wdvs') || keyword.includes('fassad'))) {
+        shouldCorrect = true;
+        correctToCode = 'FASS';
+        break;
+      }
+      
+      // Dacharbeiten: ROH → DACH
+      if (code === 'ROH' && (keyword.includes('dach') || keyword.includes('sparr'))) {
+        shouldCorrect = true;
+        correctToCode = 'DACH';
+        break;
+      }
+      
+      // Gaube: TIS → ZIMM
+      if (code === 'TIS' && keyword.includes('gaube')) {
+        shouldCorrect = true;
+        correctToCode = 'ZIMM';
+        break;
+      }
+      
+      // Dachfenster: FEN → DACH
+      if (code === 'FEN' && keyword.includes('dachfenster')) {
+        shouldCorrect = true;
+        correctToCode = 'DACH';
+        break;
+      }
+      
+      // Außenputz: MAL → FASS
+      if (code === 'MAL' && (keyword.includes('außenputz') || keyword.includes('fassad'))) {
+        shouldCorrect = true;
+        correctToCode = 'FASS';
+        break;
+      }
+      
+      // Fliesen: BOD → FLI
+      if (code === 'BOD' && keyword.includes('fliese')) {
+        shouldCorrect = true;
+        correctToCode = 'FLI';
+        break;
+      }
+    }
+    
+    if (shouldCorrect && correctToCode) {
+      corrections.set(code, correctToCode);
+      console.log(`[TRADE-DETECT] ↻ Korrektur: ${code} → ${correctToCode}`);
+      
+      // Füge korrigiertes Gewerk hinzu wenn noch nicht vorhanden
+      if (!detectedTrades.has(correctToCode) && !existingCodes.has(correctToCode)) {
+        detectedTrades.set(correctToCode, {
+          confidence: data.confidence,
+          keywords: data.keywords,
+          reason: `${data.reason} (korrigiert von ${code})`
+        });
+      }
+      
+      // Entferne falsches Gewerk
+      detectedTrades.delete(code);
+    }
+  }
+  
+  // 5. PHASE: Abhängigkeiten hinzufügen
+  const dependencies = addTradeDependencies(detectedTrades, existingCodes, fullText);
+  for (const [code, data] of dependencies) {
+    if (!detectedTrades.has(code)) {
+      detectedTrades.set(code, data);
+      console.log(`[TRADE-DETECT] + Abhängigkeit: ${code} (${data.reason})`);
+    }
+  }
+  
+  // 6. PHASE: Finale Liste erstellen
+  const finalTrades = [];
+  for (const [code, data] of detectedTrades) {
+    finalTrades.push({
+      code,
+      confidence: data.confidence,
+      keywords: data.keywords,
+      reason: data.reason
+    });
+  }
+  
+  console.log(`[TRADE-DETECT] Final: ${finalTrades.length} Gewerke erkannt`);
+  
+  return {
+    trades: finalTrades,
+    rejected: rejectedTrades
+  };
+}
+
+/**
+ * Berechnet Konfidenz basierend auf Keyword-Matches
+ */
+function calculateTradeConfidence(tradeCode, matchedKeywords) {
+  // Hochwertige Keywords für ALLE Gewerke - gibt extra Konfidenz
+  const highValueKeywords = {
+    'DACH': ['dach neu', 'komplett neu eindecken', 'dachsanierung', 'dacherneuerung', 'dach komplett', 'neue eindeckung', 'sparren austauschen'],
+    'FASS': ['wdvs', 'wärmedämmverbundsystem', 'fassadendämmung', 'komplettsanierung fassade', 'neue fassade', 'außendämmung komplett'],
+    'ZIMM': ['gaube neu', 'neue gaube', 'dachstuhl neu', 'holzkonstruktion', 'aufstockung', 'dachstuhl erneuern', 'holzrahmenbau'],
+    'ROH': ['tragende wand', 'wanddurchbruch', 'neue wände mauern', 'statische arbeiten', 'fundament', 'betonarbeiten'],
+    'TRO': ['komplette trockenbauwände', 'vorwandinstallation bad', 'abgehängte decke', 'schallschutzwand', 'brandschutzwand'],
+    'TIS': ['neue innentüren', 'komplette küche', 'einbauküche', 'einbauschränke', 'möbel nach maß', 'alle türen erneuern'],
+    'FEN': ['alle fenster neu', 'fenster komplett', 'haustür neu', 'kompletter fenstertausch', 'neue fenster und türen'],
+    'SAN': ['bad komplett', 'badsanierung', 'sanitär komplett', 'neues bad', 'komplette sanitärinstallation', 'bad kernsanierung'],
+    'ELEKT': ['elektroinstallation komplett', 'komplette elektrik', 'neue elektroinstallation', 'smart home', 'knx-installation', 'elektro komplett neu'],
+    'HEI': ['heizung neu', 'neue heizungsanlage', 'wärmepumpe', 'fußbodenheizung komplett', 'heizung komplett erneuern', 'brennwertkessel'],
+    'KLIMA': ['lüftungsanlage', 'kontrollierte wohnraumlüftung', 'kwl-anlage', 'klimaanlage', 'wärmerückgewinnung', 'zentrale lüftung'],
+    'FLI': ['bad komplett fliesen', 'neue fliesen', 'komplett neu fliesen', 'naturstein', 'großformatfliesen', 'fugenlos'],
+    'BOD': ['neuer parkettboden', 'kompletter bodenbelag', 'alle böden neu', 'designboden', 'massivholzdielen', 'parkett komplett'],
+    'MAL': ['komplett streichen', 'alle räume streichen', 'komplette malerarbeiten', 'innenputz neu', 'tapezieren komplett'],
+    'ESTR': ['neuer estrich', 'estrich komplett', 'fließestrich', 'heizestrich', 'estrich mit dämmung', 'kompletter estrichaufbau'],
+    'GER': ['fassadengerüst', 'kompletteinrüstung', 'dachgerüst', 'gerüst rundherum', 'baugerüst komplett'],
+    'SCHL': ['neues geländer', 'balkongeländer', 'stahltreppe', 'metallkonstruktion', 'einbruchschutz', 'neue metallarbeiten'],
+    'AUSS': ['neue einfahrt', 'komplette außenanlage', 'terrasse neu', 'pflasterarbeiten', 'gartengestaltung', 'hofpflasterung'],
+    'PV': ['photovoltaikanlage', 'solaranlage komplett', 'pv mit speicher', 'balkonkraftwerk', 'wallbox', 'komplette pv-anlage'],
+    'ABBR': ['entkernung', 'komplettabriss', 'teilabbruch', 'asbestsanierung', 'schadstoffsanierung', 'rückbau komplett']
+  };
+  
+  let confidence = 70; // Basis-Konfidenz
+  
+  // Erhöhe für Anzahl der Keywords
+  confidence += Math.min(20, matchedKeywords.length * 5);
+  
+  // Bonus für hochwertige Keywords
+  const tradeHighValue = highValueKeywords[tradeCode] || [];
+  const hasHighValue = matchedKeywords.some(kw => 
+    tradeHighValue.some(hv => kw.includes(hv))
+  );
+  
+  if (hasHighValue) {
+    confidence = Math.min(95, confidence + 10);
+  }
+  
+  return confidence;
+}
+
+/**
+ * Generiert spezifische Begründung für erkanntes Gewerk
+ */
+function generateTradeReason(tradeCode, keywords, intakeAnswers) {
+  // Finde die relevanteste Antwort
+  const relevantAnswer = intakeAnswers.find(item => {
+    const combined = `${item.question} ${item.answer}`.toLowerCase();
+    return keywords.some(kw => combined.includes(kw));
+  });
+  
+  if (relevantAnswer) {
+    const snippet = relevantAnswer.answer.substring(0, 40);
+    return `"${snippet}..." erfordert ${tradeCode}`;
+  }
+  
+  // Fallback auf Keywords
+  return `Begriffe: ${keywords.slice(0, 3).join(', ')}`;
+}
+
+/**
+ * Fügt logische Abhängigkeiten hinzu
+ */
+function addTradeDependencies(detectedTrades, existingCodes, fullText) {
+  const dependencies = new Map();
+  
+  // Bei Badsanierung → TRO für Vorwandinstallation
+  if ((detectedTrades.has('SAN') || existingCodes.has('SAN')) && 
+      !detectedTrades.has('TRO') && !existingCodes.has('TRO')) {
+    if (fullText.includes('bad') || fullText.includes('sanitär')) {
+      dependencies.set('TRO', {
+        confidence: 85,
+        keywords: ['vorwandinstallation'],
+        reason: 'Vorwandinstallation für Badsanierung'
+      });
+    }
+  }
+  
+  // Bei Dach/Fassade → GER für Gerüst
+  if ((detectedTrades.has('DACH') || detectedTrades.has('FASS') || 
+       existingCodes.has('DACH') || existingCodes.has('FASS')) &&
+      !detectedTrades.has('GER') && !existingCodes.has('GER')) {
+    dependencies.set('GER', {
+      confidence: 90,
+      keywords: ['arbeitsgerüst'],
+      reason: 'Gerüst für Dach-/Fassadenarbeiten erforderlich'
+    });
+  }
+  
+  return dependencies;
 }
 
 /**
