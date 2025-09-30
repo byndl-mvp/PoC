@@ -22,32 +22,44 @@ export default function HandwerkerEmailVerification() {
   }
   
   const verifyEmail = async (token) => {
-    try {
-      const response = await fetch(apiUrl('/api/handwerker/verify-email?token=' + token));
-      const data = await response.json();
+  try {
+    const response = await fetch(apiUrl('/api/handwerker/verify-email?token=' + token));
+    const data = await response.json();
+    
+    if (response.ok) {
+      setStatus('success');
+      setCompanyName(data.companyName || '');
       
-      if (response.ok) {
-        setStatus('success');
-        setCompanyName(data.companyName || '');
-        setTimeout(() => {
-          navigate('/handwerker/dashboard');  // statt '/handwerker/login'
-        }, 3000);
-      } else {
-        setStatus('error');
-        setMessage(data.error || 'Verifizierung fehlgeschlagen');
-        if (data.error?.includes('abgelaufen')) {
-          setStatus('expired');
-        }
+      // Token speichern falls vom Backend gesendet
+      if (data.token) {
+        sessionStorage.setItem('handwerkerToken', data.token);
+        sessionStorage.setItem('handwerkerData', JSON.stringify({
+          id: data.id,
+          companyId: data.companyId,
+          companyName: data.companyName,
+          email: data.email,
+          emailVerified: true
+        }));
       }
-    } catch (error) {
-      console.error('Verifizierungsfehler:', error);
+      
+      setTimeout(() => {
+        navigate('/handwerker/dashboard');
+      }, 3000);
+    } else {
       setStatus('error');
-      setMessage('Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
+      setMessage(data.error || 'Verifizierung fehlgeschlagen');
+      if (data.error?.includes('abgelaufen')) {
+        setStatus('expired');
+      }
     }
-  };
-  
-  verifyEmail(token);
-}, [searchParams, navigate]);
+  } catch (error) {
+    console.error('Verifizierungsfehler:', error);
+    setStatus('error');
+    setMessage('Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
+  }
+};
+
+verifyEmail(token);
 
   const handleResend = async () => {
     if (!resendEmail) {
