@@ -126,11 +126,11 @@ export default function BauherrEmailVerification() {
               Sie werden in 3 Sekunden zum Dashboard weitergeleitet...
               </p>
               <Link
-                to="/bauherr/login"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
-              >
-                Jetzt anmelden
-              </Link>
+  to="/bauherr/dashboard"
+  className="inline-block px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600..."
+>
+  Zum Dashboard
+</Link>
             </div>
           )}
 
