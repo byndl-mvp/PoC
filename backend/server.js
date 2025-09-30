@@ -9661,18 +9661,15 @@ const requiredTradesResult = await query(
    AND (pt.is_ai_recommended = false OR pt.is_ai_recommended IS NULL)`,
   [projectId]
 );
-const requiredTrades = requiredTradesResult.rows;
+const requiredTradesForValidation = requiredTradesResult.rows; // GEÄNDERT: Anderer Name
 
 // Nutze neue Validierungsfunktion
 const projectDescription = project.description || '';
 const validationResult = detectAndValidateTradesFromIntake(
   answers,
-  requiredTrades,  // RICHTIG - nur required, nicht alle!
+  requiredTradesForValidation,  // GEÄNDERT: Neuer Name
   projectDescription
 );
-
-const additionalTrades = validationResult.trades;
-const rejectedTrades = validationResult.rejected;
 
 // Filtere bereits empfohlene Trades heraus
 const alreadyRecommended = await query(
@@ -9683,10 +9680,12 @@ const alreadyRecommended = await query(
 );
 const recommendedCodes = new Set(alreadyRecommended.rows.map(r => r.code));
 
-// Überschreibe additionalTrades mit gefilterten
-const filteredAdditionalTrades = validationResult.trades.filter(t => 
+// Filtere und verwende nur eine Variable
+const additionalTrades = validationResult.trades.filter(t => 
   !recommendedCodes.has(t.code)
 );
+
+const rejectedTrades = validationResult.rejected;
     
 // Für Kompatibilität mit bestehendem Code
 const relevantAnswers = answers
