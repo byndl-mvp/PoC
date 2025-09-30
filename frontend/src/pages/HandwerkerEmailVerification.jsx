@@ -30,8 +30,8 @@ export default function HandwerkerEmailVerification() {
         setStatus('success');
         setCompanyName(data.companyName || '');
         setTimeout(() => {
-          navigate('/handwerker/login');
-        }, 5000);
+          navigate('/handwerker/dashboard');  // statt '/handwerker/login'
+        }, 3000);
       } else {
         setStatus('error');
         setMessage(data.error || 'Verifizierung fehlgeschlagen');
