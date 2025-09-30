@@ -12504,12 +12504,12 @@ app.post('/api/bauherr/resend-verification', async (req, res) => {
     
     // Rate Limiting
     const rateLimitCheck = await query(
-      'SELECT COUNT(*) as count FROM email_logs 
-       WHERE recipient_email = $1 
-       AND email_type = \'verification_resend\' 
-       AND sent_at > NOW() - INTERVAL \'1 hour\'',
-      [email]
-    );
+  `SELECT COUNT(*) as count FROM email_logs 
+   WHERE recipient_email = $1 
+   AND email_type = 'verification_resend' 
+   AND sent_at > NOW() - INTERVAL '1 hour'`,
+  [email]
+);
     
     if (rateLimitCheck.rows[0].count >= 3) {
       return res.status(429).json({ 
