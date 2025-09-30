@@ -11571,8 +11571,10 @@ app.post('/api/bauherr/register', async (req, res) => {
 
     // Hole Projektdetails falls projectId vorhanden
 let projectDetails = null;
-if (projectId) {
-  const projectResult = await query(
+let projectResult = null; // Außerhalb definieren!
+    
+  if (projectId) {
+  projectResult = await query(
     'SELECT category, sub_category, description FROM projects WHERE id = $1',
     [projectId]
   );
