@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
+import { EmailVerificationModal } from './EmailVerificationModal';
 
 // Exakte Gewerke aus der PostgreSQL Datenbank mit Code-Abkürzungen
 const AVAILABLE_TRADES = [
@@ -43,7 +44,7 @@ export default function HandwerkerRegisterPage() {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [registrationData, setRegistrationData] = useState(null);
   const [formData, setFormData] = useState({
     // Firmendaten
@@ -267,6 +268,24 @@ const getPasswordStrengthClass = (password) => {
     alert('Upload fehlgeschlagen');
   }
 };
+
+  const handleResendVerificationEmail = async () => {
+  try {
+    const res = await fetch(apiUrl('/api/handwerker/resend-verification'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        email: registrationData?.handwerker?.email 
+      })
+    });
+    
+    const data = await res.json();
+    return { success: res.ok };
+  } catch (error) {
+    console.error('Resend email error:', error);
+    return { success: false };
+  }
+};
   
   const handleSubmit = async (e) => {
   e.preventDefault();
@@ -320,13 +339,8 @@ const getPasswordStrengthClass = (password) => {
         sessionStorage.setItem('handwerkerData', JSON.stringify(handwerkerData));
       }
       
-      // Zeige Success Modal
-      setRegistrationData({
-        ...data,
-        companyName: formData.companyName,
-        handwerker: data.handwerker || { email: formData.email }
-      });
-      setShowSuccessModal(true);
+      setRegistrationData(data);  // data von res.json()
+      setShowVerificationModal(true);
       
     } else {
       const errorData = await res.json();
@@ -339,77 +353,6 @@ const getPasswordStrengthClass = (password) => {
     setLoading(false);
   }
 };
-
-  // Success Modal Component
-  const SuccessModal = () => (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-white/20">
-        <div className="text-center">
-          <div className="mx-auto w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-            </svg>
-          </div>
-          
-          <h2 className="text-2xl font-bold text-white mb-4">
-            Registrierung erfolgreich!
-          </h2>
-          
-          <p className="text-gray-300 mb-4">
-            {registrationData?.companyName}
-          </p>
-          
-          <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-4 mb-4">
-            <p className="text-teal-300 font-bold text-lg">
-              Ihre Betriebs-ID: {registrationData?.companyId}
-            </p>
-            <p className="text-gray-400 text-xs mt-1">
-              Bitte notieren Sie sich diese ID!
-            </p>
-          </div>
-          
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
-            <p className="text-yellow-300 text-sm mb-2">
-              <strong>📧 E-Mail-Bestätigung erforderlich</strong>
-            </p>
-            <p className="text-gray-300 text-sm">
-              Wir haben eine E-Mail an <strong>{registrationData?.handwerker?.email}</strong> gesendet.
-            </p>
-            <p className="text-gray-400 text-xs mt-2">
-              Nach Bestätigung wird Ihr Account von uns geprüft.
-            </p>
-          </div>
-          
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                setShowSuccessModal(false);
-                navigate('/handwerker/dashboard');
-              }}
-              className="w-full px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg"
-            >
-              Zum Dashboard
-            </button>
-            
-            <button
-              onClick={() => {
-                setShowSuccessModal(false);
-                navigate('/handwerker/login');
-              }}
-              className="w-full px-6 py-3 bg-white/10 border border-white/30 rounded-lg text-white"
-            >
-              Zum Login
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-  
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      {/* Success Modal */}
-      {showSuccessModal && <SuccessModal />}
       
       {/* Background Effects */}
       <div className="absolute inset-0 opacity-10">
