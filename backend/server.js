@@ -9669,7 +9669,7 @@ const requiredTradesResult = await query(
    AND (pt.is_ai_recommended = false OR pt.is_ai_recommended IS NULL)`,
   [projectId]
 );
-const requiredTradesForValidation = requiredTradesResult.rows; // GEÄNDERT: Anderer Name
+const requiredTradesForValidation = requiredTradesResult.rows.map(r => r.code); // NUR die Code-Strings!
 
 // Nutze neue Validierungsfunktion
 const projectDescription = project.description || '';
