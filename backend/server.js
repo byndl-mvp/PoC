@@ -14116,7 +14116,6 @@ app.delete('/api/admin/handwerker/:id', requireAdmin, async (req, res) => {
     await query('DELETE FROM handwerker_trades WHERE handwerker_id = $1', [id]);
     await query('DELETE FROM handwerker_documents WHERE handwerker_id = $1', [id]);
     await query('DELETE FROM offers WHERE handwerker_id = $1', [id]);
-    await query('DELETE FROM tender_handwerker WHERE handwerker_id = $1', [id]);
     await query('DELETE FROM orders WHERE handwerker_id = $1', [id]);
     
     // Lösche Handwerker
