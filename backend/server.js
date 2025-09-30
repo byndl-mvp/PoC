@@ -9829,6 +9829,12 @@ const allRecommendedFromDB = await query(
   [projectId]
 );
 
+// Definiere tradeKeywords aus TRADE_DETECTION_RULES
+const tradeKeywords = {};
+for (const [code, keywords] of Object.entries(TRADE_DETECTION_RULES.exclusive)) {
+  tradeKeywords[code] = keywords.slice(0, 10);
+}    
+    
 // 3. Füge gespeicherte hinzu (ohne Duplikate)
 const newCodesSet = new Set(additionalTrades.map(t => t.code));
 for (const trade of allRecommendedFromDB.rows) {
