@@ -171,7 +171,18 @@ const handleResendVerificationEmail = async () => {
       setLoading(false);
     }
   }; // Ende der handleSubmit Funktion
-      
+
+  return (
+  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    {/* EmailVerificationModal HIER */}
+    <EmailVerificationModal
+      isOpen={showVerificationModal}
+      email={registrationData?.user?.email}
+      userName={registrationData?.user?.name}
+      onResendEmail={handleResendVerificationEmail}
+      onClose={() => setShowVerificationModal(false)}
+      userType="bauherr"
+    />  
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-20 left-10 w-72 h-72 bg-teal-500 rounded-full filter blur-3xl"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-600 rounded-full filter blur-3xl"></div>
