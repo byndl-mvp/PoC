@@ -12493,6 +12493,91 @@ app.post('/api/handwerker/login', async (req, res) => {
 // ============================================================================
 // E-MAIL ERNEUT SENDEN - NEU!
 // ============================================================================
+// Bauherr - E-Mail erneut senden
+app.post('/api/bauherr/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'E-Mail erforderlich' });
+    }
+    
+    // Rate Limiting
+    const rateLimitCheck = await query(
+      'SELECT COUNT(*) as count FROM email_logs 
+       WHERE recipient_email = $1 
+       AND email_type = \'verification_resend\' 
+       AND sent_at > NOW() - INTERVAL \'1 hour\'',
+      [email]
+    );
+    
+    if (rateLimitCheck.rows[0].count >= 3) {
+      return res.status(429).json({ 
+        error: 'Zu viele Anfragen. Bitte warten Sie eine Stunde.' 
+      });
+    }
+    
+    // Bauherr finden
+    const result = await query(
+      'SELECT id, name, email_verified FROM bauherren WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Account nicht gefunden' });
+    }
+    
+    const bauherr = result.rows[0];
+    
+    if (bauherr.email_verified) {
+      return res.json({ 
+        success: true,
+        message: 'E-Mail bereits verifiziert' 
+      });
+    }
+    
+    // Neuen Token generieren
+    const crypto = require('crypto');
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    
+    // Token in DB aktualisieren
+    await query(
+      `UPDATE bauherren 
+       SET email_verification_token = $1,
+           email_verification_expires = $2
+       WHERE id = $3`,
+      [verificationToken, verificationExpires, bauherr.id]
+    );
+    
+    // E-Mail senden
+    const emailService = require('./emailService');
+    const emailResult = await emailService.sendBauherrRegistrationEmail({
+      id: bauherr.id,
+      name: bauherr.name,
+      email: email,
+      verificationToken: verificationToken
+    });
+    
+    // Log erstellen
+    await query(
+      `INSERT INTO email_logs (recipient_email, email_type, sent_at)
+       VALUES ($1, 'verification_resend', NOW())`,
+      [email]
+    );
+    
+    res.json({ 
+      success: true,
+      message: 'Verifizierungs-E-Mail wurde erneut gesendet',
+      emailSent: emailResult.success
+    });
+    
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ error: 'Fehler beim E-Mail-Versand' });
+  }
+});
+
 app.post('/api/handwerker/resend-verification', async (req, res) => {
   try {
     const { email } = req.body;
