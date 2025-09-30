@@ -26,15 +26,25 @@ export default function BauherrenDashboardPage() {
   const [pendingLvProjectId, setPendingLvProjectId] = useState(null);
   
   useEffect(() => {
-    const storedUserData = sessionStorage.getItem('userData');
-    if (!storedUserData) {
-      navigate('/bauherr/login');
-      return;
-    }
-    
+  const storedUserData = sessionStorage.getItem('userData');
+  
+  console.log('Dashboard checking userData:', storedUserData);
+  
+  if (!storedUserData) {
+    console.log('No userData, redirecting to login');
+    navigate('/bauherr/login');
+    return;
+  }
+  
+  try {
     const user = JSON.parse(storedUserData);
+    console.log('Parsed user:', user);
     setUserData(user);
     loadUserProjects(user.email);
+  } catch (error) {
+    console.error('Failed to parse userData:', error);
+    navigate('/bauherr/login');
+  }
 
     // NEU: Check für pending LV-Projekt
   const pendingProjectId = sessionStorage.getItem('pendingLvProject');
