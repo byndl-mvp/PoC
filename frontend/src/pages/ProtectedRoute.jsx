@@ -8,42 +8,62 @@ export default function ProtectedRoute({ children, userType }) {
   const [emailVerified, setEmailVerified] = useState(true);
 
   useEffect(() => {
-  const checkAuth = async () => {
-    try {
-      // Token aus Session oder Local Storage holen
-      const token = sessionStorage.getItem(`${userType}Token`) || 
-                   localStorage.getItem(`${userType}Token`);
-      
-      if (!token) {
+    const checkAuth = async () => {
+      try {
+        let token = null;
+        let userData = {};
+        
+        // Spezielle Behandlung für Admin
+        if (userType === 'admin') {
+          token = localStorage.getItem('adminToken');
+          
+          if (!token) {
+            setIsAuthenticated(false);
+            setLoading(false);
+            return;
+          }
+          
+          // Admin braucht keine userData oder E-Mail-Verifizierung
+          setIsAuthenticated(true);
+          setEmailVerified(true);
+          setLoading(false);
+          return;
+        }
+        
+        // Für Bauherr und Handwerker
+        token = sessionStorage.getItem(`${userType}Token`) || 
+                localStorage.getItem(`${userType}Token`);
+        
+        if (!token) {
+          setIsAuthenticated(false);
+          setLoading(false);
+          return;
+        }
+        
+        // User Data prüfen (für Bauherr/Handwerker)
+        userData = JSON.parse(
+          sessionStorage.getItem(`${userType}Data`) || 
+          localStorage.getItem(`${userType}Data`) || 
+          '{}'
+        );
+        
+        if (userData.id || userType === 'admin') {
+          setIsAuthenticated(true);
+          setEmailVerified(userData.emailVerified !== false);
+        } else {
+          setIsAuthenticated(false);
+        }
+        
+      } catch (error) {
+        console.error('Auth check failed:', error);
         setIsAuthenticated(false);
+      } finally {
         setLoading(false);
-        return;
       }
-      // Token validieren (optional - Backend-Call)
-      // Für jetzt prüfen wir nur ob Token existiert
-      const userData = JSON.parse(
-        sessionStorage.getItem(`${userType}Data`) || 
-        localStorage.getItem(`${userType}Data`) || 
-        '{}'
-      );
-      
-      if (userData.id) {
-        setIsAuthenticated(true);
-        setEmailVerified(userData.emailVerified !== false);
-      } else {
-        setIsAuthenticated(false);
-      }
-      
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setIsAuthenticated(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  checkAuth();
-}, [userType]); // userType als dependency, da es in der Funktion verwendet wird
+    };
+    
+    checkAuth();
+  }, [userType]);
 
   // Lade-Zustand
   if (loading) {
@@ -60,14 +80,29 @@ export default function ProtectedRoute({ children, userType }) {
     );
   }
 
-  // Nicht authentifiziert - Redirect zum Login
+  // Nicht authentifiziert - Redirect zum passenden Login
   if (!isAuthenticated) {
-    const loginPath = userType === 'handwerker' ? '/handwerker/login' : '/bauherr/login';
+    let loginPath = '/';
+    
+    switch(userType) {
+      case 'admin':
+        loginPath = '/admin/login';
+        break;
+      case 'handwerker':
+        loginPath = '/handwerker/login';
+        break;
+      case 'bauherr':
+        loginPath = '/bauherr/login';
+        break;
+      default:
+        loginPath = '/';
+    }
+    
     return <Navigate to={loginPath} replace />;
   }
 
-  // E-Mail nicht verifiziert - Warnung anzeigen (optional)
-  if (!emailVerified) {
+  // E-Mail-Verifizierung nur für Bauherr/Handwerker relevant
+  if (!emailVerified && userType !== 'admin') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
         <EmailVerificationReminder userType={userType} />
