@@ -11568,6 +11568,20 @@ app.post('/api/bauherr/register', async (req, res) => {
         [bauherrId, projectId]
       );
     }
+
+    // Hole Projektdetails falls projectId vorhanden
+let projectDetails = null;
+if (projectId) {
+  const projectResult = await query(
+    'SELECT category, sub_category, description FROM projects WHERE id = $1',
+    [projectId]
+  );
+  
+  if (projectResult.rows.length > 0) {
+    const proj = projectResult.rows[0];
+    projectDetails = `${proj.category}${proj.sub_category ? ' - ' + proj.sub_category : ''}: ${proj.description?.substring(0, 100)}`;
+  }
+}
     
     // E-Mail senden mit Token
     const emailService = require('./emailService');
@@ -11576,7 +11590,7 @@ app.post('/api/bauherr/register', async (req, res) => {
       name: name,
       email: email,
       verificationToken: emailVerificationToken,
-      projectTitle: projectId ? 'Ihr Bauprojekt' : null
+      projectTitle: projectDetails
     });
     
     // JWT Token für Session (aber E-Mail noch nicht verifiziert)
