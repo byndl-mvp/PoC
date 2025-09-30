@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 import { EmailVerificationModal } from './EmailVerificationModal';
 
@@ -40,7 +40,6 @@ const CERTIFICATIONS = [
 ];
 
 export default function HandwerkerRegisterPage() {
-  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -279,7 +278,7 @@ const getPasswordStrengthClass = (password) => {
       })
     });
     
-    const data = await res.json();
+    await res.json();
     return { success: res.ok };
   } catch (error) {
     console.error('Resend email error:', error);
