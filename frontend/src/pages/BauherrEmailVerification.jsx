@@ -30,8 +30,8 @@ export default function BauherrEmailVerification() {
         setStatus('success');
         setName(data.name || '');
         setTimeout(() => {
-          navigate('/bauherr/login');
-        }, 5000);
+          navigate('/bauherr/dashboard');
+        }, 3000);
       } else {
         setStatus('error');
         setMessage(data.error || 'Verifizierung fehlgeschlagen');
