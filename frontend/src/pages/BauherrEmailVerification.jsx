@@ -22,32 +22,43 @@ export default function BauherrEmailVerification() {
   }
   
   const verifyEmail = async (token) => {
-    try {
-      const response = await fetch(apiUrl('/api/bauherr/verify-email?token=' + token));
-      const data = await response.json();
+  try {
+    const response = await fetch(apiUrl('/api/bauherr/verify-email?token=' + token));
+    const data = await response.json();
+    
+    if (response.ok) {
+      setStatus('success');
+      setName(data.name || '');
       
-      if (response.ok) {
-        setStatus('success');
-        setName(data.name || '');
-        setTimeout(() => {
-          navigate('/bauherr/dashboard');
-        }, 3000);
-      } else {
-        setStatus('error');
-        setMessage(data.error || 'Verifizierung fehlgeschlagen');
-        if (data.error?.includes('abgelaufen')) {
-          setStatus('expired');
-        }
+      // Token speichern falls vom Backend gesendet
+      if (data.token) {
+        sessionStorage.setItem('bauherrToken', data.token);
+        sessionStorage.setItem('userData', JSON.stringify({
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          emailVerified: true
+        }));
       }
-    } catch (error) {
-      console.error('Verifizierungsfehler:', error);
+      
+      setTimeout(() => {
+        navigate('/bauherr/dashboard');
+      }, 3000);
+    } else {
       setStatus('error');
-      setMessage('Ein Fehler ist aufgetreten.');
+      setMessage(data.error || 'Verifizierung fehlgeschlagen');
+      if (data.error?.includes('abgelaufen')) {
+        setStatus('expired');
+      }
     }
-  };
-  
-  verifyEmail(token);
-}, [searchParams, navigate]); // navigate als dependency hinzufügen
+  } catch (error) {
+    console.error('Verifizierungsfehler:', error);
+    setStatus('error');
+    setMessage('Ein Fehler ist aufgetreten.');
+  }
+};
+
+verifyEmail(token);
 
   const handleResend = async () => {
     if (!resendEmail) {
