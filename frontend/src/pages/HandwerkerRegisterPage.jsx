@@ -353,7 +353,18 @@ const getPasswordStrengthClass = (password) => {
     setLoading(false);
   }
 };
-      
+
+return (
+  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    {/* EmailVerificationModal HIER */}
+    <EmailVerificationModal
+      isOpen={showVerificationModal}
+      email={registrationData?.handwerker?.email}
+      userName={registrationData?.handwerker?.companyName}
+      onResendEmail={handleResendVerificationEmail}
+      onClose={() => setShowVerificationModal(false)}
+      userType="handwerker"
+    />
       {/* Background Effects */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-20 left-10 w-72 h-72 bg-teal-500 rounded-full filter blur-3xl"></div>
