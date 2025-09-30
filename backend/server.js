@@ -15239,12 +15239,16 @@ app.put('/api/admin/bauherren/:id', requireAdmin, async (req, res) => {
     let paramCount = 1;
     
     for (const [key, value] of Object.entries(updates)) {
-      if (key !== 'id' && key !== 'created_at') {
-        fields.push(`${key} = $${paramCount}`);
-        values.push(value);
-        paramCount++;
-      }
-    }
+  // Filtere berechnete Felder und schreibgeschützte Felder aus
+  if (key !== 'id' && 
+      key !== 'created_at' && 
+      key !== 'project_count' && 
+      key !== 'total_budget') {
+    fields.push(`${key} = $${paramCount}`);
+    values.push(value);
+    paramCount++;
+  }
+}
     
     values.push(id);
     
