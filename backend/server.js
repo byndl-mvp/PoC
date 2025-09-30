@@ -12316,10 +12316,27 @@ app.get('/api/bauherr/verify-email', async (req, res) => {
       [bauherr.id]
     );
     
+    // JWT Token generieren (andere Variable verwenden!)
+    const jwtToken = jwt.sign(  // <-- jwtToken statt token
+      {
+        id: bauherr.id,
+        type: 'bauherr',
+        email: bauherr.email,
+        name: bauherr.name,
+        emailVerified: true
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+    
+    // NUR EINE Response:
     res.json({ 
       success: true, 
       message: 'E-Mail erfolgreich verifiziert',
-      name: bauherr.name
+      id: bauherr.id,
+      name: bauherr.name,
+      email: bauherr.email,
+      token: jwtToken  // JWT Token mitschicken
     });
     
   } catch (error) {
