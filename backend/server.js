@@ -9652,26 +9652,42 @@ if (summary.trades && Array.isArray(summary.trades)) {
 }
 
 // ========== NEUE VALIDIERTE GEWERKE-ERKENNUNG ==========
-// Hole bereits erkannte Gewerke
-const existingTradesResult = await query(
+// Hole NUR die ERFORDERLICHEN Gewerke (nicht die empfohlenen!)
+const requiredTradesResult = await query(
   `SELECT t.code FROM project_trades pt 
    JOIN trades t ON pt.trade_id = t.id 
-   WHERE pt.project_id = $1 AND t.code != 'INT'`,
+   WHERE pt.project_id = $1 
+   AND t.code != 'INT'
+   AND (pt.is_ai_recommended = false OR pt.is_ai_recommended IS NULL)`,
   [projectId]
 );
-const existingTrades = existingTradesResult.rows;
+const requiredTrades = requiredTradesResult.rows;
 
 // Nutze neue Validierungsfunktion
 const projectDescription = project.description || '';
 const validationResult = detectAndValidateTradesFromIntake(
   answers,
-  existingTrades,
+  requiredTrades,  // RICHTIG - nur required, nicht alle!
   projectDescription
 );
 
 const additionalTrades = validationResult.trades;
 const rejectedTrades = validationResult.rejected;
 
+// Filtere bereits empfohlene Trades heraus
+const alreadyRecommended = await query(
+  `SELECT t.code FROM project_trades pt 
+   JOIN trades t ON pt.trade_id = t.id 
+   WHERE pt.project_id = $1 AND pt.is_ai_recommended = true`,
+  [projectId]
+);
+const recommendedCodes = new Set(alreadyRecommended.rows.map(r => r.code));
+
+// Überschreibe additionalTrades mit gefilterten
+const filteredAdditionalTrades = validationResult.trades.filter(t => 
+  !recommendedCodes.has(t.code)
+);
+    
 // Für Kompatibilität mit bestehendem Code
 const relevantAnswers = answers
   .filter(a => a.answer.length > 15 && !['ja', 'nein', 'keine', 'vorhanden'].includes(a.answer.toLowerCase().trim()))
