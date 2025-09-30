@@ -60,7 +60,8 @@ export default function HandwerkerEmailVerification() {
 };
 
 verifyEmail(token);
-
+}, [searchParams, navigate]); 
+  
   const handleResend = async () => {
     if (!resendEmail) {
       alert('Bitte geben Sie Ihre E-Mail-Adresse ein.');
