@@ -2963,7 +2963,7 @@ function detectAndValidateTradesFromIntake(intakeAnswers, existingTrades = [], p
     finalTrades.push({
       code,
       confidence: data.confidence,
-      keywords: data.keywords,
+      matchedKeywords: data.keywords,  
       reason: data.reason
     });
   }
