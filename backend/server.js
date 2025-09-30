@@ -2820,15 +2820,23 @@ const TRADE_DETECTION_RULES = {
  */
 function detectAndValidateTradesFromIntake(intakeAnswers, existingTrades = [], projectDescription = '') {
   const detectedTrades = new Map();
-  const existingCodes = new Set(existingTrades.map(t => t.code));
+  
+  // FIX 1: Handle beide Formate (String-Array und Object-Array)
+  const existingCodes = new Set(
+    existingTrades.map(t => typeof t === 'string' ? t : t.code)
+  );
+  
   const rejectedTrades = [];
   
-  // Kombiniere alle relevanten Texte
+  // FIX 2: Sichere toLowerCase() Anwendung
   const fullText = intakeAnswers
-    .map(item => `${item.question} ${item.answer}`)
-    .concat([projectDescription])
-    .join(' ')
-    .toLowerCase();
+    .map(item => {
+      const q = item.question || item.question_text || '';
+      const a = item.answer || item.answer_text || '';
+      return `${q} ${a}`.toLowerCase();
+    })
+    .concat([projectDescription ? projectDescription.toLowerCase() : ''])
+    .join(' ');
   
   console.log('[TRADE-DETECT] Analysiere Text mit', fullText.length, 'Zeichen');
   
