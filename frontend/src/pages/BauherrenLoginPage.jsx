@@ -58,6 +58,7 @@ export default function BauherrenLoginPage() {
         }
         
         sessionStorage.setItem('userData', JSON.stringify({
+          id: data.user.id,  
           name: data.user.name,
           email: data.user.email,
           userId: data.user.id
