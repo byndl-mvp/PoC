@@ -12631,13 +12631,13 @@ app.post('/api/handwerker/resend-verification', async (req, res) => {
     
     // E-Mail senden
     await emailService.sendHandwerkerRegistrationEmail({
-      id: handwerker.id,
-      companyId: handwerker.company_id,
-      companyName: handwerker.company_name,
-      email: email,
-      contactPerson: handwerker.contact_person,
-      verificationToken: verificationToken
-    });
+    id: handwerkerId,  // Verwende handwerkerId (aus result.rows[0].id)
+    companyId: companyId,  // Die Variable die du oben definiert hast
+    companyName: companyName,  // Aus req.body
+    email: email,
+    contactPerson: contactPerson,  // Aus req.body
+    verificationToken: emailVerificationToken  // RICHTIGE Variable!
+  });
     
     res.json({ 
       success: true,
