@@ -157,7 +157,7 @@ const handleResendVerificationEmail = async () => {
         
         // Zeige Success Modal
         setRegistrationData(data);
-        setShowVerificationModal(true); 
+        setShowVerificationModal(true); // NUR Verification Modal, KEIN Success
         
       } else {
         // Fehler vom Server
