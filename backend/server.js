@@ -11486,7 +11486,7 @@ KRITISCH:
 // 1. AUTH ROUTES - Registrierung & Login für Bauherren/Handwerker
 // ----------------------------------------------------------------------------
 
-// Bauherr Registrierung
+// Korrigierte Bauherr Registrierung Backend-Route
 app.post('/api/bauherr/register', async (req, res) => {
   try {
     const { 
@@ -11498,7 +11498,7 @@ app.post('/api/bauherr/register', async (req, res) => {
       houseNumber, 
       zipCode, 
       city,
-      projectId // Wird von TradeConfirmationPage mitgeschickt
+      projectId
     } = req.body;
     
     // Validierung
@@ -11523,7 +11523,12 @@ app.post('/api/bauherr/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Insert bauherr
+    // Generate email verification token
+    const crypto = require('crypto');
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    const emailVerificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 Stunden
+    
+    // Insert bauherr mit Token
     const result = await query(
       `INSERT INTO bauherren (
         email, 
@@ -11534,8 +11539,11 @@ app.post('/api/bauherr/register', async (req, res) => {
         house_number, 
         zip, 
         city,
+        email_verified,
+        email_verification_token,
+        email_verification_expires,
         created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, NOW())
       RETURNING id, email, name`,
       [
         email.toLowerCase(), 
@@ -11545,7 +11553,9 @@ app.post('/api/bauherr/register', async (req, res) => {
         street || null, 
         houseNumber || null, 
         zipCode || null, 
-        city || null
+        city || null,
+        emailVerificationToken,
+        emailVerificationExpires
       ]
     );
     
@@ -11559,22 +11569,24 @@ app.post('/api/bauherr/register', async (req, res) => {
       );
     }
     
-    // E-Mail senden
+    // E-Mail senden mit Token
     const emailService = require('./emailService');
-    await emailService.sendBauherrRegistrationEmail({
+    const emailResult = await emailService.sendBauherrRegistrationEmail({
       id: bauherrId,
       name: name,
       email: email,
+      verificationToken: emailVerificationToken,
       projectTitle: projectId ? 'Ihr Bauprojekt' : null
     });
     
-    // JWT Token
+    // JWT Token für Session (aber E-Mail noch nicht verifiziert)
     const token = jwt.sign(
       { 
         id: bauherrId, 
         type: 'bauherr',
         email: email,
-        name: name
+        name: name,
+        emailVerified: false
       },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
@@ -11586,9 +11598,12 @@ app.post('/api/bauherr/register', async (req, res) => {
       user: {
         id: bauherrId,
         email: email,
-        name: name
+        name: name,
+        emailVerified: false
       },
-      message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.'
+      message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.',
+      emailSent: emailResult.success,
+      requiresVerification: true
     });
     
   } catch (error) {
@@ -11599,7 +11614,7 @@ app.post('/api/bauherr/register', async (req, res) => {
   }
 });
 
-// Handwerker Registrierung
+// Korrigierte Handwerker Registrierung mit E-Mail-Token
 app.post('/api/handwerker/register', async (req, res) => {
   try {
     const {
@@ -11632,19 +11647,6 @@ app.post('/api/handwerker/register', async (req, res) => {
         error: 'Pflichtfelder fehlen' 
       });
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
-        error: 'Ungültige E-Mail-Adresse' 
-      });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ 
-        error: 'Das Passwort muss mindestens 8 Zeichen lang sein' 
-      });
-    }
     
     // Check if email exists
     const existingCheck = await query(
@@ -11666,11 +11668,16 @@ app.post('/api/handwerker/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
+    // Generate email verification token
+    const crypto = require('crypto');
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    const emailVerificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 Stunden
+    
     // Start transaction
     await query('BEGIN');
     
     try {
-      // Insert handwerker
+      // Insert handwerker mit E-Mail-Token
       const result = await query(
         `INSERT INTO handwerker (
           company_id, 
@@ -11693,13 +11700,16 @@ app.post('/api/handwerker/register', async (req, res) => {
           employee_count, 
           company_references,
           verification_status,
+          email_verified,
+          email_verification_token,
+          email_verification_expires,
           active,
           created_at,
           updated_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
           $11, $12, $13, $14, $15, $16, $17, $18, $19,
-          'pending', true, NOW(), NOW()
+          'pending', false, $20, $21, true, NOW(), NOW()
         )
         RETURNING id, company_id, company_name, email`,
         [
@@ -11721,7 +11731,9 @@ app.post('/api/handwerker/register', async (req, res) => {
           maxProjectVolume || 50000, 
           availableFrom || null, 
           employees || null,
-          references || null
+          references || null,
+          emailVerificationToken,
+          emailVerificationExpires
         ]
       );
       
@@ -11768,27 +11780,25 @@ app.post('/api/handwerker/register', async (req, res) => {
       // Commit transaction
       await query('COMMIT');
       
-      // E-MAIL VERSENDEN - NEU!
+      // E-MAIL MIT TOKEN VERSENDEN
+      const emailService = require('./emailService');
       const emailResult = await emailService.sendHandwerkerRegistrationEmail({
         id: handwerkerId,
         companyId: companyId,
         companyName: companyName,
         email: email,
-        contactPerson: contactPerson
+        contactPerson: contactPerson,
+        verificationToken: emailVerificationToken
       });
       
-      if (!emailResult.success) {
-        console.error('E-Mail konnte nicht gesendet werden:', emailResult.error);
-        // Trotzdem fortfahren - E-Mail ist nicht kritisch
-      }
-      
-      // JWT Token erstellen
+      // JWT Token erstellen (aber E-Mail noch nicht verifiziert)
       const token = jwt.sign(
         {
           id: handwerkerId,
           companyId: companyId,
           email: email,
-          companyName: companyName
+          companyName: companyName,
+          emailVerified: false
         },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '24h' }
@@ -11802,10 +11812,12 @@ app.post('/api/handwerker/register', async (req, res) => {
           id: handwerkerId,
           companyId: companyId,
           companyName: companyName,
-          email: result.rows[0].email
+          email: result.rows[0].email,
+          emailVerified: false
         },
         message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.',
-        emailSent: emailResult.success
+        emailSent: emailResult.success,
+        requiresVerification: true
       });
       
     } catch (innerErr) {
