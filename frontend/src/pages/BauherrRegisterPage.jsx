@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiUrl } from '../api';
+import { EmailVerificationModal } from './EmailVerificationModal';
 
 export default function BauherrRegisterPage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function BauherrRegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [registrationData, setRegistrationData] = useState(null);
   
   // Projekt-ID aus dem State (von TradeConfirmationPage)
@@ -77,6 +78,25 @@ export default function BauherrRegisterPage() {
     return 'bg-green-600';
   };
 
+  // NEU HINZUFÜGEN:
+const handleResendVerificationEmail = async () => {
+  try {
+    const res = await fetch(apiUrl('/api/bauherr/resend-verification'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        email: registrationData?.user?.email 
+      })
+    });
+    
+    const data = await res.json();
+    return { success: res.ok };
+  } catch (error) {
+    console.error('Resend email error:', error);
+    return { success: false };
+  }
+};
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -137,7 +157,7 @@ export default function BauherrRegisterPage() {
         
         // Zeige Success Modal
         setRegistrationData(data);
-        setShowSuccessModal(true);
+        setShowVerificationModal(true); 
         
       } else {
         // Fehler vom Server
