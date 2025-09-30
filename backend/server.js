@@ -14578,17 +14578,19 @@ app.delete('/api/admin/bauherren/:id', requireAdmin, async (req, res) => {
     await query('BEGIN');
     
     // Lösche alle Projekte und abhängige Daten
-    const projects = await query('SELECT id FROM projects WHERE bauherr_id = $1', [id]);
-    
-    for (const project of projects.rows) {
-      await query('DELETE FROM project_trades WHERE project_id = $1', [project.id]);
-      await query('DELETE FROM lvs WHERE project_id = $1', [project.id]);
-      await query('DELETE FROM tenders WHERE project_id = $1', [project.id]);
-      await query('DELETE FROM trade_progress WHERE project_id = $1', [project.id]);
-    }
-    
-    await query('DELETE FROM projects WHERE bauherr_id = $1', [id]);
-    await query('DELETE FROM bauherren WHERE id = $1', [id]);
+const projects = await query('SELECT id FROM projects WHERE bauherr_id = $1', [id]);
+
+for (const project of projects.rows) {
+  // NEUE REIHENFOLGE - questions ZUERST löschen!
+  await query('DELETE FROM questions WHERE project_id = $1', [project.id]);
+  await query('DELETE FROM project_trades WHERE project_id = $1', [project.id]);
+  await query('DELETE FROM lvs WHERE project_id = $1', [project.id]);
+  await query('DELETE FROM tenders WHERE project_id = $1', [project.id]);
+  await query('DELETE FROM trade_progress WHERE project_id = $1', [project.id]);
+}
+
+await query('DELETE FROM projects WHERE bauherr_id = $1', [id]);
+await query('DELETE FROM bauherren WHERE id = $1', [id]);
     
     await query('COMMIT');
     
