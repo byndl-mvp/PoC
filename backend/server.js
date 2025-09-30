@@ -9206,71 +9206,39 @@ if (summary.trades && Array.isArray(summary.trades)) {
   }));
 }
 
-// NEU: Analysiere Intake-Antworten für zusätzliche Gewerke
-const additionalTrades = [];
-const processedCodes = new Set(); // Verhindere Duplikate
+// ========== NEUE VALIDIERTE GEWERKE-ERKENNUNG ==========
+// Hole bereits erkannte Gewerke
+const existingTradesResult = await query(
+  `SELECT t.code FROM project_trades pt 
+   JOIN trades t ON pt.trade_id = t.id 
+   WHERE pt.project_id = $1 AND t.code != 'INT'`,
+  [projectId]
+);
+const existingTrades = existingTradesResult.rows;
 
-// Keyword-basierte Analyse
-const tradeKeywords = {
-  'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'strom', 'leitung', 'verteiler', 'fi-schalter'],
-  'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
-  'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
-  'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'türöffnung', 'dämmung', 'abgehängte decke', 'schallschutz'],
-  'FLI': ['fliesen', 'verfugen', 'bad', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
-  'MAL': [ 'streichen', 'innenputz', 'tapezieren','verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung', 'malerarbeiten'],
-  'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
-  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'maurerarbeiten'],
-  'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
-  'FEN': ['fenster', 'verglasung', 'rolladen', 'jalousie', 'fensterbank', 'glasbruch', 'isolierglas'],
-  'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'holzarbeiten', 'küche', 'arbeitsplatte'],
-  'DACH': ['dach', 'ziegel', 'dachrinne', 'schneefang', 'dachfenster', 'gauben', 'dachstuhl', 'eindeckung'],
-  'FASS': ['fassade', 'wdvs', 'außenputz', 'dämmung', 'verblendung', 'klinker', 'fassadenfarbe'],
-  'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst'],
-  'ZIMM': ['holzbau', 'dachstuhl', 'gaube', 'balken', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk'],
-  'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
-  'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
-  'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
-  'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
-  'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'schutt']
-};
-    
-// Analysiere alle Intake-Antworten
-const allAnswersText = answers
-  .map(a => `${a.question} ${a.answer}`.toLowerCase())
-  .join(' ');
+// Nutze neue Validierungsfunktion
+const projectDescription = project.description || '';
+const validationResult = detectAndValidateTradesFromIntake(
+  answers,
+  existingTrades,
+  projectDescription
+);
 
-// DEFINIERE relevantAnswers HIER
+const additionalTrades = validationResult.trades;
+const rejectedTrades = validationResult.rejected;
+
+// Für Kompatibilität mit bestehendem Code
 const relevantAnswers = answers
   .filter(a => a.answer.length > 15 && !['ja', 'nein', 'keine', 'vorhanden'].includes(a.answer.toLowerCase().trim()))
   .map(a => ({ question: a.question, answer: a.answer }));
 
-const userAnswerText = relevantAnswers.map(a => a.answer.toLowerCase()).join(' ');
-
-// Keyword-Analyse
-for (const [code, keywords] of Object.entries(tradeKeywords)) {
-  const matchedKeywords = keywords.filter(kw => userAnswerText.includes(kw));
-  
-  if (matchedKeywords.length > 0 && !processedCodes.has(code)) {
-    const alreadyExists = await query(
-      `SELECT 1 FROM project_trades pt 
-       JOIN trades t ON pt.trade_id = t.id 
-       WHERE pt.project_id = $1 
-       AND t.code = $2 
-       AND (pt.is_ai_recommended = false OR pt.is_ai_recommended IS NULL)`,
-      [projectId, code]
-    );
-    
-    if (alreadyExists.rows.length === 0) {
-      additionalTrades.push({
-        code,
-        matchedKeywords,
-        confidence: Math.min(95, 70 + (matchedKeywords.length * 5)),
-        reason: '' // Wird vom LLM gefüllt
-      });
-      processedCodes.add(code);
-    }
-  }
+console.log('[INTAKE-VALIDATION] Erkannt:', additionalTrades.length, 'Gewerke');
+if (rejectedTrades.length > 0) {
+  console.log('[INTAKE-VALIDATION] Abgelehnt:', rejectedTrades.map(r => 
+    `${r.code}: ${r.reason}`
+  ));
 }
+// ========== ENDE NEUE VALIDIERUNG ==========
 
 // Debug-Logs NACH den Definitionen
 console.log('[DEBUG] additionalTrades found:', additionalTrades.length);
