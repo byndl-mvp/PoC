@@ -414,10 +414,14 @@ const emailTemplates = {
             <p>Vielen Dank für Ihre Registrierung bei byndl. Ihr Konto wurde erfolgreich erstellt.</p>
             
             <div class="info-box">
-              <strong>Ihr Projekt:</strong>
-              <p>${data.projectTitle || 'Ihr Bauprojekt wartet auf Sie'}</p>
-              <p style="color: #666; font-size: 14px;">Sie können nun passende Handwerker für Ihr Projekt finden.</p>
-            </div>
+  <strong>Ihr Projekt:</strong>
+  <p>${data.projectDetails ? 
+    `${data.projectDetails.category}${data.projectDetails.subCategory ? ' - ' + data.projectDetails.subCategory : ''}` : 
+    'Ihr Bauprojekt wartet auf Sie'}</p>
+  ${data.projectDetails?.description ? 
+    `<p style="color: #666; font-size: 14px;">${data.projectDetails.description}</p>` : 
+    '<p style="color: #666; font-size: 14px;">Sie können nun passende Handwerker für Ihr Projekt finden.</p>'}
+</div>
             
             <h3>Nächste Schritte:</h3>
             <ol>
