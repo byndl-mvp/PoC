@@ -168,30 +168,36 @@ export default function BauherrenDashboardPage() {
     }
   };
 
-  const handleStartTender = async () => {
+  const handleStartTender = async (tradeIds = 'all') => {
   if (!selectedProject) return;
   
   try {
     setLoading(true);
-    // Verwende die NEUE, bessere Route
     const res = await fetch(apiUrl(`/api/projects/${selectedProject.id}/tender/create`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tradeIds: 'all', // Alle Gewerke
+        tradeIds: tradeIds,
         timeframe: selectedProject.timeframe || 'Nach Absprache'
       })
     });
 
     if (res.ok) {
       const data = await res.json();
-      alert(`Ausschreibung erfolgreich gestartet! ${data.message}`);
+      
+      // Zeige spezifische Infos über gematchte Handwerker
+      const totalMatched = data.tenders.reduce((sum, t) => sum + t.matchedHandwerker, 0);
+      
+      if (totalMatched === 0) {
+        alert('⚠️ Aktuell keine passenden Handwerker verfügbar. Wir benachrichtigen Sie, sobald sich passende Betriebe registrieren.');
+      } else {
+        alert(`✅ ${totalMatched} Handwerker wurden benachrichtigt und können nun Angebote abgeben!`);
+      }
+      
       loadUserProjects(userData.email);
-    } else {
-      throw new Error('Ausschreibung fehlgeschlagen');
     }
   } catch (err) {
-    console.error('Fehler beim Starten der Ausschreibung:', err);
+    console.error('Fehler:', err);
     alert('Fehler beim Starten der Ausschreibung');
   } finally {
     setLoading(false);
