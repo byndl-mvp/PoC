@@ -427,49 +427,199 @@ const ContractNegotiationModal = () => {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Pending LV-Projekt Hinweis */}
-        {pendingLvProjectId && projects.find(p => p.id === parseInt(pendingLvProjectId)) && (
-          <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6">
-            <h3 className="text-yellow-300 font-semibold text-lg mb-2">
-              📋 Unvollständiges Projekt
-            </h3>
-            <p className="text-gray-300 mb-4">
-              Sie haben Gewerke für Ihr Projekt ausgewählt. Die KI-generierten Leistungsverzeichnisse warten auf Ihre Bearbeitung.
-            </p>
-            <button
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">  
+  {/* Projekt-Karten Grid - Hauptübersicht */}
+  {!selectedProject ? (
+    <div>
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2">Meine Projekte</h2>
+        <p className="text-gray-400">Wählen Sie ein Projekt zur Bearbeitung</p>
+      </div>
+      
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {projects.map((project) => {
+          const progress = ((project.completedLvs || 0) / (project.trades?.length || 1)) * 100;
+          const isPending = pendingLvProjectId && project.id === parseInt(pendingLvProjectId);
+          const statusColor = project.status === 'Bereit zur Ausschreibung' ? 'green' :
+                             project.status === 'Ausschreibung läuft' ? 'blue' :
+                             project.status?.includes('LVs erstellt') ? 'yellow' : 'gray';
+          
+          return (
+            <div
+              key={project.id}
+              className={`bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-2xl border ${
+                isPending ? 'border-yellow-500/50 ring-2 ring-yellow-500/30' : 'border-white/20'
+              } hover:border-teal-500/50 transition-all hover:shadow-2xl hover:scale-[1.02] cursor-pointer relative`}
               onClick={() => {
-                navigate(`/project/${pendingLvProjectId}/lv-review`);
-                sessionStorage.removeItem('pendingLvProject');
+                setSelectedProject(project);
+                loadProjectDetails(project.id);
+                if (isPending) sessionStorage.removeItem('pendingLvProject');
               }}
-              className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
             >
-              Projekt fortsetzen und LVs bearbeiten →
+              {/* Pending Badge */}
+              {isPending && (
+                <div className="absolute -top-2 -right-2 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-full animate-pulse">
+                  NEU
+                </div>
+              )}
+              
+              {/* Status Badge */}
+              <div className="px-6 pt-6 pb-3">
+                <div className="flex justify-between items-start mb-4">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                    ${statusColor === 'green' ? 'bg-green-500/20 text-green-300' :
+                      statusColor === 'blue' ? 'bg-blue-500/20 text-blue-300' :
+                      statusColor === 'yellow' ? 'bg-yellow-500/20 text-yellow-300' :
+                      'bg-gray-500/20 text-gray-300'}`}>
+                    {project.status}
+                  </span>
+                  <span className="text-gray-400 text-xs">
+                    ID: {project.id}
+                  </span>
+                </div>
+                
+                {/* Projekt Name */}
+                <h3 className="text-xl font-bold text-white mb-2">
+                  {project.category}
+                </h3>
+                <p className="text-gray-400 text-sm mb-4">
+                  {project.sub_category}
+                </p>
+                
+                {/* Pending Hinweis */}
+                {isPending && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4">
+                    <p className="text-yellow-300 text-xs font-semibold">
+                      📋 LVs warten auf Bearbeitung
+                    </p>
+                  </div>
+                )}
+                
+                {/* Progress Bar */}
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>LV-Fortschritt</span>
+                    <span>{project.completedLvs || 0} / {project.trades?.length || 0}</span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">Gewerke</p>
+                    <p className="text-lg font-semibold text-white">
+                      {project.trades?.length || 0}
+                    </p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">Geschätzt</p>
+                    <p className="text-lg font-semibold text-teal-400">
+                      {formatCurrency(project.totalCost)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Button */}
+              <div className="px-6 pb-6">
+                <button
+                  className={`w-full px-4 py-3 ${
+                    isPending 
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500' 
+                      : 'bg-gradient-to-r from-teal-500 to-blue-600'
+                  } text-white rounded-lg font-semibold hover:shadow-lg transition-all`}
+                >
+                  {isPending ? 'LVs bearbeiten →' : 'Projekt öffnen →'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        
+        {/* Neue Projekt Karte */}
+        <div
+          className="bg-gradient-to-br from-purple-600/20 to-indigo-600/20 backdrop-blur-lg rounded-2xl border-2 border-dashed border-purple-500/50 hover:border-purple-400 transition-all hover:shadow-2xl cursor-pointer flex items-center justify-center min-h-[400px]"
+          onClick={() => navigate('/start')}
+        >
+          <div className="text-center p-6">
+            <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Neues Projekt</h3>
+            <p className="text-gray-400 text-sm mb-4">Starten Sie ein neues Bauprojekt</p>
+            <button className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+              Projekt erstellen
             </button>
           </div>
-        )}
-     
-        {/* Projekt-Auswahl */}
-        {projects.length > 0 && (
-          <div className="mb-8">
-            <label className="text-white text-sm font-medium mb-2 block">Projekt auswählen:</label>
-            <select
-              value={selectedProject?.id || ''}
-              onChange={(e) => {
-                const project = projects.find(p => p.id === parseInt(e.target.value));
-                setSelectedProject(project);
-                if (project) loadProjectDetails(project.id);
-              }}
-              className="bg-white/10 backdrop-blur border border-white/30 rounded-lg px-4 py-2 text-white"
-            >
-              {projects.map(project => (
-                <option key={project.id} value={project.id} className="bg-slate-800">
-                  {project.category} - {project.sub_category} ({project.status})
-                </option>
-              ))}
-            </select>
+        </div>
+      </div>
+    </div>
+  ) : (
+    /* Ausgewähltes Projekt - Detailansicht */
+    <>
+      {/* Zurück-Navigation */}
+      <div className="mb-6">
+        <button
+          onClick={() => {
+            setSelectedProject(null);
+            setActiveTab('overview');
+          }}
+          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Zurück zur Projektübersicht
+        </button>
+      </div>
+      
+      {/* Pending Hinweis in Projektansicht */}
+      {pendingLvProjectId && selectedProject.id === parseInt(pendingLvProjectId) && (
+        <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6">
+          <h3 className="text-yellow-300 font-semibold text-lg mb-2">
+            📋 Unvollständiges Projekt
+          </h3>
+          <p className="text-gray-300 mb-4">
+            Die KI-generierten Leistungsverzeichnisse warten auf Ihre Bearbeitung.
+          </p>
+          <button
+            onClick={() => {
+              navigate(`/project/${selectedProject.id}/lv-review`);
+              sessionStorage.removeItem('pendingLvProject');
+            }}
+            className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
+          >
+            Jetzt LVs bearbeiten →
+          </button>
+        </div>
+      )}
+      
+      {/* Projekt-Header */}
+      <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 rounded-xl p-6 mb-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {selectedProject.category} - {selectedProject.sub_category}
+            </h1>
+            <p className="text-gray-400">
+              Status: {selectedProject.status} | 
+              Erstellt: {new Date(selectedProject.created_at).toLocaleDateString('de-DE')}
+            </p>
           </div>
-        )}
+          <div className="text-right">
+            <p className="text-sm text-gray-400">Geschätzte Kosten</p>
+            <p className="text-2xl font-bold text-teal-400">{formatCurrency(selectedProject.totalCost)}</p>
+          </div>
+        </div>
+      </div>
 
         {/* HIER Block 2 einfügen - Verwendung des ProjectWizard */}
 {selectedProject && (
