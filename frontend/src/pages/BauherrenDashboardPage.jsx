@@ -1291,6 +1291,8 @@ const ContractNegotiationModal = () => {
             + Neues Projekt anlegen
           </Link>
         </div>
+        </> 
+        )} 
       </div>
 
       {/* Modal für Vertragsanbahnung */}
