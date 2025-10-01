@@ -68,7 +68,7 @@ export default function BauherrenLoginPage() {
           userId: data.user.id
         }));
         
-        // Zum Dashboard navigieren
+        // Zur Projektübersicht navigieren (nicht direkt zu einem Projekt)
         navigate('/bauherr/dashboard');
       } else {
         if (data.error === 'Passwort erforderlich') {
