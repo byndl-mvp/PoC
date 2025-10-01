@@ -620,11 +620,6 @@ const ContractNegotiationModal = () => {
           </div>
         </div>
       </div>
-
-        {/* HIER Block 2 einfügen - Verwendung des ProjectWizard */}
-{selectedProject && (
-  <ProjectWizard project={selectedProject} />
-)}
         
         {/* Tabs */}
         <div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
