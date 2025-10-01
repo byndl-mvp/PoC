@@ -9725,6 +9725,9 @@ const relevantAnswers = answers
   .filter(a => a.answer.length > 15 && !['ja', 'nein', 'keine', 'vorhanden'].includes(a.answer.toLowerCase().trim()))
   .map(a => ({ question: a.question, answer: a.answer }));
 
+// Definiere allAnswersText für Keyword-Matching
+const allAnswersText = answers.map(a => `${a.question} ${a.answer}`).join(' ').toLowerCase();
+    
 console.log('[INTAKE-VALIDATION] Erkannt:', additionalTrades.length, 'Gewerke');
 if (rejectedTrades.length > 0) {
   console.log('[INTAKE-VALIDATION] Abgelehnt:', rejectedTrades.map(r => 
