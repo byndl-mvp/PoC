@@ -98,13 +98,17 @@ export default function BauherrenDashboardPage() {
     }
   };
 
-  const determineProjectStatus = (project, lvData) => {
-    if (!lvData) return 'In Vorbereitung';
-    if (project.tendersSent) return 'Ausschreibung läuft';
-    if (project.ordersPlaced) return 'In Ausführung';
-    if (project.completed) return 'Abgeschlossen';
-    return 'LV erstellt';
-  };
+  const determineProjectStatus = (project, tradesData, completedLvs) => {
+  const totalTrades = tradesData?.length || 0;
+  const lvCount = completedLvs?.length || 0;
+  
+  if (totalTrades === 0) return 'Gewerke wählen';
+  if (lvCount === 0) return `0 von ${totalTrades} LVs erstellt`;
+  if (lvCount < totalTrades) return `${lvCount} von ${totalTrades} LVs erstellt`;
+  if (project.tendersSent) return 'Ausschreibung läuft';
+  if (project.ordersPlaced) return 'In Ausführung';
+  return 'Bereit zur Ausschreibung';
+};
 
   const loadProjectDetails = async (projectId) => {
     try {
