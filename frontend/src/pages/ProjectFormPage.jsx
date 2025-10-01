@@ -57,11 +57,18 @@ const CATEGORIES = {
 
 export default function ProjectFormPage() {
   const navigate = useNavigate();
-  const [currentSection, setCurrentSection] = useState('user'); // 'user' or 'project'
+  
+  // Check ob Bauherr eingeloggt ist
+  const bauherrData = JSON.parse(sessionStorage.getItem('bauherrData') || sessionStorage.getItem('userData') || '{}');
+  const isLoggedIn = bauherrData.email && bauherrData.name;
+  
+  // Startsektion basierend auf Login-Status
+  const [currentSection, setCurrentSection] = useState(isLoggedIn ? 'project' : 'user');
+  
   const [form, setForm] = useState({
-    // Nutzerdaten
-    userName: '',
-    userEmail: '',
+    // Nutzerdaten - bei eingeloggten Usern vorausfüllen
+    userName: isLoggedIn ? bauherrData.name : '',
+    userEmail: isLoggedIn ? bauherrData.email : '',
     // Projektadresse
     projectStreet: '',
     projectHouseNumber: '',
@@ -74,6 +81,7 @@ export default function ProjectFormPage() {
     timeframe: '',
     budget: '',
   });
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -123,6 +131,13 @@ export default function ProjectFormPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validierung für eingeloggte User - nur Projektadresse prüfen
+    if (isLoggedIn && (!form.projectStreet || !form.projectHouseNumber || 
+        !form.projectZip || !form.projectCity)) {
+      setError('Bitte füllen Sie alle Adressfelder aus.');
+      return;
+    }
+    
     if (form.category && form.subCategories.length === 0) {
       setError('Bitte wählen Sie mindestens eine Unterkategorie aus.');
       return;
@@ -133,9 +148,11 @@ export default function ProjectFormPage() {
     
     try {
       const projectData = {
-        // User data
-        userName: form.userName,
-        userEmail: form.userEmail,
+        // User data - bei eingeloggten Nutzern aus Session nehmen
+        userName: isLoggedIn ? bauherrData.name : form.userName,
+        userEmail: isLoggedIn ? bauherrData.email : form.userEmail,
+        // Bauherr ID mitschicken wenn eingeloggt
+        bauherrId: isLoggedIn ? bauherrData.id : null,
         // Project address
         address: {
           street: form.projectStreet,
@@ -165,11 +182,13 @@ export default function ProjectFormPage() {
       const data = await res.json();
       const { project } = data;
       
-      // Speichere Nutzerdaten im sessionStorage für spätere Verwendung
-      sessionStorage.setItem('userData', JSON.stringify({
-        name: form.userName,
-        email: form.userEmail
-      }));
+      // Nur für nicht eingeloggte User speichern
+      if (!isLoggedIn) {
+        sessionStorage.setItem('userData', JSON.stringify({
+          name: form.userName,
+          email: form.userEmail
+        }));
+      }
       
       // Direkt zur Intake-Seite navigieren
       navigate(`/project/${project.id}/intake`);
@@ -200,36 +219,40 @@ export default function ProjectFormPage() {
           </a>
         </div>
 
-        {/* Progress Indicator */}
-        <div className="flex justify-between items-center mb-12 max-w-md mx-auto">
-          <div className="flex items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-              currentSection === 'user' ? 'bg-teal-500' : 'bg-teal-600'
-            }`}>
-              {currentSection === 'project' ? '✓' : '1'}
+        {/* Progress Indicator - nur zeigen wenn nicht eingeloggt */}
+        {!isLoggedIn && (
+          <div className="flex justify-between items-center mb-12 max-w-md mx-auto">
+            <div className="flex items-center">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                currentSection === 'user' ? 'bg-teal-500' : 'bg-teal-600'
+              }`}>
+                {currentSection === 'project' ? '✓' : '1'}
+              </div>
+              <span className="ml-2 text-white text-sm">Ihre Daten</span>
             </div>
-            <span className="ml-2 text-white text-sm">Ihre Daten</span>
-          </div>
-          <div className="flex-1 h-0.5 bg-white/20 mx-2"></div>
-          <div className="flex items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-              currentSection === 'project' ? 'bg-teal-500 text-white' : 'bg-white/20 text-white/60'
-            }`}>
-              2
+            <div className="flex-1 h-0.5 bg-white/20 mx-2"></div>
+            <div className="flex items-center">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                currentSection === 'project' ? 'bg-teal-500 text-white' : 'bg-white/20 text-white/60'
+              }`}>
+                2
+              </div>
+              <span className={`ml-2 text-sm ${
+                currentSection === 'project' ? 'text-white' : 'text-white/60'
+              }`}>Projektdetails</span>
             </div>
-            <span className={`ml-2 text-sm ${
-              currentSection === 'project' ? 'text-white' : 'text-white/60'
-            }`}>Projektdetails</span>
           </div>
-        </div>
+        )}
 
-        {/* Main Title */}
+        {/* Main Title anpassen */}
         <div className="text-center mb-8">
           <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-            Projekt anlegen
+            {isLoggedIn ? 'Neues Projekt anlegen' : 'Projekt anlegen'}
           </h1>
           <p className="text-xl text-gray-300">
-            In wenigen Schritten zur professionellen Ausschreibung
+            {isLoggedIn 
+              ? 'Beschreiben Sie Ihr Bauvorhaben' 
+              : 'In wenigen Schritten zur professionellen Ausschreibung'}
           </p>
         </div>
 
@@ -237,8 +260,8 @@ export default function ProjectFormPage() {
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Section 1: Nutzerdaten */}
-            {currentSection === 'user' && (
+            {/* Section 1: Nutzerdaten - NUR für nicht eingeloggte User */}
+            {currentSection === 'user' && !isLoggedIn && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-semibold text-white border-b border-white/20 pb-2">
                   Ihre Kontaktdaten
@@ -376,24 +399,108 @@ export default function ProjectFormPage() {
               </div>
             )}
 
-            {/* Section 2: Projektdetails */}
-            {currentSection === 'project' && (
+            {/* Section 2: Projektdetails - Direkt für eingeloggte User */}
+            {(currentSection === 'project' || (isLoggedIn && currentSection !== 'user')) && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-semibold text-white border-b border-white/20 pb-2">
                   Projektdetails
                 </h2>
                 
-                {/* Back Button */}
-                <button
-                  type="button"
-                  onClick={() => handleSectionChange('user')}
-                  className="text-gray-400 hover:text-white transition-colors flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
-                  </svg>
-                  Zurück
-                </button>
+                {/* Back Button - nur für nicht eingeloggte User */}
+                {!isLoggedIn && (
+                  <button
+                    type="button"
+                    onClick={() => handleSectionChange('user')}
+                    className="text-gray-400 hover:text-white transition-colors flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Zurück
+                  </button>
+                )}
+                
+                {/* Projektadresse für eingeloggte User */}
+                {isLoggedIn && (
+                  <>
+                    <h3 className="text-lg font-semibold text-white mt-6">Projektstandort</h3>
+                    
+                    {/* Straße und Hausnummer */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-2">
+                        <label className="block text-white font-medium mb-2">
+                          Straße *
+                        </label>
+                        <input
+                          type="text"
+                          name="projectStreet"
+                          value={form.projectStreet}
+                          onChange={handleChange}
+                          required
+                          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                          placeholder="Musterstraße"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-white font-medium mb-2">
+                          Hausnr. *
+                        </label>
+                        <input
+                          type="text"
+                          name="projectHouseNumber"
+                          value={form.projectHouseNumber}
+                          onChange={handleChange}
+                          required
+                          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                          placeholder="12a"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* PLZ und Ort */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-white font-medium mb-2">
+                          PLZ *
+                        </label>
+                        <input
+                          type="text"
+                          name="projectZip"
+                          value={form.projectZip}
+                          onChange={handleChange}
+                          required
+                          pattern="[0-9]{5}"
+                          maxLength="5"
+                          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                          placeholder="52349"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-white font-medium mb-2">
+                          Ort *
+                        </label>
+                        <input
+                          type="text"
+                          name="projectCity"
+                          value={form.projectCity}
+                          onChange={handleChange}
+                          required
+                          className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                          placeholder="Düren"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Info Box für Adresse */}
+                    <div className="bg-teal-500/20 border border-teal-500/50 rounded-lg p-4">
+                      <p className="text-teal-200 text-sm">
+                        <strong>💡 Warum brauchen wir die Adresse?</strong><br />
+                        Die genaue Projektadresse ermöglicht uns, Handwerker aus Ihrer Region zu finden 
+                        und ähnliche Projekte in Ihrer Nähe zu bündeln - für bessere Preise und kürzere Wartezeiten.
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 {/* Hauptkategorie */}
                 <div>
