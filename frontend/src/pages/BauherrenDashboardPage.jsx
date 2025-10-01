@@ -620,7 +620,10 @@ const ContractNegotiationModal = () => {
           </div>
         </div>
       </div>
-        
+
+      {/* Project Wizard */}
+      <ProjectWizard project={selectedProject} />
+      
         {/* Tabs */}
         <div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
           {['overview', 'tenders', 'offers', 'contracts', 'orders', 'budget', 'schedule'].map((tab) => (
