@@ -22,44 +22,52 @@ export default function BauherrEmailVerification() {
   }
   
   const verifyEmail = async (token) => {
-  try {
-    const response = await fetch(apiUrl('/api/bauherr/verify-email?token=' + token));
-    const data = await response.json();
-    
-    if (response.ok) {
-      setStatus('success');
-      setName(data.name || '');
+    try {
+      const response = await fetch(apiUrl('/api/bauherr/verify-email?token=' + token));
+      const data = await response.json();
       
-      // Token speichern falls vom Backend gesendet
-      if (data.token) {
-        sessionStorage.setItem('bauherrToken', data.token);
-        sessionStorage.setItem('userData', JSON.stringify({
-          id: data.id,
-          userId: data.id,  
-          name: data.name,
-          email: data.email,
-          emailVerified: true
-        }));
+      if (response.ok) {
+        setStatus('success');
+        setName(data.name || '');
+        
+        // Token speichern falls vom Backend gesendet
+        if (data.token) {
+          sessionStorage.setItem('bauherrToken', data.token);
+          sessionStorage.setItem('bauherrData', JSON.stringify({
+            id: data.id,
+            userId: data.id,
+            name: data.name,
+            email: data.email,
+            emailVerified: true
+          }));
+          // Zusätzlich für Rückwärtskompatibilität:
+          sessionStorage.setItem('userData', JSON.stringify({
+            id: data.id,
+            userId: data.id,
+            name: data.name,
+            email: data.email,
+            emailVerified: true
+          }));
+        }  // <-- Diese schließende Klammer fehlte!
+        
+        setTimeout(() => {
+          navigate('/bauherr/dashboard');
+        }, 3000);
+      } else {
+        setStatus('error');
+        setMessage(data.error || 'Verifizierung fehlgeschlagen');
+        if (data.error?.includes('abgelaufen')) {
+          setStatus('expired');
+        }
       }
-      
-      setTimeout(() => {
-        navigate('/bauherr/dashboard');
-      }, 3000);
-    } else {
+    } catch (error) {
+      console.error('Verifizierungsfehler:', error);
       setStatus('error');
-      setMessage(data.error || 'Verifizierung fehlgeschlagen');
-      if (data.error?.includes('abgelaufen')) {
-        setStatus('expired');
-      }
+      setMessage('Ein Fehler ist aufgetreten.');
     }
-  } catch (error) {
-    console.error('Verifizierungsfehler:', error);
-    setStatus('error');
-    setMessage('Ein Fehler ist aufgetreten.');
-  }
-};
-
-verifyEmail(token);
+  };
+  
+  verifyEmail(token);
 }, [searchParams, navigate]); // <-- HIER FEHLTE DIE SCHLIEßENDE KLAMMER UND DEPENDENCIES
   
   const handleResend = async () => {
