@@ -115,8 +115,16 @@ export default function BauherrenDashboardPage() {
       
       setProjects(projectsWithDetails);
       if (projectsWithDetails.length > 0) {
-        setSelectedProject(projectsWithDetails[0]);
-        loadProjectDetails(projectsWithDetails[0].id);
+        // Nicht automatisch ein Projekt auswählen - bei Projektübersicht bleiben
+        // Nur wenn ein pendingLvProjectId vorhanden ist, dieses Projekt öffnen
+        if (pendingLvProjectId) {
+          const pendingProject = projectsWithDetails.find(p => p.id === parseInt(pendingLvProjectId));
+          if (pendingProject) {
+            setSelectedProject(pendingProject);
+            loadProjectDetails(pendingProject.id);
+          }
+        }
+        // Ansonsten bleibt selectedProject null und die Projektübersicht wird angezeigt
       }
     }
   } catch (err) {
