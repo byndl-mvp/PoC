@@ -2855,17 +2855,47 @@ for (const [tradeCode, keywords] of Object.entries(TRADE_DETECTION_RULES.exclusi
     .join(' ');
   
   for (const keyword of keywords) {
-    if (fullText.includes(keyword)) {
-      matchedKeywords.push(keyword);
+  // Intelligentere Keyword-Erkennung
+  let isMatched = false;
+  
+  if (keyword.includes(' ')) {
+    // Phrase (z.B. "neue gaube") - extrahiere Hauptwort
+    const words = keyword.split(' ');
+    const mainWord = words.find(w => w.length > 4) || words[words.length - 1];
+    
+    // Prüfe ob Hauptwort im Text ist
+    if (fullText.includes(mainWord)) {
+      // Prüfe ob andere Teile der Phrase auch in der Nähe sind
+      const mainIndex = fullText.indexOf(mainWord);
+      const nearbyText = fullText.substring(Math.max(0, mainIndex - 50), mainIndex + 50);
+      const otherParts = words.filter(w => w !== mainWord);
       
-      // Track woher das Keyword kommt
-      if (descriptionText.includes(keyword)) {
-        matchedFromDescription.push(keyword);
-      } else if (intakeText.includes(keyword)) {
-        matchedFromIntake.push(keyword);
+      if (otherParts.length === 0 || otherParts.some(part => nearbyText.includes(part))) {
+        isMatched = true;
       }
     }
+  } else {
+    // Einzelwort - normale exakte Suche
+    if (fullText.includes(keyword)) {
+      isMatched = true;
+    }
   }
+  
+  if (isMatched) {
+    matchedKeywords.push(keyword);
+    
+    // Track woher das Keyword kommt (mit gleicher Logik)
+    const checkWord = keyword.includes(' ') ? 
+      (keyword.split(' ').find(w => w.length > 4) || keyword.split(' ').pop()) : 
+      keyword;
+    
+    if (descriptionText.includes(checkWord)) {
+      matchedFromDescription.push(keyword);
+    } else if (intakeText.includes(checkWord)) {
+      matchedFromIntake.push(keyword);
+    }
+  }
+}
     
     if (matchedKeywords.length > 0) {
       // 2. PHASE: Validierung gegen verbotene Begriffe
