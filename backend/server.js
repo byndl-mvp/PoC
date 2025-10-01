@@ -2904,6 +2904,8 @@ detectedTrades.set(tradeCode, {
 });
 
 console.log(`[TRADE-DETECT] ✓ ${tradeCode}: ${matchedKeywords.length} Keywords, ${confidence}% Konfidenz, Source: ${source}`);
+  }  
+}  
   
   // 4. PHASE: Kreuz-Validierung und Korrektur falscher Zuordnungen
   const corrections = new Map();
