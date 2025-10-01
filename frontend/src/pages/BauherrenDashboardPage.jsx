@@ -704,23 +704,8 @@ const ContractNegotiationModal = () => {
           Ihre Leistungsverzeichnisse sind vollständig. Sie können jetzt die Ausschreibung starten.
         </p>
         <button
-          onClick={async () => {
-            if (!window.confirm('Alle Gewerke an passende Handwerker ausschreiben?')) return;
-            
-            const res = await fetch(apiUrl(`/api/projects/${selectedProject.id}/tender/create`), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                tradeIds: 'all',
-                timeframe: selectedProject.timeframe
-              })
-            });
-            
-            if (res.ok) {
-              alert('Ausschreibung erfolgreich gestartet!');
-              loadUserProjects(userData.email);
-            }
-          }}
+          onClick={handleStartTender}
+          
           className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
         >
           🚀 Jetzt alle Gewerke ausschreiben
