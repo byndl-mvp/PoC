@@ -2697,7 +2697,7 @@ const TRADE_DETECTION_RULES = {
       'wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn',
       'armatur', 'sanitär', 'bad komplett', 'toilette', 'waschtisch',
       'wasserleitung', 'abwasser', 'fallleitung', 'hebeanlage', 'rückstauklappe',
-      'wasseranschluss', 'sanitärobjekte', 'urinal', 'bidet', 'dusch-wc',
+      'wasseranschluss bad', 'wasseranschluss küche', 'sanitärobjekte', 'urinal', 'bidet', 
       'sanitärinstallation', 'bad sanieren', 'badezimmer'
     ],
     
