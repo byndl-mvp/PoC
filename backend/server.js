@@ -3059,7 +3059,7 @@ function calculateTradeConfidence(tradeCode, matchedKeywords) {
 function generateTradeReason(tradeCode, keywords, intakeAnswers) {
   // Fallback-Begründung ohne Kürzung
   const relevantKeywords = keywords.slice(0, 3).join(', ');
-  return `Möglicher Bedarf für dieses Gewerk durch Begriffe erkannt: ${relevantKeywords}`;
+  return `Möglicher Bedarf für dieses Gewerk durch folgende Begriffe erkannt: ${relevantKeywords}`;
 }
 
 /**
