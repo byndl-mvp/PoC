@@ -9891,15 +9891,29 @@ const requiredTrades = await query(
 
 // 5. Erstelle Response mit verbesserter Kategorisierung
 // Prüfe ob die Trades aus detectAndValidateTradesFromIntake source/category Info haben
-const tradesWithSourceInfo = validationResult?.trades?.some(t => t.source !== undefined);  // GEÄNDERT: validationResult statt additionalDetectionResult
-
+const tradesWithSourceInfo = validationResult?.trades?.some(t => t.source !== undefined);
 let groupedTrades; // WICHTIG: Variable außerhalb deklarieren
 
 if (tradesWithSourceInfo) {
-  // Neue Version: Nutze source/category aus detectAndValidateTradesFromIntake
+  // Hole IDs für die Trades aus validationResult
+  const tradesWithIds = await Promise.all(
+    validationResult.trades.map(async (trade) => {
+      const dbResult = await query(
+        'SELECT id, name FROM trades WHERE code = $1',
+        [trade.code]
+      );
+      return {
+        ...trade,
+        id: dbResult.rows[0]?.id,
+        name: dbResult.rows[0]?.name || trade.code
+      };
+    })
+  );
+  
+  // Neue Version mit IDs
   const allDetectedTrades = [
     ...requiredTrades.rows.map(t => ({ ...t, source: 'description' })),
-    ...validationResult.trades  // GEÄNDERT: validationResult statt additionalDetectionResult
+    ...tradesWithIds  // Jetzt mit IDs!
   ];
   
   groupedTrades = {
@@ -9910,7 +9924,7 @@ if (tradesWithSourceInfo) {
       t.source === 'intake' || t.category === 'recommended'
     )
   };
-} else {
+} else {  // <- Direkt nach der schließenden Klammer vom if
   // Fallback: Alte Version ohne source tracking
   groupedTrades = {
     required: requiredTrades.rows.map(trade => ({
@@ -9929,7 +9943,7 @@ res.json({
   summary,
   groupedTrades,
   additionalTradesDetected: allRecommendedTrades
-});  // GEÄNDERT: Schließende Klammer hinzugefügt
+});
 
   } catch (err) {
     console.error('intake/summary failed:', err);
