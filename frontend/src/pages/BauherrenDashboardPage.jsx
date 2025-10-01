@@ -343,6 +343,47 @@ const ContractNegotiationModal = () => {
 
   const budgetOverview = calculateBudgetOverview();
 
+  const ProjectWizard = ({ project }) => (
+  <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-6 mb-8">
+    <h3 className="text-lg font-semibold text-white mb-4">Ihr Projekt-Fortschritt</h3>
+    
+    <div className="flex items-center justify-between">
+      {[
+        { step: 1, label: 'Gewerke wählen', done: project.trades?.length > 0 },
+        { step: 2, label: 'LVs erstellen', done: project.completedLvs > 0, current: true },
+        { step: 3, label: 'Ausschreiben', done: project.hasTenders },
+        { step: 4, label: 'Angebote prüfen', done: project.offers?.length > 0 },
+        { step: 5, label: 'Beauftragen', done: project.orders?.length > 0 }
+      ].map((step, idx) => (
+        <div key={idx} className="flex flex-col items-center">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
+            step.done ? 'bg-green-500 text-white' :
+            step.current ? 'bg-yellow-500 text-white animate-pulse' :
+            'bg-gray-600 text-gray-400'
+          }`}>
+            {step.done ? '✓' : step.step}
+          </div>
+          <span className={`text-xs mt-2 ${
+            step.done ? 'text-green-400' :
+            step.current ? 'text-yellow-400' :
+            'text-gray-500'
+          }`}>
+            {step.label}
+          </span>
+        </div>
+      ))}
+    </div>
+    
+    {project.completedLvs === 0 && (
+      <div className="mt-6 bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
+        <p className="text-yellow-300">
+          <strong>Nächster Schritt:</strong> Erstellen Sie die Leistungsverzeichnisse für Ihre gewählten Gewerke
+        </p>
+      </div>
+    )}
+  </div>
+);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
@@ -418,6 +459,11 @@ const ContractNegotiationModal = () => {
           </div>
         )}
 
+        {/* HIER Block 2 einfügen - Verwendung des ProjectWizard */}
+{selectedProject && (
+  <ProjectWizard project={selectedProject} />
+)}
+        
         {/* Tabs */}
         <div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
           {['overview', 'tenders', 'offers', 'contracts', 'orders', 'budget', 'schedule'].map((tab) => (
