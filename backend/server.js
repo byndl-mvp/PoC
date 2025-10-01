@@ -4385,9 +4385,11 @@ if (projectContext.answeredValues) {
       return false;
     }
     
+    // MATERIAL NUR FÜR INTAKE FILTERN
     if (projectContext.answeredValues.material && 
-        qText.includes('material')) {
-      console.log('[FILTER] Removed material question - already answered');
+        qText.includes('material') && 
+        tradeCode === 'INT') {  // <- NUR für Intake!
+      console.log('[FILTER] Removed material question - already answered in intake');
       return false;
     }
     
@@ -4395,7 +4397,7 @@ if (projectContext.answeredValues) {
   });
   
   console.log(`[FILTER] Removed ${questions.length - afterAnswerFilter.length} answered questions`);
-  questions = afterAnswerFilter; // WICHTIG: Zurückschreiben!
+  questions = afterAnswerFilter;
 }
 
 // Zähle Fragen vor Duplikat-Filter
