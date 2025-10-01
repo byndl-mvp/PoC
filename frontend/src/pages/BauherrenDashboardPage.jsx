@@ -59,44 +59,72 @@ export default function BauherrenDashboardPage() {
 }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUserProjects = async (email) => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
+    
+    const res = await fetch(apiUrl(`/api/projects/user/${encodeURIComponent(email)}`));
+    
+    if (res.ok) {
+      const projectsData = await res.json();
       
-      const res = await fetch(apiUrl(`/api/projects/user/${encodeURIComponent(email)}`));
-      
-      if (res.ok) {
-        const projectsData = await res.json();
-        
-        const projectsWithDetails = await Promise.all(
-          projectsData.map(async (project) => {
-            const lvRes = await fetch(apiUrl(`/api/projects/${project.id}/lv`));
-            const lvData = lvRes.ok ? await lvRes.json() : null;
-            
-            const tradesRes = await fetch(apiUrl(`/api/projects/${project.id}/trades`));
-            const tradesData = tradesRes.ok ? await tradesRes.json() : [];
-            
+      const projectsWithDetails = await Promise.all(
+        projectsData.map(async (project) => {
+          // Lade Gewerke
+          const tradesRes = await fetch(apiUrl(`/api/projects/${project.id}/trades`));
+          const tradesData = tradesRes.ok ? await tradesRes.json() : [];
+          
+          // Lade LVs
+          const lvRes = await fetch(apiUrl(`/api/projects/${project.id}/lv`));
+          const lvData = lvRes.ok ? await lvRes.json() : { lvs: [] };
+          
+          // Zähle fertige LVs
+          const completedLvs = (lvData.lvs || []).filter(lv => 
+            lv.content?.positions?.length > 0
+          ).length;
+          
+          // Berechne Gesamtkosten
+          const totalCost = (lvData.lvs || []).reduce((sum, lv) => {
+            const lvSum = lv.content?.totalSum || 0;
+            return sum + parseFloat(lvSum);
+          }, 0);
+          
+          // Erstelle Trade-Details mit LV-Status
+          const tradesWithLv = tradesData.map(trade => {
+            const lv = lvData.lvs?.find(l => l.trade_id === trade.id);
             return {
-              ...project,
-              lv: lvData,
-              trades: tradesData,
-              totalCost: lvData?.totalCost || 0,
-              status: determineProjectStatus(project, lvData)
+              ...trade,
+              hasLV: !!lv && lv.content?.positions?.length > 0,
+              lv: lv,
+              totalCost: lv?.content?.totalSum || 0
             };
-          })
-        );
-        
-        setProjects(projectsWithDetails);
-        if (projectsWithDetails.length > 0) {
-          setSelectedProject(projectsWithDetails[0]);
-          loadProjectDetails(projectsWithDetails[0].id);
-        }
+          });
+          
+          return {
+            ...project,
+            trades: tradesWithLv,
+            completedLvs: completedLvs,
+            totalCost: totalCost,
+            status: determineProjectStatus(
+              project, 
+              tradesData, 
+              completedLvs
+            )
+          };
+        })
+      );
+      
+      setProjects(projectsWithDetails);
+      if (projectsWithDetails.length > 0) {
+        setSelectedProject(projectsWithDetails[0]);
+        loadProjectDetails(projectsWithDetails[0].id);
       }
-    } catch (err) {
-      console.error('Fehler beim Laden der Projekte:', err);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error('Fehler beim Laden der Projekte:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const determineProjectStatus = (project, tradesData, completedLvs) => {
   const totalTrades = tradesData?.length || 0;
