@@ -12766,6 +12766,71 @@ app.get('/api/projects/:projectId/trades', async (req, res) => {
   }
 });
 
+// Get project with full details for dashboard
+app.get('/api/projects/:projectId/dashboard-details', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Get project
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    }
+    
+    const project = projectResult.rows[0];
+    
+    // Get trades
+    const tradesResult = await query(
+      `SELECT t.*, pt.is_manual, pt.is_ai_recommended
+       FROM trades t
+       JOIN project_trades pt ON t.id = pt.trade_id
+       WHERE pt.project_id = $1`,
+      [projectId]
+    );
+    
+    // Get LVs
+    const lvsResult = await query(
+      `SELECT * FROM lvs WHERE project_id = $1`,
+      [projectId]
+    );
+    
+    // Get tender status
+    const tendersResult = await query(
+      `SELECT COUNT(*) as count FROM tenders WHERE project_id = $1`,
+      [projectId]
+    );
+    
+    // Get offers
+    const offersResult = await query(
+      `SELECT o.* FROM offers o
+       JOIN tenders t ON o.tender_id = t.id
+       WHERE t.project_id = $1`,
+      [projectId]
+    );
+    
+    res.json({
+      project: project,
+      trades: tradesResult.rows,
+      lvs: lvsResult.rows,
+      hasTenders: tendersResult.rows[0].count > 0,
+      offers: offersResult.rows,
+      completedLvs: lvsResult.rows.filter(lv => {
+        const content = typeof lv.content === 'string' ? 
+          JSON.parse(lv.content) : lv.content;
+        return content?.positions?.length > 0;
+      }).length
+    });
+    
+  } catch (error) {
+    console.error('Dashboard details error:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Details' });
+  }
+});
+
 // 3. TENDER & OFFER ROUTES
 // ----------------------------------------------------------------------------
 
