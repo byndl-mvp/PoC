@@ -169,28 +169,34 @@ export default function BauherrenDashboardPage() {
   };
 
   const handleStartTender = async () => {
-    if (!selectedProject) return;
-    
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/projects/${selectedProject.id}/tender/start`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          trades: selectedProject.trades.map(t => t.id)
-        })
-      });
+  if (!selectedProject) return;
+  
+  try {
+    setLoading(true);
+    // Verwende die NEUE, bessere Route
+    const res = await fetch(apiUrl(`/api/projects/${selectedProject.id}/tender/create`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tradeIds: 'all', // Alle Gewerke
+        timeframe: selectedProject.timeframe || 'Nach Absprache'
+      })
+    });
 
-      if (res.ok) {
-        alert('Ausschreibung wurde gestartet! Wir suchen nun passende Handwerksbetriebe in Ihrer Region.');
-        loadUserProjects(userData.email);
-      }
-    } catch (err) {
-      console.error('Fehler beim Starten der Ausschreibung:', err);
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      const data = await res.json();
+      alert(`Ausschreibung erfolgreich gestartet! ${data.message}`);
+      loadUserProjects(userData.email);
+    } else {
+      throw new Error('Ausschreibung fehlgeschlagen');
     }
-  };
+  } catch (err) {
+    console.error('Fehler beim Starten der Ausschreibung:', err);
+    alert('Fehler beim Starten der Ausschreibung');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Erweiterte Funktion für vorläufige Beauftragung
 const handlePreliminaryOrder = async (offer) => {
