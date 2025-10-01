@@ -2653,7 +2653,7 @@ const TRADE_DETECTION_RULES = {
     ],
     
     'ZIMM': [
-      'holzbau', 'dachstuhl neu', 'gaube', 'gaube bauen', 'neue gaube', 'gaube konstruktion',
+      'holzbau', 'dachstuhl', 'gaube', 'gauben', 'gaube bauen', 'neue gaube', 'gaube konstruktion',
       'carport', 'holzkonstruktion', 'fachwerk', 'holzrahmenbau', 'blockhaus',
       'dachstuhl errichten', 'aufstockung holz', 'holzbalken', 'sparren neu',
       'pfetten', 'kehlbalken', 'schwelle', 'holzständerbau', 'pergola',
@@ -2727,7 +2727,7 @@ const TRADE_DETECTION_RULES = {
     
     'FLI': [
       'verfugen', 'mosaik', 'naturstein bad', 'feinsteinzeug', 'bodenfliesen',
-      'wandfliesen', 'fliesen', 'kacheln', 'fliesenspiegel', 'bordüre',
+      'wandfliesen', 'fliesen', 'badfliesen', 'kacheln', 'fliesenspiegel', 'bordüre',
       'großformat fliesen', 'terracotta', 'zementfliesen', 'metro fliesen',
       'hexagon fliesen', 'fugenlos bad', 'fliesenarbeiten', 'fliesenleger'
     ],
@@ -2740,7 +2740,7 @@ const TRADE_DETECTION_RULES = {
     ],
     
     'MAL': [
-      'streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln',
+      'streichen', 'anstreichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln',
       'lackieren', 'grundierung', 'malerarbeiten', 'wandfarbe', 'deckenfarbe',
       'lasieren', 'raufaser', 'vliestapete', 'strukturputz innen',
       'streichputz', 'silikatfarbe', 'dispersionsfarbe', 'kalkputz innen',
