@@ -28,16 +28,13 @@ export default function BauherrenLoginPage() {
       setError('Bitte geben Sie Ihre E-Mail-Adresse ein.');
       return;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       // Neuer Login mit Passwort
       const res = await fetch(apiUrl('/api/bauherr/login'), {
@@ -51,14 +48,21 @@ export default function BauherrenLoginPage() {
       
       const data = await res.json();
       
-      if (res.ok) {
+      if (res.ok) {  // <-- DIESE ZEILE FEHLT BEI DIR!
         // Token und Daten speichern
         if (data.token) {
           sessionStorage.setItem('bauherrToken', data.token);
         }
-        
+        sessionStorage.setItem('bauherrData', JSON.stringify({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          userId: data.user.id,
+          emailVerified: data.user.emailVerified !== false
+        }));
+        // Für Rückwärtskompatibilität:
         sessionStorage.setItem('userData', JSON.stringify({
-          id: data.user.id,  
+          id: data.user.id,
           name: data.user.name,
           email: data.user.email,
           userId: data.user.id
