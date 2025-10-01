@@ -12834,47 +12834,6 @@ app.get('/api/projects/:projectId/dashboard-details', async (req, res) => {
 // 3. TENDER & OFFER ROUTES
 // ----------------------------------------------------------------------------
 
-// Start tender for project
-app.post('/api/projects/:projectId/tender/start', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    const { trades } = req.body;
-    
-    await query('BEGIN');
-    
-    try {
-      // Create tenders for each trade
-      for (const tradeId of trades) {
-        const tradeInfo = await query('SELECT code, name FROM trades WHERE id = $1', [tradeId]);
-        
-        await query(
-          `INSERT INTO tenders (project_id, trade_code, status, created_at, deadline)
-           VALUES ($1, $2, 'open', NOW(), NOW() + INTERVAL '14 days')`,
-          [projectId, tradeInfo.rows[0].code]
-        );
-      }
-      
-      // Update project status
-      await query(
-        'UPDATE projects SET tender_started = true, tender_started_at = NOW() WHERE id = $1',
-        [projectId]
-      );
-      
-      await query('COMMIT');
-      
-      res.json({ success: true, message: 'Ausschreibung gestartet' });
-      
-    } catch (innerErr) {
-      await query('ROLLBACK');
-      throw innerErr;
-    }
-    
-  } catch (error) {
-    console.error('Error starting tender:', error);
-    res.status(500).json({ error: 'Fehler beim Starten der Ausschreibung' });
-  }
-});
-
 // Get project tenders
 app.get('/api/projects/:projectId/tenders', async (req, res) => {
   try {
