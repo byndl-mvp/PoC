@@ -417,62 +417,232 @@ const ContractNegotiationModal = () => {
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
           {/* Übersicht Tab */}
           {activeTab === 'overview' && selectedProject && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Projektübersicht</h2>
-              
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white/10 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">Projektstatus</h3>
-                  <p className="text-xl font-semibold text-teal-400">{selectedProject.status}</p>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">Geschätzte Kosten</h3>
-                  <p className="text-xl font-semibold text-white">
-                    {selectedProject.totalCost?.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) || '-'}
-                  </p>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">Anzahl Gewerke</h3>
-                  <p className="text-xl font-semibold text-white">{selectedProject.trades?.length || 0}</p>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">Offene Angebote</h3>
-                  <p className="text-xl font-semibold text-yellow-400">
-                    {offers.filter(o => o.status === 'offen').length}
-                  </p>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">In Vertragsanbahnung</h3>
-                  <p className="text-xl font-semibold text-blue-400">
-                    {offers.filter(o => o.status === 'vertragsanbahnung').length}
-                  </p>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-4">
-                  <h3 className="text-gray-400 text-sm mb-2">Erteilte Aufträge</h3>
-                  <p className="text-xl font-semibold text-green-400">{orders.length}</p>
-                </div>
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Projektübersicht</h2>
+    
+    {/* Projekt-Status Card */}
+    <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 rounded-xl p-6 mb-6">
+      <h3 className="text-lg font-semibold text-white mb-4">Projektstatus</h3>
+      
+      {/* Progress Bar */}
+      <div className="mb-4">
+        <div className="flex justify-between text-sm text-gray-300 mb-2">
+          <span>Fortschritt</span>
+          <span>{selectedProject.completedLvs || 0} von {selectedProject.trades?.length || 0} LVs erstellt</span>
+        </div>
+        <div className="w-full bg-white/20 rounded-full h-3">
+          <div 
+            className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all"
+            style={{ 
+              width: `${((selectedProject.completedLvs || 0) / (selectedProject.trades?.length || 1)) * 100}%` 
+            }}
+          />
+        </div>
+      </div>
+      
+      {/* Status Steps */}
+      <div className="grid grid-cols-4 gap-2 mt-6">
+        <div className={`text-center p-3 rounded-lg ${
+          selectedProject.trades?.length > 0 ? 'bg-green-500/20 border-green-500' : 'bg-white/10'
+        } border`}>
+          <div className="text-2xl mb-1">✓</div>
+          <div className="text-xs text-gray-300">Gewerke gewählt</div>
+        </div>
+        <div className={`text-center p-3 rounded-lg ${
+          selectedProject.completedLvs > 0 ? 'bg-yellow-500/20 border-yellow-500' : 'bg-white/10'
+        } border`}>
+          <div className="text-2xl mb-1">{selectedProject.completedLvs > 0 ? '⚡' : '○'}</div>
+          <div className="text-xs text-gray-300">LVs in Bearbeitung</div>
+        </div>
+        <div className={`text-center p-3 rounded-lg ${
+          selectedProject.status === 'Ausschreibung läuft' ? 'bg-blue-500/20 border-blue-500' : 'bg-white/10'
+        } border`}>
+          <div className="text-2xl mb-1">{selectedProject.tendersSent ? '📤' : '○'}</div>
+          <div className="text-xs text-gray-300">Ausschreibung</div>
+        </div>
+        <div className={`text-center p-3 rounded-lg ${
+          orders.length > 0 ? 'bg-green-500/20 border-green-500' : 'bg-white/10'
+        } border`}>
+          <div className="text-2xl mb-1">{orders.length > 0 ? '✓' : '○'}</div>
+          <div className="text-xs text-gray-300">Aufträge</div>
+        </div>
+      </div>
+    </div>
+    
+    {/* Action Buttons */}
+    <div className="grid md:grid-cols-2 gap-4 mb-6">
+      {/* LV-Bearbeitung Button */}
+      <button
+        onClick={() => navigate(`/project/${selectedProject.id}/lv-review`)}
+        className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl p-6 hover:shadow-xl transform hover:scale-[1.02] transition-all"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold mb-2">📝 LVs bearbeiten</h3>
+            <p className="text-sm opacity-90">
+              {selectedProject.completedLvs === 0 
+                ? 'Jetzt mit der LV-Erstellung beginnen'
+                : `${selectedProject.trades?.length - selectedProject.completedLvs} LVs noch offen`
+              }
+            </p>
+          </div>
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </button>
+      
+      {/* Kostenübersicht Button */}
+      <button
+        onClick={() => {
+          if (selectedProject.completedLvs === 0) {
+            alert('Bitte erstellen Sie zuerst mindestens ein LV.');
+            return;
+          }
+          navigate(`/project/${selectedProject.id}/result`);
+        }}
+        className={`rounded-xl p-6 transition-all ${
+          selectedProject.completedLvs > 0
+            ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white hover:shadow-xl transform hover:scale-[1.02]'
+            : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
+        }`}
+        disabled={selectedProject.completedLvs === 0}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold mb-2">💰 Kostenübersicht</h3>
+            <p className="text-sm opacity-90">
+              {selectedProject.completedLvs > 0 
+                ? `Aktuelle Kalkulation: ${formatCurrency(selectedProject.totalCost)}`
+                : 'Noch keine LVs erstellt'
+              }
+            </p>
+          </div>
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </button>
+    </div>
+    
+    {/* Meine LVs Section */}
+    {selectedProject.completedLvs > 0 && (
+      <div className="bg-white/10 rounded-xl p-6 mb-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Meine erstellten LVs</h3>
+        <div className="space-y-3">
+          {selectedProject.trades?.filter(t => t.hasLV).map((trade, idx) => (
+            <div key={idx} className="bg-white/5 rounded-lg p-4 flex justify-between items-center">
+              <div>
+                <h4 className="text-white font-medium">{trade.name}</h4>
+                <p className="text-sm text-gray-400">
+                  {trade.lv?.content?.positions?.length || 0} Positionen | 
+                  {formatCurrency(trade.totalCost)}
+                </p>
               </div>
-
-              {selectedProject.status === 'LV erstellt' && (
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={handleStartTender}
-                    className="px-8 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
-                  >
-                    Jetzt ausschreiben →
-                  </button>
-                  <p className="text-gray-400 text-sm mt-2">
-                    Wir suchen geeignete Handwerksbetriebe in Ihrer Region
-                  </p>
-                </div>
-              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate(`/project/${selectedProject.id}/lv-review`)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                >
+                  Bearbeiten
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!window.confirm(`${trade.name} jetzt ausschreiben?`)) return;
+                    
+                    const res = await fetch(apiUrl(`/api/projects/${selectedProject.id}/tender/create`), {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        tradeIds: [trade.id],
+                        timeframe: selectedProject.timeframe
+                      })
+                    });
+                    
+                    if (res.ok) {
+                      alert('Ausschreibung gestartet!');
+                      loadUserProjects(userData.email);
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                >
+                  Ausschreiben →
+                </button>
+              </div>
             </div>
-          )}
+          ))}
+        </div>
+      </div>
+    )}
+    
+    {/* Quick Actions */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="bg-white/10 rounded-lg p-4">
+        <h3 className="text-gray-400 text-sm mb-2">Geschätzte Kosten</h3>
+        <p className="text-xl font-semibold text-white">
+          {formatCurrency(selectedProject.totalCost)}
+        </p>
+      </div>
+      
+      <div className="bg-white/10 rounded-lg p-4">
+        <h3 className="text-gray-400 text-sm mb-2">Anzahl Gewerke</h3>
+        <p className="text-xl font-semibold text-white">
+          {selectedProject.trades?.length || 0}
+        </p>
+      </div>
+      
+      <div className="bg-white/10 rounded-lg p-4">
+        <h3 className="text-gray-400 text-sm mb-2">Offene Angebote</h3>
+        <p className="text-xl font-semibold text-yellow-400">
+          {offers.filter(o => o.status === 'offen').length}
+        </p>
+      </div>
+      
+      <div className="bg-white/10 rounded-lg p-4">
+        <h3 className="text-gray-400 text-sm mb-2">Erteilte Aufträge</h3>
+        <p className="text-xl font-semibold text-green-400">
+          {orders.length}
+        </p>
+      </div>
+    </div>
+    
+    {/* Call to Action */}
+    {selectedProject.completedLvs === selectedProject.trades?.length && 
+     selectedProject.completedLvs > 0 && 
+     !selectedProject.tendersSent && (
+      <div className="mt-8 bg-gradient-to-r from-green-600/20 to-teal-600/20 rounded-xl p-6 text-center">
+        <h3 className="text-xl font-bold text-white mb-3">
+          🎉 Alle LVs sind fertig!
+        </h3>
+        <p className="text-gray-300 mb-4">
+          Ihre Leistungsverzeichnisse sind vollständig. Sie können jetzt die Ausschreibung starten.
+        </p>
+        <button
+          onClick={async () => {
+            if (!window.confirm('Alle Gewerke an passende Handwerker ausschreiben?')) return;
+            
+            const res = await fetch(apiUrl(`/api/projects/${selectedProject.id}/tender/create`), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tradeIds: 'all',
+                timeframe: selectedProject.timeframe
+              })
+            });
+            
+            if (res.ok) {
+              alert('Ausschreibung erfolgreich gestartet!');
+              loadUserProjects(userData.email);
+            }
+          }}
+          className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
+        >
+          🚀 Jetzt alle Gewerke ausschreiben
+        </button>
+      </div>
+    )}
+  </div>
+)}
 
           {/* Angebote Tab - ERWEITERT */}
 {activeTab === 'offers' && (
