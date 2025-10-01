@@ -9887,14 +9887,37 @@ const requiredTrades = await query(
   [projectId]
 );
 
-// 5. Erstelle Response
-const groupedTrades = {
-  required: requiredTrades.rows.map(trade => ({
-    ...trade,
-    reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
-  })),
-  recommended: allRecommendedTrades
-};
+// 5. Erstelle Response mit verbesserter Kategorisierung
+// Prüfe ob die Trades aus detectAndValidateTradesFromIntake source/category Info haben
+const tradesWithSourceInfo = additionalDetectionResult?.trades?.some(t => t.source !== undefined);
+
+let groupedTrades; // WICHTIG: Variable außerhalb deklarieren
+
+if (tradesWithSourceInfo) {
+  // Neue Version: Nutze source/category aus detectAndValidateTradesFromIntake
+  const allDetectedTrades = [
+    ...requiredTrades.rows.map(t => ({ ...t, source: 'description' })),
+    ...additionalDetectionResult.trades
+  ];
+  
+  groupedTrades = {
+    required: allDetectedTrades.filter(t => 
+      t.source === 'description' || t.category === 'required'
+    ),
+    recommended: allDetectedTrades.filter(t => 
+      t.source === 'intake' || t.category === 'recommended'
+    )
+  };
+} else {
+  // Fallback: Alte Version ohne source tracking
+  groupedTrades = {
+    required: requiredTrades.rows.map(trade => ({
+      ...trade,
+      reason: 'Direkt aus Ihrer Projektbeschreibung erkannt'
+    })),
+    recommended: allRecommendedTrades
+  };
+}
 
 console.log('[INTAKE-SUMMARY] Required trades:', groupedTrades.required.length);
 console.log('[INTAKE-SUMMARY] Recommended trades:', groupedTrades.recommended.length);
@@ -9906,10 +9929,10 @@ res.json({
   additionalTradesDetected: allRecommendedTrades
 });
 
-  } catch (err) {
-    console.error('intake/summary failed:', err);
-    res.status(500).json({ error: err.message });
-  }
+} catch (err) {
+  console.error('intake/summary failed:', err);
+  res.status(500).json({ error: err.message });
+}
 }); // <- Diese schließenden Klammern fehlen
 
 // Confirm trades for project
