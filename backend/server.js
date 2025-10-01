@@ -5061,30 +5061,34 @@ function filterDuplicateQuestions(questions, intakeAnswers) {
     }
     
     // ============ MATERIALIEN ============
-    if (knownData.materialien.wand && 
-        qText.includes('wand') && 
-        qText.includes('material') &&
-        !qText.includes('oberfläche') &&
-        !qText.includes('beschichtung')) {
-      console.log('[FILTER] Removed: Wandmaterial bereits bekannt');
-      return false;
-    }
-    
-    if (knownData.materialien.boden && 
-        qText.includes('boden') && 
-        qText.includes('material') &&
-        !qText.includes('neuer') &&
-        !qText.includes('gewünscht')) {
-      console.log('[FILTER] Removed: Bodenmaterial bereits bekannt');
-      return false;
-    }
-    
-    if (knownData.materialien.dach && 
-        qText.includes('dach') && 
-        qText.includes('material')) {
-      console.log('[FILTER] Removed: Dachmaterial bereits bekannt');
-      return false;
-    }
+// DEAKTIVIERT: Intake fragt nicht mehr nach Material-Details (wird dort gefiltert)
+// Gewerke-Fragen MÜSSEN nach spezifischen Materialien fragen können
+/*
+if (knownData.materialien.wand && 
+    qText.includes('wand') && 
+    qText.includes('material') &&
+    !qText.includes('oberfläche') &&
+    !qText.includes('beschichtung')) {
+  console.log('[FILTER] Removed: Wandmaterial bereits bekannt');
+  return false;
+}
+
+if (knownData.materialien.boden && 
+    qText.includes('boden') && 
+    qText.includes('material') &&
+    !qText.includes('neuer') &&
+    !qText.includes('gewünscht')) {
+  console.log('[FILTER] Removed: Bodenmaterial bereits bekannt');
+  return false;
+}
+
+if (knownData.materialien.dach && 
+    qText.includes('dach') && 
+    qText.includes('material')) {
+  console.log('[FILTER] Removed: Dachmaterial bereits bekannt');
+  return false;
+}
+*/
     
     // ============ KOMBINIERTE MASSE (LxBxH) ============
     if ((knownData.laengen.bad && knownData.breiten.bad) &&
