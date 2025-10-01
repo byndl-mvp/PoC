@@ -141,14 +141,21 @@ const handleResendVerificationEmail = async () => {
       if (res.ok) {
         // Token und Daten speichern
         if (data.token) {
-          sessionStorage.setItem('bauherrToken', data.token);
-          sessionStorage.setItem('userData', JSON.stringify({
-            id: data.user.id,
-            name: data.user.name,
-            email: data.user.email,
-            emailVerified: false
-          }));
-        }
+  sessionStorage.setItem('bauherrToken', data.token);
+  sessionStorage.setItem('bauherrData', JSON.stringify({
+    id: data.user.id,
+    name: data.user.name,
+    email: data.user.email,
+    emailVerified: false
+  }));
+  // Für Rückwärtskompatibilität:
+  sessionStorage.setItem('userData', JSON.stringify({
+    id: data.user.id,
+    name: data.user.name,
+    email: data.user.email,
+    emailVerified: false
+  }));
+}
         
         // Projekt-ID für Dashboard speichern falls vorhanden
         if (projectId) {
