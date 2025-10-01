@@ -26,12 +26,16 @@ export default function BauherrenDashboardPage() {
   const [pendingLvProjectId, setPendingLvProjectId] = useState(null);
   
   useEffect(() => {
-  const storedUserData = sessionStorage.getItem('userData');
+  // Prüfe beide mögliche Keys
+  const storedUserData = sessionStorage.getItem('userData') || 
+                        sessionStorage.getItem('bauherrData');
+  const token = sessionStorage.getItem('bauherrToken');
   
   console.log('Dashboard checking userData:', storedUserData);
+  console.log('Dashboard checking token:', token);
   
-  if (!storedUserData) {
-    console.log('No userData, redirecting to login');
+  if (!storedUserData || !token) {
+    console.log('No userData or token, redirecting to login');
     navigate('/bauherr/login');
     return;
   }
