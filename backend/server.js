@@ -2636,7 +2636,7 @@ const TRADE_DETECTION_RULES = {
   // EXKLUSIVE Keywords - NUR dieses Gewerk darf diese Begriffe beanspruchen
   exclusive: {
     'DACH': [
-      'dach neu', 'dacheindeckung', 'dachziegel', 'dachpfanne', 'dachstein',
+      'dach neu', 'dacheindeckung', 'eindecken', 'Eindeckung', 'dachziegel', 'dachpfanne', 'dachstein',
       'dachrinne', 'fallrohr', 'dachfenster', 'schneefang', 'kehle', 'first',
       'gauben', 'gaube abdichten', 'eindeckung', 'dampfbremse', 'unterspannbahn',
       'dachsparren ersetzen', 'sparren austauschen', 'sparren reparieren',
@@ -2653,7 +2653,7 @@ const TRADE_DETECTION_RULES = {
     ],
     
     'ZIMM': [
-      'holzbau', 'dachstuhl neu', 'gaube bauen', 'neue gaube', 'gaube konstruktion',
+      'holzbau', 'dachstuhl neu', 'gaube', 'gaube bauen', 'neue gaube', 'gaube konstruktion',
       'carport', 'holzkonstruktion', 'fachwerk', 'holzrahmenbau', 'blockhaus',
       'dachstuhl errichten', 'aufstockung holz', 'holzbalken', 'sparren neu',
       'pfetten', 'kehlbalken', 'schwelle', 'holzständerbau', 'pergola',
@@ -2854,44 +2854,14 @@ for (const [tradeCode, keywords] of Object.entries(TRADE_DETECTION_RULES.exclusi
     .map(item => `${item.question || ''} ${item.answer || ''}`.toLowerCase())
     .join(' ');
   
-  for (const keyword of keywords) {
-  // Intelligentere Keyword-Erkennung
-  let isMatched = false;
-  
-  if (keyword.includes(' ')) {
-    // Phrase (z.B. "neue gaube") - extrahiere Hauptwort
-    const words = keyword.split(' ');
-    const mainWord = words.find(w => w.length > 4) || words[words.length - 1];
-    
-    // Prüfe ob Hauptwort im Text ist
-    if (fullText.includes(mainWord)) {
-      // Prüfe ob andere Teile der Phrase auch in der Nähe sind
-      const mainIndex = fullText.indexOf(mainWord);
-      const nearbyText = fullText.substring(Math.max(0, mainIndex - 50), mainIndex + 50);
-      const otherParts = words.filter(w => w !== mainWord);
-      
-      if (otherParts.length === 0 || otherParts.some(part => nearbyText.includes(part))) {
-        isMatched = true;
-      }
-    }
-  } else {
-    // Einzelwort - normale exakte Suche
-    if (fullText.includes(keyword)) {
-      isMatched = true;
-    }
-  }
-  
-  if (isMatched) {
+ for (const keyword of keywords) {
+  if (fullText.includes(keyword)) {
     matchedKeywords.push(keyword);
     
-    // Track woher das Keyword kommt (mit gleicher Logik)
-    const checkWord = keyword.includes(' ') ? 
-      (keyword.split(' ').find(w => w.length > 4) || keyword.split(' ').pop()) : 
-      keyword;
-    
-    if (descriptionText.includes(checkWord)) {
+    // Track woher das Keyword kommt
+    if (descriptionText.includes(keyword)) {
       matchedFromDescription.push(keyword);
-    } else if (intakeText.includes(checkWord)) {
+    } else if (intakeText.includes(keyword)) {
       matchedFromIntake.push(keyword);
     }
   }
