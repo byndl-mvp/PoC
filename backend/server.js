@@ -3057,19 +3057,9 @@ function calculateTradeConfidence(tradeCode, matchedKeywords) {
  * Generiert spezifische Begründung für erkanntes Gewerk
  */
 function generateTradeReason(tradeCode, keywords, intakeAnswers) {
-  // Finde die relevanteste Antwort
-  const relevantAnswer = intakeAnswers.find(item => {
-    const combined = `${item.question} ${item.answer}`.toLowerCase();
-    return keywords.some(kw => combined.includes(kw));
-  });
-  
-  if (relevantAnswer) {
-    const snippet = relevantAnswer.answer.substring(0, 40);
-    return `"${snippet}..." erfordert ${tradeCode}`;
-  }
-  
-  // Fallback auf Keywords
-  return `Begriffe: ${keywords.slice(0, 3).join(', ')}`;
+  // Fallback-Begründung ohne Kürzung
+  const relevantKeywords = keywords.slice(0, 3).join(', ');
+  return `Möglicher Bedarf für dieses Gewerk durch Begriffe erkannt: ${relevantKeywords}`;
 }
 
 /**
