@@ -9792,7 +9792,8 @@ if (additionalTrades.length > 0) {
 Erstelle kurze, spezifische Begründungen für diese Gewerke:
 ${tradesInfo}
 
-Gib für jedes Gewerk eine Begründung (max 12 Wörter) die sich DIREKT auf die Nutzerangaben bezieht.
+Gib für jedes Gewerk eine vollständige, verständliche Begründung (15-25 Wörter) die erklärt, 
+warum dieses Gewerk basierend auf den konkreten Nutzerangaben benötigt wird.
 
 Beispiel-Format:
 {
