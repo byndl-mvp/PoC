@@ -2840,17 +2840,32 @@ function detectAndValidateTradesFromIntake(intakeAnswers, existingTrades = [], p
   
   console.log('[TRADE-DETECT] Analysiere Text mit', fullText.length, 'Zeichen');
   
-  // 1. PHASE: Keyword-Erkennung
-  for (const [tradeCode, keywords] of Object.entries(TRADE_DETECTION_RULES.exclusive)) {
-    if (existingCodes.has(tradeCode)) continue;
-    
-    const matchedKeywords = [];
-    
-    for (const keyword of keywords) {
-      if (fullText.includes(keyword)) {
-        matchedKeywords.push(keyword);
+  // 1. PHASE: Keyword-Erkennung MIT QUELLEN-TRACKING
+for (const [tradeCode, keywords] of Object.entries(TRADE_DETECTION_RULES.exclusive)) {
+  if (existingCodes.has(tradeCode)) continue;
+  
+  const matchedKeywords = [];
+  const matchedFromDescription = [];
+  const matchedFromIntake = [];
+  
+  // Separiere Projektbeschreibung von Intake-Antworten
+  const descriptionText = (projectDescription || '').toLowerCase();
+  const intakeText = intakeAnswers
+    .map(item => `${item.question || ''} ${item.answer || ''}`.toLowerCase())
+    .join(' ');
+  
+  for (const keyword of keywords) {
+    if (fullText.includes(keyword)) {
+      matchedKeywords.push(keyword);
+      
+      // Track woher das Keyword kommt
+      if (descriptionText.includes(keyword)) {
+        matchedFromDescription.push(keyword);
+      } else if (intakeText.includes(keyword)) {
+        matchedFromIntake.push(keyword);
       }
     }
+  }
     
     if (matchedKeywords.length > 0) {
       // 2. PHASE: Validierung gegen verbotene Begriffe
@@ -2873,18 +2888,22 @@ function detectAndValidateTradesFromIntake(intakeAnswers, existingTrades = [], p
         continue;
       }
       
-      // 3. PHASE: Konfidenz-Berechnung
-      const confidence = calculateTradeConfidence(tradeCode, matchedKeywords);
-      
-      detectedTrades.set(tradeCode, {
-        confidence,
-        keywords: matchedKeywords,
-        reason: generateTradeReason(tradeCode, matchedKeywords, intakeAnswers)
-      });
-      
-      console.log(`[TRADE-DETECT] ✓ ${tradeCode}: ${matchedKeywords.length} Keywords, ${confidence}% Konfidenz`);
-    }
-  }
+      // 3. PHASE: Konfidenz-Berechnung mit Quellen-Tracking
+const confidence = calculateTradeConfidence(tradeCode, matchedKeywords);
+
+// Bestimme Quelle und Kategorie
+const source = matchedFromDescription.length > 0 ? 'description' : 'intake';
+const category = matchedFromDescription.length > 0 ? 'required' : 'recommended';
+
+detectedTrades.set(tradeCode, {
+  confidence,
+  keywords: matchedKeywords,
+  reason: generateTradeReason(tradeCode, matchedKeywords, intakeAnswers),
+  source: source,
+  category: category
+});
+
+console.log(`[TRADE-DETECT] ✓ ${tradeCode}: ${matchedKeywords.length} Keywords, ${confidence}% Konfidenz, Source: ${source}`);
   
   // 4. PHASE: Kreuz-Validierung und Korrektur falscher Zuordnungen
   const corrections = new Map();
@@ -2965,16 +2984,18 @@ function detectAndValidateTradesFromIntake(intakeAnswers, existingTrades = [], p
     }
   }
   
-  // 6. PHASE: Finale Liste erstellen
-  const finalTrades = [];
-  for (const [code, data] of detectedTrades) {
-    finalTrades.push({
-      code,
-      confidence: data.confidence,
-      matchedKeywords: data.keywords,  
-      reason: data.reason
-    });
-  }
+  // 6. PHASE: Finale Liste erstellen MIT SOURCE/CATEGORY
+const finalTrades = [];
+for (const [code, data] of detectedTrades) {
+  finalTrades.push({
+    code,
+    confidence: data.confidence,
+    matchedKeywords: data.keywords,
+    reason: data.reason,
+    source: data.source || 'description',  // Fallback für Kompatibilität
+    category: data.category || 'required'   // Fallback für Kompatibilität
+  });
+}
   
   console.log(`[TRADE-DETECT] Final: ${finalTrades.length} Gewerke erkannt`);
   
