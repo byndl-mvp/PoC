@@ -9893,7 +9893,7 @@ const requiredTrades = await query(
 
 // 5. Erstelle Response mit verbesserter Kategorisierung
 // Prüfe ob die Trades aus detectAndValidateTradesFromIntake source/category Info haben
-const tradesWithSourceInfo = additionalDetectionResult?.trades?.some(t => t.source !== undefined);
+const tradesWithSourceInfo = validationResult?.trades?.some(t => t.source !== undefined);  // GEÄNDERT: validationResult statt additionalDetectionResult
 
 let groupedTrades; // WICHTIG: Variable außerhalb deklarieren
 
@@ -9901,7 +9901,7 @@ if (tradesWithSourceInfo) {
   // Neue Version: Nutze source/category aus detectAndValidateTradesFromIntake
   const allDetectedTrades = [
     ...requiredTrades.rows.map(t => ({ ...t, source: 'description' })),
-    ...additionalDetectionResult.trades
+    ...validationResult.trades  // GEÄNDERT: validationResult statt additionalDetectionResult
   ];
   
   groupedTrades = {
@@ -9931,13 +9931,13 @@ res.json({
   summary,
   groupedTrades,
   additionalTradesDetected: allRecommendedTrades
-});
+});  // GEÄNDERT: Schließende Klammer hinzugefügt
 
-} catch (err) {
-  console.error('intake/summary failed:', err);
-  res.status(500).json({ error: err.message });
-}
-}); // <- Diese schließenden Klammern fehlen
+  } catch (err) {
+    console.error('intake/summary failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Confirm trades for project
 app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
