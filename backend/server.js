@@ -9805,6 +9805,15 @@ Antworte NUR mit validem JSON.`;
       trade.reason = reasons[trade.code] || `${tradeNames[trade.code]} basierend auf Ihren Angaben empfohlen`;
       console.log(`[LLM] ${trade.code}: ${trade.reason}`);
     });
+
+    // WICHTIG: Auch validationResult updaten!
+if (validationResult && validationResult.trades) {
+  validationResult.trades.forEach(trade => {
+    if (reasons[trade.code]) {
+      trade.reason = reasons[trade.code];
+    }
+  });
+}
     
   } catch (error) {
     console.error('[INTAKE-SUMMARY] LLM failed:', error);
