@@ -44,20 +44,42 @@ export default function BauherrenDashboardPage() {
     const user = JSON.parse(storedUserData);
     console.log('Parsed user:', user);
     setUserData(user);
+    
+    // Projekte laden
     loadUserProjects(user.email);
+    
+    // Check für pending LV-Projekt
+    const pendingProjectId = sessionStorage.getItem('pendingLvProject');
+    if (pendingProjectId) {
+      setPendingLvProjectId(pendingProjectId);
+      // Projekte nochmal laden um sicherzustellen, dass das neue Projekt angezeigt wird
+      setTimeout(() => {
+        loadUserProjects(user.email);
+      }, 500);
+    }
   } catch (error) {
     console.error('Failed to parse userData:', error);
     navigate('/bauherr/login');
   }
-
-    // NEU: Check für pending LV-Projekt
-  const pendingProjectId = sessionStorage.getItem('pendingLvProject');
-  if (pendingProjectId) {
-    setPendingLvProjectId(pendingProjectId);
-    // Optional: sessionStorage.removeItem('pendingLvProject');
-  }
 }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Neuer useEffect für Navigation-Events
+useEffect(() => {
+  // Reload projects wenn von einer anderen Seite zurückgekehrt wird
+  const handleFocus = () => {
+    if (userData?.email) {
+      loadUserProjects(userData.email);
+    }
+  };
+  
+  window.addEventListener('focus', handleFocus);
+  
+  // Cleanup
+  return () => {
+    window.removeEventListener('focus', handleFocus);
+  };
+}, [userData]);
+  
   const loadUserProjects = async (email) => {
   try {
     setLoading(true);
