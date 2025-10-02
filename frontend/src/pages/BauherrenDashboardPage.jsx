@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -78,9 +78,9 @@ useEffect(() => {
   return () => {
     window.removeEventListener('focus', handleFocus);
   };
-}, [userData, loadUserProjects]);
+}, [userData]); // eslint-disable-line react-hooks/exhaustive-deps
   
-  const loadUserProjects = useCallback(async (email) => {
+  const loadUserProjects = async (email) => {
   try {
     setLoading(true);
     
@@ -154,7 +154,7 @@ useEffect(() => {
   } finally {
     setLoading(false);
   }
-}, [pendingLvProjectId, navigate]);
+};
 
   const determineProjectStatus = (project, tradesData, completedLvs) => {
   const totalTrades = tradesData?.length || 0;
