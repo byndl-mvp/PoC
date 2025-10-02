@@ -10201,6 +10201,10 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     );
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
+    const needsContextQuestion = tradeStatus.is_manual && !tradeStatus.is_ai_recommended;
+    // NUR manuelle Gewerke brauchen Kontextfrage, AI-empfohlene NICHT!
+    
+    tradeStatus = tradeStatusResult.rows[0] || {};
     const needsContextQuestion = tradeStatus.is_manual || 
                                  tradeStatus.is_ai_recommended || 
                                  req.body.isManuallyAdded ||
