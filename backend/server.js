@@ -4162,6 +4162,21 @@ ${projectContext.isAiRecommended && !isIntake ? `
 HINWEIS: Dieses Gewerk wurde aufgrund der Vorbefragung empfohlen. 
 Stelle spezifische Fragen zu den relevanten Punkten aus der Vorbefragung.` : ''}`;  // Ende des GESAMTEN Template-Strings
 
+// HIER NEUE ERGÄNZUNG EINFÜGEN:
+// Zusätzliche Anpassung für AI-empfohlene Gewerke
+let finalSystemPrompt = systemPrompt;
+if (projectContext.isAiRecommended && !isIntake) {
+  finalSystemPrompt += `
+
+KRITISCHE ERGÄNZUNG FÜR AI-EMPFOHLENES GEWERK:
+- Dies ist ein VOLLSTÄNDIGER Fragenkatalog, KEINE reduzierte Version
+- ALLE gewerkespezifischen Regeln MÜSSEN angewendet werden
+- Ziel: ${targetQuestionCount} detaillierte Fragen
+- Bei Fenstern: JEDES einzelne Fenster mit Maßen
+- Bei Türen: JEDE einzelne Tür mit Maßen
+- Qualität wie bei erforderlichen Gewerken!`;
+}
+  
   const userPrompt = `Erstelle ${targetQuestionCount} LAIENVERSTÄNDLICHE Fragen für ${tradeName}.
 
 PROJEKTKONTEXT:
@@ -4188,7 +4203,7 @@ BEACHTE:
     console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
     
     const response = await llmWithPolicy(isIntake ? 'intake' : 'questions', [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: finalSystemPrompt }, 
       { role: 'user', content: userPrompt }
     ], { 
       maxTokens: targetQuestionCount > 30 ? 8000 : 6000,  // Erhöhe Limit für viele Fragen
