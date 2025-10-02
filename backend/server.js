@@ -6962,6 +6962,12 @@ if (pos.title?.toLowerCase().includes('sockel')) {
       console.error(`[FASS] FEHLER: Isokorb-Position entfernt - gehört zu Rohbau!`);
       return false;
     }   
+    if ((title.includes('balkon') && title.includes('abtrennen')) ||
+        (desc.includes('thermische trennung') && desc.includes('balkon'))) {
+      console.error(`[FASS] FEHLER: Balkon-Trennung entfernt - unmöglich bei Sanierung!`);
+      return false;
+    }
+    
     return true;
   });
   
@@ -8090,7 +8096,7 @@ function finalLVValidation(lv, tradeCode) {
       except: ['dachfenster', 'dachausstieg', 'blitzschutz']
     },
     'FASS': { 
-      forbidden: ['fenster einbau', 'fenster lieferung', 'tür montage', 'dachziegel', 'dachrinne', 'heizung', 'sanitär', 'elektro', 'parkett', 'fliesen'],
+      forbidden: ['fenster einbau', 'fenster lieferung', 'isokorb', 'tür montage', 'dachziegel', 'dachrinne', 'heizung', 'sanitär', 'elektro', 'parkett', 'fliesen'],
       except: ['fensterbank', 'laibung', 'fenstersims']
     },
     'FEN': { 
