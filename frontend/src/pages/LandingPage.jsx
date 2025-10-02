@@ -239,24 +239,24 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
               <h3 className="text-lg font-semibold text-gray-300 mb-2">Kleine Projekte</h3>
-              <div className="text-3xl font-bold text-white mb-1">9,90 €</div>
+              <div className="text-3xl font-bold text-white mb-1">29,90 €</div>
               <p className="text-gray-400 mb-4">einmalig</p>
               <p className="text-gray-300">1-2 Gewerke</p>
-              <p className="text-sm text-gray-400 mt-2">z.B. Malerarbeiten, kleine Reparaturen</p>
+              <p className="text-sm text-gray-400 mt-2">z.B. Malerarbeiten, Bodenbelagsarbeiten</p>
             </div>
             
             <div className="bg-gradient-to-br from-teal-600/20 to-blue-600/20 backdrop-blur rounded-2xl p-8 border-2 border-teal-500/50 transform scale-105">
               <div className="bg-teal-500 text-white text-xs font-bold px-2 py-1 rounded inline-block mb-2">BELIEBT</div>
               <h3 className="text-lg font-semibold text-gray-300 mb-2">Mittlere Projekte</h3>
-              <div className="text-3xl font-bold text-white mb-1">19,90 €</div>
+              <div className="text-3xl font-bold text-white mb-1">59,90 €</div>
               <p className="text-gray-400 mb-4">einmalig</p>
               <p className="text-gray-300">3-5 Gewerke</p>
-              <p className="text-sm text-gray-400 mt-2">z.B. Badsanierung, Küchenerneuerung</p>
+              <p className="text-sm text-gray-400 mt-2">z.B. Badsanierung, Fassadensanierung</p>
             </div>
             
             <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/20">
               <h3 className="text-lg font-semibold text-gray-300 mb-2">Große Projekte</h3>
-              <div className="text-3xl font-bold text-white mb-1">39,90 €</div>
+              <div className="text-3xl font-bold text-white mb-1">99,90 €</div>
               <p className="text-gray-400 mb-4">einmalig</p>
               <p className="text-gray-300">Ab 6 Gewerken</p>
               <p className="text-sm text-gray-400 mt-2">z.B. Kernsanierung, Anbau</p>
