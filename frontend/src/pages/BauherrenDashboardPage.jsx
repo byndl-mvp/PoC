@@ -611,7 +611,17 @@ const ContractNegotiationModal = () => {
                 >
                   {isPending ? 'LVs bearbeiten →' : 'Projekt öffnen →'}
                 </button>
-              </div>
+                {/* Optionaler Quick-Delete Button */}
+  <button
+    onClick={(e) => {
+      e.stopPropagation(); // Verhindert das Öffnen des Projekts
+      deleteProject(project.id);
+    }}
+    className="mt-2 w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors text-sm"
+  >
+    Projekt löschen
+  </button>
+</div>             
             </div>
           );
         })}
