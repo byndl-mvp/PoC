@@ -10559,82 +10559,26 @@ app.post('/api/projects/:projectId/intake/answers', async (req, res) => {
   }
 });
 
-// Generate adaptive follow-up questions based on context answer
 app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
     const { contextAnswer } = req.body;
     
-    const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
-    const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
-    
     if (!contextAnswer) {
       return res.status(400).json({ error: 'Kontextantwort fehlt' });
     }
-
-    // Lade Intake-Daten für besseren Kontext
-    const intakeData = await query(
-      `SELECT question_text, answer_text 
-       FROM intake_responses 
-       WHERE project_id = $1`,
-      [projectId]
-    );
     
-    const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
-Der Nutzer hat für das Gewerk angegeben: "${contextAnswer}"
-
-PROJEKTKONTEXT:
-- Beschreibung: ${project.rows[0].description}
-- Kategorie: ${project.rows[0].category}
-- Budget: ${project.rows[0].budget}
-
-BEREITS ERFASSTE INFORMATIONEN (nicht erneut fragen!):
-${intakeData.rows.map(d => `- ${d.question_text}: ${d.answer_text}`).join('\n')}
-
-Erstelle 10-20 SPEZIFISCHE Folgefragen basierend auf der Kontextantwort.
-Die Fragen MÜSSEN sich auf die genannten Arbeiten beziehen.
-Vermeide Wiederholungen von bereits erfassten Informationen.
-
-OUTPUT als JSON-Array:
-[
-  {
-    "id": "${trade.rows[0].code}-01",
-    "category": "string",
-    "question": "Spezifische Frage mit Einheit",
-    "explanation": "Erklärung bei Fachbegriffen",
-    "type": "text|number|select",
-    "required": true/false,
-    "unit": "m²/m/Stk",
-    "options": null oder ["Option1", "Option2"]
-  }
-]`;
+    // HIER: Rufe die verbesserte Funktion auf (aus Änderung 3)
+    const questions = await generateContextBasedQuestions(tradeId, projectId, contextAnswer);
     
-    const userPrompt = `Projekt: ${project.rows[0].description}
-Gewählte Arbeiten für ${trade.rows[0].name}: ${contextAnswer}
-
-Erstelle detaillierte Folgefragen für diese spezifischen Arbeiten.
-Berücksichtige bereits erfasste Projektinformationen.`;
-    
-    const response = await llmWithPolicy('questions', [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], { maxTokens: 4000, temperature: 0.5 });
-    
-    const cleanedResponse = response
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-    
-    const questions = JSON.parse(cleanedResponse);
-    
-    // Speichere die neuen Fragen
+    // Speichere die neuen Fragen (dieser Teil bleibt gleich)
     for (const q of questions) {
       await query(
         `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
          VALUES ($1,$2,$3,$4,$5,$6,$7)
          ON CONFLICT (project_id, trade_id, question_id)
          DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
-        [projectId, tradeId, q.id, q.question, q.type || 'text', q.required ?? true, 
+        [projectId, tradeId, q.id, q.question || q.text, q.type || 'text', q.required ?? true, 
          q.options ? JSON.stringify(q.options) : null]
       );
     }
