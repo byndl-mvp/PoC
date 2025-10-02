@@ -5472,6 +5472,35 @@ if (projectComplexity === 'SEHR_HOCH' || projectComplexity === 'HOCH' || project
 }
 
 console.log(`[LV] Final orientation for ${trade.code}: ${orientation.min}-${orientation.max} positions from ${answeredQuestionCount} questions`);
+
+  // Nach Zeile ~1300, vor der LV-Generierung
+if (projectMetadata.isManual || projectMetadata.isAiRecommended) {
+  console.log(`[LV] Verstärkte Validierung für ${trade.code} - Gewerk ist manuell/AI-empfohlen`);
+  
+  // Sicherstellen dass ALLE bestehenden Regeln angewendet werden
+  // Verwende die GLEICHEN Orientierungswerte wie bei erforderlichen Gewerken
+  const enforcedOrientation = getPositionOrientation(trade.code, answeredQuestionCount, {
+    ...project,
+    complexity: projectComplexity,
+    description: project.description
+  });
+  
+  // Override falls zu wenige Positionen vorgesehen
+  if (orientation.min < enforcedOrientation.min) {
+    orientation.min = enforcedOrientation.min;
+    orientation.max = enforcedOrientation.max;
+    console.log(`[LV] Enforcing standard position count for ${trade.code}: ${orientation.min}-${orientation.max}`);
+  }
+  
+  // Verwende EXAKT das gleiche Prompt-Template wie bei erforderlichen Gewerken
+  const lvPrompt = await getPromptForTrade(tradeId, 'lv');
+  if (!lvPrompt || lvPrompt.length < 100) {
+    console.error(`[LV] KRITISCH: LV-Template fehlt für ${trade.code} - Abbruch`);
+    throw new Error(`LV-Template für ${trade.name} nicht verfügbar`);
+  }
+  
+  console.log(`[LV] Verwende Standard-LV-Template mit ${lvPrompt.length} Zeichen`);
+}
   
   // NEU: Prüfe ob Gerüst als separates Gewerk vorhanden ist
   const hasScaffoldingTrade = await query(
