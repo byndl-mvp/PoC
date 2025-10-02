@@ -5287,34 +5287,61 @@ async function generateContextBasedQuestions(tradeId, projectId, contextAnswer) 
   const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
   const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
   
+  // Lade Intake-Kontext
+  const intakeAnswers = await query(
+    `SELECT q.text as question, a.answer_text as answer
+     FROM answers a
+     JOIN questions q ON q.project_id = a.project_id 
+       AND q.trade_id = a.trade_id 
+       AND q.question_id = a.question_id
+     JOIN trades t ON t.id = a.trade_id
+     WHERE a.project_id = $1 AND t.code = 'INT'`,
+    [projectId]
+  );
+  
+  // Bestimme Fragenanzahl basierend auf BESTEHENDER Komplexitätslogik
+  const projectContext = {
+    description: project.rows[0].description,
+    category: project.rows[0].category,
+    budget: project.rows[0].budget,
+    intakeData: intakeAnswers.rows
+  };
+  
+  const complexity = determineProjectComplexity(projectContext, intakeAnswers.rows);
+  const intelligentCount = getIntelligentQuestionCount(trade.rows[0].code, projectContext, intakeAnswers.rows);
+  
+  // Lade das BESTEHENDE Prompt-Template für dieses Gewerk
+  const questionPrompt = await getPromptForTrade(tradeId, 'questions');
+  
   const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
 Der Nutzer hat angegeben: "${contextAnswer}"
 
-Erstelle 10-15 spezifische Folgefragen basierend auf dieser Antwort.
+WICHTIG: Wende ALLE bestehenden Regeln aus dem System an:
+- Erstelle ${intelligentCount.count} Fragen (Komplexität: ${complexity})
+- Verwende das Standard-Template für ${trade.rows[0].code}
+- ALLE gewerkespezifischen Regeln aus dem Code MÜSSEN beachtet werden
 
-OUTPUT als JSON-Array:
-[
-  {
-    "id": "string",
-    "question": "Spezifische Frage",
-    "type": "text|number|select",
-    "required": true/false,
-    "unit": null oder "m²/m/Stk"
-  }
-]`;
+${questionPrompt ? `Template-Basis:\n${questionPrompt}` : ''}
+
+OUTPUT als JSON-Array mit EXAKT ${intelligentCount.count} Fragen.`;
   
   try {
     const response = await llmWithPolicy('questions', [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Erstelle Folgefragen für diese Arbeiten: ${contextAnswer}` }
-    ], { maxTokens: 3000, temperature: 0.5 });
+      { role: 'user', content: `Erstelle detaillierte Folgefragen für: ${contextAnswer}` }
+    ], { maxTokens: 6000, temperature: 0.5 });
     
     const cleaned = response
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
     
-    const questions = JSON.parse(cleaned);
+    let questions = JSON.parse(cleaned);
+    
+    // Verwende BESTEHENDE Validierungslogik
+    questions = validateTradeQuestions(trade.rows[0].code, questions, projectContext);
+    questions = filterDuplicateQuestions(questions, intakeAnswers.rows);
+    
     return Array.isArray(questions) ? questions : [];
     
   } catch (err) {
