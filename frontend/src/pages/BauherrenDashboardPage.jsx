@@ -677,23 +677,29 @@ const ContractNegotiationModal = () => {
       )}
       
       {/* Projekt-Header */}
-      <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 rounded-xl p-6 mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">
-              {selectedProject.category} - {selectedProject.sub_category}
-            </h1>
-            <p className="text-gray-400">
-              Status: {selectedProject.status} | 
-              Erstellt: {new Date(selectedProject.created_at).toLocaleDateString('de-DE')}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-400">Geschätzte Kosten</p>
-            <p className="text-2xl font-bold text-teal-400">{formatCurrency(selectedProject.totalCost)}</p>
-          </div>
-        </div>
-      </div>
+<div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 rounded-xl p-6 mb-6">
+  <div className="flex justify-between items-start">
+    <div>
+      <h1 className="text-3xl font-bold text-white mb-2">
+        {selectedProject.category} - {selectedProject.sub_category}
+      </h1>
+      <p className="text-gray-400">
+        Status: {selectedProject.status} | 
+        Erstellt: {new Date(selectedProject.created_at).toLocaleDateString('de-DE')}
+      </p>
+    </div>
+    <div className="text-right">
+      <p className="text-sm text-gray-400">Geschätzte Kosten</p>
+      <p className="text-2xl font-bold text-teal-400">{formatCurrency(selectedProject.totalCost)}</p>
+      <button
+        onClick={() => deleteProject(selectedProject.id)}
+        className="mt-3 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors text-sm"
+      >
+        🗑️ Projekt löschen
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* Project Wizard */}
       <ProjectWizard project={selectedProject} />
