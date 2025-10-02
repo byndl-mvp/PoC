@@ -4006,6 +4006,15 @@ ${tradeCode === 'SAN' ? `
    - Nur bei Sondermaß: Nach konkreten Maßen fragen
 ` : ''}
 
+${trade.code === 'FASS' ? `
+SPEZIELLE REGEL FÜR DÄMMSTÄRKEN-FRAGE:
+- Frage nach EINER konkreten Dämmstärke, NICHT nach Bereichen!
+- FALSCH: "Welche Dämmstärke (12-14 cm, 16-18 cm, 18-20 cm)?"
+- RICHTIG: "Welche Dämmstärke in cm? (12, 14, 16, 18, 20, 22, 24)"
+- Der Nutzer soll EINE Zahl wählen oder eingeben
+- Options-Array: [12, 14, 16, 18, 20, 22, 24, 26] als einzelne Werte
+` : ''}
+
 ${tradeCode === 'ROH' ? `
 19. SPEZIELLE ROHBAU-REGELN:
    
