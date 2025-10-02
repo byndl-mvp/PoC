@@ -2695,7 +2695,7 @@ const TRADE_DETECTION_RULES = {
     
     'SAN': [
       'bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn',
-      'armatur', 'sanitär', 'bad komplett', 'toilette', 'waschtisch',
+      'armatur', 'sanitär', 'bad komplett', 'toilette', 'waschtisch', 
       'wasserleitung', 'abwasser', 'fallleitung', 'hebeanlage', 'rückstauklappe',
       'wasseranschluss bad', 'wasseranschluss küche', 'sanitärobjekte', 'urinal', 'bidet', 
       'sanitärinstallation', 'bad sanieren', 'badezimmer'
@@ -2726,7 +2726,7 @@ const TRADE_DETECTION_RULES = {
     ],
     
     'FLI': [
-      'bad', 'küche', 'verfugen', 'mosaik', 'naturstein bad', 'feinsteinzeug', 'bodenfliesen',
+      'bad', 'badezimmer', 'küche', 'verfugen', 'mosaik', 'naturstein bad', 'feinsteinzeug', 'bodenfliesen',
       'wandfliesen', 'fliesen', 'badfliesen', 'kacheln', 'fliesenspiegel', 'bordüre',
       'großformat fliesen', 'terracotta', 'zementfliesen', 'metro fliesen',
       'hexagon fliesen', 'fugenlos bad', 'fliesenarbeiten', 'fliesenleger'
