@@ -664,17 +664,10 @@ export default function BauherrenSettingsPage() {
                 <div className="bg-white/5 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Support kontaktieren</h3>
                   <div className="space-y-4">
-                    <a href="mailto:support@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300">
+                    <a href="mailto:info@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300">
                       <span>📧</span>
-                      <span>support@byndl.de</span>
+                      <span>info@byndl.de</span>
                     </a>
-                    <a href="tel:+4989123456789" className="flex items-center gap-3 text-teal-400 hover:text-teal-300">
-                      <span>📞</span>
-                      <span>+49 89 123456789</span>
-                    </a>
-                    <p className="text-gray-400 text-sm">
-                      Erreichbar: Mo-Fr 9:00-18:00 Uhr
-                    </p>
                   </div>
                 </div>
                 
