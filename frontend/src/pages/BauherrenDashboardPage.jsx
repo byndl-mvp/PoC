@@ -210,6 +210,35 @@ useEffect(() => {
     }
   };
 
+  const deleteProject = async (projectId) => {
+  const confirmText = prompt('Bitte geben Sie "LÖSCHEN" ein, um das Projekt unwiderruflich zu löschen:');
+  if (confirmText !== 'LÖSCHEN') {
+    alert('Löschvorgang abgebrochen');
+    return;
+  }
+  
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/projects/${projectId}`), {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (res.ok) {
+      alert('Projekt erfolgreich gelöscht');
+      setSelectedProject(null);
+      loadUserProjects(userData.email);
+    } else {
+      throw new Error('Löschung fehlgeschlagen');
+    }
+  } catch (err) {
+    console.error('Fehler beim Löschen:', err);
+    alert('Fehler beim Löschen des Projekts');
+  } finally {
+    setLoading(false);
+  }
+};
+  
   const handleStartTender = async (tradeIds = 'all') => {
   if (!selectedProject) return;
   
