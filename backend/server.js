@@ -2636,10 +2636,10 @@ const TRADE_DETECTION_RULES = {
   // EXKLUSIVE Keywords - NUR dieses Gewerk darf diese Begriffe beanspruchen
   exclusive: {
     'DACH': [
-      'dach neu', 'dacheindeckung', 'eindecken', 'Eindeckung', 'dachziegel', 'dachpfanne', 'dachstein',
-      'dachrinne', 'fallrohr', 'dachfenster', 'schneefang', 'kehle', 'first',
+      'dach', 'dacheindeckung', 'eindecken', 'Eindeckung', 'dachziegel', 'dachpfanne', 'dachstein',
+      'dachrinne', 'fallrohr', 'dachfenster', 'schneefang', 'kehle', 'first', 'abdichten',
       'gauben', 'gaube abdichten', 'eindeckung', 'dampfbremse', 'unterspannbahn',
-      'dachsparren ersetzen', 'sparren austauschen', 'sparren reparieren',
+      'dachsparren ersetzen', 'sparren aufdoppeln', 'sparren reparieren',
       'dachstuhl sanieren', 'dachabdichtung', 'klempnerarbeiten dach',
       'dachentlüftung', 'dachhaube', 'attika', 'flachdach', 'bitumenbahn'
     ],
@@ -2663,10 +2663,10 @@ const TRADE_DETECTION_RULES = {
     'ROH': [
       'mauerwerk', 'ziegelmauerwerk', 'durchbruch', 'wanddurchbruch',
       'beton', 'maurerarbeiten', 'sturz', 'kalksandstein', 'neue wand mauern',
-      'wand mauern', 'tragende wand', 'decke durchbrechen', 'fundament',
+      'wand mauern', 'betonieren', 'tragende wand', 'decke durchbrechen', 'fundament',
       'sturz einbauen', 'ziegelwand', 'porenbeton', 'ytong', 'betondecke',
       'stahlbeton', 'bewehrung', 'schalung', 'kernbohrung groß', 'statik',
-      'unterfangen', 'ringanker', 'betontreppe', 'mauern'
+      'unterfangen', 'ringanker', 'betontreppe', 'mauern', 'betonieren'
     ],
     
     'TRO': [
@@ -2682,11 +2682,11 @@ const TRADE_DETECTION_RULES = {
       'wohnungseingangstür', 'arbeitsplatte', 'zimmertür', 'wohnungstür',
       'küchenmöbel', 'holzverkleidung innen', 'schiebetür innen', 'falttür',
       'raumteiler holz', 'einbauküche', 'schranksystem', 'holztreppe innen',
-      'treppengeländer holz', 'handlauf holz', 'tischlerarbeiten'
+      'treppengeländer holz', 'handlauf holz', 'tischlerarbeiten', 'wohnungstür'
     ],
     
     'FEN': [
-      'verglasung', 'haustür', 'rolladen', 'jalousie', 'außentür',
+      'fenster', 'verglasung', 'haustür', 'rolladen', 'jalousie', 'außentür',
       'terrassentür', 'isolierglas', 'neue fenster', 'fenster austauschen',
       'kunststofffenster', 'holzfenster', 'alufenster', 'eingangstür',
       'balkontür', 'fensterbank außen', 'fensterbank innen',
@@ -2694,7 +2694,7 @@ const TRADE_DETECTION_RULES = {
     ],
     
     'SAN': [
-      'wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn',
+      'bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn',
       'armatur', 'sanitär', 'bad komplett', 'toilette', 'waschtisch',
       'wasserleitung', 'abwasser', 'fallleitung', 'hebeanlage', 'rückstauklappe',
       'wasseranschluss bad', 'wasseranschluss küche', 'sanitärobjekte', 'urinal', 'bidet', 
@@ -2706,7 +2706,7 @@ const TRADE_DETECTION_RULES = {
       'fi-schalter', 'elektro', 'kabel', 'leitung elektro', 'stromleitung',
       'unterverteiler', 'zählerschrank', 'hausanschluss strom', 'sat-anlage',
       'netzwerk', 'lan-kabel', 'smart home', 'bus-system', 'knx', 'dimmer',
-      'bewegungsmelder', 'elektroinstallation', 'elektriker'
+      'bewegungsmelder', 'elektroinstallation', 'elektriker', 'wallbox'
     ],
     
     'HEI': [
@@ -2726,7 +2726,7 @@ const TRADE_DETECTION_RULES = {
     ],
     
     'FLI': [
-      'verfugen', 'mosaik', 'naturstein bad', 'feinsteinzeug', 'bodenfliesen',
+      'bad', 'küche', 'verfugen', 'mosaik', 'naturstein bad', 'feinsteinzeug', 'bodenfliesen',
       'wandfliesen', 'fliesen', 'badfliesen', 'kacheln', 'fliesenspiegel', 'bordüre',
       'großformat fliesen', 'terracotta', 'zementfliesen', 'metro fliesen',
       'hexagon fliesen', 'fugenlos bad', 'fliesenarbeiten', 'fliesenleger'
@@ -2769,7 +2769,7 @@ const TRADE_DETECTION_RULES = {
     ],
     
     'AUSS': [
-      'pflaster', 'einfahrt', 'außenanlage', 'randstein', 'rasen',
+      'pflaster', 'garten', 'einfahrt', 'außenanlage', 'randstein', 'rasen',
       'terrasse pflaster', 'hofeinfahrt', 'garagenzufahrt', 'gehweg',
       'stellplatz', 'gartenmauer', 'stützmauer', 'gabionen', 'sickermulde',
       'regenwasserversickerung', 'gartengestaltung'
@@ -3013,26 +3013,26 @@ for (const [code, data] of detectedTrades) {
 function calculateTradeConfidence(tradeCode, matchedKeywords) {
   // Hochwertige Keywords für ALLE Gewerke - gibt extra Konfidenz
   const highValueKeywords = {
-    'DACH': ['dach neu', 'komplett neu eindecken', 'dachsanierung', 'dacherneuerung', 'dach komplett', 'neue eindeckung', 'sparren austauschen'],
+    'DACH': ['dach', 'komplett neu eindecken', 'dachsanierung', 'dacherneuerung', 'dach komplett', 'neue eindeckung'],
     'FASS': ['wdvs', 'wärmedämmverbundsystem', 'fassadendämmung', 'komplettsanierung fassade', 'neue fassade', 'außendämmung komplett'],
-    'ZIMM': ['gaube neu', 'neue gaube', 'dachstuhl neu', 'holzkonstruktion', 'aufstockung', 'dachstuhl erneuern', 'holzrahmenbau'],
-    'ROH': ['tragende wand', 'wanddurchbruch', 'neue wände mauern', 'statische arbeiten', 'fundament', 'betonarbeiten'],
+    'ZIMM': ['gaube', 'neue gaube', 'dachstuhl', 'sparren', 'holzkonstruktion', 'aufstockung', 'dachstuhl erneuern', 'holzrahmenbau'],
+    'ROH': ['tragende wand', 'wanddurchbruch', 'neue wände mauern', 'statisch', 'fundament', 'betonieren', 'stahlbeton'],
     'TRO': ['komplette trockenbauwände', 'vorwandinstallation bad', 'abgehängte decke', 'schallschutzwand', 'brandschutzwand'],
-    'TIS': ['neue innentüren', 'komplette küche', 'einbauküche', 'einbauschränke', 'möbel nach maß', 'alle türen erneuern'],
+    'TIS': ['innentüren', 'komplette küche', 'wohnungstür', 'wohnungseingangstür', 'einbauküche', 'einbauschränke', 'möbel nach maß', 'innentüren erneuern'],
     'FEN': ['alle fenster neu', 'fenster komplett', 'haustür neu', 'kompletter fenstertausch', 'neue fenster und türen'],
-    'SAN': ['bad komplett', 'badsanierung', 'sanitär komplett', 'neues bad', 'komplette sanitärinstallation', 'bad kernsanierung'],
-    'ELEKT': ['elektroinstallation komplett', 'komplette elektrik', 'neue elektroinstallation', 'smart home', 'knx-installation', 'elektro komplett neu'],
-    'HEI': ['heizung neu', 'neue heizungsanlage', 'wärmepumpe', 'fußbodenheizung komplett', 'heizung komplett erneuern', 'brennwertkessel'],
+    'SAN': ['bad', 'bad komplett', 'badsanierung', 'sanitär', 'neues bad', 'sanitärinstallation', 'bad kernsanierung'],
+    'ELEKT': ['elektroinstallation', 'elektrik', 'neue elektroinstallation', 'smart home', 'knx-installation', 'wallbox', 'elektro komplett neu'],
+    'HEI': ['heizung', 'neue heizungsanlage', 'wärmepumpe', 'gasheizung', 'fußbodenheizung', 'heizung komplett erneuern', 'brennwertkessel'],
     'KLIMA': ['lüftungsanlage', 'kontrollierte wohnraumlüftung', 'kwl-anlage', 'klimaanlage', 'wärmerückgewinnung', 'zentrale lüftung'],
-    'FLI': ['bad komplett fliesen', 'neue fliesen', 'komplett neu fliesen', 'naturstein', 'großformatfliesen', 'fugenlos'],
+    'FLI': ['bad', 'küche', 'fliesen', 'neue fliesen', 'komplett neu fliesen', 'naturstein', 'großformatfliesen', 'fugenfarbe'],
     'BOD': ['neuer parkettboden', 'kompletter bodenbelag', 'alle böden neu', 'designboden', 'massivholzdielen', 'parkett komplett'],
-    'MAL': ['komplett streichen', 'alle räume streichen', 'komplette malerarbeiten', 'innenputz neu', 'tapezieren komplett'],
+    'MAL': ['streichen', 'alle räume streichen', 'komplette malerarbeiten', 'innenputz neu', 'tapezieren komplett'],
     'ESTR': ['neuer estrich', 'estrich komplett', 'fließestrich', 'heizestrich', 'estrich mit dämmung', 'kompletter estrichaufbau'],
     'GER': ['fassadengerüst', 'kompletteinrüstung', 'dachgerüst', 'gerüst rundherum', 'baugerüst komplett'],
     'SCHL': ['neues geländer', 'balkongeländer', 'stahltreppe', 'metallkonstruktion', 'einbruchschutz', 'neue metallarbeiten'],
     'AUSS': ['neue einfahrt', 'komplette außenanlage', 'terrasse neu', 'pflasterarbeiten', 'gartengestaltung', 'hofpflasterung'],
     'PV': ['photovoltaikanlage', 'solaranlage komplett', 'pv mit speicher', 'balkonkraftwerk', 'wallbox', 'komplette pv-anlage'],
-    'ABBR': ['entkernung', 'komplettabriss', 'teilabbruch', 'asbestsanierung', 'schadstoffsanierung', 'rückbau komplett']
+    'ABBR': ['entkernung', 'abriss', 'abbruch', 'teilabbruch', 'asbestsanierung', 'schadstoffsanierung', 'rückbau komplett']
   };
   
   let confidence = 70; // Basis-Konfidenz
