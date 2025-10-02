@@ -181,6 +181,9 @@ export default function ProjectFormPage() {
       
       const data = await res.json();
       const { project } = data;
+
+      // Projekt-ID in Session speichern für späteren Zugriff
+      sessionStorage.setItem('currentProjectId', project.id);
       
       // Nur für nicht eingeloggte User speichern
       if (!isLoggedIn) {
