@@ -6159,6 +6159,7 @@ WICHTIG:
 - Ungerade Zahlen sind NICHT handelsüblich
 - Bei ungeraden Angaben: Auf nächste gerade Zahl aufrunden
 - Die angegebene Dämmstärke MUSS exakt übernommen werden
+- Sockeldämmung immer 2 cm dünner als WDVS
 
 BEISPIEL KORREKT:
 - "Lieferung und Montage WDVS, EPS WLG 035, ${criticalMeasurements.daemmstaerke?.value || 16} cm"
