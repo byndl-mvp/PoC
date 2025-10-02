@@ -3275,24 +3275,30 @@ if (!isIntake && projectContext.projectId) {
     isManuallyAdded: projectContext.isManuallyAdded,
   });
   
-  // NEU: Bei manuellen Gewerken NUR Kontextfrage zurückgeben
-  if (projectContext.isManuallyAdded === true || projectContext.isAiRecommended === true) {
-    console.log(`[QUESTIONS] Manual/AI-recommended trade ${tradeCode} - returning context question only`);
-    
-    // Erstelle kontextbezogene Frage basierend auf Projektbeschreibung
-    const contextQuestion = `Sie haben ${tradeName} als ${projectContext.isAiRecommended ? 'empfohlenes' : 'zusätzliches'} Gewerk ausgewählt. 
+  // NEU: Unterscheide zwischen AI-empfohlen und manuell
+if (projectContext.isManuallyAdded === true && !projectContext.isAiRecommended) {
+  // NUR bei MANUELL hinzugefügten Gewerken: Kontextfrage zuerst
+  console.log(`[QUESTIONS] Manually added trade ${tradeCode} - returning context question only`);
+  
+  const contextQuestion = `Sie haben ${tradeName} als zusätzliches Gewerk ausgewählt. 
     Basierend auf Ihrem Projekt "${projectContext.description?.substring(0, 100)}..." - was genau soll in diesem Bereich gemacht werden?`;
-    
-    return [{
-      id: 'context_reason',
-      question: contextQuestion,
-      text: contextQuestion,
-      type: 'text',
-      required: true,
-      category: 'Projektkontext',
-      explanation: 'Basierend auf Ihrer Antwort erstellen wir passende Detailfragen für dieses Gewerk.'
-    }];
-  }
+  
+  return [{
+    id: 'context_reason',
+    question: contextQuestion,
+    text: contextQuestion,
+    type: 'text',
+    required: true,
+    category: 'Projektkontext',
+    explanation: 'Basierend auf Ihrer Antwort erstellen wir passende Detailfragen für dieses Gewerk.'
+  }];
+}
+
+// AI-empfohlene Gewerke: KEINE Kontextfrage, direkt vollständiger Fragenkatalog
+if (projectContext.isAiRecommended === true) {
+  console.log(`[QUESTIONS] AI-recommended trade ${tradeCode} - generating FULL question catalog with project context`);
+  // Weiter mit normalem Fragenkatalog-Prozess (kein early return!)
+}
   
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
 
