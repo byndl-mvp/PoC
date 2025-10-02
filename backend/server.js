@@ -12818,6 +12818,39 @@ app.post('/api/handwerker/resend-verification', async (req, res) => {
   }
 });
 
+// Route zum nachträglichen Verknüpfen von Projekten
+app.post('/api/projects/claim', async (req, res) => {
+  try {
+    const { projectId, bauherrId } = req.body;
+    
+    // Prüfe ob Projekt existiert und noch keinem Bauherrn zugeordnet ist
+    const projectCheck = await query(
+      'SELECT bauherr_id FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    }
+    
+    if (projectCheck.rows[0].bauherr_id) {
+      return res.status(400).json({ error: 'Projekt bereits zugeordnet' });
+    }
+    
+    // Verknüpfe Projekt mit Bauherr
+    await query(
+      'UPDATE projects SET bauherr_id = $1 WHERE id = $2',
+      [bauherrId, projectId]
+    );
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Error claiming project:', error);
+    res.status(500).json({ error: 'Fehler beim Zuordnen des Projekts' });
+  }
+});
+
 // 2. PROJECT MANAGEMENT ROUTES
 // ----------------------------------------------------------------------------
 
