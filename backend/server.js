@@ -6793,7 +6793,7 @@ if (duplicates.length > 0) {
     }
   }
 
-  // FASS-spezifisch: Korrigiere falsche Dämmstärken
+  // FASS-spezifisch: Teil 1 - Korrigiere falsche Dämmstärken
 if (trade.code === 'FASS' && lv.positions) {
   // Prüfe ob Dämmstärke aus Antworten extrahiert wurde
   if (criticalMeasurements.daemmstaerke) {
@@ -6951,8 +6951,25 @@ if (pos.title?.toLowerCase().includes('sockel')) {
       return pos;
     });
   }
-} // <-- ENDE DES GROSSEN DÄMMSTÄRKEN-BLOCKS
-
+  
+// TEIL 2: Entferne falsche Positionen (Isokorb etc.)
+  const vorherCount = lv.positions.length;
+  lv.positions = lv.positions.filter(pos => {
+    const title = (pos.title || '').toLowerCase();
+    const desc = (pos.description || '').toLowerCase();
+    
+    if (title.includes('isokorb') || desc.includes('isokorb')) {
+      console.error(`[FASS] FEHLER: Isokorb-Position entfernt - gehört zu Rohbau!`);
+      return false;
+    }   
+    return true;
+  });
+  
+  if (vorherCount !== lv.positions.length) {
+    console.log(`[FASS] ${vorherCount - lv.positions.length} falsche Positionen entfernt`);
+  }
+} // Ende des FASS-Blocks
+      
 // MATERIAL-PREISKORREKTUREN (Kleber, Kabel, etc.)
 lv.positions = lv.positions.map(pos => {
   const titleLower = (pos.title || pos.bezeichnung || '').toLowerCase();
