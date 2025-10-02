@@ -51,14 +51,23 @@ export default function BauherrenDashboardPage() {
     // Check für pending LV-Projekt ODER neu erstelltes Projekt
 const pendingProjectId = sessionStorage.getItem('pendingLvProject') || 
                         sessionStorage.getItem('currentProjectId');
-if (pendingProjectId) {
-  setPendingLvProjectId(pendingProjectId);
-  // Session aufräumen
-  sessionStorage.removeItem('currentProjectId');
-  // Projekte nochmal laden um sicherzustellen, dass das neue Projekt angezeigt wird
-  setTimeout(() => {
+                        
+if (pendingProjectId && user.id) {
+  // Verknüpfe Projekt mit Bauherr falls noch nicht geschehen
+  fetch(apiUrl('/api/projects/claim'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      projectId: pendingProjectId,
+      bauherrId: user.id
+    })
+  }).then(() => {
+    setPendingLvProjectId(pendingProjectId);
+    sessionStorage.removeItem('currentProjectId');
+    sessionStorage.removeItem('pendingLvProject');
+    // Projekte laden
     loadUserProjects(user.email);
-  }, 500);
+  });
 }
   } catch (error) {
     console.error('Failed to parse userData:', error);
