@@ -9026,7 +9026,7 @@ app.get('/api/trades', async (req, res) => {
 // Create project with trade detection
 app.post('/api/projects', async (req, res) => {
   try {
-    const { category, subCategory, description, timeframe, budget } = req.body;
+    const { category, subCategory, description, timeframe, budget, bauherrId } = req.body;
     
     if (!description) {
       return res.status(400).json({ error: 'Description is required' });
@@ -9041,6 +9041,7 @@ app.post('/api/projects', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [
+        bauherrId || null,  
         category || null, 
         subCategory || null, 
         description, 
