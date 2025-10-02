@@ -5574,22 +5574,29 @@ if (trade.code === 'FASS') {
     const question = answer.question.toLowerCase();
     const answerText = answer.answer;
     
-    // Suche nach Dämmstärke in cm
     if (question.includes('dämmstärke') || question.includes('dämmung') || 
         question.includes('wärmedämmung') || question.includes('stärke')) {
-      const daemmMatch = answerText.match(/(\d+)\s*(cm|mm)/i);
-      if (daemmMatch) {
-        let daemmstaerke = parseInt(daemmMatch[1]);
-        
-        // Konvertiere mm in cm falls nötig
-        if (daemmMatch[2].toLowerCase() === 'mm') {
-          daemmstaerke = Math.round(daemmstaerke / 10);
+      
+      let daemmstaerke = null;
+      
+      // Suche ALLE Zahlen im Text
+      const allNumbers = answerText.match(/\d+/g);
+      
+      if (allNumbers && allNumbers.length > 0) {
+        // Nimm die erste gültige Dämmstärke (10-30cm)
+        for (const num of allNumbers) {
+          const value = parseInt(num);
+          if (value >= 10 && value <= 30) {
+            daemmstaerke = value;
+            break;
+          }
         }
-        
-        // Runde auf gerade Zahl (handelsübliche Stärken)
+      }
+      
+      if (daemmstaerke) {
+        // Auf gerade Zahl runden
         if (daemmstaerke % 2 !== 0) {
-          daemmstaerke = daemmstaerke + 1; // Aufrunden auf nächste gerade Zahl
-          console.log(`[FASS] Dämmstärke von ${parseInt(daemmMatch[1])}cm auf ${daemmstaerke}cm (gerade Zahl) korrigiert`);
+          daemmstaerke = daemmstaerke + 1;
         }
         
         criticalMeasurements.daemmstaerke = {
@@ -5599,7 +5606,7 @@ if (trade.code === 'FASS') {
           source: 'trade_answers'
         };
         
-        console.log(`[FASS] Dämmstärke erfasst: ${daemmstaerke}cm`);
+        console.log(`[FASS] Dämmstärke ${daemmstaerke}cm aus: "${answerText}"`);
       }
     }
   });
