@@ -4,9 +4,9 @@ import { apiUrl } from '../api';
 
 // Preismodell
 const PRICING = {
-  small: { price: 9.90, label: '1-2 Gewerke', min: 1, max: 2 },
-  medium: { price: 19.90, label: '3-5 Gewerke', min: 3, max: 5 },
-  large: { price: 39.90, label: 'Ab 6 Gewerken', min: 6, max: 999 }
+  small: { price: 29.90, label: '1-2 Gewerke', min: 1, max: 2 },
+  medium: { price: 59.90, label: '3-5 Gewerke', min: 3, max: 5 },
+  large: { price: 99.90, label: 'Ab 6 Gewerken', min: 6, max: 20 }
 };
 
 export default function TradeConfirmationPage() {
