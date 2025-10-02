@@ -21,6 +21,7 @@ import ResultPage from './pages/ResultPage';
 import AdditionalTradeSelectionPage from './pages/AdditionalTradeSelectionPage';
 import LVReviewPage from './pages/LVReviewPage';
 import BauherrenDashboardPage from './pages/BauherrenDashboardPage';
+import BauherrenSettingsPage from './pages/BauherrenSettingsPage';
 
 // Handwerker Pages
 import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
@@ -119,7 +120,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          
+          <Route 
+  path="/bauherr/settings" 
+  element={
+    <ProtectedRoute userType="bauherr">
+      <BauherrenSettingsPage />
+    </ProtectedRoute>
+  } 
+/>          
           {/* Legacy/Alternative Routen für Bauherren */}
           <Route path="/bauherren/login" element={<BauherrLoginPage />} />
           <Route path="/bauherren/dashboard" element={<BauherrenDashboardPage />} />
