@@ -35,16 +35,15 @@ export default function BauherrenSettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   
   useEffect(() => {
-    const userData = sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData');
-    if (!userData) {
-      navigate('/bauherr/login');
-      return;
-    }
-    
-    const user = JSON.parse(userData);
-    loadSettings(user.id);
-  }, [navigate]);
+  const userData = sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData');
+  if (!userData) {
+    navigate('/bauherr/login');
+    return;
+  }
   
+  const user = JSON.parse(userData);
+  
+  // loadSettings direkt im useEffect definieren
   const loadSettings = async (userId) => {
     try {
       setLoading(true);
@@ -70,6 +69,9 @@ export default function BauherrenSettingsPage() {
       setLoading(false);
     }
   };
+  
+  loadSettings(user.id);
+}, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const savePersonalData = async () => {
     try {
