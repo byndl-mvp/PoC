@@ -13409,6 +13409,222 @@ app.get('/api/projects/:projectId/supplements', async (req, res) => {
   }
 });
 
+// Bauherr Settings Endpoints
+
+// Get Bauherr Settings
+app.get('/api/bauherr/:id/settings', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT * FROM bauherren WHERE id = $1`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching settings:', err);
+    res.status(500).json({ error: 'Fehler beim Laden der Einstellungen' });
+  }
+});
+
+// Update Personal Data
+app.put('/api/bauherr/:id/personal', async (req, res) => {
+  try {
+    const { name, email, phone, street, houseNumber, zipCode, city } = req.body;
+    
+    await query(
+      `UPDATE bauherren SET
+        name = $2,
+        email = $3,
+        phone = $4,
+        street = $5,
+        house_number = $6,
+        zip = $7,
+        city = $8,
+        updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, name, email, phone, street, houseNumber, zipCode, city]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating personal data:', err);
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Update Notifications
+app.put('/api/bauherr/:id/notifications', async (req, res) => {
+  try {
+    await query(
+      `UPDATE bauherren SET
+        notification_settings = $2,
+        updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, JSON.stringify(req.body)]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating notifications:', err);
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Change Password
+app.put('/api/bauherr/:id/password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Get current password hash
+    const result = await query(
+      'SELECT password_hash FROM bauherren WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    }
+    
+    // Verify current password
+    const isValid = await bcryptjs.compare(currentPassword, result.rows[0].password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Falsches Passwort' });
+    }
+    
+    // Hash new password
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
+    
+    // Update password
+    await query(
+      `UPDATE bauherren SET
+        password_hash = $2,
+        updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, hashedPassword]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error changing password:', err);
+    res.status(500).json({ error: 'Passwortänderung fehlgeschlagen' });
+  }
+});
+
+// Toggle Two-Factor
+app.put('/api/bauherr/:id/two-factor', async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    
+    await query(
+      `UPDATE bauherren SET
+        two_factor_enabled = $2,
+        updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, enabled]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error toggling 2FA:', err);
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Export Data
+app.get('/api/bauherr/:id/export', async (req, res) => {
+  try {
+    // Get all user data
+    const bauherrResult = await query('SELECT * FROM bauherren WHERE id = $1', [req.params.id]);
+    const projectsResult = await query('SELECT * FROM projects WHERE bauherr_id = $1', [req.params.id]);
+    
+    const exportData = {
+      personal: bauherrResult.rows[0],
+      projects: projectsResult.rows,
+      exportDate: new Date().toISOString()
+    };
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="byndl-export.json"');
+    res.json(exportData);
+  } catch (err) {
+    console.error('Error exporting data:', err);
+    res.status(500).json({ error: 'Export fehlgeschlagen' });
+  }
+});
+
+// Delete Account
+app.delete('/api/bauherr/:id/account', async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    // Verify password
+    const result = await query(
+      'SELECT password_hash FROM bauherren WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Account nicht gefunden' });
+    }
+    
+    const isValid = await bcryptjs.compare(password, result.rows[0].password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Falsches Passwort' });
+    }
+    
+    // Delete all related data
+    await query('BEGIN');
+    
+    // Delete projects and all related data
+    const projects = await query('SELECT id FROM projects WHERE bauherr_id = $1', [req.params.id]);
+    for (const project of projects.rows) {
+      await query('DELETE FROM questions WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM project_trades WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM lvs WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM tenders WHERE project_id = $1', [project.id]);
+    }
+    
+    await query('DELETE FROM projects WHERE bauherr_id = $1', [req.params.id]);
+    await query('DELETE FROM bauherren WHERE id = $1', [req.params.id]);
+    
+    await query('COMMIT');
+    
+    res.json({ success: true });
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error('Error deleting account:', err);
+    res.status(500).json({ error: 'Account-Löschung fehlgeschlagen' });
+  }
+});
+
+// Delete Project
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    await query('BEGIN');
+    
+    // Delete all related data
+    await query('DELETE FROM questions WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM answers WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM project_trades WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM lvs WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM tenders WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM trade_progress WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM projects WHERE id = $1', [req.params.id]);
+    
+    await query('COMMIT');
+    
+    res.json({ success: true });
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error('Error deleting project:', err);
+    res.status(500).json({ error: 'Projekt-Löschung fehlgeschlagen' });
+  }
+});
+
 // 5. HANDWERKER DASHBOARD ROUTES
 // ----------------------------------------------------------------------------
 
