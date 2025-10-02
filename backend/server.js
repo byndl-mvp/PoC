@@ -6872,14 +6872,16 @@ if (pos.title?.toLowerCase().includes('sockel')) {
   }
   
   if (pos.description) {
-    pos.description = pos.description.replace(alleZahlenRegex, (match, offset, fullString) => {
-      // Prüfe Kontext - nur Dämmstärken ersetzen, nicht z.B. Sockelhöhe
-      const vorher = fullString.substring(Math.max(0, offset - 20), offset).toLowerCase();
-      if (vorher.includes('höhe') || vorher.includes('sichtbar') || vorher.includes('über')) {
-        return match; // Sockelhöhe nicht ändern
-      }
-      return `${sockeldaemmstaerke} cm`;
-    });
+  const originalDescription = pos.description; // Speichere Original
+  
+  pos.description = originalDescription.replace(alleZahlenRegex, (match, p1, offset) => {
+    // Prüfe Kontext - verwende originalDescription statt fullString
+    const vorher = originalDescription.substring(Math.max(0, offset - 20), offset).toLowerCase();
+    if (vorher.includes('höhe') || vorher.includes('sichtbar') || vorher.includes('über')) {
+      return match; // Sockelhöhe nicht ändern
+    }
+    return `${sockeldaemmstaerke} cm`;
+  });
     
     // Explizit "Stärke X cm" ersetzen
     pos.description = pos.description.replace(/Stärke\s+\d+\s*cm/gi, `Stärke ${sockeldaemmstaerke} cm`);
