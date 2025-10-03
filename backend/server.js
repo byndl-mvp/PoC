@@ -14029,13 +14029,18 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
   }
 });
 
-// 2. Korrigierte Handwerker-Tenders Route
+// Get matching tenders for handwerker - KORRIGIERT
 app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
   try {
     const { companyId } = req.params;
     
+    // Get handwerker with trades
     const handwerkerResult = await query(
-      'SELECT id, trades FROM handwerker WHERE company_id = $1',
+      `SELECT h.*, array_agg(DISTINCT ht.trade_id) as trade_ids
+       FROM handwerker h
+       LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
+       WHERE h.company_id = $1
+       GROUP BY h.id`,
       [companyId]
     );
     
@@ -14043,12 +14048,20 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
       return res.status(404).json({ error: 'Handwerker nicht gefunden' });
     }
     
-    const handwerkerId = handwerkerResult.rows[0].id;
-    const handwerkerTrades = handwerkerResult.rows[0].trades;
+    const handwerker = handwerkerResult.rows[0];
+    const tradeIds = handwerker.trade_ids || [];
     
+    // Get UNIQUE tenders with offer status
     const tenders = await query(
-      `SELECT 
-        t.*,
+      `SELECT DISTINCT ON (t.id)
+        t.id,
+        t.project_id,
+        t.trade_id,
+        t.status,
+        t.deadline,
+        t.created_at,
+        t.lv_data,
+        t.estimated_value,
         tr.name as trade_name,
         p.description as project_description,
         p.category,
@@ -14056,32 +14069,33 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
         p.timeframe,
         p.zip_code as project_zip,
         p.city as project_city,
-        th.status as handwerker_status,
         th.viewed_at,
-        t.lv_data,
         CASE 
-          WHEN EXISTS (
-            SELECT 1 FROM offers o 
-            WHERE o.tender_id = t.id 
-            AND o.handwerker_id = $1
-          ) THEN true 
+          WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true 
           ELSE false 
-        END as has_offer
+        END as is_new,
+        o.id as offer_id,
+        o.status as offer_status,
+        o.stage as offer_stage
       FROM tenders t
       JOIN tender_handwerker th ON t.id = th.tender_id
       JOIN trades tr ON t.trade_id = tr.id
       JOIN projects p ON t.project_id = p.id
+      LEFT JOIN offers o ON o.tender_id = t.id AND o.handwerker_id = $1
       WHERE th.handwerker_id = $1
-      AND t.status = 'open'
-      AND t.deadline > NOW()
-      ORDER BY t.created_at DESC`,
-      [handwerkerId]
+        AND t.trade_id = ANY($2::int[])
+        AND t.status = 'open'
+        AND t.deadline > NOW()
+        AND (o.status IS NULL OR o.status NOT IN ('accepted', 'final_accepted'))
+      ORDER BY t.id, t.created_at DESC`,
+      [handwerker.id, tradeIds]
     );
     
     res.json(tenders.rows);
+    
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ error: 'Fehler beim Abrufen der Ausschreibungen' });
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
   }
 });
 
