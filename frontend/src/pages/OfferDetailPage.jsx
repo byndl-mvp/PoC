@@ -180,6 +180,27 @@ export default function OfferDetailPage() {
           </div>
         </div>
 
+        {/* HIER NEUEN ACTION BUTTON EINFÜGEN */}
+{offer.status === 'submitted' && (
+  <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-2xl p-6 mb-6 border border-yellow-500/50">
+    <div className="text-center">
+      <h3 className="text-xl font-bold text-white mb-3">Nächster Schritt</h3>
+      <p className="text-gray-300 mb-4">
+        Starten Sie die Vertragsanbahnung mit diesem Handwerker
+      </p>
+      <button
+        onClick={handlePreliminaryOrder}
+        className="px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-bold text-lg"
+      >
+        🤝 Vorläufig beauftragen
+      </button>
+      <p className="text-xs text-gray-400 mt-3">
+        Kontaktdaten werden freigegeben • 24 Monate Nachwirkfrist beginnt
+      </p>
+    </div>
+  </div>
+)}
+        
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-white/20">
           <button
