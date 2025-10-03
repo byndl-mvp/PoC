@@ -410,15 +410,6 @@ const ContractNegotiationModal = () => {
   };
 };
 
-// HIER DIE NEUE KOMPONENTE EINFÜGEN:
-const formatCurrency = (value) => {
-  if (!value && value !== 0) return '0 €';
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(value);
-};
-
 const BudgetVisualization = ({ budget }) => {
   if (!budget) return null;
   
