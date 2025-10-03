@@ -13692,7 +13692,7 @@ app.get('/api/handwerker/:companyId/tenders', async (req, res) => {
               CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as "isNew"
        FROM tenders t
        JOIN projects p ON t.project_id = p.id
-       JOIN trades tr ON t.trade_code = tr.code
+       JOIN trades tr ON t.trade_id = tr.id
        WHERE t.trade_code = ANY($1::text[])
        AND t.status = 'open'
        AND t.deadline > NOW()
