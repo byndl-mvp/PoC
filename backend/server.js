@@ -13075,7 +13075,7 @@ app.post('/api/offers/create', async (req, res) => {
   }
 });
 
-// Get specific offer details with project context
+// Korrigierte bestehende Route
 app.get('/api/projects/:projectId/offers/:offerId', async (req, res) => {
   try {
     const { projectId, offerId } = req.params;
@@ -13090,11 +13090,11 @@ app.get('/api/projects/:projectId/offers/:offerId', async (req, res) => {
               h.zip_code, 
               h.city,
               t.name as trade_name,
-              tn.trade_code
+              t.code as trade_code
        FROM offers o
        JOIN handwerker h ON o.handwerker_id = h.id
        JOIN tenders tn ON o.tender_id = tn.id
-       JOIN trades t ON tn.trade_code = t.code
+       JOIN trades t ON tn.trade_id = t.id  -- HIER IST DIE KORREKTUR
        WHERE tn.project_id = $1 AND o.id = $2`,
       [projectId, offerId]
     );
@@ -13103,7 +13103,17 @@ app.get('/api/projects/:projectId/offers/:offerId', async (req, res) => {
       return res.status(404).json({ error: 'Angebot nicht gefunden' });
     }
     
-    res.json(result.rows[0]);
+    // Kontaktdaten-Schutz basierend auf Status
+    const offer = result.rows[0];
+    if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
+      // Kontaktdaten nur bei vorläufiger/finaler Beauftragung sichtbar
+      offer.email = 'Wird nach Beauftragung freigegeben';
+      offer.phone = 'Wird nach Beauftragung freigegeben';
+      offer.street = null;
+      offer.house_number = null;
+    }
+    
+    res.json(offer);
     
   } catch (error) {
     console.error('Error fetching offer details:', error);
