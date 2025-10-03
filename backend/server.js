@@ -14012,14 +14012,13 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
   }
 });
 
-// Handwerker: Ausschreibungen abrufen
+// 2. Korrigierte Handwerker-Tenders Route
 app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
   try {
     const { companyId } = req.params;
     
-    // Handwerker-ID ermitteln
     const handwerkerResult = await query(
-      'SELECT id FROM handwerker WHERE company_id = $1',
+      'SELECT id, trades FROM handwerker WHERE company_id = $1',
       [companyId]
     );
     
@@ -14028,19 +14027,29 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
     }
     
     const handwerkerId = handwerkerResult.rows[0].id;
+    const handwerkerTrades = handwerkerResult.rows[0].trades;
     
-    // Zugewiesene Ausschreibungen abrufen
     const tenders = await query(
       `SELECT 
         t.*,
         tr.name as trade_name,
         p.description as project_description,
+        p.category,
+        p.sub_category,
         p.timeframe,
-        p.zip as project_zip,
+        p.zip_code as project_zip,
         p.city as project_city,
         th.status as handwerker_status,
         th.viewed_at,
-        t.lv_data
+        t.lv_data,
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 FROM offers o 
+            WHERE o.tender_id = t.id 
+            AND o.handwerker_id = $1
+          ) THEN true 
+          ELSE false 
+        END as has_offer
       FROM tenders t
       JOIN tender_handwerker th ON t.id = th.tender_id
       JOIN trades tr ON t.trade_id = tr.id
@@ -14053,9 +14062,8 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
     );
     
     res.json(tenders.rows);
-    
   } catch (error) {
-    console.error('Error fetching handwerker tenders:', error);
+    console.error('Error:', error);
     res.status(500).json({ error: 'Fehler beim Abrufen der Ausschreibungen' });
   }
 });
