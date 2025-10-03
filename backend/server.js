@@ -13668,9 +13668,9 @@ app.get('/api/handwerker/:companyId/tenders', async (req, res) => {
   try {
     const { companyId } = req.params;
     
-    // Get handwerker details with trades
+    // Get handwerker details with trade_ids
     const handwerkerResult = await query(
-      `SELECT h.*, array_agg(ht.trade_code) as trades
+      `SELECT h.*, array_agg(ht.trade_id) as trade_ids
        FROM handwerker h
        LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
        WHERE h.company_id = $1
@@ -13683,31 +13683,37 @@ app.get('/api/handwerker/:companyId/tenders', async (req, res) => {
     }
     
     const handwerker = handwerkerResult.rows[0];
-    const trades = handwerker.trades || [];
+    const tradeIds = handwerker.trade_ids || [];
     
-    // Get matching tenders - auch hier zip_code verwenden
+    // Get matching tenders
     const result = await query(
-      `SELECT DISTINCT t.*, p.description, p.budget, p.zip_code, p.city,
+      `SELECT DISTINCT t.*, 
+              p.description, 
+              p.category,
+              p.sub_category,
+              p.budget, 
+              p.zip_code, 
+              p.city,
               tr.name as trade,
               CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as "isNew"
        FROM tenders t
        JOIN projects p ON t.project_id = p.id
        JOIN trades tr ON t.trade_id = tr.id
-       WHERE t.trade_code = ANY($1::text[])
+       WHERE t.trade_id = ANY($1::int[])
        AND t.status = 'open'
        AND t.deadline > NOW()
        ORDER BY t.created_at DESC`,
-      [trades]
+      [tradeIds]
     );
     
-    // Calculate distance and filter by radius (simplified)
+    // Map tender data with additional info
     const tenders = result.rows.map(tender => ({
       ...tender,
-      projectType: tender.description?.substring(0, 50),
-      location: `${tender.zip} ${tender.city}`,
-      distance: Math.round(Math.random() * handwerker.action_radius), // Simplified
-      estimatedVolume: tender.budget || Math.round(Math.random() * 50000 + 10000),
-      executionDate: 'KW ' + (15 + Math.round(Math.random() * 10)) + '/2025',
+      projectType: `${tender.category} - ${tender.sub_category}`,
+      location: `${tender.zip_code} ${tender.city}`,
+      distance: Math.round(Math.random() * handwerker.action_radius), // TODO: Echte Distanzberechnung
+      estimatedVolume: tender.budget || tender.estimated_value || 0,
+      executionDate: tender.timeframe || 'Nach Absprache',
       deadline: tender.deadline
     }));
     
@@ -13718,7 +13724,6 @@ app.get('/api/handwerker/:companyId/tenders', async (req, res) => {
     res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
   }
 });
-
 // Get handwerker bundles
 app.get('/api/handwerker/:companyId/bundles', async (req, res) => {
   try {
