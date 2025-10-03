@@ -274,13 +274,6 @@ export default function HandwerkerDashboardPage() {
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Passende Ausschreibungen</h2>
     
-    <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-      <p className="text-blue-300 text-sm">
-        <strong>ℹ️ Tipp:</strong> Klicken Sie auf eine Ausschreibung, um das Leistungsverzeichnis 
-        einzusehen und ein Angebot zu erstellen.
-      </p>
-    </div>
-    
     {tenders.length === 0 ? (
       <p className="text-gray-400">Aktuell keine passenden Ausschreibungen verfügbar.</p>
     ) : (
@@ -290,39 +283,64 @@ export default function HandwerkerDashboardPage() {
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-lg font-semibold text-white">{tender.trade_name}</h3>
+                  <h3 className="text-lg font-semibold text-white">
+                    {tender.trade_name}
+                  </h3>
+                  <span className="text-sm bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+                    {tender.category} - {tender.sub_category}
+                  </span>
                   {!tender.viewed_at && (
                     <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
                   )}
                 </div>
-                <p className="text-gray-300">{tender.project_description}</p>
-                <div className="mt-2 space-y-1">
-                  <p className="text-sm text-gray-400">
-                    📍 PLZ: {tender.project_zip}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    📅 Zeitraum: {tender.timeframe || 'Nach Absprache'}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    💰 Geschätztes Volumen: {formatCurrency(tender.estimated_value)}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    ⏰ Angebotsfrist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
-                  </p>
+                
+                <p className="text-gray-300 mb-2">{tender.project_description}</p>
+                
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-400">
+                      📍 Ort: {tender.project_zip} {tender.project_city}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      📅 Zeitraum: {tender.timeframe || 'Nach Absprache'}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-400">
+                      💰 Volumen: {formatCurrency(tender.estimated_value)}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      ⏰ Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
+                    </p>
+                  </div>
                 </div>
               </div>
+              
               <div className="text-right">
-                <button
-                  onClick={() => {
-                    // Öffne Angebots-Modal oder navigiere zur Angebotsseite
-                    navigate(`/handwerker/tender/${tender.id}/offer`);
-                  }}
-                  className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
-                >
-                  LV ansehen & Angebot erstellen
-                </button>
-                {tender.handwerker_status === 'offered' && (
-                  <p className="text-green-400 text-sm mt-2">✓ Angebot abgegeben</p>
+                {!tender.has_offer ? (
+                  <button
+                    onClick={() => navigate(`/handwerker/tender/${tender.id}/offer`)}
+                    className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+                  >
+                    <div>
+                      <div className="font-semibold">Angebot vorläufig abgeben</div>
+                      <div className="text-xs mt-1">Mit Vertragsanbahnung</div>
+                    </div>
+                  </button>
+                ) : (
+                  <div>
+                    <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2">
+                      ✓ Angebot abgegeben
+                    </span>
+                    {tender.handwerker_status === 'preliminary' && (
+                      <button
+                        onClick={() => navigate(`/handwerker/tender/${tender.id}/offer`)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
+                      >
+                        Angebot anpassen
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
