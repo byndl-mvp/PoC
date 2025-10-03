@@ -25,26 +25,26 @@ export default function OfferDetailPage() {
   }, [projectId, offerId]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const loadData = async () => {
-    try {
-      // Lade Angebotsdaten
-      const offerRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/${offerId}`));
-      if (offerRes.ok) {
-        const offerData = await offerRes.json();
-        setOffer(offerData);
-      }
-
-      // Lade Projektdaten
-      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-      if (projectRes.ok) {
-        const projectData = await projectRes.json();
-        setProject(projectData);
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
+  try {
+    // Lade Angebotsdaten
+    const offerRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/${offerId}`));
+    if (offerRes.ok) {
+      const offerData = await offerRes.json();
+      setOffer(offerData);
     }
-  };
+    
+    // Lade Projektdaten - KORRIGIERTE ROUTE
+    const projectRes = await fetch(apiUrl(`/api/projects/${projectId}/dashboard-details`));
+    if (projectRes.ok) {
+      const projectData = await projectRes.json();
+      setProject(projectData.project); // Beachte: .project, da dashboard-details ein Objekt mit project-Key zurückgibt
+    }
+  } catch (error) {
+    console.error('Error loading data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleAccept = async () => {
     if (!window.confirm('Möchten Sie dieses Angebot verbindlich annehmen?')) return;
