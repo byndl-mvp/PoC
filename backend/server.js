@@ -3299,17 +3299,6 @@ if (projectContext.isAiRecommended === true) {
   console.log(`[QUESTIONS] AI-recommended trade ${tradeCode} - generating FULL question catalog with project context`);
   // Weiter mit normalem Fragenkatalog-Prozess (kein early return!)
 }
-
-// Zusätzliche Validierung für AI-empfohlene Gewerke
-if (projectContext.isAiRecommended === true) {
-  console.log(`[QUESTIONS] AI-recommended trade ${tradeCode} - enforcing full question count`);
-  // Stelle sicher, dass targetQuestionCount NICHT reduziert wird
-  const minQuestions = TRADE_COMPLEXITY[tradeCode]?.baseQuestions || 15;
-  if (targetQuestionCount < minQuestions) {
-    targetQuestionCount = minQuestions;
-    console.log(`[QUESTIONS] Enforced minimum ${minQuestions} questions for AI-recommended ${tradeCode}`);
-  }
-}
   
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
 
