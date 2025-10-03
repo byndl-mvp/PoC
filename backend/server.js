@@ -14152,6 +14152,41 @@ app.get('/api/tenders/:tenderId/lv', async (req, res) => {
   }
 });
 
+// Angebot als gelesen markieren
+app.post('/api/offers/:offerId/mark-read', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query(
+      'UPDATE offers SET viewed_at = COALESCE(viewed_at, NOW()) WHERE id = $1',
+      [offerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// Ungelesene Angebote zählen
+app.get('/api/projects/:projectId/unread-offers-count', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT COUNT(*) as count
+       FROM offers o
+       JOIN tenders t ON o.tender_id = t.id
+       WHERE t.project_id = $1 AND o.viewed_at IS NULL`,
+      [projectId]
+    );
+    
+    res.json({ count: result.rows[0].count });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
 // 3. Erweiterte Angebots-Submission mit Status-Management
 app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   try {
