@@ -410,6 +410,90 @@ const ContractNegotiationModal = () => {
     };
   };
 
+  // HIER NEUE KOMPONENTE EINFÜGEN (nach Zeile 264):
+  const BudgetVisualization = ({ budget }) => {
+    const maxValue = Math.max(
+      budget.initialBudget || 1,
+      budget.estimatedCost || 1,
+      budget.orderedAmount + budget.supplementsApproved || 1
+    );
+    
+    const getPercentage = (value) => (value / maxValue * 100) + '%';
+    
+    return (
+      <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+        <h3 className="text-xl font-bold text-white mb-6">Kostenübersicht</h3>
+        
+        <div className="space-y-4">
+          {/* Budget Bar */}
+          <div>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-gray-400">Anfangsbudget</span>
+              <span className="text-white">{formatCurrency(budget.initialBudget)}</span>
+            </div>
+            <div className="w-full bg-white/20 rounded-full h-8 relative">
+              <div 
+                className="bg-blue-500 h-8 rounded-full flex items-center justify-end pr-3"
+                style={{ width: getPercentage(budget.initialBudget) }}
+              >
+                <span className="text-xs text-white">100%</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* KI-Schätzung Bar */}
+          <div>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-gray-400">KI-Kostenschätzung</span>
+              <span className="text-yellow-400">{formatCurrency(budget.estimatedCost)}</span>
+            </div>
+            <div className="w-full bg-white/20 rounded-full h-8 relative">
+              <div 
+                className="bg-yellow-500 h-8 rounded-full flex items-center justify-end pr-3"
+                style={{ width: getPercentage(budget.estimatedCost) }}
+              >
+                <span className="text-xs text-white">
+                  {Math.round(budget.estimatedCost / budget.initialBudget * 100)}%
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Beauftragt Bar */}
+          <div>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-gray-400">Beauftragte Summe</span>
+              <span className={budget.orderedAmount > budget.initialBudget ? 'text-red-400' : 'text-green-400'}>
+                {formatCurrency(budget.orderedAmount)}
+              </span>
+            </div>
+            <div className="w-full bg-white/20 rounded-full h-8 relative">
+              <div 
+                className={`h-8 rounded-full flex items-center justify-end pr-3 ${
+                  budget.orderedAmount > budget.initialBudget ? 'bg-red-500' : 'bg-green-500'
+                }`}
+                style={{ width: getPercentage(budget.orderedAmount) }}
+              >
+                <span className="text-xs text-white">
+                  {Math.round(budget.orderedAmount / budget.initialBudget * 100)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Warnungen */}
+        {budget.orderedAmount > budget.initialBudget && (
+          <div className="mt-6 bg-red-500/20 border border-red-500/50 rounded-lg p-4">
+            <p className="text-red-300 text-sm">
+              ⚠️ Budget um {formatCurrency(budget.orderedAmount - budget.initialBudget)} überschritten
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
   const handleLogout = () => {
     sessionStorage.removeItem('userData');
     navigate('/');
