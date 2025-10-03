@@ -391,108 +391,145 @@ const ContractNegotiationModal = () => {
   };
 
   const calculateBudgetOverview = () => {
-    if (!selectedProject) return null;
-    
-    const initialBudget = selectedProject.budget || 0;
-    const estimatedCost = selectedProject.totalCost || 0;
-    const orderedAmount = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
-    const supplementsRequested = supplements.reduce((sum, s) => sum + (s.amount || 0), 0);
-    const supplementsApproved = supplements.filter(s => s.approved).reduce((sum, s) => sum + (s.amount || 0), 0);
-    
-    return {
-      initialBudget,
-      estimatedCost,
-      orderedAmount,
-      supplementsRequested,
-      supplementsApproved,
-      totalCurrent: orderedAmount + supplementsApproved,
-      variance: initialBudget ? ((orderedAmount + supplementsApproved - initialBudget) / initialBudget * 100) : 0
-    };
+  if (!selectedProject) return null;
+  
+  const initialBudget = selectedProject.budget || 0;
+  const estimatedCost = selectedProject.totalCost || 0;
+  const orderedAmount = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
+  const supplementsRequested = supplements.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const supplementsApproved = supplements.filter(s => s.approved).reduce((sum, s) => sum + (s.amount || 0), 0);
+  
+  return {
+    initialBudget,
+    estimatedCost,
+    orderedAmount,
+    supplementsRequested,
+    supplementsApproved,
+    totalCurrent: orderedAmount + supplementsApproved,
+    variance: initialBudget ? ((orderedAmount + supplementsApproved - initialBudget) / initialBudget * 100) : 0
   };
+};
 
-  // HIER NEUE KOMPONENTE EINFÜGEN (nach Zeile 264):
-  const BudgetVisualization = ({ budget }) => {
-    const maxValue = Math.max(
-      budget.initialBudget || 1,
-      budget.estimatedCost || 1,
-      budget.orderedAmount + budget.supplementsApproved || 1
-    );
-    
-    const getPercentage = (value) => (value / maxValue * 100) + '%';
-    
-    return (
-      <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-        <h3 className="text-xl font-bold text-white mb-6">Kostenübersicht</h3>
-        
-        <div className="space-y-4">
-          {/* Budget Bar */}
-          <div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-400">Anfangsbudget</span>
-              <span className="text-white">{formatCurrency(budget.initialBudget)}</span>
-            </div>
-            <div className="w-full bg-white/20 rounded-full h-8 relative">
-              <div 
-                className="bg-blue-500 h-8 rounded-full flex items-center justify-end pr-3"
-                style={{ width: getPercentage(budget.initialBudget) }}
-              >
-                <span className="text-xs text-white">100%</span>
-              </div>
-            </div>
+// HIER DIE NEUE KOMPONENTE EINFÜGEN:
+const formatCurrency = (value) => {
+  if (!value && value !== 0) return '0 €';
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value);
+};
+
+const BudgetVisualization = ({ budget }) => {
+  if (!budget) return null;
+  
+  const maxValue = Math.max(
+    budget.initialBudget || 1,
+    budget.estimatedCost || 1,
+    budget.orderedAmount || 1
+  );
+  
+  const getPercentage = (value) => {
+    if (!value) return '0%';
+    return Math.min(100, (value / maxValue * 100)) + '%';
+  };
+  
+  const getBudgetPercentage = (value) => {
+    if (!budget.initialBudget) return 0;
+    return Math.round(value / budget.initialBudget * 100);
+  };
+  
+  return (
+    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 mb-6">
+      <h3 className="text-xl font-bold text-white mb-6">Visuelle Kostenübersicht</h3>
+      
+      <div className="space-y-6">
+        {/* Budget Bar */}
+        <div>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-400">Anfangsbudget</span>
+            <span className="text-white font-semibold">{formatCurrency(budget.initialBudget)}</span>
           </div>
-          
-          {/* KI-Schätzung Bar */}
-          <div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-400">KI-Kostenschätzung</span>
-              <span className="text-yellow-400">{formatCurrency(budget.estimatedCost)}</span>
-            </div>
-            <div className="w-full bg-white/20 rounded-full h-8 relative">
-              <div 
-                className="bg-yellow-500 h-8 rounded-full flex items-center justify-end pr-3"
-                style={{ width: getPercentage(budget.estimatedCost) }}
-              >
-                <span className="text-xs text-white">
-                  {Math.round(budget.estimatedCost / budget.initialBudget * 100)}%
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Beauftragt Bar */}
-          <div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-400">Beauftragte Summe</span>
-              <span className={budget.orderedAmount > budget.initialBudget ? 'text-red-400' : 'text-green-400'}>
-                {formatCurrency(budget.orderedAmount)}
-              </span>
-            </div>
-            <div className="w-full bg-white/20 rounded-full h-8 relative">
-              <div 
-                className={`h-8 rounded-full flex items-center justify-end pr-3 ${
-                  budget.orderedAmount > budget.initialBudget ? 'bg-red-500' : 'bg-green-500'
-                }`}
-                style={{ width: getPercentage(budget.orderedAmount) }}
-              >
-                <span className="text-xs text-white">
-                  {Math.round(budget.orderedAmount / budget.initialBudget * 100)}%
-                </span>
-              </div>
+          <div className="w-full bg-white/20 rounded-full h-8 relative overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-blue-600 h-8 rounded-full flex items-center justify-end pr-3 transition-all duration-500"
+              style={{ width: getPercentage(budget.initialBudget) }}
+            >
+              <span className="text-xs text-white font-bold">100%</span>
             </div>
           </div>
         </div>
         
-        {/* Warnungen */}
-        {budget.orderedAmount > budget.initialBudget && (
-          <div className="mt-6 bg-red-500/20 border border-red-500/50 rounded-lg p-4">
-            <p className="text-red-300 text-sm">
-              ⚠️ Budget um {formatCurrency(budget.orderedAmount - budget.initialBudget)} überschritten
+        {/* KI-Schätzung Bar */}
+        <div>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-400">KI-Kostenschätzung</span>
+            <span className="text-yellow-400 font-semibold">{formatCurrency(budget.estimatedCost)}</span>
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-8 relative overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-yellow-500 to-yellow-600 h-8 rounded-full flex items-center justify-end pr-3 transition-all duration-500"
+              style={{ width: getPercentage(budget.estimatedCost) }}
+            >
+              <span className="text-xs text-white font-bold">
+                {getBudgetPercentage(budget.estimatedCost)}%
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Beauftragt Bar */}
+        <div>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-400">Beauftragte Summe</span>
+            <span className={`font-semibold ${
+              budget.orderedAmount > budget.initialBudget ? 'text-red-400' : 'text-green-400'
+            }`}>
+              {formatCurrency(budget.orderedAmount)}
+            </span>
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-8 relative overflow-hidden">
+            <div 
+              className={`h-8 rounded-full flex items-center justify-end pr-3 transition-all duration-500 ${
+                budget.orderedAmount > budget.initialBudget 
+                  ? 'bg-gradient-to-r from-red-500 to-red-600' 
+                  : 'bg-gradient-to-r from-green-500 to-green-600'
+              }`}
+              style={{ width: getPercentage(budget.orderedAmount) }}
+            >
+              <span className="text-xs text-white font-bold">
+                {getBudgetPercentage(budget.orderedAmount)}%
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Warnungen */}
+      {budget.orderedAmount > budget.initialBudget && (
+        <div className="mt-6 bg-red-500/20 border border-red-500/50 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-red-400 text-xl">⚠️</span>
+            <p className="text-red-300">
+              Budget um {formatCurrency(budget.orderedAmount - budget.initialBudget)} überschritten 
+              ({Math.round((budget.orderedAmount - budget.initialBudget) / budget.initialBudget * 100)}%)
             </p>
           </div>
-        )}
-      </div>
-    );
-  };
+        </div>
+      )}
+      
+      {budget.orderedAmount < budget.estimatedCost * 0.9 && (
+        <div className="mt-4 bg-green-500/20 border border-green-500/50 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-green-400 text-xl">✓</span>
+            <p className="text-green-300">
+              Sie sparen {formatCurrency(budget.estimatedCost - budget.orderedAmount)} gegenüber der KI-Schätzung
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
   
   const handleLogout = () => {
     sessionStorage.removeItem('userData');
