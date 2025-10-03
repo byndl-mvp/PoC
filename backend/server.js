@@ -13075,6 +13075,42 @@ app.post('/api/offers/create', async (req, res) => {
   }
 });
 
+// Get specific offer details with project context
+app.get('/api/projects/:projectId/offers/:offerId', async (req, res) => {
+  try {
+    const { projectId, offerId } = req.params;
+    
+    const result = await query(
+      `SELECT o.*, 
+              h.company_name, 
+              h.email, 
+              h.phone, 
+              h.street, 
+              h.house_number, 
+              h.zip_code, 
+              h.city,
+              t.name as trade_name,
+              tn.trade_code
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_code = t.code
+       WHERE tn.project_id = $1 AND o.id = $2`,
+      [projectId, offerId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    }
+    
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('Error fetching offer details:', error);
+    res.status(500).json({ error: 'Fehler beim Laden des Angebots' });
+  }
+});
+
 // ============= ZWEISTUFIGE VERGABE SYSTEM =============
 
 // Stufe 1: Vorläufige Beauftragung mit Kontaktfreigabe
