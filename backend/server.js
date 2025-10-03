@@ -4006,7 +4006,7 @@ ${tradeCode === 'SAN' ? `
    - Nur bei Sondermaß: Nach konkreten Maßen fragen
 ` : ''}
 
-${trade.code === 'FASS' ? `
+${tradeCode === 'FASS' ? `
 SPEZIELLE REGEL FÜR DÄMMSTÄRKEN-FRAGE:
 - Frage nach EINER konkreten Dämmstärke, NICHT nach Bereichen!
 - FALSCH: "Welche Dämmstärke (12-14 cm, 16-18 cm, 18-20 cm)?"
