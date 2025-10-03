@@ -13172,25 +13172,31 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
     );
     
     // Sende E-Mail-Benachrichtigungen
-    if (transporter) {
-      // Email an Handwerker
-      await transporter.sendMail({
-        to: offer.email,
-        subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
-        html: `
-          <h2>Glückwunsch! Sie haben eine vorläufige Beauftragung erhalten</h2>
-          <p>Der Bauherr möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
-          <h3>Nächste Schritte:</h3>
-          <ul>
-            <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
-            <li>Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</li>
-            <li>Die Nachwirkfrist von 24 Monaten ist nun aktiv</li>
-          </ul>
-          <p><strong>Projektdetails:</strong> ${offer.trade_name}</p>
-          <a href="https://byndl.de/handwerker/dashboard">Zum Dashboard</a>
-        `
-      });
-    }
+if (transporter) {
+  try {
+    // Email an Handwerker
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+      to: offer.email,
+      subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
+      html: `
+        <h2>Glückwunsch! Sie haben eine vorläufige Beauftragung erhalten</h2>
+        <p>Der Bauherr hat Ihr Angebot ausgesucht und möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
+        <h3>Nächste Schritte:</h3>
+        <ul>
+          <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
+          <li>Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</li>
+          <li>Die Nachwirkfrist von 24 Monaten ist nun aktiv</li>
+        </ul>
+        <p><strong>Projektdetails:</strong> ${offer.trade_name}</p>
+        <a href="https://byndl.de/handwerker/dashboard">Zum Dashboard</a>
+      `
+    });
+  } catch (emailError) {
+    console.error('Email-Versand fehlgeschlagen:', emailError.message);
+    // Fortsetzung trotz Email-Fehler - Email ist nicht kritisch für den Prozess
+  }
+}
     
     await query('COMMIT');
     
