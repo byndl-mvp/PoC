@@ -9066,21 +9066,20 @@ app.post('/api/projects', async (req, res) => {
     // NEU: Extrahiere Schlüsseldaten aus der Beschreibung
     const extractedData = extractProjectKeyData(description, category);
     
-    // Speichere Projekt MIT extrahierten Daten
     const projectResult = await query(
-      `INSERT INTO projects (category, sub_category, description, timeframe, budget, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [
-        bauherrId || null,  
-        category || null, 
-        subCategory || null, 
-        description, 
-        timeframe || null, 
-        budget || null,
-        JSON.stringify({ extracted: extractedData }) // NEU: Speichere extrahierte Daten
-      ]
-    );
+  `INSERT INTO projects (bauherr_id, category, sub_category, description, timeframe, budget, metadata)
+   VALUES ($1, $2, $3, $4, $5, $6, $7)
+   RETURNING *`,
+  [
+    bauherrId || null,
+    category || null,
+    subCategory || null,
+    description,
+    timeframe || null,
+    budget || null,
+    JSON.stringify({ extracted: extractedData })
+  ]
+);
     
     const project = projectResult.rows[0];
     
