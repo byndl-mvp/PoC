@@ -13174,27 +13174,33 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
     // Sende E-Mail-Benachrichtigungen
 if (transporter) {
   try {
-    // Email an Handwerker
     await transporter.sendMail({
       from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
       to: offer.email,
       subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
       html: `
         <h2>Glückwunsch! Sie haben eine vorläufige Beauftragung erhalten</h2>
-        <p>Der Bauherr hat Ihr Angebot ausgesucht und möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
+        <p>Der Bauherr hat Ihr Angebot vorläufig angenommen und möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
+        
+        <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px; margin: 20px 0;">
+          <strong>Status: Vertragsanbahnung</strong><br>
+          Sie befinden sich nun in der geschützten Kennenlernphase. Die 24-monatige Nachwirkfrist ist aktiv.
+          Beide Seiten können das Angebot noch anpassen oder zurückziehen.
+        </div>
+        
         <h3>Nächste Schritte:</h3>
         <ul>
           <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
           <li>Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</li>
-          <li>Die Nachwirkfrist von 24 Monaten ist nun aktiv</li>
+          <li>Nach Ihrer Bestätigung kann der Bauherr verbindlich beauftragen</li>
         </ul>
+        
         <p><strong>Projektdetails:</strong> ${offer.trade_name}</p>
         <a href="https://byndl.de/handwerker/dashboard">Zum Dashboard</a>
       `
     });
   } catch (emailError) {
     console.error('Email-Versand fehlgeschlagen:', emailError.message);
-    // Fortsetzung trotz Email-Fehler - Email ist nicht kritisch für den Prozess
   }
 }
     
