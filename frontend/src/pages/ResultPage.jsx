@@ -1030,8 +1030,36 @@ const TradeOptimizationDisplay = ({ lv, optimizations }) => {
                     <span className="text-2xl font-bold text-teal-400">
                       {safeToFixed(calculateTotal(lv))} €
                     </span>
-                  </div>
-                </div>
+                    
+                    {/* NEU: Optimierungs-Button pro Gewerk */}
+              {!tradeOptimizations[lv.trade_id] && (
+                <button
+                  onClick={() => loadTradeOptimization(lv, idx)}
+                  disabled={loadingTradeOptimization[lv.trade_id]}
+                  className="px-4 py-2 bg-orange-500/20 border border-orange-500/50 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-all text-sm"
+                >
+                  {loadingTradeOptimization[lv.trade_id] ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin h-3 w-3 border-2 border-orange-300 border-t-transparent rounded-full"></div>
+                      Analysiere...
+                    </div>
+                  ) : (
+                    '💡 Einsparpotenzial prüfen'
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* NEU: Zeige Optimierungen wenn geladen */}
+          {expandedOptimizations[idx] && tradeOptimizations[lv.trade_id] && (
+            <TradeOptimizationDisplay 
+              lv={lv} 
+              optimizations={tradeOptimizations[lv.trade_id]}
+              formatCurrency={formatCurrency}
+            />
+          )}
+        </div>                    
                 
                 {/* Details nur wenn ausgewählt */}
                 {selectedLv === idx && lv.content?.positions && (
