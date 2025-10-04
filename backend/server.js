@@ -7544,16 +7544,28 @@ if (titleLower.includes('demontage') &&
     // 2. VERBESSERTE REGEL: Putzarbeiten und Ausbesserungen
 if (titleLower.includes('putz') || 
     titleLower.includes('laibung') || 
+    titleLower.includes('leibung') ||  // NEU: beide Schreibweisen
     titleLower.includes('spachtel') ||
     titleLower.includes('glätten') ||
     titleLower.includes('ausbesser')) {
   
-  // Für laufende Meter (z.B. Laibungen)
-  if (pos.unit === 'm' && pos.unitPrice > 80) {
+  // NEU: Spezialfall Leibungsverputz nach Fenstermontage
+  if ((titleLower.includes('leibung') || titleLower.includes('laibung')) && 
+      titleLower.includes('verputz')) {
+    if (pos.unit === 'm' && pos.unitPrice > 45) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 35;  // Speziell für Leibungsverputz
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Leibungsverputz korrigiert: €${oldPrice}/m → €35/m`);
+      fixedCount++;
+    }
+  }
+  // Normale Putzarbeiten pro lfd. Meter
+  else if (pos.unit === 'm' && pos.unitPrice > 80) {
     const oldPrice = pos.unitPrice;
     pos.unitPrice = 45;
     pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-    warnings.push(`Putzarbeit/m korrigiert: "${pos.title}": €${oldPrice}/m → €${pos.unitPrice}/m`);
+    warnings.push(`Putzarbeit/m korrigiert: €${oldPrice}/m → €${pos.unitPrice}/m`);
     fixedCount++;
   }
   
@@ -7576,64 +7588,77 @@ if (titleLower.includes('putz') ||
   }
 }
     
-    // 3. VERBESSERTE REGEL: Nebenleistungen mit Ausnahmen für Spezialleistungen
-    // Keywords die TEURE Spezialleistungen kennzeichnen
-    const EXPENSIVE_EQUIPMENT_KEYWORDS = [
-      'kran',
-      'gerüst',
-      'bagger',
-      'aufzug',
-      'hebebühne',
-      'spezialgerät',
-      'schwerlast',
-      'transport'
-    ];
+    // 3. ERWEITERTE REGEL: Nebenleistungen mit intelligenter Mengenerkennung
+const EXPENSIVE_EQUIPMENT_KEYWORDS = [
+  'kran', 'gerüst', 'bagger', 'aufzug', 'hebebühne', 
+  'spezialgerät', 'schwerlast', 'transport'
+];
+
+const isSpecialEquipment = EXPENSIVE_EQUIPMENT_KEYWORDS.some(keyword => 
+  titleLower.includes(keyword)
+);
+
+const isNebenleistung = 
+  titleLower.includes('anschluss') ||
+  titleLower.includes('abdichtung') ||
+  titleLower.includes('laibung') ||
+  titleLower.includes('leibung') ||
+  titleLower.includes('befestigung') ||
+  titleLower.includes('dämmstreifen') ||
+  titleLower.includes('anarbeiten');
+
+// NEU: Intelligente Mengenprüfung für Nebenleistungen
+if (isNebenleistung && pos.unit === 'm') {
+  const fensterPositionen = lv.positions.filter(p => 
+    p.title?.toLowerCase().includes('fenster') && 
+    !p.title?.toLowerCase().includes('bank') &&
+    p.unit === 'Stk'
+  );
+  
+  if (fensterPositionen.length > 0) {
+    const totalFenster = fensterPositionen.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    const erwarteteLeibungsMeter = totalFenster * 3;
     
-    // Prüfe ob es eine Spezialleistung ist
-    const isSpecialEquipment = EXPENSIVE_EQUIPMENT_KEYWORDS.some(keyword => 
-      titleLower.includes(keyword)
-    );
-    
-    // Normale Nebenleistungen
-    const isNebenleistung = 
-      titleLower.includes('anschluss') ||
-      titleLower.includes('abdichtung') ||
-      titleLower.includes('laibung') ||
-      titleLower.includes('befestigung') ||
-      titleLower.includes('dämmstreifen') ||
-      titleLower.includes('anarbeiten');
-    
-    // NUR korrigieren wenn:
-    // 1. Es ist eine Nebenleistung UND
-    // 2. Es ist KEINE Spezialausrüstung UND
-    // 3. Der Preis ist ungewöhnlich hoch
-    if (isNebenleistung && !isSpecialEquipment && pos.unitPrice > 200 && pos.unit !== 'psch') {
-      const oldPrice = pos.unitPrice;
-      
-      // Differenzierte Preiskorrektur nach Art der Nebenleistung
-      let newPrice;
-      if (titleLower.includes('abdichtung') || titleLower.includes('anschluss')) {
-        // Abdichtungen/Anschlüsse können teurer sein
-        newPrice = pos.unit === 'm' ? 80 : 120;
-      } else {
-        // Einfache Nebenleistungen
-        newPrice = pos.unit === 'm' ? 50 : 80;
-      }
-      
-      pos.unitPrice = newPrice;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Nebenleistung korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
+    if (titleLower.includes('leibung') && pos.quantity > erwarteteLeibungsMeter * 2) {
+      const oldQuantity = pos.quantity;
+      pos.quantity = Math.round(erwarteteLeibungsMeter * 10) / 10;
+      warnings.push(`Leibungsmenge korrigiert: ${oldQuantity}m → ${pos.quantity}m`);
       fixedCount++;
     }
-    
-    // NEUE REGEL: Warnung bei teuren Spezialleistungen (ohne Korrektur)
-    if (isSpecialEquipment && pos.unitPrice > 1000) {
-      console.log(`[PRICE-CHECK] Spezialleistung erkannt: "${pos.title}" - €${pos.unitPrice} (keine Korrektur)`);
-      // Optional: Warnung für Review hinzufügen
-      if (pos.unitPrice > 5000) {
-        warnings.push(`REVIEW: Hoher Preis für Spezialleistung "${pos.title}": €${pos.unitPrice}`);
+  }
+}
+
+// Preiskorrektur für Nebenleistungen
+if (isNebenleistung && !isSpecialEquipment && pos.unit !== 'psch') {
+  const maxPreise = {
+    'leibung': { m: 45, m2: 60 },
+    'laibung': { m: 45, m2: 60 },
+    'abdichtung': { m: 40, m2: 55 },
+    'anschluss': { m: 60, m2: 80 },
+    'befestigung': { m: 30, Stk: 25 },
+    'dämmstreifen': { m: 15, m2: 25 }
+  };
+  
+  Object.entries(maxPreise).forEach(([keyword, limits]) => {
+    if (titleLower.includes(keyword) && limits[pos.unit]) {
+      if (pos.unitPrice > limits[pos.unit]) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = limits[pos.unit];
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`${keyword} korrigiert: €${oldPrice}/${pos.unit} → €${pos.unitPrice}/${pos.unit}`);
+        fixedCount++;
       }
     }
+  });
+}
+
+// WICHTIGE REGEL BLEIBT ERHALTEN: Warnung bei teuren Spezialleistungen
+if (isSpecialEquipment && pos.unitPrice > 1000) {
+  console.log(`[PRICE-CHECK] Spezialleistung erkannt: "${pos.title}" - €${pos.unitPrice} (keine Korrektur)`);
+  if (pos.unitPrice > 5000) {
+    warnings.push(`REVIEW: Hoher Preis für Spezialleistung "${pos.title}": €${pos.unitPrice}`);
+  }
+}
     
     // 4. BESTEHENDE REGEL: Hauptpositionen Mindestpreise
     const isMainPosition = 
@@ -8068,6 +8093,44 @@ if (tradeCode === 'ROH') {
     console.warn(`[PRICE-CHECK] ${tradeCode}: ${fixedCount} kritische Preise korrigiert`);
     warnings.forEach(w => console.warn(`  - ${w}`));
   }
+
+  // Rechenfehler IMMER korrigieren
+lv.positions = lv.positions.map(pos => {
+  const sollSumme = Math.round((pos.quantity || 0) * (pos.unitPrice || 0) * 100) / 100;
+  if (Math.abs((pos.totalPrice || 0) - sollSumme) > 0.01) {
+    console.error(`[RECHENFEHLER] "${pos.title}": ${pos.quantity} × ${pos.unitPrice} = ${sollSumme} (war: ${pos.totalPrice})`);
+    pos.totalPrice = sollSumme;
+    fixedCount++;
+  }
+  return pos;
+});
+
+// Verhältnismäßigkeiten prüfen
+if (tradeCode === 'FEN') {
+  const fensterBanks = lv.positions.filter(p => p.title?.toLowerCase().includes('fensterbank'));
+  const leibungen = lv.positions.filter(p => 
+    p.title?.toLowerCase().includes('leibung') || p.title?.toLowerCase().includes('laibung')
+  );
+  
+  if (fensterBanks.length > 0 && leibungen.length > 0) {
+    const avgBankMeter = fensterBanks.reduce((sum, p) => sum + p.quantity, 0) / fensterBanks.length;
+    leibungen.forEach(pos => {
+      // Leibungen sollten 2-3x mehr Meter haben als Fensterbänke
+      if (Math.abs(pos.quantity - avgBankMeter) < 1) { // Fast identisch = Problem
+        pos.quantity = Math.round(avgBankMeter * 2.5 * 10) / 10;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Leibungsmenge angepasst auf ${pos.quantity}m`);
+        fixedCount++;
+      }
+    });
+  }
+}
+
+  // Nach der Rechenfehler-Korrektur
+if (fixedCount > 0) {
+  const newTotal = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+  lv.totalSum = Math.round(newTotal * 100) / 100;
+}
   
   return { lv, fixedCount, warnings };
 }
