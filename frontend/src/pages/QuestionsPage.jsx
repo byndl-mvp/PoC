@@ -934,18 +934,7 @@ export default function IntakeQuestionsPage() {
   </>
 )}
 
-{/* Button für Rückfragen */}
-<button
-  onClick={() => setShowQuestionDialog(true)}
-  className="text-sm text-gray-400 hover:text-white mt-2 flex items-center space-x-1 transition-colors"
->
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-  </svg>
-  <span>Rückfrage zu dieser Frage stellen</span>
-</button>
-          
-          {/* Answer Input */}
+{/* Answer Input */}
           {currentQ.type === 'select' && currentQ.options ? (
             <select
               className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -1002,8 +991,18 @@ export default function IntakeQuestionsPage() {
           {currentQ.required && (
             <p className="text-red-400 text-sm mt-3">* Diese Frage ist erforderlich</p>
           )}
-        </div>
         
+{/* Button für Rückfragen */}
+<button
+  onClick={() => setShowQuestionDialog(true)}
+  className="text-sm text-gray-400 hover:text-white mt-2 flex items-center space-x-1 transition-colors"
+>
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+  </svg>
+  <span>Rückfrage zu dieser Frage stellen</span>
+</button>
+</div>
         {/* Ladeindikator für Kontextfragen */}
         {generatingQuestions && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
