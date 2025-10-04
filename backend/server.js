@@ -7881,6 +7881,40 @@ if (tradeCode === 'FEN') {
     warnings.push(`Abdichtung korrigiert: €${oldPrice}/m → €35/m`);
     fixedCount++;
   }
+
+  // Fensterbänke (pro lfd. Meter)
+if (titleLower.includes('fensterbank') || titleLower.includes('fenstersims')) {
+  // Außenfensterbänke
+  if (titleLower.includes('außen') || titleLower.includes('aussen')) {
+    if (pos.unit === 'm' && pos.unitPrice > 85) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 65; // Realistisch für Alu-Fensterbänke
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Außenfensterbank korrigiert: €${oldPrice}/m → €65/m`);
+      fixedCount++;
+    }
+  }
+  // Innenfensterbänke
+  else if (titleLower.includes('innen')) {
+    if (pos.unit === 'm' && pos.unitPrice > 120) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 85; // Naturstein/Kunststein teurer
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Innenfensterbank korrigiert: €${oldPrice}/m → €85/m`);
+      fixedCount++;
+    }
+  }
+  // Unspezifizierte Fensterbänke
+  else {
+    if (pos.unit === 'm' && pos.unitPrice > 100) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 75; // Mittelwert
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Fensterbank korrigiert: €${oldPrice}/m → €75/m`);
+      fixedCount++;
+    }
+  }
+}
   
   // Vermessung/Aufmaß
   if ((titleLower.includes('vermessung') || titleLower.includes('aufmaß')) && pos.unitPrice > 150) {
