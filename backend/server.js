@@ -3685,6 +3685,54 @@ ${schadensfrageText}
 
 KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
 
+0. AUSFÜHRLICHE ERKLÄRUNGEN SIND PFLICHT - JEDE FRAGE BRAUCHT 100-200 WÖRTER ERKLÄRUNG:
+   
+   Jede Frage MUSS eine vollständige "explanation" haben die ALLE folgenden Punkte abdeckt:
+
+a) KONTEXT & ZWECK (20-30 Wörter):
+   - Warum wird diese Information benötigt?
+   - Wie beeinflusst sie Kosten und Aufwand?
+   - Welche Folgearbeiten hängen davon ab?
+
+b) LAIENVERSTÄNDLICHE ERKLÄRUNG (40-60 Wörter):
+   - Fachbegriffe in Alltagssprache übersetzen
+   - Vergleiche mit bekannten Dingen ("wie ein...")
+   - Visuelle Beschreibung ("sieht aus wie...")
+   - Wo man es im Gebäude findet
+
+c) PRAKTISCHE ANLEITUNG (30-50 Wörter):
+   - WO genau messen/schauen/prüfen?
+   - WIE messen? (Zollstock anlegen von...bis...)
+   - WOMIT messen? (Werkzeuge)
+   - Häufige Fehler vermeiden
+
+d) KONKRETE BEISPIELE (30-40 Wörter):
+   Bei Qualitätsfragen mit Produkten und Preisen:
+   - Standard: "z.B. Grohe Start WC ~150€, Ideal Standard Waschtisch ~120€"
+   - Gehoben: "z.B. Hansgrohe Armatur ~180€, Duravit WC ~300€"  
+   - Premium: "z.B. Dornbracht Armatur ~500€, Villeroy & Boch WC ~600€"
+
+e) EMPFEHLUNG BEI UNSICHERHEIT (20-30 Wörter):
+   - "Bei Unsicherheit empfehlen wir: [konkreter Wert]"
+   - "80% unserer Kunden wählen: [Option]"
+   - "Für Ihr Projekt passend wäre: [Empfehlung]"
+
+BEISPIEL EINER VOLLSTÄNDIGEN ERKLÄRUNG:
+
+Frage: "Welche Qualitätsstufe wünschen Sie für die Sanitärausstattung?"
+
+explanation: "Die Qualitätsstufe bestimmt Preis und Lebensdauer Ihrer Badausstattung erheblich. Je nach Wahl variieren die Kosten zwischen 800€ (Standard) und 5000€ (Premium) pro Bad. 
+Standard-Qualität wie Grohe Start (WC ~150€) oder Ideal Standard (Waschtisch ~120€) bietet solide Funktionalität für Mietobjekte. Gehobene Qualität wie Hansgrohe (Armaturen ~180€) oder Duravit (WC ~300€) verbindet Design mit Komfort - ideal für Eigennutzung. Premium-Marken wie Dornbracht (Armaturen ~500€) oder Villeroy & Boch (WC ~600€) bieten Luxus und 15+ Jahre Haltbarkeit.
+Die Qualität beeinflusst auch Wartungskosten: Standard braucht alle 3-5 Jahre Service, Premium erst nach 8-10 Jahren. Bei Unsicherheit empfehlen wir für Eigennutzung die gehobene Qualität - bestes Preis-Leistungs-Verhältnis."
+
+Frage: "Ist ein Ringbalken/Ringanker vorhanden?"
+
+explanation: "Ein Ringbalken ist ein umlaufender Betonbalken oben auf den Mauern - wie ein stabilisierender Gürtel ums Haus. Er verteilt Dachlasten gleichmäßig und verhindert, dass Wände auseinanderdriften.
+Sie erkennen ihn als durchgehenden grauen Betonstreifen (20-30cm hoch) auf der Mauerkrone. Gehen Sie dazu auf den Dachboden und schauen Sie, wo die Dachbalken aufliegen. Dort sollte ein durchgehender Betonbalken sichtbar sein.
+Bei Altbauten vor 1960 meist nicht vorhanden, ab 1970 Standard. Ohne Ringbalken sind bei Dacharbeiten Verstärkungen nötig (Mehrkosten 3000-5000€). Falls unsicher: Machen Sie Fotos vom Dachboden, besonders vom Übergang Wand/Dach. Wir gehen im Zweifel von 'nicht vorhanden' aus."
+
+WICHTIG: Diese ausführlichen Erklärungen sind PFLICHT für jede Frage!
+
 1. MASSEINHEITEN IMMER IM FRAGENTEXT ANGEBEN:
    - Bei Zahlenfragen IMMER die Einheit direkt im Text: "Wie groß ist die Fläche in m²?"
    - Niemals nur "Wie groß ist die Fläche?" ohne Einheit
@@ -4160,7 +4208,7 @@ ALLGEMEINE MAß-REGEL für ${tradeName}:
 OUTPUT als JSON-Array mit genau ${targetQuestionCount} Fragen.
 Jede Frage muss einen klaren Mehrwert für die LV-Erstellung bieten!
    
-  FRAGENANZAHL: ${targetQuestionCount} Fragen
+FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
 - Fehlende Info: ${intelligentCount.missingInfo.join(', ') || 'keine'}
 - Bei Vollständigkeit >80%: Reduziere auf ${Math.floor(targetQuestionCount * 0.6)} Fragen
@@ -4171,19 +4219,35 @@ OUTPUT (NUR valides JSON-Array):
 [
   {
     "id": "string",
-    "category": "string",
+    "category": "string", 
     "question": "Verständliche Frage MIT EINHEIT bei Zahlen",
-    "explanation": "PFLICHT bei Fachbegriffen! Erkläre was gemeint ist und wie gemessen wird",
-    "type": "text|number|select",
+    "explanation": "PFLICHT! 100-200 Wörter mit: 1) Warum wird das gefragt? 2) Was bedeutet der Begriff für Laien? 3) Wie/wo messen? 4) Produktbeispiele bei Qualität 5) Empfehlung bei Unsicherheit",
+    "type": "text|number|select|multiselect",
     "required": boolean,
-    "unit": null,
-    "options": ["unsicher/weiß nicht"] bei schwierigen Fragen,
-    "multiSelect": false,
+    "unit": "m²|m|cm|Stück|null",
+    "options": ["Option1", "Option2", "unsicher/weiß nicht"],
+    "multiSelect": boolean,
     "defaultAssumption": "Falls 'unsicher': Diese Annahme wird getroffen",
+    "measurementGuide": "Optional: Detaillierte Schritt-für-Schritt Messanleitung",
+    "productExamples": "Optional: Konkrete Produkte mit Preisen für Standard/Gehoben/Premium",
+    "visualHint": "Optional: Visuelle Erkennungsmerkmale",
+    "commonMistakes": "Optional: Häufige Fehler die vermieden werden sollten",
+    "defaultRecommendation": "Optional: Unsere Standard-Empfehlung mit Begründung",
     "dependsOn": "ID der Vorfrage oder null",
     "showIf": "Antwort die gegeben sein muss oder null"
   }
 ]
+
+KRITISCH - STRUCTURE DER EXPLANATION (IMMER 100-200 WÖRTER):
+
+1. KONTEXT (20-30 Wörter): Warum ist diese Info wichtig für die Kalkulation?
+2. LAIEN-ERKLÄRUNG (40-60 Wörter): Was bedeutet das in einfachen Worten?
+3. MESS-/PRÜFANLEITUNG (30-50 Wörter): Wo und wie genau messen/prüfen?
+4. BEISPIELE (30-40 Wörter): Bei Qualität: Konkrete Produkte mit Preisen
+5. EMPFEHLUNG (20-30 Wörter): "Bei Unsicherheit empfehlen wir..."
+
+BEISPIEL EINER PERFEKTEN EXPLANATION:
+"Die Qualitätsstufe bestimmt Preis und Lebensdauer erheblich - zwischen 800€ (Standard) und 5000€ (Premium) pro Bad. Standard wie Grohe Start (WC ~150€) oder Ideal Standard (Waschtisch ~120€) ist solide für Mietobjekte. Gehoben wie Hansgrohe (Armaturen ~180€) oder Duravit (WC ~300€) verbindet Design mit Komfort. Premium wie Dornbracht (Armaturen ~500€) oder Villeroy & Boch (WC ~600€) bietet Luxus und 15+ Jahre Haltbarkeit. Die Wahl beeinflusst auch Wartung: Standard braucht alle 3-5 Jahre Service, Premium erst nach 8-10 Jahren. Bei Unsicherheit empfehlen wir gehobene Qualität für Eigennutzung - bestes Preis-Leistungs-Verhältnis."
 
 ${projectContext.intakeContext && !isIntake ? `
 WICHTIGER KONTEXT aus der Vorbefragung:
@@ -4192,7 +4256,7 @@ Berücksichtige diese Informationen bei der Fragenerstellung.` : ''}
 
 ${projectContext.isAiRecommended && !isIntake ? `
 HINWEIS: Dieses Gewerk wurde aufgrund der Vorbefragung empfohlen. 
-Stelle spezifische Fragen zu den relevanten Punkten aus der Vorbefragung.` : ''}`;  // Ende des GESAMTEN Template-Strings
+Stelle spezifische Fragen zu den relevanten Punkten aus der Vorbefragung.` : ''}`; // Ende des GESAMTEN Template-Strings
 
 // HIER NEUE ERGÄNZUNG EINFÜGEN:
 // Zusätzliche Anpassung für AI-empfohlene Gewerke
