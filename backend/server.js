@@ -4418,10 +4418,17 @@ if (tradeCode === 'INT') {
     
     const istTechnisch = technischeDetails.some(pattern => qText.match(pattern));
     
-    if (istTechnisch) {
-      console.log(`[INT-FILTER] Entfernt (technisches Detail): "${q.question.substring(0,60)}..."`);
-      return false;
-    }
+    // NEU: Ausnahme für wichtige offene Intake-Fragen
+    const istOffeneFrage = qText.includes('weitere') && 
+                       (qText.includes('wünsche') || 
+                        qText.includes('bedenken') || 
+                        qText.includes('anmerkungen') ||
+                        qText.includes('informationen'));
+
+if (istTechnisch && !istOffeneFrage) {  // ← Ausnahme hinzugefügt
+  console.log(`[INT-FILTER] Entfernt (technisches Detail): "${q.question.substring(0,60)}..."`);
+  return false;
+}
     
     // ALLES ANDERE IST ERLAUBT!
     // ✓ Wohnfläche, Nutzfläche, Gesamtfläche
