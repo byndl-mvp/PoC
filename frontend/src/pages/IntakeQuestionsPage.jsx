@@ -375,14 +375,129 @@ export default function IntakeQuestionsPage() {
             {currentQ.text || currentQ.question}
           </h2>
 
-          {/* Explanation wenn vorhanden */}
-          {currentQ.explanation && (
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
-              <p className="text-blue-200 text-sm">
-                <strong>ℹ️ Hinweis:</strong> {currentQ.explanation}
-              </p>
-            </div>
-          )}
+          {/* Erweiterte Erklärung mit besserem Design */}
+{currentQ.explanation && (
+  <div className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 border border-blue-500/30 rounded-xl p-5 mt-4 mb-6 backdrop-blur-sm">
+    <div className="flex items-start space-x-3">
+      <div className="flex-shrink-0">
+        <svg className="w-6 h-6 text-blue-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div className="flex-1">
+        <h3 className="text-blue-300 font-semibold mb-2 text-base">
+          Hinweis zur Frage
+        </h3>
+        <p className="text-blue-200 text-sm leading-relaxed whitespace-pre-line">
+          {currentQ.explanation}
+        </p>
+        
+        {/* Zusätzliche strukturierte Informationen falls vorhanden */}
+        {currentQ.measurementGuide && (
+          <div className="mt-4 p-3 bg-blue-600/10 rounded-lg border border-blue-500/20">
+            <h4 className="text-teal-300 font-medium text-sm mb-1 flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              So messen Sie richtig:
+            </h4>
+            <p className="text-gray-300 text-sm">
+              {currentQ.measurementGuide}
+            </p>
+          </div>
+        )}
+        
+        {/* Produktbeispiele wenn vorhanden */}
+        {currentQ.productExamples && (
+          <div className="mt-4 p-3 bg-teal-600/10 rounded-lg border border-teal-500/20">
+            <h4 className="text-teal-300 font-medium text-sm mb-2 flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              Produktbeispiele:
+            </h4>
+            <p className="text-gray-300 text-sm whitespace-pre-line">
+              {currentQ.productExamples}
+            </p>
+          </div>
+        )}
+        
+        {/* Empfehlung bei Unsicherheit */}
+        {currentQ.defaultRecommendation && (
+          <div className="mt-4 p-3 bg-green-600/10 rounded-lg border border-green-500/20">
+            <h4 className="text-green-300 font-medium text-sm mb-1 flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Unsere Empfehlung:
+            </h4>
+            <p className="text-gray-300 text-sm">
+              {currentQ.defaultRecommendation}
+            </p>
+          </div>
+        )}
+        
+        {/* Toggle für erweiterte Details */}
+        {(currentQ.visualHint || currentQ.commonMistakes) && (
+          <button
+            onClick={() => setShowDetailedHelp(!showDetailedHelp)}
+            className="mt-4 text-sm text-teal-400 hover:text-teal-300 flex items-center space-x-1 transition-colors"
+          >
+            <span>{showDetailedHelp ? 'Weniger' : 'Mehr'} Details</span>
+            <svg className={`w-4 h-4 transform transition-transform ${showDetailedHelp ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Erweiterte Details (toggle) */}
+{showDetailedHelp && (
+  <>
+    {currentQ.visualHint && (
+      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4 mb-4">
+        <h4 className="text-purple-300 font-medium text-sm mb-2 flex items-center">
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Visuelle Hinweise:
+        </h4>
+        <p className="text-purple-200 text-sm">
+          {currentQ.visualHint}
+        </p>
+      </div>
+    )}
+    
+    {currentQ.commonMistakes && (
+      <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 mb-4">
+        <h4 className="text-orange-300 font-medium text-sm mb-2 flex items-center">
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          Häufige Fehler vermeiden:
+        </h4>
+        <p className="text-orange-200 text-sm">
+          {currentQ.commonMistakes}
+        </p>
+      </div>
+    )}
+  </>
+)}
+
+{/* Button für Rückfragen */}
+<button
+  onClick={() => setShowQuestionDialog(true)}
+  className="text-sm text-gray-400 hover:text-white mt-2 flex items-center space-x-1 transition-colors"
+>
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+  </svg>
+  <span>Rückfrage zu dieser Frage stellen</span>
+</button>
           
           {currentQ.type === 'select' && currentQ.options ? (
             <select
@@ -479,6 +594,88 @@ export default function IntakeQuestionsPage() {
             Diese Informationen helfen uns, die richtigen Gewerke für Ihr Projekt zu identifizieren
           </p>
         </div>
+        {/* Rückfragen-Dialog Modal */}
+{showQuestionDialog && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-slate-800 rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto border border-slate-700">
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-white font-semibold text-lg">
+          Rückfrage zur aktuellen Frage
+        </h3>
+        <button
+          onClick={() => {
+            setShowQuestionDialog(false);
+            setUserQuestion('');
+            setAiResponse('');
+          }}
+          className="text-gray-400 hover:text-white transition-colors"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <div className="bg-slate-700/50 rounded-lg p-3 mb-4 border border-slate-600">
+        <p className="text-gray-300 text-sm">
+          <strong>Aktuelle Frage:</strong> {currentQ.question || currentQ.text}
+        </p>
+      </div>
+      
+      <textarea
+        className="w-full bg-white/10 border border-white/30 rounded-lg p-3 text-white mb-4 focus:outline-none focus:ring-2 focus:ring-teal-500 placeholder-gray-400"
+        rows={3}
+        placeholder="Was möchten Sie zu dieser Frage wissen? Z.B. 'Wie messe ich das genau?' oder 'Was bedeutet das?'"
+        value={userQuestion}
+        onChange={(e) => setUserQuestion(e.target.value)}
+        disabled={loadingResponse}
+      />
+      
+      {loadingResponse && (
+        <div className="flex items-center justify-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-teal-500 border-t-transparent"></div>
+        </div>
+      )}
+      
+      {aiResponse && !loadingResponse && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+          <div className="flex items-start space-x-2">
+            <span className="text-2xl">🤖</span>
+            <p className="text-blue-200 text-sm flex-1 leading-relaxed">
+              {aiResponse}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex justify-end space-x-3">
+        <button
+          onClick={() => {
+            setUserQuestion('');
+            setAiResponse('');
+          }}
+          className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+          disabled={loadingResponse}
+        >
+          Neue Frage
+        </button>
+        <button
+          onClick={handleAskQuestion}
+          disabled={!userQuestion.trim() || loadingResponse}
+          className="px-4 py-2 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {loadingResponse ? 'Lädt...' : 'Frage senden'}
+        </button>
+      </div>
+      
+      {aiResponse && (
+        <p className="text-gray-500 text-xs mt-4 text-center">
+          Sie können weitere Rückfragen stellen oder das Fenster schließen
+        </p>
+      )}
+    </div>
+  </div>
+)}        
       </div>
     </div>
   );
