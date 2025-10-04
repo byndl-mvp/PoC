@@ -10165,34 +10165,32 @@ app.post('/api/projects/:projectId/trades/confirm', async (req, res) => {
         for (const tradeId of newTrades) {
           const isManual = manuallyAddedTrades.includes(tradeId);
           const isAiRecommended = aiRecommendedTrades.includes(tradeId);
-          const needsContextQuestion = isManual || isAiRecommended;
           
           await query(
-            `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
- VALUES ($1, $2, $3, $4)
- ON CONFLICT (project_id, trade_id) 
- DO UPDATE SET 
-   is_manual = EXCLUDED.is_manual, 
-   is_ai_recommended = EXCLUDED.is_ai_recommended`,
-            [projectId, tradeId, needsContextQuestion, isAiRecommended]
-          );
+  `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
+   VALUES ($1, $2, $3, $4)
+   ON CONFLICT (project_id, trade_id) 
+   DO UPDATE SET 
+     is_manual = EXCLUDED.is_manual, 
+     is_ai_recommended = EXCLUDED.is_ai_recommended`,
+  [projectId, tradeId, isManual, isAiRecommended]  // KORRIGIERT!
+);
         }
       } else {
         // Normale Bestätigung: Alle hinzufügen
         for (const tradeId of confirmedTrades) {
           const isManual = manuallyAddedTrades.includes(tradeId);
           const isAiRecommended = aiRecommendedTrades.includes(tradeId);
-          const needsContextQuestion = isManual || isAiRecommended;
           
           await query(
-            `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
- VALUES ($1, $2, $3, $4)
- ON CONFLICT (project_id, trade_id) 
- DO UPDATE SET is_manual = $3, is_ai_recommended = $4`,
-            [projectId, tradeId, needsContextQuestion, isAiRecommended]
-          );
-          
-          console.log(`[TRADES] Added trade ${tradeId}: manual=${needsContextQuestion}, AI=${isAiRecommended}`);
+  `INSERT INTO project_trades (project_id, trade_id, is_manual, is_ai_recommended)
+   VALUES ($1, $2, $3, $4)
+   ON CONFLICT (project_id, trade_id) 
+   DO UPDATE SET is_manual = $3, is_ai_recommended = $4`,
+  [projectId, tradeId, isManual, isAiRecommended]  // KORRIGIERT!
+);
+
+console.log(`[TRADES] Added trade ${tradeId}: manual=${isManual}, AI=${isAiRecommended}`);
         }
       }
       
