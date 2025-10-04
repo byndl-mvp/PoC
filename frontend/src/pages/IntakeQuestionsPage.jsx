@@ -21,6 +21,12 @@ export default function IntakeQuestionsPage() {
   const loadingIntervalRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
 
+  const [showDetailedHelp, setShowDetailedHelp] = useState(false);
+  const [showQuestionDialog, setShowQuestionDialog] = useState(false);
+  const [userQuestion, setUserQuestion] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const [loadingResponse, setLoadingResponse] = useState(false);
+  
   // Fake Progress für initiales Laden (45 Sekunden)
   useEffect(() => {
     if (loading && !error) {
@@ -170,6 +176,39 @@ export default function IntakeQuestionsPage() {
       saveIntakeAnswers(newAnswers);
     }
   };
+
+  const handleAskQuestion = async () => {
+  if (!userQuestion.trim()) return;
+  
+  try {
+    setLoadingResponse(true);
+    
+    const response = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${tradeId}/question-clarification`),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionText: currentQ.question || currentQ.text,
+          questionContext: currentQ.explanation || '',
+          userQuery: userQuestion
+        })
+      }
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      setAiResponse(data.response);
+    } else {
+      setAiResponse('Entschuldigung, ich konnte die Antwort nicht laden. Bitte versuchen Sie es erneut.');
+    }
+  } catch (error) {
+    console.error('Error getting clarification:', error);
+    setAiResponse('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+  } finally {
+    setLoadingResponse(false);
+  }
+};
   
   async function saveIntakeAnswers(allAnswers) {
     try {
