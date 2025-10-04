@@ -11769,7 +11769,29 @@ app.post('/api/projects/:projectId/trades/:tradeId/optimize', async (req, res) =
     }
     
     const lv = lvData.rows[0];
-    const lvContent = JSON.parse(lv.content);
+    
+    // KORREKTUR: Sichere Verarbeitung des content Feldes
+    let lvContent;
+    if (typeof lv.content === 'string') {
+      try {
+        lvContent = JSON.parse(lv.content);
+      } catch (parseError) {
+        console.error('[TRADE-OPTIMIZE] Failed to parse LV content as string:', parseError);
+        return res.status(500).json({ error: 'LV-Daten fehlerhaft' });
+      }
+    } else if (typeof lv.content === 'object' && lv.content !== null) {
+      // Ist bereits ein Objekt
+      lvContent = lv.content;
+    } else {
+      console.error('[TRADE-OPTIMIZE] Invalid LV content type:', typeof lv.content);
+      return res.status(500).json({ error: 'LV-Daten ungültig' });
+    }
+    
+    // Validiere dass positions existiert
+    if (!lvContent.positions || !Array.isArray(lvContent.positions)) {
+      console.error('[TRADE-OPTIMIZE] No positions found in LV');
+      return res.status(400).json({ error: 'Keine Positionen im LV gefunden' });
+    }
     
     // Lade Projekt-Kontext
     const projectData = await query(
