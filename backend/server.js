@@ -156,23 +156,47 @@ async function llmWithPolicy(task, messages, options = {}) {
     console.log(`[LLM] Setting timeout for ${task}: ${options.timeout}ms`);
   }
   
-  // NEU: Für Optimization-Task direkt OpenAI verwenden
-  if (task === 'optimization') {
-    console.log('[LLM] Optimization task - using OpenAI directly');
+  // Optimization-Task mit Claude als Haupt-LLM, OpenAI als Fallback
+if (task === 'optimization') {
+  console.log('[LLM] Optimization task - using Claude with OpenAI fallback');
+  
+  try {
+    // Primär: Claude verwenden
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+    
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: options.maxTokens || 6000,
+      temperature: options.temperature || 0.3,
+      messages: messages.map(msg => ({
+        role: msg.role === 'system' ? 'user' : msg.role,
+        content: msg.content
+      }))
+    });
+    
+    return response.content[0].text;
+    
+  } catch (claudeError) {
+    console.error('[LLM] Claude failed for optimization, trying OpenAI fallback:', claudeError.message);
+    
+    // Fallback: OpenAI
     try {
       const response = await openai.chat.completions.create({
-        model: MODEL_OPENAI,  // sollte 'gpt-4o-mini' sein
+        model: MODEL_OPENAI,
         messages,
         temperature: options.temperature || 0.3,
         max_tokens: options.maxTokens || 4000,
         response_format: { type: "json_object" }
       });
       return response.choices[0].message.content;
-    } catch (error) {
-      console.error('[LLM] OpenAI error for optimization:', error.status || error.message);
-      throw error;
+    } catch (openaiError) {
+      console.error('[LLM] Both Claude and OpenAI failed for optimization');
+      throw openaiError;
     }
   }
+}
   
   // DEBUG: Log prompt sizes for questions task
   if (task === 'questions' || task === 'intake') {
@@ -11665,297 +11689,600 @@ function getTradeDescription(tradeCode) {
   return descriptions[tradeCode] || 'Allgemeine Bauarbeiten';
 }
 
-// Budget-Optimierung generieren
+// Vereinfachte Budget-Übersicht - zeigt nur Zusammenfassung
 app.post('/api/projects/:projectId/budget-optimization', async (req, res) => {
-  console.log('[BUDGET-OPT] Route called for project:', req.params.projectId);
+  console.log('[BUDGET-OVERVIEW] Generating optimization overview for project:', req.params.projectId);
+  
   try {
     const { projectId } = req.params;
     const { currentTotal, targetBudget, lvBreakdown } = req.body;
-
-    // Lade zusätzliche Kontextdaten
-    const lvPositions = await query(
-      `SELECT t.name as trade_name, l.content 
-       FROM lvs l 
-       JOIN trades t ON t.id = l.trade_id 
-       WHERE l.project_id = $1`,
-      [projectId]
-    );
-
-    const intakeData = await query(
-      `SELECT question_text, answer_text 
-       FROM intake_responses 
-       WHERE project_id = $1`,
-      [projectId]
-    );
-
-    const projectData = await query(
-      'SELECT description, category FROM projects WHERE id = $1',
-      [projectId]
-    );
     
     const overspend = currentTotal - targetBudget;
     const percentOver = ((overspend / targetBudget) * 100).toFixed(1);
     
-    const systemPrompt = `Du bist ein Baukostenoptimierer mit 20 Jahren Erfahrung.
-
-PROJEKTKONTEXT:
-${projectData.rows[0]?.description || 'Keine Beschreibung'}
-Kategorie: ${projectData.rows[0]?.category || 'Nicht angegeben'}
-
-KONKRETE LV-POSITIONEN MIT PREISEN (BASIS FÜR EINSPARUNGEN):
-${lvPositions.rows.slice(0, 40).map(p => {
-  try {
-    const content = JSON.parse(p.content);
-    return content.positions?.slice(0, 5).map(pos => 
-      `- ${p.trade_name}: ${pos.title} = ${formatCurrency(pos.total || 0)}`
-    ).join('\n');
-  } catch {
-    return `- ${p.trade_name}: [Positionen nicht lesbar]`;
+    // Einfache Übersicht ohne Details
+    const overview = {
+      summary: {
+        currentTotal,
+        targetBudget,
+        overspend,
+        percentOver,
+        message: `Budget um ${formatCurrency(overspend)} (${percentOver}%) überschritten`
+      },
+      tradesPotential: lvBreakdown.map(lv => {
+        // Grobe Schätzung des Einsparpotenzials pro Gewerk (10-20% je nach Gewerk)
+        const potentialPercent = getTypicalSavingPercent(lv.tradeCode);
+        const potentialAmount = Math.round(lv.total * potentialPercent / 100);
+        
+        return {
+          tradeCode: lv.tradeCode,
+          tradeName: lv.tradeName,
+          currentCost: lv.total,
+          estimatedPotential: potentialAmount,
+          potentialPercent,
+          hint: getSavingHint(lv.tradeCode)
+        };
+      }).sort((a, b) => b.estimatedPotential - a.estimatedPotential),
+      totalEstimatedPotential: 0,
+      recommendation: ''
+    };
+    
+    // Berechne Gesamtpotenzial
+    overview.totalEstimatedPotential = overview.tradesPotential.reduce(
+      (sum, t) => sum + t.estimatedPotential, 0
+    );
+    
+    // Empfehlung
+    if (overview.totalEstimatedPotential >= overspend) {
+      overview.recommendation = 'Die Budgetüberschreitung kann durch gezielte Optimierungen ausgeglichen werden.';
+    } else {
+      overview.recommendation = 'Eine vollständige Kompensation der Überschreitung erfordert größere Einschnitte.';
+    }
+    
+    res.json(overview);
+    
+  } catch (err) {
+    console.error('Overview generation failed:', err);
+    res.status(500).json({ error: 'Fehler bei der Übersichtserstellung' });
   }
-}).join('\n')}
+});
 
-ERFASSTE PROJEKTDETAILS:
-${intakeData.rows.slice(0, 20).map(r => `- ${r.question_text}: ${r.answer_text}`).join('\n')}
+// Detaillierte Analyse für einzelnes Gewerk
+app.post('/api/projects/:projectId/trades/:tradeId/optimize', async (req, res) => {
+  console.log('[TRADE-OPTIMIZE] Detailed analysis for trade:', req.params.tradeId);
+  
+  try {
+    const { projectId, tradeId } = req.params;
+    const { targetSaving } = req.body;
+    
+    // Lade LV mit Positionen
+    const lvData = await query(
+      `SELECT l.*, t.name as trade_name, t.code as trade_code 
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id 
+       WHERE l.project_id = $1 AND l.trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (!lvData.rows[0]) {
+      return res.status(404).json({ error: 'LV nicht gefunden' });
+    }
+    
+    const lv = lvData.rows[0];
+    const lvContent = JSON.parse(lv.content);
+    
+    // Lade Projekt-Kontext
+    const projectData = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    // Lade ursprüngliche Antworten
+    const answers = await query(
+      `SELECT q.text as question, a.answer_text as answer 
+       FROM answers a
+       JOIN questions q ON q.question_id = a.question_id 
+         AND q.trade_id = a.trade_id
+       WHERE a.project_id = $1 AND a.trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    // System-Prompt für Claude
+    const systemPrompt = `Du bist ein erfahrener Baukostenoptimierer spezialisiert auf ${lv.trade_name}.
 
-VERFÜGBARE GEWERKE-CODES (NUR DIESE VERWENDEN!):
-${lvBreakdown.map(lv => `${lv.tradeCode} = ${lv.tradeName} (Typisch: ${getTradeDescription(lv.tradeCode)})`).join('\n')}
+AUFGABE: Analysiere jede Position des LVs und finde KONKRETE, UMSETZBARE Einsparmöglichkeiten.
 
-KRITISCH: Im "trade" Feld MÜSSEN EXAKT diese Codes verwendet werden:
-[${lvBreakdown.map(lv => lv.tradeCode).join(', ')}]
+WICHTIGE REGELN:
+1. Beziehe dich IMMER auf die konkrete Position (Pos-Nr und Titel)
+2. Unterscheide klar zwischen:
+   - MATERIAL: Günstigere Alternative bei gleicher Funktion
+   - EIGENLEISTUNG: Was kann der Bauherr selbst machen
+   - VERZICHT: Was ist wirklich verzichtbar ohne Funktionsverlust
+   - REDUZIERUNG: Weniger Menge/Umfang
+   - VERSCHIEBUNG: Kann später gemacht werden
 
-Beispiel korrekte/falsche Ausgaben:
-✓ trade: "KLIMA" (wenn KLIMA in der Liste ist)
-✓ trade: "SAN" (wenn SAN in der Liste ist)
-✗ trade: "TGA" (FALSCH - kein gültiger Code)
-✗ trade: "LEISTUNGSREDUZIERUNG" (FALSCH - das ist eine Kategorie, kein Trade-Code)
+3. Bewerte jede Alternative nach:
+   - Einsparpotenzial in Euro und Prozent
+   - Qualitätsauswirkung (keine/gering/mittel/hoch)
+   - Machbarkeit für Laien bei Eigenleistung
+   - Risiken und Nachteile
 
-ANALYSIERE NUR was tatsächlich im Projekt enthalten ist!
-- Bei Dachprojekt: KEINE Vorschläge zu Innenräumen
-- Bei Badprojekt: KEINE Vorschläge zur Fassade
+GEWERK-SPEZIFISCHE OPTIMIERUNGEN für ${lv.trade_code}:
+${getDetailedTradeRules(lv.trade_code)}
 
-KRITISCHE REGELN FÜR REALISTISCHE EINSPARUNGEN:
-
-1. BEZIEHE EINSPARUNGEN AUF KONKRETE LV-POSITIONEN:
-   - Die Einsparung muss sich auf eine spezifische Position beziehen
-   - Beispiel: Wenn "Tonziegel verlegen" = 5.750€, dann ist 10% Einsparung = 575€
-   - NICHT: 10% vom gesamten Dachgewerk!
-
-2. REALISTISCHE PROZENTSÄTZE PRO POSITION:
-   - Materialwechsel bei einer Position: 8-15% dieser Position
-   - Eigenleistung bei Vorarbeiten: 60-80% der Arbeitskosten dieser Position
-   - Weglassen einer verzichtbaren Position: 100% dieser Position
-   - Reduzierung einer Position: 20-40% dieser Position
-
-3. ABSOLUTE GRENZEN:
-   - NIEMALS mehr als 15% eines Gewerks insgesamt einsparen
-   - Mindestens 200€ pro Vorschlag
-   - Maximal 20% der Gesamtüberschreitung pro Einzelmaßnahme
-   - Die Summe aller Einsparungen darf nicht über 30% der Gesamtkosten liegen
-
-4. KONKRETE BERECHNUNG für jedes Gewerk (MAXIMALGRENZEN):
-${lvBreakdown.map(lv => `   ${lv.tradeCode} (${formatCurrency(lv.total)}):
-   - Maximale Gesamteinsparung für dieses Gewerk: ${formatCurrency(Math.round(lv.total * 0.15))}`).join('\n')}
-
-ERSTELLE 4-5 KONKRETE SPARVORSCHLÄGE aus diesen Kategorien:
-
-1. MATERIALOPTIMIERUNG:
-- Standardprodukte statt Premium
-- Alternative Materialien gleicher Funktion
-- Reduzierte Ausstattung
-
-2. EIGENLEISTUNG (nur bei einfachen Arbeiten):
-- Malervorarbeiten, Tapeten entfernen
-- Bodenbeläge entfernen
-- NICHT: Elektro, Sanitär, Statik, Dach
-
-3. MENGENOPTIMIERUNG:
-- Teilbereiche weglassen
-- Reduzierte Flächen
-- Bestand erhalten wo möglich
-
-BEISPIELE MIT KONKRETEN POSITIONEN:
-Wenn Position "Tonziegel liefern und verlegen" = 5.750€:
-✓ "Standard-Tonziegel statt Premium": 575€ (10% der Position)
-✓ "Betonziegel statt Tonziegel": 860€ (15% der Position)
-✗ "Günstigere Ziegel": 4.500€ (78% der Position) - UNREALISTISCH!
-
-Wenn Position "Sanitärarmaturen montieren" = 3.200€:
-✓ "Standard-Armaturen statt Design": 480€ (15% der Position)
-✗ "Billigere Armaturen": 2.000€ (62% der Position) - UNREALISTISCH!
-
-EXTREM WICHTIG: 
-Das "trade" Feld MUSS EXAKT einer dieser Codes sein: ${lvBreakdown.map(lv => lv.tradeCode).join(', ')}
-KEINE ANDEREN CODES! Nicht KLIMA wenn KLIMA nicht in der Liste ist!
-
-OUTPUT als JSON:
+AUSGABE als JSON:
 {
   "optimizations": [
     {
-      "trade": "${lvBreakdown[0]?.tradeCode || 'DACH'}",
-      "tradeName": "${lvBreakdown[0]?.tradeName || 'Dachdeckerarbeiten'}",
-      "measure": "Standard-Material statt Premium bei konkreter Position",
-      "affectedPosition": "[Name der betroffenen LV-Position]",
-      "positionValue": [Wert der Position in Euro],
-      "savingAmount": [10-15% der positionValue],
-      "savingPercent": [Prozent bezogen auf positionValue],
-      "difficulty": "mittel",
-      "type": "material",
-      "impact": "Auswirkung auf Qualität"
-    }${lvBreakdown[1] ? `,
-    {
-      "trade": "${lvBreakdown[1].tradeCode}",
-      "tradeName": "${lvBreakdown[1].tradeName}",
-      "measure": "Weitere konkrete Optimierung",
-      "affectedPosition": "[Name der betroffenen LV-Position]",
-      "positionValue": [Wert der Position],
-      "savingAmount": [Realistische Einsparung basierend auf Position],
-      "savingPercent": [Prozent der Position],
-      "difficulty": "einfach",
-      "type": "eigenleistung",
-      "impact": "Keine Funktionseinschränkung"
-    }` : ''}
+      "positionRef": "Exakte Pos-Nr aus LV",
+      "originalPosition": "Exakter Titel der Position",
+      "originalCost": Zahl,
+      "category": "material|eigenleistung|verzicht|reduzierung|verschiebung",
+      "measure": "Kurze prägnante Maßnahme",
+      "alternativeDescription": "Detaillierte Beschreibung der Alternative mit konkreten Produkten/Methoden",
+      "savingAmount": Zahl (realistisch!),
+      "savingPercent": Zahl,
+      "qualityImpact": "keine|gering|mittel|hoch",
+      "feasibility": "einfach|mittel|schwer",
+      "timeNeeded": "Zeitaufwand in Stunden bei Eigenleistung",
+      "risks": "Konkrete Risiken und Nachteile",
+      "recommendation": "empfohlen|bedingt|nur_notfall",
+      "prerequisites": "Was wird benötigt (Werkzeug, Kenntnisse)"
+    }
   ],
-  "totalPossibleSaving": [Summe aller savingAmount Werte],
-  "summary": "Einsparungen durch gezielte Optimierung einzelner Positionen"
+  "summary": {
+    "totalPossibleSaving": Zahl,
+    "recommendedSaving": Zahl (nur empfohlene Maßnahmen),
+    "qualityPreservedSaving": Zahl (ohne/geringe Qualitätseinbuße),
+    "eigenleistungSaving": Zahl (nur Eigenleistung),
+    "topThree": ["Die drei wirkungsvollsten Maßnahmen"]
+  }
 }
 
-WICHTIG: Antworte NUR mit validem JSON, KEINE Markdown-Formatierung wie \`\`\`json!`;
+WICHTIG: Sei REALISTISCH! Keine Fantasie-Einsparungen!`;
 
-const userPrompt = `Budget: ${formatCurrency(targetBudget)}
-Aktuelle Kosten: ${formatCurrency(currentTotal)}
-Überschreitung: ${formatCurrency(overspend)} (${percentOver}%)
+    const userPrompt = `LEISTUNGSVERZEICHNIS ${lv.trade_name}:
 
-GEWERKE MIT GESAMTSUMMEN:
-${lvBreakdown.map(lv => `${lv.tradeCode}: ${lv.tradeName} = ${formatCurrency(lv.total)}`).join('\n')}
+${lvContent.positions.map((pos, idx) => 
+  `Position ${pos.pos}:
+   Titel: ${pos.title}
+   Beschreibung: ${pos.description || 'Keine Details'}
+   Menge: ${pos.quantity} ${pos.unit}
+   Einzelpreis: ${pos.unitPrice}€
+   Gesamtpreis: ${pos.totalPrice}€
+   ${pos.isNEP ? '(NEP - Eventualposition)' : ''}
+   ---`
+).join('\n')}
 
-WICHTIGSTE LV-POSITIONEN MIT BETRÄGEN (Basis für deine Berechnungen):
-${lvPositions.rows.slice(0, 25).map(p => {
-  try {
-    const content = JSON.parse(p.content);
-    return content.positions?.slice(0, 4).map(pos => 
-      `- ${p.trade_name}: "${pos.title}" = ${formatCurrency(pos.total || 0)}`
-    ).join('\n');
-  } catch {
-    return '';
-  }
-}).filter(Boolean).join('\n')}
+GESAMTSUMME LV: ${lvContent.totalSum}€
 
-KRITISCH: 
-- Beziehe JEDE Einsparung auf eine konkrete Position mit deren Betrag!
-- Berechne Einsparungen als Prozentsatz der POSITION, nicht des Gewerks!
-- Nenne die betroffene Position und deren Wert im JSON!
-- Verwende im "trade" Feld NUR die Codes aus der obigen Liste!`;
+PROJEKT-KONTEXT:
+Kategorie: ${projectData.rows[0]?.category || 'Sanierung'}
+${answers.rows.map(a => `- ${a.question}: ${a.answer}`).join('\n')}
 
-    // DIREKT OpenAI verwenden
-    console.log('[OPTIMIZATION] Calling OpenAI directly with gpt-4.1-mini');
-    
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
+${targetSaving ? `ZIEL-EINSPARUNG: ${targetSaving}€` : 'ZIEL: Maximale sinnvolle Einsparung ohne große Qualitätsverluste'}
+
+Analysiere JEDE Position und finde konkrete Einsparmöglichkeiten!`;
+
+    // Claude API Call
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
     });
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_tokens: 4000,
+    
+    console.log('[TRADE-OPTIMIZE] Calling Claude for detailed analysis...');
+    
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 6000,
       temperature: 0.3,
-      response_format: { type: "json_object" }
+      messages: [
+        { 
+          role: 'user', 
+          content: systemPrompt + '\n\n' + userPrompt 
+        }
+      ]
     });
-
-    const response = completion.choices[0].message.content;
-    console.log('[OPTIMIZATION] Raw OpenAI response:', response.substring(0, 500));
     
-    const optimizations = JSON.parse(response);
-    
-    // Sofort nach dem Parsen alle Beträge runden
-    if (optimizations.optimizations && Array.isArray(optimizations.optimizations)) {
-      optimizations.optimizations = optimizations.optimizations.map(opt => ({
-        ...opt,
-        savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
-      }));
-    }    
-    console.log('[OPTIMIZATION] Parsed optimizations:', JSON.stringify(optimizations.optimizations?.slice(0, 2)));
-
-    // Speichere Optimierungsvorschläge
-    await query(
-      `INSERT INTO project_optimizations (project_id, suggestions, created_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (project_id) 
-       DO UPDATE SET suggestions = $2, created_at = NOW()`,
-      [projectId, JSON.stringify(optimizations)]
-    );
-
-    // Runde alle Beträge und korrigiere die Gesamtsumme
-    if (optimizations.optimizations && optimizations.optimizations.length > 0) {
-      optimizations.optimizations = optimizations.optimizations.map(opt => ({
-        ...opt,
-        savingAmount: Math.round(parseFloat(opt.savingAmount) || 0)
-      }));
-      
-      optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
-        (sum, opt) => sum + opt.savingAmount, 
-        0
-      );
+    let optimizations;
+    try {
+      // Claude gibt den Text im content Array zurück
+      const responseText = response.content[0].text;
+      optimizations = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[TRADE-OPTIMIZE] Parse error:', parseError);
+      // Fallback falls Parsing fehlschlägt
+      return res.status(500).json({ 
+        error: 'Fehler bei der Analyse', 
+        details: parseError.message 
+      });
     }
     
-    // Validierung: Filtere ungültige und unrealistische Optimierungen
-    const validTradeCodes = lvBreakdown.map(lv => lv.tradeCode);
+    // Validierung und Bereinigung
     if (optimizations.optimizations) {
-      optimizations.optimizations = optimizations.optimizations.filter(opt => {
-        if (!opt.trade || opt.trade === 'undefined') {
-          console.log('[OPTIMIZATION] Skipping optimization with undefined trade');
-          return false;
-        }
-        
-        const isValid = validTradeCodes.includes(opt.trade);
-        if (!isValid) {
-          console.log(`[OPTIMIZATION] Filtered invalid trade: ${opt.trade}`);
-          return false;
-        }
-        
-        if (opt.savingAmount < 200) {
-          console.log(`[OPTIMIZATION] Filtered unrealistic low amount: ${opt.savingAmount}€`);
-          return false;
-        }
-        
-        const tradeLv = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
-        if (tradeLv && opt.savingAmount > tradeLv.total * 0.5) {
-          console.log(`[OPTIMIZATION] Capped high amount: ${opt.savingAmount}€ to 30% of ${tradeLv.total}€`);
-          opt.savingAmount = Math.floor(tradeLv.total * 0.3);
-          opt.savingPercent = 30;
-        }
-        
-        return true;
-      });
-      
-      optimizations.optimizations = optimizations.optimizations.map(opt => {
-        const matchingTrade = lvBreakdown.find(lv => lv.tradeCode === opt.trade);
-        if (matchingTrade) {
-          opt.tradeName = matchingTrade.tradeName;
-        }
-        return opt;
-      });
+      optimizations.optimizations = optimizations.optimizations
+        .filter(opt => opt.savingAmount > 50) // Mindestens 50€ Ersparnis
+        .map(opt => ({
+          ...opt,
+          savingAmount: Math.round(opt.savingAmount),
+          savingPercent: Math.round(opt.savingPercent * 10) / 10
+        }));
     }
-
-    console.log('[OPTIMIZATION] Final amounts before response:', 
-      optimizations.optimizations.map(opt => opt.savingAmount));
-
-    optimizations.totalPossibleSaving = optimizations.optimizations.reduce(
-      (sum, opt) => sum + opt.savingAmount, 
-      0
-    );
-
-    console.log('[OPTIMIZATION] Final total:', optimizations.totalPossibleSaving);
     
+    // Speichere in DB
+    await query(
+      `INSERT INTO trade_optimizations (project_id, trade_id, suggestions, created_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (project_id, trade_id) 
+       DO UPDATE SET suggestions = $3, created_at = NOW()`,
+      [projectId, tradeId, JSON.stringify(optimizations)]
+    );
+    
+    console.log(`[TRADE-OPTIMIZE] Found ${optimizations.optimizations?.length || 0} optimizations`);
     res.json(optimizations);
     
   } catch (err) {
-    console.error('Optimization generation failed:', err);
-    res.status(500).json({ error: 'Fehler bei der Optimierung' });
+    console.error('[TRADE-OPTIMIZE] Analysis failed:', err);
+    res.status(500).json({ 
+      error: 'Optimierung fehlgeschlagen',
+      details: err.message 
+    });
   }
 });
+
+// Helper-Funktionen für die Übersicht
+function getTypicalSavingPercent(tradeCode) {
+  const typicalSavings = {
+    'FEN': 25,    // Fenster: Material-Alternativen
+    'TIS': 20,    // Türen: Material-Alternativen
+    'DACH': 18,   // Dach: Materialwahl
+    'MAL': 35,    // Maler: Hohe Eigenleistung möglich
+    'FLI': 25,    // Fliesen: Material + Eigenleistung
+    'SAN': 20,    // Sanitär: Armaturen-Alternativen
+    'HEI': 15,    // Heizung: Optimierung möglich
+    'ELEKT': 18,  // Elektro: Umfang reduzierbar
+    'BOD': 22,    // Boden: Material-Alternativen
+    'FASS': 15,   // Fassade: Begrenzt
+    'GER': 5,     // Gerüst: Kaum Spielraum
+    'ROH': 8,     // Rohbau: Wenig Spielraum
+    'ZIMM': 12,   // Zimmerer: Begrenzt
+    'ESTR': 10    // Estrich: Begrenzt
+  };
+  return typicalSavings[tradeCode] || 15;
+}
+
+function getSavingHint(tradeCode) {
+  const hints = {
+    'FEN': 'Materialwahl und Anzahl prüfen',
+    'TIS': 'Türqualität optimieren',
+    'DACH': 'Ziegel-Alternative prüfen',
+    'MAL': 'Hohe Eigenleistung möglich',
+    'FLI': 'Material + Eigenleistung',
+    'SAN': 'Armaturenwahl überdenken',
+    'HEI': 'Heizkörper optimieren',
+    'ELEKT': 'Ausstattung reduzieren',
+    'BOD': 'Günstigere Beläge wählen',
+    'FASS': 'Dämmstärke prüfen',
+    'GER': 'Standzeit optimieren',
+    'ROH': 'Wenig Einsparpotenzial',
+    'ZIMM': 'Konstruktion vereinfachen',
+    'ESTR': 'Standardausführung wählen'
+  };
+  return hints[tradeCode] || 'Detailanalyse empfohlen';
+}
+
+// Erweiterte Helper-Funktion mit detaillierten Regeln
+function getDetailedTradeRules(tradeCode) {
+  const rules = {
+    'FEN': `
+    MATERIAL-ALTERNATIVEN:
+    - Kunststoff statt Holz: 30-40% günstiger, pflegeleichter
+    - Kunststoff statt Holz-Alu: 50% günstiger
+    - 2-fach statt 3-fach Verglasung: 15% günstiger (Achtung: EnEV prüfen!)
+    - Standard-Beschläge statt RC2: 200-300€ pro Fenster
+    - Standardmaße statt Sondermaße: 20% günstiger
+    
+    EIGENLEISTUNG:
+    - Demontage Altfenster: 50-80€ pro Fenster
+    - Entsorgung selbst: 30€ pro Fenster
+    - Fensterbank-Montage innen: 50€ pro Fenster
+    
+    VERZICHT/REDUZIERUNG:
+    - Einzelne Fenster weglassen/später
+    - Festverglasungen statt Flügel wo möglich
+    - Rollläden weglassen: 400-600€ pro Fenster`,
+    
+    'DACH': `
+    MATERIAL-ALTERNATIVEN:
+    - Betondachsteine statt Tonziegel: 15-20€/m² günstiger
+    - Standardziegel statt Premiumziegel: 20-40€/m² Unterschied
+    - PVC-Dachrinnen statt Zink: 60% günstiger
+    - Standarddämmung statt Premium: 10-15€/m² 
+    
+    EIGENLEISTUNG:
+    - Dämmung verlegen (nur Geschossdecke!): 25-30€/m²
+    - Alte Ziegel abdecken: 15€/m²
+    - Entrümpelung Dachboden: 200-500€
+    
+    VERZICHT:
+    - Dachfenster reduzieren: 1.500-3.000€ pro Stück
+    - Gauben später: 8.000-15.000€ pro Gaube
+    - Schneefanggitter nur wo nötig`,
+    
+    'SAN': `
+    MATERIAL-ALTERNATIVEN:
+    - Standard-Armaturen statt Grohe/Hansgrohe: 50-70% günstiger
+    - Acryl-Duschwanne statt Mineralguss: 200-400€ Differenz
+    - Standard-WC statt Dusch-WC: 2.000-3.000€
+    - Aufputz-Spülkasten wo möglich: 150€ günstiger
+    
+    EIGENLEISTUNG:
+    - Demontage alte Sanitärobjekte: 100% Arbeitskosten
+    - Fliesenspiegel selbst: 50€/m²
+    - Silikonfugen ziehen: 15€/m
+    
+    REDUZIERUNG:
+    - Einhebelmischer statt Thermostat: 100-200€
+    - Duschwanne statt bodengleich: 800-1.500€
+    - Kleinerer Waschtisch: 200-400€`,
+    
+    'MAL': `
+    EIGENLEISTUNG (SEHR HOCH!):
+    - Komplette Malerarbeiten selbst: 25-40€/m² sparen
+    - Tapeten entfernen: 8-12€/m²
+    - Grundierung: 5€/m²
+    - Streichen: 15-20€/m²
+    - Spachteln Q2: 10€/m²
+    
+    MATERIAL:
+    - Dispersionsfarbe statt Silikat: 5€/m²
+    - Raufaser statt Vlies: 8€/m²
+    - Standardfarbe statt Öko-Premium: 30-50%
+    
+    REDUZIERUNG:
+    - Q2 statt Q3 Qualität: 5-8€/m²
+    - Nur Wände, Decken später
+    - Nebenräume einfacher`,
+
+    'FASS': `
+MATERIAL-ALTERNATIVEN:
+- EPS statt Mineralwolle WDVS: 20-30€/m² günstiger
+- Dünnere Dämmstärke (EnEV-Minimum): 15-25€/m² sparen
+- Kunstharzputz statt Silikatputz: 8-12€/m²
+- Standardfarbe statt Silikatfarbe: 5-8€/m²
+- Verzicht auf Sockelprofile Alu: 15€/m
+
+EIGENLEISTUNG:
+- Alte Fassade reinigen: 10€/m²
+- Grundierung auftragen: 8€/m²
+- Kleinere Ausbesserungen: 20€/m²
+
+REDUZIERUNG:
+- Nur Wetterseiten dämmen: 40% sparen
+- Sockeldämmung weglassen: 80-120€/m
+- Teilflächen später: flexibel`,
+
+'ELEKT': `
+MATERIAL-ALTERNATIVEN:
+- Standard-Schalterserie (Busch-Jaeger) statt Premium: 15-25€ pro Stelle
+- Aufputz in Keller/Garage: 30% günstiger
+- LED-Einbaustrahler Standard statt Premium: 20-40€ pro Stück
+- Normale Steckdosen statt USB-Kombi: 30€ pro Stück
+
+EIGENLEISTUNG:
+- Schlitze stemmen: 15-20€/m
+- Dosen setzen: 10€ pro Dose
+- Kabel einziehen (mit Elektriker): 8€/m
+- Alte Installation demontieren: 100% Arbeitskosten
+
+REDUZIERUNG:
+- Mindestausstattung statt Komfort: 2.000-4.000€
+- Weniger Steckdosen (nur DIN-Minimum): 30%
+- Smart-Home später nachrüsten: 3.000-5.000€`,
+
+'FLI': `
+MATERIAL-ALTERNATIVEN:
+- Baumarkt-Fliesen statt Markenfliesen: 20-60€/m²
+- Feinsteinzeug statt Naturstein: 40-80€/m²
+- Großformate (weniger Fugen): 10€/m² Verlegung sparen
+- Standardformat 30x60 statt Mosaik: 30€/m²
+
+EIGENLEISTUNG:
+- Alte Fliesen entfernen: 15-25€/m²
+- Grundierung/Ausgleich: 10€/m²
+- Sockelfliesen selbst: 15€/m
+- Verfugen: 8-10€/m²
+
+REDUZIERUNG:
+- Nur Nassbereiche fliesen: 50% sparen
+- Teilverfliesung statt raumhoch: 30%
+- Einfaches Verlegemuster: 10€/m²`,
+
+'TIS': `
+MATERIAL-ALTERNATIVEN:
+- CPL-Türen statt Echtholz: 200-400€ pro Tür
+- Röhrenspan statt Vollspan: 50-80€ pro Tür
+- Standard-Zarge statt Blockzarge: 80-150€
+- Buntbart statt Profilzylinder: 40€ pro Tür
+- Standardmaße statt Sondermaße: 30%
+
+EIGENLEISTUNG:
+- Demontage alte Türen: 50€ pro Tür
+- Türblätter einhängen (vorbereitet): 30€ pro Tür
+- Beschläge montieren: 20€ pro Tür
+
+VERZICHT:
+- Schiebetüren vermeiden: 800-1.500€ Mehrpreis
+- Glastüren reduzieren: 300-500€ Mehrpreis
+- Schallschutz nur wo nötig: 150€ pro Tür`,
+
+'SCHL': `
+MATERIAL-ALTERNATIVEN:
+- Stahl verzinkt statt Edelstahl: 40% günstiger
+- Standardprofile statt Sonderanfertigung: 30%
+- Gitterrost statt Lochblech: 25% günstiger
+- Pulverbeschichtung statt feuerverzinkt: 20%
+
+EIGENLEISTUNG:
+- Demontage Altgeländer: 30€/m
+- Grundierung Handlauf: 10€/m
+- Montage vorbereiten: 20€/m
+
+REDUZIERUNG:
+- Einfache Füllung statt aufwendig: 50€/m
+- Standardhöhe 90cm statt 110cm: 20%
+- Handlauf nur einseitig: 40€/m`,
+
+'TRO': `
+MATERIAL-ALTERNATIVEN:
+- Standardplatten 12,5mm statt Spezial: 3-5€/m²
+- Metallständer Standard statt verstärkt: 5€/m²
+- Mineralwolle statt Spezial-Dämmung: 8€/m²
+- Q2 statt Q3 Verspachtelung: 5€/m²
+
+EIGENLEISTUNG:
+- Alte Verkleidungen entfernen: 10€/m²
+- Grundierung auftragen: 5€/m²
+- Dämmung einlegen: 8€/m²
+- Erste Spachtelgänge: 10€/m²
+
+REDUZIERUNG:
+- Einfache statt doppelte Beplankung: 15€/m²
+- Ohne Dämmung wo nicht nötig: 10€/m²
+- Direktbeplankung statt Ständerwerk: 20€/m²`,
+
+'PV': `
+MATERIAL-ALTERNATIVEN:
+- Standard-Module statt Premium: 50-80€/kWp
+- String-Wechselrichter statt Optimizer: 100€/kWp
+- Standardmontage statt Indach: 200€/kWp
+- Einfacher Zählerschrank: 500-800€
+
+EIGENLEISTUNG:
+- Kabelwege vorbereiten: 20€/m
+- DC-Verkabelung unterstützen: 15€/m
+- Dokumentation erstellen: 200€
+
+REDUZIERUNG:
+- Kleinere Anlage (nur Eigenverbrauch): 30%
+- Speicher später nachrüsten: 6.000-10.000€
+- Nur Südseite belegen: 20-40%`,
+
+'KLIMA': `
+MATERIAL-ALTERNATIVEN:
+- Split-Geräte statt zentrale Anlage: 40% günstiger
+- Standard-Geräte statt Premium: 30%
+- Einzelraumgeräte statt Multi-Split: 25%
+- Kanalgeräte statt Kassetten: 20%
+
+EIGENLEISTUNG:
+- Wanddurchbrüche vorbereiten: 100€/Stück
+- Kabelkanäle verlegen: 15€/m
+- Kondensat-Ableitung vorbereiten: 50€/Gerät
+
+REDUZIERUNG:
+- Nur Haupträume klimatisieren: 50%
+- Mobile Geräte für Übergang: 60% günstiger
+- Kleinere Leistung wählen: 20%`,
+
+'HEI': `
+MATERIAL-ALTERNATIVEN:
+- Heizkörper Typ 11 statt 22 (wo möglich): 30%
+- Standard-Thermostate statt Smart: 50€/Stück
+- Stahl-Heizkörper statt Design: 40%
+- Standard-Pumpe statt Hocheffizienz: 200€
+
+EIGENLEISTUNG:
+- Alte Heizkörper demontieren: 50€/Stück
+- Heizkörper grundieren: 30€/Stück
+- Dämmung Heizungsleitungen: 10€/m
+
+REDUZIERUNG:
+- FBH nur in Bad: 2.000-3.000€ sparen
+- Anzahl Heizkreise reduzieren: 300€/Kreis
+- Pufferspeicher kleiner: 500-1.000€`,
+
+'BOD': `
+MATERIAL-ALTERNATIVEN:
+- Laminat statt Parkett: 30-50€/m²
+- Vinyl statt Echtholz: 40-60€/m²
+- 2-Schicht statt 3-Schicht Parkett: 20-30€/m²
+- Click statt verklebt: 15€/m² Verlegung
+
+EIGENLEISTUNG:
+- Alte Beläge entfernen: 10-15€/m²
+- Ausgleichsmasse gießen: 10€/m²
+- Sockelleisten montieren: 8€/m
+- Click-Laminat selbst verlegen: 25€/m²
+
+REDUZIERUNG:
+- Teppich in Schlafzimmern belassen: 30%
+- Nur Haupträume neu: 40%
+- Standardformate statt Sonderwünsche: 20%`,
+
+'AUSS': `
+MATERIAL-ALTERNATIVEN:
+- Betonstein statt Naturstein: 40-60€/m²
+- Kies statt Pflaster in Nebenflächen: 30€/m²
+- Standard-Zaun statt Sichtschutz: 50%
+- Rasengitter statt Pflaster: 25€/m²
+
+EIGENLEISTUNG:
+- Aushub Terrasse: 25€/m³
+- Splittbett verteilen: 15€/m²
+- Pflaster verlegen (einfach): 30€/m²
+- Zaun streichen: 10€/m²
+
+REDUZIERUNG:
+- Kleinere Terrasse: flexibel
+- Carport statt Garage: 10.000€
+- Wege schmaler anlegen: 30%`,
+
+'ABBR': `
+EIGENLEISTUNG (SEHR HOCH!):
+- Nicht-tragende Wände selbst: 30-40€/m²
+- Bodenbeläge entfernen: 15€/m²
+- Tapeten/Putz abschlagen: 10€/m²
+- Sanitär demontieren: 80€/Objekt
+- Entsorgung Container selbst: 50%
+
+OPTIMIERUNG:
+- Container-Sharing organisieren: 30%
+- Wertstoffe separat: 20€/m³
+- Verkauf Altmaterial: variabel
+
+REDUZIERUNG:
+- Nur notwendige Bereiche: variabel
+- Teilentkernung: 30-50%
+- Erhaltenswertes stehen lassen: flexibel`,
+
+'ROH': `
+MATERIAL-ALTERNATIVEN:
+- Poroton statt KS-Stein: 10-15€/m²
+- Fertigteile wo möglich: 20% Arbeitszeit
+- Standardbeton statt Spezialmix: 20€/m³
+- Filigrandecke statt Ortbeton: 15%
+
+EIGENLEISTUNG (BEGRENZT):
+- Baustelle vorbereiten: 500-1.000€
+- Bewehrung sortieren: 10€/h
+- Nacharbeiten: 15€/h
+
+REDUZIERUNG (VORSICHT - STATIK!):
+- Wandstärken optimieren: 10%
+- Weniger Öffnungen: 300€/Stück
+- Standardraster einhalten: 15%
+- Kellerverzicht prüfen: 20.000-40.000€`    
+   
+    'DEFAULT': `
+    ALLGEMEINE OPTIMIERUNGEN:
+    - Standardprodukte statt Premium
+    - Eigenleistung bei Vorarbeiten
+    - Teilausführung/Reduzierung
+    - Verschiebung auf später`
+  };
+  
+  return rules[tradeCode] || rules['DEFAULT'];
+}
 
 // ============================================================================
 // NEUE ROUTEN FÜR DIE ERWEITERTE PLATTFORM
