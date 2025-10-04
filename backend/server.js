@@ -11863,8 +11863,8 @@ AUSGABE als JSON:
 
 WICHTIG: Sei REALISTISCH! Keine Fantasie-Einsparungen!
 
-KRITISCH: Antworte NUR mit validem JSON, KEINE Markdown-Formatierung wie \\\`\\\`\\\`json!
-Gib das JSON direkt aus, ohne Codeblocks oder andere Formatierung.`; // <- BEACHTE das schließende Backtick und Semikolon
+KRITISCH: Antworte NUR mit validem JSON ohne Markdown-Codeblocks!
+Gib das JSON direkt aus, keine zusätzliche Formatierung.`;
     
     const userPrompt = `LEISTUNGSVERZEICHNIS ${lv.trade_name}:
 
