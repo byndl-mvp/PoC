@@ -12271,7 +12271,7 @@ REDUZIERUNG (VORSICHT - STATIK!):
 - Wandstärken optimieren: 10%
 - Weniger Öffnungen: 300€/Stück
 - Standardraster einhalten: 15%
-- Kellerverzicht prüfen: 20.000-40.000€`    
+- Kellerverzicht prüfen: 20.000-40.000€`,    
    
     'DEFAULT': `
     ALLGEMEINE OPTIMIERUNGEN:
