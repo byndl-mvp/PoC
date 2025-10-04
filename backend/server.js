@@ -10775,6 +10775,92 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
   }
 });
 
+// Endpoint für Rückfragen zu Fragen - "Frage zur Frage" Feature
+app.post('/api/projects/:projectId/trades/:tradeId/question-clarification', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { questionText, questionContext, userQuery } = req.body;
+    
+    if (!questionText || !userQuery) {
+      return res.status(400).json({ 
+        error: 'Frage und Rückfrage sind erforderlich' 
+      });
+    }
+    
+    // Hole Trade-Info für Kontext
+    const tradeInfo = await query(
+      'SELECT name, code FROM trades WHERE id = $1', 
+      [tradeId]
+    );
+    
+    if (tradeInfo.rows.length === 0) {
+      return res.status(404).json({ error: 'Gewerk nicht gefunden' });
+    }
+    
+    const tradeName = tradeInfo.rows[0].name;
+    const tradeCode = tradeInfo.rows[0].code;
+    
+    // Hole Projekt für zusätzlichen Kontext
+    const projectResult = await query(
+      'SELECT description, category, budget FROM projects WHERE id = $1', 
+      [projectId]
+    );
+    const project = projectResult.rows[0];
+    
+    const systemPrompt = `Du bist ein geduldiger Experte für ${tradeName}, der Laien hilft.
+    
+KONTEXT:
+- Gewerk: ${tradeName} (${tradeCode})
+- Gestellte Frage: "${questionText}"
+- Projekt: ${project?.description || 'Keine Beschreibung'}
+- Kategorie: ${project?.category || 'Nicht angegeben'}
+
+AUFGABE:
+Beantworte die Rückfrage des Nutzers zur gestellten Frage.
+Erkläre in einfachen Worten, gib praktische Tipps.
+Maximal 150 Wörter. Sei konkret und hilfreich.
+
+WICHTIG:
+- Keine Fachbegriffe ohne Erklärung
+- Praktische Beispiele aus dem Alltag
+- Schritt-für-Schritt wenn nach Anleitung gefragt
+- Produktbeispiele wenn nach Qualität gefragt
+- Preisrahmen wenn nach Kosten gefragt`;
+
+    const userPrompt = `Original-Frage an den Nutzer: "${questionText}"
+${questionContext ? `\nKontext: ${questionContext}` : ''}
+
+Nutzer-Rückfrage: "${userQuery}"
+
+Gib eine hilfreiche, verständliche Antwort die dem Laien weiterhilft.`;
+
+    const response = await llmWithPolicy('clarification', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { 
+      maxTokens: 1000,
+      temperature: 0.3 
+    });
+    
+    console.log(`[CLARIFICATION] Question clarified for trade ${tradeCode}`);
+    
+    res.json({ 
+      success: true, 
+      response: response,
+      tradeInfo: {
+        name: tradeName,
+        code: tradeCode
+      }
+    });
+    
+  } catch (err) {
+    console.error('Question clarification failed:', err);
+    res.status(500).json({ 
+      error: 'Fehler bei der Beantwortung Ihrer Rückfrage' 
+    });
+  }
+});
+
 // Generate detailed LV for a trade
 app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
   try {
