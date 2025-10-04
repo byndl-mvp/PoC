@@ -539,10 +539,76 @@ const TradeOptimizationDisplay = ({ lv, optimizations, formatCurrency }) => {
     </div>
   );
 
-  const OptimizationsList = ({ optimizations }) => (
+  const OptimizationsList = ({ optimizations }) => {
+  // Prüfe welche Datenstruktur vorliegt
+  const isNewStructure = optimizations?.tradesPotential !== undefined;
+  
+  if (isNewStructure) {
+    // Neue Struktur von der Übersichts-Route
+    return (
+      <div className="mt-6 bg-white rounded-lg p-6">
+        <h4 className="text-lg font-bold text-gray-800 mb-4">
+          Einsparpotenzial-Übersicht (Geschätzt: {formatCurrency(optimizations.totalEstimatedPotential || 0)})
+        </h4>
+        
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+          <p className="text-sm text-blue-700">
+            <strong>{optimizations.summary?.message || 'Budget-Status'}</strong>
+          </p>
+          <p className="text-sm text-gray-600 mt-2">{optimizations.recommendation}</p>
+        </div>
+        
+        <div className="space-y-3">
+          {optimizations.tradesPotential?.map((trade, idx) => (
+            <div key={idx} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-gray-800">{trade.tradeName}</span>
+                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                      ~{trade.potentialPercent}% Einsparpotenzial
+                    </span>
+                  </div>
+                  <p className="text-gray-700 text-sm">{trade.hint}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Aktuell: {formatCurrency(trade.currentCost)}
+                  </p>
+                </div>
+                <div className="text-right ml-4">
+                  <p className="font-bold text-green-600">
+                    bis zu {formatCurrency(trade.estimatedPotential)}
+                  </p>
+                  <p className="text-xs text-gray-500">möglich</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded">
+          <p className="text-sm text-yellow-800">
+            💡 <strong>Tipp:</strong> Klicken Sie bei einzelnen Gewerken auf "Einsparpotenzial prüfen" 
+            für detaillierte Vorschläge zu konkreten LV-Positionen.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Alte Struktur (falls noch verwendet) - Fallback
+  if (!optimizations?.optimizations) {
+    return (
+      <div className="mt-6 bg-white rounded-lg p-6">
+        <p className="text-gray-600">Keine Optimierungsdaten verfügbar</p>
+      </div>
+    );
+  }
+  
+  // Alte detaillierte Struktur
+  return (
     <div className="mt-6 bg-white rounded-lg p-6">
       <h4 className="text-lg font-bold text-gray-800 mb-4">
-        Einsparmöglichkeiten (Potenzial: {formatCurrency(optimizations.totalPossibleSaving)})
+        Einsparmöglichkeiten (Potenzial: {formatCurrency(optimizations.totalPossibleSaving || 0)})
       </h4>
       <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
         <p className="text-sm text-blue-700">
@@ -593,7 +659,8 @@ const TradeOptimizationDisplay = ({ lv, optimizations, formatCurrency }) => {
       </div>
     </div>
   );
-
+};
+  
   const handleExportPDF = async (tradeId, withPrices = true) => {
     try {
       const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv.pdf?withPrices=${withPrices}`);
