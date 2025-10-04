@@ -362,7 +362,7 @@ const loadTradeOptimization = async (lv, lvIndex) => {
 };
 
 // Komponente für Trade-Optimierungen
-const TradeOptimizationDisplay = ({ lv, optimizations }) => {
+const TradeOptimizationDisplay = ({ lv, optimizations, formatCurrency }) => {
   if (!optimizations) return null;
   
   return (
