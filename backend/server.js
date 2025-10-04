@@ -11861,10 +11861,10 @@ AUSGABE als JSON:
   }
 }
 
-WICHTIG: Sei REALISTISCH! Keine Fantasie-Einsparungen!`;
+WICHTIG: Sei REALISTISCH! Keine Fantasie-Einsparungen!
 
-KRITISCH: Antworte NUR mit validem JSON, KEINE Markdown-Formatierung wie \`\`\`json!
-Gib das JSON direkt aus, ohne Codeblocks oder andere Formatierung.`;
+KRITISCH: Antworte NUR mit validem JSON, KEINE Markdown-Formatierung wie \\\`\\\`\\\`json!
+Gib das JSON direkt aus, ohne Codeblocks oder andere Formatierung.`; // <- BEACHTE das schließende Backtick und Semikolon
     
     const userPrompt = `LEISTUNGSVERZEICHNIS ${lv.trade_name}:
 
