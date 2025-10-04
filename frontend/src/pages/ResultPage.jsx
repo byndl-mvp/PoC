@@ -32,6 +32,9 @@ export default function ResultPage() {
   const [pendingTrades, setPendingTrades] = useState([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
   const [highlightedLv, setHighlightedLv] = useState(null);
+  const [tradeOptimizations, setTradeOptimizations] = useState({});
+  const [loadingTradeOptimization, setLoadingTradeOptimization] = useState({});
+  const [expandedOptimizations, setExpandedOptimizations] = useState({});
   
   // Helper für sichere Zahlenformatierung
   const safeToFixed = (value) => {
@@ -328,6 +331,137 @@ export default function ResultPage() {
     }
   };
 
+  // Neue Funktion für Trade-spezifische Optimierung
+const loadTradeOptimization = async (lv, lvIndex) => {
+  const tradeId = lv.trade_id;
+  setLoadingTradeOptimization(prev => ({ ...prev, [tradeId]: true }));
+  
+  try {
+    const response = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetSaving: null // Optional: könnte vom User eingegeben werden
+        })
+      }
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      setTradeOptimizations(prev => ({ ...prev, [tradeId]: data }));
+      setExpandedOptimizations(prev => ({ ...prev, [lvIndex]: true }));
+    }
+  } catch (err) {
+    console.error('Failed to load trade optimizations:', err);
+    alert('Fehler beim Laden der Optimierungsvorschläge');
+  } finally {
+    setLoadingTradeOptimization(prev => ({ ...prev, [tradeId]: false }));
+  }
+};
+
+// Komponente für Trade-Optimierungen
+const TradeOptimizationDisplay = ({ lv, optimizations }) => {
+  if (!optimizations) return null;
+  
+  return (
+    <div className="mt-4 bg-white/10 rounded-lg p-6 border border-white/20">
+      <h4 className="text-lg font-bold text-white mb-4">
+        Einsparpotenzial für {lv.trade_name}: {formatCurrency(optimizations.summary?.totalPossibleSaving || 0)}
+      </h4>
+      
+      <div className="grid gap-3">
+        {optimizations.optimizations?.map((opt, idx) => (
+          <div key={idx} className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-mono text-gray-400">{opt.positionRef}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    opt.category === 'material' ? 'bg-blue-500/20 text-blue-300' :
+                    opt.category === 'eigenleistung' ? 'bg-green-500/20 text-green-300' :
+                    opt.category === 'verzicht' ? 'bg-red-500/20 text-red-300' :
+                    'bg-yellow-500/20 text-yellow-300'
+                  }`}>
+                    {opt.category}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    opt.recommendation === 'empfohlen' ? 'bg-green-500/20 text-green-300' :
+                    opt.recommendation === 'bedingt' ? 'bg-yellow-500/20 text-yellow-300' :
+                    'bg-red-500/20 text-red-300'
+                  }`}>
+                    {opt.recommendation === 'empfohlen' ? '✓ Empfohlen' :
+                     opt.recommendation === 'bedingt' ? '⚠ Bedingt' : '⚠ Notfall'}
+                  </span>
+                </div>
+                
+                <p className="text-white font-medium">{opt.originalPosition}</p>
+                <p className="text-gray-300 text-sm mt-1">
+                  Aktuell: {formatCurrency(opt.originalCost)}
+                </p>
+                
+                <div className="mt-2 p-3 bg-teal-500/10 rounded border border-teal-500/30">
+                  <p className="text-teal-300 font-medium">{opt.measure}</p>
+                  <p className="text-teal-200 text-sm mt-1">{opt.alternativeDescription}</p>
+                </div>
+                
+                {opt.risks && (
+                  <div className="mt-2 p-2 bg-orange-500/10 rounded">
+                    <p className="text-orange-300 text-xs">
+                      <strong>Hinweis:</strong> {opt.risks}
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="text-right ml-4">
+                <p className="text-2xl font-bold text-green-400">
+                  -{formatCurrency(opt.savingAmount)}
+                </p>
+                <p className="text-sm text-gray-400">
+                  {opt.savingPercent}% Ersparnis
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Qualität: {
+                    opt.qualityImpact === 'keine' ? '✓ Keine Einbuße' :
+                    opt.qualityImpact === 'gering' ? '↓ Gering' :
+                    opt.qualityImpact === 'mittel' ? '↓↓ Mittel' :
+                    '↓↓↓ Hoch'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="mt-4 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-gray-400 text-sm">Gesamt möglich</p>
+            <p className="text-xl font-bold text-white">
+              {formatCurrency(optimizations.summary?.totalPossibleSaving || 0)}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-sm">Empfohlen</p>
+            <p className="text-xl font-bold text-green-400">
+              {formatCurrency(optimizations.summary?.recommendedSaving || 0)}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-sm">Ohne Qualitätsverlust</p>
+            <p className="text-xl font-bold text-teal-400">
+              {formatCurrency(optimizations.summary?.qualityPreservedSaving || 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+  
   // Budget-Komponenten
   const BudgetSuccess = ({ totalSum, budget }) => (
     <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-6 shadow-lg">
