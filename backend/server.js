@@ -12246,7 +12246,6 @@ EIGENLEISTUNG (SEHR HOCH!):
 - Entsorgung Container selbst: 50%
 
 OPTIMIERUNG:
-- Container-Sharing organisieren: 30%
 - Wertstoffe separat: 20€/m³
 - Verkauf Altmaterial: variabel
 
@@ -12260,18 +12259,7 @@ MATERIAL-ALTERNATIVEN:
 - Poroton statt KS-Stein: 10-15€/m²
 - Fertigteile wo möglich: 20% Arbeitszeit
 - Standardbeton statt Spezialmix: 20€/m³
-- Filigrandecke statt Ortbeton: 15%
-
-EIGENLEISTUNG (BEGRENZT):
-- Baustelle vorbereiten: 500-1.000€
-- Bewehrung sortieren: 10€/h
-- Nacharbeiten: 15€/h
-
-REDUZIERUNG (VORSICHT - STATIK!):
-- Wandstärken optimieren: 10%
-- Weniger Öffnungen: 300€/Stück
-- Standardraster einhalten: 15%
-- Kellerverzicht prüfen: 20.000-40.000€`,    
+- Filigrandecke statt Ortbeton: 15%`,    
    
     'DEFAULT': `
     ALLGEMEINE OPTIMIERUNGEN:
