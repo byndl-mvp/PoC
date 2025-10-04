@@ -2306,6 +2306,29 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
         });
       }
     }
+
+    // Kernsanierung - ALLE Gewerke außer AUSS, PV, KLIMA
+    const isKernsanierung = project.description?.toLowerCase().includes('kernsanierung') || 
+                            project.description?.toLowerCase().includes('komplettsanierung');
+
+    if (isKernsanierung) {
+      console.log('[DETECT] Kernsanierung erkannt - füge ALLE Gewerke hinzu (außer AUSS, PV, KLIMA)');
+      
+      const excludeForKernsanierung = ['AUSS', 'PV', 'KLIMA', 'INT'];
+      
+      for (const trade of availableTrades) {
+        if (excludeForKernsanierung.includes(trade.code)) continue;
+        if (usedIds.has(trade.id)) continue;
+        
+        detectedTrades.push({
+          id: trade.id,
+          code: trade.code,
+          name: trade.name
+        });
+        usedIds.add(trade.id);
+        console.log(`[DETECT] Kernsanierung: Added ${trade.code}`);
+      }
+    }
     
     if (detectedTrades.length === 0) {
       throw new Error('No valid trades detected');
