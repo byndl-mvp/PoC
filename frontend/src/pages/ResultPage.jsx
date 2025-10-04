@@ -1058,8 +1058,7 @@ const TradeOptimizationDisplay = ({ lv, optimizations, formatCurrency }) => {
               optimizations={tradeOptimizations[lv.trade_id]}
               formatCurrency={formatCurrency}
             />
-          )}
-        </div>                    
+          )}                  
                 
                 {/* Details nur wenn ausgewählt */}
                 {selectedLv === idx && lv.content?.positions && (
