@@ -4302,7 +4302,7 @@ BEACHTE:
       { role: 'system', content: finalSystemPrompt }, 
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: targetQuestionCount > 30 ? 8000 : 6000,  // Erhöhe Limit für viele Fragen
+      maxTokens: 10000,
       temperature: 0.5,
       jsonMode: false 
     });
