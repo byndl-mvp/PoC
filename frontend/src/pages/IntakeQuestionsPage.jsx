@@ -183,8 +183,13 @@ export default function IntakeQuestionsPage() {
   try {
     setLoadingResponse(true);
     
+    // Für Intake: Hole INT trade ID
+    const tradesRes = await fetch(apiUrl('/api/trades'));
+    const trades = await tradesRes.json();
+    const intTrade = trades.find(t => t.code === 'INT');
+    
     const response = await fetch(
-      apiUrl(`/api/projects/${projectId}/trades/${tradeId}/question-clarification`),
+      apiUrl(`/api/projects/${projectId}/trades/${intTrade.id}/question-clarification`),
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
