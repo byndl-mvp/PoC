@@ -130,22 +130,25 @@ const DEFAULT_COMPLEXITY = {
 async function llmWithPolicy(task, messages, options = {}) {
   const defaultMaxTokens = {
     'detect': 3000,      
-    'questions': 8000,   
+    'questions': 10000,   
     'lv': 16000,         
-    'intake': 6000,      
+    'intake': 10000,      
     'summary': 3000,
-    'validation': 3000   
+    'validation': 3000,
+    'clarification': 1000, // NEU: Für Rückfragen
+    'context': 8000       // NEU: Für Kontext-basierte Fragen
   };
   
   const maxTokens = options.maxTokens || defaultMaxTokens[task] || 4000;
-
-  // GENERELLES TIMEOUT ERHÖHEN für alle Tasks die länger brauchen können
+  
   const defaultTimeouts = {
-    'questions': 90000,  // 90 Sekunden
-    'lv': 120000,        // 120 Sekunden (LV ist komplexer)
-    'intake': 90000,     // 90 Sekunden
-    'optimization': 60000, // 60 Sekunden
-    'default': 45000     // 45 Sekunden für alles andere
+    'questions': 90000,  
+    'lv': 120000,        
+    'intake': 90000,     
+    'optimization': 60000,
+    'clarification': 30000, // NEU: Rückfragen sind schneller
+    'context': 60000,       // NEU: Kontext-Fragen
+    'default': 45000     
   };
   
   if (!options.timeout) {
