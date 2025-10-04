@@ -11863,6 +11863,9 @@ AUSGABE als JSON:
 
 WICHTIG: Sei REALISTISCH! Keine Fantasie-Einsparungen!`;
 
+KRITISCH: Antworte NUR mit validem JSON, KEINE Markdown-Formatierung wie \`\`\`json!
+Gib das JSON direkt aus, ohne Codeblocks oder andere Formatierung.`;
+    
     const userPrompt = `LEISTUNGSVERZEICHNIS ${lv.trade_name}:
 
 ${lvContent.positions.map((pos, idx) => 
@@ -11887,37 +11890,59 @@ ${targetSaving ? `ZIEL-EINSPARUNG: ${targetSaving}€` : 'ZIEL: Maximale sinnvol
 Analysiere JEDE Position und finde konkrete Einsparmöglichkeiten!`;
 
     // Claude API Call
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY
-    });
-    
-    console.log('[TRADE-OPTIMIZE] Calling Claude for detailed analysis...');
-    
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 6000,
-      temperature: 0.3,
-      messages: [
-        { 
-          role: 'user', 
-          content: systemPrompt + '\n\n' + userPrompt 
-        }
-      ]
-    });
-    
-    let optimizations;
-    try {
-      // Claude gibt den Text im content Array zurück
-      const responseText = response.content[0].text;
-      optimizations = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('[TRADE-OPTIMIZE] Parse error:', parseError);
-      // Fallback falls Parsing fehlschlägt
-      return res.status(500).json({ 
-        error: 'Fehler bei der Analyse', 
-        details: parseError.message 
-      });
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY
+});
+
+console.log('[TRADE-OPTIMIZE] Calling Claude for detailed analysis...');
+
+const response = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 6000,
+  temperature: 0.3,
+  messages: [
+    { 
+      role: 'user', 
+      content: systemPrompt + '\n\n' + userPrompt 
     }
+  ]
+});
+
+let optimizations;
+try {
+  // Claude gibt den Text im content Array zurück
+  let responseText = response.content[0].text;
+  
+  // NEUE BEREINIGUNG: Entferne Markdown-Codeblocks
+  responseText = responseText.trim();
+  
+  // Entferne ```json am Anfang und ``` am Ende
+  if (responseText.startsWith('```json')) {
+    responseText = responseText.substring(7); // Entferne ```json
+  } else if (responseText.startsWith('```')) {
+    responseText = responseText.substring(3); // Entferne ```
+  }
+  
+  if (responseText.endsWith('```')) {
+    responseText = responseText.substring(0, responseText.length - 3);
+  }
+  
+  // Nochmal trimmen nach dem Entfernen
+  responseText = responseText.trim();
+  
+  console.log('[TRADE-OPTIMIZE] Cleaned response (first 200 chars):', responseText.substring(0, 200));
+  
+  optimizations = JSON.parse(responseText);
+  
+} catch (parseError) {
+  console.error('[TRADE-OPTIMIZE] Parse error:', parseError);
+  console.error('[TRADE-OPTIMIZE] Raw response:', response.content[0].text.substring(0, 500));
+  
+  return res.status(500).json({ 
+    error: 'Fehler bei der Analyse', 
+    details: parseError.message 
+  });
+}
     
     // Validierung und Bereinigung
     if (optimizations.optimizations) {
