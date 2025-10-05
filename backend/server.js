@@ -12319,6 +12319,223 @@ MATERIAL-ALTERNATIVEN:
   return rules[tradeCode] || rules['DEFAULT'];
 }
 
+// Route zum Anwenden ausgewählter Optimierungen auf das LV
+app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (req, res) => {
+  console.log('[APPLY-OPT] Starting optimization application for trade:', req.params.tradeId);
+  
+  try {
+    const { projectId, tradeId } = req.params;
+    const { optimizations } = req.body;
+    
+    if (!optimizations || !Array.isArray(optimizations) || optimizations.length === 0) {
+      return res.status(400).json({ error: 'Keine Optimierungen ausgewählt' });
+    }
+    
+    // Lade aktuelles LV
+    const lvData = await query(
+      `SELECT * FROM lvs WHERE project_id = $1 AND trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (!lvData.rows[0]) {
+      return res.status(404).json({ error: 'LV nicht gefunden' });
+    }
+    
+    const lv = lvData.rows[0];
+    
+    // Parse LV content
+    let lvContent;
+    if (typeof lv.content === 'string') {
+      lvContent = JSON.parse(lv.content);
+    } else {
+      lvContent = lv.content;
+    }
+    
+    if (!lvContent.positions || !Array.isArray(lvContent.positions)) {
+      return res.status(400).json({ error: 'Keine Positionen im LV gefunden' });
+    }
+    
+    console.log(`[APPLY-OPT] Applying ${optimizations.length} optimizations to ${lvContent.positions.length} positions`);
+    
+    // Kopie der Positionen für Bearbeitung
+    let updatedPositions = [...lvContent.positions];
+    let appliedCount = 0;
+    let totalSavings = 0;
+    
+    // Verarbeite jede Optimierung
+    for (const opt of optimizations) {
+      console.log(`[APPLY-OPT] Processing optimization for position ${opt.positionRef}`);
+      
+      // Finde die betroffene Position
+      const posIndex = updatedPositions.findIndex(pos => 
+        pos.pos === opt.positionRef || 
+        pos.title?.toLowerCase().includes(opt.originalPosition?.toLowerCase().substring(0, 20))
+      );
+      
+      if (posIndex === -1) {
+        console.warn(`[APPLY-OPT] Position not found: ${opt.positionRef}`);
+        continue;
+      }
+      
+      const position = updatedPositions[posIndex];
+      const originalPrice = position.totalPrice || (position.quantity * position.unitPrice);
+      
+      // Wende Optimierung basierend auf Kategorie an
+      switch (opt.category) {
+        case 'material':
+          // Material-Optimierung: Titel und Beschreibung anpassen, Preis reduzieren
+          position.title = position.title + ' (optimiert)';
+          position.description = `${opt.alternativeDescription}\n\nUrsprünglich: ${position.description || ''}`;
+          position.unitPrice = Math.round((position.unitPrice * (100 - opt.savingPercent) / 100) * 100) / 100;
+          position.totalPrice = Math.round(position.quantity * position.unitPrice * 100) / 100;
+          appliedCount++;
+          break;
+          
+        case 'eigenleistung':
+          // Eigenleistung: Position als Eigenleistung markieren, Arbeitskosten abziehen
+          position.title = position.title + ' (Eigenleistung)';
+          position.description = `EIGENLEISTUNG: ${opt.measure}\n\n${position.description || ''}`;
+          // Reduziere nur Arbeitskosten (ca. 60-80% bei Eigenleistung)
+          const laborReduction = opt.savingPercent || 70;
+          position.unitPrice = Math.round((position.unitPrice * (100 - laborReduction) / 100) * 100) / 100;
+          position.totalPrice = Math.round(position.quantity * position.unitPrice * 100) / 100;
+          position.isEigenleistung = true;
+          appliedCount++;
+          break;
+          
+        case 'verzicht':
+          // Verzicht: Position auf 0 setzen oder als NEP markieren
+          position.title = position.title + ' (ENTFÄLLT)';
+          position.description = `POSITION ENTFÄLLT: ${opt.measure}\n\n${position.description || ''}`;
+          position.quantity = 0;
+          position.totalPrice = 0;
+          position.isNEP = true;
+          appliedCount++;
+          break;
+          
+        case 'reduzierung':
+          // Reduzierung: Menge oder Umfang reduzieren
+          const reductionFactor = (100 - opt.savingPercent) / 100;
+          position.title = position.title + ' (reduziert)';
+          position.description = `REDUZIERT: ${opt.measure}\n\n${position.description || ''}`;
+          
+          // Entscheide ob Menge oder Preis reduziert wird
+          if (opt.measure.toLowerCase().includes('menge') || 
+              opt.measure.toLowerCase().includes('weniger') ||
+              opt.measure.toLowerCase().includes('fläche')) {
+            // Mengenreduzierung
+            position.quantity = Math.round(position.quantity * reductionFactor * 100) / 100;
+          } else {
+            // Preisreduzierung (z.B. einfachere Ausführung)
+            position.unitPrice = Math.round(position.unitPrice * reductionFactor * 100) / 100;
+          }
+          position.totalPrice = Math.round(position.quantity * position.unitPrice * 100) / 100;
+          appliedCount++;
+          break;
+          
+        case 'verschiebung':
+          // Verschiebung: Als Eventualposition markieren
+          position.title = position.title + ' (Optional - spätere Ausführung)';
+          position.description = `OPTIONAL/SPÄTER: ${opt.measure}\n\n${position.description || ''}`;
+          position.isNEP = true;
+          appliedCount++;
+          break;
+          
+        default:
+          console.warn(`[APPLY-OPT] Unknown optimization category: ${opt.category}`);
+      }
+      
+      // Berechne tatsächliche Ersparnis
+      const newPrice = position.totalPrice || 0;
+      const actualSaving = originalPrice - newPrice;
+      totalSavings += actualSaving;
+      
+      console.log(`[APPLY-OPT] Applied ${opt.category} to position ${posIndex}: saved ${actualSaving}€`);
+    }
+    
+    // Berechne neue Gesamtsumme
+    const newTotalSum = updatedPositions.reduce((sum, pos) => {
+      if (!pos.isNEP) {
+        return sum + (pos.totalPrice || 0);
+      }
+      return sum;
+    }, 0);
+    
+    const nepSum = updatedPositions.reduce((sum, pos) => {
+      if (pos.isNEP) {
+        return sum + (pos.totalPrice || 0);
+      }
+      return sum;
+    }, 0);
+    
+    // Aktualisiere LV-Content
+    lvContent.positions = updatedPositions;
+    lvContent.totalSum = Math.round(newTotalSum * 100) / 100;
+    lvContent.nepSum = Math.round(nepSum * 100) / 100;
+    lvContent.optimizationsApplied = appliedCount;
+    lvContent.totalSavings = Math.round(totalSavings * 100) / 100;
+    lvContent.lastOptimized = new Date().toISOString();
+    
+    // Füge Optimierungs-Historie hinzu
+    if (!lvContent.optimizationHistory) {
+      lvContent.optimizationHistory = [];
+    }
+    lvContent.optimizationHistory.push({
+      date: new Date().toISOString(),
+      appliedCount: appliedCount,
+      totalSavings: totalSavings,
+      optimizations: optimizations.map(opt => ({
+        position: opt.positionRef,
+        category: opt.category,
+        measure: opt.measure,
+        saving: opt.savingAmount
+      }))
+    });
+    
+    // Speichere aktualisiertes LV
+    await query(
+      `UPDATE lvs 
+       SET content = $1, 
+           updated_at = NOW() 
+       WHERE project_id = $2 AND trade_id = $3`,
+      [JSON.stringify(lvContent), projectId, tradeId]
+    );
+    
+    // Log für Audit
+    await query(
+      `INSERT INTO project_logs (project_id, action, details, created_at)
+       VALUES ($1, $2, $3, NOW())`,
+      [
+        projectId, 
+        'lv_optimized',
+        JSON.stringify({
+          tradeId: tradeId,
+          appliedOptimizations: appliedCount,
+          totalSavings: totalSavings,
+          newTotal: newTotalSum
+        })
+      ]
+    );
+    
+    console.log(`[APPLY-OPT] Successfully applied ${appliedCount} optimizations, saved ${totalSavings}€`);
+    
+    res.json({
+      success: true,
+      appliedCount: appliedCount,
+      totalSavings: Math.round(totalSavings * 100) / 100,
+      newTotal: newTotalSum,
+      message: `${appliedCount} Optimierungen erfolgreich angewendet. Ersparnis: ${formatCurrency(totalSavings)}`
+    });
+    
+  } catch (err) {
+    console.error('[APPLY-OPT] Failed to apply optimizations:', err);
+    res.status(500).json({ 
+      error: 'Fehler beim Anwenden der Optimierungen',
+      details: err.message 
+    });
+  }
+});
+
 // ============================================================================
 // NEUE ROUTEN FÜR DIE ERWEITERTE PLATTFORM
 // ============================================================================
