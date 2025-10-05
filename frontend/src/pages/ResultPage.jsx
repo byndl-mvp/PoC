@@ -1274,12 +1274,16 @@ const TradeOptimizationDisplay = ({
           
           {/* NEU: Zeige Optimierungen wenn geladen */}
           {expandedOptimizations[idx] && tradeOptimizations[lv.trade_id] && (
-            <TradeOptimizationDisplay 
-              lv={lv} 
-              optimizations={tradeOptimizations[lv.trade_id]}
-              formatCurrency={formatCurrency}
-            />
-          )}                  
+  <TradeOptimizationDisplay 
+    lv={lv} 
+    optimizations={tradeOptimizations[lv.trade_id]}
+    formatCurrency={formatCurrency}
+    lvIndex={idx}
+    setExpandedOptimizations={setExpandedOptimizations}
+    setTradeOptimizations={setTradeOptimizations}
+    projectId={projectId}
+  />
+)}                
                 
                 {/* Details nur wenn ausgewählt */}
                 {selectedLv === idx && lv.content?.positions && (
