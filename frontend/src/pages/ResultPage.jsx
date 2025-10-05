@@ -361,81 +361,235 @@ const loadTradeOptimization = async (lv, lvIndex) => {
   }
 };
 
-// Komponente für Trade-Optimierungen
-const TradeOptimizationDisplay = ({ lv, optimizations, formatCurrency }) => {
+// Erweiterte Komponente für Trade-Optimierungen mit Auswahl-Funktionalität
+const TradeOptimizationDisplay = ({ 
+  lv, 
+  optimizations, 
+  formatCurrency, 
+  lvIndex,
+  setExpandedOptimizations,
+  setTradeOptimizations,
+  projectId 
+}) => {
+  // NEU: States für Auswahl-Funktionalität
+  const [selectedOptimizations, setSelectedOptimizations] = useState([]);
+  const [isApplying, setIsApplying] = useState(false);
+  
   if (!optimizations) return null;
+  
+  const handleToggleOptimization = (optIndex) => {
+    setSelectedOptimizations(prev => {
+      if (prev.includes(optIndex)) {
+        return prev.filter(i => i !== optIndex);
+      } else {
+        return [...prev, optIndex];
+      }
+    });
+  };
+  
+  const handleApplyOptimizations = async () => {
+    if (selectedOptimizations.length === 0) {
+      alert('Bitte wählen Sie mindestens eine Optimierung aus');
+      return;
+    }
+    
+    if (!window.confirm(`Möchten Sie ${selectedOptimizations.length} Optimierung(en) übernehmen? Das LV wird angepasst.`)) {
+      return;
+    }
+    
+    setIsApplying(true);
+    
+    try {
+      const selectedOpts = selectedOptimizations.map(idx => optimizations.optimizations[idx]);
+      
+      const response = await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${lv.trade_id}/apply-optimizations`),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            optimizations: selectedOpts
+          })
+        }
+      );
+      
+      if (response.ok) {
+        alert('Optimierungen wurden erfolgreich übernommen. LV wird aktualisiert...');
+        window.location.reload();
+      } else {
+        throw new Error('Fehler beim Anwenden der Optimierungen');
+      }
+    } catch (err) {
+      console.error('Failed to apply optimizations:', err);
+      alert('Fehler beim Übernehmen der Optimierungen');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+  
+  const handleBackToDetails = () => {
+    setExpandedOptimizations(prev => ({ ...prev, [lvIndex]: false }));
+    setTradeOptimizations(prev => {
+      const newState = { ...prev };
+      delete newState[lv.trade_id];
+      return newState;
+    });
+  };
   
   return (
     <div className="mt-4 bg-white/10 rounded-lg p-6 border border-white/20">
-      <h4 className="text-lg font-bold text-white mb-4">
-        Einsparpotenzial für {lv.trade_name}: {formatCurrency(optimizations.summary?.totalPossibleSaving || 0)}
-      </h4>
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="text-lg font-bold text-white">
+          Einsparpotenzial für {lv.trade_name}: {formatCurrency(optimizations.summary?.totalPossibleSaving || 0)}
+        </h4>
+        <button
+          onClick={handleBackToDetails}
+          className="px-4 py-2 bg-gray-500/20 border border-gray-500/50 text-gray-300 rounded-lg hover:bg-gray-500/30 transition-all text-sm"
+        >
+          ← Zurück zur Detailansicht
+        </button>
+      </div>
       
       <div className="grid gap-3">
         {optimizations.optimizations?.map((opt, idx) => (
           <div key={idx} className="bg-white/5 rounded-lg p-4 border border-white/10">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-mono text-gray-400">{opt.positionRef}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    opt.category === 'material' ? 'bg-blue-500/20 text-blue-300' :
-                    opt.category === 'eigenleistung' ? 'bg-green-500/20 text-green-300' :
-                    opt.category === 'verzicht' ? 'bg-red-500/20 text-red-300' :
-                    'bg-yellow-500/20 text-yellow-300'
-                  }`}>
-                    {opt.category}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    opt.recommendation === 'empfohlen' ? 'bg-green-500/20 text-green-300' :
-                    opt.recommendation === 'bedingt' ? 'bg-yellow-500/20 text-yellow-300' :
-                    'bg-red-500/20 text-red-300'
-                  }`}>
-                    {opt.recommendation === 'empfohlen' ? '✓ Empfohlen' :
-                     opt.recommendation === 'bedingt' ? '⚠ Bedingt' : '⚠ Notfall'}
-                  </span>
-                </div>
-                
-                <p className="text-white font-medium">{opt.originalPosition}</p>
-                <p className="text-gray-300 text-sm mt-1">
-                  Aktuell: {formatCurrency(opt.originalCost)}
-                </p>
-                
-                <div className="mt-2 p-3 bg-teal-500/10 rounded border border-teal-500/30">
-                  <p className="text-teal-300 font-medium">{opt.measure}</p>
-                  <p className="text-teal-200 text-sm mt-1">{opt.alternativeDescription}</p>
-                </div>
-                
-                {opt.risks && (
-                  <div className="mt-2 p-2 bg-orange-500/10 rounded">
-                    <p className="text-orange-300 text-xs">
-                      <strong>Hinweis:</strong> {opt.risks}
-                    </p>
-                  </div>
-                )}
+            <div className="flex gap-3">
+              {/* NEU: Checkbox */}
+              <div className="pt-1">
+                <input
+                  type="checkbox"
+                  id={`opt-${idx}`}
+                  checked={selectedOptimizations.includes(idx)}
+                  onChange={() => handleToggleOptimization(idx)}
+                  className="w-5 h-5 text-teal-500 rounded border-gray-300 focus:ring-teal-500"
+                />
               </div>
               
-              <div className="text-right ml-4">
-                <p className="text-2xl font-bold text-green-400">
-                  -{formatCurrency(opt.savingAmount)}
-                </p>
-                <p className="text-sm text-gray-400">
-                  {opt.savingPercent}% Ersparnis
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Qualität: {
-                    opt.qualityImpact === 'keine' ? '✓ Keine Einbuße' :
-                    opt.qualityImpact === 'gering' ? '↓ Gering' :
-                    opt.qualityImpact === 'mittel' ? '↓↓ Mittel' :
-                    '↓↓↓ Hoch'
-                  }
-                </p>
+              {/* Optimierungsdetails mit label für Checkbox */}
+              <div className="flex-1">
+                <label htmlFor={`opt-${idx}`} className="cursor-pointer">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-mono text-gray-400">{opt.positionRef}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          opt.category === 'material' ? 'bg-blue-500/20 text-blue-300' :
+                          opt.category === 'eigenleistung' ? 'bg-green-500/20 text-green-300' :
+                          opt.category === 'verzicht' ? 'bg-red-500/20 text-red-300' :
+                          'bg-yellow-500/20 text-yellow-300'
+                        }`}>
+                          {opt.category}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          opt.recommendation === 'empfohlen' ? 'bg-green-500/20 text-green-300' :
+                          opt.recommendation === 'bedingt' ? 'bg-yellow-500/20 text-yellow-300' :
+                          'bg-red-500/20 text-red-300'
+                        }`}>
+                          {opt.recommendation === 'empfohlen' ? '✓ Empfohlen' :
+                           opt.recommendation === 'bedingt' ? '⚠ Bedingt' : '⚠ Notfall'}
+                        </span>
+                      </div>
+                      
+                      <p className="text-white font-medium">{opt.originalPosition}</p>
+                      <p className="text-gray-300 text-sm mt-1">
+                        Aktuell: {formatCurrency(opt.originalCost)}
+                      </p>
+                      
+                      <div className="mt-2 p-3 bg-teal-500/10 rounded border border-teal-500/30">
+                        <p className="text-teal-300 font-medium">{opt.measure}</p>
+                        <p className="text-teal-200 text-sm mt-1">{opt.alternativeDescription}</p>
+                      </div>
+                      
+                      {opt.risks && (
+                        <div className="mt-2 p-2 bg-orange-500/10 rounded">
+                          <p className="text-orange-300 text-xs">
+                            <strong>Hinweis:</strong> {opt.risks}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="text-right ml-4">
+                      <p className="text-2xl font-bold text-green-400">
+                        -{formatCurrency(opt.savingAmount)}
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        {opt.savingPercent}% Ersparnis
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Qualität: {
+                          opt.qualityImpact === 'keine' ? '✓ Keine Einbuße' :
+                          opt.qualityImpact === 'gering' ? '↓ Gering' :
+                          opt.qualityImpact === 'mittel' ? '↓↓ Mittel' :
+                          '↓↓↓ Hoch'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </label>
               </div>
             </div>
           </div>
         ))}
       </div>
       
+      {/* NEU: Zusammenfassung und Aktions-Buttons */}
+      <div className="mt-6 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <p className="text-white font-medium">
+              {selectedOptimizations.length} von {optimizations.optimizations?.length || 0} Optimierungen ausgewählt
+            </p>
+            {selectedOptimizations.length > 0 && (
+              <p className="text-teal-300 text-sm mt-1">
+                Gesamtersparnis: {formatCurrency(
+                  selectedOptimizations.reduce((sum, idx) => 
+                    sum + (optimizations.optimizations[idx]?.savingAmount || 0), 0
+                  )
+                )}
+              </p>
+            )}
+          </div>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={() => setSelectedOptimizations(
+                optimizations.optimizations?.map((_, idx) => idx) || []
+              )}
+              className="px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+            >
+              Alle auswählen
+            </button>
+            <button
+              onClick={() => setSelectedOptimizations([])}
+              className="px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+            >
+              Keine auswählen
+            </button>
+          </div>
+        </div>
+        
+        <button
+          onClick={handleApplyOptimizations}
+          disabled={selectedOptimizations.length === 0 || isApplying}
+          className={`w-full px-6 py-3 rounded-lg font-medium transition-all ${
+            selectedOptimizations.length > 0 
+              ? 'bg-teal-600 text-white hover:bg-teal-700' 
+              : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          {isApplying ? (
+            <span className="flex items-center justify-center gap-2">
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              Übernehme Optimierungen...
+            </span>
+          ) : (
+            `Optimierungen übernehmen & LV anpassen`
+          )}
+        </button>
+      </div>
+      
+      {/* Original Zusammenfassung bleibt erhalten */}
       <div className="mt-4 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
