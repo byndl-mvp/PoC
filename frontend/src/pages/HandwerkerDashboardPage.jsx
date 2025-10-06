@@ -339,9 +339,6 @@ const handleOpenTender = async (tender) => {
                   {/* HIER DIE FUNKTION VERWENDEN: */}
                   {getOfferStatusBadge(tender)}
                 </div>
-                {!tender.viewed_at && (
-                    <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
-                  )}
                 </div>
                 
                 <p className="text-gray-300 mb-2">{tender.project_description}</p>
@@ -369,7 +366,7 @@ const handleOpenTender = async (tender) => {
               <div className="text-right">
                 {!tender.has_offer ? (
                   <button
-                    onClick={() => navigate(`/handwerker/tender/${tender.id}/offer`)}
+                    onClick={() => handleOpenTender(tender)}
                     className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
                   >
                     <div>
@@ -384,7 +381,7 @@ const handleOpenTender = async (tender) => {
                     </span>
                     {tender.handwerker_status === 'preliminary' && (
                       <button
-                        onClick={() => navigate(`/handwerker/tender/${tender.id}/offer`)}
+                        onClick={() => handleOpenTender(tender)}
                         className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
                       >
                         Angebot anpassen
