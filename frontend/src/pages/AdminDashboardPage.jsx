@@ -382,6 +382,28 @@ const deleteBauherr = async (id, name) => {
     setError(err.message);
   }
 };
+
+  const deleteProject = async (id, description) => {
+  if (!window.confirm(`Wirklich löschen?\n\nProjekt #${id}\n${description}\n\nAlle zugehörigen Daten werden unwiderruflich gelöscht!`)) {
+    return;
+  }
+  
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/projects/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (!res.ok) throw new Error('Löschen fehlgeschlagen');
+    
+    setMessage('✅ Projekt erfolgreich gelöscht');
+    setProjectDetails(null);
+    await fetchProjects();
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    setError(err.message);
+  }
+};
   
   // Action Functions
   // Ersetze die alte verifyHandwerker Funktion komplett mit:
