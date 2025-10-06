@@ -106,16 +106,22 @@ useEffect(() => {
         
         const projectsWithDetails = await Promise.all(
           projectsData.map(async (project) => {
-            // Lade Gewerke
-            const tradesRes = await fetch(apiUrl(`/api/projects/${project.id}/trades`));
-            const tradesData = tradesRes.ok ? await tradesRes.json() : [];
-            
-            // Filtere INT-Trade raus für korrekte Zählung
-            const relevantTrades = tradesData.filter(t => t.code !== 'INT');
-            
-            // Lade LVs
-            const lvRes = await fetch(apiUrl(`/api/projects/${project.id}/lv`));
-            const lvData = lvRes.ok ? await lvRes.json() : { lvs: [] };
+            // Nach dem Laden der Trades
+const tradesRes = await fetch(apiUrl(`/api/projects/${project.id}/trades`));
+const tradesData = tradesRes.ok ? await tradesRes.json() : [];
+
+console.log('Alle Trades:', tradesData); // DEBUG
+
+// Filtere INT-Trade raus
+const relevantTrades = tradesData.filter(t => t.code !== 'INT');
+
+console.log('Gefilterte Trades:', relevantTrades); // DEBUG
+
+// Nach dem Laden der LVs
+const lvRes = await fetch(apiUrl(`/api/projects/${project.id}/lv`));
+const lvData = lvRes.ok ? await lvRes.json() : { lvs: [] };
+
+console.log('LV Daten:', lvData); // DEBUG
             
             // Zähle nur fertige LVs (ohne INT-Trade)
             const completedLvs = (lvData.lvs || []).filter(lv => {
