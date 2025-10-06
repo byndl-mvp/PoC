@@ -20,23 +20,21 @@ export default function OrtsterminPage() {
     message: ''
   });
 
-  useEffect(() => {
-    // Bestimme Nutzertyp
-    const bauherrData = sessionStorage.getItem('userData');
-    const handwerkerData = sessionStorage.getItem('handwerkerData');
-    
-    if (bauherrData) {
-      setUserType('bauherr');
-    } else if (handwerkerData) {
-      setUserType('handwerker');
-    } else {
-      navigate('/');
-      return;
-    }
-    
-    loadData();
-  }, [offerId]); // eslint-disable-next-line react-hooks/exhaustive-deps
+ useEffect(() => {
+  // Bestimme Nutzertyp
+  const bauherrData = sessionStorage.getItem('userData');
+  const handwerkerData = sessionStorage.getItem('handwerkerData');
   
+  if (bauherrData) {
+    setUserType('bauherr');
+  } else if (handwerkerData) {
+    setUserType('handwerker');
+  } else {
+    navigate('/');
+    return;
+  }
+  
+  // loadData INNERHALB des useEffect definieren
   const loadData = async () => {
     try {
       setLoading(true);
@@ -59,6 +57,10 @@ export default function OrtsterminPage() {
       setLoading(false);
     }
   };
+  
+  // Funktion aufrufen
+  loadData();
+}, [offerId, navigate]);
 
   const proposeAppointment = async () => {
     const { date, time, duration, message } = proposalForm;
