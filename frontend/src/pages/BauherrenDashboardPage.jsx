@@ -119,7 +119,8 @@ console.log('Gefilterte Trades:', relevantTrades); // DEBUG
 
 // Nach dem Laden der LVs
 const lvRes = await fetch(apiUrl(`/api/projects/${project.id}/lv`));
-const lvData = lvRes.ok ? await lvRes.json() : { lvs: [] };
+const rawLvData = lvRes.ok ? await lvRes.json() : { lvs: [] };
+const lvData = rawLvData.ok ? rawLvData : { lvs: rawLvData.lvs || [] };
 
 console.log('LV Daten:', lvData); // DEBUG
             
