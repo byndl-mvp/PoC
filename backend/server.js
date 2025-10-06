@@ -13972,6 +13972,25 @@ app.post('/api/offers/create', async (req, res) => {
   }
 });
 
+// Ungelesene Angebote zählen
+app.get('/api/projects/:projectId/offers/unread-count', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT COUNT(*) as count
+       FROM offers o
+       JOIN tenders t ON o.tender_id = t.id
+       WHERE t.project_id = $1 AND o.viewed_at IS NULL`,
+      [projectId]
+    );
+    
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Zählen' });
+  }
+});
+
 // Korrigierte bestehende Route
 app.get('/api/projects/:projectId/offers/:offerId', async (req, res) => {
   try {
@@ -16036,25 +16055,6 @@ app.get('/api/projects/:projectId/tenders/detailed', async (req, res) => {
   } catch (error) {
     console.error('Error fetching detailed tenders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
-  }
-});
-
-// Ungelesene Angebote zählen
-app.get('/api/projects/:projectId/offers/unread-count', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    const result = await query(
-      `SELECT COUNT(*) as count
-       FROM offers o
-       JOIN tenders t ON o.tender_id = t.id
-       WHERE t.project_id = $1 AND o.viewed_at IS NULL`,
-      [projectId]
-    );
-    
-    res.json({ count: parseInt(result.rows[0].count) });
-  } catch (error) {
-    res.status(500).json({ error: 'Fehler beim Zählen' });
   }
 });
 
