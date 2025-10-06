@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -234,21 +234,22 @@ useEffect(() => {
     }
   };
 
-  // Markiere Angebote als gelesen
-  useEffect(() => {
-    if (activeTab === 'offers' && unreadOffers > 0 && !hasMarkedAsRead) {
-      markAllAsRead();
-    }
-  }, [activeTab, unreadOffers, hasMarkedAsRead]); // eslint-disable-next-line react-hooks/exhaustive-deps
-  
-  const markAllAsRead = async () => {
-    if (!selectedProject) return;
-    await fetch(apiUrl(`/api/projects/${selectedProject.id}/offers/mark-all-read`), {
-      method: 'POST'
-    });
-    setUnreadOffers(0);
-    setHasMarkedAsRead(true);
-  };
+  // markAllAsRead VOR dem useEffect definieren mit useCallback
+const markAllAsRead = useCallback(async () => {
+  if (!selectedProject) return;
+  await fetch(apiUrl(`/api/projects/${selectedProject.id}/offers/mark-all-read`), {
+    method: 'POST'
+  });
+  setUnreadOffers(0);
+  setHasMarkedAsRead(true);
+}, [selectedProject]); // selectedProject als Dependency
+
+// useEffect NACH der Funktionsdefinition
+useEffect(() => {
+  if (activeTab === 'offers' && unreadOffers > 0 && !hasMarkedAsRead) {
+    markAllAsRead();
+  }
+}, [activeTab, unreadOffers, hasMarkedAsRead, markAllAsRead]); // markAllAsRead in Dependencies
 
   const deleteProject = async (projectId) => {
   const confirmText = prompt('Bitte geben Sie "LÖSCHEN" ein, um das Projekt unwiderruflich zu löschen:');
