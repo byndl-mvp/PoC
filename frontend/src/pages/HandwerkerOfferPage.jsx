@@ -183,19 +183,15 @@ export default function HandwerkerOfferPage() {
   const [offerStage, setOfferStage] = useState('preliminary'); // preliminary oder final
   
   useEffect(() => {
-    const storedData = sessionStorage.getItem('handwerkerData');
-    if (!storedData) {
-      navigate('/handwerker/login');
-      return;
-    }
-    const data = JSON.parse(storedData);
-    setHandwerkerData(data);
-    
-    // Markiere als "in Bearbeitung"
-    markAsInProgress(data.id);
-    loadTenderData();
-  }, [tenderId, navigate]); // eslint-disable-next-line react-hooks/exhaustive-deps
+  const storedData = sessionStorage.getItem('handwerkerData');
+  if (!storedData) {
+    navigate('/handwerker/login');
+    return;
+  }
+  const data = JSON.parse(storedData);
+  setHandwerkerData(data);
   
+  // Funktionen INNERHALB des useEffect definieren
   const markAsInProgress = async (handwerkerId) => {
     try {
       await fetch(apiUrl(`/api/tenders/${tenderId}/start-offer`), {
@@ -214,10 +210,10 @@ export default function HandwerkerOfferPage() {
       const res = await fetch(apiUrl(`/api/tenders/${tenderId}/lv`));
       if (!res.ok) throw new Error('Fehler beim Laden der Ausschreibung');
       
-      const data = await res.json();
-      setTender(data);
+      const tenderData = await res.json();
+      setTender(tenderData);
       
-      const initialPositions = data.lv.positions.map(pos => ({
+      const initialPositions = tenderData.lv.positions.map(pos => ({
         ...pos,
         unitPrice: 0,
         totalPrice: 0
@@ -230,6 +226,11 @@ export default function HandwerkerOfferPage() {
       setLoading(false);
     }
   };
+  
+  // Funktionen aufrufen
+  markAsInProgress(data.id);
+  loadTenderData();
+}, [tenderId, navigate]);
   
   const updatePosition = (index, field, value) => {
     const updated = [...positions];
