@@ -188,7 +188,7 @@ function App() {
   } 
 />
 
-          // Neue Route für Ortstermine hinzufügen
+          {/* Ortstermin Route - ergänze diese Route */}
 <Route 
   path="/offer/:offerId/appointment" 
   element={
