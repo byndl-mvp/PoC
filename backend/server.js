@@ -17261,6 +17261,47 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
   }
 });
 
+// Admin: Projekt löschen
+app.delete('/api/admin/projects/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await query('BEGIN');
+    
+    // WICHTIG: Reihenfolge beachten wegen Foreign Key Constraints!
+    
+    // 1. Zuerst alle abhängigen Einträge löschen
+    await query('DELETE FROM intake_responses WHERE project_id = $1', [id]);
+    await query('DELETE FROM questions WHERE project_id = $1', [id]);
+    await query('DELETE FROM answers WHERE project_id = $1', [id]);
+    await query('DELETE FROM project_trades WHERE project_id = $1', [id]);
+    await query('DELETE FROM lvs WHERE project_id = $1', [id]);
+    await query('DELETE FROM tenders WHERE project_id = $1', [id]);
+    await query('DELETE FROM trade_progress WHERE project_id = $1', [id]);
+    await query('DELETE FROM payments WHERE project_id = $1', [id]);
+    
+    // 2. Offers die auf das Projekt verweisen
+    const offers = await query('SELECT id FROM offers WHERE project_id = $1', [id]);
+    for (const offer of offers.rows) {
+      // Orders die auf diese Offers verweisen, löschen
+      await query('DELETE FROM orders WHERE offer_id = $1', [offer.id]);
+    }
+    await query('DELETE FROM offers WHERE project_id = $1', [id]);
+    
+    // 3. Zum Schluss das Projekt selbst löschen
+    await query('DELETE FROM projects WHERE id = $1', [id]);
+    
+    await query('COMMIT');
+    
+    res.json({ success: true, message: 'Projekt erfolgreich gelöscht' });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error deleting project:', error);
+    res.status(500).json({ error: 'Fehler beim Löschen des Projekts' });
+  }
+});
+
 // Create new prompt
 app.post('/api/admin/prompts', requireAdmin, async (req, res) => {
   try {
