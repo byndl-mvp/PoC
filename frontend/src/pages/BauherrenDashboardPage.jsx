@@ -24,6 +24,8 @@ export default function BauherrenDashboardPage() {
   const [showContractModal, setShowContractModal] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [pendingLvProjectId, setPendingLvProjectId] = useState(null);
+  const [unreadOffers, setUnreadOffers] = useState(0);
+  const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
   
   useEffect(() => {
   // Prüfe beide mögliche Keys
@@ -92,93 +94,108 @@ useEffect(() => {
   };
 }, [userData]); // eslint-disable-line react-hooks/exhaustive-deps
   
+  // AKTUALISIERTE loadUserProjects Funktion
   const loadUserProjects = async (email) => {
-  try {
-    setLoading(true);
-    
-    const res = await fetch(apiUrl(`/api/projects/user/${encodeURIComponent(email)}`));
-    
-    if (res.ok) {
-      const projectsData = await res.json();
+    try {
+      setLoading(true);
       
-      const projectsWithDetails = await Promise.all(
-        projectsData.map(async (project) => {
-          // Lade Gewerke
-          const tradesRes = await fetch(apiUrl(`/api/projects/${project.id}/trades`));
-          const tradesData = tradesRes.ok ? await tradesRes.json() : [];
-          
-          // Lade LVs
-          const lvRes = await fetch(apiUrl(`/api/projects/${project.id}/lv`));
-          const lvData = lvRes.ok ? await lvRes.json() : { lvs: [] };
-          
-          // Zähle fertige LVs
-          const completedLvs = (lvData.lvs || []).filter(lv => 
-            lv.content?.positions?.length > 0
-          ).length;
-          
-          // Berechne Gesamtkosten
-          const totalCost = (lvData.lvs || []).reduce((sum, lv) => {
-            const lvSum = lv.content?.totalSum || 0;
-            return sum + parseFloat(lvSum);
-          }, 0);
-          
-          // Erstelle Trade-Details mit LV-Status
-          const tradesWithLv = tradesData.map(trade => {
-            const lv = lvData.lvs?.find(l => l.trade_id === trade.id);
+      const res = await fetch(apiUrl(`/api/projects/user/${encodeURIComponent(email)}`));
+      
+      if (res.ok) {
+        const projectsData = await res.json();
+        
+        const projectsWithDetails = await Promise.all(
+          projectsData.map(async (project) => {
+            // Lade Gewerke
+            const tradesRes = await fetch(apiUrl(`/api/projects/${project.id}/trades`));
+            const tradesData = tradesRes.ok ? await tradesRes.json() : [];
+            
+            // Filtere INT-Trade raus für korrekte Zählung
+            const relevantTrades = tradesData.filter(t => t.code !== 'INT');
+            
+            // Lade LVs
+            const lvRes = await fetch(apiUrl(`/api/projects/${project.id}/lv`));
+            const lvData = lvRes.ok ? await lvRes.json() : { lvs: [] };
+            
+            // Zähle nur fertige LVs (ohne INT-Trade)
+            const completedLvs = (lvData.lvs || []).filter(lv => {
+              const trade = relevantTrades.find(t => t.id === lv.trade_id);
+              return trade && lv.content?.positions?.length > 0;
+            }).length;
+            
+            // Berechne Gesamtkosten
+            const totalCost = (lvData.lvs || []).reduce((sum, lv) => {
+              const trade = relevantTrades.find(t => t.id === lv.trade_id);
+              if (!trade) return sum;
+              const lvSum = lv.content?.totalSum || 0;
+              return sum + parseFloat(lvSum);
+            }, 0);
+            
+            // Lade Ausschreibungsstatus
+            const tendersRes = await fetch(apiUrl(`/api/projects/${project.id}/tenders/detailed`));
+            const tendersData = tendersRes.ok ? await tendersRes.json() : [];
+            
+            // Lade ungelesene Angebote
+            const unreadRes = await fetch(apiUrl(`/api/projects/${project.id}/offers/unread-count`));
+            const unreadData = unreadRes.ok ? await unreadRes.json() : { count: 0 };
+            
+            // Erstelle Trade-Details mit LV-Status
+            const tradesWithLv = relevantTrades.map(trade => {
+              const lv = lvData.lvs?.find(l => l.trade_id === trade.id);
+              return {
+                ...trade,
+                hasLV: !!lv && lv.content?.positions?.length > 0,
+                lv: lv,
+                totalCost: lv?.content?.totalSum || 0
+              };
+            });
+            
             return {
-              ...trade,
-              hasLV: !!lv && lv.content?.positions?.length > 0,
-              lv: lv,
-              totalCost: lv?.content?.totalSum || 0
+              ...project,
+              trades: tradesWithLv,
+              completedLvs: completedLvs,
+              totalTrades: relevantTrades.length, // Ohne INT-Trade
+              totalCost: totalCost,
+              tenders: tendersData,
+              unreadOffers: unreadData.count,
+              status: determineProjectStatus(
+                project, 
+                relevantTrades, 
+                completedLvs,
+                tendersData
+              )
             };
-          });
-          
-          return {
-            ...project,
-            trades: tradesWithLv,
-            completedLvs: completedLvs,
-            totalCost: totalCost,
-            status: determineProjectStatus(
-              project, 
-              tradesData, 
-              completedLvs
-            )
-          };
-        })
-      );
-      
-      setProjects(projectsWithDetails);
-      if (projectsWithDetails.length > 0) {
-        // Nicht automatisch ein Projekt auswählen - bei Projektübersicht bleiben
-        // Nur wenn ein pendingLvProjectId vorhanden ist, dieses Projekt öffnen
-        if (pendingLvProjectId) {
+          })
+        );
+        
+        setProjects(projectsWithDetails);
+        
+        if (projectsWithDetails.length > 0 && pendingLvProjectId) {
           const pendingProject = projectsWithDetails.find(p => p.id === parseInt(pendingLvProjectId));
           if (pendingProject) {
             setSelectedProject(pendingProject);
             loadProjectDetails(pendingProject.id);
           }
         }
-        // Ansonsten bleibt selectedProject null und die Projektübersicht wird angezeigt
       }
+    } catch (err) {
+      console.error('Fehler beim Laden der Projekte:', err);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('Fehler beim Laden der Projekte:', err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-  const determineProjectStatus = (project, tradesData, completedLvs) => {
-  const totalTrades = tradesData?.length || 0;
-  const lvCount = completedLvs?.length || 0;
-  
-  if (totalTrades === 0) return 'Gewerke wählen';
-  if (lvCount === 0) return `0 von ${totalTrades} LVs erstellt`;
-  if (lvCount < totalTrades) return `${lvCount} von ${totalTrades} LVs erstellt`;
-  if (project.tendersSent) return 'Ausschreibung läuft';
-  if (project.ordersPlaced) return 'In Ausführung';
-  return 'Bereit zur Ausschreibung';
-};
+  // AKTUALISIERTE determineProjectStatus Funktion
+  const determineProjectStatus = (project, tradesData, completedLvs, tendersData) => {
+    const totalTrades = tradesData?.length || 0;
+    
+    if (totalTrades === 0) return 'Gewerke wählen';
+    if (completedLvs === 0) return `0 von ${totalTrades} LVs erstellt`;
+    if (completedLvs < totalTrades) return `${completedLvs} von ${totalTrades} LVs erstellt`;
+    if (tendersData?.length > 0) return 'Ausschreibung läuft';
+    if (project.ordersPlaced) return 'In Ausführung';
+    return 'Bereit zur Ausschreibung';
+  };
 
   const loadProjectDetails = async (projectId) => {
     try {
@@ -205,9 +222,32 @@ useEffect(() => {
         const supplementsData = await supplementsRes.json();
         setSupplements(supplementsData);
       }
+
+      // Lade ungelesene Angebote
+      const unreadRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/unread-count`));
+      if (unreadRes.ok) {
+        const unreadData = await unreadRes.json();
+        setUnreadOffers(unreadData.count);
+      }
     } catch (err) {
       console.error('Fehler beim Laden der Projektdetails:', err);
     }
+  };
+
+  // Markiere Angebote als gelesen
+  useEffect(() => {
+    if (activeTab === 'offers' && unreadOffers > 0 && !hasMarkedAsRead) {
+      markAllAsRead();
+    }
+  }, [activeTab, unreadOffers, hasMarkedAsRead]);
+
+  const markAllAsRead = async () => {
+    if (!selectedProject) return;
+    await fetch(apiUrl(`/api/projects/${selectedProject.id}/offers/mark-all-read`), {
+      method: 'POST'
+    });
+    setUnreadOffers(0);
+    setHasMarkedAsRead(true);
   };
 
   const deleteProject = async (projectId) => {
@@ -281,7 +321,7 @@ const handlePreliminaryOrder = async (offer) => {
   setShowContractModal(true);
 };
 
-/// Erweiterte Modal-Komponente (ca. Zeile 156)
+/// Erweiterte Modal-Komponente
 const ContractNegotiationModal = () => {
   if (!selectedOffer) return null;
   
@@ -297,11 +337,11 @@ const ContractNegotiationModal = () => {
             Was passiert bei der vorläufigen Beauftragung?
           </h3>
           <ul className="text-blue-200 text-sm space-y-2">
-            <li>✓ Kontaktdaten werden beiderseitig freigegeben</li>
-            <li>✓ Sie können einen Ortstermin vereinbaren</li>
-            <li>✓ Der Handwerker kann sein Angebot nach Besichtigung anpassen</li>
-            <li>✓ Die 24-monatige Nachwirkfrist beginnt</li>
-            <li>✓ Sie behalten faire Ausstiegsmöglichkeiten</li>
+            <li>✔ Kontaktdaten werden beiderseitig freigegeben</li>
+            <li>✔ Sie können einen Ortstermin vereinbaren</li>
+            <li>✔ Der Handwerker kann sein Angebot nach Besichtigung anpassen</li>
+            <li>✔ Die 24-monatige Nachwirkfrist beginnt</li>
+            <li>✔ Sie behalten faire Ausstiegsmöglichkeiten</li>
           </ul>
         </div>
         
@@ -511,7 +551,7 @@ const BudgetVisualization = ({ budget }) => {
       {budget.orderedAmount < budget.estimatedCost * 0.9 && (
         <div className="mt-4 bg-green-500/20 border border-green-500/50 rounded-lg p-4">
           <div className="flex items-center gap-2">
-            <span className="text-green-400 text-xl">✓</span>
+            <span className="text-green-400 text-xl">✔</span>
             <p className="text-green-300">
               Sie sparen {formatCurrency(budget.estimatedCost - budget.orderedAmount)} gegenüber der KI-Schätzung
             </p>
@@ -521,6 +561,54 @@ const BudgetVisualization = ({ budget }) => {
     </div>
   );
 };
+
+  // NEUE LV-Edit Button Komponente
+  const LVEditButton = ({ project }) => {
+    const allLVsComplete = project.completedLvs === project.totalTrades && project.totalTrades > 0;
+    
+    if (allLVsComplete) {
+      return (
+        <button
+          className="bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-xl p-6 opacity-75 cursor-not-allowed"
+          disabled
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold mb-2">✔ Alle LVs fertiggestellt</h3>
+              <p className="text-sm opacity-90">
+                Bearbeitung nur noch über Kostenübersicht möglich
+              </p>
+            </div>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </button>
+      );
+    }
+    
+    return (
+      <button
+        onClick={() => navigate(`/project/${project.id}/lv-review`)}
+        className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl p-6 hover:shadow-xl transform hover:scale-[1.02] transition-all"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold mb-2">📝 LVs bearbeiten</h3>
+            <p className="text-sm opacity-90">
+              {project.completedLvs === 0 
+                ? 'Jetzt mit der LV-Erstellung beginnen'
+                : `${project.totalTrades - project.completedLvs} LVs noch offen`
+              }
+            </p>
+          </div>
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </button>
+    );
+  };
   
   const handleLogout = () => {
     sessionStorage.removeItem('userData');
@@ -556,7 +644,7 @@ const BudgetVisualization = ({ budget }) => {
             step.current ? 'bg-yellow-500 text-white animate-pulse' :
             'bg-gray-600 text-gray-400'
           }`}>
-            {step.done ? '✓' : step.step}
+            {step.done ? '✔' : step.step}
           </div>
           <span className={`text-xs mt-2 ${
             step.done ? 'text-green-400' :
@@ -570,7 +658,7 @@ const BudgetVisualization = ({ budget }) => {
     </div>
     
     {project.completedLvs === 0 && (
-      <div className="mt-6 bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
+      <div className="mt-6 bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4">
         <p className="text-yellow-300">
           <strong>Nächster Schritt:</strong> Erstellen Sie die Leistungsverzeichnisse für Ihre gewählten Gewerke
         </p>
@@ -624,7 +712,7 @@ const BudgetVisualization = ({ budget }) => {
       
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((project) => {
-          const progress = ((project.completedLvs || 0) / (project.trades?.length || 1)) * 100;
+          const progress = ((project.completedLvs || 0) / (project.totalTrades || 1)) * 100;
           const isPending = pendingLvProjectId && project.id === parseInt(pendingLvProjectId);
           const statusColor = project.status === 'Bereit zur Ausschreibung' ? 'green' :
                              project.status === 'Ausschreibung läuft' ? 'blue' :
@@ -646,6 +734,13 @@ const BudgetVisualization = ({ budget }) => {
               {isPending && (
                 <div className="absolute -top-2 -right-2 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-full animate-pulse">
                   NEU
+                </div>
+              )}
+              
+              {/* Unread Offers Badge */}
+              {project.unreadOffers > 0 && (
+                <div className="absolute -top-2 -left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  {project.unreadOffers}
                 </div>
               )}
               
@@ -685,7 +780,7 @@ const BudgetVisualization = ({ budget }) => {
                 <div className="mb-4">
                   <div className="flex justify-between text-xs text-gray-400 mb-1">
                     <span>LV-Fortschritt</span>
-                    <span>{project.completedLvs || 0} / {project.trades?.length || 0}</span>
+                    <span>{project.completedLvs || 0} / {project.totalTrades || 0}</span>
                   </div>
                   <div className="w-full bg-white/10 rounded-full h-2">
                     <div 
@@ -700,7 +795,7 @@ const BudgetVisualization = ({ budget }) => {
                   <div className="bg-white/5 rounded-lg p-3">
                     <p className="text-xs text-gray-400 mb-1">Gewerke</p>
                     <p className="text-lg font-semibold text-white">
-                      {project.trades?.length || 0}
+                      {project.totalTrades || 0}
                     </p>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
@@ -767,6 +862,7 @@ const BudgetVisualization = ({ budget }) => {
           onClick={() => {
             setSelectedProject(null);
             setActiveTab('overview');
+            setHasMarkedAsRead(false);
           }}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
         >
@@ -826,13 +922,13 @@ const BudgetVisualization = ({ budget }) => {
       {/* Project Wizard */}
       <ProjectWizard project={selectedProject} />
       
-        {/* Tabs */}
+        {/* Tabs - AKTUALISIERT mit Angebote-Badge */}
         <div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
           {['overview', 'tenders', 'offers', 'contracts', 'orders', 'budget', 'schedule'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap relative ${
                 activeTab === tab
                   ? 'text-teal-400 border-b-2 border-teal-400'
                   : 'text-gray-400 hover:text-white'
@@ -840,7 +936,16 @@ const BudgetVisualization = ({ budget }) => {
             >
               {tab === 'overview' && 'Übersicht'}
               {tab === 'tenders' && 'Ausschreibungen'}
-              {tab === 'offers' && 'Angebote'}
+              {tab === 'offers' && (
+                <>
+                  Angebote
+                  {unreadOffers > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                      {unreadOffers}
+                    </span>
+                  )}
+                </>
+              )}
               {tab === 'contracts' && 'Vertragsanbahnung'}
               {tab === 'orders' && 'Aufträge'}
               {tab === 'budget' && 'Kostenübersicht'}
@@ -851,7 +956,7 @@ const BudgetVisualization = ({ budget }) => {
 
         {/* Content */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-          {/* Übersicht Tab */}
+          {/* Übersicht Tab - AKTUALISIERT mit LVEditButton */}
           {activeTab === 'overview' && selectedProject && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Projektübersicht</h2>
@@ -864,13 +969,13 @@ const BudgetVisualization = ({ budget }) => {
       <div className="mb-4">
         <div className="flex justify-between text-sm text-gray-300 mb-2">
           <span>Fortschritt</span>
-          <span>{selectedProject.completedLvs || 0} von {selectedProject.trades?.length || 0} LVs erstellt</span>
+          <span>{selectedProject.completedLvs || 0} von {selectedProject.totalTrades || 0} LVs erstellt</span>
         </div>
         <div className="w-full bg-white/20 rounded-full h-3">
           <div 
             className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all"
             style={{ 
-              width: `${((selectedProject.completedLvs || 0) / (selectedProject.trades?.length || 1)) * 100}%` 
+              width: `${((selectedProject.completedLvs || 0) / (selectedProject.totalTrades || 1)) * 100}%` 
             }}
           />
         </div>
@@ -881,7 +986,7 @@ const BudgetVisualization = ({ budget }) => {
         <div className={`text-center p-3 rounded-lg ${
           selectedProject.trades?.length > 0 ? 'bg-green-500/20 border-green-500' : 'bg-white/10'
         } border`}>
-          <div className="text-2xl mb-1">✓</div>
+          <div className="text-2xl mb-1">✔</div>
           <div className="text-xs text-gray-300">Gewerke gewählt</div>
         </div>
         <div className={`text-center p-3 rounded-lg ${
@@ -899,34 +1004,16 @@ const BudgetVisualization = ({ budget }) => {
         <div className={`text-center p-3 rounded-lg ${
           orders.length > 0 ? 'bg-green-500/20 border-green-500' : 'bg-white/10'
         } border`}>
-          <div className="text-2xl mb-1">{orders.length > 0 ? '✓' : '○'}</div>
+          <div className="text-2xl mb-1">{orders.length > 0 ? '✔' : '○'}</div>
           <div className="text-xs text-gray-300">Aufträge</div>
         </div>
       </div>
     </div>
     
-    {/* Action Buttons */}
+    {/* Action Buttons - MIT AKTUALISIERTEM LVEditButton */}
     <div className="grid md:grid-cols-2 gap-4 mb-6">
-      {/* LV-Bearbeitung Button */}
-      <button
-        onClick={() => navigate(`/project/${selectedProject.id}/lv-review`)}
-        className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl p-6 hover:shadow-xl transform hover:scale-[1.02] transition-all"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold mb-2">📝 LVs bearbeiten</h3>
-            <p className="text-sm opacity-90">
-              {selectedProject.completedLvs === 0 
-                ? 'Jetzt mit der LV-Erstellung beginnen'
-                : `${selectedProject.trades?.length - selectedProject.completedLvs} LVs noch offen`
-              }
-            </p>
-          </div>
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </button>
+      {/* LV-Bearbeitung Button - ERSETZT */}
+      <LVEditButton project={selectedProject} />
       
       {/* Kostenübersicht Button */}
       <button
@@ -1008,7 +1095,7 @@ const BudgetVisualization = ({ budget }) => {
       <div className="bg-white/10 rounded-lg p-4">
         <h3 className="text-gray-400 text-sm mb-2">Anzahl Gewerke</h3>
         <p className="text-xl font-semibold text-white">
-          {selectedProject.trades?.length || 0}
+          {selectedProject.totalTrades || 0}
         </p>
       </div>
       
@@ -1028,7 +1115,7 @@ const BudgetVisualization = ({ budget }) => {
     </div>
     
     {/* Call to Action */}
-    {selectedProject.completedLvs === selectedProject.trades?.length && 
+    {selectedProject.completedLvs === selectedProject.totalTrades && 
      selectedProject.completedLvs > 0 && 
      !selectedProject.tendersSent && (
       <div className="mt-8 bg-gradient-to-r from-green-600/20 to-teal-600/20 rounded-xl p-6 text-center">
@@ -1049,6 +1136,89 @@ const BudgetVisualization = ({ budget }) => {
     )}
   </div>
 )}
+
+          {/* AKTUALISIERTES Ausschreibungen Tab */}
+          {activeTab === 'tenders' && (
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-6">Laufende Ausschreibungen</h2>
+              
+              {selectedProject?.tenders?.length === 0 ? (
+                <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
+                  <p className="text-gray-400 mb-4">Noch keine Ausschreibungen gestartet.</p>
+                  {selectedProject.completedLvs > 0 && (
+                    <button
+                      onClick={() => handleStartTender('all')}
+                      className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+                    >
+                      Jetzt ausschreiben
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {selectedProject?.tenders?.map((tender) => (
+                    <div key={tender.id} className="bg-white/5 rounded-lg p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-xl font-semibold text-white">{tender.trade_name}</h3>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Erstellt am {new Date(tender.created_at).toLocaleDateString('de-DE')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-400">Geschätztes Volumen</p>
+                          <p className="text-xl font-bold text-teal-400">
+                            {formatCurrency(tender.estimated_value)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="border-t border-white/10 pt-4">
+                        <h4 className="text-sm font-semibold text-gray-300 mb-3">
+                          Angeschriebene Handwerker ({tender.handwerkers?.length || 0})
+                        </h4>
+                        
+                        <div className="space-y-2">
+                          {tender.handwerkers?.map((hw, idx) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/5 rounded p-3">
+                              <div className="flex items-center gap-3">
+                                <span className="text-white">{hw.company_name}</span>
+                                {hw.status === 'sent' && (
+                                  <span className="text-xs bg-gray-600 text-gray-200 px-2 py-1 rounded">
+                                    Versendet
+                                  </span>
+                                )}
+                                {hw.status === 'viewed' && (
+                                  <span className="text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
+                                    Angesehen
+                                  </span>
+                                )}
+                                {hw.status === 'in_progress' && (
+                                  <span className="text-xs bg-yellow-600 text-yellow-200 px-2 py-1 rounded">
+                                    In Bearbeitung
+                                  </span>
+                                )}
+                                {hw.offer_id && (
+                                  <span className="text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
+                                    ✔ Angebot abgegeben
+                                  </span>
+                                )}
+                              </div>
+                              {hw.viewed_at && (
+                                <span className="text-xs text-gray-400">
+                                  Gesehen: {new Date(hw.viewed_at).toLocaleDateString('de-DE')}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Angebote Tab - ERWEITERT */}
 {activeTab === 'offers' && (
@@ -1210,7 +1380,7 @@ const BudgetVisualization = ({ budget }) => {
                       
                       {offer.status === 'accepted' && (
                         <span className="block text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
-                          ✓ Beauftragt
+                          ✔ Beauftragt
                         </span>
                       )}
                       
