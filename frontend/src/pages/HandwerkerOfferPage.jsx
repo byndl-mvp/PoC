@@ -5,9 +5,9 @@ import { apiUrl } from '../api';
 
 // PositionModal Komponente (analog zur ResultPage)
 const PositionModal = ({ position, isOpen, onClose, onUpdate, index }) => {
-  if (!isOpen) return null;
-  
   const [editedPosition, setEditedPosition] = useState(position);
+  
+  if (!isOpen) return null;  // Bedingung NACH useState
   
   const handleSave = () => {
     onUpdate(index, editedPosition);
