@@ -336,7 +336,10 @@ const handleOpenTender = async (tender) => {
                   <span className="text-sm bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
                     {tender.category} - {tender.sub_category}
                   </span>
-                  {!tender.viewed_at && (
+                  {/* HIER DIE FUNKTION VERWENDEN: */}
+                  {getOfferStatusBadge(tender)}
+                </div>
+                {!tender.viewed_at && (
                     <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
                   )}
                 </div>
