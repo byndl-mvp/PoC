@@ -17261,7 +17261,7 @@ app.get('/api/admin/projects/:id/full', requireAdmin, async (req, res) => {
   }
 });
 
-// Admin: Projekt löschen - DEBUG VERSION
+// Admin: Projekt löschen - FINALE VERSION
 app.delete('/api/admin/projects/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -17276,56 +17276,57 @@ app.delete('/api/admin/projects/:id', requireAdmin, async (req, res) => {
         throw new Error('Projekt nicht gefunden');
       }
       
-      // Schritt für Schritt mit Logging
-      console.log('Lösche intake_responses...');
+      // 1. Direkte Projekt-Abhängigkeiten löschen
       await query('DELETE FROM intake_responses WHERE project_id = $1', [id]);
-      
-      console.log('Lösche questions...');
       await query('DELETE FROM questions WHERE project_id = $1', [id]);
-      
-      console.log('Lösche answers...');
       await query('DELETE FROM answers WHERE project_id = $1', [id]);
-      
-      console.log('Lösche project_trades...');
       await query('DELETE FROM project_trades WHERE project_id = $1', [id]);
-      
-      console.log('Lösche lvs...');
       await query('DELETE FROM lvs WHERE project_id = $1', [id]);
-      
-      console.log('Lösche tenders...');
-      await query('DELETE FROM tenders WHERE project_id = $1', [id]);
-      
-      console.log('Lösche trade_progress...');
       await query('DELETE FROM trade_progress WHERE project_id = $1', [id]);
-      
-      console.log('Lösche payments...');
       await query('DELETE FROM payments WHERE project_id = $1', [id]);
       
-      // Offers und Abhängigkeiten
-      console.log('Suche offers...');
-      const offers = await query('SELECT id FROM offers WHERE project_id = $1', [id]);
-      console.log(`Gefunden: ${offers.rows.length} offers`);
+      // 2. Offers über tenders finden und löschen
+      // Zuerst alle tender IDs für dieses Projekt holen
+      const tenders = await query('SELECT id FROM tenders WHERE project_id = $1', [id]);
       
-      for (const offer of offers.rows) {
-        console.log(`Bearbeite offer ${offer.id}...`);
+      for (const tender of tenders.rows) {
+        // Alle offers für diesen tender
+        const offers = await query('SELECT id FROM offers WHERE tender_id = $1', [tender.id]);
         
-        // Contract negotiations
-        await query('DELETE FROM contract_negotiations WHERE offer_id = $1', [offer.id]);
-        
-        // Supplements via Orders
-        const orders = await query('SELECT id FROM orders WHERE offer_id = $1', [offer.id]);
-        for (const order of orders.rows) {
-          await query('DELETE FROM supplements WHERE order_id = $1', [order.id]);
+        for (const offer of offers.rows) {
+          // Contract negotiations löschen
+          await query('DELETE FROM contract_negotiations WHERE offer_id = $1', [offer.id]);
+          
+          // Orders und supplements
+          const orders = await query('SELECT id FROM orders WHERE offer_id = $1', [offer.id]);
+          for (const order of orders.rows) {
+            await query('DELETE FROM supplements WHERE order_id = $1', [order.id]);
+          }
+          
+          // Orders löschen
+          await query('DELETE FROM orders WHERE offer_id = $1', [offer.id]);
+          
+          // Offer selbst löschen
+          await query('DELETE FROM offers WHERE id = $1', [offer.id]);
         }
-        
-        // Orders
-        await query('DELETE FROM orders WHERE offer_id = $1', [offer.id]);
       }
       
-      console.log('Lösche offers...');
-      await query('DELETE FROM offers WHERE project_id = $1', [id]);
+      // 3. Jetzt tenders löschen (nachdem offers gelöscht wurden)
+      await query('DELETE FROM tenders WHERE project_id = $1', [id]);
       
-      console.log('Lösche Projekt selbst...');
+      // 4. Falls orders auch direkt project_id haben (prüfen)
+      const ordersCheck = await query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'orders' 
+        AND column_name = 'project_id'
+      `);
+      
+      if (ordersCheck.rows.length > 0) {
+        await query('DELETE FROM orders WHERE project_id = $1', [id]);
+      }
+      
+      // 5. Projekt selbst löschen
       await query('DELETE FROM projects WHERE id = $1', [id]);
       
       await query('COMMIT');
@@ -17340,16 +17341,9 @@ app.delete('/api/admin/projects/:id', requireAdmin, async (req, res) => {
     
   } catch (error) {
     console.error('Error deleting project:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      position: error.position,
-      routine: error.routine
-    });
     res.status(500).json({ 
       error: 'Fehler beim Löschen des Projekts', 
-      details: error.message,
-      code: error.code 
+      details: error.message 
     });
   }
 });
