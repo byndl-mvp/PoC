@@ -239,8 +239,8 @@ useEffect(() => {
     if (activeTab === 'offers' && unreadOffers > 0 && !hasMarkedAsRead) {
       markAllAsRead();
     }
-  }, [activeTab, unreadOffers, hasMarkedAsRead]);
-
+  }, [activeTab, unreadOffers, hasMarkedAsRead]); // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const markAllAsRead = async () => {
     if (!selectedProject) return;
     await fetch(apiUrl(`/api/projects/${selectedProject.id}/offers/mark-all-read`), {
