@@ -35,8 +35,8 @@ export default function OrtsterminPage() {
     }
     
     loadData();
-  }, [offerId]);
-
+  }, [offerId]); // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const loadData = async () => {
     try {
       setLoading(true);
