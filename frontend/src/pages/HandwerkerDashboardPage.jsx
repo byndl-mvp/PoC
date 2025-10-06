@@ -39,12 +39,18 @@ export default function HandwerkerDashboardPage() {
   const loadDashboardData = async (handwerker) => {
     try {
       setLoading(true);
-      
-      // Lade Ausschreibungen passend zu Gewerken und Region
-      const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/tenders`));
+
+      // Lade erweiterte Ausschreibungen mit Status
+      const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/detailed`));
       if (tendersRes.ok) {
         const tendersData = await tendersRes.json();
-        setTenders(tendersData);
+        // Filtere doppelte Einträge und bereits beauftragte
+        const uniqueTenders = tendersData.filter((tender, index, self) =>
+          index === self.findIndex((t) => t.id === tender.id) &&
+          tender.offer_status !== 'accepted' &&
+          tender.offer_status !== 'final_accepted'
+        );
+        setTenders(uniqueTenders);
       }
       
       // Lade verfügbare Bündel
@@ -82,6 +88,47 @@ export default function HandwerkerDashboardPage() {
     }
   };
 
+const handleOpenTender = async (tender) => {
+    // Markiere als angesehen
+    await fetch(apiUrl(`/api/tenders/${tender.id}/track-view`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handwerkerId: handwerkerData.id })
+    });
+    
+    // Navigiere zur Angebotsseite
+    navigate(`/handwerker/tender/${tender.id}/offer`);
+  };
+
+  const getOfferStatusBadge = (tender) => {
+    if (tender.offer_stage === 'final') {
+      return (
+        <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs">
+          ✓ Verbindlich abgegeben
+        </span>
+      );
+    } else if (tender.offer_stage === 'preliminary') {
+      return (
+        <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs">
+          Vorläufig angeboten
+        </span>
+      );
+    } else if (tender.tender_status === 'in_progress') {
+      return (
+        <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-xs">
+          In Bearbeitung
+        </span>
+      );
+    } else if (!tender.viewed_at) {
+      return (
+        <span className="bg-teal-500 text-white px-2 py-1 rounded-full text-xs">
+          NEU
+        </span>
+      );
+    }
+    return null;
+  };
+  
   const handleAcceptPreliminary = async (contractId) => {
     if (!window.confirm('Möchten Sie die vorläufige Beauftragung annehmen? Die Kontaktdaten werden freigegeben.')) {
       return;
