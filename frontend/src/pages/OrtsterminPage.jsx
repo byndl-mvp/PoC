@@ -58,7 +58,7 @@ export default function OrtsterminPage() {
   }
 
   loadData();
-}, [offerId, navigate]); // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [offerId, navigate, loadData]);
   
   const proposeAppointment = async () => {
     const { date, time, duration, message } = proposalForm;
