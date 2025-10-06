@@ -194,7 +194,7 @@ export default function HandwerkerOfferPage() {
     // Markiere als "in Bearbeitung"
     markAsInProgress(data.id);
     loadTenderData();
-  }, [tenderId, navigate]);
+  }, [tenderId, navigate]); // eslint-disable-next-line react-hooks/exhaustive-deps
   
   const markAsInProgress = async (handwerkerId) => {
     try {
