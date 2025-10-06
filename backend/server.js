@@ -17280,12 +17280,24 @@ app.delete('/api/admin/projects/:id', requireAdmin, async (req, res) => {
     await query('DELETE FROM trade_progress WHERE project_id = $1', [id]);
     await query('DELETE FROM payments WHERE project_id = $1', [id]);
     
-    // 2. Offers die auf das Projekt verweisen
+    // 2. Offers und deren Abhängigkeiten behandeln
     const offers = await query('SELECT id FROM offers WHERE project_id = $1', [id]);
+    
     for (const offer of offers.rows) {
-      // Orders die auf diese Offers verweisen, löschen
+      // Zuerst contract_negotiations löschen (NEU!)
+      await query('DELETE FROM contract_negotiations WHERE offer_id = $1', [offer.id]);
+      
+      // Dann supplements löschen (falls vorhanden)
+      const orders = await query('SELECT id FROM orders WHERE offer_id = $1', [offer.id]);
+      for (const order of orders.rows) {
+        await query('DELETE FROM supplements WHERE order_id = $1', [order.id]);
+      }
+      
+      // Dann Orders löschen
       await query('DELETE FROM orders WHERE offer_id = $1', [offer.id]);
     }
+    
+    // Jetzt können die Offers selbst gelöscht werden
     await query('DELETE FROM offers WHERE project_id = $1', [id]);
     
     // 3. Zum Schluss das Projekt selbst löschen
@@ -17293,12 +17305,13 @@ app.delete('/api/admin/projects/:id', requireAdmin, async (req, res) => {
     
     await query('COMMIT');
     
+    console.log(`Projekt ${id} erfolgreich gelöscht`);
     res.json({ success: true, message: 'Projekt erfolgreich gelöscht' });
     
   } catch (error) {
     await query('ROLLBACK');
     console.error('Error deleting project:', error);
-    res.status(500).json({ error: 'Fehler beim Löschen des Projekts' });
+    res.status(500).json({ error: 'Fehler beim Löschen des Projekts', details: error.message });
   }
 });
 
