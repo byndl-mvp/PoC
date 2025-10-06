@@ -127,9 +127,10 @@ console.log('LV Details für Projekt:', project.id, lvData.lvs);
 
 // Zähle nur fertige LVs (ohne INT-Trade)
 const completedLvs = (lvData.lvs || []).filter(lv => {
-  const trade = relevantTrades.find(t => t.id === lv.trade_id);
+  // WICHTIG: trade_id in Number konvertieren!
+  const trade = relevantTrades.find(t => t.id === parseInt(lv.trade_id));
   const hasContent = lv.content && lv.content.positions && lv.content.positions.length > 0;
-  console.log('LV Trade:', lv.trade_id, 'Hat Inhalt:', hasContent);
+  console.log('LV Trade:', lv.trade_id, 'Gefunden:', !!trade, 'Hat Inhalt:', hasContent);
   return trade && hasContent;
 }).length;
 
