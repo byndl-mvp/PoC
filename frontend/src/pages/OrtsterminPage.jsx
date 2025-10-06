@@ -1,5 +1,5 @@
 // src/pages/OrtsterminPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -20,28 +20,26 @@ export default function OrtsterminPage() {
     message: ''
   });
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Lade Angebotsdaten
-      const offerRes = await fetch(apiUrl(`/api/offers/${offerId}/details`));
-      if (offerRes.ok) {
-        setOffer(await offerRes.json());
-      }
-      
-      // Lade Terminvorschläge
-      const appointmentsRes = await fetch(apiUrl(`/api/offers/${offerId}/appointments`));
-      if (appointmentsRes.ok) {
-        setAppointments(await appointmentsRes.json());
-      }
-      
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
+  const loadData = useCallback(async () => {
+  try {
+    setLoading(true);
+    
+    const offerRes = await fetch(apiUrl(`/api/offers/${offerId}/details`));
+    if (offerRes.ok) {
+      setOffer(await offerRes.json());
     }
-  };
+    
+    const appointmentsRes = await fetch(apiUrl(`/api/offers/${offerId}/appointments`));
+    if (appointmentsRes.ok) {
+      setAppointments(await appointmentsRes.json());
+    }
+    
+  } catch (error) {
+    console.error('Error loading data:', error);
+  } finally {
+    setLoading(false);
+  }
+}, [offerId]); // <-- offerId hier als Dependency
   
  useEffect(() => {
   // Bestimme Nutzertyp
