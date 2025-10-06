@@ -16169,6 +16169,278 @@ async function getHandwerkerIdFromCompanyId(companyId) {
   return result.rows.length > 0 ? result.rows[0].id : null;
 }
 
+// ============= TERMINVEREINBARUNGS-ROUTES =============
+
+// Angebotsdaten mit Kontaktinfos für Ortstermin
+app.get('/api/offers/:offerId/details', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.*,
+        h.company_name,
+        h.email as handwerker_email,
+        h.phone as handwerker_phone,
+        h.contact_person,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone,
+        p.street as project_street,
+        p.house_number as project_house_number,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        p.description as project_description,
+        t.name as trade_name
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = $1`,
+      [offerId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    }
+    
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('Error fetching offer details:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Details' });
+  }
+});
+
+// Terminvorschläge abrufen
+app.get('/api/offers/:offerId/appointments', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    const result = await query(
+      `SELECT * FROM appointment_requests 
+       WHERE offer_id = $1 
+       ORDER BY created_at DESC`,
+      [offerId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Termine' });
+  }
+});
+
+// Neuen Terminvorschlag erstellen
+app.post('/api/offers/:offerId/appointments/propose', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { proposed_by, proposed_date, duration, message } = req.body;
+    
+    const result = await query(
+      `INSERT INTO appointment_requests 
+       (offer_id, proposed_by, proposed_date, proposed_duration, message, status)
+       VALUES ($1, $2, $3, $4, $5, 'proposed')
+       RETURNING id`,
+      [offerId, proposed_by, proposed_date, duration, message]
+    );
+    
+    // Benachrichtigung erstellen
+    const offerData = await query(
+      `SELECT o.*, tn.project_id, h.id as handwerker_id, p.bauherr_id
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN projects p ON tn.project_id = p.id`,
+      [offerId]
+    );
+    
+    if (offerData.rows.length > 0) {
+      const offer = offerData.rows[0];
+      const recipient_type = proposed_by === 'bauherr' ? 'handwerker' : 'bauherr';
+      const recipient_id = proposed_by === 'bauherr' ? offer.handwerker_id : offer.bauherr_id;
+      
+      await query(
+        `INSERT INTO notifications 
+         (user_type, user_id, type, reference_id, message)
+         VALUES ($1, $2, 'appointment_request', $3, $4)`,
+        [recipient_type, recipient_id, result.rows[0].id, 
+         `Neuer Terminvorschlag für Ortstermin`]
+      );
+    }
+    
+    res.json({ success: true, id: result.rows[0].id });
+    
+  } catch (error) {
+    console.error('Error proposing appointment:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen des Terminvorschlags' });
+  }
+});
+
+// Auf Terminvorschlag antworten
+app.post('/api/appointments/:appointmentId/respond', async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { response } = req.body; // 'accepted' oder 'rejected'
+    
+    await query(
+      `UPDATE appointment_requests 
+       SET status = $2, responded_at = NOW()
+       WHERE id = $1`,
+      [appointmentId, response]
+    );
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Error responding to appointment:', error);
+    res.status(500).json({ error: 'Fehler beim Antworten' });
+  }
+});
+
+// ============= ERWEITERTE LV-ROUTES FÜR TENDER =============
+
+// LV-Daten für Tender (für HandwerkerOfferPage)
+app.get('/api/tenders/:tenderId/lv', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        t.lv_data,
+        t.project_id,
+        t.trade_id,
+        tr.name as trade_name,
+        p.description as project_description
+      FROM tenders t
+      JOIN trades tr ON t.trade_id = tr.id
+      JOIN projects p ON t.project_id = p.id
+      WHERE t.id = $1`,
+      [tenderId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
+    const tender = result.rows[0];
+    const lv = typeof tender.lv_data === 'string' 
+      ? JSON.parse(tender.lv_data) 
+      : tender.lv_data;
+    
+    // Preise entfernen für Handwerker-Ansicht
+    const lvWithoutPrices = {
+      ...lv,
+      positions: lv.positions?.map(pos => ({
+        ...pos,
+        unitPrice: 0,
+        totalPrice: 0
+      })) || []
+    };
+    
+    res.json({
+      tenderId,
+      projectId: tender.project_id,
+      tradeId: tender.trade_id,
+      tradeName: tender.trade_name,
+      projectDescription: tender.project_description,
+      lv: lvWithoutPrices
+    });
+    
+  } catch (error) {
+    console.error('Error fetching tender LV:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen des LV' });
+  }
+});
+
+// ============= ANGEBOTS-STATUS-VERWALTUNG =============
+
+// Erweiterte Angebots-Submission mit Phasen-Management
+app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId, positions, notes, totalSum, stage = 'preliminary' } = req.body;
+    
+    await query('BEGIN');
+    
+    // Update tender-handwerker status
+    await query(
+      `UPDATE tender_handwerker_status 
+       SET status = 'submitted', submitted_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    // Prüfen ob bereits ein Angebot existiert
+    const existingOffer = await query(
+      'SELECT id FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
+      [tenderId, handwerkerId]
+    );
+    
+    let offerId;
+    
+    if (existingOffer.rows.length > 0) {
+      offerId = existingOffer.rows[0].id;
+      
+      await query(
+        `UPDATE offers 
+         SET lv_data = $1, notes = $2, amount = $3, stage = $4, updated_at = NOW()
+         WHERE id = $5`,
+        [JSON.stringify(positions), notes, totalSum, stage, offerId]
+      );
+    } else {
+      const result = await query(
+        `INSERT INTO offers (
+          tender_id, handwerker_id, amount, 
+          lv_data, notes, status, stage, created_at
+        ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, NOW())
+        RETURNING id`,
+        [tenderId, handwerkerId, totalSum, JSON.stringify(positions), notes, stage]
+      );
+      offerId = result.rows[0].id;
+    }
+    
+    // Benachrichtigung für Bauherr
+    const tenderInfo = await query(
+      `SELECT project_id FROM tenders WHERE id = $1`,
+      [tenderId]
+    );
+    
+    if (tenderInfo.rows.length > 0) {
+      const projectInfo = await query(
+        `SELECT bauherr_id FROM projects WHERE id = $1`,
+        [tenderInfo.rows[0].project_id]
+      );
+      
+      if (projectInfo.rows.length > 0) {
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, reference_id, message)
+           VALUES ('bauherr', $1, 'new_offer', $2, 'Neues Angebot eingegangen')`,
+          [projectInfo.rows[0].bauherr_id, offerId]
+        );
+      }
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      offerId,
+      message: stage === 'preliminary' ? 
+        'Vorläufiges Angebot abgegeben. Der Bauherr kann nun Kontakt aufnehmen.' :
+        'Verbindliches Angebot abgegeben.'
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error submitting offer:', error);
+    res.status(500).json({ error: 'Fehler beim Abgeben des Angebots' });
+  }
+});
+
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
