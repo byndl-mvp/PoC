@@ -302,10 +302,15 @@ const getPasswordStrengthClass = (password) => {
     const { confirmPassword, ...submitDataWithoutConfirm } = formData;
     
     const submitData = {
-      ...submitDataWithoutConfirm,  // Verwende die Daten ohne confirmPassword
-      companyId,
-      registeredAt: new Date().toISOString()
-    };
+  ...submitDataWithoutConfirm,
+  // Trade-Codes zu Datenbank-IDs konvertieren!
+  trades: formData.trades.map(tradeCode => {
+    const trade = AVAILABLE_TRADES.find(t => t.id === tradeCode);
+    return trade ? trade.dbId : null;
+  }).filter(id => id !== null),
+  companyId,
+  registeredAt: new Date().toISOString()
+};
     
     const res = await fetch(apiUrl('/api/handwerker/register'), {
       method: 'POST',
