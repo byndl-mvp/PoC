@@ -391,7 +391,6 @@ const handleOpenTender = async (tender) => {
                 )}
               </div>
             </div>
-          </div>
         ))}
       </div>
     )}
