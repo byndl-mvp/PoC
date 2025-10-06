@@ -15912,6 +15912,263 @@ app.delete('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) =>
   }
 });
 
+// ============= ERWEITERTE TENDER & TRACKING ROUTES =============
+
+// Ausschreibungs-Status tracken
+app.post('/api/tenders/:tenderId/track-view', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId } = req.body;
+    
+    await query(
+      `INSERT INTO tender_handwerker_status (tender_id, handwerker_id, status, viewed_at)
+       VALUES ($1, $2, 'viewed', NOW())
+       ON CONFLICT (tender_id, handwerker_id) 
+       DO UPDATE SET status = 'viewed', viewed_at = NOW()
+       WHERE tender_handwerker_status.status = 'sent'`,
+      [tenderId, handwerkerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error tracking view:', error);
+    res.status(500).json({ error: 'Fehler beim Tracking' });
+  }
+});
+
+// Ausschreibungs-Status auf "in Bearbeitung" setzen
+app.post('/api/tenders/:tenderId/start-offer', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId } = req.body;
+    
+    await query(
+      `UPDATE tender_handwerker_status 
+       SET status = 'in_progress', in_progress_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating status:', error);
+    res.status(500).json({ error: 'Fehler beim Status-Update' });
+  }
+});
+
+// Erweiterte Route für Handwerker-Tenders mit Status
+app.get('/api/handwerker/:handwerkerId/tenders/detailed', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    const result = await query(
+      `SELECT DISTINCT ON (t.id)
+        t.*,
+        tr.name as trade_name,
+        p.description as project_description,
+        p.category,
+        p.sub_category,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        ths.status as tender_status,
+        ths.viewed_at,
+        o.id as offer_id,
+        o.status as offer_status,
+        o.stage as offer_stage
+       FROM tenders t
+       JOIN trades tr ON t.trade_id = tr.id
+       JOIN projects p ON t.project_id = p.id
+       LEFT JOIN tender_handwerker_status ths ON t.id = ths.tender_id AND ths.handwerker_id = $1
+       LEFT JOIN offers o ON t.id = o.tender_id AND o.handwerker_id = $1
+       WHERE t.trade_id IN (SELECT trade_id FROM handwerker_trades WHERE handwerker_id = $1)
+       AND t.status = 'open'
+       AND (o.status IS NULL OR o.status NOT IN ('accepted', 'final_accepted'))
+       ORDER BY t.id, t.created_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching detailed tenders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+  }
+});
+
+// Detaillierte Ausschreibungsübersicht für Bauherr
+app.get('/api/projects/:projectId/tenders/detailed', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const tenders = await query(
+      `SELECT t.*, tr.name as trade_name
+       FROM tenders t
+       JOIN trades tr ON t.trade_id = tr.id
+       WHERE t.project_id = $1
+       ORDER BY t.created_at DESC`,
+      [projectId]
+    );
+    
+    // Für jeden Tender die Handwerker-Stati holen
+    for (let tender of tenders.rows) {
+      const handwerkerStatus = await query(
+        `SELECT 
+          h.company_name,
+          h.id as handwerker_id,
+          ths.status,
+          ths.viewed_at,
+          ths.in_progress_at,
+          ths.submitted_at,
+          o.id as offer_id
+         FROM tender_handwerker th
+         JOIN handwerker h ON th.handwerker_id = h.id
+         LEFT JOIN tender_handwerker_status ths ON th.tender_id = ths.tender_id AND th.handwerker_id = ths.handwerker_id
+         LEFT JOIN offers o ON th.tender_id = o.tender_id AND th.handwerker_id = o.handwerker_id
+         WHERE th.tender_id = $1`,
+        [tender.id]
+      );
+      
+      tender.handwerkers = handwerkerStatus.rows;
+    }
+    
+    res.json(tenders.rows);
+    
+  } catch (error) {
+    console.error('Error fetching detailed tenders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+  }
+});
+
+// Ungelesene Angebote zählen
+app.get('/api/projects/:projectId/offers/unread-count', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT COUNT(*) as count
+       FROM offers o
+       JOIN tenders t ON o.tender_id = t.id
+       WHERE t.project_id = $1 AND o.viewed_at IS NULL`,
+      [projectId]
+    );
+    
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Zählen' });
+  }
+});
+
+// Angebote als gelesen markieren
+app.post('/api/projects/:projectId/offers/mark-all-read', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    await query(
+      `UPDATE offers o
+       SET viewed_at = NOW()
+       FROM tenders t
+       WHERE o.tender_id = t.id 
+       AND t.project_id = $1 
+       AND o.viewed_at IS NULL`,
+      [projectId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Markieren' });
+  }
+});
+
+// Fehlende Route: LV-Daten für Projekt
+app.get('/api/projects/:projectId/lv', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT l.*, t.name as trade_name, t.code as trade_code
+       FROM lvs l
+       JOIN trades t ON l.trade_id = t.id
+       WHERE l.project_id = $1
+       ORDER BY t.name`,
+      [projectId]
+    );
+    
+    res.json({ 
+      lvs: result.rows.map(lv => ({
+        ...lv,
+        content: typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Error fetching LVs:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der LVs' });
+  }
+});
+
+// Fehlende Route: Projekt mit Bauherr verknüpfen
+app.post('/api/projects/claim', async (req, res) => {
+  try {
+    const { projectId, bauherrId } = req.body;
+    
+    await query(
+      `UPDATE projects 
+       SET bauherr_id = $2, updated_at = NOW()
+       WHERE id = $1`,
+      [projectId, bauherrId]
+    );
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Error claiming project:', error);
+    res.status(500).json({ error: 'Fehler bei der Projektzuweisung' });
+  }
+});
+
+// LV-Status für Dashboard
+app.get('/api/projects/:projectId/lv-status', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        COUNT(DISTINCT pt.trade_id) as total_trades,
+        COUNT(DISTINCT CASE 
+          WHEN l.content IS NOT NULL AND l.content::text != '{}' 
+          THEN l.trade_id 
+        END) as completed_lvs,
+        COUNT(DISTINCT CASE 
+          WHEN pt.trade_id = (SELECT id FROM trades WHERE code = 'INT')
+          THEN pt.trade_id 
+        END) as internal_trades
+       FROM project_trades pt
+       LEFT JOIN lvs l ON pt.project_id = l.project_id AND pt.trade_id = l.trade_id
+       WHERE pt.project_id = $1`,
+      [projectId]
+    );
+    
+    const status = result.rows[0];
+    // INT-Trade von der Gesamtzahl abziehen
+    status.total_trades = status.total_trades - status.internal_trades;
+    
+    res.json(status);
+    
+  } catch (error) {
+    console.error('Error fetching LV status:', error);
+    res.status(500).json({ error: 'Fehler beim Laden des LV-Status' });
+  }
+});
+
+// Helper-Funktion (fehlte)
+async function getHandwerkerIdFromCompanyId(companyId) {
+  const result = await query(
+    'SELECT id FROM handwerker WHERE company_id = $1',
+    [companyId]
+  );
+  return result.rows.length > 0 ? result.rows[0].id : null;
+}
+
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
