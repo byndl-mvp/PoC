@@ -29,6 +29,8 @@ import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
 import HandwerkerSettingsPage from './pages/HandwerkerSettingsPage';
 import HandwerkerOfferPage from './pages/HandwerkerOfferPage';
 
+import OrtsterminPage from './pages/OrtsterminPage';
+
 // Admin Pages
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
@@ -144,6 +146,7 @@ function App() {
           <Route path="/project/:projectId/trade/:tradeId/questions" element={<QuestionsPage />} />
           <Route path="/project/:projectId/result" element={<ResultPage />} />
           <Route path="/project/:projectId/add-trade" element={<AdditionalTradeSelectionPage />} />
+          <Route path="/offer/:offerId/appointment" element={<OrtsterminPage />} />
           
           {/* Alternative Projekt-Routen (mit :id statt :projectId) */}
           <Route path="/project/:id/intake" element={<IntakeQuestionsPage />} />
@@ -181,6 +184,16 @@ function App() {
   element={
     <ProtectedRoute userType="handwerker">
       <HandwerkerOfferPage />
+    </ProtectedRoute>
+  } 
+/>
+
+          // Neue Route für Ortstermine hinzufügen
+<Route 
+  path="/offer/:offerId/appointment" 
+  element={
+    <ProtectedRoute userType="any">
+      <OrtsterminPage />
     </ProtectedRoute>
   } 
 />
