@@ -16392,6 +16392,27 @@ app.get('/api/tenders/:tenderId/lv', async (req, res) => {
   }
 });
 
+// Handwerker kann Ausschreibung ablehnen/ausblenden
+app.post('/api/tenders/:tenderId/reject', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId } = req.body;
+    
+    // Setze Status auf "rejected" in tender_handwerker
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'rejected', rejected_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error rejecting tender:', error);
+    res.status(500).json({ error: 'Fehler beim Ablehnen' });
+  }
+});
+
 // ============= ANGEBOTS-STATUS-VERWALTUNG =============
 
 // Erweiterte Angebots-Submission mit Phasen-Management
