@@ -16027,17 +16027,20 @@ app.get('/api/handwerker/:handwerkerId/tenders/detailed', async (req, res) => {
         p.city as project_city,
         ths.status as tender_status,
         ths.viewed_at,
+        th.status as th_status,  -- NEU: Status aus tender_handwerker
         o.id as offer_id,
         o.status as offer_status,
         o.stage as offer_stage
        FROM tenders t
        JOIN trades tr ON t.trade_id = tr.id
        JOIN projects p ON t.project_id = p.id
+       JOIN tender_handwerker th ON t.id = th.tender_id AND th.handwerker_id = $1  -- NEU
        LEFT JOIN tender_handwerker_status ths ON t.id = ths.tender_id AND ths.handwerker_id = $1
        LEFT JOIN offers o ON t.id = o.tender_id AND o.handwerker_id = $1
        WHERE t.trade_id IN (SELECT trade_id FROM handwerker_trades WHERE handwerker_id = $1)
        AND t.status = 'open'
-       AND (o.status IS NULL OR o.status NOT IN ('accepted', 'final_accepted'))
+       AND th.status != 'rejected'  -- NEU: Keine abgelehnten
+       AND o.id IS NULL  -- NEU: Keine mit Angeboten (statt der komplexen OR Bedingung)
        ORDER BY t.id, t.created_at DESC`,
       [handwerkerId]
     );
