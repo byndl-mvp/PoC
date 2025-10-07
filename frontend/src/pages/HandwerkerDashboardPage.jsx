@@ -376,7 +376,7 @@ const handleOpenTender = async (tender) => {
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-gray-400">
-                      💰 Volumen: {formatCurrency(tender.estimated_value)}
+                      💰 Volumen: ca. {formatCurrency(Math.round(tender.estimated_value / 1000) * 1000)}
                     </p>
                     <p className="text-sm text-gray-400">
                       ⏰ Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
