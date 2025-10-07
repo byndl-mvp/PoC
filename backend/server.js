@@ -15187,7 +15187,7 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
 // Get matching tenders for handwerker - KORRIGIERT
 app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
   try {
-    const { id } = req.params;
+    const { companyId } = req.params;
     
     // Get handwerker with trades
     const handwerkerResult = await query(
