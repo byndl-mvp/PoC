@@ -1391,6 +1391,20 @@ const BudgetVisualization = ({ budget }) => {
                           </button>
                         </div>
                       )}
+
+                      {offer.status === 'confirmed' && (
+  <div className="space-y-2">
+    <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
+      Verbindliches Angebot nach Ortstermin
+    </span>
+    <button 
+      onClick={() => handleFinalOrder(offer)}
+      className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+    >
+      Jetzt verbindlich beauftragen
+    </button>
+  </div>
+)}
                       
                       {offer.status === 'accepted' && (
                         <span className="block text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
