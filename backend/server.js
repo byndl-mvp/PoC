@@ -14751,27 +14751,144 @@ app.get('/api/handwerker/:companyId/contracts', async (req, res) => {
     const { companyId } = req.params;
     
     const result = await query(
-      `SELECT o.*, p.description as "projectType", b.name as "clientName",
-              b.email as "clientEmail", b.phone as "clientPhone",
-              p.street || ' ' || p.house_number || ', ' || p.zip || ' ' || p.city as "projectAddress",
-              of.amount, of.preliminary_date as "preliminaryDate", t.name as trade
-       FROM orders o
+      `SELECT 
+        o.*,
+        p.description as projectType,
+        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
+        b.name as clientName,
+        b.email as clientEmail,
+        b.phone as clientPhone,
+        b.street || ' ' || b.house_number || ', ' || b.zip || ' ' || b.city as clientAddress,
+        t.name as trade,
+        o.preliminary_accepted_at,
+        o.offer_confirmed_at,
+        o.amount,
+        o.notes,
+        o.lv_data,
+        CASE 
+          WHEN o.offer_confirmed_at IS NOT NULL THEN 'Angebot bestätigt - wartet auf finale Beauftragung'
+          ELSE 'Vorläufig beauftragt - Ortstermin ausstehend'
+        END as negotiation_status
+       FROM offers o
        JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN projects p ON o.project_id = p.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
        JOIN bauherren b ON p.bauherr_id = b.id
-       JOIN offers of ON o.offer_id = of.id
-       JOIN trades t ON o.trade_id = t.id
+       JOIN trades t ON tn.trade_id = t.id
        WHERE h.company_id = $1
-       AND o.status = 'preliminary'
-       ORDER BY o.created_at DESC`,
+         AND o.status = 'preliminary'
+         AND o.stage = 1
+       ORDER BY o.preliminary_accepted_at DESC`,
       [companyId]
     );
     
     res.json(result.rows);
     
   } catch (error) {
-    console.error('Error fetching contracts:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Verträge' });
+    console.error('Error fetching contract negotiations:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Vertragsanbahnungen' });
+  }
+});
+
+app.post('/api/offers/:offerId/schedule-appointment', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { proposedDates, message } = req.body;
+    
+    // Speichere Terminvorschläge
+    await query(
+      `INSERT INTO appointment_proposals 
+       (offer_id, proposed_by, proposed_dates, message, status, created_at)
+       VALUES ($1, 'handwerker', $2, $3, 'pending', NOW())`,
+      [offerId, JSON.stringify(proposedDates), message]
+    );
+    
+    // Benachrichtige Bauherr (Email-Versand)
+    // ... Email-Code hier ...
+    
+    res.json({ 
+      success: true, 
+      message: 'Terminvorschläge wurden an den Bauherrn gesendet' 
+    });
+    
+  } catch (error) {
+    console.error('Error scheduling appointment:', error);
+    res.status(500).json({ error: 'Fehler bei der Terminvereinbarung' });
+  }
+});
+
+app.post('/api/offers/:offerId/update-after-inspection', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { 
+      adjustedPositions, 
+      adjustedAmount, 
+      executionTimeframe,
+      notes,
+      materialIncluded,
+      anfahrtIncluded 
+    } = req.body;
+    
+    await query('BEGIN');
+    
+    // Prüfe ob Angebot in Vertragsanbahnung ist
+    const offerCheck = await query(
+      'SELECT status, stage FROM offers WHERE id = $1',
+      [offerId]
+    );
+    
+    if (offerCheck.rows[0].status !== 'preliminary' || offerCheck.rows[0].stage !== 1) {
+      throw new Error('Angebot ist nicht in Vertragsanbahnung');
+    }
+    
+    // Update mit neuen Daten
+    await query(
+      `UPDATE offers 
+       SET 
+         lv_data = COALESCE($2, lv_data),
+         amount = COALESCE($3, amount),
+         execution_time = COALESCE($4, execution_time),
+         notes = COALESCE($5, notes),
+         include_material = COALESCE($6, include_material),
+         include_anfahrt = COALESCE($7, include_anfahrt),
+         offer_confirmed_at = NOW(),
+         status = 'confirmed'
+       WHERE id = $1`,
+      [
+        offerId, 
+        adjustedPositions ? JSON.stringify(adjustedPositions) : null,
+        adjustedAmount,
+        executionTimeframe,
+        notes,
+        materialIncluded,
+        anfahrtIncluded
+      ]
+    );
+    
+    // Protokolliere Änderung
+    await query(
+      `INSERT INTO contract_negotiations 
+       (offer_id, action_type, action_by, action_data, created_at)
+       VALUES ($1, 'offer_updated_after_inspection', 'handwerker', $2, NOW())`,
+      [offerId, JSON.stringify({
+        adjustedAmount,
+        executionTimeframe,
+        notes,
+        timestamp: new Date().toISOString()
+      })]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      message: 'Verbindliches Angebot erfolgreich abgegeben' 
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error updating offer:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -14781,26 +14898,37 @@ app.get('/api/handwerker/:companyId/orders', async (req, res) => {
     const { companyId } = req.params;
     
     const result = await query(
-      `SELECT o.*, p.description as "projectType", b.name as "clientName",
-              p.street || ' ' || p.house_number || ', ' || p.zip || ' ' || p.city as "projectAddress",
-              o.created_at as "orderDate", t.name as trade,
-              EXTRACT(WEEK FROM o.created_at) + 2 as "executionWeek"
-       FROM orders o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN projects p ON o.project_id = p.id
+      `SELECT 
+        ord.*,
+        o.amount as contract_amount,
+        o.lv_data,
+        o.final_accepted_at as contract_date,
+        p.description as projectType,
+        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
+        b.name as clientName,
+        b.email as clientEmail,
+        b.phone as clientPhone,
+        t.name as trade,
+        o.execution_time as planned_execution,
+        CASE 
+          WHEN ord.status = 'active' THEN 'In Ausführung'
+          WHEN ord.status = 'completed' THEN 'Abgeschlossen'
+          ELSE ord.status
+        END as status_text
+       FROM orders ord
+       JOIN offers o ON ord.offer_id = o.id
+       JOIN handwerker h ON ord.handwerker_id = h.id
+       JOIN projects p ON ord.project_id = p.id
        JOIN bauherren b ON p.bauherr_id = b.id
-       JOIN trades t ON o.trade_id = t.id
+       JOIN trades t ON ord.trade_id = t.id
        WHERE h.company_id = $1
-       AND o.status = 'active'
-       ORDER BY o.created_at DESC`,
+         AND o.status = 'accepted'
+         AND o.stage = 2
+       ORDER BY ord.created_at DESC`,
       [companyId]
     );
     
-    res.json(result.rows.map(order => ({
-      ...order,
-      status: order.status === 'active' ? 'aktiv' : order.status,
-      progress: Math.round(Math.random() * 100)
-    })));
+    res.json(result.rows);
     
   } catch (error) {
     console.error('Error fetching handwerker orders:', error);
