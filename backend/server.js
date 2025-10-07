@@ -16620,6 +16620,24 @@ app.post('/api/tenders/:tenderId/reject', async (req, res) => {
   }
 });
 
+app.post('/api/tenders/:tenderId/track-view', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId } = req.body;
+    
+    await query(
+      `UPDATE tender_handwerker 
+       SET viewed_at = COALESCE(viewed_at, NOW()), status = 'viewed'
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============= ANGEBOTS-STATUS-VERWALTUNG =============
 
 // Erweiterte Angebots-Submission mit Phasen-Management
