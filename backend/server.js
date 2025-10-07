@@ -2856,7 +2856,7 @@ const TRADE_DETECTION_RULES = {
     'FASS': ['innenputz', 'tapete', 'malerarbeiten innen', 'gaube'],
     'DACH': ['wdvs', 'fassadendämmung', 'außenputz'],
     'FLI': ['parkett', 'laminat', 'vinyl', 'teppich'],
-    'ESTR': ['fliesen', 'parkett', 'bodenbelag'],
+    'ESTR': ['fliesen', 'parkett', 'bewehrung', 'bodenbelag'],
     'GER': ['bauarbeiten', 'sanierung', 'renovierung'],
     'ABBR': ['neubau', 'anbau', 'aufstockung'],
     'SCHL': ['holzgeländer', 'holztreppe', 'carport'],
