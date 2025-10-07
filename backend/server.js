@@ -14184,22 +14184,12 @@ app.post('/api/offers/:offerId/confirm-after-inspection', async (req, res) => {
     const { offerId } = req.params;
     const { adjustedAmount, notes } = req.body;
     
-    // Update offer
-    const updateData = {
-      offer_confirmed_at: new Date(),
-      status: 'confirmed'
-    };
-    
-    if (adjustedAmount) {
-      updateData.amount = adjustedAmount;
-      updateData.adjusted_amount = adjustedAmount;
-    }
-    
     await query(
       `UPDATE offers 
        SET offer_confirmed_at = NOW(),
            amount = COALESCE($2, amount),
-           notes = COALESCE($3, notes)
+           notes = COALESCE($3, notes),
+           status = 'confirmed'  -- FEHLT IN ORIGINAL!
        WHERE id = $1`,
       [offerId, adjustedAmount, notes]
     );
@@ -14212,10 +14202,67 @@ app.post('/api/offers/:offerId/confirm-after-inspection', async (req, res) => {
       [offerId, JSON.stringify({ adjustedAmount, notes })]
     );
     
-    res.json({ success: true, message: 'Angebot bestätigt' });
+    res.json({ success: true, message: 'Verbindliches Angebot bestätigt' });
     
   } catch (error) {
     console.error('Error confirming offer:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Terminvorschlag vom Handwerker
+app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { proposedDates, message } = req.body;
+    
+    // Hole Kontaktdaten für Email
+    const contactData = await query(
+      `SELECT b.email, b.name, h.company_name, t.name as trade_name
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = $1 AND o.status = 'preliminary'`,
+      [offerId]
+    );
+    
+    if (contactData.rows.length === 0) {
+      return res.status(404).json({ error: 'Angebot nicht in Vertragsanbahnung' });
+    }
+    
+    // Speichere Terminvorschlag
+    await query(
+      `INSERT INTO appointment_proposals 
+       (offer_id, proposed_by, proposed_dates, message, status, created_at)
+       VALUES ($1, 'handwerker', $2, $3, 'pending', NOW())`,
+      [offerId, JSON.stringify(proposedDates), message]
+    );
+    
+    // Email an Bauherr
+    if (transporter) {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: contactData.rows[0].email,
+        subject: `Terminvorschlag für Ortstermin - ${contactData.rows[0].trade_name}`,
+        html: `
+          <h2>Neuer Terminvorschlag</h2>
+          <p>${contactData.rows[0].company_name} hat Termine für einen Ortstermin vorgeschlagen:</p>
+          <ul>
+            ${proposedDates.map(date => `<li>${new Date(date).toLocaleString('de-DE')}</li>`).join('')}
+          </ul>
+          ${message ? `<p>Nachricht: ${message}</p>` : ''}
+          <a href="https://byndl.de/dashboard">Zum Dashboard</a>
+        `
+      });
+    }
+    
+    res.json({ success: true, message: 'Terminvorschläge gesendet' });
+    
+  } catch (error) {
+    console.error('Error proposing appointment:', error);
     res.status(500).json({ error: error.message });
   }
 });
