@@ -14970,7 +14970,8 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
         await query(
           `INSERT INTO tender_handwerker (
             tender_id, handwerker_id, status, notified_at
-          ) VALUES ($1, $2, 'pending', NOW())`,
+          ) VALUES ($1, $2, 'pending', NOW())
+          ON CONFLICT DO NOTHING`,  // <-- NUR DIESE ZEILE HINZUFÜGEN
           [tenderId, handwerker.id]
         );
       }
