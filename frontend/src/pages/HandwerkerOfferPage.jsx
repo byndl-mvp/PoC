@@ -270,7 +270,8 @@ export default function HandwerkerOfferPage() {
     setSelectedPosition({ position, index });
     setModalOpen(true);
   };
-  
+
+  const isPreliminary = true;  
   const submitOffer = async () => {
     if (totalSum === 0) {
       alert('Bitte geben Sie Preise ein');
@@ -294,7 +295,7 @@ export default function HandwerkerOfferPage() {
           positions,
           notes,
           totalSum,
-          stage: offerStage
+          isPreliminary: isPreliminary 
         })
       });
       
