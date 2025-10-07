@@ -16180,11 +16180,9 @@ app.post('/api/tenders/:tenderId/track-view', async (req, res) => {
     const { handwerkerId } = req.body;
     
     await query(
-      `INSERT INTO tender_handwerker_status (tender_id, handwerker_id, status, viewed_at)
-       VALUES ($1, $2, 'viewed', NOW())
-       ON CONFLICT (tender_id, handwerker_id) 
-       DO UPDATE SET status = 'viewed', viewed_at = NOW()
-       WHERE tender_handwerker_status.status = 'sent'`,
+      `UPDATE tender_handwerker 
+       SET viewed_at = COALESCE(viewed_at, NOW()), status = 'viewed'
+       WHERE tender_id = $1 AND handwerker_id = $2`,
       [tenderId, handwerkerId]
     );
     
