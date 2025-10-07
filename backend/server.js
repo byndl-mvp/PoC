@@ -8436,7 +8436,7 @@ function finalLVValidation(lv, tradeCode) {
       except: ['schutzmaßnahmen', 'sicherung']
     },
     'ESTR': {
-      forbidden: ['fliesen', 'parkett', 'oberbelag', 'elektro', 'sanitär', 'fenster'],
+      forbidden: ['warmwasser', 'rohrsystem', 'aufheizprotokoll', 'dichtheitsprüfung', 'heizkreisverteiler', 'fliesen', 'parkett', 'oberbelag', 'elektro', 'sanitär', 'fenster'],
       except: ['fußbodenheizung', 'dämmung unter estrich']
     },
     'AUSS': {
