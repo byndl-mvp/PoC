@@ -40,18 +40,20 @@ export default function HandwerkerDashboardPage() {
     try {
       setLoading(true);
 
-      // Lade erweiterte Ausschreibungen mit Status
-      const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/detailed`));
-      if (tendersRes.ok) {
-        const tendersData = await tendersRes.json();
-        // Filtere doppelte Einträge und bereits beauftragte
-        const uniqueTenders = tendersData.filter((tender, index, self) =>
-          index === self.findIndex((t) => t.id === tender.id) &&
-          tender.offer_status !== 'accepted' &&
-          tender.offer_status !== 'final_accepted'
-        );
-        setTenders(uniqueTenders);
-      }
+      // In der loadDashboardData Funktion:
+const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/detailed`));
+if (tendersRes.ok) {
+  const tendersData = await tendersRes.json();
+  // Filtere: doppelte Einträge, beauftragte, abgelehnte und mit Angeboten
+  const uniqueTenders = tendersData.filter((tender, index, self) =>
+    index === self.findIndex((t) => t.id === tender.id) &&
+    tender.offer_status !== 'accepted' &&
+    tender.offer_status !== 'final_accepted' &&
+    tender.status !== 'rejected' &&  // NEU: Keine abgelehnten
+    !tender.offer_id  // NEU: Keine mit bereits abgegebenen Angeboten
+  );
+  setTenders(uniqueTenders);
+}
       
       // Lade verfügbare Bündel
       const bundlesRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/bundles`));
