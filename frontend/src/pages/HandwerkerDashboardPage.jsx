@@ -386,16 +386,17 @@ const handleOpenTender = async (tender) => {
               </div>
               
               <div className="text-right">
-                {!tender.has_offer ? (
-                  <button
-                    onClick={() => handleOpenTender(tender)}
-                    className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
-                  >
-                    <div>
-                      <div className="font-semibold">Angebot vorläufig abgeben</div>
-                      <div className="text-xs mt-1">Mit Vertragsanbahnung</div>
-                    </div>
-                  </button>
+  {!tender.has_offer ? (
+    <div className="flex gap-2">  
+      <button
+        onClick={() => handleOpenTender(tender)}
+        className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+      >
+        <div>
+          <div className="font-semibold">Angebot vorläufig abgeben</div>
+          <div className="text-xs mt-1">Mit Vertragsanbahnung</div>
+        </div>
+      </button>
       <button
         onClick={() => handleRejectTender(tender.id)}
         className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-all"
@@ -403,8 +404,8 @@ const handleOpenTender = async (tender) => {
       >
         ❌
       </button>
-            </div>
-              ) : (
+    </div>  
+  ) : (
                   <div>
                     <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2">
                       ✓ Angebot abgegeben
