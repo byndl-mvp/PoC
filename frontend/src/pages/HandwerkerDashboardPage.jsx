@@ -54,6 +54,26 @@ if (tendersRes.ok) {
   );
   setTenders(uniqueTenders);
 }
+
+      // Neue Funktion zum Ablehnen:
+const handleRejectTender = async (tenderId) => {
+  if (!window.confirm('Diese Ausschreibung wirklich ablehnen? Sie wird dauerhaft ausgeblendet.')) {
+    return;
+  }
+  
+  try {
+    await fetch(apiUrl(`/api/tenders/${tenderId}/reject`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handwerkerId: handwerkerData.id })
+    });
+    
+    // Aus Liste entfernen
+    setTenders(prev => prev.filter(t => t.id !== tenderId));
+  } catch (error) {
+    console.error('Error rejecting tender:', error);
+  }
+};
       
       // Lade verfügbare Bündel
       const bundlesRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/bundles`));
