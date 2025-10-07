@@ -14896,6 +14896,19 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
     const createdTenders = [];
     
     for (const trade of trades.rows) {
+      // NEUE ZEILEN: Prüfe ob Tender bereits existiert
+  const existingTender = await query(
+    `SELECT id FROM tenders 
+     WHERE project_id = $1 AND trade_id = $2 
+     AND created_at > NOW() - INTERVAL '1 hour'`,
+    [projectId, trade.id]
+  );
+  
+  if (existingTender.rows.length > 0) {
+    console.log('Tender existiert bereits für Trade', trade.id);
+    continue;
+  }
+      
       // LV-Daten für dieses Gewerk holen
       const lvResult = await query(
         `SELECT content FROM lvs 
