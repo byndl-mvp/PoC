@@ -423,7 +423,7 @@ const ContractNegotiationModal = () => {
 
     try {
       setLoading(true);
-      const res = await fetch(apiUrl(`/api/offers/${offer.id}/final-order`), {
+      const res = await fetch(apiUrl(`/api/offers/${offer.id}/final-accept`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
