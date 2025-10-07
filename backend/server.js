@@ -8109,6 +8109,42 @@ if (!titleLower.includes('kleinmaterial') &&
   warnings.push(`Unrealistischer Preis korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
   fixedCount++;
 }
+
+// NEUE REGEL: Gewerk-spezifische Begriffskorrekturen
+if (tradeCode === 'MAL') {
+  // Maler liefern NICHTS - nur Oberflächenbearbeitung
+  if (titleLower.includes('lieferung')) {
+    // Entferne "Lieferung und" komplett
+    pos.title = pos.title.replace(/Lieferung\s+(und\s+)?/gi, '');
+    
+    // Falls nur "Lieferung" übrig bleibt, ersetze komplett
+    if (pos.title.trim() === '') {
+      pos.title = 'Oberflächenbehandlung';
+    }
+    
+    warnings.push(`Maler: "Lieferung" entfernt aus "${originalTitle}"`);
+    fixedCount++;
+  }
+  
+  // Maler-typische Leistungen sicherstellen
+  if (titleLower.includes('fenster') && !titleLower.includes('anstrich') && 
+      !titleLower.includes('lackier') && !titleLower.includes('streich')) {
+    pos.title += ' - Anstrich und Lackierung';
+    warnings.push(`Maler: Leistungsbeschreibung präzisiert`);
+    fixedCount++;
+  }
+}
+
+// Ähnlich für andere Gewerke
+if (tradeCode === 'ELEK') {
+  // Elektriker liefern keine Fenster/Türen
+  if ((titleLower.includes('fenster') || titleLower.includes('tür')) && 
+      titleLower.includes('lieferung')) {
+    pos.title = pos.title.replace(/Lieferung\s+(und\s+)?Montage/gi, 'Installation');
+    warnings.push(`Elektriker: Falsche Leistung korrigiert`);
+    fixedCount++;
+  }
+}
     
     // SPEZIAL-REGEL FÜR GERÜST
 if (tradeCode === 'GER') {
