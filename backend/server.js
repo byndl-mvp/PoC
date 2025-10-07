@@ -15017,7 +15017,7 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
     const handwerker = handwerkerResult.rows[0];
     const tradeIds = handwerker.trade_ids || [];
     
-    // Get UNIQUE tenders with offer status
+    // NUR Tenders OHNE bereits abgegebene Angebote anzeigen
     const tenders = await query(
       `SELECT DISTINCT ON (t.id)
         t.id,
@@ -15039,20 +15039,21 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
         CASE 
           WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true 
           ELSE false 
-        END as is_new,
-        o.id as offer_id,
-        o.status as offer_status,
-        o.stage as offer_stage
+        END as is_new
       FROM tenders t
       JOIN tender_handwerker th ON t.id = th.tender_id
       JOIN trades tr ON t.trade_id = tr.id
       JOIN projects p ON t.project_id = p.id
-      LEFT JOIN offers o ON o.tender_id = t.id AND o.handwerker_id = $1
       WHERE th.handwerker_id = $1
         AND t.trade_id = ANY($2::int[])
         AND t.status = 'open'
         AND t.deadline > NOW()
-        AND (o.status IS NULL OR o.status NOT IN ('accepted', 'final_accepted'))
+        AND NOT EXISTS (
+          SELECT 1 FROM offers o 
+          WHERE o.tender_id = t.id 
+          AND o.handwerker_id = $1
+          AND o.status != 'withdrawn'
+        )
       ORDER BY t.id, t.created_at DESC`,
       [handwerker.id, tradeIds]
     );
