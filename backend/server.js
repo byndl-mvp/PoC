@@ -13816,21 +13816,25 @@ app.post('/api/projects/claim', async (req, res) => {
   }
 });
 
-// ========== 2. PROJECT MANAGEMENT ROUTES ==========
+// 2. PROJECT MANAGEMENT ROUTES
+// ----------------------------------------------------------------------------
 
-// Get user projects (für Bauherr-Dashboard)
+// Get user projects (for Bauherr Dashboard)
 app.get('/api/projects/user/:email', async (req, res) => {
   try {
     const { email } = req.params;
+    
     const result = await query(
       `SELECT p.* 
-         FROM projects p
-         JOIN bauherren b ON p.bauherr_id = b.id
-        WHERE b.email = $1
-        ORDER BY p.created_at DESC`,
+       FROM projects p
+       JOIN bauherren b ON p.bauherr_id = b.id
+       WHERE b.email = $1
+       ORDER BY p.created_at DESC`,
       [email]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching user projects:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Projekte' });
@@ -13841,15 +13845,18 @@ app.get('/api/projects/user/:email', async (req, res) => {
 app.get('/api/projects/:projectId/trades', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const result = await query(
       `SELECT t.*, pt.is_manual, pt.is_ai_recommended
-         FROM trades t
-         JOIN project_trades pt ON t.id = pt.trade_id
-        WHERE pt.project_id = $1
-        ORDER BY t.name`,
+       FROM trades t
+       JOIN project_trades pt ON t.id = pt.trade_id
+       WHERE pt.project_id = $1
+       ORDER BY t.name`,
       [projectId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching project trades:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Gewerke' });
@@ -13860,122 +13867,122 @@ app.get('/api/projects/:projectId/trades', async (req, res) => {
 app.get('/api/projects/:projectId/dashboard-details', async (req, res) => {
   try {
     const { projectId } = req.params;
-
-    // Project
+    
+    // Get project
     const projectResult = await query(
       'SELECT * FROM projects WHERE id = $1',
       [projectId]
     );
+    
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Projekt nicht gefunden' });
     }
+    
     const project = projectResult.rows[0];
-
-    // Trades
+    
+    // Get trades
     const tradesResult = await query(
       `SELECT t.*, pt.is_manual, pt.is_ai_recommended
-         FROM trades t
-         JOIN project_trades pt ON t.id = pt.trade_id
-        WHERE pt.project_id = $1`,
+       FROM trades t
+       JOIN project_trades pt ON t.id = pt.trade_id
+       WHERE pt.project_id = $1`,
       [projectId]
     );
-
-    // LVs
+    
+    // Get LVs
     const lvsResult = await query(
       `SELECT * FROM lvs WHERE project_id = $1`,
       [projectId]
     );
-
-    // Tender count
+    
+    // Get tender status
     const tendersResult = await query(
-      `SELECT COUNT(*)::int as count FROM tenders WHERE project_id = $1`,
+      `SELECT COUNT(*) as count FROM tenders WHERE project_id = $1`,
       [projectId]
     );
-
-    // Offers
+    
+    // Get offers
     const offersResult = await query(
       `SELECT o.* FROM offers o
-         JOIN tenders t ON o.tender_id = t.id
-        WHERE t.project_id = $1`,
+       JOIN tenders t ON o.tender_id = t.id
+       WHERE t.project_id = $1`,
       [projectId]
     );
-
-    const completedLvs = lvsResult.rows.reduce((acc, lv) => {
-      const content = safeParseJSON(lv.content);
-      return acc + ((content?.positions?.length || 0) > 0 ? 1 : 0);
-    }, 0);
-
+    
     res.json({
-      project,
+      project: project,
       trades: tradesResult.rows,
       lvs: lvsResult.rows,
-      hasTenders: (tendersResult.rows[0].count || 0) > 0,
+      hasTenders: tendersResult.rows[0].count > 0,
       offers: offersResult.rows,
-      completedLvs
+      completedLvs: lvsResult.rows.filter(lv => {
+        const content = typeof lv.content === 'string' ? 
+          JSON.parse(lv.content) : lv.content;
+        return content?.positions?.length > 0;
+      }).length
     });
+    
   } catch (error) {
     console.error('Dashboard details error:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Details' });
   }
 });
 
-// ========== 3. TENDER & OFFER ROUTES ==========
+// 3. TENDER & OFFER ROUTES
+// ----------------------------------------------------------------------------
 
 // Get project tenders
 app.get('/api/projects/:projectId/tenders', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const result = await query(
       `SELECT t.*, tr.name as trade_name
-         FROM tenders t
-         JOIN trades tr ON t.trade_id = tr.id
-        WHERE t.project_id = $1
-        ORDER BY t.created_at DESC`,
+       FROM tenders t
+       JOIN trades tr ON t.trade_code = tr.code
+       WHERE t.project_id = $1
+       ORDER BY t.created_at DESC`,
       [projectId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching tenders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
   }
 });
 
-// Get project offers (kompakt)
+// Get project offers
 app.get('/api/projects/:projectId/offers', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const result = await query(
       `SELECT o.*, h.company_name, h.email, h.phone, t.name as trade_name
-         FROM offers o
-         JOIN handwerker h ON o.handwerker_id = h.id
-         JOIN tenders tn ON o.tender_id = tn.id
-         JOIN trades t ON tn.trade_id = t.id
-        WHERE tn.project_id = $1
-        ORDER BY o.created_at DESC`,
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE tn.project_id = $1
+       ORDER BY o.created_at DESC`,
       [projectId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching offers:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
   }
 });
 
-// Create offer (Handwerker)
+// Update the /api/offers/create endpoint:
 app.post('/api/offers/create', async (req, res) => {
   try {
-    const {
-      tenderId,
-      handwerkerId: companyIdOrId,
-      amount,
-      executionTime,
-      notes,
-      bundleDiscount,
-      includeMaterial,
-      includeAnfahrt
-    } = req.body;
-
-    // Mappe company_id -> id wenn nötig
+    const { tenderId, handwerkerId: companyIdOrId, amount, executionTime, notes, bundleDiscount, includeMaterial, includeAnfahrt } = req.body;
+    
+    // Handle both company_id and direct id
     let actualHandwerkerId = companyIdOrId;
     if (typeof companyIdOrId === 'string' && companyIdOrId.startsWith('HW-')) {
       actualHandwerkerId = await getHandwerkerIdFromCompanyId(companyIdOrId);
@@ -13983,135 +13990,174 @@ app.post('/api/offers/create', async (req, res) => {
         return res.status(404).json({ error: 'Handwerker nicht gefunden' });
       }
     }
-
+    
     const result = await query(
       `INSERT INTO offers (
-         tender_id, handwerker_id, amount, execution_time, notes,
-         bundle_discount, include_material, include_anfahrt, status, created_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())
-       RETURNING id`,
+        tender_id, handwerker_id, amount, execution_time, notes,
+        bundle_discount, include_material, include_anfahrt, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())
+      RETURNING id`,
       [tenderId, actualHandwerkerId, amount, executionTime, notes, bundleDiscount, includeMaterial, includeAnfahrt]
     );
-
+    
     res.json({ success: true, offerId: result.rows[0].id });
+    
   } catch (error) {
     console.error('Error creating offer:', error);
     res.status(500).json({ error: 'Fehler beim Erstellen des Angebots' });
   }
 });
 
-// Ungelesene Angebote (nur eine Route-Version)
+// Ungelesene Angebote zählen
 app.get('/api/projects/:projectId/offers/unread-count', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const result = await query(
-      `SELECT COUNT(*)::int as count
-         FROM offers o
-         JOIN tenders t ON o.tender_id = t.id
-        WHERE t.project_id = $1 AND o.viewed_at IS NULL`,
+      `SELECT COUNT(*) as count
+       FROM offers o
+       JOIN tenders t ON o.tender_id = t.id
+       WHERE t.project_id = $1 AND o.viewed_at IS NULL`,
       [projectId]
     );
-    res.json({ count: result.rows[0].count });
+    
+    res.json({ count: parseInt(result.rows[0].count) });
   } catch (error) {
     res.status(500).json({ error: 'Fehler beim Zählen' });
   }
 });
 
-// Angebot-Details (mit Kontaktmaskierung)
+// Korrigierte bestehende Route
 app.get('/api/projects/:projectId/offers/:offerId', async (req, res) => {
   try {
     const { projectId, offerId } = req.params;
+    
     const result = await query(
       `SELECT o.*, 
-              h.company_name, h.email, h.phone, h.street, h.house_number, h.zip_code, h.city,
-              t.name as trade_name, t.code as trade_code
-         FROM offers o
-         JOIN handwerker h ON o.handwerker_id = h.id
-         JOIN tenders tn ON o.tender_id = tn.id
-         JOIN trades t ON tn.trade_id = t.id
-        WHERE tn.project_id = $1 AND o.id = $2`,
+              h.company_name, 
+              h.email, 
+              h.phone, 
+              h.street, 
+              h.house_number, 
+              h.zip_code, 
+              h.city,
+              t.name as trade_name,
+              t.code as trade_code
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id  -- HIER IST DIE KORREKTUR
+       WHERE tn.project_id = $1 AND o.id = $2`,
       [projectId, offerId]
     );
+    
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Angebot nicht gefunden' });
     }
+    
+    // Kontaktdaten-Schutz basierend auf Status
     const offer = result.rows[0];
-
-    // Kontaktdaten nur bei Status preliminary/accepted
     if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
+      // Kontaktdaten nur bei vorläufiger/finaler Beauftragung sichtbar
       offer.email = 'Wird nach Beauftragung freigegeben';
       offer.phone = 'Wird nach Beauftragung freigegeben';
       offer.street = null;
       offer.house_number = null;
     }
+    
     res.json(offer);
+    
   } catch (error) {
     console.error('Error fetching offer details:', error);
     res.status(500).json({ error: 'Fehler beim Laden des Angebots' });
   }
 });
 
-// ======= ZWEISTUFIGE VERGABE =======
+// ============= ZWEISTUFIGE VERGABE SYSTEM =============
 
-// Stufe 1: Vorläufig annehmen → Kontaktfreigabe
+// Stufe 1: Vorläufige Beauftragung mit Kontaktfreigabe
 app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
   try {
     const { offerId } = req.params;
+    const { projectId } = req.body;
+    
     await query('BEGIN');
-
+    
+    // Hole Angebotsdaten
     const offerResult = await query(
       `SELECT o.*, h.*, t.name as trade_name
-         FROM offers o
-         JOIN handwerker h ON o.handwerker_id = h.id
-         JOIN tenders tn ON o.tender_id = tn.id
-         JOIN trades t ON tn.trade_id = t.id
-        WHERE o.id = $1`,
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = $1`,
       [offerId]
     );
-    if (offerResult.rows.length === 0) throw new Error('Angebot nicht gefunden');
+    
+    if (offerResult.rows.length === 0) {
+      throw new Error('Angebot nicht gefunden');
+    }
+    
     const offer = offerResult.rows[0];
-
+    
+    // Update Offer Status zu Stufe 1
     await query(
       `UPDATE offers 
-          SET status = 'preliminary',
-              stage = 1,
-              preliminary_accepted_at = NOW(),
-              nachwirkfrist_expires_at = NOW() + INTERVAL '24 months'
-        WHERE id = $1`,
+       SET status = 'preliminary',
+           stage = 1,
+           preliminary_accepted_at = NOW(),
+           nachwirkfrist_expires_at = NOW() + INTERVAL '24 months'
+       WHERE id = $1`,
       [offerId]
     );
-
+    
+    // Protokolliere Kontaktfreigabe
     await query(
-      `INSERT INTO contract_negotiations (offer_id, action_type, action_by, action_data)
+      `INSERT INTO contract_negotiations 
+       (offer_id, action_type, action_by, action_data)
        VALUES ($1, 'contact_shared', 'system', $2)`,
-      [offerId, JSON.stringify({ bauherr_contact: true, handwerker_contact: true, timestamp: new Date().toISOString() })]
+      [offerId, JSON.stringify({
+        bauherr_contact: true,
+        handwerker_contact: true,
+        timestamp: new Date().toISOString()
+      })]
     );
-
-    // Optional: E-Mail
-    if (typeof transporter !== 'undefined' && transporter) {
-      try {
-        await transporter.sendMail({
-          from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-          to: offer.email,
-          subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
-          html: `
-            <h2>Glückwunsch! Vorläufige Beauftragung</h2>
-            <p>Die Kontaktdaten wurden freigegeben. Die 24-monatige Nachwirkfrist ist aktiv.</p>
-            <h3>Nächste Schritte:</h3>
-            <ul>
-              <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
-              <li>Angebot nach Besichtigung bestätigen/anpassen</li>
-              <li>Danach kann der Bauherr verbindlich beauftragen</li>
-            </ul>
-            <p><strong>Gewerk:</strong> ${offer.trade_name}</p>
-          `
-        });
-      } catch (emailError) {
-        console.error('Email-Versand fehlgeschlagen:', emailError.message);
-      }
-    }
-
+    
+    // Sende E-Mail-Benachrichtigungen
+if (transporter) {
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+      to: offer.email,
+      subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
+      html: `
+        <h2>Glückwunsch! Sie haben eine vorläufige Beauftragung erhalten</h2>
+        <p>Der Bauherr hat Ihr Angebot vorläufig angenommen und möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
+        
+        <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px; margin: 20px 0;">
+          <strong>Status: Vertragsanbahnung</strong><br>
+          Sie befinden sich nun in der geschützten Kennenlernphase. Die 24-monatige Nachwirkfrist ist aktiv.
+          Beide Seiten können das Angebot noch anpassen oder zurückziehen.
+        </div>
+        
+        <h3>Nächste Schritte:</h3>
+        <ul>
+          <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
+          <li>Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</li>
+          <li>Nach Ihrer Bestätigung kann der Bauherr verbindlich beauftragen</li>
+        </ul>
+        
+        <p><strong>Projektdetails:</strong> ${offer.trade_name}</p>
+        <a href="https://byndl.de/handwerker/dashboard">Zum Dashboard</a>
+      `
+    });
+  } catch (emailError) {
+    console.error('Email-Versand fehlgeschlagen:', emailError.message);
+  }
+}
+    
     await query('COMMIT');
+    
     res.json({
       success: true,
       message: 'Vorläufige Beauftragung erfolgreich',
@@ -14124,6 +14170,7 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
         }
       }
     });
+    
   } catch (error) {
     await query('ROLLBACK');
     console.error('Error in preliminary acceptance:', error);
@@ -14131,80 +14178,155 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
   }
 });
 
-// Handwerker bestätigt nach Ortstermin (Status confirmed)
+// Handwerker bestätigt Angebot nach Ortstermin
 app.post('/api/offers/:offerId/confirm-after-inspection', async (req, res) => {
   try {
     const { offerId } = req.params;
     const { adjustedAmount, notes } = req.body;
+    
     await query(
       `UPDATE offers 
-          SET offer_confirmed_at = NOW(),
-              amount = COALESCE($2, amount),
-              notes = COALESCE($3, notes),
-              status = 'confirmed'
-        WHERE id = $1`,
+       SET offer_confirmed_at = NOW(),
+           amount = COALESCE($2, amount),
+           notes = COALESCE($3, notes),
+           status = 'confirmed'  -- FEHLT IN ORIGINAL!
+       WHERE id = $1`,
       [offerId, adjustedAmount, notes]
     );
-
+    
+    // Protokolliere
     await query(
-      `INSERT INTO contract_negotiations (offer_id, action_type, action_by, action_data)
+      `INSERT INTO contract_negotiations 
+       (offer_id, action_type, action_by, action_data)
        VALUES ($1, 'offer_confirmed', 'handwerker', $2)`,
       [offerId, JSON.stringify({ adjustedAmount, notes })]
     );
-
+    
     res.json({ success: true, message: 'Verbindliches Angebot bestätigt' });
+    
   } catch (error) {
     console.error('Error confirming offer:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Stufe 2: Final annehmen (Werkvertrag/Order anlegen)
+// Terminvorschlag vom Handwerker
+app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { proposedDates, message } = req.body;
+    
+    // Hole Kontaktdaten für Email
+    const contactData = await query(
+      `SELECT b.email, b.name, h.company_name, t.name as trade_name
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = $1 AND o.status = 'preliminary'`,
+      [offerId]
+    );
+    
+    if (contactData.rows.length === 0) {
+      return res.status(404).json({ error: 'Angebot nicht in Vertragsanbahnung' });
+    }
+    
+    // Speichere Terminvorschlag
+    await query(
+      `INSERT INTO appointment_proposals 
+       (offer_id, proposed_by, proposed_dates, message, status, created_at)
+       VALUES ($1, 'handwerker', $2, $3, 'pending', NOW())`,
+      [offerId, JSON.stringify(proposedDates), message]
+    );
+    
+    // Email an Bauherr
+    if (transporter) {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: contactData.rows[0].email,
+        subject: `Terminvorschlag für Ortstermin - ${contactData.rows[0].trade_name}`,
+        html: `
+          <h2>Neuer Terminvorschlag</h2>
+          <p>${contactData.rows[0].company_name} hat Termine für einen Ortstermin vorgeschlagen:</p>
+          <ul>
+            ${proposedDates.map(date => `<li>${new Date(date).toLocaleString('de-DE')}</li>`).join('')}
+          </ul>
+          ${message ? `<p>Nachricht: ${message}</p>` : ''}
+          <a href="https://byndl.de/dashboard">Zum Dashboard</a>
+        `
+      });
+    }
+    
+    res.json({ success: true, message: 'Terminvorschläge gesendet' });
+    
+  } catch (error) {
+    console.error('Error proposing appointment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Stufe 2: Verbindliche Beauftragung
 app.post('/api/offers/:offerId/final-accept', async (req, res) => {
   try {
     const { offerId } = req.params;
+    
     await query('BEGIN');
-
+    
+    // Update zu Stufe 2
     await query(
       `UPDATE offers 
-          SET status = 'accepted',
-              stage = 2,
-              final_accepted_at = NOW()
-        WHERE id = $1`,
+       SET status = 'accepted',
+           stage = 2,
+           final_accepted_at = NOW()
+       WHERE id = $1`,
       [offerId]
     );
-
+    
+    // Erstelle Werkvertrag
     const contractResult = await query(
-      `INSERT INTO orders (offer_id, project_id, handwerker_id, trade_id, amount, status, created_at)
+      `INSERT INTO orders 
+       (offer_id, project_id, handwerker_id, trade_id, amount, status, created_at)
        SELECT o.id, tn.project_id, o.handwerker_id, tn.trade_id, o.amount, 'active', NOW()
-         FROM offers o
-         JOIN tenders tn ON o.tender_id = tn.id
-        WHERE o.id = $1
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       WHERE o.id = $1
        RETURNING id`,
       [offerId]
     );
-
+    
+    // Aktiviere Premium-Features
     await query(
       `UPDATE projects 
-          SET premium_features_active = true 
-        WHERE id = (SELECT tn.project_id FROM offers o JOIN tenders tn ON o.tender_id = tn.id WHERE o.id = $1)`,
+       SET premium_features_active = true 
+       WHERE id = (
+         SELECT tn.project_id 
+         FROM offers o 
+         JOIN tenders tn ON o.tender_id = tn.id 
+         WHERE o.id = $1
+       )`,
       [offerId]
     );
-
+    
+    // Erstelle Rechnung für BYNDL-Provision
     const provisionAmount = await calculateProvision(offerId);
     await query(
-      `INSERT INTO invoices (type, reference_id, amount, status, due_date)
+      `INSERT INTO invoices 
+       (type, reference_id, amount, status, due_date)
        VALUES ('provision', $1, $2, 'pending', NOW() + INTERVAL '14 days')`,
       [offerId, provisionAmount]
     );
-
+    
     await query('COMMIT');
+    
     res.json({
       success: true,
       message: 'Verbindliche Beauftragung erfolgreich',
       contractId: contractResult.rows[0].id,
       premiumFeaturesActivated: true
     });
+    
   } catch (error) {
     await query('ROLLBACK');
     console.error('Error in final acceptance:', error);
@@ -14212,40 +14334,47 @@ app.post('/api/offers/:offerId/final-accept', async (req, res) => {
   }
 });
 
-// Bundle-Erkennung
+// Bundle-Erkennung und Vorschlag
 app.post('/api/bundles/analyze', async (req, res) => {
   try {
+    // Finde potenzielle Bündel
     const bundles = await query(
       `SELECT 
-         p.zip_code as region,
-         pt.trade_id,
-         t.name as trade_name,
-         COUNT(*) as project_count,
-         STRING_AGG(p.id::text, ',') as project_ids
-        FROM projects p
-        JOIN project_trades pt ON p.id = pt.project_id
-        JOIN trades t ON pt.trade_id = t.id
+        p.zip as region,
+        pt.trade_id,
+        t.name as trade_name,
+        COUNT(*) as project_count,
+        STRING_AGG(p.id::text, ',') as project_ids
+       FROM projects p
+       JOIN project_trades pt ON p.id = pt.project_id
+       JOIN trades t ON pt.trade_id = t.id
        WHERE p.status = 'active'
-         AND p.created_at > NOW() - INTERVAL '30 days'
-       GROUP BY p.zip_code, pt.trade_id, t.name
-      HAVING COUNT(*) >= 2
+       AND p.created_at > NOW() - INTERVAL '30 days'
+       GROUP BY p.zip, pt.trade_id, t.name
+       HAVING COUNT(*) >= 2
        ORDER BY COUNT(*) DESC`
     );
-
+    
+    // Erstelle Bundle-Vorschläge
     for (const bundle of bundles.rows) {
       const existingBundle = await query(
         `SELECT id FROM project_bundles 
-          WHERE region = $1 AND trade_id = $2 
-            AND created_at > NOW() - INTERVAL '7 days'`,
+         WHERE region = $1 AND trade_id = $2 
+         AND created_at > NOW() - INTERVAL '7 days'`,
         [bundle.region, bundle.trade_id]
       );
+      
       if (existingBundle.rows.length === 0) {
+        // Neues Bundle erstellen
         const bundleResult = await query(
-          `INSERT INTO project_bundles (region, trade_id, min_projects_for_discount)
+          `INSERT INTO project_bundles 
+           (region, trade_id, min_projects_for_discount)
            VALUES ($1, $2, $3)
            RETURNING id`,
           [bundle.region, bundle.trade_id, Math.min(3, bundle.project_count)]
         );
+        
+        // Projekte zum Bundle hinzufügen
         const projectIds = bundle.project_ids.split(',');
         for (const projectId of projectIds) {
           await query(
@@ -14256,69 +14385,90 @@ app.post('/api/bundles/analyze', async (req, res) => {
         }
       }
     }
-
-    res.json({ success: true, bundlesFound: bundles.rows.length });
+    
+    res.json({ 
+      success: true, 
+      bundlesFound: bundles.rows.length 
+    });
+    
   } catch (error) {
     console.error('Error analyzing bundles:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Provision (einfach 5 %)
+// Helper-Funktion für Provisionsberechnung
 async function calculateProvision(offerId) {
-  const result = await query('SELECT amount FROM offers WHERE id = $1', [offerId]);
-  const amount = result.rows[0]?.amount || 0;
-  const provisionRate = 0.05;
+  const result = await query(
+    'SELECT amount FROM offers WHERE id = $1',
+    [offerId]
+  );
+  
+  const amount = result.rows[0].amount;
+  const provisionRate = 0.05; // 5% Provision
   return amount * provisionRate;
 }
 
-// Orders eines Projekts
+// Get project orders
 app.get('/api/projects/:projectId/orders', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const result = await query(
       `SELECT o.*, h.company_name, t.name as trade_name
-         FROM orders o
-         JOIN handwerker h ON o.handwerker_id = h.id
-         JOIN trades t ON o.trade_id = t.id
-        WHERE o.project_id = $1
-        ORDER BY o.created_at DESC`,
+       FROM orders o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN trades t ON o.trade_id = t.id
+       WHERE o.project_id = $1
+       ORDER BY o.created_at DESC`,
       [projectId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching orders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Aufträge' });
   }
 });
 
-// Nachträge (Supplements)
+// Get project supplements
 app.get('/api/projects/:projectId/supplements', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const result = await query(
       `SELECT s.*, h.company_name
-         FROM supplements s
-         JOIN orders o ON s.order_id = o.id
-         JOIN handwerker h ON o.handwerker_id = h.id
-        WHERE o.project_id = $1
-        ORDER BY s.created_at DESC`,
+       FROM supplements s
+       JOIN orders o ON s.order_id = o.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE o.project_id = $1
+       ORDER BY s.created_at DESC`,
       [projectId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching supplements:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Nachträge' });
   }
 });
 
-// ======= BAUHERR SETTINGS =======
+// Bauherr Settings Endpoints
 
 // Get Bauherr Settings
 app.get('/api/bauherr/:id/settings', async (req, res) => {
   try {
-    const result = await query(`SELECT id, name, email, phone, street, house_number, zip, city, notification_settings, two_factor_enabled, created_at, updated_at FROM bauherren WHERE id = $1`, [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    const result = await query(
+      `SELECT * FROM bauherren WHERE id = $1`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    }
+    
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error fetching settings:', err);
@@ -14330,13 +14480,21 @@ app.get('/api/bauherr/:id/settings', async (req, res) => {
 app.put('/api/bauherr/:id/personal', async (req, res) => {
   try {
     const { name, email, phone, street, houseNumber, zipCode, city } = req.body;
+    
     await query(
       `UPDATE bauherren SET
-         name = $2, email = $3, phone = $4, street = $5,
-         house_number = $6, zip = $7, city = $8, updated_at = NOW()
+        name = $2,
+        email = $3,
+        phone = $4,
+        street = $5,
+        house_number = $6,
+        zip = $7,
+        city = $8,
+        updated_at = NOW()
        WHERE id = $1`,
       [req.params.id, name, email, phone, street, houseNumber, zipCode, city]
     );
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating personal data:', err);
@@ -14348,9 +14506,13 @@ app.put('/api/bauherr/:id/personal', async (req, res) => {
 app.put('/api/bauherr/:id/notifications', async (req, res) => {
   try {
     await query(
-      `UPDATE bauherren SET notification_settings = $2::jsonb, updated_at = NOW() WHERE id = $1`,
+      `UPDATE bauherren SET
+        notification_settings = $2,
+        updated_at = NOW()
+       WHERE id = $1`,
       [req.params.id, JSON.stringify(req.body)]
     );
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating notifications:', err);
@@ -14358,21 +14520,39 @@ app.put('/api/bauherr/:id/notifications', async (req, res) => {
   }
 });
 
-// Change Password (Bauherr)
+// Change Password
 app.put('/api/bauherr/:id/password', async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const result = await query('SELECT password_hash FROM bauherren WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Bauherr nicht gefunden' });
-
+    
+    // Get current password hash
+    const result = await query(
+      'SELECT password_hash FROM bauherren WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    }
+    
+    // Verify current password
     const isValid = await bcryptjs.compare(currentPassword, result.rows[0].password_hash);
-    if (!isValid) return res.status(401).json({ error: 'Falsches Passwort' });
-
+    if (!isValid) {
+      return res.status(401).json({ error: 'Falsches Passwort' });
+    }
+    
+    // Hash new password
     const hashedPassword = await bcryptjs.hash(newPassword, 10);
+    
+    // Update password
     await query(
-      `UPDATE bauherren SET password_hash = $2, updated_at = NOW() WHERE id = $1`,
+      `UPDATE bauherren SET
+        password_hash = $2,
+        updated_at = NOW()
+       WHERE id = $1`,
       [req.params.id, hashedPassword]
     );
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Error changing password:', err);
@@ -14380,14 +14560,19 @@ app.put('/api/bauherr/:id/password', async (req, res) => {
   }
 });
 
-// Toggle Two-Factor (Bauherr)
+// Toggle Two-Factor
 app.put('/api/bauherr/:id/two-factor', async (req, res) => {
   try {
     const { enabled } = req.body;
+    
     await query(
-      `UPDATE bauherren SET two_factor_enabled = $2, updated_at = NOW() WHERE id = $1`,
-      [req.params.id, !!enabled]
+      `UPDATE bauherren SET
+        two_factor_enabled = $2,
+        updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, enabled]
     );
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Error toggling 2FA:', err);
@@ -14395,26 +14580,19 @@ app.put('/api/bauherr/:id/two-factor', async (req, res) => {
   }
 });
 
-// Export Data (Bauherr) – sichere Felder
+// Export Data
 app.get('/api/bauherr/:id/export', async (req, res) => {
   try {
-    const bauherrResult = await query(
-      `SELECT id, name, email, phone, street, house_number, zip, city, created_at, updated_at
-         FROM bauherren WHERE id = $1`,
-      [req.params.id]
-    );
-    const projectsResult = await query(
-      `SELECT id, description, category, sub_category, zip_code, city, timeframe, created_at, updated_at
-         FROM projects WHERE bauherr_id = $1`,
-      [req.params.id]
-    );
-
+    // Get all user data
+    const bauherrResult = await query('SELECT * FROM bauherren WHERE id = $1', [req.params.id]);
+    const projectsResult = await query('SELECT * FROM projects WHERE bauherr_id = $1', [req.params.id]);
+    
     const exportData = {
-      personal: bauherrResult.rows[0] || null,
+      personal: bauherrResult.rows[0],
       projects: projectsResult.rows,
       exportDate: new Date().toISOString()
     };
-
+    
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', 'attachment; filename="byndl-export.json"');
     res.json(exportData);
@@ -14424,57 +14602,43 @@ app.get('/api/bauherr/:id/export', async (req, res) => {
   }
 });
 
-// Delete Account (Bauherr) – erweitert mit referenziellen Löschungen
+// Delete Account
 app.delete('/api/bauherr/:id/account', async (req, res) => {
   try {
     const { password } = req.body;
-    const result = await query('SELECT password_hash FROM bauherren WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Account nicht gefunden' });
-
-    const valid = await bcryptjs.compare(password, result.rows[0].password_hash);
-    if (!valid) return res.status(401).json({ error: 'Falsches Passwort' });
-
-    await query('BEGIN');
-
-    const projects = await query('SELECT id FROM projects WHERE bauherr_id = $1', [req.params.id]);
-    for (const { id: projectId } of projects.rows) {
-      // sammle Tender-IDs
-      const tenders = await query('SELECT id FROM tenders WHERE project_id = $1', [projectId]);
-      const tenderIds = tenders.rows.map(r => r.id);
-
-      if (tenderIds.length) {
-        // offers/appointments/contracts/negotiations
-        const offers = await query(
-          `SELECT id FROM offers WHERE tender_id = ANY($1::int[])`,
-          [tenderIds]
-        );
-        const offerIds = offers.rows.map(r => r.id);
-
-        if (offerIds.length) {
-          await query(`DELETE FROM appointment_proposals WHERE offer_id = ANY($1::int[])`, [offerIds]);
-          await query(`DELETE FROM contract_negotiations WHERE offer_id = ANY($1::int[])`, [offerIds]);
-          await query(`DELETE FROM orders WHERE offer_id = ANY($1::int[])`, [offerIds]);
-          await query(`DELETE FROM invoices WHERE reference_id = ANY($1::int[]) AND type = 'provision'`, [offerIds]);
-          await query(`DELETE FROM offers WHERE id = ANY($1::int[])`, [offerIds]);
-        }
-
-        await query(`DELETE FROM tender_handwerker WHERE tender_id = ANY($1::int[])`, [tenderIds]);
-        await query(`DELETE FROM tender_handwerker_status WHERE tender_id = ANY($1::int[])`, [tenderIds]);
-        await query(`DELETE FROM tenders WHERE id = ANY($1::int[])`, [tenderIds]);
-      }
-
-      // restliche projektgebundene Daten
-      await query('DELETE FROM trade_progress WHERE project_id = $1', [projectId]);
-      await query('DELETE FROM answers WHERE project_id = $1', [projectId]);
-      await query('DELETE FROM questions WHERE project_id = $1', [projectId]);
-      await query('DELETE FROM project_trades WHERE project_id = $1', [projectId]);
-      await query('DELETE FROM lvs WHERE project_id = $1', [projectId]);
+    
+    // Verify password
+    const result = await query(
+      'SELECT password_hash FROM bauherren WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Account nicht gefunden' });
     }
-
+    
+    const isValid = await bcryptjs.compare(password, result.rows[0].password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Falsches Passwort' });
+    }
+    
+    // Delete all related data
+    await query('BEGIN');
+    
+    // Delete projects and all related data
+    const projects = await query('SELECT id FROM projects WHERE bauherr_id = $1', [req.params.id]);
+    for (const project of projects.rows) {
+      await query('DELETE FROM questions WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM project_trades WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM lvs WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM tenders WHERE project_id = $1', [project.id]);
+    }
+    
     await query('DELETE FROM projects WHERE bauherr_id = $1', [req.params.id]);
     await query('DELETE FROM bauherren WHERE id = $1', [req.params.id]);
-
+    
     await query('COMMIT');
+    
     res.json({ success: true });
   } catch (err) {
     await query('ROLLBACK');
@@ -14483,37 +14647,22 @@ app.delete('/api/bauherr/:id/account', async (req, res) => {
   }
 });
 
-// Delete Project – erweitert (saubere Kaskade)
+// Delete Project
 app.delete('/api/projects/:id', async (req, res) => {
   try {
     await query('BEGIN');
-
-    const projectId = req.params.id;
-    const tenders = await query('SELECT id FROM tenders WHERE project_id = $1', [projectId]);
-    const tenderIds = tenders.rows.map(r => r.id);
-    if (tenderIds.length) {
-      const offers = await query('SELECT id FROM offers WHERE tender_id = ANY($1::int[])', [tenderIds]);
-      const offerIds = offers.rows.map(r => r.id);
-      if (offerIds.length) {
-        await query(`DELETE FROM appointment_proposals WHERE offer_id = ANY($1::int[])`, [offerIds]);
-        await query(`DELETE FROM contract_negotiations WHERE offer_id = ANY($1::int[])`, [offerIds]);
-        await query(`DELETE FROM orders WHERE offer_id = ANY($1::int[])`, [offerIds]);
-        await query(`DELETE FROM invoices WHERE reference_id = ANY($1::int[]) AND type='provision'`, [offerIds]);
-        await query(`DELETE FROM offers WHERE id = ANY($1::int[])`, [offerIds]);
-      }
-      await query(`DELETE FROM tender_handwerker WHERE tender_id = ANY($1::int[])`, [tenderIds]);
-      await query(`DELETE FROM tender_handwerker_status WHERE tender_id = ANY($1::int[])`, [tenderIds]);
-      await query(`DELETE FROM tenders WHERE id = ANY($1::int[])`, [tenderIds]);
-    }
-
-    await query('DELETE FROM questions WHERE project_id = $1', [projectId]);
-    await query('DELETE FROM answers WHERE project_id = $1', [projectId]);
-    await query('DELETE FROM project_trades WHERE project_id = $1', [projectId]);
-    await query('DELETE FROM lvs WHERE project_id = $1', [projectId]);
-    await query('DELETE FROM trade_progress WHERE project_id = $1', [projectId]);
-    await query('DELETE FROM projects WHERE id = $1', [projectId]);
-
+    
+    // Delete all related data
+    await query('DELETE FROM questions WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM answers WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM project_trades WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM lvs WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM tenders WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM trade_progress WHERE project_id = $1', [req.params.id]);
+    await query('DELETE FROM projects WHERE id = $1', [req.params.id]);
+    
     await query('COMMIT');
+    
     res.json({ success: true });
   } catch (err) {
     await query('ROLLBACK');
@@ -14522,274 +14671,459 @@ app.delete('/api/projects/:id', async (req, res) => {
   }
 });
 
-// ========== 5. HANDWERKER DASHBOARD ROUTES ==========
+// 5. HANDWERKER DASHBOARD ROUTES
+// ----------------------------------------------------------------------------
 
-// (Behalte nur) Korrigierte neue Tenderliste per Handwerker (Company-ID)
-app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
+// Get matching tenders for handwerker
+app.get('/api/handwerker/:companyId/tenders', async (req, res) => {
   try {
     const { companyId } = req.params;
-
+    
+    // Get handwerker details with trade_ids
     const handwerkerResult = await query(
-      `SELECT h.*, array_agg(DISTINCT ht.trade_id) as trade_ids
-         FROM handwerker h
-         LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
-        WHERE h.company_id = $1
-        GROUP BY h.id`,
+      `SELECT h.*, array_agg(ht.trade_id) as trade_ids
+       FROM handwerker h
+       LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
+       WHERE h.company_id = $1
+       GROUP BY h.id`,
       [companyId]
     );
+    
     if (handwerkerResult.rows.length === 0) {
       return res.status(404).json({ error: 'Handwerker nicht gefunden' });
     }
-
+    
     const handwerker = handwerkerResult.rows[0];
     const tradeIds = handwerker.trade_ids || [];
-
-    const tenders = await query(
-      `SELECT DISTINCT ON (t.id)
-              t.id, t.project_id, t.trade_id, t.status, t.deadline, t.created_at,
-              t.lv_data, t.estimated_value,
-              tr.name as trade_name,
-              p.description as project_description,
-              p.category, p.sub_category, p.timeframe,
-              p.zip_code as project_zip, p.city as project_city,
-              th.viewed_at,
-              CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as is_new
-         FROM tenders t
-         JOIN tender_handwerker th ON t.id = th.tender_id
-         JOIN trades tr ON t.trade_id = tr.id
-         JOIN projects p ON t.project_id = p.id
-        WHERE th.handwerker_id = $1
-          AND t.trade_id = ANY($2::int[])
-          AND t.status = 'open'
-          AND t.deadline > NOW()
-          AND NOT EXISTS (
-                SELECT 1 FROM offers o 
-                 WHERE o.tender_id = t.id 
-                   AND o.handwerker_id = $1
-                   AND o.status != 'withdrawn'
-              )
-        ORDER BY t.id, t.created_at DESC`,
-      [handwerker.id, tradeIds]
+    
+    // Get matching tenders
+    const result = await query(
+      `SELECT DISTINCT t.*, 
+              p.description, 
+              p.category,
+              p.sub_category,
+              p.budget, 
+              p.zip_code, 
+              p.city,
+              tr.name as trade,
+              CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as "isNew"
+       FROM tenders t
+       JOIN projects p ON t.project_id = p.id
+       JOIN trades tr ON t.trade_id = tr.id
+       WHERE t.trade_id = ANY($1::int[])
+       AND t.status = 'open'
+       AND t.deadline > NOW()
+       ORDER BY t.created_at DESC`,
+      [tradeIds]
     );
-
-    res.json(tenders.rows);
+    
+    // Map tender data with additional info
+    const tenders = result.rows.map(tender => ({
+      ...tender,
+      projectType: `${tender.category} - ${tender.sub_category}`,
+      location: `${tender.zip_code} ${tender.city}`,
+      distance: Math.round(Math.random() * handwerker.action_radius), // TODO: Echte Distanzberechnung
+      estimatedVolume: tender.budget || tender.estimated_value || 0,
+      executionDate: tender.timeframe || 'Nach Absprache',
+      deadline: tender.deadline
+    }));
+    
+    res.json(tenders);
+    
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error fetching handwerker tenders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
   }
 });
+// Get handwerker bundles
+app.get('/api/handwerker/:companyId/bundles', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // Simplified bundle response - in real implementation would check for actual bundles
+    const bundles = [];
+    
+    res.json(bundles);
+    
+  } catch (error) {
+    console.error('Error fetching bundles:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Bündel' });
+  }
+});
 
-// Handwerker-Angebote (offene/confirmed – ohne preliminary/accepted/withdrawn)
+// Get handwerker offers
 app.get('/api/handwerker/:companyId/offers', async (req, res) => {
   try {
     const { companyId } = req.params;
+    
     const result = await query(
       `SELECT 
-         o.*, 
-         t.name as trade, 
-         p.description as projectType, 
-         p.zip_code || ' ' || p.city as location,
-         o.created_at as submittedDate,
-         CASE 
-           WHEN o.status = 'submitted' THEN 'Vorläufiges Angebot'
-           WHEN o.status = 'confirmed' THEN 'Verbindliches Angebot'
-           WHEN o.status = 'preliminary' THEN 'Vorläufig beauftragt'
-           ELSE o.status
-         END as status_text
-        FROM offers o
-        JOIN handwerker h ON o.handwerker_id = h.id
-        JOIN tenders tn ON o.tender_id = tn.id
-        JOIN trades t ON tn.trade_id = t.id
-        JOIN projects p ON tn.project_id = p.id
+        o.*, 
+        t.name as trade, 
+        p.description as projectType, 
+        p.zip_code || ' ' || p.city as location,
+        o.created_at as submittedDate,
+        o.status,
+        o.amount,
+        o.viewed_at,
+        CASE 
+          WHEN o.status = 'submitted' THEN 'Vorläufiges Angebot'
+          WHEN o.status = 'confirmed' THEN 'Verbindliches Angebot'
+          WHEN o.status = 'preliminary' THEN 'Vorläufig beauftragt'
+          ELSE o.status
+        END as status_text
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       JOIN projects p ON tn.project_id = p.id
        WHERE h.company_id = $1
          AND o.status IN ('submitted', 'confirmed')
+         AND o.status NOT IN ('preliminary', 'accepted', 'withdrawn')
        ORDER BY o.created_at DESC`,
       [companyId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching handwerker offers:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
   }
 });
 
-// Vertragsanbahnungen (preliminary)
+// Get handwerker contracts
 app.get('/api/handwerker/:companyId/contracts', async (req, res) => {
   try {
     const { companyId } = req.params;
+    
     const result = await query(
       `SELECT 
-         o.*,
-         p.description as projectType,
-         p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
-         b.name as clientName,
-         b.email as clientEmail,
-         b.phone as clientPhone,
-         b.street || ' ' || b.house_number || ', ' || b.zip || ' ' || b.city as clientAddress,
-         t.name as trade,
-         o.preliminary_accepted_at,
-         o.offer_confirmed_at,
-         o.amount,
-         o.notes,
-         o.lv_data,
-         CASE 
-           WHEN o.offer_confirmed_at IS NOT NULL THEN 'Angebot bestätigt - wartet auf finale Beauftragung'
-           ELSE 'Vorläufig beauftragt - Ortstermin ausstehend'
-         END as negotiation_status
-        FROM offers o
-        JOIN handwerker h ON o.handwerker_id = h.id
-        JOIN tenders tn ON o.tender_id = tn.id
-        JOIN projects p ON tn.project_id = p.id
-        JOIN bauherren b ON p.bauherr_id = b.id
-        JOIN trades t ON tn.trade_id = t.id
+        o.*,
+        p.description as projectType,
+        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
+        b.name as clientName,
+        b.email as clientEmail,
+        b.phone as clientPhone,
+        b.street || ' ' || b.house_number || ', ' || b.zip || ' ' || b.city as clientAddress,
+        t.name as trade,
+        o.preliminary_accepted_at,
+        o.offer_confirmed_at,
+        o.amount,
+        o.notes,
+        o.lv_data,
+        CASE 
+          WHEN o.offer_confirmed_at IS NOT NULL THEN 'Angebot bestätigt - wartet auf finale Beauftragung'
+          ELSE 'Vorläufig beauftragt - Ortstermin ausstehend'
+        END as negotiation_status
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON tn.trade_id = t.id
        WHERE h.company_id = $1
          AND o.status = 'preliminary'
          AND o.stage = 1
        ORDER BY o.preliminary_accepted_at DESC`,
       [companyId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching contract negotiations:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Vertragsanbahnungen' });
   }
 });
 
-// Handwerker-Aufträge (Stage 2, accepted)
+app.post('/api/offers/:offerId/schedule-appointment', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { proposedDates, message } = req.body;
+    
+    // Speichere Terminvorschläge
+    await query(
+      `INSERT INTO appointment_proposals 
+       (offer_id, proposed_by, proposed_dates, message, status, created_at)
+       VALUES ($1, 'handwerker', $2, $3, 'pending', NOW())`,
+      [offerId, JSON.stringify(proposedDates), message]
+    );
+    
+    // Benachrichtige Bauherr (Email-Versand)
+    // ... Email-Code hier ...
+    
+    res.json({ 
+      success: true, 
+      message: 'Terminvorschläge wurden an den Bauherrn gesendet' 
+    });
+    
+  } catch (error) {
+    console.error('Error scheduling appointment:', error);
+    res.status(500).json({ error: 'Fehler bei der Terminvereinbarung' });
+  }
+});
+
+app.post('/api/offers/:offerId/update-after-inspection', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { 
+      adjustedPositions, 
+      adjustedAmount, 
+      executionTimeframe,
+      notes,
+      materialIncluded,
+      anfahrtIncluded 
+    } = req.body;
+    
+    await query('BEGIN');
+    
+    // Prüfe ob Angebot in Vertragsanbahnung ist
+    const offerCheck = await query(
+      'SELECT status, stage FROM offers WHERE id = $1',
+      [offerId]
+    );
+    
+    if (offerCheck.rows[0].status !== 'preliminary' || offerCheck.rows[0].stage !== 1) {
+      throw new Error('Angebot ist nicht in Vertragsanbahnung');
+    }
+    
+    // Update mit neuen Daten
+    await query(
+      `UPDATE offers 
+       SET 
+         lv_data = COALESCE($2, lv_data),
+         amount = COALESCE($3, amount),
+         execution_time = COALESCE($4, execution_time),
+         notes = COALESCE($5, notes),
+         include_material = COALESCE($6, include_material),
+         include_anfahrt = COALESCE($7, include_anfahrt),
+         offer_confirmed_at = NOW(),
+         status = 'confirmed'
+       WHERE id = $1`,
+      [
+        offerId, 
+        adjustedPositions ? JSON.stringify(adjustedPositions) : null,
+        adjustedAmount,
+        executionTimeframe,
+        notes,
+        materialIncluded,
+        anfahrtIncluded
+      ]
+    );
+    
+    // Protokolliere Änderung
+    await query(
+      `INSERT INTO contract_negotiations 
+       (offer_id, action_type, action_by, action_data, created_at)
+       VALUES ($1, 'offer_updated_after_inspection', 'handwerker', $2, NOW())`,
+      [offerId, JSON.stringify({
+        adjustedAmount,
+        executionTimeframe,
+        notes,
+        timestamp: new Date().toISOString()
+      })]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      message: 'Verbindliches Angebot erfolgreich abgegeben' 
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error updating offer:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get handwerker orders
 app.get('/api/handwerker/:companyId/orders', async (req, res) => {
   try {
     const { companyId } = req.params;
+    
     const result = await query(
       `SELECT 
-         ord.*,
-         o.amount as contract_amount,
-         o.lv_data,
-         o.final_accepted_at as contract_date,
-         p.description as projectType,
-         p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
-         b.name as clientName,
-         b.email as clientEmail,
-         b.phone as clientPhone,
-         t.name as trade,
-         o.execution_time as planned_execution,
-         CASE 
-           WHEN ord.status = 'active' THEN 'In Ausführung'
-           WHEN ord.status = 'completed' THEN 'Abgeschlossen'
-           ELSE ord.status
-         END as status_text
-        FROM orders ord
-        JOIN offers o ON ord.offer_id = o.id
-        JOIN handwerker h ON ord.handwerker_id = h.id
-        JOIN projects p ON ord.project_id = p.id
-        JOIN bauherren b ON p.bauherr_id = b.id
-        JOIN trades t ON ord.trade_id = t.id
+        ord.*,
+        o.amount as contract_amount,
+        o.lv_data,
+        o.final_accepted_at as contract_date,
+        p.description as projectType,
+        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
+        b.name as clientName,
+        b.email as clientEmail,
+        b.phone as clientPhone,
+        t.name as trade,
+        o.execution_time as planned_execution,
+        CASE 
+          WHEN ord.status = 'active' THEN 'In Ausführung'
+          WHEN ord.status = 'completed' THEN 'Abgeschlossen'
+          ELSE ord.status
+        END as status_text
+       FROM orders ord
+       JOIN offers o ON ord.offer_id = o.id
+       JOIN handwerker h ON ord.handwerker_id = h.id
+       JOIN projects p ON ord.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON ord.trade_id = t.id
        WHERE h.company_id = $1
          AND o.status = 'accepted'
          AND o.stage = 2
        ORDER BY ord.created_at DESC`,
       [companyId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching handwerker orders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Aufträge' });
   }
 });
 
-// Angebot zurückziehen
+// Withdraw offer
 app.post('/api/offers/:offerId/withdraw', async (req, res) => {
   try {
     const { offerId } = req.params;
-    await query(`UPDATE offers SET status = 'withdrawn', withdrawn_at = NOW() WHERE id = $1`, [offerId]);
+    
+    await query(
+      `UPDATE offers SET status = 'withdrawn', withdrawn_at = NOW() WHERE id = $1`,
+      [offerId]
+    );
+    
     res.json({ success: true, message: 'Angebot zurückgezogen' });
+    
   } catch (error) {
     console.error('Error withdrawing offer:', error);
     res.status(500).json({ error: 'Fehler beim Zurückziehen' });
   }
 });
 
-// Orders: preliminary akzeptieren / Angebot bestätigen (nur Orders)
+// Accept preliminary contract
 app.post('/api/contracts/:contractId/accept-preliminary', async (req, res) => {
   try {
+    const { contractId } = req.params;
+    
     await query(
-      `UPDATE orders SET handwerker_accepted = true, handwerker_accepted_at = NOW() WHERE id = $1`,
-      [req.params.contractId]
+      `UPDATE orders SET 
+       handwerker_accepted = true,
+       handwerker_accepted_at = NOW()
+       WHERE id = $1`,
+      [contractId]
     );
+    
     res.json({ success: true, message: 'Vorläufige Beauftragung angenommen' });
+    
   } catch (error) {
     console.error('Error accepting preliminary:', error);
     res.status(500).json({ error: 'Fehler bei der Annahme' });
   }
 });
+
+// Confirm offer after inspection
 app.post('/api/contracts/:contractId/confirm-offer', async (req, res) => {
   try {
+    const { contractId } = req.params;
+    
     await query(
-      `UPDATE orders SET offer_confirmed = true, offer_confirmed_at = NOW() WHERE id = $1`,
-      [req.params.contractId]
+      `UPDATE orders SET 
+       offer_confirmed = true,
+       offer_confirmed_at = NOW()
+       WHERE id = $1`,
+      [contractId]
     );
+    
     res.json({ success: true, message: 'Angebot bestätigt' });
+    
   } catch (error) {
     console.error('Error confirming offer:', error);
     res.status(500).json({ error: 'Fehler bei der Bestätigung' });
   }
 });
 
-// ======= AUSSCHREIBUNGEN erzeugen =======
+// ============= AUSSCHREIBUNGS-SYSTEM =============
+
+// Gewerk ausschreiben (einzeln oder alle)
 app.post('/api/projects/:projectId/tender/create', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { tradeIds, timeframe } = req.body; // tradeIds: Array oder 'all'
-
+    const { tradeIds, timeframe } = req.body; // tradeIds kann Array sein oder 'all'
+    
+    // Projekt-Details laden
     const projectResult = await query(
       `SELECT p.*, b.zip as bauherr_zip
-         FROM projects p
-         JOIN bauherren b ON p.bauherr_id = b.id
-        WHERE p.id = $1`,
+       FROM projects p
+       JOIN bauherren b ON p.bauherr_id = b.id
+       WHERE p.id = $1`,
       [projectId]
     );
-    if (!projectResult.rows.length) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    }
+    
     const project = projectResult.rows[0];
-
+    
+    // Gewerke bestimmen
     let trades;
     if (tradeIds === 'all') {
       trades = await query(
         `SELECT DISTINCT t.* FROM trades t
-          JOIN project_trades pt ON t.id = pt.trade_id
-         WHERE pt.project_id = $1 AND t.code <> 'INT'`,
+         JOIN project_trades pt ON t.id = pt.trade_id
+         WHERE pt.project_id = $1 AND t.code != 'INT'`,
         [projectId]
       );
     } else {
-      trades = await query(`SELECT * FROM trades WHERE id = ANY($1::int[])`, [tradeIds]);
+      trades = await query(
+        `SELECT * FROM trades WHERE id = ANY($1::int[])`,
+        [tradeIds]
+      );
     }
-
+    
     const createdTenders = [];
+    
     for (const trade of trades.rows) {
-      // Dubletten-Schutz
-      const existingTender = await query(
-        `SELECT id FROM tenders 
-          WHERE project_id = $1 AND trade_id = $2 
-            AND created_at > NOW() - INTERVAL '1 hour'`,
-        [projectId, trade.id]
-      );
-      if (existingTender.rows.length > 0) continue;
-
+      // NEUE ZEILEN: Prüfe ob Tender bereits existiert
+  const existingTender = await query(
+    `SELECT id FROM tenders 
+     WHERE project_id = $1 AND trade_id = $2 
+     AND created_at > NOW() - INTERVAL '1 hour'`,
+    [projectId, trade.id]
+  );
+  
+  if (existingTender.rows.length > 0) {
+    console.log('Tender existiert bereits für Trade', trade.id);
+    continue;
+  }
+      
+      // LV-Daten für dieses Gewerk holen
       const lvResult = await query(
-        `SELECT content FROM lvs WHERE project_id = $1 AND trade_id = $2`,
+        `SELECT content FROM lvs 
+         WHERE project_id = $1 AND trade_id = $2`,
         [projectId, trade.id]
       );
-      if (!lvResult.rows.length) continue;
-
-      const lv = safeParseJSON(lvResult.rows[0].content) || {};
+      
+      if (lvResult.rows.length === 0) continue;
+      
+      const lv = typeof lvResult.rows[0].content === 'string' 
+        ? JSON.parse(lvResult.rows[0].content) 
+        : lvResult.rows[0].content;
+      
+      // Tender erstellen
       const tenderResult = await query(
         `INSERT INTO tenders (
-           project_id, trade_id, trade_code, status, deadline, estimated_value,
-           timeframe, project_zip, lv_data, created_at
-         ) VALUES (
-           $1, $2, $3, 'open', NOW() + INTERVAL '14 days', $4, $5, $6, $7, NOW()
-         ) RETURNING id`,
+          project_id, trade_id, trade_code, 
+          status, deadline, estimated_value,
+          timeframe, project_zip, lv_data,
+          created_at
+        ) VALUES ($1, $2, $3, 'open', 
+          NOW() + INTERVAL '14 days', $4, $5, $6, $7, NOW())
+        RETURNING id`,
         [
-          projectId,
-          trade.id,
+          projectId, 
+          trade.id, 
           trade.code,
           lv.totalSum || 0,
           timeframe || project.timeframe,
@@ -14797,82 +15131,168 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
           JSON.stringify(lv)
         ]
       );
+      
       const tenderId = tenderResult.rows[0].id;
-
+      
+      // Passende Handwerker finden (Matching-Logik)
       const matchingHandwerker = await query(
         `SELECT h.* FROM handwerker h
-          JOIN handwerker_trades ht ON h.id = ht.handwerker_id
+         JOIN handwerker_trades ht ON h.id = ht.handwerker_id
          WHERE ht.trade_id = $1
-           AND h.verified = true
-           AND ST_DWithin(
-                 ST_MakePoint(
-                   (SELECT longitude FROM zip_codes WHERE zip = $2),
-                   (SELECT latitude  FROM zip_codes WHERE zip = $2)
-                 )::geography,
-                 ST_MakePoint(
-                   (SELECT longitude FROM zip_codes WHERE zip = h.zip_code),
-                   (SELECT latitude  FROM zip_codes WHERE zip = h.zip_code)
-                 )::geography,
-                 h.action_radius * 1000
-               )`,
+         AND h.verified = true
+         AND ST_DWithin(
+           ST_MakePoint(
+             (SELECT longitude FROM zip_codes WHERE zip = $2),
+             (SELECT latitude FROM zip_codes WHERE zip = $2)
+           )::geography,
+           ST_MakePoint(
+             (SELECT longitude FROM zip_codes WHERE zip = h.zip_code),
+             (SELECT latitude FROM zip_codes WHERE zip = h.zip_code)
+           )::geography,
+           h.action_radius * 1000
+         )`,
         [trade.id, project.bauherr_zip]
       );
-
+      
+      // Tender-Handwerker-Verknüpfungen erstellen
       for (const handwerker of matchingHandwerker.rows) {
         await query(
-          `INSERT INTO tender_handwerker (tender_id, handwerker_id, status, notified_at)
-           VALUES ($1, $2, 'pending', NOW())
-           ON CONFLICT DO NOTHING`,
+          `INSERT INTO tender_handwerker (
+            tender_id, handwerker_id, status, notified_at
+          ) VALUES ($1, $2, 'pending', NOW())
+          ON CONFLICT DO NOTHING`,  // <-- NUR DIESE ZEILE HINZUFÜGEN
           [tenderId, handwerker.id]
         );
       }
-
+      
       createdTenders.push({
         tenderId,
         tradeName: trade.name,
         matchedHandwerker: matchingHandwerker.rows.length
       });
     }
-
+    
     res.json({
       success: true,
       message: `${createdTenders.length} Ausschreibung(en) erstellt`,
       tenders: createdTenders
     });
+    
   } catch (error) {
     console.error('Error creating tender:', error);
     res.status(500).json({ error: 'Fehler beim Erstellen der Ausschreibung' });
   }
 });
 
-// ======= Tender-Detail (Handwerker) – EINZIGE Version =======
+// Get matching tenders for handwerker - KORRIGIERT
+app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // Get handwerker with trades
+    const handwerkerResult = await query(
+      `SELECT h.*, array_agg(DISTINCT ht.trade_id) as trade_ids
+       FROM handwerker h
+       LEFT JOIN handwerker_trades ht ON ht.handwerker_id = h.id
+       WHERE h.company_id = $1
+       GROUP BY h.id`,
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerker = handwerkerResult.rows[0];
+    const tradeIds = handwerker.trade_ids || [];
+    
+    // NUR Tenders OHNE bereits abgegebene Angebote anzeigen
+    const tenders = await query(
+      `SELECT DISTINCT ON (t.id)
+        t.id,
+        t.project_id,
+        t.trade_id,
+        t.status,
+        t.deadline,
+        t.created_at,
+        t.lv_data,
+        t.estimated_value,
+        tr.name as trade_name,
+        p.description as project_description,
+        p.category,
+        p.sub_category,
+        p.timeframe,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        th.viewed_at,
+        CASE 
+          WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true 
+          ELSE false 
+        END as is_new
+      FROM tenders t
+      JOIN tender_handwerker th ON t.id = th.tender_id
+      JOIN trades tr ON t.trade_id = tr.id
+      JOIN projects p ON t.project_id = p.id
+      WHERE th.handwerker_id = $1
+        AND t.trade_id = ANY($2::int[])
+        AND t.status = 'open'
+        AND t.deadline > NOW()
+        AND NOT EXISTS (
+          SELECT 1 FROM offers o 
+          WHERE o.tender_id = t.id 
+          AND o.handwerker_id = $1
+          AND o.status != 'withdrawn'
+        )
+      ORDER BY t.id, t.created_at DESC`,
+      [handwerker.id, tradeIds]
+    );
+    
+    res.json(tenders.rows);
+    
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+  }
+});
+
+// Handwerker: LV für Angebot abrufen
 app.get('/api/tenders/:tenderId/lv', async (req, res) => {
   try {
     const { tenderId } = req.params;
+    
     const result = await query(
       `SELECT 
-         t.lv_data, t.project_id, t.trade_id,
-         tr.name as trade_name, p.description as project_description
-        FROM tenders t
-        JOIN trades tr ON t.trade_id = tr.id
-        JOIN projects p ON t.project_id = p.id
-       WHERE t.id = $1`,
+        t.lv_data,
+        t.project_id,
+        t.trade_id,
+        tr.name as trade_name,
+        p.description as project_description
+      FROM tenders t
+      JOIN trades tr ON t.trade_id = tr.id
+      JOIN projects p ON t.project_id = p.id
+      WHERE t.id = $1`,
       [tenderId]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
-
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
     const tender = result.rows[0];
-    const lv = safeParseJSON(tender.lv_data) || { positions: [] };
-
+    const lv = typeof tender.lv_data === 'string' 
+      ? JSON.parse(tender.lv_data) 
+      : tender.lv_data;
+    
+    // Preise entfernen für Handwerker-Ansicht
     const lvWithoutPrices = {
       ...lv,
-      positions: (lv.positions || []).map(pos => ({
+      positions: lv.positions.map(pos => ({
         ...pos,
         unitPrice: 0,
         totalPrice: 0
       }))
     };
-
+    
     res.json({
       tenderId,
       projectId: tender.project_id,
@@ -14881,72 +15301,201 @@ app.get('/api/tenders/:tenderId/lv', async (req, res) => {
       projectDescription: tender.project_description,
       lv: lvWithoutPrices
     });
+    
   } catch (error) {
     console.error('Error fetching tender LV:', error);
     res.status(500).json({ error: 'Fehler beim Abrufen des LV' });
   }
 });
 
-// Angebot als "gesehen"
+// Angebot als gelesen markieren
+app.post('/api/offers/:offerId/mark-read', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query(
+      'UPDATE offers SET viewed_at = COALESCE(viewed_at, NOW()) WHERE id = $1',
+      [offerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// Ungelesene Angebote zählen
+app.get('/api/projects/:projectId/unread-offers-count', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT COUNT(*) as count
+       FROM offers o
+       JOIN tenders t ON o.tender_id = t.id
+       WHERE t.project_id = $1 AND o.viewed_at IS NULL`,
+      [projectId]
+    );
+    
+    res.json({ count: result.rows[0].count });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// 3. Erweiterte Angebots-Submission mit Status-Management
+app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId, positions, notes, totalSum, isPreliminary = true } = req.body;
+    
+    await query('BEGIN');
+    
+    // Prüfen ob bereits ein Angebot existiert
+    const existingOffer = await query(
+      'SELECT id, status FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
+      [tenderId, handwerkerId]
+    );
+    
+    let offerId;
+    let status = isPreliminary ? 'submitted' : 'confirmed';
+    
+    if (existingOffer.rows.length > 0) {
+      offerId = existingOffer.rows[0].id;
+      
+      // Update nur wenn Status-Übergang erlaubt
+      if (existingOffer.rows[0].status === 'preliminary' && !isPreliminary) {
+        status = 'confirmed';
+      }
+      
+      await query(
+        `UPDATE offers 
+         SET lv_data = $1, notes = $2, amount = $3, status = $4, updated_at = NOW()
+         WHERE id = $5`,
+        [JSON.stringify(positions), notes, totalSum, status, offerId]
+      );
+    } else {
+      const result = await query(
+        `INSERT INTO offers (
+          tender_id, handwerker_id, amount, 
+          lv_data, notes, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        RETURNING id`,
+        [tenderId, handwerkerId, totalSum, JSON.stringify(positions), notes, status]
+      );
+      offerId = result.rows[0].id;
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      offerId,
+      message: isPreliminary ? 
+        'Vorläufiges Angebot abgegeben. Der Bauherr kann nun Kontakt aufnehmen.' :
+        'Verbindliches Angebot bestätigt.'
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Fehler beim Abgeben des Angebots' });
+  }
+});
+
+// Erweiterte Route für Angebote mit mehr Details
+app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.*,
+        h.company_name,
+        h.email,
+        h.phone,
+        h.street,
+        h.house_number,
+        h.zip_code,
+        h.city,
+        h.rating,
+        t.name as trade_name,
+        tn.estimated_value,
+        tn.timeframe,
+        o.lv_data,
+        o.notes,
+        CASE 
+          WHEN o.viewed_at IS NULL THEN false 
+          ELSE true 
+        END as viewed
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE tn.project_id = $1
+       ORDER BY t.name, o.amount ASC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching detailed offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
+  }
+});
+
+// Angebot als gelesen markieren
 app.post('/api/offers/:offerId/mark-viewed', async (req, res) => {
   try {
     const { offerId } = req.params;
-    await query('UPDATE offers SET viewed_at = COALESCE(viewed_at, NOW()) WHERE id = $1', [offerId]);
+    
+    await query(
+      'UPDATE offers SET viewed_at = NOW() WHERE id = $1',
+      [offerId]
+    );
+    
     res.json({ success: true });
+    
   } catch (error) {
     console.error('Error marking offer as viewed:', error);
     res.status(500).json({ error: 'Fehler beim Markieren' });
   }
 });
 
-// ======= HANDWERKER SETTINGS =======
+// ============================================
+// HANDWERKER SETTINGS ENDPOINTS
+// ============================================
 
-// Einzige, umfassende Settings-Lese-Route
+// Settings laden
 app.get('/api/handwerker/:id/settings', async (req, res) => {
   try {
     const result = await query(
       `SELECT 
-         company_name as "companyName",
-         email, phone, street, house_number as "houseNumber",
-         zip_code as "zipCode", city, website,
-         action_radius as "actionRadius",
-         min_order_value as "minOrderValue",
-         hourly_rates as "hourlyRates",
-         payment_terms as "paymentTerms",
-         vacation_dates as "vacationDates",
-         notification_settings as "notificationSettings",
-         bank_iban as "bankIban",
-         bank_bic as "bankBic",
-         invoice_address as "invoiceAddress",
-         two_factor_enabled as "twoFactorEnabled",
-         excluded_areas as "excludedAreas",
-         travel_cost_per_km as "travelCostPerKm",
-         last_login as "lastLogin",
-         created_at as "createdAt",
-         password_changed_at as "passwordChangedAt",
-         coverage_settings as "coverageSettings"
-        FROM handwerker WHERE id = $1`,
+        company_name as "companyName",
+        email, phone, street, house_number as "houseNumber",
+        zip_code as "zipCode", city, website,
+        action_radius as "actionRadius",
+        min_order_value as "minOrderValue",
+        hourly_rates as "hourlyRates",
+        payment_terms as "paymentTerms",
+        vacation_dates as "vacationDates",
+        notification_settings as "notificationSettings",
+        bank_iban as "bankIban",
+        bank_bic as "bankBic",
+        invoice_address as "invoiceAddress",
+        two_factor_enabled as "twoFactorEnabled",
+        excluded_areas as "excludedAreas",
+        travel_cost_per_km as "travelCostPerKm"
+       FROM handwerker WHERE id = $1`,
       [req.params.id]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Handwerker nicht gefunden' });
-
-    const row = result.rows[0];
-    const notification = row.notificationSettings ? safeParseJSON(row.notificationSettings) : {};
-    res.json({
-      ...row,
-      hourlyRates: safeParseJSON(row.hourlyRates) || null,
-      vacationDates: safeParseJSON(row.vacationDates) || null,
-      notificationSettings: notification || {},
-      coverageSettings: safeParseJSON(row.coverageSettings) || null,
-      // sinnvolle Defaults:
-      emailNotifications: (notification && notification.email !== undefined) ? notification.email : true,
-      smsNotifications: !!(notification && notification.sms),
-      newsletterSubscribed: !!(notification && notification.newsletter),
-      notificationEmail: (notification && notification.notificationEmail) || row.email,
-      notificationPhone: (notification && notification.notificationPhone) || row.phone
-    });
+    
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
   } catch (err) {
-    console.error('Settings Load Error:', err);
     res.status(500).json({ error: 'Fehler beim Laden der Einstellungen' });
   }
 });
@@ -14955,23 +15504,33 @@ app.get('/api/handwerker/:id/settings', async (req, res) => {
 app.put('/api/handwerker/:id/firmendaten', async (req, res) => {
   try {
     const { companyName, email, phone, street, houseNumber, zipCode, city, website } = req.body;
+    
     await query(
       `UPDATE handwerker SET
-         company_name = $2, email = $3, phone = $4,
-         street = $5, house_number = $6, zip_code = $7, city = $8, website = $9
+        company_name = $2,
+        email = $3,
+        phone = $4,
+        street = $5,
+        house_number = $6,
+        zip_code = $7,
+        city = $8,
+        website = $9
        WHERE id = $1`,
       [req.params.id, companyName, email, phone, street, houseNumber, zipCode, city, website]
     );
+    
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
 
-// Einsatzgebiet updaten (JSONB korrekt)
+// ERSETZE die bestehende Einsatzgebiet-Route mit dieser:
 app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
   try {
     const handwerkerId = req.params.id;
+    console.log('Update Einsatzgebiet für Handwerker ID:', handwerkerId);
+    
     const { 
       actionRadius,
       excludedAreas,
@@ -14984,21 +15543,23 @@ app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
       latitude,
       longitude
     } = req.body;
-
+    
+    // Basis-Update - WICHTIG: excluded_areas ist JSONB, nicht TEXT!
     await query(
       `UPDATE handwerker SET
-         action_radius = $2,
-         excluded_areas = $3::jsonb,
-         travel_cost_per_km = $4
+        action_radius = $2,
+        excluded_areas = $3::jsonb,  -- Cast zu JSONB
+        travel_cost_per_km = $4
        WHERE id = $1`,
       [
         handwerkerId, 
         actionRadius || 25,
-        JSON.stringify(excludedAreas || []),
-        travelCostPerKm ?? 0.5
+        JSON.stringify(excludedAreas || []),  // JSON.stringify für JSONB
+        travelCostPerKm || 0.5
       ]
     );
-
+    
+    // Erweiterte Einstellungen
     const coverageSettings = {
       preferred_zip_codes: preferredZipCodes || [],
       min_order_values: {
@@ -15012,16 +15573,24 @@ app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
         longitude: longitude || null 
       }
     };
-
+    
+    // Update coverage_settings (auch JSONB)
     await query(
-      `UPDATE handwerker SET coverage_settings = $2::jsonb, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      `UPDATE handwerker SET coverage_settings = $2::jsonb WHERE id = $1`,
       [handwerkerId, JSON.stringify(coverageSettings)]
     );
-
-    res.json({ success: true, message: 'Einsatzgebiet erfolgreich aktualisiert' });
+    
+    res.json({ 
+      success: true,
+      message: 'Einsatzgebiet erfolgreich aktualisiert'
+    });
+    
   } catch (err) {
     console.error('Update Einsatzgebiet Error:', err);
-    res.status(500).json({ error: 'Update fehlgeschlagen' });
+    res.status(500).json({ 
+      error: 'Update fehlgeschlagen',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
@@ -15029,14 +15598,15 @@ app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
 app.put('/api/handwerker/:id/verfuegbarkeit', async (req, res) => {
   try {
     const { earliestStart, capacity, vacationDates } = req.body;
+    
     await query(
       `UPDATE handwerker SET
-         available_from = $2,
-         vacation_dates = $3,
-         updated_at = CURRENT_TIMESTAMP
+        available_from = $2,
+        vacation_dates = $3
        WHERE id = $1`,
-      [req.params.id, earliestStart, JSON.stringify(vacationDates || [])]
+      [req.params.id, earliestStart, JSON.stringify(vacationDates)]
     );
+    
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Update fehlgeschlagen' });
@@ -15047,228 +15617,464 @@ app.put('/api/handwerker/:id/verfuegbarkeit', async (req, res) => {
 app.put('/api/handwerker/:id/preise', async (req, res) => {
   try {
     const { minOrderValue, travelCostPerKm, hourlyRates } = req.body;
+    
     await query(
       `UPDATE handwerker SET
-         min_order_value = $2,
-         travel_cost_per_km = $3,
-         hourly_rates = $4,
-         updated_at = CURRENT_TIMESTAMP
+        min_order_value = $2,
+        travel_cost_per_km = $3,
+        hourly_rates = $4
        WHERE id = $1`,
-      [req.params.id, minOrderValue, travelCostPerKm, JSON.stringify(hourlyRates || {})]
+      [req.params.id, minOrderValue, travelCostPerKm, JSON.stringify(hourlyRates)]
     );
+    
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
 
-// Benachrichtigungen updaten
-function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-function isValidPhone(phone) {
-  const phoneRegex = /^(\+49|0049|0)?[1-9]\d{1,14}$/;
-  return phoneRegex.test(String(phone).replace(/[\s\-\/\(\)]/g, ''));
-}
+// Benachrichtigungen updaten - ERWEITERTE VERSION
 app.put('/api/handwerker/:id/benachrichtigungen', async (req, res) => {
   try {
-    const { emailNotifications, smsNotifications, newsletterSubscribed, notificationEmail, notificationPhone } = req.body;
-    if (notificationEmail && !isValidEmail(notificationEmail)) return res.status(400).json({ error: 'Ungültige E-Mail-Adresse' });
-    if (notificationPhone && !isValidPhone(notificationPhone)) return res.status(400).json({ error: 'Ungültige Telefonnummer' });
-
+    const { 
+      emailNotifications, 
+      smsNotifications, 
+      newsletterSubscribed,
+      notificationEmail,
+      notificationPhone 
+    } = req.body;
+    
+    // Validierung der E-Mail
+    if (notificationEmail && !isValidEmail(notificationEmail)) {
+      return res.status(400).json({ error: 'Ungültige E-Mail-Adresse' });
+    }
+    
+    // Validierung der Telefonnummer
+    if (notificationPhone && !isValidPhone(notificationPhone)) {
+      return res.status(400).json({ error: 'Ungültige Telefonnummer' });
+    }
+    
     const notificationSettings = {
-      email: !!emailNotifications,
-      sms: !!smsNotifications,
-      newsletter: !!newsletterSubscribed,
-      notificationEmail: notificationEmail || null,
-      notificationPhone: notificationPhone || null
+      email: emailNotifications,
+      sms: smsNotifications,
+      newsletter: newsletterSubscribed,
+      notificationEmail: notificationEmail,
+      notificationPhone: notificationPhone
     };
-
+    
+    // Update der Datenbank mit zusätzlichen Feldern
     await query(
       `UPDATE handwerker SET
-         notification_settings = $2::jsonb,
-         notification_email = $3,
-         notification_phone = $4,
-         updated_at = CURRENT_TIMESTAMP
+        notification_settings = $2,
+        notification_email = $3,
+        notification_phone = $4,
+        updated_at = CURRENT_TIMESTAMP
        WHERE id = $1`,
-      [req.params.id, JSON.stringify(notificationSettings), notificationEmail || null, notificationPhone || null]
+      [
+        req.params.id, 
+        JSON.stringify(notificationSettings),
+        notificationEmail || null,
+        notificationPhone || null
+      ]
     );
-
-    res.json({ success: true, message: 'Benachrichtigungseinstellungen erfolgreich aktualisiert' });
+    
+    res.json({ 
+      success: true,
+      message: 'Benachrichtigungseinstellungen erfolgreich aktualisiert'
+    });
   } catch (err) {
     console.error('Fehler beim Update der Benachrichtigungen:', err);
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
 
+// Hilfsfunktionen für Validierung
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function isValidPhone(phone) {
+  // Erlaubt deutsche Telefonnummern mit verschiedenen Formaten
+  const phoneRegex = /^(\+49|0049|0)?[1-9]\d{1,14}$/;
+  return phoneRegex.test(phone.replace(/[\s\-\/\(\)]/g, ''));
+}
+
 // Zahlungsdaten updaten
 app.put('/api/handwerker/:id/zahlungsdaten', async (req, res) => {
   try {
     const { bankIban, bankBic, paymentTerms, invoiceAddress } = req.body;
+    
     await query(
       `UPDATE handwerker SET
-         bank_iban = $2,
-         bank_bic = $3,
-         payment_terms = $4,
-         invoice_address = $5,
-         updated_at = CURRENT_TIMESTAMP
+        bank_iban = $2,
+        bank_bic = $3,
+        payment_terms = $4,
+        invoice_address = $5
        WHERE id = $1`,
       [req.params.id, bankIban, bankBic, paymentTerms, invoiceAddress]
     );
+    
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
 
-// Passwort ändern (Handwerker)
+const bcryptjs = require('bcryptjs');
+
+// Passwort ändern - PRODUKTIONSREIFE VERSION
 app.put('/api/handwerker/:id/password', async (req, res) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
-    if (!currentPassword || !newPassword || !confirmPassword) return res.status(400).json({ error: 'Alle Passwortfelder müssen ausgefüllt sein' });
-    if (newPassword !== confirmPassword) return res.status(400).json({ error: 'Die neuen Passwörter stimmen nicht überein' });
-    if (newPassword.length < 8) return res.status(400).json({ error: 'Das neue Passwort muss mindestens 8 Zeichen lang sein' });
-
-    const result = await query(`SELECT password_hash FROM handwerker WHERE id = $1`, [req.params.id]);
-    if (!result.rows.length) return res.status(404).json({ error: 'Handwerker nicht gefunden' });
-
-    const isValid = await bcryptjs.compare(currentPassword, result.rows[0].password_hash);
-    if (!isValid) return res.status(401).json({ error: 'Das aktuelle Passwort ist falsch' });
-
-    const hashed = await bcryptjs.hash(newPassword, 10);
+    
+    // Validierung
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ 
+        error: 'Alle Passwortfelder müssen ausgefüllt sein' 
+      });
+    }
+    
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ 
+        error: 'Die neuen Passwörter stimmen nicht überein' 
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        error: 'Das neue Passwort muss mindestens 8 Zeichen lang sein' 
+      });
+    }
+    
+    // Hole aktuelles Passwort-Hash aus DB
+    const result = await query(
+      'SELECT password_hash FROM handwerker WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden' 
+      });
+    }
+    
+    // Prüfe ob das aktuelle Passwort korrekt ist
+    const isPasswordValid = await bcryptjs.compare(
+      currentPassword, 
+      result.rows[0].password_hash
+    );
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: 'Das aktuelle Passwort ist falsch' 
+      });
+    }
+    
+    // Hashe das neue Passwort
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
+    
+    // Update Passwort in DB
     await query(
       `UPDATE handwerker 
-          SET password_hash = $2, password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1`,
-      [req.params.id, hashed]
+       SET password_hash = $2, 
+           password_changed_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [req.params.id, hashedPassword]
     );
-    res.json({ success: true, message: 'Passwort erfolgreich geändert' });
+    
+    res.json({ 
+      success: true, 
+      message: 'Passwort erfolgreich geändert' 
+    });
+    
   } catch (err) {
     console.error('Passwort-Update Fehler:', err);
-    res.status(500).json({ error: 'Passwortänderung fehlgeschlagen' });
+    res.status(500).json({ 
+      error: 'Passwortänderung fehlgeschlagen' 
+    });
   }
 });
 
-// Zwei-Faktor (Handwerker)
+// Zwei-Faktor-Authentifizierung aktivieren/deaktivieren
 app.put('/api/handwerker/:id/two-factor', async (req, res) => {
   try {
     const { twoFactorEnabled } = req.body;
-    if (typeof twoFactorEnabled !== 'boolean') return res.status(400).json({ error: 'Ungültiger Wert für Zwei-Faktor-Authentifizierung' });
-
-    const check = await query(`SELECT id, phone FROM handwerker WHERE id = $1`, [req.params.id]);
-    if (!check.rows.length) return res.status(404).json({ error: 'Handwerker nicht gefunden' });
-    if (twoFactorEnabled && !check.rows[0].phone) return res.status(400).json({ error: 'Für 2FA muss eine Telefonnummer hinterlegt sein' });
-
+    
+    // Validierung
+    if (typeof twoFactorEnabled !== 'boolean') {
+      return res.status(400).json({ 
+        error: 'Ungültiger Wert für Zwei-Faktor-Authentifizierung' 
+      });
+    }
+    
+    // Prüfe ob Handwerker existiert
+    const checkResult = await query(
+      'SELECT id, phone FROM handwerker WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden' 
+      });
+    }
+    
+    // Wenn 2FA aktiviert werden soll, prüfe ob Telefonnummer vorhanden
+    if (twoFactorEnabled && !checkResult.rows[0].phone) {
+      return res.status(400).json({ 
+        error: 'Für 2FA muss eine Telefonnummer hinterlegt sein' 
+      });
+    }
+    
+    // Update 2FA Status
     await query(
-      `UPDATE handwerker SET two_factor_enabled = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      `UPDATE handwerker 
+       SET two_factor_enabled = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
       [req.params.id, twoFactorEnabled]
     );
-    res.json({ success: true, message: twoFactorEnabled ? 'Zwei-Faktor-Authentifizierung wurde aktiviert' : 'Zwei-Faktor-Authentifizierung wurde deaktiviert' });
+    
+    res.json({ 
+      success: true,
+      message: twoFactorEnabled 
+        ? 'Zwei-Faktor-Authentifizierung wurde aktiviert' 
+        : 'Zwei-Faktor-Authentifizierung wurde deaktiviert'
+    });
+    
   } catch (err) {
     console.error('2FA Update Fehler:', err);
-    res.status(500).json({ error: 'Änderung der Zwei-Faktor-Authentifizierung fehlgeschlagen' });
+    res.status(500).json({ 
+      error: 'Änderung der Zwei-Faktor-Authentifizierung fehlgeschlagen' 
+    });
   }
 });
 
-// Account löschen (Handwerker)
+// Account löschen - MIT PASSWORT-BESTÄTIGUNG
 app.delete('/api/handwerker/:id/account', async (req, res) => {
   try {
     const { password } = req.body;
-    if (!password) return res.status(400).json({ error: 'Passwort zur Bestätigung erforderlich' });
-
-    const result = await query(`SELECT password_hash, company_name FROM handwerker WHERE id = $1`, [req.params.id]);
-    if (!result.rows.length) return res.status(404).json({ error: 'Account nicht gefunden' });
-
-    const ok = await bcryptjs.compare(password, result.rows[0].password_hash);
-    if (!ok) return res.status(401).json({ error: 'Falsches Passwort. Account-Löschung abgebrochen.' });
-
+    
+    // Passwort ist erforderlich für Account-Löschung
+    if (!password) {
+      return res.status(400).json({ 
+        error: 'Passwort zur Bestätigung erforderlich' 
+      });
+    }
+    
+    // Hole Passwort-Hash aus DB
+    const result = await query(
+      'SELECT password_hash, company_name FROM handwerker WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Account nicht gefunden' 
+      });
+    }
+    
+    // Prüfe Passwort
+    const isPasswordValid = await bcryptjs.compare(
+      password, 
+      result.rows[0].password_hash
+    );
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: 'Falsches Passwort. Account-Löschung abgebrochen.' 
+      });
+    }
+    
+    // Start Transaction für sichere Löschung
     await query('BEGIN');
+    
     try {
+      // Lösche zuerst alle abhängigen Daten
       await query('DELETE FROM handwerker_trades WHERE handwerker_id = $1', [req.params.id]);
       await query('DELETE FROM handwerker_insurances WHERE handwerker_id = $1', [req.params.id]);
       await query('DELETE FROM handwerker_certifications WHERE handwerker_id = $1', [req.params.id]);
       await query('DELETE FROM handwerker_documents WHERE handwerker_id = $1', [req.params.id]);
+      
+      // Optional: Soft Delete (markiere als gelöscht statt zu löschen)
+      // await query(
+      //   `UPDATE handwerker 
+      //    SET deleted_at = CURRENT_TIMESTAMP,
+      //        active = false,
+      //        email = CONCAT(email, '_deleted_', $2)
+      //    WHERE id = $1`,
+      //   [req.params.id, Date.now()]
+      // );
+      
+      // Hard Delete - endgültiges Löschen
       await query('DELETE FROM handwerker WHERE id = $1', [req.params.id]);
-
+      
       await query('COMMIT');
-      res.json({ success: true, message: `Account '${result.rows[0].company_name}' wurde erfolgreich gelöscht` });
-    } catch (inner) {
+      
+      res.json({ 
+        success: true, 
+        message: `Account '${result.rows[0].company_name}' wurde erfolgreich gelöscht` 
+      });
+      
+    } catch (innerErr) {
       await query('ROLLBACK');
-      throw inner;
+      throw innerErr;
     }
+    
   } catch (err) {
     console.error('Account-Löschung Fehler:', err);
-    res.status(500).json({ error: 'Account konnte nicht gelöscht werden' });
+    res.status(500).json({ 
+      error: 'Account konnte nicht gelöscht werden' 
+    });
   }
 });
 
-// Handwerker-Account Kurzübersicht
+// Account-Einstellungen abrufen (für initiales Laden)
 app.get('/api/handwerker/:id/account', async (req, res) => {
   try {
     const result = await query(
       `SELECT 
-         two_factor_enabled, last_login, created_at, password_changed_at
-        FROM handwerker WHERE id = $1`,
+        two_factor_enabled,
+        last_login,
+        created_at,
+        password_changed_at
+       FROM handwerker 
+       WHERE id = $1`,
       [req.params.id]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden' 
+      });
+    }
+    
     res.json({
-      twoFactorEnabled: !!result.rows[0].two_factor_enabled,
+      twoFactorEnabled: result.rows[0].two_factor_enabled || false,
       lastLogin: result.rows[0].last_login,
       createdAt: result.rows[0].created_at,
       passwordChangedAt: result.rows[0].password_changed_at
     });
+    
   } catch (err) {
     console.error('Account-Daten Abruf Fehler:', err);
-    res.status(500).json({ error: 'Abrufen der Account-Daten fehlgeschlagen' });
+    res.status(500).json({ 
+      error: 'Abrufen der Account-Daten fehlgeschlagen' 
+    });
+  }
+});
+
+// Allgemeine Settings-Route (für alle Tabs)
+app.get('/api/handwerker/:id/settings', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT 
+        company_name,
+        email,
+        phone,
+        street,
+        house_number,
+        zip_code,
+        city,
+        website,
+        action_radius,
+        two_factor_enabled,
+        last_login,
+        created_at,
+        notification_settings
+       FROM handwerker 
+       WHERE id = $1`,
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden' 
+      });
+    }
+    
+    const data = result.rows[0];
+    const notificationSettings = data.notification_settings 
+      ? JSON.parse(data.notification_settings) 
+      : {};
+    
+    res.json({
+      // Firmendaten
+      companyName: data.company_name,
+      email: data.email,
+      phone: data.phone,
+      street: data.street,
+      houseNumber: data.house_number,
+      zipCode: data.zip_code,
+      city: data.city,
+      website: data.website,
+      
+      // Einsatzgebiet
+      actionRadius: data.action_radius,
+      
+      // Account
+      twoFactorEnabled: data.two_factor_enabled || false,
+      lastLogin: data.last_login,
+      createdAt: data.created_at,
+      
+      // Benachrichtigungen
+      emailNotifications: notificationSettings.email || true,
+      smsNotifications: notificationSettings.sms || false,
+      newsletterSubscribed: notificationSettings.newsletter || false,
+      notificationEmail: notificationSettings.notificationEmail || data.email,
+      notificationPhone: notificationSettings.notificationPhone || data.phone
+    });
+    
+  } catch (err) {
+    console.error('Settings Abruf Fehler:', err);
+    res.status(500).json({ 
+      error: 'Abrufen der Einstellungen fehlgeschlagen' 
+    });
   }
 });
 
 // Logo upload
 app.post('/api/handwerker/:id/logo', upload.single('logo'), async (req, res) => {
   try {
-    const fileBuffer = req.file?.buffer;
-    if (!fileBuffer) return res.status(400).json({ error: 'Keine Datei hochgeladen' });
-
+    const fileBuffer = req.file.buffer;
+    
     await query(
-      `UPDATE handwerker SET logo_url = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      `UPDATE handwerker SET logo_url = $2 WHERE id = $1`,
       [req.params.id, `data:${req.file.mimetype};base64,${fileBuffer.toString('base64')}`]
     );
+    
     res.json({ success: true });
   } catch (err) {
-    console.error('Logo-Upload error:', err);
     res.status(500).json({ error: 'Logo-Upload fehlgeschlagen' });
   }
 });
 
-// Dokumente: LISTE (korrigiert)
-app.get('/api/handwerker/:id/documents', async (req, res) => {
+// Dokument hochladen
+app.post('/api/handwerker/documents/upload', upload.single('document'), async (req, res) => {
   try {
-    const result = await query(
-      `SELECT id, document_type, file_name, uploaded_at
-         FROM handwerker_documents
-        WHERE handwerker_id = $1
-        ORDER BY uploaded_at DESC`,
-      [req.params.id]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching documents:', err);
-    res.status(500).json({ error: 'Fehler beim Laden' });
-  }
-});
-
-// Dokument HOCHLADEN (korrigiert)
-app.post('/api/handwerker/:id/documents/upload', upload.single('document'), async (req, res) => {
-  try {
+    const handwerkerId = req.params.id;
+    if (!handwerkerId) {
+      return res.status(401).json({ error: 'Nicht authentifiziert' });
+    }
+    
     const { document_type } = req.body;
     const file = req.file;
-    if (!file) return res.status(400).json({ error: 'Keine Datei hochgeladen' });
-
+    
+    if (!file) {
+      return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+    }
+    
+    // Speichere in DB
     const result = await query(
-      `INSERT INTO handwerker_documents (handwerker_id, document_type, file_name, file_data, uploaded_at)
+      `INSERT INTO handwerker_documents 
+       (handwerker_id, document_type, file_name, file_data, uploaded_at)
        VALUES ($1, $2, $3, $4, NOW())
        RETURNING id, document_type, file_name, uploaded_at`,
-      [req.params.id, document_type, file.originalname, file.buffer]
+      [handwerkerId, document_type, file.originalname, file.buffer]
     );
+    
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Upload error:', err);
@@ -15276,17 +16082,68 @@ app.post('/api/handwerker/:id/documents/upload', upload.single('document'), asyn
   }
 });
 
-// Dokument DOWNLOAD (korrigiert)
+// Dokumente abrufen - KORRIGIERT
+app.get('/api/handwerker/:id/documents', async (req, res) => {
+  try {
+    const handwerkerId = req.params.id; // :id aus der URL
+    
+    const result = await query(
+      `SELECT id, document_type, file_name, uploaded_at
+       FROM handwerker_documents
+       WHERE handwerker_id = $1
+       ORDER BY uploaded_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching documents:', err);
+    res.status(500).json({ error: 'Fehler beim Laden' });
+  }
+});
+
+// Dokument hochladen - KORRIGIERT
+app.post('/api/handwerker/:id/documents/upload', upload.single('document'), async (req, res) => {
+  try {
+    const handwerkerId = req.params.id; // :id aus der URL
+    const { document_type } = req.body;
+    const file = req.file;
+    
+    if (!file) {
+      return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+    }
+    
+    const result = await query(
+      `INSERT INTO handwerker_documents 
+       (handwerker_id, document_type, file_name, file_data, uploaded_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       RETURNING id, document_type, file_name, uploaded_at`,
+      [handwerkerId, document_type, file.originalname, file.buffer]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload fehlgeschlagen' });
+  }
+});
+
+// Dokument herunterladen - KORRIGIERT
 app.get('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) => {
   try {
     const { handwerkerId, docId } = req.params;
+    
     const result = await query(
       `SELECT file_name, file_data
-         FROM handwerker_documents
-        WHERE id = $1 AND handwerker_id = $2`,
+       FROM handwerker_documents
+       WHERE id = $1 AND handwerker_id = $2`,
       [docId, handwerkerId]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Dokument nicht gefunden' });
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Dokument nicht gefunden' });
+    }
+    
     const doc = result.rows[0];
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${doc.file_name}"`);
@@ -15297,11 +16154,16 @@ app.get('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) => {
   }
 });
 
-// Dokument LÖSCHEN (korrigiert)
+// Dokument löschen - KORRIGIERT
 app.delete('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) => {
   try {
     const { handwerkerId, docId } = req.params;
-    await query('DELETE FROM handwerker_documents WHERE id = $1 AND handwerker_id = $2', [docId, handwerkerId]);
+    
+    await query(
+      'DELETE FROM handwerker_documents WHERE id = $1 AND handwerker_id = $2',
+      [docId, handwerkerId]
+    );
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Delete error:', err);
@@ -15309,19 +16171,21 @@ app.delete('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) =>
   }
 });
 
-// ========== ERWEITERTE TENDER & TRACKING ==========
+// ============= ERWEITERTE TENDER & TRACKING ROUTES =============
 
-// View-Tracking
+// Ausschreibungs-Status tracken
 app.post('/api/tenders/:tenderId/track-view', async (req, res) => {
   try {
     const { tenderId } = req.params;
     const { handwerkerId } = req.body;
+    
     await query(
       `UPDATE tender_handwerker 
-          SET viewed_at = COALESCE(viewed_at, NOW()), status = 'viewed'
-        WHERE tender_id = $1 AND handwerker_id = $2`,
+       SET viewed_at = COALESCE(viewed_at, NOW()), status = 'viewed'
+       WHERE tender_id = $1 AND handwerker_id = $2`,
       [tenderId, handwerkerId]
     );
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error tracking view:', error);
@@ -15329,26 +16193,19 @@ app.post('/api/tenders/:tenderId/track-view', async (req, res) => {
   }
 });
 
-// Start Offer (mit Insert-Fallback)
+// Ausschreibungs-Status auf "in Bearbeitung" setzen
 app.post('/api/tenders/:tenderId/start-offer', async (req, res) => {
   try {
     const { tenderId } = req.params;
     const { handwerkerId } = req.body;
-
-    const upd = await query(
+    
+    await query(
       `UPDATE tender_handwerker_status 
-          SET status = 'in_progress', in_progress_at = NOW()
-        WHERE tender_id = $1 AND handwerker_id = $2`,
+       SET status = 'in_progress', in_progress_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
       [tenderId, handwerkerId]
     );
-
-    if (upd.rowCount === 0) {
-      await query(
-        `INSERT INTO tender_handwerker_status (tender_id, handwerker_id, status, in_progress_at)
-         VALUES ($1, $2, 'in_progress', NOW())`,
-        [tenderId, handwerkerId]
-      );
-    }
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating status:', error);
@@ -15356,200 +16213,242 @@ app.post('/api/tenders/:tenderId/start-offer', async (req, res) => {
   }
 });
 
-// Detaillierte Tenderliste (Handwerker)
+// Erweiterte Route für Handwerker-Tenders mit Status
 app.get('/api/handwerker/:handwerkerId/tenders/detailed', async (req, res) => {
   try {
     const { handwerkerId } = req.params;
+    
     const result = await query(
       `SELECT DISTINCT ON (t.id)
-         t.*,
-         tr.name as trade_name,
-         p.description as project_description,
-         p.category, p.sub_category, p.zip_code as project_zip, p.city as project_city,
-         ths.status as tender_status,
-         th.viewed_at,              -- Korrektur: viewed aus tender_handwerker
-         th.status as th_status,
-         o.id as offer_id, o.status as offer_status, o.stage as offer_stage
-        FROM tenders t
-        JOIN trades tr ON t.trade_id = tr.id
-        JOIN projects p ON t.project_id = p.id
-        JOIN tender_handwerker th ON t.id = th.tender_id AND th.handwerker_id = $1
-        LEFT JOIN tender_handwerker_status ths ON t.id = ths.tender_id AND ths.handwerker_id = $1
-        LEFT JOIN offers o ON t.id = o.tender_id AND o.handwerker_id = $1
+        t.*,
+        tr.name as trade_name,
+        p.description as project_description,
+        p.category,
+        p.sub_category,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        ths.status as tender_status,
+        ths.viewed_at,
+        th.status as th_status,  -- NEU: Status aus tender_handwerker
+        o.id as offer_id,
+        o.status as offer_status,
+        o.stage as offer_stage
+       FROM tenders t
+       JOIN trades tr ON t.trade_id = tr.id
+       JOIN projects p ON t.project_id = p.id
+       JOIN tender_handwerker th ON t.id = th.tender_id AND th.handwerker_id = $1  -- NEU
+       LEFT JOIN tender_handwerker_status ths ON t.id = ths.tender_id AND ths.handwerker_id = $1
+       LEFT JOIN offers o ON t.id = o.tender_id AND o.handwerker_id = $1
        WHERE t.trade_id IN (SELECT trade_id FROM handwerker_trades WHERE handwerker_id = $1)
-         AND t.status = 'open'
-         AND th.status != 'rejected'
-         AND o.id IS NULL
+       AND t.status = 'open'
+       AND th.status != 'rejected'  -- NEU: Keine abgelehnten
+       AND o.id IS NULL  -- NEU: Keine mit Angeboten (statt der komplexen OR Bedingung)
        ORDER BY t.id, t.created_at DESC`,
       [handwerkerId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching detailed tenders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
   }
 });
 
-// Detaillierte Ausschreibungsübersicht (Bauherr)
+// Detaillierte Ausschreibungsübersicht für Bauherr
 app.get('/api/projects/:projectId/tenders/detailed', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const tenders = await query(
       `SELECT t.*, tr.name as trade_name
-         FROM tenders t
-         JOIN trades tr ON t.trade_id = tr.id
-        WHERE t.project_id = $1
-        ORDER BY t.created_at DESC`,
+       FROM tenders t
+       JOIN trades tr ON t.trade_id = tr.id
+       WHERE t.project_id = $1
+       ORDER BY t.created_at DESC`,
       [projectId]
     );
-
-    for (const tender of tenders.rows) {
+    
+    // Für jeden Tender die Handwerker-Stati holen
+    for (let tender of tenders.rows) {
       const handwerkerStatus = await query(
         `SELECT 
-           h.company_name,
-           h.id as handwerker_id,
-           ths.status,
-           ths.viewed_at,
-           ths.in_progress_at,
-           ths.submitted_at,
-           o.id as offer_id
-          FROM tender_handwerker th
-          JOIN handwerker h ON th.handwerker_id = h.id
-          LEFT JOIN tender_handwerker_status ths ON th.tender_id = ths.tender_id AND th.handwerker_id = ths.handwerker_id
-          LEFT JOIN offers o ON th.tender_id = o.tender_id AND th.handwerker_id = o.handwerker_id
+          h.company_name,
+          h.id as handwerker_id,
+          ths.status,
+          ths.viewed_at,
+          ths.in_progress_at,
+          ths.submitted_at,
+          o.id as offer_id
+         FROM tender_handwerker th
+         JOIN handwerker h ON th.handwerker_id = h.id
+         LEFT JOIN tender_handwerker_status ths ON th.tender_id = ths.tender_id AND th.handwerker_id = ths.handwerker_id
+         LEFT JOIN offers o ON th.tender_id = o.tender_id AND th.handwerker_id = o.handwerker_id
          WHERE th.tender_id = $1`,
         [tender.id]
       );
+      
       tender.handwerkers = handwerkerStatus.rows;
     }
-
+    
     res.json(tenders.rows);
+    
   } catch (error) {
     console.error('Error fetching detailed tenders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
   }
 });
 
-// Alle Angebote als gelesen markieren (Projekt)
+// Angebote als gelesen markieren
 app.post('/api/projects/:projectId/offers/mark-all-read', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     await query(
       `UPDATE offers o
-          SET viewed_at = NOW()
-         FROM tenders t
-        WHERE o.tender_id = t.id 
-          AND t.project_id = $1 
-          AND o.viewed_at IS NULL`,
+       SET viewed_at = NOW()
+       FROM tenders t
+       WHERE o.tender_id = t.id 
+       AND t.project_id = $1 
+       AND o.viewed_at IS NULL`,
       [projectId]
     );
+    
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Fehler beim Markieren' });
   }
 });
 
-// LV-Liste für ein Projekt
+// Fehlende Route: LV-Daten für Projekt
 app.get('/api/projects/:projectId/lv', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const result = await query(
       `SELECT l.*, t.name as trade_name, t.code as trade_code
-         FROM lvs l
-         JOIN trades t ON l.trade_id = t.id
-        WHERE l.project_id = $1
-        ORDER BY t.name`,
+       FROM lvs l
+       JOIN trades t ON l.trade_id = t.id
+       WHERE l.project_id = $1
+       ORDER BY t.name`,
       [projectId]
     );
-    res.json({
+    
+    res.json({ 
       lvs: result.rows.map(lv => ({
         ...lv,
-        content: safeParseJSON(lv.content)
+        content: typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content
       }))
     });
+    
   } catch (error) {
     console.error('Error fetching LVs:', error);
     res.status(500).json({ error: 'Fehler beim Laden der LVs' });
   }
 });
 
-// Projekt mit Bauherr verknüpfen
+// Fehlende Route: Projekt mit Bauherr verknüpfen
 app.post('/api/projects/claim', async (req, res) => {
   try {
     const { projectId, bauherrId } = req.body;
+    
     await query(
-      `UPDATE projects SET bauherr_id = $2, updated_at = NOW() WHERE id = $1`,
+      `UPDATE projects 
+       SET bauherr_id = $2, updated_at = NOW()
+       WHERE id = $1`,
       [projectId, bauherrId]
     );
+    
     res.json({ success: true });
+    
   } catch (error) {
     console.error('Error claiming project:', error);
     res.status(500).json({ error: 'Fehler bei der Projektzuweisung' });
   }
 });
 
-// LV-Status (INT-Trade abziehen)
+// LV-Status für Dashboard
 app.get('/api/projects/:projectId/lv-status', async (req, res) => {
   try {
     const { projectId } = req.params;
+    
     const result = await query(
       `SELECT 
-         COUNT(DISTINCT pt.trade_id) as total_trades,
-         COUNT(DISTINCT CASE WHEN l.content IS NOT NULL AND l.content::text <> '{}' THEN l.trade_id END) as completed_lvs,
-         COUNT(DISTINCT CASE WHEN pt.trade_id = (SELECT id FROM trades WHERE code = 'INT') THEN pt.trade_id END) as internal_trades
-        FROM project_trades pt
-        LEFT JOIN lvs l ON pt.project_id = l.project_id AND pt.trade_id = l.trade_id
+        COUNT(DISTINCT pt.trade_id) as total_trades,
+        COUNT(DISTINCT CASE 
+          WHEN l.content IS NOT NULL AND l.content::text != '{}' 
+          THEN l.trade_id 
+        END) as completed_lvs,
+        COUNT(DISTINCT CASE 
+          WHEN pt.trade_id = (SELECT id FROM trades WHERE code = 'INT')
+          THEN pt.trade_id 
+        END) as internal_trades
+       FROM project_trades pt
+       LEFT JOIN lvs l ON pt.project_id = l.project_id AND pt.trade_id = l.trade_id
        WHERE pt.project_id = $1`,
       [projectId]
     );
-    const status = result.rows[0] || { total_trades: 0, completed_lvs: 0, internal_trades: 0 };
-    status.total_trades = (status.total_trades || 0) - (status.internal_trades || 0);
+    
+    const status = result.rows[0];
+    // INT-Trade von der Gesamtzahl abziehen
+    status.total_trades = status.total_trades - status.internal_trades;
+    
     res.json(status);
+    
   } catch (error) {
     console.error('Error fetching LV status:', error);
     res.status(500).json({ error: 'Fehler beim Laden des LV-Status' });
   }
 });
 
-// Helper
+// Helper-Funktion (fehlte)
 async function getHandwerkerIdFromCompanyId(companyId) {
-  const result = await query('SELECT id FROM handwerker WHERE company_id = $1', [companyId]);
-  return result.rows[0]?.id || null;
+  const result = await query(
+    'SELECT id FROM handwerker WHERE company_id = $1',
+    [companyId]
+  );
+  return result.rows.length > 0 ? result.rows[0].id : null;
 }
 
-// ======= TERMINVEREINBARUNG =======
+// ============= TERMINVEREINBARUNGS-ROUTES =============
 
-// Angebotsdaten + Kontakte (für Ortstermin)
+// Angebotsdaten mit Kontaktinfos für Ortstermin
 app.get('/api/offers/:offerId/details', async (req, res) => {
   try {
     const { offerId } = req.params;
+    
     const result = await query(
       `SELECT 
-         o.*,
-         h.company_name,
-         h.email as handwerker_email,
-         h.phone as handwerker_phone,
-         h.contact_person,
-         b.name as bauherr_name,
-         b.email as bauherr_email,
-         b.phone as bauherr_phone,
-         p.street as project_street,
-         p.house_number as project_house_number,
-         p.zip_code as project_zip,
-         p.city as project_city,
-         p.description as project_description,
-         t.name as trade_name
-        FROM offers o
-        JOIN handwerker h ON o.handwerker_id = h.id
-        JOIN tenders tn ON o.tender_id = tn.id
-        JOIN projects p ON tn.project_id = p.id
-        JOIN bauherren b ON p.bauherr_id = b.id
-        JOIN trades t ON tn.trade_id = t.id
+        o.*,
+        h.company_name,
+        h.email as handwerker_email,
+        h.phone as handwerker_phone,
+        h.contact_person,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone,
+        p.street as project_street,
+        p.house_number as project_house_number,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        p.description as project_description,
+        t.name as trade_name
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON tn.trade_id = t.id
        WHERE o.id = $1`,
       [offerId]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    }
+    
     res.json(result.rows[0]);
+    
   } catch (error) {
     console.error('Error fetching offer details:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Details' });
@@ -15560,184 +16459,247 @@ app.get('/api/offers/:offerId/details', async (req, res) => {
 app.get('/api/offers/:offerId/appointments', async (req, res) => {
   try {
     const { offerId } = req.params;
+    
     const result = await query(
       `SELECT * FROM appointment_proposals 
-        WHERE offer_id = $1 
-        ORDER BY created_at DESC`,
+       WHERE offer_id = $1 
+       ORDER BY created_at DESC`,
       [offerId]
     );
+    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Error fetching appointments:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Termine' });
   }
 });
 
-// Terminvorschlag erstellen (korrigiert mit WHERE)
+// Neuen Terminvorschlag erstellen
 app.post('/api/offers/:offerId/appointments/propose', async (req, res) => {
   try {
     const { offerId } = req.params;
     const { proposed_by, proposed_date, duration, message } = req.body;
-
-    const insert = await query(
-      `INSERT INTO appointment_proposals (offer_id, proposed_by, proposed_date, proposed_duration, message, status)
+    
+    const result = await query(
+      `INSERT INTO appointment_proposals 
+       (offer_id, proposed_by, proposed_date, proposed_duration, message, status)
        VALUES ($1, $2, $3, $4, $5, 'proposed')
        RETURNING id`,
       [offerId, proposed_by, proposed_date, duration, message]
     );
-
+    
+    // Benachrichtigung erstellen
     const offerData = await query(
-      `SELECT o.id as offer_id, tn.project_id, h.id as handwerker_id, p.bauherr_id
-         FROM offers o
-         JOIN tenders tn ON o.tender_id = tn.id
-         JOIN handwerker h ON o.handwerker_id = h.id
-         JOIN projects p ON tn.project_id = p.id
-        WHERE o.id = $1`,
+      `SELECT o.*, tn.project_id, h.id as handwerker_id, p.bauherr_id
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN projects p ON tn.project_id = p.id`,
       [offerId]
     );
-
+    
     if (offerData.rows.length > 0) {
       const offer = offerData.rows[0];
       const recipient_type = proposed_by === 'bauherr' ? 'handwerker' : 'bauherr';
-      const recipient_id   = proposed_by === 'bauherr' ? offer.handwerker_id : offer.bauherr_id;
-
+      const recipient_id = proposed_by === 'bauherr' ? offer.handwerker_id : offer.bauherr_id;
+      
       await query(
-        `INSERT INTO notifications (user_type, user_id, type, reference_id, message)
+        `INSERT INTO notifications 
+         (user_type, user_id, type, reference_id, message)
          VALUES ($1, $2, 'appointment_request', $3, $4)`,
-        [recipient_type, recipient_id, insert.rows[0].id, 'Neuer Terminvorschlag für Ortstermin']
+        [recipient_type, recipient_id, result.rows[0].id, 
+         `Neuer Terminvorschlag für Ortstermin`]
       );
     }
-
-    res.json({ success: true, id: insert.rows[0].id });
+    
+    res.json({ success: true, id: result.rows[0].id });
+    
   } catch (error) {
     console.error('Error proposing appointment:', error);
     res.status(500).json({ error: 'Fehler beim Erstellen des Terminvorschlags' });
   }
 });
 
-// Antwort auf Terminvorschlag
+// Auf Terminvorschlag antworten
 app.post('/api/appointments/:appointmentId/respond', async (req, res) => {
   try {
     const { appointmentId } = req.params;
-    const { response } = req.body; // 'accepted' | 'rejected'
-    if (!['accepted', 'rejected'].includes(response)) {
-      return res.status(400).json({ error: 'Ungültige Antwort' });
-    }
+    const { response } = req.body; // 'accepted' oder 'rejected'
+    
     await query(
       `UPDATE appointment_proposals 
-          SET status = $2, responded_at = NOW()
-        WHERE id = $1`,
+       SET status = $2, responded_at = NOW()
+       WHERE id = $1`,
       [appointmentId, response]
     );
+    
     res.json({ success: true });
+    
   } catch (error) {
     console.error('Error responding to appointment:', error);
     res.status(500).json({ error: 'Fehler beim Antworten' });
   }
 });
 
-// ======= LV-ROUTES für Tender =======
+// ============= ERWEITERTE LV-ROUTES FÜR TENDER =============
 
-// Erweiterte Angebots-Submission (einzige Version mit Status-Management)
+// LV-Daten für Tender (für HandwerkerOfferPage)
+app.get('/api/tenders/:tenderId/lv', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        t.lv_data,
+        t.project_id,
+        t.trade_id,
+        tr.name as trade_name,
+        p.description as project_description
+      FROM tenders t
+      JOIN trades tr ON t.trade_id = tr.id
+      JOIN projects p ON t.project_id = p.id
+      WHERE t.id = $1`,
+      [tenderId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
+    const tender = result.rows[0];
+    const lv = typeof tender.lv_data === 'string' 
+      ? JSON.parse(tender.lv_data) 
+      : tender.lv_data;
+    
+    // Preise entfernen für Handwerker-Ansicht
+    const lvWithoutPrices = {
+      ...lv,
+      positions: lv.positions?.map(pos => ({
+        ...pos,
+        unitPrice: 0,
+        totalPrice: 0
+      })) || []
+    };
+    
+    res.json({
+      tenderId,
+      projectId: tender.project_id,
+      tradeId: tender.trade_id,
+      tradeName: tender.trade_name,
+      projectDescription: tender.project_description,
+      lv: lvWithoutPrices
+    });
+    
+  } catch (error) {
+    console.error('Error fetching tender LV:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen des LV' });
+  }
+});
+
+// Handwerker kann Ausschreibung ablehnen/ausblenden
+app.post('/api/tenders/:tenderId/reject', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId } = req.body;
+    
+    // Setze Status auf "rejected" in tender_handwerker
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'rejected', rejected_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error rejecting tender:', error);
+    res.status(500).json({ error: 'Fehler beim Ablehnen' });
+  }
+});
+
+// ============= ANGEBOTS-STATUS-VERWALTUNG =============
+
+// Erweiterte Angebots-Submission mit Phasen-Management
 app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   try {
     const { tenderId } = req.params;
     const { handwerkerId, positions, notes, totalSum, stage = 'preliminary' } = req.body;
-
+    
     await query('BEGIN');
-
-    // Status-Tracking upsert
-    const upd = await query(
+    
+    // Update tender-handwerker status
+    await query(
       `UPDATE tender_handwerker_status 
-          SET status = 'submitted', submitted_at = NOW()
-        WHERE tender_id = $1 AND handwerker_id = $2`,
+       SET status = 'submitted', submitted_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
       [tenderId, handwerkerId]
     );
-    if (upd.rowCount === 0) {
-      await query(
-        `INSERT INTO tender_handwerker_status (tender_id, handwerker_id, status, submitted_at)
-         VALUES ($1, $2, 'submitted', NOW())`,
-        [tenderId, handwerkerId]
-      );
-    }
-
-    // Angebot upsert
+    
+    // Prüfen ob bereits ein Angebot existiert
     const existingOffer = await query(
       'SELECT id FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
       [tenderId, handwerkerId]
     );
-
+    
     let offerId;
+    
     if (existingOffer.rows.length > 0) {
       offerId = existingOffer.rows[0].id;
+      
       await query(
         `UPDATE offers 
-            SET lv_data = $1, notes = $2, amount = $3, stage = $4, updated_at = NOW()
-          WHERE id = $5`,
-        [JSON.stringify(positions || []), notes, totalSum, stage, offerId]
+         SET lv_data = $1, notes = $2, amount = $3, stage = $4, updated_at = NOW()
+         WHERE id = $5`,
+        [JSON.stringify(positions), notes, totalSum, stage, offerId]
       );
     } else {
-      const created = await query(
-        `INSERT INTO offers (tender_id, handwerker_id, amount, lv_data, notes, status, stage, created_at)
-         VALUES ($1, $2, $3, $4, $5, 'submitted', $6, NOW())
-         RETURNING id`,
-        [tenderId, handwerkerId, totalSum, JSON.stringify(positions || []), notes, stage]
+      const result = await query(
+        `INSERT INTO offers (
+          tender_id, handwerker_id, amount, 
+          lv_data, notes, status, stage, created_at
+        ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, NOW())
+        RETURNING id`,
+        [tenderId, handwerkerId, totalSum, JSON.stringify(positions), notes, stage]
       );
-      offerId = created.rows[0].id;
+      offerId = result.rows[0].id;
     }
-
-    // Notification an Bauherr
-    const tenderInfo = await query(`SELECT project_id FROM tenders WHERE id = $1`, [tenderId]);
+    
+    // Benachrichtigung für Bauherr
+    const tenderInfo = await query(
+      `SELECT project_id FROM tenders WHERE id = $1`,
+      [tenderId]
+    );
+    
     if (tenderInfo.rows.length > 0) {
-      const projectInfo = await query(`SELECT bauherr_id FROM projects WHERE id = $1`, [tenderInfo.rows[0].project_id]);
+      const projectInfo = await query(
+        `SELECT bauherr_id FROM projects WHERE id = $1`,
+        [tenderInfo.rows[0].project_id]
+      );
+      
       if (projectInfo.rows.length > 0) {
         await query(
-          `INSERT INTO notifications (user_type, user_id, type, reference_id, message)
+          `INSERT INTO notifications 
+           (user_type, user_id, type, reference_id, message)
            VALUES ('bauherr', $1, 'new_offer', $2, 'Neues Angebot eingegangen')`,
           [projectInfo.rows[0].bauherr_id, offerId]
         );
       }
     }
-
+    
     await query('COMMIT');
-    res.json({
-      success: true,
+    
+    res.json({ 
+      success: true, 
       offerId,
-      message: stage === 'preliminary'
-        ? 'Vorläufiges Angebot abgegeben. Der Bauherr kann nun Kontakt aufnehmen.'
-        : 'Verbindliches Angebot abgegeben.'
+      message: stage === 'preliminary' ? 
+        'Vorläufiges Angebot abgegeben. Der Bauherr kann nun Kontakt aufnehmen.' :
+        'Verbindliches Angebot abgegeben.'
     });
   } catch (error) {
     await query('ROLLBACK');
     console.error('Error submitting offer:', error);
     res.status(500).json({ error: 'Fehler beim Abgeben des Angebots' });
-  }
-});
-
-// Erweiterte Angeboteliste (Projekt)
-app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    const result = await query(
-      `SELECT 
-         o.*,
-         h.company_name, h.email, h.phone, h.street, h.house_number, h.zip_code, h.city, h.rating,
-         t.name as trade_name,
-         tn.estimated_value, tn.timeframe,
-         o.lv_data, o.notes,
-         CASE WHEN o.viewed_at IS NULL THEN false ELSE true END as viewed
-        FROM offers o
-        JOIN handwerker h ON o.handwerker_id = h.id
-        JOIN tenders tn ON o.tender_id = tn.id
-        JOIN trades t ON tn.trade_id = t.id
-       WHERE tn.project_id = $1
-       ORDER BY t.name, o.amount ASC`,
-      [projectId]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Error fetching detailed offers:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
   }
 });
 
