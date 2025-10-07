@@ -16461,7 +16461,7 @@ app.get('/api/offers/:offerId/appointments', async (req, res) => {
     const { offerId } = req.params;
     
     const result = await query(
-      `SELECT * FROM appointment_requests 
+      `SELECT * FROM appointment_proposals 
        WHERE offer_id = $1 
        ORDER BY created_at DESC`,
       [offerId]
@@ -16482,7 +16482,7 @@ app.post('/api/offers/:offerId/appointments/propose', async (req, res) => {
     const { proposed_by, proposed_date, duration, message } = req.body;
     
     const result = await query(
-      `INSERT INTO appointment_requests 
+      `INSERT INTO appointment_proposals 
        (offer_id, proposed_by, proposed_date, proposed_duration, message, status)
        VALUES ($1, $2, $3, $4, $5, 'proposed')
        RETURNING id`,
@@ -16528,7 +16528,7 @@ app.post('/api/appointments/:appointmentId/respond', async (req, res) => {
     const { response } = req.body; // 'accepted' oder 'rejected'
     
     await query(
-      `UPDATE appointment_requests 
+      `UPDATE appointment_proposals 
        SET status = $2, responded_at = NOW()
        WHERE id = $1`,
       [appointmentId, response]
