@@ -396,6 +396,14 @@ const handleOpenTender = async (tender) => {
                       <div className="text-xs mt-1">Mit Vertragsanbahnung</div>
                     </div>
                   </button>
+                  {/* NEU: Ablehnen Button */}
+      <button
+        onClick={() => handleRejectTender(tender.id)}
+        className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-all"
+        title="Ausschreibung ablehnen"
+      >
+        ❌
+      </button>
                 ) : (
                   <div>
                     <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2">
