@@ -50,11 +50,11 @@ export default function IntakeQuestionsPage() {
     }
   };
   
-  // Fake Progress für initiales Laden (40 Sekunden)
+  // Fake Progress für initiales Laden (90 Sekunden)
   useEffect(() => {
     if (loading && !error) {
       setLoadingProgress(0);
-      const totalDuration = 40000; // 40 Sekunden
+      const totalDuration = 90000; // 90 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
