@@ -403,7 +403,8 @@ const handleOpenTender = async (tender) => {
       >
         ❌
       </button>
-                ) : (
+            </div>
+              ) : (
                   <div>
                     <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2">
                       ✓ Angebot abgegeben
