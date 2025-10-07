@@ -14710,15 +14710,29 @@ app.get('/api/handwerker/:companyId/offers', async (req, res) => {
     const { companyId } = req.params;
     
     const result = await query(
-      `SELECT o.*, t.name as trade, p.description as "projectType", 
-              p.zip || ' ' || p.city as location,
-              o.created_at as "submittedDate"
+      `SELECT 
+        o.*, 
+        t.name as trade, 
+        p.description as projectType, 
+        p.zip_code || ' ' || p.city as location,
+        o.created_at as submittedDate,
+        o.status,
+        o.amount,
+        o.viewed_at,
+        CASE 
+          WHEN o.status = 'submitted' THEN 'Vorläufiges Angebot'
+          WHEN o.status = 'confirmed' THEN 'Verbindliches Angebot'
+          WHEN o.status = 'preliminary' THEN 'Vorläufig beauftragt'
+          ELSE o.status
+        END as status_text
        FROM offers o
        JOIN handwerker h ON o.handwerker_id = h.id
        JOIN tenders tn ON o.tender_id = tn.id
-       JOIN trades t ON tn.trade_code = t.code
+       JOIN trades t ON tn.trade_id = t.id
        JOIN projects p ON tn.project_id = p.id
        WHERE h.company_id = $1
+         AND o.status IN ('submitted', 'confirmed')
+         AND o.status NOT IN ('preliminary', 'accepted', 'withdrawn')
        ORDER BY o.created_at DESC`,
       [companyId]
     );
