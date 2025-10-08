@@ -13939,7 +13939,7 @@ app.get('/api/projects/:projectId/tenders', async (req, res) => {
     const result = await query(
       `SELECT t.*, tr.name as trade_name
        FROM tenders t
-       JOIN trades tr ON t.trade_code = tr.code
+       JOIN trades tr ON t.trade_id = tr.id
        WHERE t.project_id = $1
        ORDER BY t.created_at DESC`,
       [projectId]
