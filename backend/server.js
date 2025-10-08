@@ -14079,6 +14079,15 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
        WHERE id = $1`,
       [offerId]
     );
+
+    // Schritt 2: Tender-Handwerker-Status (HINZUFÜGEN)
+await query(
+  `UPDATE tender_handwerker 
+   SET status = 'preliminary_accepted'
+   WHERE tender_id = (SELECT tender_id FROM offers WHERE id = $1) 
+   AND handwerker_id = (SELECT handwerker_id FROM offers WHERE id = $1)`,
+  [offerId]
+);
     
     // Protokolliere Kontaktfreigabe
     await query(
