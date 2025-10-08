@@ -15242,6 +15242,314 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
   }
 });
 
+// Tender-Details für Bauherr mit Handwerker-Status
+app.get('/api/projects/:projectId/tender/detailed', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const tenders = await query(
+      `SELECT t.*, tr.name as trade_name,
+        (SELECT COUNT(*) FROM tender_handwerker WHERE tender_id = t.id) as total_handwerker,
+        (SELECT COUNT(*) FROM tender_handwerker WHERE tender_id = t.id AND status = 'viewed') as viewed_count,
+        (SELECT COUNT(*) FROM offers WHERE tender_id = t.id) as offer_count
+       FROM tenders t
+       JOIN trades tr ON t.trade_id = tr.id
+       WHERE t.project_id = $1
+       ORDER BY t.created_at DESC`,
+      [projectId]
+    );
+    
+    // Für jeden Tender die Handwerker-Details laden
+    for (let tender of tenders.rows) {
+      const handwerkerDetails = await query(
+        `SELECT 
+          h.id, h.company_name, h.rating,
+          th.status as th_status,
+          th.distance_km,
+          ths.status as tracking_status,
+          ths.viewed_at,
+          ths.in_progress_at,
+          ths.submitted_at,
+          o.id as offer_id,
+          o.status as offer_status,
+          o.amount as offer_amount
+         FROM tender_handwerker th
+         JOIN handwerker h ON th.handwerker_id = h.id
+         LEFT JOIN tender_handwerker_status ths ON 
+           th.tender_id = ths.tender_id AND th.handwerker_id = ths.handwerker_id
+         LEFT JOIN offers o ON 
+           th.tender_id = o.tender_id AND th.handwerker_id = o.handwerker_id
+         WHERE th.tender_id = $1
+         ORDER BY th.distance_km ASC`,
+        [tender.id]
+      );
+      
+      tender.handwerkers = handwerkerDetails.rows;
+    }
+    
+    res.json(tenders.rows);
+    
+  } catch (error) {
+    console.error('Error fetching detailed tenders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+  }
+});
+
+// Tender als angesehen markieren (Handwerker)
+app.post('/api/tender/:tenderId/mark-viewed', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { companyId } = req.body;
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'viewed', viewed_at = COALESCE(viewed_at, NOW())
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    await query(
+      `UPDATE tender_handwerker_status 
+       SET status = 'viewed', viewed_at = COALESCE(viewed_at, NOW())
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking tender as viewed:', error);
+    res.status(500).json({ error: 'Fehler beim Markieren' });
+  }
+});
+
+// Tender ablehnen (Handwerker)
+app.post('/api/tender/:tenderId/reject', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { companyId, reason } = req.body;
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'rejected', rejected_at = NOW(), rejection_reason = $3
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId, reason]
+    );
+    
+    await query(
+      `UPDATE tender_handwerker_status 
+       SET status = 'rejected', updated_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error rejecting tender:', error);
+    res.status(500).json({ error: 'Fehler beim Ablehnen' });
+  }
+});
+
+// ============================================
+// 3. OFFER MANAGEMENT (ANGEBOTE)
+// ============================================
+
+// Angebot abgeben (Handwerker) - Stufe 1
+app.post('/api/tender/:tenderId/submit-offer', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { companyId, positions, notes, totalSum, executionTime, bundleDiscount = 0 } = req.body;
+    
+    await query('BEGIN');
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT * FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      throw new Error('Handwerker nicht gefunden');
+    }
+    
+    const handwerker = handwerkerResult.rows[0];
+    const handwerkerId = handwerker.id;
+    
+    // Prüfe ob Handwerker für Tender berechtigt ist
+    const authCheck = await query(
+      `SELECT * FROM tender_handwerker 
+       WHERE tender_id = $1 AND handwerker_id = $2 AND status != 'rejected'`,
+      [tenderId, handwerkerId]
+    );
+    
+    if (authCheck.rows.length === 0) {
+      throw new Error('Nicht berechtigt für diese Ausschreibung');
+    }
+    
+    // Tender-Daten laden
+    const tenderResult = await query(
+      `SELECT * FROM tenders WHERE id = $1`,
+      [tenderId]
+    );
+    
+    const tender = tenderResult.rows[0];
+    
+    // Angebot erstellen oder aktualisieren
+    const existingOffer = await query(
+      `SELECT id FROM offers WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    let offerId;
+    
+    if (existingOffer.rows.length > 0) {
+      // Update existierendes Angebot
+      offerId = existingOffer.rows[0].id;
+      await query(
+        `UPDATE offers SET
+          lv_data = $1,
+          notes = $2,
+          amount = $3,
+          execution_time = $4,
+          bundle_discount = $5,
+          status = 'submitted',
+          stage = 1,
+          updated_at = NOW()
+         WHERE id = $6`,
+        [JSON.stringify(positions), notes, totalSum, executionTime, bundleDiscount, offerId]
+      );
+    } else {
+      // Neues Angebot erstellen
+      const offerResult = await query(
+        `INSERT INTO offers (
+          tender_id, handwerker_id, project_id,
+          amount, lv_data, notes, 
+          execution_time, bundle_discount,
+          status, stage, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'submitted', 1, NOW())
+        RETURNING id`,
+        [
+          tenderId, handwerkerId, tender.project_id,
+          totalSum, JSON.stringify(positions), notes,
+          executionTime, bundleDiscount
+        ]
+      );
+      offerId = offerResult.rows[0].id;
+    }
+    
+    // Status Updates
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'offered', offered_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    await query(
+      `UPDATE tender_handwerker_status 
+       SET status = 'submitted', submitted_at = NOW()
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [tenderId, handwerkerId]
+    );
+    
+    // Notification für Bauherr
+    await query(
+      `INSERT INTO notifications (
+        user_type, user_id, type, reference_id, message, created_at
+      ) VALUES ('bauherr', $1, 'new_offer', $2, 'Neues Angebot eingegangen', NOW())`,
+      [tender.bauherr_id, offerId]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      offerId,
+      message: 'Vorläufiges Angebot erfolgreich abgegeben'
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error submitting offer:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Angebote für Projekt laden (Bauherr)
+app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const offers = await query(
+      `SELECT 
+        o.*,
+        h.company_name,
+        h.rating,
+        h.verified,
+        h.email as handwerker_email,
+        h.phone as handwerker_phone,
+        t.name as trade_name,
+        tn.estimated_value,
+        CASE 
+          WHEN o.viewed_at IS NULL THEN false 
+          ELSE true 
+        END as viewed
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE tn.project_id = $1
+       ORDER BY o.status DESC, t.name, o.amount ASC`,
+      [projectId]
+    );
+    
+    // Gruppiere nach Trade für bessere Übersicht
+    const groupedOffers = {};
+    for (const offer of offers.rows) {
+      if (!groupedOffers[offer.trade_name]) {
+        groupedOffers[offer.trade_name] = [];
+      }
+      
+      // Kontaktdaten nur bei preliminary/accepted zeigen
+      if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
+        offer.handwerker_email = 'Nach Beauftragung sichtbar';
+        offer.handwerker_phone = 'Nach Beauftragung sichtbar';
+      }
+      
+      groupedOffers[offer.trade_name].push(offer);
+    }
+    
+    res.json(groupedOffers);
+    
+  } catch (error) {
+    console.error('Error fetching detailed offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
+  }
+});
+
 // Handwerker: LV für Angebot abrufen
 app.get('/api/tenders/:tenderId/lv', async (req, res) => {
   try {
