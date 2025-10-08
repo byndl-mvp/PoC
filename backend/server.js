@@ -13977,37 +13977,6 @@ app.get('/api/projects/:projectId/offers', async (req, res) => {
   }
 });
 
-// Update the /api/offers/create endpoint:
-app.post('/api/offers/create', async (req, res) => {
-  try {
-    const { tenderId, handwerkerId: companyIdOrId, amount, executionTime, notes, bundleDiscount, includeMaterial, includeAnfahrt } = req.body;
-    
-    // Handle both company_id and direct id
-    let actualHandwerkerId = companyIdOrId;
-    if (typeof companyIdOrId === 'string' && companyIdOrId.startsWith('HW-')) {
-      actualHandwerkerId = await getHandwerkerIdFromCompanyId(companyIdOrId);
-      if (!actualHandwerkerId) {
-        return res.status(404).json({ error: 'Handwerker nicht gefunden' });
-      }
-    }
-    
-    const result = await query(
-      `INSERT INTO offers (
-        tender_id, handwerker_id, amount, execution_time, notes,
-        bundle_discount, include_material, include_anfahrt, status, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())
-      RETURNING id`,
-      [tenderId, actualHandwerkerId, amount, executionTime, notes, bundleDiscount, includeMaterial, includeAnfahrt]
-    );
-    
-    res.json({ success: true, offerId: result.rows[0].id });
-    
-  } catch (error) {
-    console.error('Error creating offer:', error);
-    res.status(500).json({ error: 'Fehler beim Erstellen des Angebots' });
-  }
-});
-
 // Ungelesene Angebote zählen
 app.get('/api/projects/:projectId/offers/unread-count', async (req, res) => {
   try {
