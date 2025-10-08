@@ -16785,28 +16785,124 @@ app.post('/api/offers/:offerId/appointments/propose', async (req, res) => {
     );
     
     // Benachrichtigung erstellen
-    const offerData = await query(
-      `SELECT o.*, tn.project_id, h.id as handwerker_id, p.bauherr_id
-       FROM offers o
-       JOIN tenders tn ON o.tender_id = tn.id
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN projects p ON tn.project_id = p.id`,
-      [offerId]
-    );
-    
-    if (offerData.rows.length > 0) {
-      const offer = offerData.rows[0];
-      const recipient_type = proposed_by === 'bauherr' ? 'handwerker' : 'bauherr';
-      const recipient_id = proposed_by === 'bauherr' ? offer.handwerker_id : offer.bauherr_id;
+const offerData = await query(
+  `SELECT o.*, tn.project_id, h.id as handwerker_id, h.email as handwerker_email, 
+   h.company_name, p.bauherr_id, b.email as bauherr_email, b.name as bauherr_name,
+   p.street, p.house_number, p.zip_code, p.city, t.name as trade_name
+   FROM offers o
+   JOIN tenders tn ON o.tender_id = tn.id
+   JOIN handwerker h ON o.handwerker_id = h.id
+   JOIN projects p ON tn.project_id = p.id
+   JOIN bauherren b ON p.bauherr_id = b.id
+   JOIN trades t ON tn.trade_id = t.id
+   WHERE o.id = $1`,
+  [offerId]
+);
+
+if (offerData.rows.length > 0) {
+  const offer = offerData.rows[0];
+  const recipient_type = proposed_by === 'bauherr' ? 'handwerker' : 'bauherr';
+  const recipient_id = proposed_by === 'bauherr' ? offer.handwerker_id : offer.bauherr_id;
+  const recipient_email = proposed_by === 'bauherr' ? offer.handwerker_email : offer.bauherr_email;
+  const recipient_name = proposed_by === 'bauherr' ? offer.company_name : offer.bauherr_name;
+  const sender_name = proposed_by === 'bauherr' ? offer.bauherr_name : offer.company_name;
+  
+  // Notification in DB
+  await query(
+    `INSERT INTO notifications 
+     (user_type, user_id, type, reference_id, message, created_at)
+     VALUES ($1, $2, 'appointment_request', $3, $4, NOW())`,
+    [recipient_type, recipient_id, result.rows[0].id, 
+     `Neuer Terminvorschlag für Ortstermin`]
+  );
+  
+  // EMAIL-VERSAND
+  if (transporter && recipient_email) {
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: recipient_email,
+        subject: `Terminvorschlag für Ortstermin - ${offer.trade_name}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+              <h1>Neuer Terminvorschlag</h1>
+            </div>
+            
+            <div style="padding: 30px; background: #f7f7f7;">
+              <p>Hallo ${recipient_name},</p>
+              
+              <p><strong>${sender_name}</strong> hat einen Terminvorschlag für einen Ortstermin gemacht:</p>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #667eea;">Termindetails:</h3>
+                <table style="width: 100%;">
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Datum/Zeit:</strong></td>
+                    <td>${new Date(proposed_date).toLocaleString('de-DE', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Dauer:</strong></td>
+                    <td>${duration} Minuten</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
+                    <td>${offer.trade_name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Adresse:</strong></td>
+                    <td>${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</td>
+                  </tr>
+                  ${message ? `
+                  <tr>
+                    <td style="padding: 8px 0; vertical-align: top;"><strong>Nachricht:</strong></td>
+                    <td>${message}</td>
+                  </tr>
+                  ` : ''}
+                </table>
+              </div>
+              
+              <p><strong>Was möchten Sie tun?</strong></p>
+              <p>Bitte melden Sie sich in Ihrem Dashboard an, um den Termin zu bestätigen oder einen alternativen Termin vorzuschlagen.</p>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://byndl.de/${recipient_type}/dashboard" 
+                   style="display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px;">
+                  Zum Dashboard →
+                </a>
+              </div>
+              
+              <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                <strong>Hinweis:</strong> Sie befinden sich in der Vertragsanbahnung. 
+                Die Kontaktdaten wurden bereits freigegeben und die 24-monatige Nachwirkfrist ist aktiv.
+              </div>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
+              <p>© 2025 byndl - Die digitale Handwerkerplattform</p>
+            </div>
+          </div>
+        `
+      });
       
+      // Email-Log
       await query(
-        `INSERT INTO notifications 
-         (user_type, user_id, type, reference_id, message)
-         VALUES ($1, $2, 'appointment_request', $3, $4)`,
-        [recipient_type, recipient_id, result.rows[0].id, 
-         `Neuer Terminvorschlag für Ortstermin`]
+        `INSERT INTO email_logs (recipient, type, reference_id, status, sent_at)
+         VALUES ($1, 'appointment_proposal', $2, 'sent', NOW())`,
+        [recipient_email, result.rows[0].id]
       );
+    } catch (emailError) {
+      console.error('Email-Versand fehlgeschlagen:', emailError);
     }
+  }
+}
     
     res.json({ success: true, id: result.rows[0].id });
     
