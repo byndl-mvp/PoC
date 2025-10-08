@@ -14303,69 +14303,6 @@ app.post('/api/offers/:offerId/final-accept', async (req, res) => {
   }
 });
 
-// Bundle-Erkennung und Vorschlag
-app.post('/api/bundles/analyze', async (req, res) => {
-  try {
-    // Finde potenzielle Bündel
-    const bundles = await query(
-      `SELECT 
-        p.zip as region,
-        pt.trade_id,
-        t.name as trade_name,
-        COUNT(*) as project_count,
-        STRING_AGG(p.id::text, ',') as project_ids
-       FROM projects p
-       JOIN project_trades pt ON p.id = pt.project_id
-       JOIN trades t ON pt.trade_id = t.id
-       WHERE p.status = 'active'
-       AND p.created_at > NOW() - INTERVAL '30 days'
-       GROUP BY p.zip, pt.trade_id, t.name
-       HAVING COUNT(*) >= 2
-       ORDER BY COUNT(*) DESC`
-    );
-    
-    // Erstelle Bundle-Vorschläge
-    for (const bundle of bundles.rows) {
-      const existingBundle = await query(
-        `SELECT id FROM project_bundles 
-         WHERE region = $1 AND trade_id = $2 
-         AND created_at > NOW() - INTERVAL '7 days'`,
-        [bundle.region, bundle.trade_id]
-      );
-      
-      if (existingBundle.rows.length === 0) {
-        // Neues Bundle erstellen
-        const bundleResult = await query(
-          `INSERT INTO project_bundles 
-           (region, trade_id, min_projects_for_discount)
-           VALUES ($1, $2, $3)
-           RETURNING id`,
-          [bundle.region, bundle.trade_id, Math.min(3, bundle.project_count)]
-        );
-        
-        // Projekte zum Bundle hinzufügen
-        const projectIds = bundle.project_ids.split(',');
-        for (const projectId of projectIds) {
-          await query(
-            `INSERT INTO bundle_projects (bundle_id, project_id)
-             VALUES ($1, $2)`,
-            [bundleResult.rows[0].id, projectId]
-          );
-        }
-      }
-    }
-    
-    res.json({ 
-      success: true, 
-      bundlesFound: bundles.rows.length 
-    });
-    
-  } catch (error) {
-    console.error('Error analyzing bundles:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Helper-Funktion für Provisionsberechnung
 async function calculateProvision(offerId) {
   const result = await query(
