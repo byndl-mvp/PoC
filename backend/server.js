@@ -15758,6 +15758,665 @@ app.post('/api/offers/:offerId/mark-viewed', async (req, res) => {
 });
 
 // ============================================
+// 5. BUNDLE MANAGEMENT (PROJEKTBÜNDEL)
+// ============================================
+
+// Verfügbare Bündel für Handwerker laden
+app.get('/api/handwerker/:companyId/bundles', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT * FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerker = handwerkerResult.rows[0];
+    const handwerkerId = handwerker.id;
+    
+    // Handwerker-Trades laden
+    const tradesResult = await query(
+      `SELECT trade_id FROM handwerker_trades WHERE handwerker_id = $1`,
+      [handwerkerId]
+    );
+    
+    const tradeIds = tradesResult.rows.map(t => t.trade_id);
+    
+    if (tradeIds.length === 0) {
+      return res.json([]);
+    }
+    
+    // Aktive Bündel finden
+    const bundles = await query(
+      `SELECT 
+        b.*,
+        t.name as trade_name,
+        COUNT(bp.tender_id) as project_count,
+        SUM(tn.estimated_value) as total_volume,
+        array_agg(
+          json_build_object(
+            'tender_id', tn.id,
+            'project_id', p.id,
+            'address', CONCAT(p.street, ' ', p.house_number, ', ', p.zip_code, ' ', p.city),
+            'lat', z.latitude,
+            'lng', z.longitude,
+            'volume', tn.estimated_value,
+            'description', p.description
+          )
+        ) as projects
+       FROM bundles b
+       JOIN bundle_projects bp ON b.id = bp.bundle_id
+       JOIN tenders tn ON bp.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN trades t ON b.trade_id = t.id
+       JOIN zip_codes z ON p.zip_code = z.zip
+       WHERE b.trade_id = ANY($1::int[])
+       AND b.status = 'forming'
+       AND tn.status = 'open'
+       AND NOT EXISTS (
+         SELECT 1 FROM offers o 
+         WHERE o.tender_id = tn.id 
+         AND o.handwerker_id = $2
+       )
+       GROUP BY b.id, t.name
+       HAVING COUNT(bp.tender_id) >= 2`,
+      [tradeIds, handwerkerId]
+    );
+    
+    // Berechne maximale Distanz für jedes Bündel
+    for (let bundle of bundles.rows) {
+      const coords = bundle.projects.map(p => ({ lat: p.lat, lng: p.lng }));
+      bundle.max_distance = calculateMaxDistance(coords);
+    }
+    
+    res.json(bundles.rows);
+    
+  } catch (error) {
+    console.error('Error fetching bundles:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Bündel' });
+  }
+});
+
+// Bündel-Details mit Karte und LV-Daten laden (kombinierte Route)
+app.get('/api/bundles/:bundleId/details', async (req, res) => {
+  try {
+    const { bundleId } = req.params;
+    
+    const bundleResult = await query(
+      `SELECT 
+        b.*,
+        t.name as trade_name,
+        array_agg(
+          json_build_object(
+            'tender_id', tn.id,
+            'project_id', p.id,
+            'title', p.category || ' - ' || p.sub_category,
+            'description', p.description,
+            'address', CONCAT(p.street, ' ', p.house_number),
+            'zip', p.zip_code,
+            'city', p.city,
+            'lat', z.latitude,
+            'lng', z.longitude,
+            'lv_data', tn.lv_data,
+            'estimated_value', tn.estimated_value,
+            'timeframe', tn.timeframe
+          )
+        ) as projects
+       FROM bundles b
+       JOIN bundle_projects bp ON b.id = bp.bundle_id
+       JOIN tenders tn ON bp.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN trades t ON b.trade_id = t.id
+       JOIN zip_codes z ON p.zip_code = z.zip
+       WHERE b.id = $1
+       GROUP BY b.id, t.name`,
+      [bundleId]
+    );
+    
+    if (bundleResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Bündel nicht gefunden' });
+    }
+    
+    const bundle = bundleResult.rows[0];
+    
+    // Berechne Gesamt-LV für das Bündel
+    let totalPositions = [];
+    let totalSum = 0;
+    
+    for (const project of bundle.projects) {
+      const lvData = typeof project.lv_data === 'string' 
+        ? JSON.parse(project.lv_data) 
+        : project.lv_data;
+      
+      if (lvData?.positions) {
+        totalPositions = totalPositions.concat(
+          lvData.positions.map(pos => ({
+            ...pos,
+            project_id: project.project_id,
+            project_title: project.title
+          }))
+        );
+        totalSum += lvData.totalSum || 0;
+      }
+    }
+    
+    bundle.combined_lv = {
+      positions: totalPositions,
+      totalSum: totalSum,
+      projectCount: bundle.projects.length
+    };
+    
+    // Berechne optimale Route
+    bundle.optimal_route = calculateOptimalRoute(bundle.projects);
+    
+    // Map-Daten aufbereiten
+    bundle.map_data = {
+      center: calculateCenter(bundle.projects),
+      zoom: calculateZoomLevel(bundle.projects),
+      markers: bundle.projects.map(p => ({
+        id: p.project_id,
+        position: { lat: p.lat, lng: p.lng },
+        title: p.title,
+        address: `${p.address}, ${p.zip} ${p.city}`
+      }))
+    };
+    
+    res.json(bundle);
+    
+  } catch (error) {
+    console.error('Error fetching bundle details:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Bündeldetails' });
+  }
+});
+
+// Bündel-Angebot abgeben
+app.post('/api/bundles/:bundleId/submit-offer', async (req, res) => {
+  try {
+    const { bundleId } = req.params;
+    const { companyId, bundleDiscount, individualOffers } = req.body;
+    
+    await query('BEGIN');
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      throw new Error('Handwerker nicht gefunden');
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    // Bundle-Projekte laden
+    const bundleProjects = await query(
+      `SELECT tender_id FROM bundle_projects WHERE bundle_id = $1`,
+      [bundleId]
+    );
+    
+    const createdOffers = [];
+    let totalAmount = 0;
+    
+    // Für jedes Projekt im Bündel ein Angebot erstellen
+    for (const project of bundleProjects.rows) {
+      const offerData = individualOffers[project.tender_id];
+      
+      if (!offerData) continue;
+      
+      const offerResult = await query(
+        `INSERT INTO offers (
+          tender_id, handwerker_id, 
+          amount, lv_data, notes,
+          bundle_id, bundle_discount,
+          status, stage, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'submitted', 1, NOW())
+        RETURNING id`,
+        [
+          project.tender_id,
+          handwerkerId,
+          offerData.amount,
+          JSON.stringify(offerData.positions),
+          offerData.notes,
+          bundleId,
+          bundleDiscount
+        ]
+      );
+      
+      createdOffers.push(offerResult.rows[0].id);
+      totalAmount += offerData.amount;
+    }
+    
+    // Bundle-Status aktualisieren
+    await query(
+      `UPDATE bundles 
+       SET status = 'offered', offered_at = NOW()
+       WHERE id = $1`,
+      [bundleId]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({
+      success: true,
+      message: `Bündel-Angebot über ${createdOffers.length} Projekte abgegeben`,
+      totalAmount: totalAmount * (1 - bundleDiscount/100),
+      offerIds: createdOffers
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error submitting bundle offer:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// 8. HELPER FUNCTIONS
+// ============================================
+
+// Bundle-Check-Funktion bleibt unverändert
+async function checkAndCreateBundles(project, tenders) {
+  for (const tender of tenders) {
+    // Suche nach ähnlichen Projekten in der Region
+    const similarProjects = await query(
+      `SELECT DISTINCT t.*, p.zip_code, p.bauherr_id
+       FROM tenders t
+       JOIN projects p ON t.project_id = p.id
+       JOIN zip_codes z1 ON z1.zip = p.zip_code
+       JOIN zip_codes z2 ON z2.zip = $1
+       WHERE t.trade_id = $2
+       AND t.status = 'open'
+       AND t.bundle_eligible = true
+       AND t.project_id != $3
+       AND ST_DWithin(
+         ST_MakePoint(z1.longitude, z1.latitude)::geography,
+         ST_MakePoint(z2.longitude, z2.latitude)::geography,
+         10000 -- 10km Radius für Bündel
+       )
+       AND (t.bundle_wait_until IS NULL OR t.bundle_wait_until > NOW())`,
+      [project.zip_code, tender.tradeId, project.id]
+    );
+    
+    if (similarProjects.rows.length > 0) {
+      // Bundle erstellen oder zu existierendem hinzufügen
+      const bundleResult = await query(
+        `INSERT INTO bundles (
+          trade_id, region_zip, status, min_projects, created_at
+        ) VALUES ($1, $2, 'forming', 2, NOW())
+        ON CONFLICT (trade_id, region_zip) WHERE status = 'forming'
+        DO UPDATE SET updated_at = NOW()
+        RETURNING id`,
+        [tender.tradeId, project.zip_code]
+      );
+      
+      const bundleId = bundleResult.rows[0].id;
+      
+      // Projekte zum Bundle hinzufügen
+      await query(
+        `INSERT INTO bundle_projects (bundle_id, tender_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [bundleId, tender.tenderId]
+      );
+      
+      for (const similar of similarProjects.rows) {
+        await query(
+          `INSERT INTO bundle_projects (bundle_id, tender_id)
+           VALUES ($1, $2)
+           ON CONFLICT DO NOTHING`,
+          [bundleId, similar.id]
+        );
+      }
+    }
+  }
+}
+
+// Berechne maximale Distanz zwischen Koordinaten
+function calculateMaxDistance(coords) {
+  let maxDist = 0;
+  for (let i = 0; i < coords.length; i++) {
+    for (let j = i + 1; j < coords.length; j++) {
+      const dist = haversineDistance(coords[i], coords[j]);
+      if (dist > maxDist) maxDist = dist;
+    }
+  }
+  return Math.round(maxDist * 10) / 10;
+}
+
+// Haversine Distanz-Berechnung
+function haversineDistance(coord1, coord2) {
+  const R = 6371; // Erdradius in km
+  const dLat = toRad(coord2.lat - coord1.lat);
+  const dLng = toRad(coord2.lng - coord1.lng);
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(toRad(coord1.lat)) * Math.cos(toRad(coord2.lat)) * 
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function toRad(deg) {
+  return deg * (Math.PI/180);
+}
+
+// Berechne optimale Route (vereinfacht - TSP)
+function calculateOptimalRoute(projects) {
+  // Vereinfachte Implementation - in Produktion würde man hier
+  // einen richtigen TSP-Algorithmus verwenden
+  return projects.map(p => ({
+    project_id: p.project_id,
+    address: p.address,
+    lat: p.lat,
+    lng: p.lng
+  }));
+}
+
+// Berechne Zentrum für Map
+function calculateCenter(projects) {
+  if (projects.length === 0) return { lat: 50.9375, lng: 6.9603 }; // Köln als Default
+  
+  const sumLat = projects.reduce((sum, p) => sum + p.lat, 0);
+  const sumLng = projects.reduce((sum, p) => sum + p.lng, 0);
+  
+  return {
+    lat: sumLat / projects.length,
+    lng: sumLng / projects.length
+  };
+}
+
+// Berechne Zoom-Level basierend auf Projektverteilung
+function calculateZoomLevel(projects) {
+  if (projects.length <= 1) return 14;
+  
+  const coords = projects.map(p => ({ lat: p.lat, lng: p.lng }));
+  const maxDistance = calculateMaxDistance(coords);
+  
+  // Zoom-Level basierend auf maximaler Distanz
+  if (maxDistance < 2) return 14;
+  if (maxDistance < 5) return 13;
+  if (maxDistance < 10) return 12;
+  if (maxDistance < 20) return 11;
+  return 10;
+}
+
+// ============================================
+// 9. NOTIFICATION & STATUS UPDATES
+// ============================================
+
+// Ungelesene Benachrichtigungen zählen
+app.get('/api/:userType/:userId/notifications/unread-count', async (req, res) => {
+  try {
+    const { userType, userId } = req.params;
+    
+    const result = await query(
+      `SELECT COUNT(*) as count
+       FROM notifications
+       WHERE user_type = $1 AND user_id = $2 AND read_at IS NULL`,
+      [userType, userId]
+    );
+    
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Zählen' });
+  }
+});
+
+// Benachrichtigungen als gelesen markieren
+app.post('/api/notifications/:notificationId/mark-read', async (req, res) => {
+  try {
+    await query(
+      `UPDATE notifications SET read_at = NOW() WHERE id = $1`,
+      [req.params.notificationId]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// ============================================
+// 6. SPEZIFISCHE DATA ENDPOINTS
+// ============================================
+
+// Handwerker Ausschreibungen laden
+app.get('/api/handwerker/:companyId/tender', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    // Neue Ausschreibungen ohne Angebot
+    const data = await query(
+      `SELECT DISTINCT t.*, tr.name as trade_name, p.description, p.zip_code, p.city,
+        th.distance_km, ths.viewed_at,
+        CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as is_new
+       FROM tenders t
+       JOIN tender_handwerker th ON t.id = th.tender_id
+       JOIN trades tr ON t.trade_id = tr.id
+       JOIN projects p ON t.project_id = p.id
+       LEFT JOIN tender_handwerker_status ths ON 
+         t.id = ths.tender_id AND th.handwerker_id = ths.handwerker_id
+       WHERE th.handwerker_id = $1
+       AND th.status != 'rejected'
+       AND t.status = 'open'
+       AND NOT EXISTS (
+         SELECT 1 FROM offers o 
+         WHERE o.tender_id = t.id AND o.handwerker_id = $1
+       )
+       ORDER BY t.created_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(data.rows);
+    
+  } catch (error) {
+    console.error('Error fetching handwerker tenders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+  }
+});
+
+// Handwerker Angebote laden
+app.get('/api/handwerker/:companyId/offers', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    const data = await query(
+      `SELECT o.*, t.name as trade_name, p.description as project_type,
+        p.zip_code || ' ' || p.city as location
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       JOIN projects p ON tn.project_id = p.id
+       WHERE o.handwerker_id = $1
+       ORDER BY o.created_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(data.rows);
+    
+  } catch (error) {
+    console.error('Error fetching handwerker offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
+  }
+});
+
+// Handwerker Vertragsanbahnungen laden
+app.get('/api/handwerker/:companyId/negotiations', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    const data = await query(
+      `SELECT o.*, p.*, b.*, t.name as trade_name
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.handwerker_id = $1 AND o.status = 'preliminary'
+       ORDER BY o.preliminary_accepted_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(data.rows);
+    
+  } catch (error) {
+    console.error('Error fetching negotiations:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Vertragsanbahnungen' });
+  }
+});
+
+// Handwerker Aufträge laden
+app.get('/api/handwerker/:companyId/orders', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // CompanyId zu HandwerkerId konvertieren
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    const data = await query(
+      `SELECT ord.*, p.description, 
+        CONCAT(p.street, ' ', p.house_number, ', ', p.zip_code, ' ', p.city) as address,
+        t.name as trade_name
+       FROM orders ord
+       JOIN projects p ON ord.project_id = p.id
+       JOIN trades t ON ord.trade_id = t.id
+       WHERE ord.handwerker_id = $1
+       ORDER BY ord.created_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(data.rows);
+    
+  } catch (error) {
+    console.error('Error fetching handwerker orders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Aufträge' });
+  }
+});
+
+// NEU - Fehlte komplett
+app.get('/api/bundles/:bundleId/map-data', async (req, res) => {
+  try {
+    const { bundleId } = req.params;
+    
+    const mapData = await query(
+      `SELECT 
+        p.id,
+        p.street || ' ' || p.house_number as address,
+        p.zip_code,
+        p.city,
+        z.latitude as lat,
+        z.longitude as lng,
+        tn.estimated_value as value
+       FROM bundle_projects bp
+       JOIN tenders tn ON bp.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN zip_codes z ON p.zip_code = z.zip
+       WHERE bp.bundle_id = $1`,
+      [bundleId]
+    );
+    
+    res.json(mapData.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Laden der Kartendaten' });
+  }
+});
+
+// ============================================
+// 8. HELPER FUNCTIONS
+// ============================================
+
+// Berechne maximale Distanz zwischen Koordinaten
+function calculateMaxDistance(coords) {
+  let maxDist = 0;
+  for (let i = 0; i < coords.length; i++) {
+    for (let j = i + 1; j < coords.length; j++) {
+      const dist = haversineDistance(coords[i], coords[j]);
+      if (dist > maxDist) maxDist = dist;
+    }
+  }
+  return Math.round(maxDist * 10) / 10;
+}
+
+// Haversine Distanz-Berechnung
+function haversineDistance(coord1, coord2) {
+  const R = 6371; // Erdradius in km
+  const dLat = toRad(coord2.lat - coord1.lat);
+  const dLng = toRad(coord2.lng - coord1.lng);
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(toRad(coord1.lat)) * Math.cos(toRad(coord2.lat)) * 
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function toRad(deg) {
+  return deg * (Math.PI/180);
+}
+
+// Berechne optimale Route (vereinfacht - TSP)
+function calculateOptimalRoute(projects) {
+  // Vereinfachte Implementation - in Produktion würde man hier
+  // einen richtigen TSP-Algorithmus verwenden
+  return projects.map(p => ({
+    project_id: p.project_id,
+    address: p.address,
+    lat: p.lat,
+    lng: p.lng
+  }));
+}
+
+// ============================================
 // HANDWERKER SETTINGS ENDPOINTS
 // ============================================
 
