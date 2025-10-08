@@ -15024,7 +15024,7 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
     
     // Projekt und Bauherr-Daten laden
     const projectResult = await query(
-      `SELECT p.*, b.zip as bauherr_zip, b.id as bauherr_id
+      `SELECT p.*, b.zip as bauherr_zip, b.id as bauherr_id, b.email as bauherr_email, b.name as bauherr_name
        FROM projects p
        JOIN bauherren b ON p.bauherr_id = b.id
        WHERE p.id = $1`,
@@ -15037,6 +15037,7 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
     
     const project = projectResult.rows[0];
     const createdTenders = [];
+    const allMatchedHandwerker = []; // Für Email-Versand sammeln
     
     // Trade IDs bestimmen
     let tradesToProcess;
@@ -15081,24 +15082,21 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
       const lv = lvResult.rows[0];
       const lvContent = typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content;
       
-      // Tender erstellen
+      // FEHLENDE FELDER IN TENDER KORRIGIEREN
       const tenderResult = await query(
         `INSERT INTO tenders (
-          project_id, trade_id, bauherr_id, status, 
+          project_id, trade_id, status, 
           deadline, estimated_value, timeframe, 
-          project_zip, lv_data, bundle_eligible,
-          bundle_wait_until, created_at
-        ) VALUES ($1, $2, $3, 'open', 
-          NOW() + INTERVAL '14 days', $4, $5, $6, $7, $8, $9, NOW())
+          lv_data, created_at
+        ) VALUES ($1, $2, 'open', 
+          NOW() + INTERVAL '14 days', $3, $4, $5, NOW())
         RETURNING id`,
         [
-          projectId, trade.id, project.bauherr_id,
+          projectId, 
+          trade.id,
           lvContent.totalSum || 0,
           timeframe || project.timeframe || 'Nach Absprache',
-          project.bauherr_zip,
-          JSON.stringify(lvContent),
-          bundleSettings?.eligible || false,
-          bundleSettings?.waitUntil || null
+          JSON.stringify(lvContent)
         ]
       );
       
@@ -15117,7 +15115,6 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
          JOIN zip_codes z2 ON z2.zip = $1
          WHERE ht.trade_id = $2
          AND h.verified = true
-         AND h.active = true
          AND ST_DWithin(
            ST_MakePoint(z1.longitude, z1.latitude)::geography,
            ST_MakePoint(z2.longitude, z2.latitude)::geography,
@@ -15129,12 +15126,13 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
       
       // Tender-Handwerker-Verknüpfungen erstellen
       for (const handwerker of matchingHandwerker.rows) {
+        // KORRIGIERT: Felder angepasst an tatsächliche DB-Struktur
         await query(
           `INSERT INTO tender_handwerker (
-            tender_id, handwerker_id, status, distance_km, notified_at
-          ) VALUES ($1, $2, 'pending', $3, NOW())
+            tender_id, handwerker_id, status, notified_at
+          ) VALUES ($1, $2, 'pending', NOW())
           ON CONFLICT (tender_id, handwerker_id) DO NOTHING`,
-          [tenderId, handwerker.id, handwerker.distance_km]
+          [tenderId, handwerker.id]
         );
         
         // Status-Tracking initialisieren
@@ -15145,6 +15143,98 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
           ON CONFLICT (tender_id, handwerker_id) DO UPDATE SET status = 'sent'`,
           [tenderId, handwerker.id]
         );
+        
+        // EMAIL-VERSAND AN HANDWERKER
+        if (transporter && handwerker.email) {
+          try {
+            await transporter.sendMail({
+              from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+              to: handwerker.email,
+              subject: `Neue Ausschreibung: ${trade.name} - ${project.category || 'Bauprojekt'}`,
+              html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <style>
+                    body { font-family: Arial, sans-serif; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; }
+                    .content { background: #f7f7f7; padding: 30px; }
+                    .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+                    .details { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <div class="header">
+                      <h1>Neue Ausschreibung in Ihrer Region!</h1>
+                    </div>
+                    <div class="content">
+                      <h2>Guten Tag ${handwerker.company_name || handwerker.contact_person || ''},</h2>
+                      
+                      <p>Es gibt eine neue passende Ausschreibung für Sie:</p>
+                      
+                      <div class="details">
+                        <h3>Projektdetails:</h3>
+                        <table width="100%">
+                          <tr><td><strong>Gewerk:</strong></td><td>${trade.name}</td></tr>
+                          <tr><td><strong>Projekttyp:</strong></td><td>${project.category || ''} ${project.sub_category ? '- ' + project.sub_category : ''}</td></tr>
+                          <tr><td><strong>Standort:</strong></td><td>${project.bauherr_zip} (${handwerker.distance_km.toFixed(1)} km entfernt)</td></tr>
+                          <tr><td><strong>Geschätztes Volumen:</strong></td><td>${formatCurrency(lvContent.totalSum || 0)}</td></tr>
+                          <tr><td><strong>Zeitraum:</strong></td><td>${timeframe || 'Nach Absprache'}</td></tr>
+                          <tr><td><strong>Angebotsfrist:</strong></td><td>${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('de-DE')}</td></tr>
+                        </table>
+                      </div>
+                      
+                      <p><strong>Was ist zu tun?</strong></p>
+                      <ol>
+                        <li>Loggen Sie sich in Ihr Dashboard ein</li>
+                        <li>Prüfen Sie das Leistungsverzeichnis</li>
+                        <li>Geben Sie Ihr Angebot ab</li>
+                      </ol>
+                      
+                      <center>
+                        <a href="https://byndl.de/handwerker/dashboard" class="button">
+                          Zum Dashboard →
+                        </a>
+                      </center>
+                      
+                      ${bundleSettings?.eligible ? `
+                        <div style="margin-top: 30px; padding: 15px; background: #e6f7ff; border-left: 4px solid #1890ff; border-radius: 4px;">
+                          <strong>💡 Hinweis:</strong> Diese Ausschreibung kann Teil eines Projektbündels werden. 
+                          Bei mehreren Projekten in Ihrer Region können Sie Synergien nutzen und bessere Preise anbieten.
+                        </div>
+                      ` : ''}
+                    </div>
+                    
+                    <div class="footer">
+                      <p>© 2024 byndl - Die digitale Handwerkerplattform</p>
+                      <p>Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht direkt auf diese E-Mail.</p>
+                    </div>
+                  </div>
+                </body>
+                </html>
+              `
+            });
+            
+            // Email-Log erstellen
+            await query(
+              `INSERT INTO email_logs (recipient, type, reference_id, status, sent_at)
+               VALUES ($1, 'tender_notification', $2, 'sent', NOW())`,
+              [handwerker.email, tenderId]
+            );
+          } catch (emailError) {
+            console.error('Email-Versand fehlgeschlagen:', emailError);
+            // Trotzdem fortfahren, Email-Fehler sollte nicht die ganze Tender-Erstellung stoppen
+          }
+        }
+        
+        // Für Zusammenfassung sammeln
+        allMatchedHandwerker.push({
+          ...handwerker,
+          tradeName: trade.name
+        });
       }
       
       createdTenders.push({
@@ -15158,6 +15248,37 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
     // Bundle-Check wenn aktiviert
     if (bundleSettings?.eligible) {
       await checkAndCreateBundles(project, createdTenders);
+    }
+    
+    // EMAIL AN BAUHERR mit Zusammenfassung
+    if (transporter && project.bauherr_email && createdTenders.length > 0) {
+      const totalHandwerker = createdTenders.reduce((sum, t) => sum + t.matchedHandwerker, 0);
+      
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: project.bauherr_email,
+        subject: 'Ihre Ausschreibung wurde erfolgreich versendet',
+        html: `
+          <h2>Hallo ${project.bauherr_name || ''},</h2>
+          <p>Ihre Ausschreibung wurde erfolgreich an passende Handwerker versendet.</p>
+          
+          <h3>Zusammenfassung:</h3>
+          <ul>
+            ${createdTenders.map(t => `
+              <li><strong>${t.tradeName}:</strong> ${t.matchedHandwerker} Handwerker benachrichtigt</li>
+            `).join('')}
+          </ul>
+          
+          <p><strong>Gesamt: ${totalHandwerker} Handwerker</strong> haben Ihre Ausschreibung erhalten.</p>
+          
+          <p>Sie können den Status Ihrer Ausschreibung jederzeit in Ihrem Dashboard verfolgen:</p>
+          <a href="https://byndl.de/bauherr/dashboard" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px;">
+            Zum Dashboard
+          </a>
+          
+          <p>Die Angebotsfrist läuft bis: ${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('de-DE')}</p>
+        `
+      });
     }
     
     await query('COMMIT');
