@@ -18049,7 +18049,10 @@ app.delete('/api/admin/bauherren/:id', requireAdmin, async (req, res) => {
         await query('DELETE FROM tender_tracking WHERE tender_id = $1', [tenderId]);
       }
       
-      // Lösche alle project-abhängigen Daten (17 Tabellen)
+      // WICHTIG: questions ZUERST löschen (vor project_trades!)
+      await query('DELETE FROM questions WHERE project_id = $1', [projectId]);
+      
+      // Dann alle anderen project-abhängigen Daten
       await query('DELETE FROM answers WHERE project_id = $1', [projectId]);
       await query('DELETE FROM bundle_projects WHERE project_id = $1', [projectId]);
       await query('DELETE FROM intake_responses WHERE project_id = $1', [projectId]);
@@ -18062,7 +18065,6 @@ app.delete('/api/admin/bauherren/:id', requireAdmin, async (req, res) => {
       await query('DELETE FROM project_logs WHERE project_id = $1', [projectId]);
       await query('DELETE FROM project_optimizations WHERE project_id = $1', [projectId]);
       await query('DELETE FROM project_trades WHERE project_id = $1', [projectId]);
-      await query('DELETE FROM questions WHERE project_id = $1', [projectId]);
       await query('DELETE FROM schedules WHERE project_id = $1', [projectId]);
       await query('DELETE FROM tenders WHERE project_id = $1', [projectId]);
       await query('DELETE FROM trade_optimizations WHERE project_id = $1', [projectId]);
