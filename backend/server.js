@@ -15045,15 +15045,17 @@ app.post('/api/contracts/:contractId/confirm-offer', async (req, res) => {
 
 // ============= AUSSCHREIBUNGS-SYSTEM =============
 
-// Gewerk ausschreiben (einzeln oder alle)
+// Tender erstellen mit automatischem Handwerker-Matching
 app.post('/api/projects/:projectId/tender/create', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { tradeIds, timeframe } = req.body; // tradeIds kann Array sein oder 'all'
+    const { tradeIds, timeframe, bundleSettings } = req.body;
     
-    // Projekt-Details laden
+    await query('BEGIN');
+    
+    // Projekt und Bauherr-Daten laden
     const projectResult = await query(
-      `SELECT p.*, b.zip as bauherr_zip
+      `SELECT p.*, b.zip as bauherr_zip, b.id as bauherr_id
        FROM projects p
        JOIN bauherren b ON p.bauherr_id = b.id
        WHERE p.id = $1`,
@@ -15061,106 +15063,117 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
     );
     
     if (projectResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+      throw new Error('Projekt nicht gefunden');
     }
     
     const project = projectResult.rows[0];
+    const createdTenders = [];
     
-    // Gewerke bestimmen
-    let trades;
+    // Trade IDs bestimmen
+    let tradesToProcess;
     if (tradeIds === 'all') {
-      trades = await query(
+      tradesToProcess = await query(
         `SELECT DISTINCT t.* FROM trades t
          JOIN project_trades pt ON t.id = pt.trade_id
          WHERE pt.project_id = $1 AND t.code != 'INT'`,
         [projectId]
       );
     } else {
-      trades = await query(
+      tradesToProcess = await query(
         `SELECT * FROM trades WHERE id = ANY($1::int[])`,
-        [tradeIds]
+        [Array.isArray(tradeIds) ? tradeIds : [tradeIds]]
       );
     }
     
-    const createdTenders = [];
-    
-    for (const trade of trades.rows) {
-      // NEUE ZEILEN: Prüfe ob Tender bereits existiert
-  const existingTender = await query(
-    `SELECT id FROM tenders 
-     WHERE project_id = $1 AND trade_id = $2 
-     AND created_at > NOW() - INTERVAL '1 hour'`,
-    [projectId, trade.id]
-  );
-  
-  if (existingTender.rows.length > 0) {
-    console.log('Tender existiert bereits für Trade', trade.id);
-    continue;
-  }
-      
-      // LV-Daten für dieses Gewerk holen
-      const lvResult = await query(
-        `SELECT content FROM lvs 
-         WHERE project_id = $1 AND trade_id = $2`,
+    // Für jedes Gewerk eine Tender erstellen
+    for (const trade of tradesToProcess.rows) {
+      // Prüfe ob bereits Tender existiert
+      const existingTender = await query(
+        `SELECT id FROM tenders 
+         WHERE project_id = $1 AND trade_id = $2 
+         AND status != 'cancelled'`,
         [projectId, trade.id]
       );
       
-      if (lvResult.rows.length === 0) continue;
+      if (existingTender.rows.length > 0) {
+        continue;
+      }
       
-      const lv = typeof lvResult.rows[0].content === 'string' 
-        ? JSON.parse(lvResult.rows[0].content) 
-        : lvResult.rows[0].content;
+      // LV-Daten laden
+      const lvResult = await query(
+        `SELECT * FROM lvs WHERE project_id = $1 AND trade_id = $2`,
+        [projectId, trade.id]
+      );
+      
+      if (lvResult.rows.length === 0) {
+        continue;
+      }
+      
+      const lv = lvResult.rows[0];
+      const lvContent = typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content;
       
       // Tender erstellen
       const tenderResult = await query(
         `INSERT INTO tenders (
-          project_id, trade_id, trade_code, 
-          status, deadline, estimated_value,
-          timeframe, project_zip, lv_data,
-          created_at
+          project_id, trade_id, bauherr_id, status, 
+          deadline, estimated_value, timeframe, 
+          project_zip, lv_data, bundle_eligible,
+          bundle_wait_until, created_at
         ) VALUES ($1, $2, $3, 'open', 
-          NOW() + INTERVAL '14 days', $4, $5, $6, $7, NOW())
+          NOW() + INTERVAL '14 days', $4, $5, $6, $7, $8, $9, NOW())
         RETURNING id`,
         [
-          projectId, 
-          trade.id, 
-          trade.code,
-          lv.totalSum || 0,
-          timeframe || project.timeframe,
+          projectId, trade.id, project.bauherr_id,
+          lvContent.totalSum || 0,
+          timeframe || project.timeframe || 'Nach Absprache',
           project.bauherr_zip,
-          JSON.stringify(lv)
+          JSON.stringify(lvContent),
+          bundleSettings?.eligible || false,
+          bundleSettings?.waitUntil || null
         ]
       );
       
       const tenderId = tenderResult.rows[0].id;
       
-      // Passende Handwerker finden (Matching-Logik)
+      // MATCHING: Passende Handwerker finden mit PostGIS
       const matchingHandwerker = await query(
-        `SELECT h.* FROM handwerker h
+        `SELECT DISTINCT h.*, 
+          ST_Distance(
+            ST_MakePoint(z1.longitude, z1.latitude)::geography,
+            ST_MakePoint(z2.longitude, z2.latitude)::geography
+          ) / 1000 as distance_km
+         FROM handwerker h
          JOIN handwerker_trades ht ON h.id = ht.handwerker_id
-         WHERE ht.trade_id = $1
+         JOIN zip_codes z1 ON z1.zip = h.zip_code
+         JOIN zip_codes z2 ON z2.zip = $1
+         WHERE ht.trade_id = $2
          AND h.verified = true
+         AND h.active = true
          AND ST_DWithin(
-           ST_MakePoint(
-             (SELECT longitude FROM zip_codes WHERE zip = $2),
-             (SELECT latitude FROM zip_codes WHERE zip = $2)
-           )::geography,
-           ST_MakePoint(
-             (SELECT longitude FROM zip_codes WHERE zip = h.zip_code),
-             (SELECT latitude FROM zip_codes WHERE zip = h.zip_code)
-           )::geography,
+           ST_MakePoint(z1.longitude, z1.latitude)::geography,
+           ST_MakePoint(z2.longitude, z2.latitude)::geography,
            h.action_radius * 1000
-         )`,
-        [trade.id, project.bauherr_zip]
+         )
+         ORDER BY distance_km ASC`,
+        [project.bauherr_zip, trade.id]
       );
       
       // Tender-Handwerker-Verknüpfungen erstellen
       for (const handwerker of matchingHandwerker.rows) {
         await query(
           `INSERT INTO tender_handwerker (
-            tender_id, handwerker_id, status, notified_at
-          ) VALUES ($1, $2, 'pending', NOW())
-          ON CONFLICT DO NOTHING`,  // <-- NUR DIESE ZEILE HINZUFÜGEN
+            tender_id, handwerker_id, status, distance_km, notified_at
+          ) VALUES ($1, $2, 'pending', $3, NOW())
+          ON CONFLICT (tender_id, handwerker_id) DO NOTHING`,
+          [tenderId, handwerker.id, handwerker.distance_km]
+        );
+        
+        // Status-Tracking initialisieren
+        await query(
+          `INSERT INTO tender_handwerker_status (
+            tender_id, handwerker_id, status, created_at
+          ) VALUES ($1, $2, 'sent', NOW())
+          ON CONFLICT (tender_id, handwerker_id) DO UPDATE SET status = 'sent'`,
           [tenderId, handwerker.id]
         );
       }
@@ -15168,9 +15181,17 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
       createdTenders.push({
         tenderId,
         tradeName: trade.name,
+        tradeId: trade.id,
         matchedHandwerker: matchingHandwerker.rows.length
       });
     }
+    
+    // Bundle-Check wenn aktiviert
+    if (bundleSettings?.eligible) {
+      await checkAndCreateBundles(project, createdTenders);
+    }
+    
+    await query('COMMIT');
     
     res.json({
       success: true,
@@ -15179,10 +15200,12 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error creating tender:', error);
-    res.status(500).json({ error: 'Fehler beim Erstellen der Ausschreibung' });
+    await query('ROLLBACK');
+    console.error('Error creating tenders:', error);
+    res.status(500).json({ error: error.message });
   }
 });
+
 
 // Get matching tenders for handwerker - KORRIGIERT
 app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
