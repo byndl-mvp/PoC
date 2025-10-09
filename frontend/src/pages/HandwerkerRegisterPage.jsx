@@ -687,19 +687,19 @@ return (
                   </label>
                   <div className="bg-white/10 rounded-lg p-4 max-h-60 overflow-y-auto grid md:grid-cols-2 gap-2">
                     {AVAILABLE_TRADES.map(trade => (
-                      <label
-                        key={trade.id}
-                        className="flex items-center text-white hover:bg-white/10 rounded p-2 cursor-pointer transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.trades.includes(trade.id)}
-                          onChange={() => handleTradeToggle(trade.id)}
-                          className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
-                        />
-                        <span>{trade.name}</span>
-                      </label>
-                    ))}
+  <label
+    key={trade.code}
+    className="flex items-center text-white hover:bg-white/10 rounded p-2 cursor-pointer transition-colors"
+  >
+    <input
+      type="checkbox"
+      checked={formData.trades.includes(trade.code)}
+      onChange={() => handleTradeToggle(trade.code)}
+      className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
+    />
+    <span>{trade.name}</span>
+  </label>
+))}
                   </div>
                   {formData.trades.length > 0 && (
                     <p className="text-teal-300 text-sm mt-2">
