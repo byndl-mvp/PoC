@@ -15385,7 +15385,7 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
          JOIN zip_codes z1 ON z1.zip = h.zip_code
          JOIN zip_codes z2 ON z2.zip = $1
          WHERE ht.trade_id = $2
-         AND h.verified = true
+         AND h.active = true
          AND ST_DWithin(
            ST_MakePoint(z1.longitude, z1.latitude)::geography,
            ST_MakePoint(z2.longitude, z2.latitude)::geography,
