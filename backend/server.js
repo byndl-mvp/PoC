@@ -15399,12 +15399,12 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
       for (const handwerker of matchingHandwerker.rows) {
         // KORRIGIERT: Felder angepasst an tatsächliche DB-Struktur
         await query(
-          `INSERT INTO tender_handwerker (
-            tender_id, handwerker_id, status, notified_at
-          ) VALUES ($1, $2, 'pending', NOW())
-          ON CONFLICT (tender_id, handwerker_id) DO NOTHING`,
-          [tenderId, handwerker.id]
-        );
+  `INSERT INTO tender_handwerker (
+    tender_id, handwerker_id, status, notified_at, distance_km
+  ) VALUES ($1, $2, 'pending', NOW(), $3)
+  ON CONFLICT (tender_id, handwerker_id) DO NOTHING`,
+  [tenderId, handwerker.id, handwerker.distance_km || 0]
+);
         
         // Status-Tracking initialisieren
         await query(
