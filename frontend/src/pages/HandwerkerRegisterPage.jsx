@@ -303,11 +303,7 @@ const getPasswordStrengthClass = (password) => {
     
     const submitData = {
   ...submitDataWithoutConfirm,
-  // Trade-Codes zu Datenbank-IDs konvertieren!
-  trades: formData.trades.map(tradeCode => {
-    const trade = AVAILABLE_TRADES.find(t => t.id === tradeCode);
-    return trade ? trade.dbId : null;
-  }).filter(id => id !== null),
+  trades: formData.trades, // Sendet die Codes direkt
   companyId,
   registeredAt: new Date().toISOString()
 };
