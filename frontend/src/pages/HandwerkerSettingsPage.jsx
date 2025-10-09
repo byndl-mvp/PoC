@@ -100,27 +100,45 @@ useEffect(() => {
 }, [handwerkerData]);
 
   const loadSettings = async (handwerkerId) => {
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/settings`), {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
-        }
-      });
-      
-      if (res.ok) {
-        const settings = await res.json();
-        setFormData(prev => ({
-          ...prev,
-          ...settings
-        }));
+  try {
+    setLoading(true);
+    
+    // Settings laden
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/settings`), {
+      headers: {
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
       }
-    } catch (err) {
-      console.error('Fehler beim Laden der Einstellungen:', err);
-    } finally {
-      setLoading(false);
+    });
+    
+    if (res.ok) {
+      const settings = await res.json();
+      setFormData(prev => ({
+        ...prev,
+        ...settings
+      }));
     }
-  };
+    
+    // Gewerke laden - NEU
+    const tradesRes = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/trades`), {
+      headers: {
+        'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+      }
+    });
+    
+    if (tradesRes.ok) {
+      const tradesData = await tradesRes.json();
+      setFormData(prev => ({
+        ...prev,
+        trades: tradesData.trades || []
+      }));
+    }
+    
+  } catch (err) {
+    console.error('Fehler beim Laden der Einstellungen:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSave = async (section) => {
   try {
@@ -272,6 +290,7 @@ const loadDocuments = async () => {
 
   const tabs = [
     { id: 'profil', label: 'Mein Profil', icon: '👤' }, // NEU
+    { id: 'gewerke', label: 'Meine Gewerke', icon: '🔧' },
     { id: 'firmendaten', label: 'Firmendaten', icon: '🏢' },
     { id: 'einsatzgebiet', label: 'Einsatzgebiet', icon: '📍' },
     { id: 'verfuegbarkeit', label: 'Verfügbarkeit', icon: '📅' },
