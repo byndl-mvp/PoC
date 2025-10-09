@@ -8209,7 +8209,7 @@ if (tradeCode === 'FEN' && lv.positions) {
   }
 }    
 
-// SPEZIAL-REGEL FÜR ZIMMERER - ERWEITERT
+// SPEZIAL-REGEL FÜR ZIMMERER - VOLLSTÄNDIG ERWEITERT
 if (tradeCode === 'ZIMM') {
   // Dachstuhl-Preiskorrektur (bestehend)
   if (titleLower.includes('dachstuhl')) {
@@ -8264,13 +8264,92 @@ if (tradeCode === 'ZIMM') {
         const oldPrice = pos.unitPrice;
         pos.unitPrice = 650; // Pauschale für Gaube pro m²
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Gaube/m² korrigiert: €${oldPrice}/m² → €450/m²`);
+        warnings.push(`Gaube/m² korrigiert: €${oldPrice}/m² → €650/m²`);
         fixedCount++;
       }
     }
   }
   
-  // Dachlatten und Unterkonstruktion
+  // NEU: Kehlbalken - niemals über 150€ pro Stück
+  if (titleLower.includes('kehlbalken')) {
+    if (pos.unit === 'Stk' && pos.unitPrice > 150) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 95;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Kehlbalken korrigiert: €${oldPrice} → €95/Stk`);
+      fixedCount++;
+    }
+  }
+  
+  // NEU: Wechselkonstruktion - realistischer Preis
+  if (titleLower.includes('wechsel') && titleLower.includes('konstruktion')) {
+    if (pos.unit === 'Stk' && pos.unitPrice > 1500) {
+      const oldPrice = pos.unitPrice;
+      const sizeMatch = (pos.title + ' ' + pos.description).match(/(\d+(?:[,\.]\d+)?)\s*m/);
+      const width = sizeMatch ? parseFloat(sizeMatch[1].replace(',', '.')) : 2.0;
+      pos.unitPrice = Math.round(350 * width); // ~350€ pro Meter
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Wechselkonstruktion ${width}m: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
+  
+  // NEU: Gaubenwangen - max 600€ pro Stück
+  if (titleLower.includes('gaubenwange')) {
+    if (pos.unit === 'Stk' && (pos.unitPrice < 300 || pos.unitPrice > 600)) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 420;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Gaubenwangen korrigiert: €${oldPrice} → €420/Stk`);
+      fixedCount++;
+    }
+  }
+  
+  // NEU: Sparrenverstärkung - max 250€ pro Stück
+  if (titleLower.includes('verstärkung') && titleLower.includes('sparren')) {
+    if (pos.unit === 'Stk' && pos.unitPrice > 250) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 180;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Sparrenverstärkung korrigiert: €${oldPrice} → €180/Stk`);
+      fixedCount++;
+    }
+  }
+  
+  // NEU: Begutachtung/Statik - Pauschale max 1500€
+  if (titleLower.includes('begutachtung') || titleLower.includes('statisch')) {
+    if (pos.unit === 'psch' && pos.unitPrice > 1500) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 850;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Statische Begutachtung korrigiert: €${oldPrice} → €850`);
+      fixedCount++;
+    }
+  }
+  
+  // NEU: Kranstellung - Tagespreis max 1200€
+  if (titleLower.includes('kran')) {
+    if (pos.unit === 'Tag' && pos.unitPrice > 1200) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 850;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Kranstellung korrigiert: €${oldPrice} → €850/Tag`);
+      fixedCount++;
+    }
+  }
+  
+  // NEU: Windrispen - max 40€/m
+  if (titleLower.includes('windrisp') || titleLower.includes('aussteifung')) {
+    if (pos.unit === 'lfd.m' && pos.unitPrice > 40) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 22;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Windrispen korrigiert: €${oldPrice} → €22/m`);
+      fixedCount++;
+    }
+  }
+  
+  // Dachlatten und Unterkonstruktion (bestehend)
   if (titleLower.includes('dachlatte') || titleLower.includes('lattung')) {
     if (pos.unit === 'm²' && pos.unitPrice > 35) {
       const oldPrice = pos.unitPrice;
@@ -8281,7 +8360,7 @@ if (tradeCode === 'ZIMM') {
     }
   }
   
-  // Carport/Überdachung mit Größenfaktor
+  // Carport/Überdachung mit Größenfaktor (bestehend)
   if (titleLower.includes('carport') || titleLower.includes('überdachung')) {
     const areaMatch = (pos.title + ' ' + pos.description).match(/(\d+)\s*m²/);
     const area = areaMatch ? parseInt(areaMatch[1]) : 20; // Default 20m²
@@ -8298,7 +8377,7 @@ if (tradeCode === 'ZIMM') {
     }
   }
   
-  // Holzbalkendecke
+  // Holzbalkendecke (bestehend)
   if (titleLower.includes('holzbalkendecke') || titleLower.includes('balkendecke')) {
     if (pos.unit === 'm²' && pos.unitPrice > 200) {
       const oldPrice = pos.unitPrice;
@@ -8309,7 +8388,28 @@ if (tradeCode === 'ZIMM') {
     }
   }
   
-  // FEHLERHAFTE POSITIONEN entfernen
+  // NEU: Allgemeine Holzkonstruktion m² Preise
+  if (pos.unit === 'm²' && !titleLower.includes('dachstuhl')) {
+    const maxPreise = {
+      'gaubendach': 150,
+      'gaubenstirnwand': 120,
+      'holzrahmenbau': 180,
+      'schalung': 45,
+      'lattung': 25
+    };
+    
+    Object.entries(maxPreise).forEach(([keyword, maxPrice]) => {
+      if (titleLower.includes(keyword) && pos.unitPrice > maxPrice * 1.2) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = maxPrice;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`${keyword} korrigiert: €${oldPrice}/m² → €${maxPrice}/m²`);
+        fixedCount++;
+      }
+    });
+  }
+  
+  // FEHLERHAFTE POSITIONEN entfernen (bestehend)
   if (titleLower.includes('eindeckung') || 
       titleLower.includes('dachziegel') || 
       titleLower.includes('dachstein')) {
@@ -8318,7 +8418,7 @@ if (tradeCode === 'ZIMM') {
     warnings.push(`Eindeckung gehört zu DACHDECKER`);
     fixedCount++;
   }
-}  
+}
 
   // ZUSÄTZLICH: Dachdecker darf keine Zimmererarbeiten haben
 if (tradeCode === 'DACH') {
