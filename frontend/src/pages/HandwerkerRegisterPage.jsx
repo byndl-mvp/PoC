@@ -120,14 +120,14 @@ const getPasswordStrengthClass = (password) => {
   return 'bg-green-600';
 };
   
-  const handleTradeToggle = (tradeId) => {
-    setFormData(prev => ({
-      ...prev,
-      trades: prev.trades.includes(tradeId)
-        ? prev.trades.filter(t => t !== tradeId)
-        : [...prev.trades, tradeId]
-    }));
-  };
+  const handleTradeToggle = (tradeCode) => {
+  setFormData(prev => ({
+    ...prev,
+    trades: prev.trades.includes(tradeCode)
+      ? prev.trades.filter(t => t !== tradeCode)
+      : [...prev.trades, tradeCode]
+  }));
+};
 
   const handleInsuranceToggle = (insurance) => {
     setFormData(prev => ({
