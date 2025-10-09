@@ -5,26 +5,26 @@ import { EmailVerificationModal } from './EmailVerificationModal';
 
 // Exakte Gewerke aus der PostgreSQL Datenbank mit Code-Abkürzungen
 const AVAILABLE_TRADES = [
-  { id: 'AUSS', name: 'Außenanlagen / GaLaBau', dbId: 1 },
-  { id: 'BOD', name: 'Bodenbelagsarbeiten', dbId: 2 },
-  { id: 'DACH', name: 'Dachdeckerarbeiten', dbId: 3 },
-  { id: 'ELEKT', name: 'Elektroinstallation', dbId: 4 },
-  { id: 'ESTR', name: 'Estricharbeiten', dbId: 5 },
-  { id: 'FASS', name: 'Fassadenbau / -sanierung', dbId: 6 },
-  { id: 'FEN', name: 'Fenster & Türen', dbId: 7 },
-  { id: 'FLI', name: 'Fliesen- und Plattenarbeiten', dbId: 8 },
-  { id: 'GER', name: 'Gerüstbau', dbId: 9 },
-  { id: 'HEI', name: 'Heizungsinstallation', dbId: 10 },
-  { id: 'MAL', name: 'Maler- & Lackierarbeiten', dbId: 11 },
-  { id: 'ROH', name: 'Rohbau / Mauer- & Betonarbeiten', dbId: 12 },
-  { id: 'SAN', name: 'Sanitärinstallation', dbId: 13 },
-  { id: 'SCHL', name: 'Schlosser- / Metallbau', dbId: 14 },
-  { id: 'TIS', name: 'Tischler / Innenausbau', dbId: 15 },
-  { id: 'TRO', name: 'Trockenbau', dbId: 16 },
-  { id: 'ABBR', name: 'Abbruch / Entkernung', dbId: 19 },
-  { id: 'KLIMA', name: 'Lüftung- und Klimatechnik', dbId: 22 },
-  { id: 'PV', name: 'Photovoltaik/Solartechnik', dbId: 23 },
-  { id: 'ZIMM', name: 'Zimmerer / Holzbau', dbId: 25 }
+  { code: 'AUSS', name: 'Außenanlagen / GaLaBau' },
+  { code: 'BOD', name: 'Bodenbelagsarbeiten' },
+  { code: 'DACH', name: 'Dachdeckerarbeiten' },
+  { code: 'ELEKT', name: 'Elektroinstallation' },
+  { code: 'ESTR', name: 'Estricharbeiten' },
+  { code: 'FASS', name: 'Fassadenbau / -sanierung' },
+  { code: 'FEN', name: 'Fenster & Türen' },
+  { code: 'FLI', name: 'Fliesen- und Plattenarbeiten' },
+  { code: 'GER', name: 'Gerüstbau' },
+  { code: 'HEI', name: 'Heizungsinstallation' },
+  { code: 'MAL', name: 'Maler- & Lackierarbeiten' },
+  { code: 'ROH', name: 'Rohbau / Mauer- & Betonarbeiten' },
+  { code: 'SAN', name: 'Sanitärinstallation' },
+  { code: 'SCHL', name: 'Schlosser- / Metallbau' },
+  { code: 'TIS', name: 'Tischler / Innenausbau' },
+  { code: 'TRO', name: 'Trockenbau' },
+  { code: 'ABBR', name: 'Abbruch / Entkernung' },
+  { code: 'KLIMA', name: 'Lüftung- und Klimatechnik' },
+  { code: 'PV', name: 'Photovoltaik/Solartechnik' },
+  { code: 'ZIMM', name: 'Zimmerer / Holzbau' }
 ];
 
 // Verfügbare Zertifizierungen
