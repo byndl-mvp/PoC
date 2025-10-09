@@ -8209,19 +8209,134 @@ if (tradeCode === 'FEN' && lv.positions) {
   }
 }    
 
-// SPEZIAL-REGEL FÜR ZIMMERER
+// SPEZIAL-REGEL FÜR ZIMMERER - ERWEITERT
 if (tradeCode === 'ZIMM') {
+  // Dachstuhl-Preiskorrektur (bestehend)
   if (titleLower.includes('dachstuhl')) {
     if (pos.unit === 'm²' && pos.unitPrice > 250) {
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = 180; // Realistischer Wert für Dachstuhl
+      pos.unitPrice = 180;
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
       warnings.push(`Dachstuhl korrigiert: €${oldPrice}/m² → €${pos.unitPrice}/m²`);
       fixedCount++;
     }
   }
-}    
+  
+  // VERBESSERTE REGEL: Gaubenkonstruktion mit Größenberechnung
+  if (titleLower.includes('gaube')) {
+    if (titleLower.includes('konstruktion') || 
+        titleLower.includes('erstellen') || 
+        titleLower.includes('sparren') ||
+        titleLower.includes('zimmermann')) {
+      
+      // Extrahiere Größe aus Beschreibung
+      const sizeMatch = (pos.title + ' ' + pos.description).match(/(\d+(?:[,\.]\d+)?)\s*m/);
+      const width = sizeMatch ? parseFloat(sizeMatch[1].replace(',', '.')) : 2.5; // Default 2.5m
+      
+      // Grundpreis nach Gaubentyp
+      let basePrice;
+      if (titleLower.includes('schlepp')) {
+        basePrice = 3500; // pro Meter Breite
+      } else if (titleLower.includes('sattel') || titleLower.includes('giebel')) {
+        basePrice = 4000; // pro Meter Breite
+      } else if (titleLower.includes('walm')) {
+        basePrice = 4500; // pro Meter Breite
+      } else if (titleLower.includes('fledermaus')) {
+        basePrice = 5000; // pro Meter Breite
+      } else {
+        basePrice = 3800; // Standard
+      }
+      
+      // Berechne Preis basierend auf Breite
+      const calculatedPrice = Math.round(basePrice * width);
+      
+      // Preiskorrektur wenn nötig
+      if (pos.unit === 'Stk' && (pos.unitPrice < calculatedPrice * 0.7 || pos.unitPrice > calculatedPrice * 1.5)) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = calculatedPrice;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Gaube ${width}m (${titleLower.includes('schlepp') ? 'Schlepp' : 'Standard'}): €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+      
+      // Wenn Einheit m² ist, umrechnen
+      if (pos.unit === 'm²') {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 650; // Pauschale für Gaube pro m²
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Gaube/m² korrigiert: €${oldPrice}/m² → €450/m²`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // Dachlatten und Unterkonstruktion
+  if (titleLower.includes('dachlatte') || titleLower.includes('lattung')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 35) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 25;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Dachlattung korrigiert: €${oldPrice}/m² → €25/m²`);
+      fixedCount++;
+    }
+  }
+  
+  // Carport/Überdachung mit Größenfaktor
+  if (titleLower.includes('carport') || titleLower.includes('überdachung')) {
+    const areaMatch = (pos.title + ' ' + pos.description).match(/(\d+)\s*m²/);
+    const area = areaMatch ? parseInt(areaMatch[1]) : 20; // Default 20m²
+    
+    // Kleinere Flächen sind teurer pro m²
+    let pricePerSqm = area < 15 ? 300 : area < 30 ? 250 : 200;
+    
+    if (pos.unit === 'm²' && pos.unitPrice > pricePerSqm * 1.3) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = pricePerSqm;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Carport ${area}m²: €${oldPrice}/m² → €${pricePerSqm}/m²`);
+      fixedCount++;
+    }
+  }
+  
+  // Holzbalkendecke
+  if (titleLower.includes('holzbalkendecke') || titleLower.includes('balkendecke')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 200) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 150;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Holzbalkendecke korrigiert: €${oldPrice}/m² → €150/m²`);
+      fixedCount++;
+    }
+  }
+  
+  // FEHLERHAFTE POSITIONEN entfernen
+  if (titleLower.includes('eindeckung') || 
+      titleLower.includes('dachziegel') || 
+      titleLower.includes('dachstein')) {
+    console.error(`[KRITISCH] Eindeckung bei ZIMM statt DACH`);
+    pos._remove = true;
+    warnings.push(`Eindeckung gehört zu DACHDECKER`);
+    fixedCount++;
+  }
+}  
 
+  // ZUSÄTZLICH: Dachdecker darf keine Zimmererarbeiten haben
+if (tradeCode === 'DACH') {
+  // Dachdecker macht KEINE Holzkonstruktionen
+  if ((titleLower.includes('gaube') && titleLower.includes('erstellen')) ||
+      titleLower.includes('dachstuhl') ||
+      titleLower.includes('sparren') ||
+      titleLower.includes('zimmermann') ||
+      titleLower.includes('holzkonstruktion')) {
+    
+    console.error(`[KRITISCH] Zimmererarbeit bei DACH`);
+    pos._remove = true;
+    pos._moveToTrade = 'ZIMM';
+    warnings.push(`Holzkonstruktion gehört zu ZIMMERER`);
+    fixedCount++;
+  }
+}
+    
   // SPEZIAL-REGEL FÜR ROHBAU - Betonstahl-Preise
 if (tradeCode === 'ROH') {
   // Betonstahl BSt 500 - Stabstahl
