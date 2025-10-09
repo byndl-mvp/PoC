@@ -13066,6 +13066,14 @@ app.post('/api/handwerker/register', async (req, res) => {
       );
       
       const handwerkerId = result.rows[0].id;
+
+      // HIER EINFÜGEN - direkt nach der handwerkerId Zuweisung:
+await query(
+  `UPDATE handwerker SET 
+    street = $1, house_number = $2, zip_code = $3, city = $4, action_radius = $5
+   WHERE id = $6`,
+  [street, houseNumber, zipCode, city, actionRadius || 25, handwerkerId]
+);
       
       // Insert trades
       if (trades && trades.length > 0) {
