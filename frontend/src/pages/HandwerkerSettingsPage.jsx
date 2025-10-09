@@ -44,6 +44,9 @@ export default function HandwerkerSettingsPage() {
     zipCode: '',
     city: '',
     website: '',
+
+    // Gewerke
+    trades: [],
     
     // Einsatzgebiet
     actionRadius: 25,
@@ -852,6 +855,75 @@ const getPasswordStrengthClass = (password) => {
   </div>
 )}
 
+{activeTab === 'gewerke' && (
+  <div className="space-y-4">
+    <h2 className="text-2xl font-bold text-white mb-4">Meine Gewerke</h2>
+    
+    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+      <p className="text-blue-300 text-sm">
+        <strong>ℹ️ Wichtig:</strong> Wählen Sie alle Gewerke aus, für die Sie Ausschreibungen erhalten möchten.
+      </p>
+    </div>
+    
+    <div className="bg-white/10 rounded-lg p-4 max-h-96 overflow-y-auto">
+      <div className="grid md:grid-cols-2 gap-2">
+        {[
+          { code: 'AUSS', name: 'Außenanlagen / GaLaBau' },
+          { code: 'BOD', name: 'Bodenbelagsarbeiten' },
+          { code: 'DACH', name: 'Dachdeckerarbeiten' },
+          { code: 'ELEKT', name: 'Elektroinstallation' },
+          { code: 'ESTR', name: 'Estricharbeiten' },
+          { code: 'FASS', name: 'Fassadenbau / -sanierung' },
+          { code: 'FEN', name: 'Fenster & Türen' },
+          { code: 'FLI', name: 'Fliesen- und Plattenarbeiten' },
+          { code: 'GER', name: 'Gerüstbau' },
+          { code: 'HEI', name: 'Heizungsinstallation' },
+          { code: 'MAL', name: 'Maler- & Lackierarbeiten' },
+          { code: 'ROH', name: 'Rohbau / Mauer- & Betonarbeiten' },
+          { code: 'SAN', name: 'Sanitärinstallation' },
+          { code: 'SCHL', name: 'Schlosser- / Metallbau' },
+          { code: 'TIS', name: 'Tischler / Innenausbau' },
+          { code: 'TRO', name: 'Trockenbau' },
+          { code: 'ABBR', name: 'Abbruch / Entkernung' },
+          { code: 'KLIMA', name: 'Lüftung- und Klimatechnik' },
+          { code: 'PV', name: 'Photovoltaik/Solartechnik' },
+          { code: 'ZIMM', name: 'Zimmerer / Holzbau' }
+        ].map(trade => (
+          <label
+            key={trade.code}
+            className="flex items-center text-white hover:bg-white/10 rounded p-2 cursor-pointer transition-colors"
+          >
+            <input
+              type="checkbox"
+              checked={formData.trades?.includes(trade.code)}
+              onChange={() => {
+                const newTrades = formData.trades?.includes(trade.code)
+                  ? formData.trades.filter(t => t !== trade.code)
+                  : [...(formData.trades || []), trade.code];
+                setFormData(prev => ({ ...prev, trades: newTrades }));
+              }}
+              className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
+            />
+            <span className="text-sm">{trade.name}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+    
+    <p className="text-gray-400 text-sm">
+      {formData.trades?.length || 0} Gewerk(e) ausgewählt
+    </p>
+    
+    <button
+      onClick={() => handleSave('gewerke')}
+      disabled={loading || !formData.trades?.length}
+      className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
+    >
+      {loading ? 'Speichert...' : 'Gewerke speichern'}
+    </button>
+  </div>
+)}
+          
           {/* Verfügbarkeit Tab */}
           {activeTab === 'verfuegbarkeit' && (
             <div className="space-y-4">
