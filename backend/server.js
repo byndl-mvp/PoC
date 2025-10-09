@@ -9567,29 +9567,53 @@ app.get('/api/trades', async (req, res) => {
 // Create project with trade detection
 app.post('/api/projects', async (req, res) => {
   try {
-    const { category, subCategory, description, timeframe, budget, bauherrId } = req.body;
+    const { 
+      category, 
+      subCategory, 
+      description, 
+      timeframe, 
+      budget, 
+      bauherrId,
+      address,      // Frontend sendet address-Objekt
+      userName,     // Auch diese Felder kommen vom Frontend
+      userEmail
+    } = req.body;
+    
+    // Address-Daten extrahieren - Frontend sendet "zipCode" (camelCase)
+    const { street, houseNumber, zipCode, city } = address || {};
+    
+    // Debug-Log um zu sehen was ankommt
+    console.log('Received address data:', { street, houseNumber, zipCode, city });
     
     if (!description) {
       return res.status(400).json({ error: 'Description is required' });
     }
     
-    // NEU: Extrahiere Schlüsseldaten aus der Beschreibung
     const extractedData = extractProjectKeyData(description, category);
     
+    // INSERT mit korrektem Mapping: zipCode -> zip_code
     const projectResult = await query(
-  `INSERT INTO projects (bauherr_id, category, sub_category, description, timeframe, budget, metadata)
-   VALUES ($1, $2, $3, $4, $5, $6, $7)
-   RETURNING *`,
-  [
-    bauherrId || null,
-    category || null,
-    subCategory || null,
-    description,
-    timeframe || null,
-    budget || null,
-    JSON.stringify({ extracted: extractedData })
-  ]
-);
+      `INSERT INTO projects (
+        bauherr_id, category, sub_category, description, 
+        timeframe, budget, 
+        zip_code,    -- Datenbank-Spalte mit Unterstrich
+        city, 
+        metadata
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *`,
+      [
+        bauherrId || null,
+        category || null,
+        subCategory || null,
+        description,
+        timeframe || null,
+        budget || null,
+        zipCode || null,    // JavaScript-Variable in camelCase
+        city || null,
+        JSON.stringify({ extracted: extractedData })
+      ]
+    );
     
     const project = projectResult.rows[0];
     
