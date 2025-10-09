@@ -12663,32 +12663,34 @@ app.post('/api/bauherr/register', async (req, res) => {
     }
 
     // Hole Projektdetails falls projectId vorhanden
-    let projectDetails = null;
+let projectDetails = null;
+let projectResult = null; // Außerhalb definieren!
     
-    if (projectId) {
-      const projectResult = await query(
-        'SELECT category, sub_category, description FROM projects WHERE id = $1',
-        [projectId]
-      );
-      
-      if (projectResult && projectResult.rows && projectResult.rows.length > 0) {
-        projectDetails = {
-          category: projectResult.rows[0].category,
-          subCategory: projectResult.rows[0].sub_category,
-          description: projectResult.rows[0].description
-        };
-      }
-    }
+  if (projectId) {
+  projectResult = await query(
+    'SELECT category, sub_category, description FROM projects WHERE id = $1',
+    [projectId]
+  );
+  
+  if (projectResult.rows.length > 0) {
+    const proj = projectResult.rows[0];
+    projectDetails = `${proj.category}${proj.sub_category ? ' - ' + proj.sub_category : ''}: ${proj.description?.substring(0, 100)}`;
+  }
+}
     
     // E-Mail senden mit Token
     const emailService = require('./emailService');
     const emailResult = await emailService.sendBauherrRegistrationEmail({
-      id: bauherrId,
-      name: name,
-      email: email,
-      verificationToken: emailVerificationToken,
-      projectDetails: projectDetails
-    });
+    id: bauherrId,
+    name: name,
+    email: email,
+    verificationToken: emailVerificationToken,
+    projectDetails: projectResult.rows.length > 0 ? {
+    category: projectResult.rows[0].category,
+    subCategory: projectResult.rows[0].sub_category,
+    description: projectResult.rows[0].description
+  } : null
+});
     
     // JWT Token für Session (aber E-Mail noch nicht verifiziert)
     const token = jwt.sign(
