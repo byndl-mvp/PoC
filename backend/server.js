@@ -13162,6 +13162,116 @@ app.post('/api/handwerker/register', async (req, res) => {
   }
 });
 
+app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    const handwerkerResult = await query(
+      'SELECT id FROM handwerker WHERE company_id = $1',
+      [companyId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerkerId = handwerkerResult.rows[0].id;
+    
+    const result = await query(
+      `SELECT DISTINCT
+        t.id,
+        t.project_id,
+        t.trade_id,
+        t.status,
+        t.deadline,
+        t.estimated_value,
+        t.timeframe,
+        tr.name as trade_name,
+        tr.code as trade_code,
+        p.description as project_description,
+        p.category,
+        p.sub_category,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        th.status as th_status,
+        th.viewed_at,
+        th.distance_km,
+        CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as "isNew",
+        o.id as offer_id
+       FROM tender_handwerker th
+       JOIN tenders t ON th.tender_id = t.id
+       JOIN trades tr ON t.trade_id = tr.id
+       JOIN projects p ON t.project_id = p.id
+       LEFT JOIN offers o ON t.id = o.tender_id AND o.handwerker_id = $1
+       WHERE th.handwerker_id = $1
+       AND t.status = 'open'
+       AND th.status != 'rejected'
+       ORDER BY t.created_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching handwerker tenders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+  }
+});
+
+// GET Trades für einen Handwerker
+app.get('/api/handwerker/:id/trades', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT array_agg(trade_code) as trades 
+       FROM handwerker_trades 
+       WHERE handwerker_id = $1`,
+      [req.params.id]
+    );
+    
+    res.json({ 
+      trades: result.rows[0]?.trades || [] 
+    });
+  } catch (err) {
+    console.error('Error fetching trades:', err);
+    res.status(500).json({ error: 'Fehler beim Laden der Gewerke' });
+  }
+});
+
+// PUT Trades für einen Handwerker
+app.put('/api/handwerker/:id/gewerke', async (req, res) => {
+  try {
+    const { trades } = req.body;
+    const handwerkerId = req.params.id;
+    
+    await query('BEGIN');
+    
+    await query('DELETE FROM handwerker_trades WHERE handwerker_id = $1', [handwerkerId]);
+    
+    for (const tradeCode of trades) {
+      const tradeResult = await query(
+        'SELECT id, name FROM trades WHERE code = $1',
+        [tradeCode]
+      );
+      
+      if (tradeResult.rows.length > 0) {
+        const trade = tradeResult.rows[0];
+        await query(
+          'INSERT INTO handwerker_trades (handwerker_id, trade_id, trade_code, trade_name) VALUES ($1, $2, $3, $4)',
+          [handwerkerId, trade.id, tradeCode, trade.name]
+        );
+      }
+    }
+    
+    await query('COMMIT');
+    res.json({ success: true });
+    
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error('Gewerke update error:', err);
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
 // ============================================================================
 // PASSWORT RESET - AKTUALISIERT MIT E-MAIL
 // ============================================================================
