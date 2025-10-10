@@ -13277,7 +13277,9 @@ app.get('/api/handwerker/:identifier/tenders/new', async (req, res) => {
        LEFT JOIN offers o ON (o.tender_id = t.id AND o.handwerker_id = th.handwerker_id)
        WHERE th.handwerker_id = $1
        AND t.status = 'open'
-       AND (th.status IS NULL OR th.status = 'pending')
+       AND (th.status IS NULL OR th.status IN ('pending', 'viewed'))
+       AND th.status != 'rejected'
+       AND o.id IS NULL
        ORDER BY t.created_at DESC`,
       [handwerkerId]
     );
