@@ -18156,15 +18156,16 @@ app.post('/api/tenders/:tenderId/reject', async (req, res) => {
     const { tenderId } = req.params;
     const { handwerkerId } = req.body;
     
-    // Setze Status auf "rejected" in tender_handwerker
     await query(
       `UPDATE tender_handwerker 
-       SET status = 'rejected', rejected_at = NOW()
+       SET status = 'rejected', 
+           rejected_at = NOW()
        WHERE tender_id = $1 AND handwerker_id = $2`,
       [tenderId, handwerkerId]
     );
     
     res.json({ success: true });
+    
   } catch (error) {
     console.error('Error rejecting tender:', error);
     res.status(500).json({ error: 'Fehler beim Ablehnen' });
