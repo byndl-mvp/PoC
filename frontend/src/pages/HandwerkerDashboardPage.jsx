@@ -56,28 +56,28 @@ if (tendersRes.ok) {
 }
       
       // Lade verfügbare Bündel
-      const bundlesRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/bundles`));
+      const bundlesRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/bundles`));
       if (bundlesRes.ok) {
         const bundlesData = await bundlesRes.json();
         setBundles(bundlesData);
       }
       
       // Lade abgegebene Angebote
-      const offersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/offers`));
+      const offersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/offers`));
       if (offersRes.ok) {
         const offersData = await offersRes.json();
         setOffers(offersData);
       }
       
       // Lade Vertragsanbahnungen
-      const contractsRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/contracts`));
+      const contractsRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/contracts`));
       if (contractsRes.ok) {
         const contractsData = await contractsRes.json();
         setContracts(contractsData);
       }
       
       // Lade erteilte Aufträge
-      const ordersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/orders`));
+      const ordersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/orders`));
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
         setOrders(ordersData);
