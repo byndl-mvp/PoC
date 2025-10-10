@@ -40,42 +40,43 @@ export default function HandwerkerDashboardPage() {
     try {
       setLoading(true);
 
-      // In der loadDashboardData Funktion:
-const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/tenders/new`));
-if (tendersRes.ok) {
-  const tendersData = await tendersRes.json();
-  // NEUE FILTER-LOGIK: Zeige alle nicht-abgelehnten Tender
-  const uniqueTenders = tendersData.filter((tender, index, self) =>
-    index === self.findIndex((t) => t.id === tender.id) &&
-    tender.status !== 'rejected' && // Keine abgelehnten
-    tender.offer_status !== 'final_accepted' // Keine final beauftragten (die sind unter Aufträge)
-  );
-  setTenders(uniqueTenders);
-}
+      // Lade verfügbare Ausschreibungen
+      const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/tenders/new`));
+      if (tendersRes.ok) {
+        const tendersData = await tendersRes.json();
+        // Filtere nur doppelte Einträge und final beauftragte
+        const uniqueTenders = tendersData.filter((tender, index, self) =>
+          index === self.findIndex((t) => t.id === tender.id) &&
+          tender.offer_status !== 'accepted' &&
+          tender.offer_status !== 'final_accepted' &&
+          tender.status !== 'rejected'
+        );
+        setTenders(uniqueTenders);
+      }
       
       // Lade verfügbare Bündel
-      const bundlesRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/bundles`));
+      const bundlesRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/bundles`));
       if (bundlesRes.ok) {
         const bundlesData = await bundlesRes.json();
         setBundles(bundlesData);
       }
       
       // Lade abgegebene Angebote
-      const offersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/offers`));
+      const offersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/offers`));
       if (offersRes.ok) {
         const offersData = await offersRes.json();
         setOffers(offersData);
       }
       
       // Lade Vertragsanbahnungen
-      const contractsRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/contracts`));
+      const contractsRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/contracts`));
       if (contractsRes.ok) {
         const contractsData = await contractsRes.json();
         setContracts(contractsData);
       }
       
       // Lade erteilte Aufträge
-      const ordersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/orders`));
+      const ordersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/orders`));
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
         setOrders(ordersData);
@@ -88,27 +89,26 @@ if (tendersRes.ok) {
     }
   };
 
-// Neue Funktion zum Ablehnen:
-const handleRejectTender = async (tenderId) => {
-  if (!window.confirm('Diese Ausschreibung wirklich ablehnen? Sie wird dauerhaft ausgeblendet.')) {
-    return;
-  }
-  
-  try {
-    await fetch(apiUrl(`/api/tenders/${tenderId}/reject`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ handwerkerId: handwerkerData.id })
-    });
+  const handleRejectTender = async (tenderId) => {
+    if (!window.confirm('Diese Ausschreibung wirklich ablehnen? Sie wird dauerhaft ausgeblendet.')) {
+      return;
+    }
     
-    // Aus Liste entfernen
-    setTenders(prev => prev.filter(t => t.id !== tenderId));
-  } catch (error) {
-    console.error('Error rejecting tender:', error);
-  }
-};
+    try {
+      await fetch(apiUrl(`/api/tenders/${tenderId}/reject`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handwerkerId: handwerkerData.id })
+      });
+      
+      // Aus Liste entfernen
+      setTenders(prev => prev.filter(t => t.id !== tenderId));
+    } catch (error) {
+      console.error('Error rejecting tender:', error);
+    }
+  };
   
-const handleOpenTender = async (tender) => {
+  const handleOpenTender = async (tender) => {
     // Markiere als angesehen
     await fetch(apiUrl(`/api/tenders/${tender.id}/track-view`), {
       method: 'POST',
@@ -118,35 +118,6 @@ const handleOpenTender = async (tender) => {
     
     // Navigiere zur Angebotsseite
     navigate(`/handwerker/tender/${tender.id}/offer`);
-  };
-
-  const getOfferStatusBadge = (tender) => {
-    if (tender.offer_stage === 'final') {
-      return (
-        <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs">
-          ✓ Verbindlich abgegeben
-        </span>
-      );
-    } else if (tender.offer_stage === 'preliminary') {
-      return (
-        <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs">
-          Vorläufig angeboten
-        </span>
-      );
-    } else if (tender.tender_status === 'in_progress') {
-      return (
-        <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-xs">
-          In Bearbeitung
-        </span>
-      );
-    } else if (!tender.viewed_at) {
-      return (
-        <span className="bg-teal-500 text-white px-2 py-1 rounded-full text-xs">
-          NEU
-        </span>
-      );
-    }
-    return null;
   };
   
   const handleAcceptPreliminary = async (contractId) => {
@@ -235,60 +206,60 @@ const handleOpenTender = async (tender) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
-<header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-    <div className="flex justify-between items-center">
-      <div className="flex items-center gap-4">
-        <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
-          byndl
-        </Link>
-        <span className="text-gray-400">|</span>
-        <h1 className="text-xl text-white">Handwerker-Dashboard</h1>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <div className="text-right">
-          <p className="text-white font-semibold">{handwerkerData?.companyName}</p>
-          <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
+      <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+                byndl
+              </Link>
+              <span className="text-gray-400">|</span>
+              <h1 className="text-xl text-white">Handwerker-Dashboard</h1>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-white font-semibold">{handwerkerData?.companyName}</p>
+                <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
+              </div>
+              <div className="text-gray-400 text-sm">
+                Region: {handwerkerData?.region} | Radius: {handwerkerData?.actionRadius} km
+              </div>
+              <Link 
+                to="/handwerker/settings" 
+                className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
+              >
+                ⚙️ Einstellungen
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors"
+              >
+                Abmelden
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="text-gray-400 text-sm">
-          Region: {handwerkerData?.region} | Radius: {handwerkerData?.actionRadius} km
-        </div>
-        <Link 
-          to="/handwerker/settings" 
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
-        >
-          ⚙️ Einstellungen
-        </Link>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors"
-        >
-          Abmelden
-        </button>
-      </div>
-    </div>
-  </div>
-</header>
+      </header>
 
       {/* Verifizierungs-Status Banner */}
-{handwerkerData?.verificationStatus === 'pending' && (
-  <div className="bg-yellow-500/10 border-t border-yellow-500/30">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div className="flex items-start gap-3">
-        <span className="text-2xl">⏳</span>
-        <div className="flex-1">
-          <p className="text-yellow-300 font-semibold">
-            Verifizierung ausstehend
-          </p>
-          <p className="text-yellow-200 text-sm mt-1">
-            Ihre Dokumente werden geprüft. Sie erhalten Ihre finale ID nach erfolgreicher Verifizierung.
-          </p>
+      {handwerkerData?.verificationStatus === 'pending' && (
+        <div className="bg-yellow-500/10 border-t border-yellow-500/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⏳</span>
+              <div className="flex-1">
+                <p className="text-yellow-300 font-semibold">
+                  Verifizierung ausstehend
+                </p>
+                <p className="text-yellow-200 text-sm mt-1">
+                  Ihre Dokumente werden geprüft. Sie erhalten Ihre finale ID nach erfolgreicher Verifizierung.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
   
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistik-Cards */}
@@ -336,101 +307,114 @@ const handleOpenTender = async (tender) => {
         {/* Content */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
           
-          {/* Ausschreibungen Tab - ERWEITERT */}
-{activeTab === 'ausschreibungen' && (
-  <div>
-    <h2 className="text-2xl font-bold text-white mb-6">Passende Ausschreibungen</h2>
-    
-    {tenders.length === 0 ? (
-      <p className="text-gray-400">Aktuell keine passenden Ausschreibungen verfügbar.</p>
-    ) : (
-      <div className="space-y-4">
-        {tenders.map((tender) => (
-          <div key={tender.id} className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-lg font-semibold text-white">
-                    {tender.trade_name}
-                  </h3>
-                  <span className="text-sm bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
-                    {tender.category} - {tender.sub_category}
-                  </span>
-                  {/* Status Badge basierend auf offer_status */}
-                  {tender.offer_status === 'submitted' && (
-                    <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs">
-                      Angebot abgegeben
-                    </span>
-                  )}
-                  {tender.offer_status === 'viewed' && (
-                    <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-xs">
-                      In Bearbeitung
-                    </span>
-                  )}
-                  {!tender.offer_status && !tender.viewed_at && (
-                    <span className="bg-teal-500 text-white px-2 py-1 rounded-full text-xs">
-                      NEU
-                    </span>
-                  )}
-                </div>
-                
-                <p className="text-gray-300 mb-2">{tender.project_description}</p>
-                
-                {/* Rest der Tender-Details... */}
-              </div>
+          {/* Ausschreibungen Tab */}
+          {activeTab === 'ausschreibungen' && (
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-6">Passende Ausschreibungen</h2>
               
-              <div className="text-right">
-                {/* ANGEPASSTE BUTTON-LOGIK */}
-                {!tender.offer_status ? (
-                  // Noch kein Angebot abgegeben
-                  <div className="flex gap-2">  
-                    <button
-                      onClick={() => handleOpenTender(tender)}
-                      className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
-                    >
-                      <div>
-                        <div className="font-semibold">Angebot abgeben</div>
-                        <div className="text-xs mt-1">LV ansehen</div>
+              {tenders.length === 0 ? (
+                <p className="text-gray-400">Aktuell keine passenden Ausschreibungen verfügbar.</p>
+              ) : (
+                <div className="space-y-4">
+                  {tenders.map((tender) => (
+                    <div key={tender.id} className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-white">
+                              {tender.trade_name}
+                            </h3>
+                            <span className="text-sm bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+                              {tender.category} - {tender.sub_category}
+                            </span>
+                            {/* Status Badge direkt inline */}
+                            {tender.offer_status === 'submitted' && (
+                              <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs">
+                                ✓ Angebot abgegeben
+                              </span>
+                            )}
+                            {tender.offer_status === 'preliminary' && (
+                              <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs">
+                                Vorläufig angeboten
+                              </span>
+                            )}
+                            {tender.tender_status === 'in_progress' && !tender.offer_status && (
+                              <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-xs">
+                                In Bearbeitung
+                              </span>
+                            )}
+                            {!tender.viewed_at && !tender.offer_status && (
+                              <span className="bg-teal-500 text-white px-2 py-1 rounded-full text-xs">
+                                NEU
+                              </span>
+                            )}
+                          </div>
+                          
+                          <p className="text-gray-300 mb-2">{tender.project_description}</p>
+                          
+                          <div className="grid grid-cols-2 gap-4 mt-3">
+                            <div className="space-y-1">
+                              <p className="text-sm text-gray-400">
+                                📍 Ort: {tender.project_zip} {tender.project_city}
+                              </p>
+                              <p className="text-sm text-gray-400">
+                                📅 Zeitraum: {tender.timeframe || 'Nach Absprache'}
+                              </p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm text-gray-400">
+                                💰 Volumen: ca. {formatCurrency(Math.round(tender.estimated_value / 1000) * 1000)}
+                              </p>
+                              <p className="text-sm text-gray-400">
+                                ⏰ Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          {!tender.offer_status ? (
+                            <div className="flex gap-2">  
+                              <button
+                                onClick={() => handleOpenTender(tender)}
+                                className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+                              >
+                                <div>
+                                  <div className="font-semibold">Angebot vorläufig abgeben</div>
+                                  <div className="text-xs mt-1">Mit Vertragsanbahnung</div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => handleRejectTender(tender.id)}
+                                className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-all"
+                                title="Ausschreibung ablehnen"
+                              >
+                                ❌
+                              </button>
+                            </div>  
+                          ) : (
+                            <div>
+                              <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2">
+                                ✓ Angebot abgegeben
+                              </span>
+                              {tender.handwerker_status === 'preliminary' && (
+                                <button
+                                  onClick={() => handleOpenTender(tender)}
+                                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
+                                >
+                                  Angebot anpassen
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </button>
-                    <button
-                      onClick={() => handleRejectTender(tender.id)}
-                      className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-all"
-                      title="Ausschreibung ablehnen"
-                    >
-                      ❌
-                    </button>
-                  </div>  
-                ) : tender.offer_status === 'submitted' ? (
-                  // Angebot bereits abgegeben
-                  <div className="text-center">
-                    <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2">
-                      ✓ Angebot abgegeben
-                    </span>
-                    <button
-                      onClick={() => navigate(`/handwerker/tender/${tender.id}/offer`)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
-                    >
-                      Angebot ansehen
-                    </button>
-                  </div>
-                ) : (
-                  // In Bearbeitung
-                  <button
-                    onClick={() => handleOpenTender(tender)}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg"
-                  >
-                    Weiter bearbeiten
-                  </button>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
+          )}
 
           {/* Projektbündel Tab */}
           {activeTab === 'bundles' && (
