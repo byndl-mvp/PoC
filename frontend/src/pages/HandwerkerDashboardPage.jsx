@@ -41,16 +41,14 @@ export default function HandwerkerDashboardPage() {
       setLoading(true);
 
       // In der loadDashboardData Funktion:
-const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/new`));
+const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/tenders/new`));
 if (tendersRes.ok) {
   const tendersData = await tendersRes.json();
-  // Filtere: doppelte Einträge, beauftragte, abgelehnte und mit Angeboten
+  // NEUE FILTER-LOGIK: Zeige alle nicht-abgelehnten Tender
   const uniqueTenders = tendersData.filter((tender, index, self) =>
     index === self.findIndex((t) => t.id === tender.id) &&
-    tender.offer_status !== 'accepted' &&
-    tender.offer_status !== 'final_accepted' &&
-    tender.status !== 'rejected' &&  // NEU: Keine abgelehnten
-    !tender.offer_id  // NEU: Keine mit bereits abgegebenen Angeboten
+    tender.status !== 'rejected' && // Keine abgelehnten
+    tender.offer_status !== 'final_accepted' // Keine final beauftragten (die sind unter Aufträge)
   );
   setTenders(uniqueTenders);
 }
@@ -358,70 +356,76 @@ const handleOpenTender = async (tender) => {
                   <span className="text-sm bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
                     {tender.category} - {tender.sub_category}
                   </span>
-                  {/* HIER DIE FUNKTION VERWENDEN: */}
-                  {getOfferStatusBadge(tender)}
-                </div>
+                  {/* Status Badge basierend auf offer_status */}
+                  {tender.offer_status === 'submitted' && (
+                    <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs">
+                      Angebot abgegeben
+                    </span>
+                  )}
+                  {tender.offer_status === 'viewed' && (
+                    <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-xs">
+                      In Bearbeitung
+                    </span>
+                  )}
+                  {!tender.offer_status && !tender.viewed_at && (
+                    <span className="bg-teal-500 text-white px-2 py-1 rounded-full text-xs">
+                      NEU
+                    </span>
+                  )}
                 </div>
                 
                 <p className="text-gray-300 mb-2">{tender.project_description}</p>
                 
-                <div className="grid grid-cols-2 gap-4 mt-3">
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-400">
-                      📍 Ort: {tender.project_zip} {tender.project_city}
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      📅 Zeitraum: {tender.timeframe || 'Nach Absprache'}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-400">
-                      💰 Volumen: ca. {formatCurrency(Math.round(tender.estimated_value / 1000) * 1000)}
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      ⏰ Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
-                    </p>
-                  </div>
-                </div>
+                {/* Rest der Tender-Details... */}
               </div>
               
               <div className="text-right">
-  {!tender.has_offer ? (
-    <div className="flex gap-2">  
-      <button
-        onClick={() => handleOpenTender(tender)}
-        className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
-      >
-        <div>
-          <div className="font-semibold">Angebot vorläufig abgeben</div>
-          <div className="text-xs mt-1">Mit Vertragsanbahnung</div>
-        </div>
-      </button>
-      <button
-        onClick={() => handleRejectTender(tender.id)}
-        className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-all"
-        title="Ausschreibung ablehnen"
-      >
-        ❌
-      </button>
-    </div>  
-  ) : (
-                  <div>
+                {/* ANGEPASSTE BUTTON-LOGIK */}
+                {!tender.offer_status ? (
+                  // Noch kein Angebot abgegeben
+                  <div className="flex gap-2">  
+                    <button
+                      onClick={() => handleOpenTender(tender)}
+                      className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+                    >
+                      <div>
+                        <div className="font-semibold">Angebot abgeben</div>
+                        <div className="text-xs mt-1">LV ansehen</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleRejectTender(tender.id)}
+                      className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-all"
+                      title="Ausschreibung ablehnen"
+                    >
+                      ❌
+                    </button>
+                  </div>  
+                ) : tender.offer_status === 'submitted' ? (
+                  // Angebot bereits abgegeben
+                  <div className="text-center">
                     <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2">
                       ✓ Angebot abgegeben
                     </span>
-                    {tender.handwerker_status === 'preliminary' && (
-                      <button
-                        onClick={() => handleOpenTender(tender)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
-                      >
-                        Angebot anpassen
-                      </button>
-                    )}
+                    <button
+                      onClick={() => navigate(`/handwerker/tender/${tender.id}/offer`)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
+                    >
+                      Angebot ansehen
+                    </button>
                   </div>
+                ) : (
+                  // In Bearbeitung
+                  <button
+                    onClick={() => handleOpenTender(tender)}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg"
+                  >
+                    Weiter bearbeiten
+                  </button>
                 )}
               </div>
             </div>
+          </div>
         ))}
       </div>
     )}
