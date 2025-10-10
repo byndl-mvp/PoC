@@ -15424,7 +15424,7 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
            h.action_radius * 1000
          )
          ORDER BY distance_km ASC`,
-        [project.bauherr_zip, trade.id]
+        [project.zip_code || project.bauherr_zip, trade.id]
       );
       
       // Tender-Handwerker-Verknüpfungen erstellen
