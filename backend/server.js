@@ -218,10 +218,10 @@ if (task === 'optimization') {
   const getAnthropicModel = (task) => {
     if (task === 'lv') {
       // Claude Opus für LV-Generierung
-      return MODEL_ANTHROPIC_LV || MODEL_ANTHROPIC || 'claude-opus-4-1-20250805';
+      return MODEL_ANTHROPIC_LV || MODEL_ANTHROPIC || 'claude-sonnet-4-20250514';
     }
     // Claude Sonnet für alle anderen Tasks
-    return MODEL_ANTHROPIC_QUESTIONS || MODEL_ANTHROPIC || 'claude-sonnet-4-5-20250929';
+    return MODEL_ANTHROPIC_QUESTIONS || MODEL_ANTHROPIC || 'claude-sonnet-4-20250514';
   };
   
   // GEÄNDERT: Anthropic als primärer Provider für ALLE Tasks
