@@ -15095,24 +15095,23 @@ app.get('/api/handwerker/:companyId/offers', async (req, res) => {
         p.description as projectType, 
         p.zip_code || ' ' || p.city as location,
         o.created_at as submittedDate,
+        o.status,
         o.amount,
         o.viewed_at,
-        b.name as bauherr_name,
         CASE 
-          WHEN o.status = 'submitted' AND o.stage = 1 THEN 'Vorläufig abgegeben'
-          WHEN o.status = 'confirmed' THEN 'Verbindlich bestätigt'
-          WHEN o.viewed_at IS NOT NULL THEN 'Vom Bauherren eingesehen'
-          ELSE 'Warte auf Antwort'
+          WHEN o.status = 'submitted' THEN 'Vorläufiges Angebot'
+          WHEN o.status = 'confirmed' THEN 'Verbindliches Angebot'
+          WHEN o.status = 'preliminary' THEN 'Vorläufig beauftragt'
+          ELSE o.status
         END as status_text
        FROM offers o
        JOIN handwerker h ON o.handwerker_id = h.id
        JOIN tenders tn ON o.tender_id = tn.id
        JOIN trades t ON tn.trade_id = t.id
        JOIN projects p ON tn.project_id = p.id
-       LEFT JOIN bauherren b ON p.bauherr_id = b.id
        WHERE h.company_id = $1
          AND o.status IN ('submitted', 'confirmed')
-         AND o.stage = 1
+         AND o.status NOT IN ('preliminary', 'accepted', 'withdrawn')
        ORDER BY o.created_at DESC`,
       [companyId]
     );
@@ -15138,14 +15137,17 @@ app.get('/api/handwerker/:companyId/contracts', async (req, res) => {
         b.name as clientName,
         b.email as clientEmail,
         b.phone as clientPhone,
+        b.street || ' ' || b.house_number || ', ' || b.zip || ' ' || b.city as clientAddress,
         t.name as trade,
-        o.preliminary_accepted_at as preliminaryDate,
+        o.preliminary_accepted_at,
         o.offer_confirmed_at,
         o.amount,
+        o.notes,
+        o.lv_data,
         CASE 
-          WHEN o.offer_confirmed_at IS NOT NULL THEN true
-          ELSE false
-        END as offerConfirmed
+          WHEN o.offer_confirmed_at IS NOT NULL THEN 'Angebot bestätigt - wartet auf finale Beauftragung'
+          ELSE 'Vorläufig beauftragt - Ortstermin ausstehend'
+        END as negotiation_status
        FROM offers o
        JOIN handwerker h ON o.handwerker_id = h.id
        JOIN tenders tn ON o.tender_id = tn.id
