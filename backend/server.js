@@ -72,7 +72,7 @@ function formatCurrency(amount) {
 
 // Modellnamen aus Umgebungsvariablen
 const MODEL_OPENAI = process.env.MODEL_OPENAI || process.env.OPENAI_MODEL || 'gpt-4.1-mini';
-const MODEL_ANTHROPIC_QUESTIONS = process.env.MODEL_ANTHROPIC_QUESTIONS || process.env.ANTHROPIC_MODEL_QUESTIONS || 'claude-sonnet-4-5-20250929';
+const MODEL_ANTHROPIC_QUESTIONS = process.env.MODEL_ANTHROPIC_QUESTIONS || process.env.ANTHROPIC_MODEL_QUESTIONS || 'claude-sonnet-4-20250514';
 const MODEL_ANTHROPIC_LV = process.env.MODEL_ANTHROPIC_LV || process.env.ANTHROPIC_MODEL_LV || 'claude-opus-4-1-20250805';
 
 // ===========================================================================
@@ -167,7 +167,7 @@ if (task === 'optimization') {
     });
     
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: options.maxTokens || 6000,
       temperature: options.temperature || 0.3,
       messages: messages.map(msg => ({
