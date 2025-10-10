@@ -41,7 +41,7 @@ export default function HandwerkerDashboardPage() {
       setLoading(true);
 
       // In der loadDashboardData Funktion:
-const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/tenders/new`));
+const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/new`));
 if (tendersRes.ok) {
   const tendersData = await tendersRes.json();
   // Filtere: doppelte Einträge, beauftragte, abgelehnte und mit Angeboten
