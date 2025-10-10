@@ -13216,6 +13216,7 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
         t.trade_id,
         t.status,
         t.deadline,
+        t.created_at,
         t.estimated_value,
         t.timeframe,
         tr.name as trade_name,
