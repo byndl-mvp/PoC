@@ -221,7 +221,7 @@ if (task === 'optimization') {
       return MODEL_ANTHROPIC_LV || MODEL_ANTHROPIC || 'claude-opus-4-1-20250805';
     }
     // Claude Sonnet für alle anderen Tasks
-    return MODEL_ANTHROPIC_QUESTIONS || MODEL_ANTHROPIC || 'claude-sonnet-4-20250514';
+    return MODEL_ANTHROPIC_QUESTIONS || MODEL_ANTHROPIC || 'claude-sonnet-4-5-20250929';
   };
   
   // GEÄNDERT: Anthropic als primärer Provider für ALLE Tasks
