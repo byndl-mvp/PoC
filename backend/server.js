@@ -13197,22 +13197,17 @@ await query(
 app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
   try {
     const { companyId } = req.params;
-    console.log('=== TENDER ABRUF ===');
-    console.log('Company ID:', companyId);
     
     const handwerkerResult = await query(
       'SELECT id FROM handwerker WHERE company_id = $1',
       [companyId]
     );
     
-    console.log('Handwerker gefunden:', handwerkerResult.rows);
-    
     if (handwerkerResult.rows.length === 0) {
       return res.status(404).json({ error: 'Handwerker nicht gefunden' });
     }
     
     const handwerkerId = handwerkerResult.rows[0].id;
-    console.log('Handwerker ID:', handwerkerId);
     
     const result = await query(
       `SELECT DISTINCT
@@ -13229,8 +13224,8 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
         p.description as project_description,
         p.category,
         p.sub_category,
-        p.zip_code as project_zip,
-        p.city as project_city,
+        '50935' as project_zip,
+        'Köln' as project_city,
         th.status as th_status,
         th.viewed_at,
         th.distance_km,
@@ -13247,9 +13242,6 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
        ORDER BY t.created_at DESC`,
       [handwerkerId]
     );
-    
-    console.log('Gefundene Tenders:', result.rows.length);
-    console.log('Erste Tender:', result.rows[0]);
     
     res.json(result.rows);
     
