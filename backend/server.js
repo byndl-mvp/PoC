@@ -13208,9 +13208,10 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
     }
     
     const handwerkerId = handwerkerResult.rows[0].id;
+    console.log('Loading tenders for handwerker:', handwerkerId);
     
     const result = await query(
-      `SELECT DISTINCT
+      `SELECT 
         t.id,
         t.project_id,
         t.trade_id,
@@ -13229,25 +13230,24 @@ app.get('/api/handwerker/:companyId/tenders/new', async (req, res) => {
         th.status as th_status,
         th.viewed_at,
         th.distance_km,
-        CASE WHEN t.created_at > NOW() - INTERVAL '3 days' THEN true ELSE false END as "isNew",
-        o.id as offer_id
+        true as "isNew",
+        null as offer_id
        FROM tender_handwerker th
        JOIN tenders t ON th.tender_id = t.id
        JOIN trades tr ON t.trade_id = tr.id
        JOIN projects p ON t.project_id = p.id
-       LEFT JOIN offers o ON t.id = o.tender_id AND o.handwerker_id = $1
        WHERE th.handwerker_id = $1
        AND t.status = 'open'
-       AND th.status != 'rejected'
        ORDER BY t.created_at DESC`,
       [handwerkerId]
     );
     
+    console.log('Found tenders:', result.rows.length);
     res.json(result.rows);
     
   } catch (error) {
-    console.error('Error fetching handwerker tenders:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
+    console.error('Error in tenders/new:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
