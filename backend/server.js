@@ -15522,11 +15522,17 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
             });
             
             // Email-Log erstellen
-            await query(
-              `INSERT INTO email_logs (recipient, type, reference_id, status, sent_at)
-               VALUES ($1, 'tender_notification', $2, 'sent', NOW())`,
-              [handwerker.email, tenderId]
-            );
+await query(
+  `INSERT INTO email_logs (recipient_email, email_type, status, sent_at, handwerker_id, metadata)
+   VALUES ($1, $2, $3, NOW(), $4, $5)`,
+  [
+    handwerker.email, 
+    'tender_notification', 
+    'sent', 
+    handwerker.id, 
+    JSON.stringify({tender_id: tenderId, trade_id: trade.id})
+  ]
+);
           } catch (emailError) {
             console.error('Email-Versand fehlgeschlagen:', emailError);
             // Trotzdem fortfahren, Email-Fehler sollte nicht die ganze Tender-Erstellung stoppen
