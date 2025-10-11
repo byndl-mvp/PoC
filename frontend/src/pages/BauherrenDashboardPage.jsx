@@ -145,7 +145,7 @@ console.log('Fertige LVs gezählt:', completedLvs);
             }, 0);
             
             // Lade Ausschreibungsstatus
-            const tendersRes = await fetch(apiUrl(`/api/projects/${project.id}/tenders/detailed`));
+            const tendersRes = await fetch(apiUrl(`/api/projects/${project.id}/tenders`));
             const tendersData = tendersRes.ok ? await tendersRes.json() : [];
             
             // Lade ungelesene Angebote
