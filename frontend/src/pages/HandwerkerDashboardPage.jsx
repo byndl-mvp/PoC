@@ -41,7 +41,7 @@ export default function HandwerkerDashboardPage() {
       setLoading(true);
 
       // Lade verfügbare Ausschreibungen
-      const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.companyId}/tenders/new`));
+      const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/new`));
       if (tendersRes.ok) {
         const tendersData = await tendersRes.json();
         // Filtere nur doppelte Einträge und final beauftragte
