@@ -15941,31 +15941,44 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
       handwerkerId = result.rows[0].id;
     }
     
+    console.log(`Loading bundles for handwerker_id: ${handwerkerId}`);
+    
     // Handwerker-Trades laden
     const tradesResult = await query(
-      `SELECT trade_id FROM handwerker_trades WHERE handwerker_id = $1`,
+      `SELECT ht.trade_id, t.code as trade_code 
+       FROM handwerker_trades ht
+       JOIN trades t ON ht.trade_id = t.id
+       WHERE ht.handwerker_id = $1`,
       [handwerkerId]
     );
     
-    const tradeIds = tradesResult.rows.map(t => t.trade_id);
+    const tradeCodes = tradesResult.rows.map(t => t.trade_code);
     
-    if (tradeIds.length === 0) {
+    if (tradeCodes.length === 0) {
       return res.json([]);
     }
     
-    // Aktive Bündel finden
+    // Aktive Bündel über tenders.bundle_id finden
     const bundles = await query(
       `SELECT 
-        b.*,
+        b.id,
+        b.trade_code,
+        b.region,
+        b.status,
+        b.max_projects,
+        b.current_projects,
+        b.total_volume,
+        b.created_at,
+        b.closes_at,
         t.name as trade_name,
-        COUNT(bp.tender_id) as project_count,
-        SUM(tn.estimated_value) as total_volume
+        COUNT(DISTINCT tn.id) as tender_count,
+        COUNT(DISTINCT tn.project_id) as project_count,
+        SUM(tn.estimated_value) as calculated_volume
        FROM bundles b
-       JOIN bundle_projects bp ON b.id = bp.bundle_id
-       JOIN tenders tn ON bp.tender_id = tn.id
-       JOIN trades t ON b.trade_id = t.id
-       WHERE b.trade_id = ANY($1::int[])
-       AND b.status = 'forming'
+       JOIN trades t ON b.trade_code = t.code
+       JOIN tenders tn ON tn.bundle_id = b.id
+       WHERE b.trade_code = ANY($1::varchar[])
+       AND b.status IN ('forming', 'open')
        AND tn.status = 'open'
        AND NOT EXISTS (
          SELECT 1 FROM offers o 
@@ -15973,8 +15986,8 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
          AND o.handwerker_id = $2
        )
        GROUP BY b.id, t.name
-       HAVING COUNT(bp.tender_id) >= 2`,
-      [tradeIds, handwerkerId]  // WICHTIG: handwerkerId
+       HAVING COUNT(DISTINCT tn.id) >= 2`,
+      [tradeCodes, handwerkerId]
     );
     
     res.json(bundles.rows);
@@ -15984,7 +15997,7 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
   }
 });
 
-// Bündel-Details mit Karte und LV-Daten laden (kombinierte Route)
+// Bündel-Details mit Karte und LV-Daten laden
 app.get('/api/bundles/:bundleId/details', async (req, res) => {
   try {
     const { bundleId } = req.params;
@@ -16006,15 +16019,15 @@ app.get('/api/bundles/:bundleId/details', async (req, res) => {
             'lng', z.longitude,
             'lv_data', tn.lv_data,
             'estimated_value', tn.estimated_value,
-            'timeframe', tn.timeframe
+            'timeframe', tn.timeframe,
+            'deadline', tn.deadline
           )
         ) as projects
        FROM bundles b
-       JOIN bundle_projects bp ON b.id = bp.bundle_id
-       JOIN tenders tn ON bp.tender_id = tn.id
+       JOIN tenders tn ON tn.bundle_id = b.id
        JOIN projects p ON tn.project_id = p.id
-       JOIN trades t ON b.trade_id = t.id
-       JOIN zip_codes z ON p.zip_code = z.zip
+       JOIN trades t ON b.trade_code = t.code
+       LEFT JOIN zip_codes z ON p.zip_code = z.zip
        WHERE b.id = $1
        GROUP BY b.id, t.name`,
       [bundleId]
@@ -16053,8 +16066,10 @@ app.get('/api/bundles/:bundleId/details', async (req, res) => {
       projectCount: bundle.projects.length
     };
     
-    // Berechne optimale Route
-    bundle.optimal_route = calculateOptimalRoute(bundle.projects);
+    // Berechne optimale Route (nur wenn Funktionen existieren)
+    if (typeof calculateOptimalRoute === 'function') {
+      bundle.optimal_route = calculateOptimalRoute(bundle.projects);
+    }
     
     // Map-Daten aufbereiten
     bundle.map_data = {
@@ -16062,7 +16077,7 @@ app.get('/api/bundles/:bundleId/details', async (req, res) => {
       zoom: calculateZoomLevel(bundle.projects),
       markers: bundle.projects.map(p => ({
         id: p.project_id,
-        position: { lat: p.lat, lng: p.lng },
+        position: { lat: parseFloat(p.lat), lng: parseFloat(p.lng) },
         title: p.title,
         address: `${p.address}, ${p.zip} ${p.city}`
       }))
@@ -16076,7 +16091,7 @@ app.get('/api/bundles/:bundleId/details', async (req, res) => {
   }
 });
 
-// Bündel-Angebot abgeben
+// Bündel-Angebot abgeben (angepasst)
 app.post('/api/bundles/:bundleId/submit-offer', async (req, res) => {
   try {
     const { bundleId } = req.params;
@@ -16096,58 +16111,65 @@ app.post('/api/bundles/:bundleId/submit-offer', async (req, res) => {
     
     const handwerkerId = handwerkerResult.rows[0].id;
     
-    // Bundle-Projekte laden
-    const bundleProjects = await query(
-      `SELECT tender_id FROM bundle_projects WHERE bundle_id = $1`,
+    // Tenders für dieses Bundle laden
+    const bundleTenders = await query(
+      `SELECT id as tender_id, project_id 
+       FROM tenders 
+       WHERE bundle_id = $1`,
       [bundleId]
     );
     
     const createdOffers = [];
     let totalAmount = 0;
     
-    // Für jedes Projekt im Bündel ein Angebot erstellen
-    for (const project of bundleProjects.rows) {
-      const offerData = individualOffers[project.tender_id];
+    // Für jede Tender im Bündel ein Angebot erstellen
+    for (const tender of bundleTenders.rows) {
+      const offerData = individualOffers[tender.tender_id];
       
       if (!offerData) continue;
       
+      // Prüfe ob bundle_id Spalte in offers existiert
       const offerResult = await query(
         `INSERT INTO offers (
           tender_id, handwerker_id, 
           amount, lv_data, notes,
-          bundle_id, bundle_discount,
+          ${typeof bundle_discount !== 'undefined' ? 'bundle_discount,' : ''}
           status, stage, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'submitted', 1, NOW())
+        ) VALUES ($1, $2, $3, $4, $5, ${typeof bundle_discount !== 'undefined' ? '$6,' : ''} 'submitted', 1, NOW())
         RETURNING id`,
-        [
-          project.tender_id,
-          handwerkerId,
-          offerData.amount,
-          JSON.stringify(offerData.positions),
-          offerData.notes,
-          bundleId,
-          bundleDiscount
-        ]
+        typeof bundle_discount !== 'undefined' 
+          ? [tender.tender_id, handwerkerId, offerData.amount, JSON.stringify(offerData.positions), offerData.notes, bundleDiscount]
+          : [tender.tender_id, handwerkerId, offerData.amount, JSON.stringify(offerData.positions), offerData.notes]
       );
       
       createdOffers.push(offerResult.rows[0].id);
       totalAmount += offerData.amount;
     }
     
-    // Bundle-Status aktualisieren
+    // Bundle-Status aktualisieren (nur wenn Status-Spalte vorhanden ist)
     await query(
       `UPDATE bundles 
-       SET status = 'offered', offered_at = NOW()
+       SET status = 'offered'
        WHERE id = $1`,
       [bundleId]
     );
+    
+    // tender_handwerker Status aktualisieren
+    for (const tender of bundleTenders.rows) {
+      await query(
+        `UPDATE tender_handwerker 
+         SET offered_at = NOW(), status = 'offered'
+         WHERE tender_id = $1 AND handwerker_id = $2`,
+        [tender.tender_id, handwerkerId]
+      );
+    }
     
     await query('COMMIT');
     
     res.json({
       success: true,
       message: `Bündel-Angebot über ${createdOffers.length} Projekte abgegeben`,
-      totalAmount: totalAmount * (1 - bundleDiscount/100),
+      totalAmount: bundleDiscount ? totalAmount * (1 - bundleDiscount/100) : totalAmount,
       offerIds: createdOffers
     });
     
@@ -16162,59 +16184,87 @@ app.post('/api/bundles/:bundleId/submit-offer', async (req, res) => {
 // 8. HELPER FUNCTIONS
 // ============================================
 
-// Bundle-Check-Funktion bleibt unverändert
+// Bundle-Check-Funktion - ANGEPASST an tatsächliche DB-Struktur
 async function checkAndCreateBundles(project, tenders) {
   for (const tender of tenders) {
     // Suche nach ähnlichen Projekten in der Region
     const similarProjects = await query(
-      `SELECT DISTINCT t.*, p.zip_code, p.bauherr_id
+      `SELECT DISTINCT t.*, p.zip_code, p.bauherr_id, tr.code as trade_code
        FROM tenders t
        JOIN projects p ON t.project_id = p.id
+       JOIN trades tr ON t.trade_id = tr.id
        JOIN zip_codes z1 ON z1.zip = p.zip_code
        JOIN zip_codes z2 ON z2.zip = $1
        WHERE t.trade_id = $2
        AND t.status = 'open'
-       AND t.bundle_eligible = true
        AND t.project_id != $3
+       AND t.bundle_id IS NULL  -- Noch nicht in einem Bundle
        AND ST_DWithin(
          ST_MakePoint(z1.longitude, z1.latitude)::geography,
          ST_MakePoint(z2.longitude, z2.latitude)::geography,
          10000 -- 10km Radius für Bündel
-       )
-       AND (t.bundle_wait_until IS NULL OR t.bundle_wait_until > NOW())`,
+       )`,
       [project.zip_code, tender.tradeId, project.id]
     );
     
     if (similarProjects.rows.length > 0) {
-      // Bundle erstellen oder zu existierendem hinzufügen
-      const bundleResult = await query(
-        `INSERT INTO bundles (
-          trade_id, region_zip, status, min_projects, created_at
-        ) VALUES ($1, $2, 'forming', 2, NOW())
-        ON CONFLICT (trade_id, region_zip) WHERE status = 'forming'
-        DO UPDATE SET updated_at = NOW()
-        RETURNING id`,
-        [tender.tradeId, project.zip_code]
+      const tradeCode = similarProjects.rows[0].trade_code;
+      
+      // Existierendes offenes Bundle suchen oder neues erstellen
+      let bundleId;
+      const existingBundle = await query(
+        `SELECT id FROM bundles 
+         WHERE trade_code = $1 
+         AND region = $2 
+         AND status = 'forming'
+         AND (max_projects IS NULL OR current_projects < max_projects)`,
+        [tradeCode, project.zip_code]
       );
       
-      const bundleId = bundleResult.rows[0].id;
+      if (existingBundle.rows.length > 0) {
+        bundleId = existingBundle.rows[0].id;
+      } else {
+        // Neues Bundle erstellen
+        const bundleResult = await query(
+          `INSERT INTO bundles (
+            trade_code, region, status, max_projects, current_projects, created_at
+          ) VALUES ($1, $2, 'forming', 5, 0, NOW())
+          RETURNING id`,
+          [tradeCode, project.zip_code]
+        );
+        bundleId = bundleResult.rows[0].id;
+      }
       
-      // Projekte zum Bundle hinzufügen
+      // Tender mit Bundle verknüpfen
       await query(
-        `INSERT INTO bundle_projects (bundle_id, tender_id)
-         VALUES ($1, $2)
-         ON CONFLICT DO NOTHING`,
+        `UPDATE tenders SET bundle_id = $1 WHERE id = $2`,
         [bundleId, tender.tenderId]
       );
       
+      // Ähnliche Tenders auch zum Bundle hinzufügen
       for (const similar of similarProjects.rows) {
         await query(
-          `INSERT INTO bundle_projects (bundle_id, tender_id)
-           VALUES ($1, $2)
-           ON CONFLICT DO NOTHING`,
+          `UPDATE tenders SET bundle_id = $1 WHERE id = $2 AND bundle_id IS NULL`,
           [bundleId, similar.id]
         );
       }
+      
+      // Bundle-Projekte Tabelle befüllen (falls verwendet)
+      await query(
+        `INSERT INTO bundle_projects (bundle_id, project_id, joined_at)
+         SELECT $1, project_id, NOW() FROM tenders WHERE bundle_id = $1
+         ON CONFLICT DO NOTHING`,
+        [bundleId]
+      );
+      
+      // Current_projects im Bundle aktualisieren
+      await query(
+        `UPDATE bundles 
+         SET current_projects = (SELECT COUNT(*) FROM tenders WHERE bundle_id = $1),
+             total_volume = (SELECT SUM(estimated_value) FROM tenders WHERE bundle_id = $1)
+         WHERE id = $1`,
+        [bundleId]
+      );
     }
   }
 }
