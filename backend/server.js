@@ -15615,45 +15615,6 @@ app.post('/api/tender/:tenderId/mark-viewed', async (req, res) => {
   }
 });
 
-// Tender ablehnen (Handwerker)
-app.post('/api/tender/:tenderId/reject', async (req, res) => {
-  try {
-    const { tenderId } = req.params;
-    const { companyId, reason } = req.body;
-    
-    // CompanyId zu HandwerkerId konvertieren
-    const handwerkerResult = await query(
-      'SELECT id FROM handwerker WHERE company_id = $1',
-      [companyId]
-    );
-    
-    if (handwerkerResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
-    }
-    
-    const handwerkerId = handwerkerResult.rows[0].id;
-    
-    await query(
-      `UPDATE tender_handwerker 
-       SET status = 'rejected', rejected_at = NOW(), rejection_reason = $3
-       WHERE tender_id = $1 AND handwerker_id = $2`,
-      [tenderId, handwerkerId, reason]
-    );
-    
-    await query(
-      `UPDATE tender_handwerker_status 
-       SET status = 'rejected', updated_at = NOW()
-       WHERE tender_id = $1 AND handwerker_id = $2`,
-      [tenderId, handwerkerId]
-    );
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error rejecting tender:', error);
-    res.status(500).json({ error: 'Fehler beim Ablehnen' });
-  }
-});
-
 // ============================================
 // 3. OFFER MANAGEMENT (ANGEBOTE)
 // ============================================
