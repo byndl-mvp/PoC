@@ -15112,48 +15112,6 @@ app.post('/api/offers/:offerId/withdraw', async (req, res) => {
   }
 });
 
-// Accept preliminary contract
-app.post('/api/contracts/:contractId/accept-preliminary', async (req, res) => {
-  try {
-    const { contractId } = req.params;
-    
-    await query(
-      `UPDATE orders SET 
-       handwerker_accepted = true,
-       handwerker_accepted_at = NOW()
-       WHERE id = $1`,
-      [contractId]
-    );
-    
-    res.json({ success: true, message: 'Vorläufige Beauftragung angenommen' });
-    
-  } catch (error) {
-    console.error('Error accepting preliminary:', error);
-    res.status(500).json({ error: 'Fehler bei der Annahme' });
-  }
-});
-
-// Confirm offer after inspection
-app.post('/api/contracts/:contractId/confirm-offer', async (req, res) => {
-  try {
-    const { contractId } = req.params;
-    
-    await query(
-      `UPDATE orders SET 
-       offer_confirmed = true,
-       offer_confirmed_at = NOW()
-       WHERE id = $1`,
-      [contractId]
-    );
-    
-    res.json({ success: true, message: 'Angebot bestätigt' });
-    
-  } catch (error) {
-    console.error('Error confirming offer:', error);
-    res.status(500).json({ error: 'Fehler bei der Bestätigung' });
-  }
-});
-
 // ============= AUSSCHREIBUNGS-SYSTEM =============
 
 // Tender erstellen mit automatischem Handwerker-Matching
