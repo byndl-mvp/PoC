@@ -16020,24 +16020,6 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
   }
 });
 
-// Angebot als gelesen markieren
-app.post('/api/offers/:offerId/mark-viewed', async (req, res) => {
-  try {
-    const { offerId } = req.params;
-    
-    await query(
-      'UPDATE offers SET viewed_at = NOW() WHERE id = $1',
-      [offerId]
-    );
-    
-    res.json({ success: true });
-    
-  } catch (error) {
-    console.error('Error marking offer as viewed:', error);
-    res.status(500).json({ error: 'Fehler beim Markieren' });
-  }
-});
-
 // ============================================
 // 5. BUNDLE MANAGEMENT (PROJEKTBÜNDEL)
 // ============================================
