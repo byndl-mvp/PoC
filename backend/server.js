@@ -15114,372 +15114,283 @@ app.post('/api/offers/:offerId/withdraw', async (req, res) => {
 
 // ============= AUSSCHREIBUNGS-SYSTEM =============
 
-// Tender erstellen mit automatischem Handwerker-Matching
-app.post('/api/projects/:projectId/tender/create', async (req, res) => {
+// kleiner Helfer
+function safeParseJSON(v) {
+  if (!v) return null;
+  if (typeof v !== 'string') return v;
+  try { return JSON.parse(v); } catch { return null; }
+}
+
+// Gemeinsamer Handler NUR für die alte URL
+async function createProjectTenders(req, res) {
+  const { projectId } = req.params;
+  const { tradeIds, timeframe, bundleSettings } = req.body || {};
+
   try {
-    const { projectId } = req.params;
-    const { tradeIds, timeframe, bundleSettings } = req.body;
-    
     await query('BEGIN');
-    
-    // Projekt und Bauherr-Daten laden
+
+    // 1) Projekt + Bauherr laden
     const projectResult = await query(
-      `SELECT p.*, b.zip as bauherr_zip, b.id as bauherr_id, b.email as bauherr_email, b.name as bauherr_name
-       FROM projects p
-       JOIN bauherren b ON p.bauherr_id = b.id
-       WHERE p.id = $1`,
+      `SELECT p.*, b.zip AS bauherr_zip, b.id AS bauherr_id, b.email AS bauherr_email, b.name AS bauherr_name
+         FROM projects p
+         JOIN bauherren b ON p.bauherr_id = b.id
+        WHERE p.id = $1`,
       [projectId]
     );
-    
     if (projectResult.rows.length === 0) {
       throw new Error('Projekt nicht gefunden');
     }
-    
     const project = projectResult.rows[0];
-    
-    // JETZT ERST PLZ-Check (NACH dem Laden des Projekts!)
-    if (!project.zip_code && !project.bauherr_zip) {
-      console.error('FEHLER: Keine PLZ für Projekt gefunden!');
+
+    // 2) ZIP prüfen (Projekt oder Bauherr)
+    const targetZip = project.zip_code || project.bauherr_zip;
+    if (!targetZip) {
       throw new Error('Projekt hat keine gültige PLZ für Handwerker-Matching');
     }
-    
-    const createdTenders = [];
-    const allMatchedHandwerker = [];
-    
-    // Trade IDs bestimmen
+
+    // 3) Gewerke bestimmen
     let tradesToProcess;
     if (tradeIds === 'all') {
       tradesToProcess = await query(
-        `SELECT DISTINCT t.* FROM trades t
-         JOIN project_trades pt ON t.id = pt.trade_id
-         WHERE pt.project_id = $1 AND t.code != 'INT'`,
+        `SELECT DISTINCT t.*
+           FROM trades t
+           JOIN project_trades pt ON t.id = pt.trade_id
+          WHERE pt.project_id = $1
+            AND t.code != 'INT'
+          ORDER BY t.name`,
         [projectId]
       );
     } else {
+      const ids = Array.isArray(tradeIds) ? tradeIds : (tradeIds ? [tradeIds] : []);
+      if (ids.length === 0) {
+        await query('ROLLBACK');
+        return res.status(400).json({ error: 'Keine Gewerke übergeben (tradeIds) und "all" nicht gesetzt' });
+      }
       tradesToProcess = await query(
-        `SELECT * FROM trades WHERE id = ANY($1::int[])`,
-        [Array.isArray(tradeIds) ? tradeIds : [tradeIds]]
+        `SELECT * FROM trades WHERE id = ANY($1::int[]) ORDER BY name`,
+        [ids]
       );
     }
-    
-    // Für jedes Gewerk eine Tender erstellen
+    if (tradesToProcess.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Keine passenden Gewerke gefunden' });
+    }
+
+    const createdTenders = [];
+    const skipped = []; // z.B. { tradeId, tradeName, reason: 'no_lv'|'exists' }
+
+    // 4) pro Gewerk Tender erzeugen
     for (const trade of tradesToProcess.rows) {
-      // Prüfe ob bereits Tender existiert
+      // 4a) Schon vorhanden?
       const existingTender = await query(
-        `SELECT id FROM tenders 
-         WHERE project_id = $1 AND trade_id = $2 
-         AND status != 'cancelled'`,
+        `SELECT id
+           FROM tenders
+          WHERE project_id = $1
+            AND trade_id   = $2
+            AND status    != 'cancelled'`,
         [projectId, trade.id]
       );
-      
       if (existingTender.rows.length > 0) {
+        skipped.push({ tradeId: trade.id, tradeName: trade.name, reason: 'exists' });
         continue;
       }
-      
-      // LV-Daten laden
+
+      // 4b) LV laden (ohne LV kein Tender)
       const lvResult = await query(
         `SELECT * FROM lvs WHERE project_id = $1 AND trade_id = $2`,
         [projectId, trade.id]
       );
-      
       if (lvResult.rows.length === 0) {
+        skipped.push({ tradeId: trade.id, tradeName: trade.name, reason: 'no_lv' });
         continue;
       }
-      
+
       const lv = lvResult.rows[0];
-      const lvContent = typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content;
-      
-      // Tender erstellen
-      const tenderResult = await query(
+      const lvContent = safeParseJSON(lv.content) || lv.content || {};
+      const estimatedValue = Number(lvContent?.totalSum || 0);
+
+      // 4c) Tender anlegen
+      const tenderInsert = await query(
         `INSERT INTO tenders (
-          project_id, trade_id, status, 
-          deadline, estimated_value, timeframe, 
-          lv_data, created_at
-        ) VALUES ($1, $2, 'open', 
-          NOW() + INTERVAL '14 days', $3, $4, $5, NOW())
-        RETURNING id`,
+           project_id, trade_id, status,
+           deadline, estimated_value, timeframe,
+           lv_data, created_at
+         ) VALUES (
+           $1, $2, 'open',
+           NOW() + INTERVAL '14 days', $3, $4,
+           $5, NOW()
+         )
+         RETURNING id, deadline`,
         [
-          projectId, 
+          projectId,
           trade.id,
-          lvContent.totalSum || 0,
+          estimatedValue,
           timeframe || project.timeframe || 'Nach Absprache',
-          JSON.stringify(lvContent)
+          JSON.stringify(lvContent || {})
         ]
       );
-      
-      const tenderId = tenderResult.rows[0].id;
-      
-      // MATCHING: Passende Handwerker finden
-      console.log(`\n=== MATCHING START ===`);
-      console.log(`Trade ID: ${trade.id}, Trade Name: ${trade.name}`);
-      console.log(`Project ZIP: ${project.zip_code}, Bauherr ZIP: ${project.bauherr_zip}`);
-      
-      const targetZip = project.zip_code || project.bauherr_zip;
-      console.log(`Target ZIP für Matching: ${targetZip}`);
-      
-      const zipCheckResult = await query(
-        `SELECT zip, latitude, longitude FROM zip_codes WHERE zip = $1`,
-        [targetZip]
-      );
-      console.log(`ZIP Koordinaten gefunden:`, zipCheckResult.rows[0] || 'KEINE KOORDINATEN!');
-      
+      const tenderId = tenderInsert.rows[0].id;
+
+      // 4d) Matching (PostGIS)
+      await query(`SELECT zip, latitude, longitude FROM zip_codes WHERE zip = $1`, [targetZip]); // nur Check
+
       const matchingHandwerker = await query(
-        `SELECT DISTINCT h.*, 
-          CASE 
-            WHEN z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL THEN
-              ST_Distance(
-                ST_MakePoint(z1.longitude, z1.latitude)::geography,
-                ST_MakePoint(z2.longitude, z2.latitude)::geography
-              ) / 1000
-            WHEN h.zip_code = $1 THEN 0
-            ELSE h.action_radius
-          END as distance_km,
-          z1.latitude as h_lat,
-          z1.longitude as h_lon,
-          z2.latitude as p_lat, 
-          z2.longitude as p_lon
-         FROM handwerker h
-         JOIN handwerker_trades ht ON h.id = ht.handwerker_id
-         LEFT JOIN zip_codes z1 ON z1.zip::text = h.zip_code::text
-         LEFT JOIN zip_codes z2 ON z2.zip::text = $1::text
-         WHERE ht.trade_id = $2
-         AND h.active = true
-         AND (
-           h.zip_code = $1
-           OR 
-           (
-             z1.latitude IS NOT NULL 
-             AND z1.longitude IS NOT NULL
-             AND z2.latitude IS NOT NULL 
-             AND z2.longitude IS NOT NULL
-             AND ST_DWithin(
-               ST_MakePoint(z1.longitude, z1.latitude)::geography,
-               ST_MakePoint(z2.longitude, z2.latitude)::geography,
-               GREATEST(h.action_radius * 1000, 1)
-             )
-           )
-           OR
-           (
-             (z1.latitude IS NULL OR z2.latitude IS NULL)
-             AND h.action_radius >= 30
-           )
-         )
-         ORDER BY distance_km ASC`,
+        `SELECT DISTINCT h.*,
+                CASE
+                  WHEN z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL THEN
+                    ST_Distance(
+                      ST_MakePoint(z1.longitude, z1.latitude)::geography,
+                      ST_MakePoint(z2.longitude, z2.latitude)::geography
+                    ) / 1000
+                  WHEN h.zip_code = $1 THEN 0
+                  ELSE h.action_radius
+                END AS distance_km
+           FROM handwerker h
+           JOIN handwerker_trades ht ON h.id = ht.handwerker_id
+      LEFT JOIN zip_codes z1 ON z1.zip::text = h.zip_code::text
+      LEFT JOIN zip_codes z2 ON z2.zip::text = $1::text
+          WHERE ht.trade_id = $2
+            AND h.active = true
+            AND (
+              h.zip_code = $1
+              OR (
+                z1.latitude IS NOT NULL AND z1.longitude IS NOT NULL
+                AND z2.latitude IS NOT NULL AND z2.longitude IS NOT NULL
+                AND ST_DWithin(
+                  ST_MakePoint(z1.longitude, z1.latitude)::geography,
+                  ST_MakePoint(z2.longitude, z2.latitude)::geography,
+                  GREATEST(h.action_radius * 1000, 1)
+                )
+              )
+              OR (
+                (z1.latitude IS NULL OR z2.latitude IS NULL)
+                AND h.action_radius >= 30
+              )
+            )
+        ORDER BY distance_km ASC`,
         [targetZip, trade.id]
       );
-      
-      console.log(`Gefundene Handwerker: ${matchingHandwerker.rows.length}`);
-      
-      if (matchingHandwerker.rows.length === 0) {
-        console.log('WARNUNG: Keine Handwerker gefunden! Debug-Check läuft...');
-        
-        const debugResult = await query(
-          `SELECT 
-            h.id,
-            h.company_name,
-            h.zip_code,
-            h.action_radius,
-            ht.trade_id,
-            h.active,
-            CASE 
-              WHEN ht.trade_id IS NULL THEN 'Kein Trade zugeordnet'
-              WHEN ht.trade_id != $2 THEN 'Falscher Trade (' || ht.trade_id || ' statt ' || $2 || ')'
-              WHEN NOT h.active THEN 'Handwerker nicht aktiv'
-              WHEN h.zip_code != $1 AND h.action_radius < 30 THEN 'Außerhalb Radius'
-              ELSE 'Unbekanntes Problem'
-            END as problem
-           FROM handwerker h
-           LEFT JOIN handwerker_trades ht ON h.id = ht.handwerker_id
-           WHERE h.id IN (
-             SELECT handwerker_id FROM handwerker_trades WHERE trade_id = $2
-           )`,
-          [targetZip, trade.id]
-        );
-        
-        console.log('Debug-Ergebnisse:', debugResult.rows);
-      }
-      
-      // FÜR JEDEN gefundenen Handwerker
-      for (const handwerker of matchingHandwerker.rows) {
+
+      // 4e) HW verknüpfen + Tracking + (optional) Mail
+      for (const hw of matchingHandwerker.rows) {
         try {
-          // tender_handwerker Eintrag
           await query(
-            `INSERT INTO tender_handwerker (
-              tender_id, handwerker_id, status, notified_at, distance_km
-            ) VALUES ($1, $2, 'pending', NOW(), $3)
-            ON CONFLICT (tender_id, handwerker_id) DO NOTHING`,
-            [tenderId, handwerker.id, Math.round(handwerker.distance_km || 0)]
+            `INSERT INTO tender_handwerker (tender_id, handwerker_id, status, notified_at, distance_km)
+             VALUES ($1, $2, 'pending', NOW(), $3)
+             ON CONFLICT (tender_id, handwerker_id) DO NOTHING`,
+            [tenderId, hw.id, Math.round(hw.distance_km || 0)]
           );
-          
-          // Status-Tracking (optional)
-          try {
-            await query(
-              `INSERT INTO tender_handwerker_status (
-                tender_id, handwerker_id, status, created_at
-              ) VALUES ($1, $2, 'sent', NOW())
-              ON CONFLICT (tender_id, handwerker_id) DO UPDATE SET 
-                status = 'sent',
-                created_at = NOW()`,
-              [tenderId, handwerker.id]
-            );
-          } catch (statusError) {
-            console.log('Status-Tracking übersprungen');
-          }
-          
-          console.log(`✓ Handwerker ${handwerker.id} (${handwerker.company_name}) verknüpft`);
-          
-          // EMAIL AN DIESEN HANDWERKER
-          if (transporter && handwerker.email) {
+
+          await query(
+            `INSERT INTO tender_handwerker_status (tender_id, handwerker_id, status, created_at)
+             VALUES ($1, $2, 'sent', NOW())
+             ON CONFLICT (tender_id, handwerker_id)
+             DO UPDATE SET status = 'sent', created_at = NOW()`,
+            [tenderId, hw.id]
+          );
+
+          if (typeof transporter !== 'undefined' && transporter && hw.email) {
             try {
               await transporter.sendMail({
                 from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-                to: handwerker.email,
+                to: hw.email,
                 subject: `Neue Ausschreibung: ${trade.name} - ${project.category || 'Bauprojekt'}`,
                 html: `
-                  <!DOCTYPE html>
-                  <html>
-                  <head>
-                    <style>
-                      body { font-family: Arial, sans-serif; color: #333; }
-                      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; }
-                      .content { background: #f7f7f7; padding: 30px; }
-                      .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
-                      .details { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; }
-                      .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-                    </style>
-                  </head>
-                  <body>
-                    <div class="container">
-                      <div class="header">
-                        <h1>Neue Ausschreibung in Ihrer Region!</h1>
-                      </div>
-                      <div class="content">
-                        <h2>Guten Tag ${handwerker.company_name || handwerker.contact_person || ''},</h2>
-                        
-                        <p>Es gibt eine neue passende Ausschreibung für Sie:</p>
-                        
-                        <div class="details">
-                          <h3>Projektdetails:</h3>
-                          <table width="100%">
-                            <tr><td><strong>Gewerk:</strong></td><td>${trade.name}</td></tr>
-                            <tr><td><strong>Projekttyp:</strong></td><td>${project.category || ''} ${project.sub_category ? '- ' + project.sub_category : ''}</td></tr>
-                            <tr><td><strong>Standort:</strong></td><td>${targetZip} (${Math.round(handwerker.distance_km || 0)} km entfernt)</td></tr>
-                            <tr><td><strong>Geschätztes Volumen:</strong></td><td>${formatCurrency(lvContent.totalSum || 0)}</td></tr>
-                            <tr><td><strong>Zeitraum:</strong></td><td>${timeframe || 'Nach Absprache'}</td></tr>
-                            <tr><td><strong>Angebotsfrist:</strong></td><td>${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('de-DE')}</td></tr>
-                          </table>
-                        </div>
-                        
-                        <p><strong>Was ist zu tun?</strong></p>
-                        <ol>
-                          <li>Loggen Sie sich in Ihr Dashboard ein</li>
-                          <li>Prüfen Sie das Leistungsverzeichnis</li>
-                          <li>Geben Sie Ihr Angebot ab</li>
-                        </ol>
-                        
-                        <center>
-                          <a href="https://byndl.de/handwerker/dashboard" class="button">
-                            Zum Dashboard →
-                          </a>
-                        </center>
-                      </div>
-                      
-                      <div class="footer">
-                        <p>© 2024 byndl - Die digitale Handwerkerplattform</p>
-                        <p>Diese E-Mail wurde automatisch generiert.</p>
-                      </div>
-                    </div>
-                  </body>
-                  </html>
-                `
+                  <!doctype html>
+                  <html><body style="font-family:Arial,sans-serif;">
+                    <h2>Neue passende Ausschreibung</h2>
+                    <p>Guten Tag ${hw.company_name || hw.contact_person || ''},</p>
+                    <p>Es gibt eine neue Ausschreibung in Ihrer Region.</p>
+                    <table>
+                      <tr><td><strong>Gewerk:</strong></td><td>${trade.name}</td></tr>
+                      <tr><td><strong>Standort:</strong></td><td>${targetZip} (${Math.round(hw.distance_km || 0)} km)</td></tr>
+                      <tr><td><strong>Geschätztes Volumen:</strong></td><td>${formatCurrency(estimatedValue)}</td></tr>
+                      <tr><td><strong>Angebotsfrist:</strong></td><td>${new Date(tenderInsert.rows[0].deadline).toLocaleDateString('de-DE')}</td></tr>
+                    </table>
+                    <p><a href="https://byndl.de/handwerker/dashboard">Zum Dashboard →</a></p>
+                  </body></html>`
               });
-              
-              // Email-Log
+
               await query(
                 `INSERT INTO email_logs (recipient_email, email_type, status, sent_at, handwerker_id, metadata)
-                 VALUES ($1, $2, $3, NOW(), $4, $5)`,
-                [
-                  handwerker.email, 
-                  'tender_notification', 
-                  'sent', 
-                  handwerker.id, 
-                  JSON.stringify({tender_id: tenderId, trade_id: trade.id})
-                ]
+                 VALUES ($1,'tender_notification','sent',NOW(),$2,$3)`,
+                [hw.email, hw.id, JSON.stringify({ tender_id: tenderId, trade_id: trade.id })]
               );
-            } catch (emailError) {
-              console.error('Email-Versand fehlgeschlagen:', emailError);
+            } catch (mailErr) {
+              console.error('E-Mail (HW) fehlgeschlagen:', mailErr?.message || mailErr);
             }
           }
-          
-          // Für Zusammenfassung sammeln
-          allMatchedHandwerker.push({
-            ...handwerker,
-            tradeName: trade.name
-          });
-          
-        } catch (linkError) {
-          console.error(`Fehler bei Handwerker ${handwerker.id}:`, linkError.message);
+        } catch (linkErr) {
+          console.error(`Linking HW ${hw.id} fehlgeschlagen:`, linkErr?.message || linkErr);
         }
-      } // Ende der Handwerker-Schleife
-      
-      console.log(`=== MATCHING ENDE ===\n`);
-      
+      }
+
       createdTenders.push({
         tenderId,
-        tradeName: trade.name,
         tradeId: trade.id,
+        tradeName: trade.name,
         matchedHandwerker: matchingHandwerker.rows.length
       });
-    } // Ende der Trade-Schleife
-    
-    // Bundle-Check
-    if (bundleSettings?.eligible) {
-      await checkAndCreateBundles(project, createdTenders);
     }
-    
-    // EMAIL AN BAUHERR
-    if (transporter && project.bauherr_email && createdTenders.length > 0) {
-      const totalHandwerker = createdTenders.reduce((sum, t) => sum + t.matchedHandwerker, 0);
-      
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-        to: project.bauherr_email,
-        subject: 'Ihre Ausschreibung wurde erfolgreich versendet',
-        html: `
-          <h2>Hallo ${project.bauherr_name || ''},</h2>
-          <p>Ihre Ausschreibung wurde erfolgreich an passende Handwerker versendet.</p>
-          
-          <h3>Zusammenfassung:</h3>
-          <ul>
-            ${createdTenders.map(t => `
-              <li><strong>${t.tradeName}:</strong> ${t.matchedHandwerker} Handwerker benachrichtigt</li>
-            `).join('')}
-          </ul>
-          
-          <p><strong>Gesamt: ${totalHandwerker} Handwerker</strong> haben Ihre Ausschreibung erhalten.</p>
-          
-          <p>Sie können den Status jederzeit in Ihrem Dashboard verfolgen.</p>
-          
-          <p>Die Angebotsfrist läuft bis: ${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('de-DE')}</p>
-        `
-      });
+
+    // 5) Optional Bundles
+    if (bundleSettings?.eligible && typeof checkAndCreateBundles === 'function' && createdTenders.length > 0) {
+      try {
+        await checkAndCreateBundles(project, createdTenders);
+      } catch (bundleErr) {
+        console.warn('Bundle-Erstellung übersprungen:', bundleErr?.message || bundleErr);
+      }
     }
-    
+
+    // 6) E-Mail an Bauherr (Zusammenfassung)
+    if (
+      createdTenders.length > 0 &&
+      project.bauherr_email &&
+      typeof transporter !== 'undefined' &&
+      transporter
+    ) {
+      const totalHw = createdTenders.reduce((s, t) => s + (t.matchedHandwerker || 0), 0);
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+          to: project.bauherr_email,
+          subject: 'Ihre Ausschreibung wurde versendet',
+          html: `
+            <!doctype html>
+            <html><body style="font-family:Arial,sans-serif;">
+              <h2>Ihre Ausschreibung ist raus</h2>
+              <p>Hallo ${project.bauherr_name || ''},</p>
+              <p>Wir haben Ihre Ausschreibung an passende Handwerker versendet.</p>
+              <ul>
+                ${createdTenders
+                  .map(t => `<li><strong>${t.tradeName}:</strong> ${t.matchedHandwerker} Handwerker benachrichtigt</li>`)
+                  .join('')}
+              </ul>
+              <p><strong>Gesamt:</strong> ${totalHw} Handwerker</p>
+              <p>Den Status sehen Sie jederzeit in Ihrem Dashboard.</p>
+            </body></html>`
+        });
+      } catch (mailErr) {
+        console.error('E-Mail (Bauherr) fehlgeschlagen:', mailErr?.message || mailErr);
+      }
+    }
+
     await query('COMMIT');
-    
-    res.json({
+    return res.json({
       success: true,
       message: `${createdTenders.length} Ausschreibung(en) erstellt`,
-      tenders: createdTenders
+      tenders: createdTenders,
+      skipped
     });
-    
   } catch (error) {
     await query('ROLLBACK');
     console.error('Error creating tenders:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message || 'Interner Fehler' });
   }
-});
+}
+
+// Behalte NUR diese Route:
+app.post('/api/projects/:projectId/tender/create', createProjectTenders);
 
 // ============================================
 // 3. OFFER MANAGEMENT (ANGEBOTE)
