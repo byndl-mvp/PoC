@@ -16977,50 +16977,6 @@ app.get('/api/handwerker/:handwerkerId/tenders/detailed', async (req, res) => {
   }
 });
 
-// Detaillierte Ausschreibungsübersicht für Bauherr
-app.get('/api/projects/:projectId/tenders/detailed', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    const tenders = await query(
-      `SELECT t.*, tr.name as trade_name
-       FROM tenders t
-       JOIN trades tr ON t.trade_id = tr.id
-       WHERE t.project_id = $1
-       ORDER BY t.created_at DESC`,
-      [projectId]
-    );
-    
-    // Für jeden Tender die Handwerker-Stati holen
-    for (let tender of tenders.rows) {
-      const handwerkerStatus = await query(
-        `SELECT 
-          h.company_name,
-          h.id as handwerker_id,
-          ths.status,
-          ths.viewed_at,
-          ths.in_progress_at,
-          ths.submitted_at,
-          o.id as offer_id
-         FROM tender_handwerker th
-         JOIN handwerker h ON th.handwerker_id = h.id
-         LEFT JOIN tender_handwerker_status ths ON th.tender_id = ths.tender_id AND th.handwerker_id = ths.handwerker_id
-         LEFT JOIN offers o ON th.tender_id = o.tender_id AND th.handwerker_id = o.handwerker_id
-         WHERE th.tender_id = $1`,
-        [tender.id]
-      );
-      
-      tender.handwerkers = handwerkerStatus.rows;
-    }
-    
-    res.json(tenders.rows);
-    
-  } catch (error) {
-    console.error('Error fetching detailed tenders:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
-  }
-});
-
 // Angebote als gelesen markieren
 app.post('/api/projects/:projectId/offers/mark-all-read', async (req, res) => {
   try {
