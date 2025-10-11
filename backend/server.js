@@ -15681,22 +15681,24 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
 // ============================================
 
 // Verfügbare Bündel für Handwerker laden
-app.get('/api/handwerker/:companyId/bundles', async (req, res) => {
+app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
   try {
-    const { companyId } = req.params;
+    const { identifier } = req.params;
+    let handwerkerId;
     
-    // CompanyId zu HandwerkerId konvertieren
-    const handwerkerResult = await query(
-      'SELECT * FROM handwerker WHERE company_id = $1',
-      [companyId]
-    );
-    
-    if (handwerkerResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    // Flexible ID-Erkennung
+    if (/^\d+$/.test(identifier)) {
+      handwerkerId = parseInt(identifier);
+    } else {
+      const result = await query(
+        'SELECT id FROM handwerker WHERE company_id = $1',
+        [identifier]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+      }
+      handwerkerId = result.rows[0].id;
     }
-    
-    const handwerker = handwerkerResult.rows[0];
-    const handwerkerId = handwerker.id;
     
     // Handwerker-Trades laden
     const tradesResult = await query(
@@ -15716,24 +15718,11 @@ app.get('/api/handwerker/:companyId/bundles', async (req, res) => {
         b.*,
         t.name as trade_name,
         COUNT(bp.tender_id) as project_count,
-        SUM(tn.estimated_value) as total_volume,
-        array_agg(
-          json_build_object(
-            'tender_id', tn.id,
-            'project_id', p.id,
-            'address', CONCAT(p.street, ' ', p.house_number, ', ', p.zip_code, ' ', p.city),
-            'lat', z.latitude,
-            'lng', z.longitude,
-            'volume', tn.estimated_value,
-            'description', p.description
-          )
-        ) as projects
+        SUM(tn.estimated_value) as total_volume
        FROM bundles b
        JOIN bundle_projects bp ON b.id = bp.bundle_id
        JOIN tenders tn ON bp.tender_id = tn.id
-       JOIN projects p ON tn.project_id = p.id
        JOIN trades t ON b.trade_id = t.id
-       JOIN zip_codes z ON p.zip_code = z.zip
        WHERE b.trade_id = ANY($1::int[])
        AND b.status = 'forming'
        AND tn.status = 'open'
@@ -15744,17 +15733,10 @@ app.get('/api/handwerker/:companyId/bundles', async (req, res) => {
        )
        GROUP BY b.id, t.name
        HAVING COUNT(bp.tender_id) >= 2`,
-      [tradeIds, handwerkerId]
+      [tradeIds, handwerkerId]  // WICHTIG: handwerkerId
     );
     
-    // Berechne maximale Distanz für jedes Bündel
-    for (let bundle of bundles.rows) {
-      const coords = bundle.projects.map(p => ({ lat: p.lat, lng: p.lng }));
-      bundle.max_distance = calculateMaxDistance(coords);
-    }
-    
     res.json(bundles.rows);
-    
   } catch (error) {
     console.error('Error fetching bundles:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Bündel' });
