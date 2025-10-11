@@ -15450,6 +15450,247 @@ async function createProjectTenders(req, res) {
 // Behalte NUR diese Route:
 app.post('/api/projects/:projectId/tender/create', createProjectTenders);
 
+// Route für nachträgliches Matching von neuen Handwerkern zu bestehenden Tendern
+app.post('/api/admin/rematch-tenders', async (req, res) => {
+  const { 
+    tenderId,      // Optional: Nur eine spezifische Tender
+    tradeId,       // Optional: Nur ein spezifisches Gewerk
+    handwerkerId,  // Optional: Nur einen spezifischen Handwerker
+    dryRun = false // Optional: Simulationsmodus ohne DB-Änderungen
+  } = req.body;
+
+  try {
+    await query('BEGIN');
+
+    // 1) Relevante Tenders laden
+    let tenderQuery = `
+      SELECT DISTINCT t.*, p.zip_code as project_zip, tr.name as trade_name, tr.code as trade_code
+      FROM tenders t
+      JOIN projects p ON t.project_id = p.id
+      JOIN trades tr ON t.trade_id = tr.id
+      WHERE t.status = 'open'`;
+    
+    const tenderParams = [];
+    let paramCount = 0;
+    
+    if (tenderId) {
+      tenderQuery += ` AND t.id = $${++paramCount}`;
+      tenderParams.push(tenderId);
+    }
+    
+    if (tradeId) {
+      tenderQuery += ` AND t.trade_id = $${++paramCount}`;
+      tenderParams.push(tradeId);
+    }
+    
+    tenderQuery += ` ORDER BY t.created_at DESC`;
+    
+    const tendersResult = await query(tenderQuery, tenderParams);
+    
+    if (tendersResult.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.json({ 
+        success: true, 
+        message: 'Keine offenen Tenders gefunden',
+        matched: 0 
+      });
+    }
+
+    const matchResults = [];
+    let totalNewMatches = 0;
+    let totalSkipped = 0;
+
+    // 2) Pro Tender neue Handwerker suchen
+    for (const tender of tendersResult.rows) {
+      const targetZip = tender.project_zip;
+      
+      if (!targetZip) {
+        console.warn(`Tender ${tender.id} hat keine Projekt-PLZ`);
+        continue;
+      }
+
+      // 3) Bereits verknüpfte Handwerker IDs holen
+      const existingHandwerkerResult = await query(
+        `SELECT handwerker_id FROM tender_handwerker WHERE tender_id = $1`,
+        [tender.id]
+      );
+      const existingHandwerkerIds = existingHandwerkerResult.rows.map(r => r.handwerker_id);
+
+      // 4) Neue passende Handwerker finden (gleiche Logik wie in createProjectTenders)
+      let matchQuery = `
+        SELECT DISTINCT h.*,
+          CASE
+            WHEN z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL THEN
+              ST_Distance(
+                ST_MakePoint(z1.longitude, z1.latitude)::geography,
+                ST_MakePoint(z2.longitude, z2.latitude)::geography
+              ) / 1000
+            WHEN h.zip_code = $1 THEN 0
+            ELSE h.action_radius
+          END AS distance_km
+        FROM handwerker h
+        JOIN handwerker_trades ht ON h.id = ht.handwerker_id
+        LEFT JOIN zip_codes z1 ON z1.zip::text = h.zip_code::text
+        LEFT JOIN zip_codes z2 ON z2.zip::text = $1::text
+        WHERE ht.trade_id = $2
+          AND h.active = true`;
+      
+      // Nur neue Handwerker (nicht bereits verknüpft)
+      if (existingHandwerkerIds.length > 0) {
+        matchQuery += ` AND h.id NOT IN (${existingHandwerkerIds.join(',')})`;
+      }
+
+      // Optional: Nur einen spezifischen Handwerker
+      if (handwerkerId) {
+        matchQuery += ` AND h.id = ${handwerkerId}`;
+      }
+
+      // Standard PostGIS Matching-Bedingungen
+      matchQuery += `
+          AND (
+            h.zip_code = $1
+            OR (
+              z1.latitude IS NOT NULL AND z1.longitude IS NOT NULL
+              AND z2.latitude IS NOT NULL AND z2.longitude IS NOT NULL
+              AND ST_DWithin(
+                ST_MakePoint(z1.longitude, z1.latitude)::geography,
+                ST_MakePoint(z2.longitude, z2.latitude)::geography,
+                GREATEST(h.action_radius * 1000, 1)
+              )
+            )
+            OR (
+              (z1.latitude IS NULL OR z2.latitude IS NULL)
+              AND h.action_radius >= 30
+            )
+          )
+        ORDER BY distance_km ASC`;
+
+      const newHandwerker = await query(matchQuery, [targetZip, tender.trade_id]);
+      
+      const tenderMatchInfo = {
+        tenderId: tender.id,
+        tradeCode: tender.trade_code,
+        tradeName: tender.trade_name,
+        projectZip: targetZip,
+        newMatches: [],
+        existingCount: existingHandwerkerIds.length
+      };
+
+      // 5) Neue Handwerker verknüpfen
+      for (const hw of newHandwerker.rows) {
+        if (!dryRun) {
+          try {
+            // In tender_handwerker eintragen
+            await query(
+              `INSERT INTO tender_handwerker (tender_id, handwerker_id, status, notified_at, distance_km)
+               VALUES ($1, $2, 'pending', NOW(), $3)
+               ON CONFLICT (tender_id, handwerker_id) DO NOTHING`,
+              [tender.id, hw.id, Math.round(hw.distance_km || 0)]
+            );
+
+            // Status tracking
+            await query(
+              `INSERT INTO tender_handwerker_status (tender_id, handwerker_id, status, created_at)
+               VALUES ($1, $2, 'rematched', NOW())
+               ON CONFLICT (tender_id, handwerker_id)
+               DO UPDATE SET status = 'rematched', created_at = NOW()`,
+              [tender.id, hw.id]
+            );
+
+            // Optional: E-Mail an neu gematchten Handwerker
+            if (hw.email && typeof transporter !== 'undefined' && transporter) {
+              try {
+                const estimatedValue = Number(tender.estimated_value || 0);
+                await transporter.sendMail({
+                  from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+                  to: hw.email,
+                  subject: `Neue Ausschreibung: ${tender.trade_name}`,
+                  html: `
+                    <!doctype html>
+                    <html><body style="font-family:Arial,sans-serif;">
+                      <h2>Neue passende Ausschreibung in Ihrer Region</h2>
+                      <p>Guten Tag ${hw.company_name || hw.contact_person || ''},</p>
+                      <p>Eine Ausschreibung in Ihrer Nähe passt zu Ihrem Gewerk.</p>
+                      <table style="border-collapse:collapse;">
+                        <tr><td style="padding:5px;"><strong>Gewerk:</strong></td><td>${tender.trade_name}</td></tr>
+                        <tr><td style="padding:5px;"><strong>PLZ:</strong></td><td>${targetZip}</td></tr>
+                        <tr><td style="padding:5px;"><strong>Entfernung:</strong></td><td>${Math.round(hw.distance_km || 0)} km</td></tr>
+                        ${estimatedValue > 0 ? `<tr><td style="padding:5px;"><strong>Volumen:</strong></td><td>${formatCurrency(estimatedValue)}</td></tr>` : ''}
+                        <tr><td style="padding:5px;"><strong>Frist:</strong></td><td>${tender.deadline ? new Date(tender.deadline).toLocaleDateString('de-DE') : 'Offen'}</td></tr>
+                      </table>
+                      <p style="margin-top:20px;">
+                        <a href="https://byndl.de/handwerker/dashboard" 
+                           style="background:#007bff;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
+                          → Jetzt Angebot abgeben
+                        </a>
+                      </p>
+                    </body></html>`
+                });
+              } catch (mailErr) {
+                console.error(`E-Mail an HW ${hw.id} fehlgeschlagen:`, mailErr?.message);
+              }
+            }
+
+            totalNewMatches++;
+          } catch (err) {
+            console.error(`Fehler beim Verknüpfen HW ${hw.id} mit Tender ${tender.id}:`, err?.message);
+            totalSkipped++;
+          }
+        } else {
+          totalNewMatches++; // Im dry-run nur zählen
+        }
+
+        tenderMatchInfo.newMatches.push({
+          handwerkerId: hw.id,
+          companyName: hw.company_name,
+          distance: Math.round(hw.distance_km || 0)
+        });
+      }
+
+      if (tenderMatchInfo.newMatches.length > 0) {
+        matchResults.push(tenderMatchInfo);
+      }
+    }
+
+    // 6) Statistik für Admin
+    const stats = {
+      tendersProcessed: tendersResult.rows.length,
+      totalNewMatches,
+      totalSkipped,
+      details: matchResults
+    };
+
+    if (!dryRun) {
+      await query('COMMIT');
+      
+      // Optional: Log für Admin
+      await query(
+        `INSERT INTO admin_logs (action, metadata, created_at, created_by)
+         VALUES ('rematch_tenders', $1, NOW(), 'system')`,
+        [JSON.stringify(stats)]
+      ).catch(e => console.log('Admin log fehlgeschlagen:', e.message));
+    } else {
+      await query('ROLLBACK');
+    }
+
+    return res.json({
+      success: true,
+      message: dryRun 
+        ? `Simulation: ${totalNewMatches} neue Matches gefunden (keine Änderungen vorgenommen)`
+        : `${totalNewMatches} neue Handwerker zu bestehenden Ausschreibungen hinzugefügt`,
+      dryRun,
+      stats
+    });
+
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Fehler beim Rematch:', error);
+    return res.status(500).json({ 
+      error: error.message || 'Interner Fehler beim nachträglichen Matching'
+    });
+  }
+});
+
 // ============================================
 // 3. OFFER MANAGEMENT (ANGEBOTE)
 // ============================================
