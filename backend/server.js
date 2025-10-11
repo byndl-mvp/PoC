@@ -14350,24 +14350,56 @@ app.get('/api/projects/:projectId/dashboard-details', async (req, res) => {
 // 3. TENDER & OFFER ROUTES
 // ----------------------------------------------------------------------------
 
-// Get project tenders
+// EINZIGE Tenders-Route (detailliert) – ersetzt die alte kurze Liste
 app.get('/api/projects/:projectId/tenders', async (req, res) => {
   try {
     const { projectId } = req.params;
-    
+
     const result = await query(
-      `SELECT t.*, tr.name as trade_name
-       FROM tenders t
-       JOIN trades tr ON t.trade_id = tr.id
-       WHERE t.project_id = $1
-       ORDER BY t.created_at DESC`,
+      `
+      SELECT
+        t.*,
+        tr.name AS trade_name,
+        COALESCE(stats.total_handwerker, 0)       AS total_handwerker,
+        COALESCE(stats.viewed_count, 0)           AS viewed_count,
+        COALESCE(stats.offer_count, 0)            AS offer_count,
+        COALESCE(stats.handwerkers, '[]'::json)   AS handwerkers
+      FROM tenders t
+      JOIN trades tr ON tr.id = t.trade_id
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*) AS total_handwerker,
+          COUNT(*) FILTER (WHERE ths.status = 'viewed') AS viewed_count,
+          COUNT(o.id) AS offer_count,
+          json_agg(
+            json_build_object(
+              'company_name',   h.company_name,
+              'handwerker_id',  h.id,
+              'status',         ths.status,
+              'viewed_at',      ths.viewed_at,
+              'in_progress_at', ths.in_progress_at,
+              'submitted_at',   ths.submitted_at,
+              'offer_id',       o.id
+            )
+            ORDER BY h.company_name
+          ) AS handwerkers
+        FROM tender_handwerker th
+        JOIN handwerker h ON h.id = th.handwerker_id
+        LEFT JOIN tender_handwerker_status ths 
+          ON ths.tender_id = th.tender_id AND ths.handwerker_id = th.handwerker_id
+        LEFT JOIN offers o 
+          ON o.tender_id = th.tender_id AND o.handwerker_id = th.handwerker_id
+        WHERE th.tender_id = t.id
+      ) stats ON TRUE
+      WHERE t.project_id = $1
+      ORDER BY t.created_at DESC
+      `,
       [projectId]
     );
-    
+
     res.json(result.rows);
-    
   } catch (error) {
-    console.error('Error fetching tenders:', error);
+    console.error('Error fetching detailed tenders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
   }
 });
