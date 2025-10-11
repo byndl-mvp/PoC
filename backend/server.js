@@ -15196,50 +15196,6 @@ app.post('/api/offers/:offerId/update-after-inspection', async (req, res) => {
   }
 });
 
-// Get handwerker orders
-app.get('/api/handwerker/:companyId/orders', async (req, res) => {
-  try {
-    const { companyId } = req.params;
-    
-    const result = await query(
-      `SELECT 
-        ord.*,
-        o.amount as contract_amount,
-        o.lv_data,
-        o.final_accepted_at as contract_date,
-        p.description as projectType,
-        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
-        b.name as clientName,
-        b.email as clientEmail,
-        b.phone as clientPhone,
-        t.name as trade,
-        o.execution_time as planned_execution,
-        CASE 
-          WHEN ord.status = 'active' THEN 'In Ausführung'
-          WHEN ord.status = 'completed' THEN 'Abgeschlossen'
-          ELSE ord.status
-        END as status_text
-       FROM orders ord
-       JOIN offers o ON ord.offer_id = o.id
-       JOIN handwerker h ON ord.handwerker_id = h.id
-       JOIN projects p ON ord.project_id = p.id
-       JOIN bauherren b ON p.bauherr_id = b.id
-       JOIN trades t ON ord.trade_id = t.id
-       WHERE h.company_id = $1
-         AND o.status = 'accepted'
-         AND o.stage = 2
-       ORDER BY ord.created_at DESC`,
-      [companyId]
-    );
-    
-    res.json(result.rows);
-    
-  } catch (error) {
-    console.error('Error fetching handwerker orders:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Aufträge' });
-  }
-});
-
 // Withdraw offer
 app.post('/api/offers/:offerId/withdraw', async (req, res) => {
   try {
