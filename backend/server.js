@@ -16083,36 +16083,56 @@ app.post('/api/notifications/:notificationId/mark-read', async (req, res) => {
 });
 
 // Handwerker Aufträge laden
-app.get('/api/handwerker/:companyId/orders', async (req, res) => {
+app.get('/api/handwerker/:identifier/orders', async (req, res) => {
   try {
-    const { companyId } = req.params;
+    const { identifier } = req.params;
+    let handwerkerId;
     
-    // CompanyId zu HandwerkerId konvertieren
-    const handwerkerResult = await query(
-      'SELECT id FROM handwerker WHERE company_id = $1',
-      [companyId]
-    );
-    
-    if (handwerkerResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    // Flexible ID-Erkennung
+    if (/^\d+$/.test(identifier)) {
+      handwerkerId = parseInt(identifier);
+    } else {
+      const result = await query(
+        'SELECT id FROM handwerker WHERE company_id = $1',
+        [identifier]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+      }
+      handwerkerId = result.rows[0].id;
     }
     
-    const handwerkerId = handwerkerResult.rows[0].id;
-    
-    const data = await query(
-      `SELECT ord.*, p.description, 
-        CONCAT(p.street, ' ', p.house_number, ', ', p.zip_code, ' ', p.city) as address,
-        t.name as trade_name
+    const result = await query(
+      `SELECT 
+        ord.*,
+        o.amount as contract_amount,
+        o.lv_data,
+        o.final_accepted_at as contract_date,
+        p.description as projectType,
+        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
+        b.name as clientName,
+        b.email as clientEmail,
+        b.phone as clientPhone,
+        t.name as trade,
+        o.execution_time as planned_execution,
+        CASE 
+          WHEN ord.status = 'active' THEN 'In Ausführung'
+          WHEN ord.status = 'completed' THEN 'Abgeschlossen'
+          ELSE ord.status
+        END as status_text
        FROM orders ord
+       JOIN offers o ON ord.offer_id = o.id
        JOIN projects p ON ord.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
        JOIN trades t ON ord.trade_id = t.id
        WHERE ord.handwerker_id = $1
+         AND o.status = 'accepted'
+         AND o.stage = 2
        ORDER BY ord.created_at DESC`,
-      [handwerkerId]
+      [handwerkerId]  // WICHTIG: handwerkerId
     );
     
-    res.json(data.rows);
-    
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching handwerker orders:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Aufträge' });
