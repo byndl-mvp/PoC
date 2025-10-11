@@ -13198,54 +13198,44 @@ app.get('/api/handwerker/:identifier/tenders/new', async (req, res) => {
   try {
     const { identifier } = req.params;
     
-    // Bestimme die handwerker_id basierend auf dem identifier-Typ
+    // Handwerker ID bestimmen (wie vorher)
     let handwerkerId;
-    
     if (/^\d+$/.test(identifier)) {
-      // Numerische ID direkt verwenden
       handwerkerId = parseInt(identifier);
-      console.log('Using numeric handwerker_id:', handwerkerId);
     } else if (identifier.startsWith('HW-')) {
-      // Company ID - konvertieren zu handwerker_id
       const handwerkerResult = await query(
         'SELECT id FROM handwerker WHERE company_id = $1',
         [identifier]
       );
-      
       if (handwerkerResult.rows.length === 0) {
-        return res.status(404).json({ 
-          error: 'Handwerker nicht gefunden',
-          details: `Keine Übereinstimmung für company_id: ${identifier}`
-        });
+        return res.status(404).json({ error: 'Handwerker nicht gefunden' });
       }
-      
       handwerkerId = handwerkerResult.rows[0].id;
-      console.log('Converted company_id to handwerker_id:', handwerkerId);
-    } else {
-      return res.status(400).json({ 
-        error: 'Ungültiger Identifier',
-        details: 'Verwenden Sie entweder eine numerische ID oder eine company_id (HW-XXXX-XXXX)'
-      });
     }
     
-    // Verifiziere, dass der Handwerker existiert
-    const verifyResult = await query(
-      'SELECT id, company_id, company_name FROM handwerker WHERE id = $1',
+    // Handwerker-Daten laden
+    const handwerker = await query(
+      'SELECT id, company_name, zip_code, action_radius FROM handwerker WHERE id = $1',
       [handwerkerId]
     );
     
-    if (verifyResult.rows.length === 0) {
-      return res.status(404).json({ 
-        error: 'Handwerker nicht gefunden',
-        handwerkerId: handwerkerId 
-      });
+    if (handwerker.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
     }
     
-    console.log(`Loading tenders for: ${verifyResult.rows[0].company_name} (ID: ${handwerkerId})`);
+    const hw = handwerker.rows[0];
     
-    // Hole die Tenders mit korrekten Projekt-Daten
+    // Trades des Handwerkers
+    const trades = await query(
+      'SELECT trade_id FROM handwerker_trades WHERE handwerker_id = $1',
+      [handwerkerId]
+    );
+    
+    const tradeIds = trades.rows.map(t => t.trade_id);
+    
+    // ALLE passenden Tenders im Radius finden (nicht nur verknüpfte!)
     const result = await query(
-      `SELECT 
+      `SELECT DISTINCT
         t.id,
         t.project_id,
         t.trade_id,
@@ -13259,56 +13249,63 @@ app.get('/api/handwerker/:identifier/tenders/new', async (req, res) => {
         p.description as project_description,
         p.category,
         p.sub_category,
-        b.zip as project_zip,
-        b.city as project_city,
-        th.status as th_status,
+        p.zip_code as project_zip,
+        p.city as project_city,
         th.viewed_at,
-        COALESCE(th.distance_km, 0) as distance_km,
         CASE 
-          WHEN th.viewed_at IS NULL THEN true 
-          ELSE false 
-        END as "isNew",
+          WHEN z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL THEN
+            ST_Distance(
+              ST_MakePoint(z1.longitude, z1.latitude)::geography,
+              ST_MakePoint(z2.longitude, z2.latitude)::geography
+            ) / 1000
+          WHEN p.zip_code = $2 THEN 0
+          ELSE $3
+        END AS distance_km,
+        CASE WHEN th.id IS NULL THEN true ELSE false END as "isNew",
         o.id as offer_id
-       FROM tender_handwerker th
-       JOIN tenders t ON th.tender_id = t.id
-       JOIN trades tr ON t.trade_id = tr.id
-       JOIN projects p ON t.project_id = p.id
-       JOIN bauherren b ON p.bauherr_id = b.id
-       LEFT JOIN offers o ON (o.tender_id = t.id AND o.handwerker_id = th.handwerker_id)
-       WHERE th.handwerker_id = $1
-       AND t.status = 'open'
-       AND (th.status IS NULL OR th.status IN ('pending', 'viewed'))
-       AND th.status != 'rejected'
-       AND o.id IS NULL
-       ORDER BY t.created_at DESC`,
-      [handwerkerId]
+      FROM tenders t
+      JOIN trades tr ON t.trade_id = tr.id
+      JOIN projects p ON t.project_id = p.id
+      LEFT JOIN zip_codes z1 ON z1.zip = p.zip_code
+      LEFT JOIN zip_codes z2 ON z2.zip = $2
+      LEFT JOIN tender_handwerker th ON th.tender_id = t.id AND th.handwerker_id = $1
+      LEFT JOIN offers o ON o.tender_id = t.id AND o.handwerker_id = $1
+      WHERE t.trade_id = ANY($4::int[])
+        AND t.status = 'open'
+        AND o.id IS NULL
+        AND (
+          p.zip_code = $2
+          OR (
+            z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL
+            AND ST_DWithin(
+              ST_MakePoint(z1.longitude, z1.latitude)::geography,
+              ST_MakePoint(z2.longitude, z2.latitude)::geography,
+              $3 * 1000
+            )
+          )
+        )
+      ORDER BY t.created_at DESC`,
+      [handwerkerId, hw.zip_code, hw.action_radius, tradeIds]
     );
     
-    console.log(`Found ${result.rows.length} tenders for handwerker_id ${handwerkerId}`);
-    
-    // Debug info wenn keine Tenders gefunden
-    if (result.rows.length === 0) {
-      const debugResult = await query(
-        `SELECT COUNT(*) as total_th_entries,
-         COUNT(CASE WHEN t.status = 'open' THEN 1 END) as open_tenders
-         FROM tender_handwerker th
-         LEFT JOIN tenders t ON th.tender_id = t.id
-         WHERE th.handwerker_id = $1`,
-        [handwerkerId]
-      );
-      
-      console.log('Debug info:', debugResult.rows[0]);
+    // Automatisch verknüpfen wenn noch nicht vorhanden
+    for (const tender of result.rows) {
+      if (tender.isNew) {
+        await query(
+          `INSERT INTO tender_handwerker (tender_id, handwerker_id, status, notified_at, distance_km)
+           VALUES ($1, $2, 'pending', NOW(), $3)
+           ON CONFLICT DO NOTHING`,
+          [tender.id, handwerkerId, Math.round(tender.distance_km || 0)]
+        );
+      }
     }
     
+    console.log(`Found ${result.rows.length} tenders for ${hw.company_name}`);
     res.json(result.rows);
     
   } catch (error) {
     console.error('Error in tenders/new:', error);
-    res.status(500).json({ 
-      error: 'Interner Serverfehler',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
