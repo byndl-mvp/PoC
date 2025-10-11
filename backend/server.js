@@ -15481,59 +15481,6 @@ app.post('/api/projects/:projectId/tender/create', async (req, res) => {
   }
 });
 
-// Tender-Details für Bauherr mit Handwerker-Status
-app.get('/api/projects/:projectId/tender/detailed', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    const tenders = await query(
-      `SELECT t.*, tr.name as trade_name,
-        (SELECT COUNT(*) FROM tender_handwerker WHERE tender_id = t.id) as total_handwerker,
-        (SELECT COUNT(*) FROM tender_handwerker WHERE tender_id = t.id AND status = 'viewed') as viewed_count,
-        (SELECT COUNT(*) FROM offers WHERE tender_id = t.id) as offer_count
-       FROM tenders t
-       JOIN trades tr ON t.trade_id = tr.id
-       WHERE t.project_id = $1
-       ORDER BY t.created_at DESC`,
-      [projectId]
-    );
-    
-    // Für jeden Tender die Handwerker-Details laden
-    for (let tender of tenders.rows) {
-      const handwerkerDetails = await query(
-        `SELECT 
-          h.id, h.company_name, h.rating,
-          th.status as th_status,
-          th.distance_km,
-          ths.status as tracking_status,
-          ths.viewed_at,
-          ths.in_progress_at,
-          ths.submitted_at,
-          o.id as offer_id,
-          o.status as offer_status,
-          o.amount as offer_amount
-         FROM tender_handwerker th
-         JOIN handwerker h ON th.handwerker_id = h.id
-         LEFT JOIN tender_handwerker_status ths ON 
-           th.tender_id = ths.tender_id AND th.handwerker_id = ths.handwerker_id
-         LEFT JOIN offers o ON 
-           th.tender_id = o.tender_id AND th.handwerker_id = o.handwerker_id
-         WHERE th.tender_id = $1
-         ORDER BY th.distance_km ASC`,
-        [tender.id]
-      );
-      
-      tender.handwerkers = handwerkerDetails.rows;
-    }
-    
-    res.json(tenders.rows);
-    
-  } catch (error) {
-    console.error('Error fetching detailed tenders:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Ausschreibungen' });
-  }
-});
-
 // ============================================
 // 3. OFFER MANAGEMENT (ANGEBOTE)
 // ============================================
