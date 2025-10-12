@@ -8211,6 +8211,87 @@ if (tradeCode === 'FEN' && lv.positions) {
 
 // SPEZIAL-REGEL FÜR ZIMMERER - VOLLSTÄNDIG ERWEITERT
 if (tradeCode === 'ZIMM') {
+  
+  // KRITISCHE REGEL: Sparren, Latten, Balken - Maximalpreise
+  if (titleLower.includes('sparren') || 
+      titleLower.includes('latte') || 
+      titleLower.includes('balken') ||
+      titleLower.includes('pfette') ||
+      titleLower.includes('schwelle')) {
+    
+    // Stückpreise - niemals über 200€
+    if (pos.unit === 'Stk') {
+      let maxPrice = 120;
+      if (titleLower.includes('gaube')) maxPrice = 150;
+      if (titleLower.includes('kehl')) maxPrice = 95;
+      if (titleLower.includes('dach') && titleLower.includes('sparren')) maxPrice = 95;
+      
+      if (pos.unitPrice > maxPrice) {
+        const oldPrice = pos.unitPrice;
+        // Prüfe ob Kommafehler (9500 statt 95.00)
+        if (pos.unitPrice > 1000) {
+          pos.unitPrice = Math.round(pos.unitPrice / 100);
+        } else {
+          pos.unitPrice = maxPrice;
+        }
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Holzbauteil/Stk korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+    
+    // Laufende Meter - niemals über 80€
+    if (pos.unit === 'm' || pos.unit === 'lfd.m') {
+      let maxPrice = 45;
+      if (titleLower.includes('pfette')) maxPrice = 80;
+      if (titleLower.includes('schwelle')) maxPrice = 60;
+      
+      if (pos.unitPrice > maxPrice) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = maxPrice;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Holzbauteil/m korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+    
+    // Quadratmeter - niemals über 200€
+    if (pos.unit === 'm²') {
+      let maxPrice = 150;
+      if (titleLower.includes('lattung')) maxPrice = 35;
+      if (titleLower.includes('schalung')) maxPrice = 45;
+      
+      if (pos.unitPrice > maxPrice) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = maxPrice;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Holzbauteil/m² korrigiert: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // NEUE REGEL: Keine doppelten Gaube-Positionen
+  const hatGaubeKomplett = lv.positions.some(p => 
+    p.title?.toLowerCase().includes('gaube') && 
+    (p.title?.toLowerCase().includes('komplett') || 
+     p.title?.toLowerCase().includes('konstruktion komplett'))
+  );
+  
+  if (hatGaubeKomplett) {
+    // Entferne Einzelpositionen wenn "komplett" vorhanden
+    if ((titleLower.includes('gaubenwange') || 
+         titleLower.includes('gaubensparren') || 
+         titleLower.includes('gauben-first') ||
+         titleLower.includes('gaubendach-sparren')) &&
+        !titleLower.includes('komplett')) {
+      console.warn(`[ZIMM] Doppelte Gaube-Position entfernt: ${pos.title}`);
+      pos._remove = true;
+      warnings.push(`Doppelte Position entfernt (in "Gaube komplett" enthalten)`);
+      fixedCount++;
+    }
+  }
+  
   // Dachstuhl-Preiskorrektur (bestehend)
   if (titleLower.includes('dachstuhl')) {
     if (pos.unit === 'm²' && pos.unitPrice > 250) {
