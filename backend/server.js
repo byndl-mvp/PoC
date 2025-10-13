@@ -132,7 +132,7 @@ async function llmWithPolicy(task, messages, options = {}) {
     'detect': 3000,      
     'questions': 16000,   
     'lv': 16000,         
-    'intake': 10000,      
+    'intake': 16000,      
     'summary': 3000,
     'validation': 3000,
     'clarification': 1000, // NEU: Für Rückfragen
