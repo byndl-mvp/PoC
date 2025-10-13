@@ -4402,15 +4402,46 @@ Beginne direkt mit [`;  // ← Nur diese 3 Zeilen am ENDE hinzufügen
     throw new Error('No JSON array found in response');
   }
   
-  // Prüfe ob Response abgeschnitten wurde
-  if (!cleanedResponse.endsWith(']')) {
-    console.warn('[QUESTIONS] Response truncated, attempting fix...');
-    const lastCompleteObject = cleanedResponse.lastIndexOf('},');
-    if (lastCompleteObject > 0) {
-      cleanedResponse = cleanedResponse.substring(0, lastCompleteObject + 1) + ']';
-      console.log('[QUESTIONS] Fixed truncation at position', lastCompleteObject);
+  // NEU - VERBESSERTE TRUNCATION-REPARATUR:
+if (!cleanedResponse.endsWith(']')) {
+  console.warn('[QUESTIONS] Response truncated, attempting fix...');
+  
+  try {
+    // Plan A: Versuche einfaches Schließen (falls nur ']' fehlt)
+    const testResponse = cleanedResponse + ']';
+    const testParse = JSON.parse(testResponse);
+    cleanedResponse = testResponse;
+    console.log(`[QUESTIONS] Fixed by adding ']' - recovered ${testParse.length} questions`);
+    
+  } catch (e) {
+    // Plan B: Finde letztes vollständiges Objekt
+    let lastValidJson = null;
+    let lastValidPosition = -1;
+    
+    // Gehe rückwärts und finde letztes valides JSON
+    for (let i = cleanedResponse.length - 1; i > 0; i--) {
+      if (cleanedResponse[i] === '}') {
+        try {
+          const testJson = cleanedResponse.substring(0, i + 1) + ']';
+          const parsed = JSON.parse(testJson);
+          lastValidJson = testJson;
+          lastValidPosition = i;
+          console.log(`[QUESTIONS] Found valid JSON at position ${i} with ${parsed.length} questions`);
+          break;
+        } catch (parseErr) {
+          continue;
+        }
+      }
+    }
+    
+    if (lastValidJson) {
+      cleanedResponse = lastValidJson;
+      console.log(`[QUESTIONS] Fixed truncation at position ${lastValidPosition}`);
+    } else {
+      console.error('[QUESTIONS] Could not fix truncated response');
     }
   }
+}
   
   // Parse die Fragen (NUR EINMAL!)
   let questions;
