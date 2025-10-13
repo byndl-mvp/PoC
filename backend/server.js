@@ -280,7 +280,7 @@ if (task === 'optimization') {
       let claudeMessages = [];
       
       // Kombiniere System-Content mit erster User-Message wenn System zu lang
-      if (systemMessage.length > 8000) {
+      if (systemMessage.length > 32000) {
         console.log(`[LLM-CLAUDE] System prompt ${systemMessage.length} chars - moving to user message`);
         
         const combinedContent = `SYSTEM-INSTRUKTIONEN:
