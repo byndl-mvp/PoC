@@ -4341,6 +4341,15 @@ KRITISCHE ERGÄNZUNG FÜR AI-EMPFOHLENES GEWERK:
 - Qualität wie bei erforderlichen Gewerken!`;
 }
 
+// HIER KOMMT DIE NEUE ERGÄNZUNG:
+finalSystemPrompt += `
+
+KRITISCH FÜR OUTPUT:
+Beginne deine Antwort DIREKT mit [
+KEIN Text oder Überschrift vor dem JSON-Array!
+Erste Zeile: [
+Letzte Zeile: ]`;
+  
   const userPrompt = `Erstelle ${targetQuestionCount} LAIENVERSTÄNDLICHE Fragen für ${tradeName}.
 
 PROJEKTKONTEXT:
