@@ -12255,48 +12255,37 @@ const anthropic = new Anthropic({
 });
 
 console.log('[TRADE-OPTIMIZE] Calling Claude for detailed analysis...');
-
 const response = await anthropic.messages.create({
   model: 'claude-sonnet-4-5-20250929',
-  max_tokens: 6000,
+  max_tokens: 8000,          // ← 8k reicht!
   temperature: 0.3,
+  system: systemPrompt,      // ← DAS ist der Fix!
   messages: [
     { 
       role: 'user', 
-      content: systemPrompt + '\n\n' + userPrompt 
+      content: userPrompt    // ← Nur User-Content!
     }
   ]
 });
 
 let optimizations;
 try {
-  // Claude gibt den Text im content Array zurück
-  let responseText = response.content[0].text;
+  let responseText = response.content[0].text.trim();
   
-  // NEUE BEREINIGUNG: Entferne Markdown-Codeblocks
-  responseText = responseText.trim();
+  // Einfache Bereinigung (reicht jetzt)
+  responseText = responseText
+    .replace(/^```json\s*\n?/, '')
+    .replace(/^```\s*\n?/, '')
+    .replace(/\n?```\s*$/, '')
+    .trim();
   
-  // Entferne ```json am Anfang und ``` am Ende
-  if (responseText.startsWith('```json')) {
-    responseText = responseText.substring(7); // Entferne ```json
-  } else if (responseText.startsWith('```')) {
-    responseText = responseText.substring(3); // Entferne ```
-  }
-  
-  if (responseText.endsWith('```')) {
-    responseText = responseText.substring(0, responseText.length - 3);
-  }
-  
-  // Nochmal trimmen nach dem Entfernen
-  responseText = responseText.trim();
-  
-  console.log('[TRADE-OPTIMIZE] Cleaned response (first 200 chars):', responseText.substring(0, 200));
+  console.log('[TRADE-OPTIMIZE] Response length:', responseText.length);
   
   optimizations = JSON.parse(responseText);
   
 } catch (parseError) {
-  console.error('[TRADE-OPTIMIZE] Parse error:', parseError);
-  console.error('[TRADE-OPTIMIZE] Raw response:', response.content[0].text.substring(0, 500));
+  console.error('[TRADE-OPTIMIZE] Parse error:', parseError.message);
+  console.error('[TRADE-OPTIMIZE] Response snippet:', response.content[0].text.substring(0, 500));
   
   return res.status(500).json({ 
     error: 'Fehler bei der Analyse', 
