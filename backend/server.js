@@ -4379,7 +4379,7 @@ BEACHTE:
     { role: 'system', content: finalSystemPrompt }, 
     { role: 'user', content: userPrompt }
   ], { 
-    maxTokens: 10000,
+    maxTokens: 16000,
     temperature: 0.5,
     jsonMode: false 
   });
