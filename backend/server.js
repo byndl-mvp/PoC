@@ -4386,13 +4386,17 @@ Beginne direkt mit [`;  // ← Nur diese 3 Zeilen am ENDE hinzufügen
     temperature: 0.3,
     jsonMode: false 
   });
-  
+
+console.log(`[QUESTIONS] Raw response length BEFORE cleaning: ${response.length}`);
+    
   // Bereinige die Response
   let cleanedResponse = response
     .replace(/```json\n?/g, '')
     .replace(/```\n?/g, '')
     .trim();
-  
+
+  console.log(`[QUESTIONS] Response length AFTER cleaning: ${cleanedResponse.length}`);
+    
   // Entferne alles vor dem ersten [
   const jsonStart = cleanedResponse.indexOf('[');
   if (jsonStart > 0) {
