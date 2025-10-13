@@ -4369,7 +4369,11 @@ BEACHTE:
 - Keine Fragen die Laien nicht beantworten können  
 - Bei Mengen/Maßen: "unsicher" Option anbieten
 - Sinnvolle Annahmen statt Detailfragen
-- Wenn Info vorhanden: WENIGER Fragen stellen!`;
+- Wenn Info vorhanden: WENIGER Fragen stellen!
+
+KRITISCH: Erstelle EXAKT ${targetQuestionCount} Fragen - zähle nach!
+NOCHMAL: Es MÜSSEN ${targetQuestionCount} Objekte im JSON-Array sein!
+Beginne direkt mit [`;  // ← Nur diese 3 Zeilen am ENDE hinzufügen
 
   try {
   console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
