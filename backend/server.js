@@ -207,7 +207,7 @@ if (task === 'optimization') {
     console.log(`[LLM-DEBUG] System prompt length: ${systemMsg?.content?.length || 0} chars`);
     console.log(`[LLM-DEBUG] User prompt length: ${userMsg?.content?.length || 0} chars`);
     
-    if (systemMsg?.content?.length > 8000) {
+    if (systemMsg?.content?.length > 32000) {
       console.log(`[LLM-DEBUG] ⚠️ System prompt exceeds Anthropic limit!`);
     }
   }
