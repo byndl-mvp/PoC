@@ -168,8 +168,8 @@ if (task === 'optimization') {
     
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: options.maxTokens || 6000,
-      temperature: options.temperature || 0.3,
+      max_tokens: options.maxTokens || 12000,
+      temperature: options.temperature || 0.35,
       messages: messages.map(msg => ({
         role: msg.role === 'system' ? 'user' : msg.role,
         content: msg.content
