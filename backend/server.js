@@ -5429,14 +5429,6 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
         blockReason = 'Fliesen gehören zu FLI, nicht zu BOD';
         isValid = false;
       }
-      
-      // Haustür nur wenn im Projekt erwähnt
-      else if (tradeCode === 'FEN' && 
-               questionText.includes('haustür') && 
-               !projectContext?.description?.toLowerCase().includes('haustür')) {
-        blockReason = 'Haustür nicht im Projekt erwähnt';
-        isValid = false;
-      }
     }
 
     if (isValid) {
