@@ -12300,7 +12300,8 @@ const response = await anthropic.messages.create({
       role: 'user', 
       content: userPrompt    // ← Nur User-Content!
     }
-  ]
+  ],
+  stop_sequences: ['\n}'] 
 });
 
 let optimizations;
