@@ -19652,9 +19652,9 @@ app.get('/__info', (req, res) => {
     },
     limits: {
       detect: "3000 tokens",
-      questions: "8000 tokens",
+      questions: "10000 tokens",
       lv: "16000 tokens",
-      intake: "6000 tokens",
+      intake: "8000 tokens",
       validation: "3000 tokens"
     },
     features: {
