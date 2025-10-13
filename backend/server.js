@@ -72,7 +72,7 @@ function formatCurrency(amount) {
 
 // Modellnamen aus Umgebungsvariablen
 const MODEL_OPENAI = process.env.MODEL_OPENAI || process.env.OPENAI_MODEL || 'gpt-4.1-mini';
-const MODEL_ANTHROPIC_QUESTIONS = process.env.MODEL_ANTHROPIC_QUESTIONS || process.env.ANTHROPIC_MODEL_QUESTIONS || 'claude-sonnet-4-20250514';
+const MODEL_ANTHROPIC_QUESTIONS = process.env.MODEL_ANTHROPIC_QUESTIONS || process.env.ANTHROPIC_MODEL_QUESTIONS || 'claude-sonnet-4-5-20250929';
 const MODEL_ANTHROPIC_LV = process.env.MODEL_ANTHROPIC_LV || process.env.ANTHROPIC_MODEL_LV || 'claude-opus-4-1-20250805';
 
 // ===========================================================================
@@ -130,9 +130,9 @@ const DEFAULT_COMPLEXITY = {
 async function llmWithPolicy(task, messages, options = {}) {
   const defaultMaxTokens = {
     'detect': 3000,      
-    'questions': 10000,   
+    'questions': 16000,   
     'lv': 16000,         
-    'intake': 10000,      
+    'intake': 16000,      
     'summary': 3000,
     'validation': 3000,
     'clarification': 1000, // NEU: Für Rückfragen
@@ -167,7 +167,7 @@ if (task === 'optimization') {
     });
     
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: options.maxTokens || 6000,
       temperature: options.temperature || 0.3,
       messages: messages.map(msg => ({
@@ -218,10 +218,10 @@ if (task === 'optimization') {
   const getAnthropicModel = (task) => {
     if (task === 'lv') {
       // Claude Opus für LV-Generierung
-      return MODEL_ANTHROPIC_LV || MODEL_ANTHROPIC || 'claude-sonnet-4-20250514';
+      return MODEL_ANTHROPIC_LV || MODEL_ANTHROPIC || 'claude-sonnet-4-5-20250929';
     }
     // Claude Sonnet für alle anderen Tasks
-    return MODEL_ANTHROPIC_QUESTIONS || MODEL_ANTHROPIC || 'claude-sonnet-4-20250514';
+    return MODEL_ANTHROPIC_QUESTIONS || MODEL_ANTHROPIC || 'claude-sonnet-4-5-20250929';
   };
   
   // GEÄNDERT: Anthropic als primärer Provider für ALLE Tasks
@@ -4340,6 +4340,15 @@ KRITISCHE ERGÄNZUNG FÜR AI-EMPFOHLENES GEWERK:
 - Bei Türen: JEDE einzelne Tür mit Maßen
 - Qualität wie bei erforderlichen Gewerken!`;
 }
+
+// HIER KOMMT DIE NEUE ERGÄNZUNG:
+finalSystemPrompt += `
+
+KRITISCH FÜR OUTPUT:
+Beginne deine Antwort DIREKT mit [
+KEIN Text oder Überschrift vor dem JSON-Array!
+Erste Zeile: [
+Letzte Zeile: ]`;
   
   const userPrompt = `Erstelle ${targetQuestionCount} LAIENVERSTÄNDLICHE Fragen für ${tradeName}.
 
@@ -4364,56 +4373,56 @@ BEACHTE:
 - Wenn Info vorhanden: WENIGER Fragen stellen!`;
 
   try {
-    console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
-    
-    const response = await llmWithPolicy(isIntake ? 'intake' : 'questions', [
-      { role: 'system', content: finalSystemPrompt }, 
-      { role: 'user', content: userPrompt }
-    ], { 
-      maxTokens: 10000,
-      temperature: 0.5,
-      jsonMode: false 
-    });
-    
-// Bereinige die Response von Claude
-let cleanedResponse = response
-  .replace(/```json\n?/g, '')
-  .replace(/```\n?/g, '')
-  .trim();
-
-// NEU: Prüfe ob die Response abgeschnitten wurde
-if (!cleanedResponse.endsWith(']')) {
-  console.warn('[QUESTIONS] Response appears truncated, attempting to fix...');
+  console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
   
-  // Finde das letzte vollständige Objekt
-  const lastCompleteObject = cleanedResponse.lastIndexOf('},');
-  if (lastCompleteObject > 0) {
-    cleanedResponse = cleanedResponse.substring(0, lastCompleteObject + 1) + '\n]';
-    console.log('[QUESTIONS] Truncated response fixed by closing at position', lastCompleteObject);
+  const response = await llmWithPolicy(isIntake ? 'intake' : 'questions', [
+    { role: 'system', content: finalSystemPrompt }, 
+    { role: 'user', content: userPrompt }
+  ], { 
+    maxTokens: 16000,
+    temperature: 0.5,
+    jsonMode: false 
+  });
+  
+  // Bereinige die Response
+  let cleanedResponse = response
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim();
+  
+  // Entferne alles vor dem ersten [
+  const jsonStart = cleanedResponse.indexOf('[');
+  if (jsonStart > 0) {
+    console.warn(`[QUESTIONS] Removing ${jsonStart} chars before JSON`);
+    cleanedResponse = cleanedResponse.substring(jsonStart);
+  } else if (jsonStart === -1) {
+    throw new Error('No JSON array found in response');
   }
-}
-
-// NEU: Escape problematische Zeichen in Strings
-cleanedResponse = cleanedResponse
-  .replace(/\n(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)/g, '\\n')  // Newlines innerhalb von Strings
-  .replace(/\t(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)/g, '\\t'); // Tabs innerhalb von Strings
-
-// Parse die Fragen
-let questions;
-try {
-  questions = JSON.parse(cleanedResponse);
-} catch (parseError) {
-  console.error('[QUESTIONS] Failed to parse response:', parseError.message);
-  console.error('[QUESTIONS] Parse error stack:', parseError.stack);
-  console.log('[QUESTIONS] Raw response length:', cleanedResponse?.length || 0);
-  console.log('[QUESTIONS] Raw response first 500 chars:', cleanedResponse?.substring(0, 500) || 'EMPTY');
   
-  // Den originalen Fehler mit mehr Details werfen
-  const detailedError = new Error(`JSON Parse fehlgeschlagen: ${parseError.message}`);
-  detailedError.originalError = parseError;
-  detailedError.responseSnippet = cleanedResponse?.substring(0, 200);
-  throw detailedError;
-}
+  // Prüfe ob Response abgeschnitten wurde
+  if (!cleanedResponse.endsWith(']')) {
+    console.warn('[QUESTIONS] Response truncated, attempting fix...');
+    const lastCompleteObject = cleanedResponse.lastIndexOf('},');
+    if (lastCompleteObject > 0) {
+      cleanedResponse = cleanedResponse.substring(0, lastCompleteObject + 1) + ']';
+      console.log('[QUESTIONS] Fixed truncation at position', lastCompleteObject);
+    }
+  }
+  
+  // Parse die Fragen (NUR EINMAL!)
+  let questions;
+  try {
+    questions = JSON.parse(cleanedResponse);
+  } catch (parseError) {
+    console.error('[QUESTIONS] Failed to parse response:', parseError.message);
+    console.log('[QUESTIONS] Raw response length:', cleanedResponse?.length || 0);
+    console.log('[QUESTIONS] Raw response first 500 chars:', cleanedResponse?.substring(0, 500) || 'EMPTY');
+    
+    const detailedError = new Error(`JSON Parse fehlgeschlagen: ${parseError.message}`);
+    detailedError.originalError = parseError;
+    detailedError.responseSnippet = cleanedResponse?.substring(0, 200);
+    throw detailedError;
+  }
 
 // SPEZIELLE INTAKE-VALIDIERUNG: Entferne gewerkespezifische Fragen
 if (tradeCode === 'INT') {
@@ -5500,7 +5509,7 @@ OUTPUT als JSON-Array mit EXAKT ${intelligentCount.count} Fragen.`;
     const response = await llmWithPolicy('questions', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Erstelle detaillierte Folgefragen für: ${contextAnswer}` }
-    ], { maxTokens: 10000, temperature: 0.5 });
+    ], { maxTokens: 16000, temperature: 0.5 });
     
     const cleaned = response
       .replace(/```json\n?/g, '')
@@ -12253,7 +12262,7 @@ const anthropic = new Anthropic({
 console.log('[TRADE-OPTIMIZE] Calling Claude for detailed analysis...');
 
 const response = await anthropic.messages.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-5-20250929',
   max_tokens: 6000,
   temperature: 0.3,
   messages: [
