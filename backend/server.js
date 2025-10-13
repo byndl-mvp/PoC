@@ -4340,7 +4340,7 @@ KRITISCHE ERGÄNZUNG FÜR AI-EMPFOHLENES GEWERK:
 - Bei Türen: JEDE einzelne Tür mit Maßen
 - Qualität wie bei erforderlichen Gewerken!`;
 }
-  
+
   const userPrompt = `Erstelle ${targetQuestionCount} LAIENVERSTÄNDLICHE Fragen für ${tradeName}.
 
 PROJEKTKONTEXT:
@@ -4364,56 +4364,56 @@ BEACHTE:
 - Wenn Info vorhanden: WENIGER Fragen stellen!`;
 
   try {
-    console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
-    
-    const response = await llmWithPolicy(isIntake ? 'intake' : 'questions', [
-      { role: 'system', content: finalSystemPrompt }, 
-      { role: 'user', content: userPrompt }
-    ], { 
-      maxTokens: 10000,
-      temperature: 0.5,
-      jsonMode: false 
-    });
-    
-// Bereinige die Response von Claude
-let cleanedResponse = response
-  .replace(/```json\n?/g, '')
-  .replace(/```\n?/g, '')
-  .trim();
-
-// NEU: Prüfe ob die Response abgeschnitten wurde
-if (!cleanedResponse.endsWith(']')) {
-  console.warn('[QUESTIONS] Response appears truncated, attempting to fix...');
+  console.log(`[QUESTIONS] Generating ${targetQuestionCount} questions for ${tradeName}`);
   
-  // Finde das letzte vollständige Objekt
-  const lastCompleteObject = cleanedResponse.lastIndexOf('},');
-  if (lastCompleteObject > 0) {
-    cleanedResponse = cleanedResponse.substring(0, lastCompleteObject + 1) + '\n]';
-    console.log('[QUESTIONS] Truncated response fixed by closing at position', lastCompleteObject);
+  const response = await llmWithPolicy(isIntake ? 'intake' : 'questions', [
+    { role: 'system', content: finalSystemPrompt }, 
+    { role: 'user', content: userPrompt }
+  ], { 
+    maxTokens: 10000,
+    temperature: 0.5,
+    jsonMode: false 
+  });
+  
+  // Bereinige die Response
+  let cleanedResponse = response
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim();
+  
+  // Entferne alles vor dem ersten [
+  const jsonStart = cleanedResponse.indexOf('[');
+  if (jsonStart > 0) {
+    console.warn(`[QUESTIONS] Removing ${jsonStart} chars before JSON`);
+    cleanedResponse = cleanedResponse.substring(jsonStart);
+  } else if (jsonStart === -1) {
+    throw new Error('No JSON array found in response');
   }
-}
-
-// NEU: Escape problematische Zeichen in Strings
-cleanedResponse = cleanedResponse
-  .replace(/\n(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)/g, '\\n')  // Newlines innerhalb von Strings
-  .replace(/\t(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)/g, '\\t'); // Tabs innerhalb von Strings
-
-// Parse die Fragen
-let questions;
-try {
-  questions = JSON.parse(cleanedResponse);
-} catch (parseError) {
-  console.error('[QUESTIONS] Failed to parse response:', parseError.message);
-  console.error('[QUESTIONS] Parse error stack:', parseError.stack);
-  console.log('[QUESTIONS] Raw response length:', cleanedResponse?.length || 0);
-  console.log('[QUESTIONS] Raw response first 500 chars:', cleanedResponse?.substring(0, 500) || 'EMPTY');
   
-  // Den originalen Fehler mit mehr Details werfen
-  const detailedError = new Error(`JSON Parse fehlgeschlagen: ${parseError.message}`);
-  detailedError.originalError = parseError;
-  detailedError.responseSnippet = cleanedResponse?.substring(0, 200);
-  throw detailedError;
-}
+  // Prüfe ob Response abgeschnitten wurde
+  if (!cleanedResponse.endsWith(']')) {
+    console.warn('[QUESTIONS] Response truncated, attempting fix...');
+    const lastCompleteObject = cleanedResponse.lastIndexOf('},');
+    if (lastCompleteObject > 0) {
+      cleanedResponse = cleanedResponse.substring(0, lastCompleteObject + 1) + ']';
+      console.log('[QUESTIONS] Fixed truncation at position', lastCompleteObject);
+    }
+  }
+  
+  // Parse die Fragen (NUR EINMAL!)
+  let questions;
+  try {
+    questions = JSON.parse(cleanedResponse);
+  } catch (parseError) {
+    console.error('[QUESTIONS] Failed to parse response:', parseError.message);
+    console.log('[QUESTIONS] Raw response length:', cleanedResponse?.length || 0);
+    console.log('[QUESTIONS] Raw response first 500 chars:', cleanedResponse?.substring(0, 500) || 'EMPTY');
+    
+    const detailedError = new Error(`JSON Parse fehlgeschlagen: ${parseError.message}`);
+    detailedError.originalError = parseError;
+    detailedError.responseSnippet = cleanedResponse?.substring(0, 200);
+    throw detailedError;
+  }
 
 // SPEZIELLE INTAKE-VALIDIERUNG: Entferne gewerkespezifische Fragen
 if (tradeCode === 'INT') {
