@@ -3687,7 +3687,6 @@ ${allAnsweredInfo.fromIntake.map(item =>
 ` : ''}
 
 UNIVERSELLE REGEL - NUR FRAGEN WAS ERWÄHNT WURDE:
-- Wenn Nutzer "5 Fenster" sagt → NICHT nach Haustüren fragen
 - Wenn Nutzer "Fassadendämmung" sagt → NICHT nach Dachdämmung fragen
 - Wenn Nutzer "Bad renovieren" sagt → NICHT nach Küche fragen
 - Wenn Nutzer "Parkett verlegen" sagt → NICHT nach Fliesen fragen
