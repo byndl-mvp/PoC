@@ -12292,7 +12292,7 @@ const anthropic = new Anthropic({
 console.log('[TRADE-OPTIMIZE] Calling Claude for detailed analysis...');
 const response = await anthropic.messages.create({
   model: 'claude-sonnet-4-5-20250929',
-  max_tokens: 10000,          
+  max_tokens: 12000,          
   temperature: 0.3,
   system: systemPrompt,      
   messages: [
