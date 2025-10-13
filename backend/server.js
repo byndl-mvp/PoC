@@ -4384,7 +4384,7 @@ Beginne direkt mit [`;  // ← Nur diese 3 Zeilen am ENDE hinzufügen
   ], { 
     maxTokens: 10000,
     temperature: 0.3,
-    jsonMode: false 
+    jsonMode: true 
   });
 
 console.log(`[QUESTIONS] Raw response length BEFORE cleaning: ${response.length}`);
