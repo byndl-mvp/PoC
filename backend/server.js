@@ -81,15 +81,15 @@ const MODEL_ANTHROPIC_LV = process.env.MODEL_ANTHROPIC_LV || process.env.ANTHROP
 
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
-  DACH:  { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 0.9 },
-  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 23, targetPositionsRatio: 0.9 },
-  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 23, targetPositionsRatio: 0.85 },
-  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 23, targetPositionsRatio: 0.8 },
-  KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 16, maxQuestions: 22, targetPositionsRatio: 0.8 },
+  DACH:  { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 28, targetPositionsRatio: 0.9 },
+  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 23, targetPositionsRatio: 0.9 },
+  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 23, targetPositionsRatio: 0.85 },
+  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 23, targetPositionsRatio: 0.8 },
+  KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 0.8 },
   ROH:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 25, targetPositionsRatio: 0.9 },
   
   // Komplexe Gewerke (20-30 Fragen)
-  TIS:   { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 1.0 }, // Türen: oft 1:1
+  TIS:   { complexity: 'HOCH', minQuestions: 17, maxQuestions: 20, targetPositionsRatio: 1.0 }, // Türen: oft 1:1
   FEN:   { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 1.0 }, // Fenster: oft 1:1
   FASS:  { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 0.9 },
   SCHL:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.8 },
@@ -109,7 +109,7 @@ const TRADE_COMPLEXITY = {
   ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15, targetPositionsRatio: 0.8 },
 
   // Intake ist speziell (16-24 Fragen)
-  INT:   { complexity: 'INTAKE', minQuestions: 16, maxQuestions: 26, targetPositionsRatio: 0.0 }
+  INT:   { complexity: 'INTAKE', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 0.0 }
 };
 
 // Fallback für nicht definierte Gewerke
