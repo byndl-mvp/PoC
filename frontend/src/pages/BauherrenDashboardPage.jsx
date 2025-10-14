@@ -941,6 +941,28 @@ const BudgetVisualization = ({ budget }) => {
   </div>
 </div>
 
+      {/* Zurückgezogene Angebote Warnung */}
+{withdrawnOffers.length > 0 && (
+  <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-6">
+    <div className="flex items-start gap-3">
+      <span className="text-2xl">⚠️</span>
+      <div className="flex-1">
+        <h3 className="text-orange-300 font-semibold mb-2">
+          Angebote wurden zurückgezogen
+        </h3>
+        <div className="space-y-1">
+          {withdrawnOffers.map((withdrawn, idx) => (
+            <p key={idx} className="text-orange-200 text-sm">
+              • {withdrawn.company_name} hat das Angebot für <strong>{withdrawn.trade_name}</strong> am {' '}
+              {new Date(withdrawn.withdrawn_at).toLocaleDateString('de-DE')} zurückgezogen
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+      
       {/* Project Wizard */}
       <ProjectWizard project={selectedProject} />
       
