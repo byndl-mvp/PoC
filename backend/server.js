@@ -8187,11 +8187,38 @@ if (tradeCode === 'ELEK') {
     
     // SPEZIAL-REGEL FÜR GERÜST
 if (tradeCode === 'GER') {
+  // NEU: "Entsorgung" bei Gerüst entfernen
+  if (titleLower.includes('entsorgung')) {
+    pos.title = pos.title.replace(/und\s+Entsorgung/gi, '');
+    if (pos.description) {
+      pos.description = pos.description.replace(/Entsorgung/gi, 'Abtransport');
+    }
+    warnings.push(`Gerüst: "Entsorgung" entfernt (Gerüste werden wiederverwendet)`);
+    fixedCount++;
+  }
+  
+  // NEU: Prüfe auf doppelte Abbau-Position
+  const hatHauptposition = lv.positions.some(p => 
+    p.title?.toLowerCase().includes('auf') && 
+    p.title?.toLowerCase().includes('abbau')
+  );
+  
+  if (hatHauptposition && 
+      (titleLower.includes('demontage') || titleLower.includes('abbau')) && 
+      !titleLower.includes('auf') && 
+      !titleLower.includes('besenrein')) {
+    pos._remove = true;
+    warnings.push(`Gerüst-Abbau bereits in Auf-/Abbau enthalten - Position entfernt`);
+    fixedCount++;
+    return pos;
+  }
+  
+  // BESTEHENDE REGELN
   if (titleLower.includes('auf') && titleLower.includes('abbau') || 
       titleLower.includes('gerüst') && titleLower.includes('montage')) {
     if (pos.unit === 'm²' && pos.unitPrice > 15) {
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = 10; // Realistischer Mittelwert
+      pos.unitPrice = 10;
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
       warnings.push(`Gerüst Auf-/Abbau korrigiert: €${oldPrice}/m² → €${pos.unitPrice}/m²`);
       fixedCount++;
@@ -8201,13 +8228,13 @@ if (tradeCode === 'GER') {
   if (titleLower.includes('standzeit') || titleLower.includes('miete')) {
     if (pos.unit === 'm²' && pos.unitPrice > 10) {
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = 5; // Für 4 Wochen
+      pos.unitPrice = 5;
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
       warnings.push(`Gerüst Standzeit korrigiert: €${oldPrice}/m² → €${pos.unitPrice}/m²`);
       fixedCount++;
     }
   }
-} 
+}
 
     // SPEZIAL-REGEL FÜR FENSTER-DEMONTAGE
 if (tradeCode === 'FEN' && lv.positions) {
