@@ -220,6 +220,11 @@ export default function HandwerkerOfferPage() {
       
       const tenderData = await res.json();
       setTender(tenderData);
+
+      // NEU: Extrahiere Vorbemerkungen aus dem LV
+if (tenderData.lv && tenderData.lv.vorbemerkungen) {
+  setVorbemerkungen(tenderData.lv.vorbemerkungen);
+}
       
       const initialPositions = tenderData.lv.positions.map(pos => ({
         ...pos,
