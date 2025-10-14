@@ -26,6 +26,7 @@ export default function BauherrenDashboardPage() {
   const [pendingLvProjectId, setPendingLvProjectId] = useState(null);
   const [unreadOffers, setUnreadOffers] = useState(0);
   const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
+  const [withdrawnOffers, setWithdrawnOffers] = useState([]);
   
   useEffect(() => {
   // Prüfe beide mögliche Keys
@@ -236,6 +237,13 @@ console.log('Fertige LVs gezählt:', completedLvs);
         setSupplements(supplementsData);
       }
 
+      // Lade zurückgezogene Angebote
+const withdrawnRes = await fetch(apiUrl(`/api/projects/${projectId}/withdrawn-offers`));
+if (withdrawnRes.ok) {
+  const withdrawnData = await withdrawnRes.json();
+  setWithdrawnOffers(withdrawnData);
+}
+      
       // Lade ungelesene Angebote
       const unreadRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/unread-count`));
       if (unreadRes.ok) {
