@@ -4210,7 +4210,7 @@ OUTPUT (NUR valides JSON-Array):
     "id": "string",
     "category": "string", 
     "question": "Verständliche Frage MIT EINHEIT bei Zahlen",
-    "explanation": "PFLICHT! 100-200 Wörter mit: 1) Warum wird das gefragt? 2) Was bedeutet der Begriff für Laien? 3) Wie/wo messen? 4) Produktbeispiele bei Qualität 5) Empfehlung bei Unsicherheit",
+    "explanation": "15-20 Wörter kurzer Hinweis - nur Kerninfo!",
     "type": "text|number|select|multiselect",
     "required": boolean,
     "unit": "m²|m|cm|Stück|null",
@@ -4227,16 +4227,15 @@ OUTPUT (NUR valides JSON-Array):
   }
 ]
 
-KRITISCH - STRUCTURE DER EXPLANATION (IMMER 100-200 WÖRTER):
+ERKLÄRUNG:
+- "explanation": MAXIMAL 15-20 Wörter - nur das Wichtigste!
+- Keine strukturierten Teile mehr
+- Nur Kernaussage warum die Info benötigt wird
 
-1. KONTEXT (20-30 Wörter): Warum ist diese Info wichtig für die Kalkulation?
-2. LAIEN-ERKLÄRUNG (40-60 Wörter): Was bedeutet das in einfachen Worten?
-3. MESS-/PRÜFANLEITUNG (30-50 Wörter): Wo und wie genau messen/prüfen?
-4. BEISPIELE (30-40 Wörter): Bei Qualität: Konkrete Produkte mit Preisen
-5. EMPFEHLUNG (20-30 Wörter): "Bei Unsicherheit empfehlen wir..."
-
-BEISPIEL EINER PERFEKTEN EXPLANATION:
-"Die Qualitätsstufe bestimmt Preis und Lebensdauer erheblich - zwischen 800€ (Standard) und 5000€ (Premium) pro Bad. Standard wie Grohe Start (WC ~150€) oder Ideal Standard (Waschtisch ~120€) ist solide für Mietobjekte. Gehoben wie Hansgrohe (Armaturen ~180€) oder Duravit (WC ~300€) verbindet Design mit Komfort. Premium wie Dornbracht (Armaturen ~500€) oder Villeroy & Boch (WC ~600€) bietet Luxus und 15+ Jahre Haltbarkeit. Die Wahl beeinflusst auch Wartung: Standard braucht alle 3-5 Jahre Service, Premium erst nach 8-10 Jahren. Bei Unsicherheit empfehlen wir gehobene Qualität für Eigennutzung - bestes Preis-Leistungs-Verhältnis."
+Beispiele für kurze explanation:
+- "Bestimmt Gerüstkosten und Sicherheitsanforderungen bei Höhenarbeiten"
+- "Beeinflusst Materialauswahl und Arbeitsaufwand erheblich"
+- "Wichtig für präzise Mengenkalkulation der Abdichtungsflächen"
 
 ${projectContext.intakeContext && !isIntake ? `
 WICHTIGER KONTEXT aus der Vorbefragung:
