@@ -209,7 +209,7 @@ export default function IntakeQuestionsPage() {
         if (isAdditionalTrade || isManuallyAdded) {
           const contextQuestion = {
             id: `${currentTrade.code}-CONTEXT`,
-            question: `Sie haben ${currentTrade.name} als ${isAdditionalTrade ? 'nachträglich' : 'zusätzliches'} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
+            question: `Sie haben ${currentTrade.name} als ${isAdditionalTrade ? 'nachträgliches' : 'zusätzliches'} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
             type: 'text',
             required: true,
             category: 'Projektkontext',
