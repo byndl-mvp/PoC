@@ -13575,7 +13575,10 @@ app.get('/api/handwerker/:identifier/tenders/new', async (req, res) => {
       LEFT JOIN offers o ON o.tender_id = t.id AND o.handwerker_id = $1
       WHERE t.trade_id = ANY($4::int[])
         AND t.status = 'open'
-        AND o.id IS NULL
+        AND (
+  o.id IS NULL 
+  OR o.status = 'withdrawn'
+)
         AND (
           p.zip_code = $2
           OR (
