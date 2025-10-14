@@ -479,7 +479,7 @@ export default function HandwerkerDashboardPage() {
             </div>
           )}
 
-          {/* Meine Angebote Tab */}
+         {/* Meine Angebote Tab */}
 {activeTab === 'angebote' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Abgegebene Angebote</h2>
@@ -617,10 +617,31 @@ export default function HandwerkerDashboardPage() {
                     </>
                   )}
                   
-                  {offer.status === 'preliminary' && (
+                  {/* WICHTIG: Hier die Funktion verwenden! */}
+                  {offer.status === 'vorlaeufig_beauftragt' && (
                     <>
                       <span className="block text-xs bg-yellow-600 text-yellow-200 px-3 py-2 rounded mb-2">
                         Vorläufig beauftragt
+                      </span>
+                      <button
+                        onClick={() => handleAcceptPreliminary(offer.id)}
+                        className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+                      >
+                        Beauftragung annehmen
+                      </button>
+                      <button
+                        onClick={() => navigate(`/handwerker/offer/${offer.id}/details`)}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        📋 Details ansehen
+                      </button>
+                    </>
+                  )}
+                  
+                  {offer.status === 'preliminary' && (
+                    <>
+                      <span className="block text-xs bg-yellow-600 text-yellow-200 px-3 py-2 rounded mb-2">
+                        In Vertragsanbahnung
                       </span>
                       <button
                         onClick={() => navigate(`/handwerker/offer/${offer.id}/details`)}
