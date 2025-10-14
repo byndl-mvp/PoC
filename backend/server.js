@@ -15470,6 +15470,129 @@ app.post('/api/offers/:offerId/withdraw', async (req, res) => {
   }
 });
 
+// Detailliertes Angebot für Handwerker abrufen (View-Only)
+app.get('/api/offers/:offerId/details', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.*,
+        t.name as trade_name,
+        tn.id as tender_id,
+        tn.deadline,
+        tn.timeframe,
+        p.description as project_description,
+        p.category as project_category,
+        p.sub_category as project_sub_category,
+        p.zip_code || ' ' || p.city as project_location,
+        p.street || ' ' || p.house_number as project_address
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       JOIN projects p ON tn.project_id = p.id
+       WHERE o.id = $1`,
+      [offerId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    }
+    
+    const offer = result.rows[0];
+    
+    // Parse LV-Daten
+    if (typeof offer.lv_data === 'string') {
+      offer.lv_data = JSON.parse(offer.lv_data);
+    }
+    
+    res.json(offer);
+    
+  } catch (error) {
+    console.error('Error fetching offer details:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebotsdetails' });
+  }
+});
+
+// Angebot zurückziehen und zur Bearbeitung freigeben
+app.post('/api/offers/:offerId/withdraw-for-edit', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { handwerkerId } = req.body;
+    
+    await query('BEGIN');
+    
+    // Status auf 'withdrawn' setzen
+    await query(
+      `UPDATE offers 
+       SET status = 'withdrawn', 
+           withdrawn_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [offerId]
+    );
+    
+    // Tender-Handwerker Status zurücksetzen (damit es wieder unter Ausschreibungen erscheint)
+    const tenderResult = await query(
+      'SELECT tender_id FROM offers WHERE id = $1',
+      [offerId]
+    );
+    
+    if (tenderResult.rows.length > 0) {
+      const tenderId = tenderResult.rows[0].tender_id;
+      
+      await query(
+        `UPDATE tender_handwerker 
+         SET status = 'pending'
+         WHERE tender_id = $1 AND handwerker_id = $2`,
+        [tenderId, handwerkerId]
+      );
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      message: 'Angebot zurückgezogen. Sie können es nun erneut bearbeiten.' 
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error withdrawing offer for edit:', error);
+    res.status(500).json({ error: 'Fehler beim Zurückziehen' });
+  }
+});
+
+// Zurückgezogene Angebote für Bauherr-Benachrichtigung
+app.get('/api/projects/:projectId/withdrawn-offers', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.*,
+        h.company_name,
+        t.name as trade_name,
+        o.withdrawn_at
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE tn.project_id = $1 
+         AND o.status = 'withdrawn'
+         AND o.withdrawn_at > NOW() - INTERVAL '7 days'
+       ORDER BY o.withdrawn_at DESC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching withdrawn offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden' });
+  }
+});
+
 // ============= AUSSCHREIBUNGS-SYSTEM =============
 
 // kleiner Helfer
