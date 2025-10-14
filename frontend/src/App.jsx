@@ -28,6 +28,7 @@ import OfferDetailPage from './pages/OfferDetailPage';
 import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
 import HandwerkerSettingsPage from './pages/HandwerkerSettingsPage';
 import HandwerkerOfferPage from './pages/HandwerkerOfferPage';
+import HandwerkerOfferDetailsPage from './pages/HandwerkerOfferDetailsPage';
 
 import OrtsterminPage from './pages/OrtsterminPage';
 
@@ -178,6 +179,8 @@ function App() {
             } 
           />
 
+          <Route path="/handwerker/offer/:offerId/details" element={<HandwerkerOfferDetailsPage />} />
+          
           {/* Handwerker Routen - ergänze diese Route */}
 <Route 
   path="/handwerker/tender/:tenderId/offer" 
