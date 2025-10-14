@@ -31,7 +31,6 @@ export default function IntakeQuestionsPage() {
   const lvIntervalRef = useRef(null);
   const finalIntervalRef = useRef(null);
 
-  const [showDetailedHelp, setShowDetailedHelp] = useState(false);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [userQuestion, setUserQuestion] = useState('');
   const [aiResponse, setAiResponse] = useState('');
