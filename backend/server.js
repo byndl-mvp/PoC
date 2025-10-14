@@ -8070,6 +8070,46 @@ if (!titleLower.includes('kleinmaterial') &&
   fixedCount++;
 }
 
+// GENERELLE REGEL: Wiederverwendbare Materialien werden NICHT entsorgt
+const wiederverwendbareItems = [
+  'gerüst', 'baustütze', 'abstützung', 'unterzug', 
+  'schalung', 'rüstung', 'stützbock', 'stempel',
+  'träger', 'sprieß', 'temporär', 'provisorisch'
+];
+
+const istWiederverwendbar = wiederverwendbareItems.some(item => 
+  titleLower.includes(item)
+);
+
+if (istWiederverwendbar && titleLower.includes('entsorgung')) {
+  // Ersetze "Entsorgung" mit korrekten Begriffen
+  pos.title = pos.title
+    .replace(/Demontage\s+und\s+Entsorgung/gi, 'Demontage')
+    .replace(/und\s+Entsorgung/gi, 'und Abtransport')
+    .replace(/Entsorgung/gi, 'Rückgabe');
+  
+  if (pos.description) {
+    pos.description = pos.description
+      .replace(/Entsorgung/gi, 'Abtransport')
+      .replace(/entsorgt/gi, 'abtransportiert');
+  }
+  
+  console.error(`[KRITISCH] "Entsorgung" bei wiederverwendbarem Material: ${pos.title}`);
+  warnings.push(`"Entsorgung" korrigiert - ${wiederverwendbareItems.find(item => titleLower.includes(item))} wird wiederverwendet`);
+  fixedCount++;
+}
+
+// Spezifisch für Abstützungen
+if (titleLower.includes('abstützung') || titleLower.includes('baustütze')) {
+  if (pos.unit === 'psch' && pos.unitPrice > 500) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 380; // Realistisch für Demontage
+    pos.totalPrice = pos.unitPrice;
+    warnings.push(`Abstützung Demontage: €${oldPrice} → €380`);
+    fixedCount++;
+  }
+}
+    
 // NEUE REGEL: Gewerk-spezifische Begriffskorrekturen
 if (tradeCode === 'MAL') {
   // Maler liefern NICHTS - nur Oberflächenbearbeitung
