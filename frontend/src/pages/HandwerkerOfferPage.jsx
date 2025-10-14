@@ -399,6 +399,15 @@ if (tenderData.lv && tenderData.lv.vorbemerkungen) {
         {/* Positions Table */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20 mb-8">
           <h3 className="text-xl font-bold text-white mb-4">Leistungspositionen</h3>
+
+          {/* NEU: Hinweis zu Vorbemerkungen */}
+{vorbemerkungen && vorbemerkungen.length > 0 && (
+  <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+    <p className="text-yellow-300 text-xs">
+      ℹ️ Bitte berücksichtigen Sie die oben genannten Vorbemerkungen bei Ihrer Kalkulation.
+    </p>
+  </div>
+)}
           
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-white">
