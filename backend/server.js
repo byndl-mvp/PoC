@@ -11496,6 +11496,20 @@ Erstelle eine vollständige, hilfreiche Erklärung die alle wichtigen Aspekte ab
       temperature: 0.3,
       jsonMode: true
     });
+
+    // HIER DEN FIX EINFÜGEN:
+let cleanedResponse = response
+  .replace(/```json\n?/gi, '')
+  .replace(/```\n?/gi, '')
+  .trim();
+
+// Falls die Response nicht mit { beginnt, suche danach
+if (!cleanedResponse.startsWith('{')) {
+  const jsonStart = cleanedResponse.indexOf('{');
+  if (jsonStart > 0) {
+    cleanedResponse = cleanedResponse.substring(jsonStart);
+  }
+}
     
     const details = JSON.parse(response);
     
