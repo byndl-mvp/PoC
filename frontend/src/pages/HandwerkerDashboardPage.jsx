@@ -478,67 +478,185 @@ export default function HandwerkerDashboardPage() {
           )}
 
           {/* Meine Angebote Tab */}
-          {activeTab === 'angebote' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Abgegebene Angebote</h2>
-              
-              {offers.length === 0 ? (
-                <p className="text-gray-400">Sie haben noch keine Angebote abgegeben.</p>
-              ) : (
-                <div className="space-y-4">
-                  {offers.map((offer) => (
-                    <div key={offer.id} className="bg-white/5 rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-white">{offer.trade}</h3>
-                          <p className="text-gray-300">{offer.projectType} - {offer.location}</p>
-                          <p className="text-sm text-gray-400 mt-1">
-                            Abgegeben: {new Date(offer.submittedDate).toLocaleDateString('de-DE')}
-                          </p>
-                          <p className="text-teal-400 font-bold mt-2">
-                            {offer.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {offer.status === 'offen' && (
-                            <>
-                              <span className="block text-xs bg-gray-600 text-gray-200 px-2 py-1 rounded mb-2">
-                                Warte auf Antwort
-                              </span>
-                              <button
-                                onClick={() => handleWithdrawOffer(offer.id)}
-                                className="text-red-400 hover:text-red-300 text-sm"
-                              >
-                                Zurückziehen
-                              </button>
-                            </>
-                          )}
-                          {offer.status === 'eingesehen' && (
-                            <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
-                              Vom Bauherren eingesehen
-                            </span>
-                          )}
-                          {offer.status === 'vorläufig_beauftragt' && (
-                            <button
-                              onClick={() => handleAcceptPreliminary(offer.id)}
-                              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
-                            >
-                              Vorläufige Beauftragung annehmen
-                            </button>
-                          )}
-                          {offer.status === 'abgelehnt' && (
-                            <span className="block text-xs bg-red-600 text-red-200 px-2 py-1 rounded">
-                              Abgelehnt
-                            </span>
-                          )}
-                        </div>
+{activeTab === 'angebote' && (
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Abgegebene Angebote</h2>
+    
+    {offers.length === 0 ? (
+      <p className="text-gray-400">Sie haben noch keine Angebote abgegeben.</p>
+    ) : (
+      <div className="space-y-4">
+        {offers.map((offer) => {
+          // Berechne Brutto (19% MwSt)
+          const bruttoAmount = offer.amount * 1.19;
+          
+          return (
+            <div key={offer.id} className="bg-white/5 rounded-lg p-6 hover:bg-white/10 transition-colors">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  {/* Header mit Projekt-Info */}
+                  <div className="mb-4">
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      {offer.projectType || offer.project_category}
+                    </h3>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-sm bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full">
+                        {offer.trade}
+                      </span>
+                      {offer.status === 'submitted' && (
+                        <span className="text-sm bg-green-500/20 text-green-300 px-3 py-1 rounded-full">
+                          ✓ Abgegeben
+                        </span>
+                      )}
+                      {offer.status === 'preliminary' && (
+                        <span className="text-sm bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full">
+                          Vorläufig beauftragt
+                        </span>
+                      )}
+                      {offer.status === 'confirmed' && (
+                        <span className="text-sm bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full">
+                          Verbindlich bestätigt
+                        </span>
+                      )}
+                      {offer.viewed_at && (
+                        <span className="text-sm bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full">
+                          👁️ Eingesehen
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Projekt-Details Grid */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs text-gray-400">Standort</p>
+                        <p className="text-sm text-gray-300">📍 {offer.location}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Abgabedatum</p>
+                        <p className="text-sm text-gray-300">
+                          📅 {offer.submittedDate 
+                            ? new Date(offer.submittedDate).toLocaleDateString('de-DE', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit'
+                              })
+                            : new Date(offer.created_at).toLocaleDateString('de-DE', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit'
+                              })
+                          }
+                        </p>
                       </div>
                     </div>
-                  ))}
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs text-gray-400">Ausführungszeit</p>
+                        <p className="text-sm text-gray-300">
+                          ⏱️ {offer.execution_time || offer.timeframe || 'Nach Absprache'}
+                        </p>
+                      </div>
+                      {offer.viewed_at && (
+                        <div>
+                          <p className="text-xs text-gray-400">Eingesehen am</p>
+                          <p className="text-sm text-gray-300">
+                            {new Date(offer.viewed_at).toLocaleDateString('de-DE')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Angebotssumme */}
+                  <div className="bg-white/10 rounded-lg p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Netto</p>
+                        <p className="text-xl font-bold text-teal-400">
+                          {formatCurrency(offer.amount)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Brutto (inkl. 19% MwSt)</p>
+                        <p className="text-xl font-bold text-white">
+                          {formatCurrency(bruttoAmount)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Anmerkungen falls vorhanden */}
+                  {offer.notes && (
+                    <div className="mt-4 p-3 bg-white/5 rounded border border-white/10">
+                      <p className="text-xs text-gray-400 mb-1">Ihre Anmerkungen:</p>
+                      <p className="text-sm text-gray-300">{offer.notes}</p>
+                    </div>
+                  )}
                 </div>
-              )}
+                
+                {/* Action Buttons */}
+                <div className="ml-6 text-right space-y-2">
+                  {offer.status === 'submitted' && (
+                    <>
+                      <button
+                        onClick={() => navigate(`/handwerker/offer/${offer.id}/details`)}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        📋 Details ansehen
+                      </button>
+                      <button
+                        onClick={() => handleWithdrawOffer(offer.id)}
+                        className="w-full px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/50 rounded-lg transition-colors text-sm"
+                      >
+                        ✏️ Angebot zurückziehen
+                      </button>
+                    </>
+                  )}
+                  
+                  {offer.status === 'preliminary' && (
+                    <>
+                      <span className="block text-xs bg-yellow-600 text-yellow-200 px-3 py-2 rounded mb-2">
+                        Vorläufig beauftragt
+                      </span>
+                      <button
+                        onClick={() => navigate(`/handwerker/offer/${offer.id}/details`)}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        📋 Details ansehen
+                      </button>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Warte auf Ortstermin und Bestätigung
+                      </p>
+                    </>
+                  )}
+                  
+                  {offer.status === 'confirmed' && (
+                    <>
+                      <span className="block text-xs bg-green-600 text-green-200 px-3 py-2 rounded mb-2">
+                        ✓ Verbindlich bestätigt
+                      </span>
+                      <button
+                        onClick={() => navigate(`/handwerker/offer/${offer.id}/details`)}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        📋 Details ansehen
+                      </button>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Warte auf finale Beauftragung
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
+          );
+        })}
+      </div>
+    )}
+  </div>
+)}
 
           {/* Vertragsanbahnung Tab */}
           {activeTab === 'vertragsanbahnung' && (
