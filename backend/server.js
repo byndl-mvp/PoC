@@ -4303,7 +4303,7 @@ Beginne direkt mit [`;  // ← Nur diese 3 Zeilen am ENDE hinzufügen
     { role: 'system', content: finalSystemPrompt }, 
     { role: 'user', content: userPrompt }
   ], { 
-    maxTokens: 16000,
+    maxTokens: 10000,
     temperature: 0.35,
     jsonMode: true 
   });
