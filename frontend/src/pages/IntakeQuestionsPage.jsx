@@ -446,7 +446,7 @@ const toggleDetailedExplanation = async () => {
             {currentQ.text || currentQ.question}
           </h2>
 
-          {/* Erweiterte Erklärung mit besserem Design */}
+          {/* Kurze Erklärung - IMMER sichtbar */}
 {currentQ.explanation && (
   <div className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 border border-blue-500/30 rounded-xl p-5 mt-4 mb-6 backdrop-blur-sm">
     <div className="flex items-start space-x-3">
@@ -459,66 +459,82 @@ const toggleDetailedExplanation = async () => {
         <h3 className="text-blue-300 font-semibold mb-2 text-base">
           Hinweis zur Frage
         </h3>
-        <p className="text-blue-200 text-sm leading-relaxed whitespace-pre-line">
+        <p className="text-blue-200 text-sm leading-relaxed">
           {currentQ.explanation}
         </p>
         
-        {/* Zusätzliche strukturierte Informationen falls vorhanden */}
-        {currentQ.measurementGuide && (
-          <div className="mt-4 p-3 bg-blue-600/10 rounded-lg border border-blue-500/20">
-            <h4 className="text-teal-300 font-medium text-sm mb-1 flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        {/* Button für ausführliche Erklärung */}
+        <button
+          onClick={toggleDetailedExplanation}
+          disabled={loadingExplanation}
+          className="mt-3 text-sm text-teal-400 hover:text-teal-300 flex items-center space-x-1 transition-colors"
+        >
+          {loadingExplanation ? (
+            <>
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
-              So messen Sie richtig:
-            </h4>
-            <p className="text-gray-300 text-sm">
-              {currentQ.measurementGuide}
-            </p>
-          </div>
-        )}
-        
-        {/* Produktbeispiele wenn vorhanden */}
-        {currentQ.productExamples && (
-          <div className="mt-4 p-3 bg-teal-600/10 rounded-lg border border-teal-500/20">
-            <h4 className="text-teal-300 font-medium text-sm mb-2 flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              <span>Lädt ausführliche Hinweise...</span>
+            </>
+          ) : (
+            <>
+              <span>Ausführliche Hinweise</span>
+              <svg className={`w-4 h-4 transform transition-transform ${expandedExplanations[currentQ.id || `q-${current}`] ? 'rotate-180' : ''}`} 
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
-              Produktbeispiele:
-            </h4>
-            <p className="text-gray-300 text-sm whitespace-pre-line">
-              {currentQ.productExamples}
-            </p>
-          </div>
-        )}
+            </>
+          )}
+        </button>
         
-        {/* Empfehlung bei Unsicherheit */}
-        {currentQ.defaultRecommendation && (
-          <div className="mt-4 p-3 bg-green-600/10 rounded-lg border border-green-500/20">
-            <h4 className="text-green-300 font-medium text-sm mb-1 flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-              Unsere Empfehlung:
-            </h4>
-            <p className="text-gray-300 text-sm">
-              {currentQ.defaultRecommendation}
-            </p>
+        {/* Ausführliche Details - bei Bedarf */}
+        {expandedExplanations[currentQ.id || `q-${current}`] && cachedExplanations[currentQ.id || `q-${current}`] && (
+          <div className="mt-4 space-y-3 animate-fadeIn">
+            {cachedExplanations[currentQ.id || `q-${current}`].fullExplanation && (
+              <div className="p-3 bg-blue-600/10 rounded-lg border border-blue-500/20">
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  {cachedExplanations[currentQ.id || `q-${current}`].fullExplanation}
+                </p>
+              </div>
+            )}
+            
+            {cachedExplanations[currentQ.id || `q-${current}`].measurementGuide && (
+              <div className="p-3 bg-teal-600/10 rounded-lg border border-teal-500/20">
+                <h4 className="text-teal-300 font-medium text-sm mb-1 flex items-center">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  So messen Sie richtig:
+                </h4>
+                <p className="text-gray-300 text-sm">
+                  {cachedExplanations[currentQ.id || `q-${current}`].measurementGuide}
+                </p>
+              </div>
+            )}
+            
+            {cachedExplanations[currentQ.id || `q-${current}`].productExamples && (
+              <div className="p-3 bg-green-600/10 rounded-lg border border-green-500/20">
+                <h4 className="text-green-300 font-medium text-sm mb-2">
+                  Produktbeispiele:
+                </h4>
+                <p className="text-gray-300 text-sm whitespace-pre-line">
+                  {cachedExplanations[currentQ.id || `q-${current}`].productExamples}
+                </p>
+              </div>
+            )}
+            
+            {cachedExplanations[currentQ.id || `q-${current}`].defaultRecommendation && (
+              <div className="p-3 bg-purple-600/10 rounded-lg border border-purple-500/20">
+                <h4 className="text-purple-300 font-medium text-sm mb-1">
+                  Unsere Empfehlung:
+                </h4>
+                <p className="text-gray-300 text-sm">
+                  {cachedExplanations[currentQ.id || `q-${current}`].defaultRecommendation}
+                </p>
+              </div>
+            )}
           </div>
-        )}
-        
-        {/* Toggle für erweiterte Details */}
-        {(currentQ.visualHint || currentQ.commonMistakes) && (
-          <button
-            onClick={() => setShowDetailedHelp(!showDetailedHelp)}
-            className="mt-4 text-sm text-teal-400 hover:text-teal-300 flex items-center space-x-1 transition-colors"
-          >
-            <span>{showDetailedHelp ? 'Weniger' : 'Mehr'} Details</span>
-            <svg className={`w-4 h-4 transform transition-transform ${showDetailedHelp ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
         )}
       </div>
     </div>
