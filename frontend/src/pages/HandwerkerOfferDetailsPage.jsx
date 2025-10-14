@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
 function formatCurrency(amount) {
@@ -16,7 +16,6 @@ export default function HandwerkerOfferDetailsPage() {
   
   const [loading, setLoading] = useState(true);
   const [offer, setOffer] = useState(null);
-  const [handwerkerData, setHandwerkerData] = useState(null);
   
   useEffect(() => {
     const storedData = sessionStorage.getItem('handwerkerData');
@@ -25,8 +24,14 @@ export default function HandwerkerOfferDetailsPage() {
       return;
     }
     
-    const data = JSON.parse(storedData);
-    setHandwerkerData(data);
+    // Validierung
+    try {
+      JSON.parse(storedData);
+    } catch (error) {
+      navigate('/handwerker/login');
+      return;
+    }
+    
     loadOfferDetails();
   }, [offerId, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
   
