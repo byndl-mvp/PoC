@@ -21,7 +21,6 @@ export default function IntakeQuestionsPage() {
   const loadingIntervalRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
 
-  const [showDetailedHelp, setShowDetailedHelp] = useState(false);
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [userQuestion, setUserQuestion] = useState('');
   const [aiResponse, setAiResponse] = useState('');
