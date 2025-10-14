@@ -36,6 +36,9 @@ export default function IntakeQuestionsPage() {
   const [userQuestion, setUserQuestion] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [loadingResponse, setLoadingResponse] = useState(false);
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const [expandedExplanations, setExpandedExplanations] = useState({});
+  const [cachedExplanations, setCachedExplanations] = useState({});
   
   // ÄNDERUNG: Skip-Button Funktion angepasst
   const handleSkipTrade = async () => {
@@ -306,6 +309,48 @@ export default function IntakeQuestionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, tradeId]);
 
+  const toggleDetailedExplanation = async () => {
+  const questionId = currentQ.id || `q-${current}`;
+  
+  if (expandedExplanations[questionId]) {
+    setExpandedExplanations(prev => ({...prev, [questionId]: false}));
+    return;
+  }
+  
+  if (cachedExplanations[questionId]) {
+    setExpandedExplanations(prev => ({...prev, [questionId]: true}));
+    return;
+  }
+  
+  try {
+    setLoadingExplanation(true);
+    
+    const response = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${tradeId}/question-explanation`),  // HIER: direkt tradeId
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionText: currentQ.question || currentQ.text,
+          questionId: questionId,
+          shortExplanation: currentQ.explanation || '',
+          questionCategory: currentQ.category
+        })
+      }
+    );
+    
+    if (response.ok) {
+      const details = await response.json();
+      setCachedExplanations(prev => ({...prev, [questionId]: details}));
+      setExpandedExplanations(prev => ({...prev, [questionId]: true}));
+    }
+  } catch (error) {
+    console.error('Error loading explanation:', error);
+  } finally {
+    setLoadingExplanation(false);
+  }
+};
+  
   const handleNext = async () => {
     console.log('handleNext called, submitting=', submitting);
     console.log('current=', current, 'questions.length=', questions.length);
