@@ -26,6 +26,9 @@ export default function IntakeQuestionsPage() {
   const [userQuestion, setUserQuestion] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [loadingResponse, setLoadingResponse] = useState(false);
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const [expandedExplanations, setExpandedExplanations] = useState({});
+  const [cachedExplanations, setCachedExplanations] = useState({});
   
   // Fake Progress für initiales Laden (45 Sekunden)
   useEffect(() => {
@@ -129,6 +132,69 @@ export default function IntakeQuestionsPage() {
     };
   }, [projectId]);
 
+  // NEUE FUNKTION einfügen nach den useEffect Hooks (ca. Zeile 150):
+const toggleDetailedExplanation = async () => {
+  const questionId = currentQ.id || `q-${current}`;
+  
+  // Wenn bereits expanded, einfach zuklappen
+  if (expandedExplanations[questionId]) {
+    setExpandedExplanations(prev => ({
+      ...prev,
+      [questionId]: false
+    }));
+    return;
+  }
+  
+  // Wenn bereits im Cache, einfach aufklappen
+  if (cachedExplanations[questionId]) {
+    setExpandedExplanations(prev => ({
+      ...prev,
+      [questionId]: true
+    }));
+    return;
+  }
+  
+  // Sonst: Lade die Details
+  try {
+    setLoadingExplanation(true);
+    
+    // Hole INT trade für Intake
+    const tradesRes = await fetch(apiUrl('/api/trades'));
+    const trades = await tradesRes.json();
+    const intTrade = trades.find(t => t.code === 'INT');
+    
+    const response = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${intTrade.id}/question-explanation`),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionText: currentQ.question || currentQ.text,
+          questionId: questionId,
+          shortExplanation: currentQ.explanation || '',
+          questionCategory: currentQ.category
+        })
+      }
+    );
+    
+    if (response.ok) {
+      const details = await response.json();
+      setCachedExplanations(prev => ({
+        ...prev,
+        [questionId]: details
+      }));
+      setExpandedExplanations(prev => ({
+        ...prev,
+        [questionId]: true
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading explanation:', error);
+  } finally {
+    setLoadingExplanation(false);
+  }
+};
+  
   const handleNext = () => {
     if (!questions[current]) return;
     
