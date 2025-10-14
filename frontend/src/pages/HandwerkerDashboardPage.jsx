@@ -167,27 +167,29 @@ export default function HandwerkerDashboardPage() {
   };
 
   const handleWithdrawOffer = async (offerId) => {
-    if (!window.confirm('Möchten Sie Ihr Angebot wirklich zurückziehen?')) {
-      return;
-    }
+  if (!window.confirm('Möchten Sie Ihr Angebot wirklich zurückziehen? Sie können es danach erneut bearbeiten.')) {
+    return;
+  }
 
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/offers/${offerId}/withdraw`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/offers/${offerId}/withdraw-for-edit`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handwerkerId: handwerkerData.id })
+    });
 
-      if (res.ok) {
-        alert('Angebot zurückgezogen.');
-        loadDashboardData(handwerkerData);
-      }
-    } catch (err) {
-      console.error('Fehler:', err);
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      alert('Angebot zurückgezogen. Sie können es nun unter "Ausschreibungen" erneut bearbeiten.');
+      loadDashboardData(handwerkerData);
     }
-  };
+  } catch (err) {
+    console.error('Fehler:', err);
+    alert('Fehler beim Zurückziehen des Angebots');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = () => {
     sessionStorage.removeItem('handwerkerData');
