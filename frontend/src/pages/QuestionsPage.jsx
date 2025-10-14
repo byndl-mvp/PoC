@@ -399,6 +399,8 @@ export default function IntakeQuestionsPage() {
           setCurrent(0);
           setAnswerText('');
           setAssumption('');
+          setExpandedExplanations({});
+          setCachedExplanations({});
           setGeneratingQuestions(false);
           return;
         }
@@ -432,6 +434,8 @@ export default function IntakeQuestionsPage() {
           setCurrent(1);
           setAnswerText('');
           setAssumption('');
+          setExpandedExplanations({});
+          setCachedExplanations({});
           setGeneratingQuestions(false);
           return;
         }
@@ -468,6 +472,8 @@ export default function IntakeQuestionsPage() {
           setCurrent(0);
           setAnswerText('');
           setAssumption('');
+          setExpandedExplanations({});
+          setCachedExplanations({});
           setGeneratingQuestions(false);
           return;
         }
