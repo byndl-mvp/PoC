@@ -44,14 +44,13 @@ export default function HandwerkerDashboardPage() {
 const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/new`));
 if (tendersRes.ok) {
   const tendersData = await tendersRes.json();
-  // Filtere nur doppelte Einträge und final beauftragte, aber zeige zurückgezogene
+  // Filtere nur doppelte Einträge und final beauftragte
   const uniqueTenders = tendersData.filter((tender, index, self) =>
     index === self.findIndex((t) => t.id === tender.id) &&
     tender.offer_status !== 'accepted' &&
     tender.offer_status !== 'final_accepted' &&
     tender.offer_status !== 'preliminary' &&
     tender.offer_status !== 'confirmed' &&
-    (tender.offer_status === null || tender.offer_status === 'withdrawn') &&
     tender.status !== 'rejected'
   );
   setTenders(uniqueTenders);
