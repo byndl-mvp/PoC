@@ -11496,30 +11496,61 @@ Erstelle eine vollständige, hilfreiche Erklärung die alle wichtigen Aspekte ab
       temperature: 0.3,
       jsonMode: true
     });
-
-    // HIER DEN FIX EINFÜGEN:
-let cleanedResponse = response
-  .replace(/```json\n?/gi, '')
-  .replace(/```\n?/gi, '')
-  .trim();
-
-// Falls die Response nicht mit { beginnt, suche danach
-if (!cleanedResponse.startsWith('{')) {
-  const jsonStart = cleanedResponse.indexOf('{');
-  if (jsonStart > 0) {
-    cleanedResponse = cleanedResponse.substring(jsonStart);
-  }
-}
     
-    const details = JSON.parse(response);
+    // Robuste JSON-Bereinigung und Parsing
+    let cleanedResponse = response
+      .replace(/```json\n?/gi, '')
+      .replace(/```\n?/gi, '')
+      .trim();
+    
+    // Falls die Response nicht mit { beginnt, suche danach
+    const jsonStart = cleanedResponse.indexOf('{');
+    if (jsonStart > 0) {
+      cleanedResponse = cleanedResponse.substring(jsonStart);
+    } else if (jsonStart === -1) {
+      console.error('No JSON object found in response');
+      cleanedResponse = '{}';
+    }
+    
+    // Falls die Response trailing characters hat
+    const jsonEnd = cleanedResponse.lastIndexOf('}');
+    if (jsonEnd > -1 && jsonEnd < cleanedResponse.length - 1) {
+      cleanedResponse = cleanedResponse.substring(0, jsonEnd + 1);
+    }
+    
+    // Parse mit Fehlerbehandlung
+    let details;
+    try {
+      details = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('JSON parse failed:', parseError);
+      console.error('Attempted to parse:', cleanedResponse.substring(0, 500));
+      
+      // Fallback - versuche Response als Text zu verwenden
+      details = {
+        fullExplanation: cleanedResponse.includes('{') ? 
+          "Die Erklärung konnte nicht korrekt geladen werden." : 
+          cleanedResponse,
+        measurementGuide: null,
+        productExamples: null,
+        visualHint: null,
+        commonMistakes: null,
+        defaultRecommendation: null
+      };
+    }
+    
+    // Sicherstellen dass mindestens fullExplanation vorhanden ist
+    if (!details.fullExplanation && !details.explanation) {
+      details.fullExplanation = "Detaillierte Erklärung konnte nicht generiert werden. Bitte versuchen Sie es erneut.";
+    }
     
     res.json({
-      fullExplanation: details.explanation || details.fullExplanation,
-      measurementGuide: details.measurementGuide,
-      productExamples: details.productExamples,
-      visualHint: details.visualHint,
-      commonMistakes: details.commonMistakes,
-      defaultRecommendation: details.defaultRecommendation
+      fullExplanation: details.fullExplanation || details.explanation || "Keine Erklärung verfügbar",
+      measurementGuide: details.measurementGuide || null,
+      productExamples: details.productExamples || null,
+      visualHint: details.visualHint || null,
+      commonMistakes: details.commonMistakes || null,
+      defaultRecommendation: details.defaultRecommendation || null
     });
     
   } catch (error) {
