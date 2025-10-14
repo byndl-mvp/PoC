@@ -8727,7 +8727,7 @@ function finalLVValidation(lv, tradeCode) {
     except: ['holzverbindung', 'zimmermannsverbindung']
     },    
     'GER': { 
-      forbidden: ['dämmung', 'putz', 'fenster einbau', 'malerarbeiten', 'elektro', 'sanitär', 'heizung', 'fliesen'],
+      forbidden: ['dämmung', 'entsorgung', 'putz', 'fenster einbau', 'malerarbeiten', 'elektro', 'sanitär', 'heizung', 'fliesen'],
       except: []
     },
     'ELEKT': {
