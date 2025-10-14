@@ -11492,70 +11492,70 @@ Erstelle eine vollständige, hilfreiche Erklärung die alle wichtigen Aspekte ab
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], { 
-      maxTokens: 2000,
+      maxTokens: 3000,  // ERHÖHT von 2000!
       temperature: 0.3,
       jsonMode: true
     });
     
-    // Robuste JSON-Bereinigung und Parsing
+    // Aggressive Bereinigung
     let cleanedResponse = response
-      .replace(/```json\n?/gi, '')
-      .replace(/```\n?/gi, '')
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .replace(/\n/g, ' ')  // Ersetze alle Zeilenumbrüche
       .trim();
     
-    // Falls die Response nicht mit { beginnt, suche danach
+    // JSON Start finden
     const jsonStart = cleanedResponse.indexOf('{');
-    if (jsonStart > 0) {
-      cleanedResponse = cleanedResponse.substring(jsonStart);
-    } else if (jsonStart === -1) {
-      console.error('No JSON object found in response');
-      cleanedResponse = '{}';
-    }
-    
-    // Falls die Response trailing characters hat
     const jsonEnd = cleanedResponse.lastIndexOf('}');
-    if (jsonEnd > -1 && jsonEnd < cleanedResponse.length - 1) {
-      cleanedResponse = cleanedResponse.substring(0, jsonEnd + 1);
+    
+    if (jsonStart === -1 || jsonEnd === -1) {
+      throw new Error('No valid JSON found in response');
     }
     
-    // Parse mit Fehlerbehandlung
+    cleanedResponse = cleanedResponse.substring(jsonStart, jsonEnd + 1);
+    
+    // Parse mit mehreren Versuchen
     let details;
     try {
       details = JSON.parse(cleanedResponse);
-    } catch (parseError) {
-      console.error('JSON parse failed:', parseError);
-      console.error('Attempted to parse:', cleanedResponse.substring(0, 500));
-      
-      // Fallback - versuche Response als Text zu verwenden
-      details = {
-        fullExplanation: cleanedResponse.includes('{') ? 
-          "Die Erklärung konnte nicht korrekt geladen werden." : 
-          cleanedResponse,
-        measurementGuide: null,
-        productExamples: null,
-        visualHint: null,
-        commonMistakes: null,
-        defaultRecommendation: null
-      };
+    } catch (firstError) {
+      // Zweiter Versuch: Escape problematische Zeichen
+      try {
+        const escaped = cleanedResponse
+          .replace(/\\/g, '\\\\')
+          .replace(/"/g, '\\"')
+          .replace(/\t/g, ' ')
+          .replace(/\r/g, ' ');
+        details = JSON.parse(`{"fullExplanation": "${escaped}"}`);
+      } catch (secondError) {
+        console.error('All parse attempts failed');
+        details = {
+          fullExplanation: "Die ausführliche Erklärung konnte leider nicht geladen werden. Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.",
+          measurementGuide: null,
+          productExamples: null,
+          visualHint: null,
+          commonMistakes: null,
+          defaultRecommendation: null
+        };
+      }
     }
     
-    // Sicherstellen dass mindestens fullExplanation vorhanden ist
-    if (!details.fullExplanation && !details.explanation) {
-      details.fullExplanation = "Detaillierte Erklärung konnte nicht generiert werden. Bitte versuchen Sie es erneut.";
-    }
-    
+    // Response senden - mit Längen-Sicherheit
     res.json({
-      fullExplanation: details.fullExplanation || details.explanation || "Keine Erklärung verfügbar",
-      measurementGuide: details.measurementGuide || null,
-      productExamples: details.productExamples || null,
-      visualHint: details.visualHint || null,
-      commonMistakes: details.commonMistakes || null,
-      defaultRecommendation: details.defaultRecommendation || null
+      fullExplanation: (details.fullExplanation || details.explanation || "Keine Erklärung verfügbar").substring(0, 2000),
+      measurementGuide: details.measurementGuide ? String(details.measurementGuide).substring(0, 1000) : null,
+      productExamples: details.productExamples ? String(details.productExamples).substring(0, 1000) : null,
+      visualHint: details.visualHint ? String(details.visualHint).substring(0, 500) : null,
+      commonMistakes: details.commonMistakes ? String(details.commonMistakes).substring(0, 500) : null,
+      defaultRecommendation: details.defaultRecommendation ? String(details.defaultRecommendation).substring(0, 500) : null
     });
     
   } catch (error) {
     console.error('Error generating detailed explanation:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der ausführlichen Erklärung' });
+    res.status(500).json({ 
+      error: 'Fehler beim Laden der ausführlichen Erklärung',
+      details: error.message 
+    });
   }
 });
 
