@@ -5460,7 +5460,7 @@ OUTPUT als JSON-Array mit EXAKT ${intelligentCount.count} Fragen.`;
     const response = await llmWithPolicy('questions', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Erstelle detaillierte Folgefragen für: ${contextAnswer}` }
-    ], { maxTokens: 16000, temperature: 0.35 });
+    ], { maxTokens: 10000, temperature: 0.35 });
     
     const cleaned = response
       .replace(/```json\n?/g, '')
