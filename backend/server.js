@@ -11313,6 +11313,167 @@ Gib eine hilfreiche, verständliche Antwort die dem Laien weiterhilft.`;
   }
 });
 
+// NEUE ROUTE: Füge nach der bestehenden '/question-clarification' Route ein (ca. Zeile 2500+)
+app.post('/api/projects/:projectId/trades/:tradeId/question-explanation', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { questionText, questionId, shortExplanation, questionCategory } = req.body;
+    
+    // Trade-Info holen
+    const tradeResult = await query(
+      'SELECT name, code FROM trades WHERE id = $1',
+      [tradeId]
+    );
+    
+    if (!tradeResult.rows[0]) {
+      return res.status(404).json({ error: 'Trade nicht gefunden' });
+    }
+    
+    const tradeName = tradeResult.rows[0].name;
+    const tradeCode = tradeResult.rows[0].code;
+    const isIntake = tradeCode === 'INT';
+    
+    const systemPrompt = `Du bist ein Experte für ${isIntake ? 'Bauprojektaufnahme' : tradeName}.
+    
+Erstelle eine AUSFÜHRLICHE, HILFREICHE Erklärung für diese Frage.
+Die Erklärung soll Laien helfen, die Frage richtig zu verstehen und zu beantworten.
+
+STRUKTUR (100-200 Wörter insgesamt):
+
+1. KONTEXT & ZWECK (20-30 Wörter):
+   - Warum wird diese Information benötigt?
+   - Wie beeinflusst sie Kosten und Aufwand?
+   - Welche Folgearbeiten hängen davon ab?
+
+2. LAIENVERSTÄNDLICHE ERKLÄRUNG (40-60 Wörter):
+   - Fachbegriffe in Alltagssprache übersetzen
+   - Vergleiche mit bekannten Dingen ("wie ein...")
+   - Visuelle Beschreibung ("sieht aus wie...")
+   - Wo man es im Gebäude findet
+
+3. PRAKTISCHE ANLEITUNG (30-50 Wörter):
+   - WO genau messen/schauen/prüfen?
+   - WIE messen? (Zollstock anlegen von...bis...)
+   - WOMIT messen? (Werkzeuge)
+   - Häufige Fehler vermeiden
+
+4. KONKRETE BEISPIELE (30-40 Wörter):
+   Bei Qualitätsfragen IMMER Produkte/Marken zur Orientierung:
+   
+   SANITÄR:
+   - Standard: "Baumarkt-Eigenmarken, Grohe Start, Ideal Standard Connect"
+   - Gehoben: "Duravit D-Code, Hansgrohe Focus, Keramag Renova"
+   - Premium: "Villeroy & Boch Subway, Dornbracht, Kaldewei, Bette"
+   
+   FLIESEN:
+   - Standard: "Baumarkt-Fliesen (15-25 €/m²)"
+   - Gehoben: "Deutsche Markenhersteller wie Agrob Buchtal (30-50 €/m²)"
+   - Premium: "Italienische Feinsteinzeug, Großformate 120x120cm (60-120 €/m²)"
+   
+   FENSTER:
+   - Standard: "Kunststoff weiß, Veka/Rehau Profile (400-500 €/m²)"
+   - Gehoben: "Kunststoff mit Dekor oder Holz (500-700 €/m²)"
+   - Premium: "Holz-Alu Kombination, Internorm/Unilux (700-1000 €/m²)"
+   
+   BODENBELÄGE:
+   - Standard: "Laminat Klasse 31 (20-35 €/m²)"
+   - Gehoben: "3-Schicht Parkett Eiche (60-90 €/m²)"
+   - Premium: "Massivparkett, Fischgrät verlegt (100-150 €/m²)"
+   
+   TÜREN:
+   - Standard: "Dekor-Türen CPL/Laminat (150-250 €/Stück)"
+   - Gehoben: "Echtholz furniert oder lackiert (300-500 €/Stück)"
+   - Premium: "Massivholz, Sonderanfertigungen (600-1200 €/Stück)"
+   
+   PREISANGABEN:
+   - IMMER relative Unterschiede: "Gehoben ist 40-60% teurer als Standard"
+   - IMMER mit Einheit: €/m², €/Stück, €/lfdm
+   - NIE absolute Preise ohne Größenangabe
+   
+e) EMPFEHLUNG BEI UNSICHERHEIT (20-30 Wörter):
+   - "Bei Unsicherheit empfehlen wir: [konkreter Wert]"
+   - "80% unserer Kunden wählen: [Option]"
+   - "Für Ihr Projekt passend wäre: [Empfehlung]"
+
+BEISPIEL EINER VOLLSTÄNDIGEN ERKLÄRUNG:
+
+Frage: "Welche Qualitätsstufe wünschen Sie für die Sanitärausstattung?"
+
+explanation: "Die Qualitätsstufe bestimmt Preis und Lebensdauer Ihrer Badausstattung erheblich. Je nach Wahl variieren die Kosten zwischen 800€ (Standard) und 5000€ (Premium) pro Bad. 
+Standard-Qualität wie Grohe Start (WC ~150€) oder Ideal Standard (Waschtisch ~120€) bietet solide Funktionalität für Mietobjekte. Gehobene Qualität wie Hansgrohe (Armaturen ~180€) oder Duravit (WC ~300€) verbindet Design mit Komfort - ideal für Eigennutzung. Premium-Marken wie Dornbracht (Armaturen ~500€) oder Villeroy & Boch (WC ~600€) bieten Luxus und 15+ Jahre Haltbarkeit.
+Die Qualität beeinflusst auch Wartungskosten: Standard braucht alle 3-5 Jahre Service, Premium erst nach 8-10 Jahren. Bei Unsicherheit empfehlen wir für Eigennutzung die gehobene Qualität - bestes Preis-Leistungs-Verhältnis."
+
+Frage: "Ist ein Ringbalken/Ringanker vorhanden?"
+
+explanation: "Ein Ringbalken ist ein umlaufender Betonbalken oben auf den Mauern - wie ein stabilisierender Gürtel ums Haus. Er verteilt Dachlasten gleichmäßig und verhindert, dass Wände auseinanderdriften.
+Sie erkennen ihn als durchgehenden grauen Betonstreifen (20-30cm hoch) auf der Mauerkrone. Gehen Sie dazu auf den Dachboden und schauen Sie, wo die Dachbalken aufliegen. Dort sollte ein durchgehender Betonbalken sichtbar sein.
+Bei Altbauten vor 1960 meist nicht vorhanden, ab 1970 Standard. Ohne Ringbalken sind bei Dacharbeiten Verstärkungen nötig (Mehrkosten 3000-5000€). Falls unsicher: Machen Sie Fotos vom Dachboden, besonders vom Übergang Wand/Dach. Wir gehen im Zweifel von 'nicht vorhanden' aus."
+
+Frage: "Welche Qualitätsstufe wünschen Sie für die Sanitärausstattung?"
+
+explanation: "Die Qualitätsstufe bestimmt Preis, Haltbarkeit und Design erheblich. Standard-Qualität (Baumarkt-Eigenmarken, Grohe Start, Ideal Standard Connect) bietet solide Funktionalität - ein WC kostet 150-250€, Waschtisch 100-200€. Gehobene Qualität (Duravit D-Code, Hansgrohe Focus, Keramag Icon) verbindet Design mit Komfort - WC 300-450€, Waschtisch 250-400€. Premium (Villeroy & Boch Subway, Dornbracht, Kaldewei) bietet exklusives Design und beste Materialien - WC 500-800€, Waschtisch 400-700€. Die Preisdifferenz zwischen Standard und Gehoben beträgt etwa 50-70%, zu Premium 150-200%. Wartungsintervalle: Standard alle 5 Jahre, Premium erst nach 10-15 Jahren. Für Mietobjekte empfehlen wir Standard, für Eigennutzung Gehoben als beste Preis-Leistung."
+
+Frage: "Welche Öffnungsart wünschen Sie für die Fenster?"
+
+explanation: "Die Öffnungsart bestimmt Komfort, Sicherheit und Preis. Dreh-Kipp-Fenster (Standard) bieten optimale Lüftung und Reinigungsmöglichkeit. Nur-Kipp ist etwa 20% günstiger, aber eingeschränkt nutzbar. Festverglasung spart 40-50% gegenüber Dreh-Kipp, erlaubt aber keine Lüftung. Schiebefenster kosten 30-40% mehr als Dreh-Kipp, sparen aber Platz. Die Preise variieren stark nach Größe und Material: Kunststoff-Dreh-Kipp kostet 400-600€/m², Holz 25-30% mehr, Holz-Alu 50-70% mehr. Ein 1,2x1,4m Fenster hat ca. 1,7m². Für Wohnräume empfehlen wir Dreh-Kipp, für Bäder Kipp (Sichtschutz). Bei Unsicherheit: Dreh-Kipp als flexibelste Lösung."
+
+FALSCH: "Dreh-Kipp-Fenster kosten 600€" (Welche Größe? Material?)
+RICHTIG: "Kunststoff-Dreh-Kipp: 400-600€/m², bei 1,5m² Fenster also 600-900€"
+
+FALSCH: "Parkett kostet 80€"
+RICHTIG: "Parkett: 50-120€/m² Material plus 25-40€/m² Verlegung"
+
+WICHTIG: Diese ausführlichen Erklärungen sind PFLICHT für jede Frage!
+
+KRITISCH - STRUCTURE DER EXPLANATION (IMMER 100-200 WÖRTER):
+
+1. KONTEXT (20-30 Wörter): Warum ist diese Info wichtig für die Kalkulation?
+2. LAIEN-ERKLÄRUNG (40-60 Wörter): Was bedeutet das in einfachen Worten?
+3. MESS-/PRÜFANLEITUNG (30-50 Wörter): Wo und wie genau messen/prüfen?
+4. BEISPIELE (30-40 Wörter): Bei Qualität: Konkrete Produkte mit Preisen
+5. EMPFEHLUNG (20-30 Wörter): "Bei Unsicherheit empfehlen wir..."
+
+BEISPIEL EINER PERFEKTEN EXPLANATION:
+"Die Qualitätsstufe bestimmt Preis und Lebensdauer erheblich - zwischen 800€ (Standard) und 5000€ (Premium) pro Bad. Standard wie Grohe Start (WC ~150€) oder Ideal Standard (Waschtisch ~120€) ist solide für Mietobjekte. Gehoben wie Hansgrohe (Armaturen ~180€) oder Duravit (WC ~300€) verbindet Design mit Komfort. Premium wie Dornbracht (Armaturen ~500€) oder Villeroy & Boch (WC ~600€) bietet Luxus und 15+ Jahre Haltbarkeit. Die Wahl beeinflusst auch Wartung: Standard braucht alle 3-5 Jahre Service, Premium erst nach 8-10 Jahren. Bei Unsicherheit empfehlen wir gehobene Qualität für Eigennutzung - bestes Preis-Leistungs-Verhältnis."
+
+${tradeCode === 'FEN' ? 'Beachte: Bei Fenstern sind Einzelmaße wichtig für präzise Kalkulation.' : ''}
+${tradeCode === 'SAN' ? 'Beachte: Nenne konkrete Sanitärmarken als Orientierung (Standard/Gehoben/Premium).' : ''}
+
+Antworte als JSON-Objekt mit strukturierten Feldern.`;
+
+    const userPrompt = `Frage: "${questionText}"
+Bisheriger Kurzhinweis: "${shortExplanation}"
+Kategorie: ${questionCategory || 'Allgemein'}
+Gewerk: ${tradeName} (${tradeCode})
+
+Erstelle eine vollständige, hilfreiche Erklärung die alle wichtigen Aspekte abdeckt.`;
+
+    const response = await llmWithPolicy('question-explanation', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { 
+      maxTokens: 2000,
+      temperature: 0.3,
+      jsonMode: true
+    });
+    
+    const details = JSON.parse(response);
+    
+    res.json({
+      fullExplanation: details.explanation || details.fullExplanation,
+      measurementGuide: details.measurementGuide,
+      productExamples: details.productExamples,
+      visualHint: details.visualHint,
+      commonMistakes: details.commonMistakes,
+      defaultRecommendation: details.defaultRecommendation
+    });
+    
+  } catch (error) {
+    console.error('Error generating detailed explanation:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der ausführlichen Erklärung' });
+  }
+});
+
 // Generate detailed LV for a trade
 app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
   try {
