@@ -675,7 +675,7 @@ if (tendersRes.ok) {
   </div>
 )}
 
-          {/* Vertragsanbahnung Tab */}
+         {/* Vertragsanbahnung Tab */}
 {activeTab === 'contracts' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
@@ -687,12 +687,12 @@ if (tendersRes.ok) {
       </p>
     </div>
     
-    {tenders.filter(t => t.offer_status === 'preliminary' || t.offer_status === 'confirmed').length === 0 ? (
+    {contracts.length === 0 ? (
       <p className="text-gray-400">Keine laufenden Vertragsanbahnungen.</p>
     ) : (
       <div className="space-y-6">
-        {tenders.filter(t => t.offer_status === 'preliminary' || t.offer_status === 'confirmed').map((tender, idx) => {
-          const netto = parseFloat(tender.offer_amount) || 0;
+        {contracts.map((contract, idx) => {
+          const netto = parseFloat(contract.offer_amount) || 0;
           const brutto = netto * 1.19;
           
           return (
@@ -700,27 +700,27 @@ if (tendersRes.ok) {
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    {tender.trade_name}
+                    {contract.trade_name}
                   </h3>
                   
                   {/* Projekt */}
                   <div className="mb-3 p-3 bg-blue-500/10 rounded">
                     <p className="text-blue-300 text-sm">
-                      <strong>🏗️ Projekt:</strong> {tender.project_category} - {tender.project_sub_category}
+                      <strong>🏗️ Projekt:</strong> {contract.project_category} - {contract.project_sub_category}
                     </p>
                     <p className="text-blue-200 text-xs mt-1">
-                      {tender.project_description}
+                      {contract.project_description}
                     </p>
                   </div>
                   
                   {/* Status Badge */}
                   <div className="mt-2">
-                    {tender.offer_status === 'preliminary' && !tender.offer_confirmed_at && (
+                    {contract.offer_status === 'preliminary' && !contract.offer_confirmed_at && (
                       <span className="inline-block px-3 py-1 bg-yellow-500/20 text-yellow-300 text-sm rounded-full">
                         ⏳ Angebot nach Besichtigung noch nicht bestätigt
                       </span>
                     )}
-                    {tender.offer_status === 'confirmed' && (
+                    {contract.offer_status === 'confirmed' && (
                       <span className="inline-block px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
                         ✓ Angebot bestätigt - Warte auf verbindliche Beauftragung
                       </span>
@@ -742,8 +742,8 @@ if (tendersRes.ok) {
                   <p className="text-xs text-gray-400 mt-3">
                     Vertragsanbahnung seit:<br />
                     <span className="text-white">
-                      {tender.preliminary_accepted_at 
-                        ? new Date(tender.preliminary_accepted_at).toLocaleDateString('de-DE')
+                      {contract.preliminary_accepted_at 
+                        ? new Date(contract.preliminary_accepted_at).toLocaleDateString('de-DE')
                         : 'N/A'}
                     </span>
                   </p>
@@ -755,22 +755,22 @@ if (tendersRes.ok) {
                 <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Bauherr</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="text-gray-300">
-                    <p><strong className="text-white">Name:</strong> {tender.bauherr_name || 'Nicht verfügbar'}</p>
-                    <p className="mt-1"><strong className="text-white">Tel:</strong> {tender.bauherr_phone || 'Nicht verfügbar'}</p>
+                    <p><strong className="text-white">Name:</strong> {contract.bauherr_name || 'Nicht verfügbar'}</p>
+                    <p className="mt-1"><strong className="text-white">Tel:</strong> {contract.bauherr_phone || 'Nicht verfügbar'}</p>
                   </div>
                   <div className="text-gray-300">
-                    <p><strong className="text-white">E-Mail:</strong> {tender.bauherr_email || 'Nicht verfügbar'}</p>
-                    <p className="mt-1"><strong className="text-white">Adresse:</strong> {tender.project_address || 'Nicht verfügbar'}</p>
+                    <p><strong className="text-white">E-Mail:</strong> {contract.bauherr_email || 'Nicht verfügbar'}</p>
+                    <p className="mt-1"><strong className="text-white">Adresse:</strong> {contract.project_address || 'Nicht verfügbar'}</p>
                   </div>
                 </div>
               </div>
               
               {/* Ausführungstermine (falls schon eingetragen) */}
-              {tender.execution_start && tender.execution_end && (
+              {contract.execution_start && contract.execution_end && (
                 <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 mb-4">
                   <p className="text-green-300 text-sm">
                     <strong>📅 Geplante Ausführung:</strong><br />
-                    {new Date(tender.execution_start).toLocaleDateString('de-DE')} bis {new Date(tender.execution_end).toLocaleDateString('de-DE')}
+                    {new Date(contract.execution_start).toLocaleDateString('de-DE')} bis {new Date(contract.execution_end).toLocaleDateString('de-DE')}
                   </p>
                 </div>
               )}
@@ -779,16 +779,16 @@ if (tendersRes.ok) {
               <div className="flex flex-wrap gap-3">
                 {/* 1. Ortstermin vereinbaren */}
                 <button
-                  onClick={() => navigate(`/ortstermin/${tender.offer_id}`)}
+                  onClick={() => navigate(`/ortstermin/${contract.offer_id}`)}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                 >
                   📅 Ortstermin vereinbaren
                 </button>
                 
                 {/* 2. Angebot anpassen und bestätigen */}
-                {tender.offer_status === 'preliminary' && !tender.offer_confirmed_at && (
+                {contract.offer_status === 'preliminary' && !contract.offer_confirmed_at && (
                   <button
-                    onClick={() => navigate(`/handwerker/offer/${tender.offer_id}/confirm`)}
+                    onClick={() => navigate(`/handwerker/offer/${contract.offer_id}/confirm`)}
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg font-semibold hover:shadow-xl transform hover:scale-[1.02] transition-all"
                   >
                     ✓ Angebot anpassen und bestätigen
@@ -796,7 +796,7 @@ if (tendersRes.ok) {
                 )}
                 
                 {/* Wartemeldung wenn bestätigt */}
-                {tender.offer_status === 'confirmed' && (
+                {contract.offer_status === 'confirmed' && (
                   <div className="flex-1 px-6 py-3 bg-green-500/20 border border-green-500/50 text-green-300 rounded-lg text-center">
                     ⏳ Warte auf verbindliche Beauftragung durch Bauherr
                   </div>
@@ -809,7 +809,7 @@ if (tendersRes.ok) {
                     
                     try {
                       setLoading(true);
-                      const res = await fetch(apiUrl(`/api/offers/${tender.offer_id}/withdraw`), {
+                      const res = await fetch(apiUrl(`/api/offers/${contract.offer_id}/withdraw`), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -819,7 +819,7 @@ if (tendersRes.ok) {
                       
                       if (res.ok) {
                         alert('Angebot wurde zurückgezogen. Vertragsanbahnung beendet.');
-                        loadTenders(); // Reload
+                        loadDashboardData(handwerkerData); // Reload
                       } else {
                         throw new Error('Fehler beim Zurückziehen');
                       }
