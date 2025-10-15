@@ -1930,7 +1930,8 @@ const BudgetVisualization = ({ budget }) => {
   )}
   
   {/* Modal für Vertragsanbahnung */}
-  {showContractModal && <ContractNegotiationModal />}
-</div>
-);
+      {showContractModal && <ContractNegotiationModal />}
+    </div>  
+  </div>
+  );
 }
