@@ -851,117 +851,183 @@ if (tendersRes.ok) {
   </div>
 )}
 
-         {/* Aufträge Tab - MIT WERKVERTRAG */}
+         {/* Aufträge Tab - Handwerker */}
 {activeTab === 'orders' && (
   <div>
-    <h2 className="text-2xl font-bold text-white mb-6">Erteilte Aufträge / Werkverträge</h2>
+    <h2 className="text-2xl font-bold text-white mb-6">Meine Aufträge</h2>
     
     {orders.length === 0 ? (
-      <p className="text-gray-400">Noch keine Aufträge erteilt.</p>
+      <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
+        <p className="text-gray-400 mb-4">Noch keine Aufträge erhalten.</p>
+        <p className="text-gray-500 text-sm">
+          Aufträge erscheinen hier, sobald ein Bauherr Ihr Angebot verbindlich beauftragt.
+        </p>
+      </div>
     ) : (
       <div className="space-y-6">
-        {orders.map((order, idx) => (
-          <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-semibold text-white">{order.tradeName}</h3>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
-                    Werkvertrag nach VOB/B
-                  </span>
-                </div>
-                <p className="text-gray-300 mb-2">{order.companyName}</p>
-                <p className="text-sm text-gray-400">
-                  Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | 
-                  Auftrags-Nr: #{order.id}
-                </p>
-                
-                {/* Ausführungstermine */}
-                <div className="mt-3 p-3 bg-blue-500/10 rounded">
-                  <p className="text-blue-300 text-sm">
-                    <strong>📅 Ausführungszeitraum:</strong><br />
-                    {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
+        {orders.map((order, idx) => {
+          const netto = parseFloat(order.amount) || 0;
+          const mwst = netto * 0.19;
+          const brutto = netto + mwst;
+          
+          return (
+            <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
+              {/* Header */}
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
+                    <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
+                      Werkvertrag nach VOB/B
+                    </span>
+                  </div>
+                  
+                  <p className="text-gray-300 mb-2">
+                    Auftraggeber: <strong>{order.bauherr_name}</strong>
                   </p>
+                  
+                  <div className="flex gap-4 text-sm text-gray-400">
+                    <p>📋 Auftrags-Nr: <strong className="text-white">#{order.id}</strong></p>
+                    <p>📅 Erteilt: <strong className="text-white">{new Date(order.created_at).toLocaleDateString('de-DE')}</strong></p>
+                  </div>
+                  
+                  {/* Projektadresse */}
+                  <div className="mt-3 p-3 bg-blue-500/10 rounded">
+                    <p className="text-blue-300 text-sm">
+                      <strong>🏗️ Ausführungsort:</strong><br />
+                      {order.project_street} {order.project_house_number}<br />
+                      {order.project_zip} {order.project_city}
+                    </p>
+                  </div>
+                  
+                  {/* Ausführungstermine */}
+                  <div className="mt-3 p-3 bg-purple-500/10 rounded">
+                    <p className="text-purple-300 text-sm">
+                      <strong>📅 Ausführungszeitraum:</strong><br />
+                      {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Vergütung */}
+                <div className="text-right ml-6">
+                  <p className="text-sm text-gray-400 mb-1">Auftragssumme</p>
+                  <p className="text-2xl font-bold text-green-400">
+                    {formatCurrency(netto)}
+                  </p>
+                  <p className="text-xs text-gray-400">Netto</p>
+                  
+                  <div className="mt-2 pt-2 border-t border-white/20">
+                    <p className="text-sm text-gray-400">zzgl. 19% MwSt.</p>
+                    <p className="text-lg font-semibold text-white">
+                      {formatCurrency(brutto)}
+                    </p>
+                    <p className="text-xs text-gray-400">Brutto</p>
+                  </div>
+                  
+                  {/* Status Badge */}
+                  <span className={`mt-3 text-xs px-3 py-1 rounded inline-block ${
+                    order.status === 'active' ? 'bg-blue-600 text-blue-200' :
+                    order.status === 'completed' ? 'bg-green-600 text-green-200' :
+                    order.status === 'in_progress' ? 'bg-yellow-600 text-yellow-200' :
+                    'bg-gray-600 text-gray-300'
+                  }`}>
+                    {order.status === 'active' ? '🔧 In Ausführung' :
+                     order.status === 'completed' ? '✅ Abgeschlossen' :
+                     order.status === 'in_progress' ? '⚙️ In Bearbeitung' :
+                     order.status}
+                  </span>
                 </div>
               </div>
               
-              <div className="text-right ml-6">
-                <p className="text-2xl font-bold text-green-400 mb-2">
-                  {order.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                </p>
-                <p className="text-xs text-gray-400 mb-2">Netto</p>
-                <span className={`text-xs px-3 py-1 rounded inline-block ${
-                  order.status === 'active' ? 'bg-blue-600 text-blue-200' :
-                  order.status === 'completed' ? 'bg-green-600 text-green-200' :
-                  'bg-gray-600 text-gray-300'
-                }`}>
-                  {order.status === 'active' ? 'In Ausführung' :
-                   order.status === 'completed' ? 'Abgeschlossen' :
-                   order.status}
-                </span>
+              {/* Kontaktdaten Bauherr */}
+              <div className="bg-white/10 rounded-lg p-4 mb-4">
+                <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Auftraggeber</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="text-gray-300">
+                    <p><strong className="text-white">Name:</strong> {order.bauherr_name}</p>
+                    <p className="mt-1"><strong className="text-white">Tel:</strong> {order.bauherr_phone || 'Nicht verfügbar'}</p>
+                  </div>
+                  <div className="text-gray-300">
+                    <p><strong className="text-white">E-Mail:</strong> {order.bauherr_email || 'Nicht verfügbar'}</p>
+                    <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.bauherr_address || 'Siehe Projektadresse'}</p>
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            {/* Werkvertrag-Aktionen */}
-            <div className="border-t border-white/10 pt-4 mt-4">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Werkvertrag als PDF
-                </button>
-                
-                <button
-                  onClick={() => {
-                    // Modal mit Vertragstext öffnen
-                    alert('Vertragsansicht wird geöffnet...');
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                >
-                  📋 Vertrag ansehen
-                </button>
-                
-                {order.status === 'active' && (
+              
+              {/* Werkvertrag-Aktionen */}
+              <div className="border-t border-white/10 pt-4 mt-4">
+                <div className="flex gap-3">
+                  {/* PDF Export */}
                   <button
-                    onClick={async () => {
-                      if (!window.confirm('Möchten Sie die Leistung abnehmen? Dies bestätigt die ordnungsgemäße Ausführung.')) return;
-                      
-                      try {
-                        const res = await fetch(apiUrl(`/api/orders/${order.id}/accept-completion`), {
-                          method: 'POST'
-                        });
-                        
-                        if (res.ok) {
-                          alert('Leistung abgenommen. Gewährleistungsfrist beginnt.');
-                          loadProjectDetails(selectedProject.id);
-                        }
-                      } catch (err) {
-                        console.error('Error:', err);
-                      }
-                    }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                    onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
                   >
-                    ✓ Leistung abnehmen
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Werkvertrag als PDF
                   </button>
-                )}
+                  
+                  {/* Vertrag ansehen */}
+                  <button
+                    onClick={() => {
+                      // Modal oder neue Seite mit Vertragstext
+                      alert('Vertragsansicht wird geöffnet...\n\nHier würde der komplette Werkvertragstext angezeigt werden.');
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Vertrag ansehen
+                  </button>
+                  
+                  {/* LV Details */}
+                  <button
+                    onClick={() => navigate(`/handwerker/order/${order.id}/lv-details`)}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    LV-Details ansehen
+                  </button>
+                </div>
               </div>
+              
+              {/* Status-Infos */}
+              {order.status === 'active' && (
+                <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
+                  <p className="text-blue-300 text-sm">
+                    <strong>ℹ️ Status:</strong> Auftrag in Ausführung. Nach Fertigstellung erfolgt die Abnahme durch den Bauherrn.
+                  </p>
+                </div>
+              )}
+              
+              {/* Gewährleistungshinweis bei abgeschlossenen Aufträgen */}
+              {order.status === 'completed' && (
+                <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded">
+                  <p className="text-green-300 text-sm">
+                    <strong>✅ Abgeschlossen:</strong> Leistung wurde am {order.accepted_at ? new Date(order.accepted_at).toLocaleDateString('de-DE') : 'N/A'} abgenommen.
+                  </p>
+                  <p className="text-green-200 text-xs mt-1">
+                    Gewährleistungsfrist: {order.warranty_period || 4} Jahre 
+                    {order.accepted_at && ` (bis ${new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 4))).toLocaleDateString('de-DE')})`}
+                  </p>
+                </div>
+              )}
+              
+              {/* Anmerkungen */}
+              {order.notes && (
+                <div className="mt-4 p-3 bg-white/5 rounded">
+                  <p className="text-gray-400 text-xs mb-1">Anmerkungen:</p>
+                  <p className="text-gray-300 text-sm">{order.notes}</p>
+                </div>
+              )}
             </div>
-            
-            {/* Gewährleistungshinweis */}
-            {order.status === 'completed' && (
-              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
-                <p className="text-yellow-300 text-sm">
-                  <strong>⚠️ Gewährleistung:</strong> {order.warranty_period || 4} Jahre ab Abnahme
-                  {order.accepted_at && ` (bis ${new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 4))).toLocaleDateString('de-DE')})`}
-                </p>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     )}
   </div>
