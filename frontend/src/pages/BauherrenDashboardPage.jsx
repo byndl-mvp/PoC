@@ -1924,11 +1924,13 @@ const BudgetVisualization = ({ budget }) => {
           >
             + Neues Projekt anlegen
           </Link>
-    </div>
-  </div>
-</>
-)}
+        </div>
+      </div>
+    </>
+  )}
   
   {/* Modal für Vertragsanbahnung */}
   {showContractModal && <ContractNegotiationModal />}
 </div>
+);
+}
