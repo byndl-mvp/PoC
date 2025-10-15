@@ -666,7 +666,7 @@ if (contractsRes.ok) {
 )}
 
          {/* Vertragsanbahnung Tab */}
-{activeTab === 'contracts' && (
+{activeTab === 'vertragsanbahnung' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
 
