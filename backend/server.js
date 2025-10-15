@@ -17981,7 +17981,7 @@ async function getHandwerkerIdFromCompanyId(companyId) {
 // ============= TERMINVEREINBARUNGS-ROUTES =============
 
 // Angebotsdaten mit Kontaktinfos für Ortstermin
-app.get('/api/offers/:offerId/details', async (req, res) => {
+app.get('/api/offers/:offerId/details-with-contacts', async (req, res) => {
   try {
     const { offerId } = req.params;
     
