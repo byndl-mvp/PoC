@@ -14756,7 +14756,9 @@ app.get('/api/projects/:projectId/offers/unread-count', async (req, res) => {
       `SELECT COUNT(*) as count
        FROM offers o
        JOIN tenders t ON o.tender_id = t.id
-       WHERE t.project_id = $1 AND o.viewed_at IS NULL`,
+       WHERE t.project_id = $1 
+        AND o.viewed_at IS NULL
+        AND o.status != 'withdrawn'
       [projectId]
     );
     
