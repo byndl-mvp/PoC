@@ -446,34 +446,32 @@ const ContractNegotiationModal = () => {
     }
   };
 
-  // NEUE FUNKTION: Verbindliche Beauftragung (Stufe 2)
-  const handleFinalOrder = async (offer) => {
-    if (!window.confirm('Möchten Sie diesen Handwerker verbindlich beauftragen? Es entsteht ein rechtsgültiger Werkvertrag.')) {
-      return;
-    }
+  // Verbindliche Beauftragung (Stufe 2) - MIT Werkvertrag
+const handleFinalOrder = async (offer) => {
+  if (!window.confirm('Möchten Sie diesen Handwerker verbindlich beauftragen? Es entsteht ein rechtsgültiger Werkvertrag nach VOB/B.')) {
+    return;
+  }
 
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/offers/${offer.id}/final-accept`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: selectedProject.id,
-          offerId: offer.id,
-          timestamp: new Date().toISOString()
-        })
-      });
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/offers/${offer.id}/create-contract`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
 
-      if (res.ok) {
-        alert('Verbindliche Beauftragung erfolgreich! Der Werkvertrag ist zustande gekommen.');
-        loadProjectDetails(selectedProject.id);
-      }
-    } catch (err) {
-      console.error('Fehler bei verbindlicher Beauftragung:', err);
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      const data = await res.json();
+      alert(`Verbindliche Beauftragung erfolgreich! Werkvertrag wurde erstellt (Auftrag #${data.orderId}).`);
+      loadProjectDetails(selectedProject.id);
+      setActiveTab('orders'); // Wechsle zu Aufträge-Tab
     }
-  };
+  } catch (err) {
+    console.error('Fehler bei verbindlicher Beauftragung:', err);
+    alert('Fehler beim Erstellen des Werkvertrags');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const calculateBudgetOverview = () => {
   if (!selectedProject) return null;
