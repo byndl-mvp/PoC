@@ -1922,7 +1922,6 @@ const BudgetVisualization = ({ budget }) => {
           >
             + Neues Projekt anlegen
           </Link>
-        </div>
       </div>
     </>
   )}
