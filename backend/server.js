@@ -18701,6 +18701,41 @@ app.get('/api/handwerker/:handwerkerId/tenders/detailed', async (req, res) => {
   }
 });
 
+// Aufträge für Handwerker laden
+app.get('/api/handwerker/:handwerkerId/orders', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.*,
+        t.name as trade_name,
+        t.code as trade_code,
+        p.street as project_street,
+        p.house_number as project_house_number,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone,
+        b.address as bauherr_address
+       FROM orders o
+       JOIN trades t ON o.trade_id = t.id
+       JOIN projects p ON o.project_id = p.id
+       JOIN bauherren b ON o.bauherr_id = b.id
+       WHERE o.handwerker_id = $1
+       ORDER BY o.created_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Aufträge' });
+  }
+});
+
 // Angebote als gelesen markieren
 app.post('/api/projects/:projectId/offers/mark-all-read', async (req, res) => {
   try {
