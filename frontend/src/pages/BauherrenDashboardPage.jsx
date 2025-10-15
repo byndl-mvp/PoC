@@ -1331,6 +1331,16 @@ const BudgetVisualization = ({ budget }) => {
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Eingegangene Angebote</h2>
     
+    {/* Filtere vorläufig beauftragte Angebote raus */}
+    {(() => {
+      const filteredOffers = offers.filter(o => 
+        o.status !== 'preliminary' && 
+        o.status !== 'confirmed' && 
+        o.status !== 'accepted'
+      );
+      
+      if (filteredOffers.length === 0) {
+    
     {/* Status-Übersicht */}
     <div className="grid md:grid-cols-4 gap-4 mb-6">
       <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
@@ -1549,8 +1559,9 @@ const BudgetVisualization = ({ budget }) => {
             </div>
           </div>
         ))}
-      </div>
-    )}
+        </div>
+      );
+    })()}
   </div>
 )}
 
