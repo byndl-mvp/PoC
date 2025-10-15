@@ -1051,7 +1051,7 @@ const BudgetVisualization = ({ budget }) => {
         
         {/* Badge nur wenn neue Items vorhanden */}
         {newCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold z-10">
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold z-50">
             {newCount}
           </span>
         )}
