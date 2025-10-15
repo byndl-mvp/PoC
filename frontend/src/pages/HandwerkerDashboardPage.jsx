@@ -684,77 +684,132 @@ if (tendersRes.ok) {
 )}
 
           {/* Vertragsanbahnung Tab */}
-          {activeTab === 'vertragsanbahnung' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
-              
-              <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <p className="text-yellow-300 text-sm">
-                  <strong>⚠️ Exklusivitätsvereinbarung:</strong> In dieser Phase haben Sie exklusiven Kontakt zum Bauherren. 
-                  Die Nachwirkfrist von 24 Monaten ist aktiv. Nutzen Sie die Zeit für Ortstermine und finale Abstimmungen.
-                </p>
+{activeTab === 'contracts' && (
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
+    
+    <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+      <p className="text-yellow-300 text-sm">
+        <strong>⚠️ Exklusivitätsvereinbarung:</strong> In dieser Phase haben Sie exklusiven Kontakt zum Bauherren. 
+        Die Nachwirkfrist von 24 Monaten ist aktiv. Nutzen Sie die Zeit für Ortstermine und finale Abstimmungen.
+      </p>
+    </div>
+    
+    {tenders.filter(t => t.status === 'preliminary').length === 0 ? (
+      <p className="text-gray-400">Keine laufenden Vertragsanbahnungen.</p>
+    ) : (
+      <div className="space-y-6">
+        {tenders.filter(t => t.status === 'preliminary').map((tender, idx) => (
+          <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {tender.trade_name}
+                </h3>
+                <p className="text-gray-300">{tender.project_description}</p>
+                
+                {/* Status Badge */}
+                <div className="mt-2">
+                  {!tender.offer_confirmed && (
+                    <span className="inline-block px-3 py-1 bg-yellow-500/20 text-yellow-300 text-sm rounded-full">
+                      ⏳ Angebot nach Besichtigung noch nicht bestätigt
+                    </span>
+                  )}
+                  {tender.offer_confirmed && (
+                    <span className="inline-block px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
+                      ✓ Angebot bestätigt - Warte auf verbindliche Beauftragung
+                    </span>
+                  )}
+                </div>
               </div>
               
-              {contracts.length === 0 ? (
-                <p className="text-gray-400">Keine laufenden Vertragsanbahnungen.</p>
-              ) : (
-                <div className="space-y-4">
-                  {contracts.map((contract) => (
-                    <div key={contract.id} className="bg-white/5 rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-white">{contract.trade}</h3>
-                          <p className="text-gray-300">{contract.projectType}</p>
-                          <div className="mt-3 bg-white/10 rounded p-3">
-                            <p className="text-sm text-white font-medium mb-2">Kontaktdaten Bauherr:</p>
-                            <p className="text-sm text-gray-300">
-                              Name: {contract.clientName}<br />
-                              Tel: {contract.clientPhone}<br />
-                              E-Mail: {contract.clientEmail}<br />
-                              Adresse: {contract.projectAddress}
-                            </p>
-                          </div>
-                          <p className="text-sm text-gray-400 mt-3">
-                            Vertragsanbahnung seit: {new Date(contract.preliminaryDate).toLocaleDateString('de-DE')}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-teal-400 mb-3">
-                            {contract.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </p>
-                          {!contract.offerConfirmed ? (
-                            <div className="space-y-2">
-                              <button
-                                onClick={() => handleConfirmOffer(contract.id)}
-                                className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                              >
-                                Angebot nach Besichtigung bestätigen
-                              </button>
-                              <button className="w-full px-4 py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all text-sm">
-                                Angebot anpassen
-                              </button>
-                              <button className="w-full px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm">
-                                Angebot zurückziehen
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <span className="block bg-green-600 text-green-200 text-sm px-3 py-2 rounded">
-                                ✓ Angebot bestätigt
-                              </span>
-                              <p className="text-xs text-gray-400">
-                                Warte auf verbindliche Beauftragung
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <div className="text-right ml-6">
+                <p className="text-2xl font-bold text-teal-400 mb-2">
+                  {formatCurrency(tender.offer_amount)}
+                </p>
+                <p className="text-xs text-gray-400">
+                  Vertragsanbahnung seit:<br />
+                  {new Date(tender.preliminary_accepted_at).toLocaleDateString('de-DE')}
+                </p>
+              </div>
+            </div>
+            
+            {/* Kontaktdaten Bauherr */}
+            <div className="bg-white/10 rounded-lg p-4 mb-4">
+              <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Bauherr</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="text-gray-300">
+                  <p><strong className="text-white">Name:</strong> {tender.bauherr_name}</p>
+                  <p className="mt-1"><strong className="text-white">Tel:</strong> {tender.bauherr_phone}</p>
+                </div>
+                <div className="text-gray-300">
+                  <p><strong className="text-white">E-Mail:</strong> {tender.bauherr_email}</p>
+                  <p className="mt-1"><strong className="text-white">Adresse:</strong> {tender.project_address}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Aktionsbuttons */}
+            <div className="flex flex-wrap gap-3">
+              {/* 1. Ortstermin vereinbaren */}
+              <button
+                onClick={() => navigate(`/ortstermin/${tender.offer_id}`)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                📅 Ortstermin vereinbaren
+              </button>
+              
+              {/* 2. Angebot anpassen und bestätigen */}
+              {!tender.offer_confirmed && (
+                <button
+                  onClick={() => navigate(`/handwerker/offer/${tender.offer_id}/confirm`)}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg font-semibold hover:shadow-xl transform hover:scale-[1.02] transition-all"
+                >
+                  ✓ Angebot anpassen und bestätigen
+                </button>
+              )}
+              
+              {/* Wartemeldung wenn bestätigt */}
+              {tender.offer_confirmed && (
+                <div className="flex-1 px-6 py-3 bg-green-500/20 border border-green-500/50 text-green-300 rounded-lg text-center">
+                  ⏳ Warte auf verbindliche Beauftragung durch Bauherr
                 </div>
               )}
+              
+              {/* 3. Angebot zurückziehen */}
+              <button
+                onClick={async () => {
+                  if (!window.confirm('Möchten Sie dieses Angebot wirklich zurückziehen? Die Vertragsanbahnung wird beendet.')) return;
+                  
+                  try {
+                    const res = await fetch(apiUrl(`/api/offers/${tender.offer_id}/withdraw`), {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        reason: 'Handwerker zieht Angebot zurück'
+                      })
+                    });
+                    
+                    if (res.ok) {
+                      alert('Angebot wurde zurückgezogen. Vertragsanbahnung beendet.');
+                      loadTenders(); // Reload
+                    }
+                  } catch (err) {
+                    console.error('Error:', err);
+                    alert('Fehler beim Zurückziehen des Angebots');
+                  }
+                }}
+                className="px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
+              >
+                ❌ Angebot zurückziehen
+              </button>
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
           {/* Aufträge Tab */}
           {activeTab === 'auftraege' && (
