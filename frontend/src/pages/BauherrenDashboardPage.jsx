@@ -1341,230 +1341,237 @@ const BudgetVisualization = ({ budget }) => {
       
       if (filteredOffers.length === 0) {
     
-    {/* Status-Übersicht */}
-    <div className="grid md:grid-cols-4 gap-4 mb-6">
-      <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-        <p className="text-gray-400 text-sm">Neue Angebote</p>
-        <p className="text-2xl font-bold text-teal-400">
-          {offers.filter(o => !o.viewed).length}
+   {/* Status-Übersicht */}
+<div className="grid md:grid-cols-4 gap-4 mb-6">
+  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+    <p className="text-gray-400 text-sm">Neue Angebote</p>
+    <p className="text-2xl font-bold text-teal-400">
+      {offers.filter(o => !o.viewed).length}
+    </p>
+  </div>
+  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+    <p className="text-gray-400 text-sm">In Prüfung</p>
+    <p className="text-2xl font-bold text-yellow-400">
+      {offers.filter(o => o.status === 'reviewing').length}
+    </p>
+  </div>
+  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+    <p className="text-gray-400 text-sm">Vertragsanbahnung</p>
+    <p className="text-2xl font-bold text-blue-400">
+      {offers.filter(o => o.status === 'preliminary').length}
+    </p>
+  </div>
+  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+    <p className="text-gray-400 text-sm">Beauftragt</p>
+    <p className="text-2xl font-bold text-green-400">
+      {offers.filter(o => o.status === 'accepted').length}
+    </p>
+  </div>
+</div>
+
+{/* Filtere vorläufig beauftragte Angebote raus */}
+{(() => {
+  const filteredOffers = offers.filter(o => 
+    o.status !== 'preliminary' && 
+    o.status !== 'confirmed' && 
+    o.status !== 'accepted'
+  );
+  
+  return (
+    <>
+      <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+        <p className="text-blue-300 text-sm">
+          <strong>ℹ️ Zweistufige Vergabe:</strong> Wählen Sie zunächst "Vorläufig beauftragen" für eine Kennenlernphase. 
+          Nach erfolgreicher Prüfung und Angebotsbestätigung durch den Bieter können Sie verbindlich beauftragen.
         </p>
       </div>
-      <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-        <p className="text-gray-400 text-sm">In Prüfung</p>
-        <p className="text-2xl font-bold text-yellow-400">
-          {offers.filter(o => o.status === 'reviewing').length}
-        </p>
-      </div>
-      <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-        <p className="text-gray-400 text-sm">Vertragsanbahnung</p>
-        <p className="text-2xl font-bold text-blue-400">
-          {offers.filter(o => o.status === 'preliminary').length}
-        </p>
-      </div>
-      <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-        <p className="text-gray-400 text-sm">Beauftragt</p>
-        <p className="text-2xl font-bold text-green-400">
-          {offers.filter(o => o.status === 'accepted').length}
-        </p>
-      </div>
-    </div>
-    
-    <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-      <p className="text-blue-300 text-sm">
-        <strong>ℹ️ Zweistufige Vergabe:</strong> Wählen Sie zunächst "Vorläufig beauftragen" für eine Kennenlernphase. 
-        Nach erfolgreicher Prüfung können Sie verbindlich beauftragen.
-      </p>
-    </div>
-    
-    {offers.length === 0 ? (
-      <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
-        <p className="text-gray-400 mb-4">Noch keine Angebote eingegangen.</p>
-        <button
-          onClick={() => setActiveTab('overview')}
-          className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
-        >
-          Zur Übersicht
-        </button>
-      </div>
-    ) : (
-      <div className="space-y-4">
-        {/* Gruppierung nach Gewerk */}
-        {Object.entries(
-          offers.reduce((grouped, offer) => {
-            const key = offer.tradeName || offer.trade_name || 'Unbekannt';
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(offer);
-            return grouped;
-          }, {})
-        ).map(([tradeName, tradeOffers]) => (
-          <div key={tradeName} className="bg-white/5 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-between">
-              <span>{tradeName}</span>
-              <span className="text-sm text-gray-400">
-                {tradeOffers.length} Angebot(e)
-              </span>
-            </h3>
-            
-            <div className="space-y-3">
-              {tradeOffers.map((offer, idx) => (
-                <div key={idx} className="bg-white/10 rounded-lg p-4 border border-white/20">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-semibold text-white">
-                          {offer.companyName || offer.company_name}
-                        </h4>
-                        {!offer.viewed && (
-                          <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
+      
+      {filteredOffers.length === 0 ? (
+        <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
+          <p className="text-gray-400 mb-4">Noch keine Angebote eingegangen.</p>
+          <button
+            onClick={() => setActiveTab('overview')}
+            className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+          >
+            Zur Übersicht
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Gruppierung nach Gewerk */}
+          {Object.entries(
+            filteredOffers.reduce((grouped, offer) => {
+              const key = offer.tradeName || offer.trade_name || 'Unbekannt';
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(offer);
+              return grouped;
+            }, {})
+          ).map(([tradeName, tradeOffers]) => (
+            <div key={tradeName} className="bg-white/5 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                <span>{tradeName}</span>
+                <span className="text-sm text-gray-400">
+                  {tradeOffers.length} Angebot(e)
+                </span>
+              </h3>
+              
+              <div className="space-y-3">
+                {tradeOffers.map((offer, idx) => (
+                  <div key={idx} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="font-semibold text-white">
+                            {offer.companyName || offer.company_name}
+                          </h4>
+                          {!offer.viewed && (
+                            <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
+                          )}
+                          {offer.bundleDiscount > 0 && (
+                            <span className="bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
+                              Bündelrabatt: {offer.bundleDiscount}%
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
+                          <div>
+                            <p>📅 Eingegangen: {new Date(offer.created_at || offer.date).toLocaleDateString('de-DE')}</p>
+                            <p>⏱️ Ausführung: {offer.executionTime || 'Nach Absprache'}</p>
+                          </div>
+                          <div>
+                            <p>📞 Tel: {offer.phone || 'Wird nach Beauftragung mitgeteilt'}</p>
+                            <p>✉️ Email: {offer.email || 'Wird nach Beauftragung mitgeteilt'}</p>
+                          </div>
+                        </div>
+                        
+                        {offer.notes && (
+                          <div className="mt-3 p-3 bg-white/5 rounded">
+                            <p className="text-xs text-gray-500 mb-1">Anmerkungen:</p>
+                            <p className="text-sm text-gray-300">{offer.notes}</p>
+                          </div>
                         )}
-                        {offer.bundleDiscount > 0 && (
-                          <span className="bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
-                            Bündelrabatt: {offer.bundleDiscount}%
+                      </div>
+                      
+                      <div className="text-right ml-4">
+                        <p className="text-2xl font-bold text-teal-400">
+                          {formatCurrency(offer.amount)}
+                        </p>
+                        <p className="text-xs text-gray-400 mb-3">Netto</p>
+                        
+                        {/* Status-basierte Aktionen */}
+                        {offer.status === 'submitted' && (
+                          <div className="space-y-2">
+                            <button
+                              onClick={async () => {
+                                await fetch(apiUrl(`/api/offers/${offer.id}/mark-viewed`), {
+                                  method: 'POST'
+                                });
+                                navigate(`/project/${selectedProject.id}/offer/${offer.id}`);
+                              }}
+                              className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                            >
+                              LV-Details ansehen
+                            </button>
+                            <button 
+                              onClick={() => handlePreliminaryOrder(offer)}
+                              className="w-full px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors text-sm"
+                            >
+                              Vorläufig beauftragen
+                            </button>
+                            <button
+                              className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                            >
+                              Ablehnen
+                            </button>
+                          </div>
+                        )}
+                        
+                        {offer.status === 'preliminary' && (
+                          <div className="space-y-2">
+                            <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
+                              In Vertragsanbahnung
+                            </span>
+                            <button 
+                              onClick={() => handleFinalOrder(offer)}
+                              className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+                            >
+                              Verbindlich beauftragen
+                            </button>
+                          </div>
+                        )}
+
+                        {offer.status === 'confirmed' && (
+                          <div className="space-y-2">
+                            <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
+                              Verbindliches Angebot nach Ortstermin
+                            </span>
+                            <button 
+                              onClick={() => handleFinalOrder(offer)}
+                              className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+                            >
+                              Jetzt verbindlich beauftragen
+                            </button>
+                          </div>
+                        )}
+                        
+                        {offer.status === 'accepted' && (
+                          <span className="block text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
+                            ✔ Beauftragt
+                          </span>
+                        )}
+                        
+                        {offer.status === 'rejected' && (
+                          <span className="block text-xs bg-red-600 text-red-200 px-2 py-1 rounded">
+                            Abgelehnt
                           </span>
                         )}
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
-                        <div>
-                          <p>📅 Eingegangen: {new Date(offer.created_at || offer.date).toLocaleDateString('de-DE')}</p>
-                          <p>⏱️ Ausführung: {offer.executionTime || 'Nach Absprache'}</p>
-                        </div>
-                        <div>
-                          <p>📞 Tel: {offer.phone || 'Wird nach Beauftragung mitgeteilt'}</p>
-                          <p>✉️ Email: {offer.email || 'Wird nach Beauftragung mitgeteilt'}</p>
-                        </div>
-                      </div>
-                      
-                      {offer.notes && (
-                        <div className="mt-3 p-3 bg-white/5 rounded">
-                          <p className="text-xs text-gray-500 mb-1">Anmerkungen:</p>
-                          <p className="text-sm text-gray-300">{offer.notes}</p>
-                        </div>
-                      )}
                     </div>
                     
-                    <div className="text-right ml-4">
-                      <p className="text-2xl font-bold text-teal-400">
-                        {formatCurrency(offer.amount)}
-                      </p>
-                      <p className="text-xs text-gray-400 mb-3">Netto</p>
-                      
-                      {/* Status-basierte Aktionen */}
-                      {offer.status === 'submitted' && (
-                        <div className="space-y-2">
-                          <button
-                            onClick={async () => {
-                              // Markiere als gelesen
-                              await fetch(apiUrl(`/api/offers/${offer.id}/mark-viewed`), {
-                                method: 'POST'
-                              });
-                              
-                              // Öffne Detail-Ansicht
-                              navigate(`/project/${selectedProject.id}/offer/${offer.id}`);
-                            }}
-                            className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                          >
-                            LV-Details ansehen
-                          </button>
-                          <button 
-                            onClick={() => handlePreliminaryOrder(offer)}
-                            className="w-full px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors text-sm"
-                          >
-                            Vorläufig beauftragen
-                          </button>
-                          <button
-                            className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
-                          >
-                            Ablehnen
-                          </button>
-                        </div>
-                      )}
-                      
-                      {offer.status === 'preliminary' && (
-                        <div className="space-y-2">
-                          <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
-                            In Vertragsanbahnung
-                          </span>
-                          <button 
-                            onClick={() => handleFinalOrder(offer)}
-                            className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                          >
-                            Verbindlich beauftragen
-                          </button>
-                        </div>
-                      )}
-
-                      {offer.status === 'confirmed' && (
-  <div className="space-y-2">
-    <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
-      Verbindliches Angebot nach Ortstermin
-    </span>
-    <button 
-      onClick={() => handleFinalOrder(offer)}
-      className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-    >
-      Jetzt verbindlich beauftragen
-    </button>
-  </div>
-)}
-                      
-                      {offer.status === 'accepted' && (
-                        <span className="block text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
-                          ✔ Beauftragt
+                    {/* Vergleichszeile */}
+                    {idx < tradeOffers.length - 1 && (
+                      <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                          Preisunterschied zum nächsten Angebot:
                         </span>
-                      )}
-                      
-                      {offer.status === 'rejected' && (
-                        <span className="block text-xs bg-red-600 text-red-200 px-2 py-1 rounded">
-                          Abgelehnt
+                        <span className="text-sm font-semibold text-yellow-400">
+                          {formatCurrency(Math.abs(offer.amount - tradeOffers[idx + 1].amount))}
                         </span>
-                      )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                {/* Zusammenfassung pro Gewerk */}
+                {tradeOffers.length > 1 && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-600/10 to-teal-600/10 rounded-lg border border-white/20">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-gray-400">Preisrahmen für {tradeName}:</p>
+                        <p className="text-white">
+                          {formatCurrency(Math.min(...tradeOffers.map(o => o.amount)))} - 
+                          {formatCurrency(Math.max(...tradeOffers.map(o => o.amount)))}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-400">Durchschnittspreis:</p>
+                        <p className="text-xl font-bold text-teal-400">
+                          {formatCurrency(tradeOffers.reduce((sum, o) => sum + o.amount, 0) / tradeOffers.length)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  
-                  {/* Vergleichszeile */}
-                  {idx < tradeOffers.length - 1 && (
-                    <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-                      <span className="text-xs text-gray-500">
-                        Preisunterschied zum nächsten Angebot:
-                      </span>
-                      <span className="text-sm font-semibold text-yellow-400">
-                        {formatCurrency(Math.abs(offer.amount - tradeOffers[idx + 1].amount))}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              {/* Zusammenfassung pro Gewerk */}
-              {tradeOffers.length > 1 && (
-                <div className="mt-4 p-4 bg-gradient-to-r from-blue-600/10 to-teal-600/10 rounded-lg border border-white/20">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm text-gray-400">Preisrahmen für {tradeName}:</p>
-                      <p className="text-white">
-                        {formatCurrency(Math.min(...tradeOffers.map(o => o.amount)))} - 
-                        {formatCurrency(Math.max(...tradeOffers.map(o => o.amount)))}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">Durchschnittspreis:</p>
-                      <p className="text-xl font-bold text-teal-400">
-                        {formatCurrency(tradeOffers.reduce((sum, o) => sum + o.amount, 0) / tradeOffers.length)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
         </div>
-      );
-    })()}
-  </div>
-)}
-
+      )}
+    </>
+  );
+})()}
+        
           {/* Vertragsanbahnung Tab */}
 {activeTab === 'contracts' && (
   <div>
