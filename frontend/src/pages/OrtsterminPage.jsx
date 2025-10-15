@@ -24,7 +24,7 @@ export default function OrtsterminPage() {
   try {
     setLoading(true);
     
-    const offerRes = await fetch(apiUrl(`/api/offers/${offerId}/details`));
+    const offerRes = await fetch(apiUrl(`/api/offers/${offerId}/details-with-contacts`));
     if (offerRes.ok) {
       setOffer(await offerRes.json());
     }
