@@ -18652,27 +18652,43 @@ app.get('/api/handwerker/:handwerkerId/tenders/detailed', async (req, res) => {
       `SELECT DISTINCT ON (t.id)
         t.*,
         tr.name as trade_name,
+        tr.code as trade_code,
+        p.id as project_id,
+        p.category as project_category,
+        p.sub_category as project_sub_category,
         p.description as project_description,
-        p.category,
-        p.sub_category,
-        p.zip_code as project_zip,
-        p.city as project_city,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as project_address,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone,
+        b.address as bauherr_address,
         ths.status as tender_status,
         ths.viewed_at,
-        th.status as th_status,  -- NEU: Status aus tender_handwerker
+        th.status as th_status,
         o.id as offer_id,
+        o.amount as offer_amount,
         o.status as offer_status,
-        o.stage as offer_stage
+        o.stage as offer_stage,
+        o.preliminary_accepted_at,
+        o.offer_confirmed_at,
+        o.notes as offer_notes,
+        o.execution_start,
+        o.execution_end
        FROM tenders t
        JOIN trades tr ON t.trade_id = tr.id
        JOIN projects p ON t.project_id = p.id
-       JOIN tender_handwerker th ON t.id = th.tender_id AND th.handwerker_id = $1  -- NEU
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN tender_handwerker th ON t.id = th.tender_id AND th.handwerker_id = $1
        LEFT JOIN tender_handwerker_status ths ON t.id = ths.tender_id AND ths.handwerker_id = $1
        LEFT JOIN offers o ON t.id = o.tender_id AND o.handwerker_id = $1
        WHERE t.trade_id IN (SELECT trade_id FROM handwerker_trades WHERE handwerker_id = $1)
        AND t.status = 'open'
-       AND th.status != 'rejected'  -- NEU: Keine abgelehnten
-       AND o.id IS NULL  -- NEU: Keine mit Angeboten (statt der komplexen OR Bedingung)
+       AND th.status != 'rejected'
+       AND o.id IS NULL
        ORDER BY t.id, t.created_at DESC`,
       [handwerkerId]
     );
