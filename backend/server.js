@@ -15741,6 +15741,823 @@ app.get('/api/projects/:projectId/withdrawn-offers', async (req, res) => {
   }
 });
 
+// Angebot verbindlich bestätigen (nach Ortstermin)
+app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { amount, execution_start, execution_end, notes } = req.body;
+    
+    await query('BEGIN');
+    
+    // Update Offer
+    await query(
+      `UPDATE offers 
+       SET status = 'confirmed',
+           amount = $2,
+           execution_start = $3,
+           execution_end = $4,
+           notes = $5,
+           offer_confirmed_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [offerId, amount, execution_start, execution_end, notes]
+    );
+    
+    // Benachrichtige Bauherr
+    const offerData = await query(
+      `SELECT o.*, b.email, b.name, t.name as trade_name, h.company_name
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON tn.trade_id = t.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE o.id = $1`,
+      [offerId]
+    );
+    
+    if (offerData.rows.length > 0 && transporter) {
+      const offer = offerData.rows[0];
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: offer.email,
+        subject: `Angebot bestätigt - ${offer.trade_name}`,
+        html: `
+          <h2>Angebot wurde bestätigt</h2>
+          <p>Gute Nachrichten! <strong>${offer.company_name}</strong> hat das Angebot für <strong>${offer.trade_name}</strong> nach dem Ortstermin verbindlich bestätigt.</p>
+          <p><strong>Angebotssumme:</strong> ${amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</p>
+          <p><strong>Ausführung:</strong> ${new Date(execution_start).toLocaleDateString('de-DE')} bis ${new Date(execution_end).toLocaleDateString('de-DE')}</p>
+          ${notes ? `<p><strong>Anmerkungen:</strong> ${notes}</p>` : ''}
+          <p>Sie können das Angebot nun verbindlich beauftragen.</p>
+          <a href="https://byndl.de/bauherr/dashboard">Zum Dashboard</a>
+        `
+      });
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Werkvertrag generieren und Auftrag erstellen
+app.post('/api/offers/:offerId/create-contract', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query('BEGIN');
+    
+    // Hole alle relevanten Daten
+    const offerData = await query(
+      `SELECT 
+        o.*,
+        h.company_name,
+        h.address as handwerker_address,
+        h.contact_person,
+        h.phone as handwerker_phone,
+        h.email as handwerker_email,
+        b.name as bauherr_name,
+        b.address as bauherr_address,
+        b.phone as bauherr_phone,
+        b.email as bauherr_email,
+        p.id as project_id,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        p.description as project_description,
+        t.name as trade_name,
+        t.code as trade_code
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = $1 AND o.status = 'confirmed'`,
+      [offerId]
+    );
+    
+    if (offerData.rows.length === 0) {
+      throw new Error('Angebot nicht gefunden oder nicht bestätigt');
+    }
+    
+    const offer = offerData.rows[0];
+    
+    // Werkvertrag-Text generieren (VOB-konform)
+    const contractText = generateVOBContract(offer);
+    
+    // Erstelle Order/Werkvertrag
+    const orderResult = await query(
+      `INSERT INTO orders 
+       (project_id, offer_id, handwerker_id, bauherr_id, trade_id, 
+        amount, execution_start, execution_end, 
+        contract_text, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active', NOW())
+       RETURNING id`,
+      [
+        offer.project_id,
+        offerId,
+        offer.handwerker_id,
+        offer.bauherr_id,
+        offer.trade_id,
+        offer.amount,
+        offer.execution_start,
+        offer.execution_end,
+        contractText
+      ]
+    );
+    
+    const orderId = orderResult.rows[0].id;
+    
+    // Update Offer Status
+    await query(
+      `UPDATE offers 
+       SET status = 'accepted', 
+           accepted_at = NOW()
+       WHERE id = $1`,
+      [offerId]
+    );
+    
+    // Benachrichtige Handwerker
+    if (transporter) {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: offer.handwerker_email,
+        subject: `Auftrag erteilt - ${offer.trade_name}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+              <h1>🎉 Auftrag erteilt!</h1>
+            </div>
+            
+            <div style="padding: 30px; background: #f7f7f7;">
+              <p>Sehr geehrte Damen und Herren,</p>
+              
+              <p><strong>${offer.bauherr_name}</strong> hat Ihnen den Auftrag für <strong>${offer.trade_name}</strong> verbindlich erteilt.</p>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #10b981;">Auftragsdetails:</h3>
+                <table style="width: 100%;">
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Auftragssumme:</strong></td>
+                    <td style="text-align: right;">${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Ausführung:</strong></td>
+                    <td style="text-align: right;">${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
+                    <td style="text-align: right;">${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Auftrags-Nr:</strong></td>
+                    <td style="text-align: right;">#${orderId}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <p><strong>Nächste Schritte:</strong></p>
+              <ul>
+                <li>Prüfen Sie den Werkvertrag in Ihrem Dashboard</li>
+                <li>Laden Sie den Vertrag als PDF herunter</li>
+                <li>Planen Sie die Ausführung gemäß den vereinbarten Terminen</li>
+              </ul>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://byndl.de/handwerker/dashboard" 
+                   style="display: inline-block; padding: 12px 30px; background: #10b981; color: white; text-decoration: none; border-radius: 5px;">
+                  Zum Dashboard →
+                </a>
+              </div>
+              
+              <div style="margin-top: 30px; padding: 15px; background: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px;">
+                <strong>Rechtliche Hinweise:</strong><br>
+                - Werkvertrag nach VOB/B<br>
+                - Gewährleistungsfrist: 4 Jahre für Bauwerke, 2 Jahre für bewegliche Sachen<br>
+                - Abnahme erforderlich
+              </div>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
+              <p>© 2025 byndl - Die digitale Handwerkerplattform</p>
+            </div>
+          </div>
+        `
+      });
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      orderId: orderId,
+      message: 'Werkvertrag erstellt und Auftrag erteilt' 
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error creating contract:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Hilfsfunktion: VOB-konformen Werkvertrag generieren
+function generateVOBContract(offer) {
+  const today = new Date().toLocaleDateString('de-DE');
+  
+  return `
+WERKVERTRAG
+nach VOB/B (Vergabe- und Vertragsordnung für Bauleistungen Teil B)
+
+Vertragsnummer: WV-${offer.id}-${new Date().getFullYear()}
+Datum: ${today}
+
+═══════════════════════════════════════════════════════════════
+
+§ 1 VERTRAGSPARTEIEN
+
+AUFTRAGGEBER (AG):
+${offer.bauherr_name}
+${offer.bauherr_address || ''}
+Tel: ${offer.bauherr_phone}
+E-Mail: ${offer.bauherr_email}
+
+AUFTRAGNEHMER (AN):
+${offer.company_name}
+${offer.handwerker_address || ''}
+Tel: ${offer.handwerker_phone}
+E-Mail: ${offer.handwerker_email}
+${offer.contact_person ? `Ansprechpartner: ${offer.contact_person}` : ''}
+
+═══════════════════════════════════════════════════════════════
+
+§ 2 VERTRAGSGEGENSTAND
+
+Gewerk: ${offer.trade_name} (Code: ${offer.trade_code})
+
+Ausführungsort:
+${offer.street} ${offer.house_number}
+${offer.zip_code} ${offer.city}
+
+Projektbeschreibung:
+${offer.project_description || 'Wie im Leistungsverzeichnis beschrieben'}
+
+═══════════════════════════════════════════════════════════════
+
+§ 3 LEISTUNGSUMFANG
+
+Die zu erbringenden Leistungen ergeben sich aus dem diesem Vertrag 
+als Anlage beigefügten Leistungsverzeichnis (LV).
+
+Das Leistungsverzeichnis ist Bestandteil dieses Vertrags und 
+beschreibt Art und Umfang der zu erbringenden Leistungen im Detail.
+
+Der AN verpflichtet sich, alle im LV aufgeführten Positionen 
+fachgerecht und nach den anerkannten Regeln der Technik sowie 
+den einschlägigen DIN-Normen auszuführen.
+
+═══════════════════════════════════════════════════════════════
+
+§ 4 VERGÜTUNG
+
+Vertragssumme (Netto): ${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+zzgl. gesetzlicher MwSt. (${19}%): ${(offer.amount * 0.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+───────────────────────────────────────────────────────────────
+Gesamtsumme (Brutto): ${(offer.amount * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+
+Die Vergütung erfolgt nach tatsächlich erbrachter und abgenommener Leistung 
+gemäß den Mengen und Einheitspreisen des Leistungsverzeichnisses.
+
+Zahlungsbedingungen:
+- Abschlagszahlungen nach Baufortschritt möglich
+- Schlusszahlung innerhalb von 30 Tagen nach Abnahme
+- Einbehalt von 5% als Sicherheit bis zum Ablauf der Gewährleistungsfrist
+
+═══════════════════════════════════════════════════════════════
+
+§ 5 AUSFÜHRUNGSFRISTEN
+
+Beginn der Ausführung: ${new Date(offer.execution_start).toLocaleDateString('de-DE')}
+Fertigstellung bis: ${new Date(offer.execution_end).toLocaleDateString('de-DE')}
+
+Bei Verzug ist der AN verpflichtet, eine Vertragsstrafe in Höhe von 
+0,2% der Auftragssumme pro Werktag zu zahlen, maximal jedoch 5% 
+der Gesamtauftragssumme.
+
+Verlängerungen der Ausführungsfrist sind nur bei Behinderungen 
+gemäß § 6 VOB/B zulässig und bedürfen der schriftlichen Vereinbarung.
+
+═══════════════════════════════════════════════════════════════
+
+§ 6 ABNAHME
+
+Die Abnahme erfolgt nach Fertigstellung der Leistungen durch 
+den AG oder dessen Bevollmächtigten.
+
+Der AN hat den AG rechtzeitig zur Abnahme aufzufordern.
+
+Die Abnahme darf nur verweigert werden, wenn wesentliche Mängel 
+vorliegen, die die Gebrauchsfähigkeit beeinträchtigen.
+
+Mit der Abnahme geht die Gefahr auf den AG über und die 
+Gewährleistungsfrist beginnt.
+
+═══════════════════════════════════════════════════════════════
+
+§ 7 GEWÄHRLEISTUNG
+
+Gewährleistungsfrist:
+- 4 Jahre für Arbeiten an Bauwerken (§ 634a Abs. 1 Nr. 2 BGB)
+- 2 Jahre für andere Arbeiten
+
+Die Gewährleistungsfrist beginnt mit der Abnahme der Leistung.
+
+Der AN haftet für Mängel, die bei Abnahme vorhanden waren oder 
+während der Gewährleistungsfrist auftreten.
+
+Bei berechtigten Mängelrügen hat der AN nach seiner Wahl das 
+Recht zur Nacherfüllung durch Nachbesserung oder Neuherstellung.
+
+═══════════════════════════════════════════════════════════════
+
+§ 8 VERSICHERUNG
+
+Der AN verpflichtet sich, für die Dauer der Ausführung eine 
+ausreichende Betriebshaftpflichtversicherung zu unterhalten.
+
+Der Nachweis ist auf Verlangen vorzulegen.
+
+═══════════════════════════════════════════════════════════════
+
+§ 9 SICHERHEITSVORSCHRIFTEN
+
+Der AN verpflichtet sich zur Einhaltung aller einschlägigen 
+Arbeitsschutz-, Unfallverhütungs- und Sicherheitsvorschriften.
+
+═══════════════════════════════════════════════════════════════
+
+§ 10 KÜNDIGUNG
+
+Beide Parteien können den Vertrag aus wichtigem Grund kündigen.
+
+Der AG kann den Vertrag jederzeit bis zur Vollendung der Leistung 
+kündigen (§ 8 VOB/B).
+
+═══════════════════════════════════════════════════════════════
+
+§ 11 SCHLUSSBESTIMMUNGEN
+
+Es gilt das Recht der Bundesrepublik Deutschland.
+
+Erfüllungsort und Gerichtsstand ist ${offer.city}.
+
+Änderungen und Ergänzungen dieses Vertrages bedürfen der 
+Schriftform.
+
+Sollten einzelne Bestimmungen unwirksam sein, bleibt die 
+Wirksamkeit der übrigen Bestimmungen unberührt.
+
+Dieser Vertrag wurde auf elektronischem Wege über die 
+Plattform byndl.de geschlossen und ist rechtsgültig.
+
+═══════════════════════════════════════════════════════════════
+
+ANLAGEN:
+- Leistungsverzeichnis (LV) mit detaillierter Positionsbeschreibung
+- Planunterlagen (falls vorhanden)
+
+═══════════════════════════════════════════════════════════════
+
+Elektronisch bestätigt am: ${today}
+
+Auftraggeber: ${offer.bauherr_name}
+Auftragnehmer: ${offer.company_name}
+
+Über byndl.de digital abgeschlossen
+  `.trim();
+}
+
+// Werkvertrag als PDF generieren
+app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    // Lade alle Auftragsdaten inkl. LV
+    const orderResult = await query(
+      `SELECT 
+        o.*,
+        h.company_name,
+        h.address as handwerker_address,
+        h.contact_person,
+        h.phone as handwerker_phone,
+        h.email as handwerker_email,
+        b.name as bauherr_name,
+        b.address as bauherr_address,
+        b.phone as bauherr_phone,
+        b.email as bauherr_email,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        p.description as project_description,
+        t.name as trade_name,
+        t.code as trade_code,
+        of.lv_data
+       FROM orders o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN projects p ON o.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON o.trade_id = t.id
+       JOIN offers of ON o.offer_id = of.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+    
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Auftrag nicht gefunden' });
+    }
+    
+    const order = orderResult.rows[0];
+    
+    // Parse LV-Daten
+    let lvData = null;
+    if (order.lv_data) {
+      lvData = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
+    }
+    
+    // PDF erstellen
+    const doc = new PDFDocument({
+      size: 'A4',
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      info: {
+        Title: `Werkvertrag ${orderId}`,
+        Author: 'byndl GmbH',
+        Subject: 'Werkvertrag nach VOB/B',
+        Creator: 'byndl Platform'
+      }
+    });
+    
+    // Response-Header setzen
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Werkvertrag-${orderId}.pdf"`);
+    
+    // PDF-Stream an Response pipen
+    doc.pipe(res);
+    
+    // === TITELSEITE ===
+    doc.fontSize(24).font('Helvetica-Bold').text('WERKVERTRAG', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica').text('nach VOB/B', { align: 'center' });
+    doc.fontSize(10).text('(Vergabe- und Vertragsordnung für Bauleistungen Teil B)', { align: 'center' });
+    
+    doc.moveDown(2);
+    
+    // Vertragsnummer und Datum
+    doc.fontSize(10);
+    doc.text(`Vertragsnummer: WV-${order.id}-${new Date().getFullYear()}`, { align: 'center' });
+    doc.text(`Datum: ${new Date().toLocaleDateString('de-DE')}`, { align: 'center' });
+    
+    doc.moveDown(3);
+    
+    // === § 1 VERTRAGSPARTEIEN ===
+    addSection(doc, '§ 1 VERTRAGSPARTEIEN');
+    
+    doc.fontSize(10).font('Helvetica-Bold').text('AUFTRAGGEBER (AG):');
+    doc.font('Helvetica');
+    doc.text(order.bauherr_name);
+    if (order.bauherr_address) doc.text(order.bauherr_address);
+    doc.text(`Tel: ${order.bauherr_phone}`);
+    doc.text(`E-Mail: ${order.bauherr_email}`);
+    
+    doc.moveDown(1);
+    
+    doc.font('Helvetica-Bold').text('AUFTRAGNEHMER (AN):');
+    doc.font('Helvetica');
+    doc.text(order.company_name);
+    if (order.handwerker_address) doc.text(order.handwerker_address);
+    doc.text(`Tel: ${order.handwerker_phone}`);
+    doc.text(`E-Mail: ${order.handwerker_email}`);
+    if (order.contact_person) doc.text(`Ansprechpartner: ${order.contact_person}`);
+    
+    // === § 2 VERTRAGSGEGENSTAND ===
+    addSection(doc, '§ 2 VERTRAGSGEGENSTAND');
+    
+    doc.font('Helvetica-Bold').text(`Gewerk: `);
+    doc.font('Helvetica').text(`${order.trade_name} (Code: ${order.trade_code})`, { continued: false });
+    
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Bold').text('Ausführungsort:');
+    doc.font('Helvetica').text(`${order.street} ${order.house_number}`);
+    doc.text(`${order.zip_code} ${order.city}`);
+    
+    if (order.project_description) {
+      doc.moveDown(0.5);
+      doc.font('Helvetica-Bold').text('Projektbeschreibung:');
+      doc.font('Helvetica').text(order.project_description, { width: 500 });
+    }
+    
+    // === § 3 LEISTUNGSUMFANG ===
+    addSection(doc, '§ 3 LEISTUNGSUMFANG');
+    
+    doc.font('Helvetica').text(
+      'Die zu erbringenden Leistungen ergeben sich aus dem diesem Vertrag als Anlage beigefügten Leistungsverzeichnis (LV).',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text(
+      'Das Leistungsverzeichnis ist Bestandteil dieses Vertrags und beschreibt Art und Umfang der zu erbringenden Leistungen im Detail.',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text(
+      'Der AN verpflichtet sich, alle im LV aufgeführten Positionen fachgerecht und nach den anerkannten Regeln der Technik sowie den einschlägigen DIN-Normen auszuführen.',
+      { width: 500 }
+    );
+    
+    // === § 4 VERGÜTUNG ===
+    addSection(doc, '§ 4 VERGÜTUNG');
+    
+    const netto = parseFloat(order.amount);
+    const mwst = netto * 0.19;
+    const brutto = netto + mwst;
+    
+    doc.fontSize(11).font('Helvetica-Bold');
+    doc.text(`Vertragssumme (Netto): ${formatCurrency(netto)}`);
+    doc.text(`zzgl. gesetzlicher MwSt. (19%): ${formatCurrency(mwst)}`);
+    doc.text('─'.repeat(60));
+    doc.text(`Gesamtsumme (Brutto): ${formatCurrency(brutto)}`);
+    
+    doc.moveDown(1);
+    doc.fontSize(10).font('Helvetica');
+    doc.text(
+      'Die Vergütung erfolgt nach tatsächlich erbrachter und abgenommener Leistung gemäß den Mengen und Einheitspreisen des Leistungsverzeichnisses.',
+      { width: 500 }
+    );
+    
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Bold').text('Zahlungsbedingungen:');
+    doc.font('Helvetica');
+    doc.list([
+      'Abschlagszahlungen nach Baufortschritt möglich',
+      'Schlusszahlung innerhalb von 30 Tagen nach Abnahme',
+      'Einbehalt von 5% als Sicherheit bis zum Ablauf der Gewährleistungsfrist'
+    ]);
+    
+    // === § 5 AUSFÜHRUNGSFRISTEN ===
+    addSection(doc, '§ 5 AUSFÜHRUNGSFRISTEN');
+    
+    doc.font('Helvetica-Bold').text('Beginn der Ausführung: ');
+    doc.font('Helvetica').text(new Date(order.execution_start).toLocaleDateString('de-DE'), { continued: false });
+    
+    doc.font('Helvetica-Bold').text('Fertigstellung bis: ');
+    doc.font('Helvetica').text(new Date(order.execution_end).toLocaleDateString('de-DE'), { continued: false });
+    
+    doc.moveDown(0.5);
+    doc.text(
+      'Bei Verzug ist der AN verpflichtet, eine Vertragsstrafe in Höhe von 0,2% der Auftragssumme pro Werktag zu zahlen, maximal jedoch 5% der Gesamtauftragssumme.',
+      { width: 500 }
+    );
+    
+    // === § 6 ABNAHME ===
+    addSection(doc, '§ 6 ABNAHME');
+    
+    doc.text(
+      'Die Abnahme erfolgt nach Fertigstellung der Leistungen durch den AG oder dessen Bevollmächtigten.',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text('Der AN hat den AG rechtzeitig zur Abnahme aufzufordern.', { width: 500 });
+    doc.moveDown(0.5);
+    doc.text(
+      'Die Abnahme darf nur verweigert werden, wenn wesentliche Mängel vorliegen, die die Gebrauchsfähigkeit beeinträchtigen.',
+      { width: 500 }
+    );
+    
+    // === § 7 GEWÄHRLEISTUNG ===
+    addSection(doc, '§ 7 GEWÄHRLEISTUNG');
+    
+    doc.font('Helvetica-Bold').text('Gewährleistungsfrist:');
+    doc.font('Helvetica');
+    doc.list([
+      '4 Jahre für Arbeiten an Bauwerken (§ 634a Abs. 1 Nr. 2 BGB)',
+      '2 Jahre für andere Arbeiten'
+    ]);
+    
+    doc.moveDown(0.5);
+    doc.text('Die Gewährleistungsfrist beginnt mit der Abnahme der Leistung.', { width: 500 });
+    doc.moveDown(0.5);
+    doc.text(
+      'Bei berechtigten Mängelrügen hat der AN nach seiner Wahl das Recht zur Nacherfüllung durch Nachbesserung oder Neuherstellung.',
+      { width: 500 }
+    );
+    
+    // === § 8-11 (Kurz) ===
+    addSection(doc, '§ 8 VERSICHERUNG');
+    doc.text(
+      'Der AN verpflichtet sich, für die Dauer der Ausführung eine ausreichende Betriebshaftpflichtversicherung zu unterhalten.',
+      { width: 500 }
+    );
+    
+    addSection(doc, '§ 9 SICHERHEITSVORSCHRIFTEN');
+    doc.text(
+      'Der AN verpflichtet sich zur Einhaltung aller einschlägigen Arbeitsschutz-, Unfallverhütungs- und Sicherheitsvorschriften.',
+      { width: 500 }
+    );
+    
+    addSection(doc, '§ 10 KÜNDIGUNG');
+    doc.text('Beide Parteien können den Vertrag aus wichtigem Grund kündigen.', { width: 500 });
+    doc.moveDown(0.5);
+    doc.text('Der AG kann den Vertrag jederzeit bis zur Vollendung der Leistung kündigen (§ 8 VOB/B).', { width: 500 });
+    
+    addSection(doc, '§ 11 SCHLUSSBESTIMMUNGEN');
+    doc.text('Es gilt das Recht der Bundesrepublik Deutschland.', { width: 500 });
+    doc.moveDown(0.5);
+    doc.text(`Erfüllungsort und Gerichtsstand ist ${order.city}.`, { width: 500 });
+    doc.moveDown(0.5);
+    doc.text('Änderungen und Ergänzungen dieses Vertrages bedürfen der Schriftform.', { width: 500 });
+    
+    doc.moveDown(2);
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text('═'.repeat(80));
+    doc.moveDown(0.5);
+    doc.text(`Elektronisch bestätigt am: ${new Date(order.created_at).toLocaleDateString('de-DE')}`);
+    doc.moveDown(0.5);
+    doc.text(`Auftraggeber: ${order.bauherr_name}`);
+    doc.text(`Auftragnehmer: ${order.company_name}`);
+    doc.moveDown(0.5);
+    doc.fontSize(8).font('Helvetica-Oblique').text('Über byndl.de digital abgeschlossen', { align: 'center' });
+    
+    // === NEUE SEITE: LEISTUNGSVERZEICHNIS ===
+    if (lvData && lvData.positions && lvData.positions.length > 0) {
+      doc.addPage();
+      
+      doc.fontSize(18).font('Helvetica-Bold').text('ANLAGE 1: LEISTUNGSVERZEICHNIS', { align: 'center' });
+      doc.moveDown(1);
+      
+      doc.fontSize(12).font('Helvetica');
+      doc.text(`Gewerk: ${order.trade_name}`, { align: 'center' });
+      doc.moveDown(2);
+      
+      // Tabellenkopf
+      const tableTop = doc.y;
+      const colWidths = {
+        pos: 40,
+        title: 180,
+        quantity: 60,
+        unit: 40,
+        unitPrice: 70,
+        total: 80
+      };
+      
+      doc.fontSize(9).font('Helvetica-Bold');
+      
+      let xPos = 50;
+      doc.text('Pos.', xPos, tableTop, { width: colWidths.pos, align: 'left' });
+      xPos += colWidths.pos;
+      doc.text('Bezeichnung', xPos, tableTop, { width: colWidths.title, align: 'left' });
+      xPos += colWidths.title;
+      doc.text('Menge', xPos, tableTop, { width: colWidths.quantity, align: 'right' });
+      xPos += colWidths.quantity;
+      doc.text('Einh.', xPos, tableTop, { width: colWidths.unit, align: 'center' });
+      xPos += colWidths.unit;
+      doc.text('EP (€)', xPos, tableTop, { width: colWidths.unitPrice, align: 'right' });
+      xPos += colWidths.unitPrice;
+      doc.text('GP (€)', xPos, tableTop, { width: colWidths.total, align: 'right' });
+      
+      // Trennlinie
+      doc.moveTo(50, doc.y + 5).lineTo(545, doc.y + 5).stroke();
+      doc.moveDown(0.5);
+      
+      // Positionen
+      doc.fontSize(8).font('Helvetica');
+      
+      lvData.positions.forEach((pos, index) => {
+        // Prüfe ob neue Seite nötig
+        if (doc.y > 700) {
+          doc.addPage();
+          doc.fontSize(8).font('Helvetica');
+        }
+        
+        const startY = doc.y;
+        
+        // Position
+        xPos = 50;
+        doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
+        
+        // Bezeichnung (mit Umbruch)
+        xPos += colWidths.pos;
+        const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
+        doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
+        
+        // Menge
+        xPos += colWidths.title;
+        doc.text((pos.quantity || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
+        
+        // Einheit
+        xPos += colWidths.quantity;
+        doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
+        
+        // EP
+        xPos += colWidths.unit;
+        doc.text((pos.unitPrice || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
+        
+        // GP
+        xPos += colWidths.unitPrice;
+        doc.text((pos.totalPrice || 0).toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
+        
+        doc.moveDown(Math.max(1, titleHeight / 12));
+        
+        // Beschreibung (falls vorhanden)
+        if (pos.description) {
+          doc.fontSize(7).font('Helvetica-Oblique');
+          doc.text(pos.description, 90, doc.y, { width: 450 });
+          doc.moveDown(0.5);
+          doc.fontSize(8).font('Helvetica');
+        }
+        
+        // Trennlinie
+        if (index < lvData.positions.length - 1) {
+          doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+          doc.moveDown(0.3);
+        }
+      });
+      
+      // Summen
+      doc.moveDown(1);
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke();
+      doc.moveDown(0.5);
+      
+      xPos = 370;
+      doc.text('Netto-Summe:', xPos, doc.y, { width: 100, align: 'left' });
+      doc.text(formatCurrency(netto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+      
+      doc.moveDown(0.5);
+      doc.fontSize(9).font('Helvetica');
+      doc.text('zzgl. 19% MwSt:', xPos, doc.y, { width: 100, align: 'left' });
+      doc.text(formatCurrency(mwst), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+      
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica-Bold');
+      doc.moveTo(xPos, doc.y).lineTo(xPos + 180, doc.y).stroke();
+      doc.moveDown(0.3);
+      doc.text('Gesamt (Brutto):', xPos, doc.y, { width: 100, align: 'left' });
+      doc.text(formatCurrency(brutto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+    }
+    
+    // Footer auf allen Seiten
+    const pages = doc.bufferedPageRange();
+    for (let i = 0; i < pages.count; i++) {
+      doc.switchToPage(i);
+      
+      doc.fontSize(8).font('Helvetica');
+      doc.text(
+        `Seite ${i + 1} von ${pages.count}`,
+        50,
+        doc.page.height - 50,
+        { align: 'center' }
+      );
+      
+      doc.fontSize(7).font('Helvetica-Oblique');
+      doc.text(
+        'byndl GmbH - Die digitale Handwerkerplattform',
+        50,
+        doc.page.height - 35,
+        { align: 'center' }
+      );
+    }
+    
+    // PDF abschließen
+    doc.end();
+    
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen des PDFs' });
+  }
+});
+
+// Hilfsfunktion für Abschnitte
+function addSection(doc, title) {
+  if (doc.y > 650) {
+    doc.addPage();
+  }
+  
+  doc.moveDown(1);
+  doc.fontSize(11).font('Helvetica-Bold');
+  doc.text('═'.repeat(80));
+  doc.moveDown(0.3);
+  doc.text(title);
+  doc.moveDown(0.3);
+  doc.fontSize(10).font('Helvetica');
+}
+
 // ============= AUSSCHREIBUNGS-SYSTEM =============
 
 // kleiner Helfer
