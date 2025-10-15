@@ -71,11 +71,16 @@ if (tendersRes.ok) {
       }
       
       // Lade Vertragsanbahnungen
-      const contractsRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/contracts`));
-      if (contractsRes.ok) {
-        const contractsData = await contractsRes.json();
-        setContracts(contractsData);
-      }
+const contractsRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/contracts`));
+console.log('🔴 Contracts Response:', contractsRes.ok, contractsRes.status);
+
+if (contractsRes.ok) {
+  const contractsData = await contractsRes.json();
+  console.log('🔴 Contracts Data empfangen:', contractsData);
+  console.log('🔴 Contracts Length:', contractsData.length);
+  setContracts(contractsData);
+  console.log('🔴 setContracts() aufgerufen');
+}
       
       // Lade erteilte Aufträge
       const ordersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/orders`));
@@ -664,6 +669,16 @@ if (tendersRes.ok) {
 {activeTab === 'contracts' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
+
+{/* DEBUG BOX - TEMPORÄR */}
+    <div className="bg-red-500 text-white p-4 mb-4 rounded">
+      <p className="font-bold mb-2">🔴 DEBUG INFO:</p>
+      <p>contracts.length: <strong>{contracts.length}</strong></p>
+      <p>contracts State: <strong>{contracts ? 'EXISTS' : 'NULL'}</strong></p>
+      <p className="text-xs mt-2 break-all">
+        Data: {JSON.stringify(contracts).substring(0, 200)}...
+      </p>
+    </div>
     
     <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
       <p className="text-yellow-300 text-sm">
