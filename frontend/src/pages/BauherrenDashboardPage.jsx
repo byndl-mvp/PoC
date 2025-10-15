@@ -1669,57 +1669,92 @@ const BudgetVisualization = ({ budget }) => {
             </div>
             
             {/* Aktionsbuttons */}
-            <div className="flex flex-wrap gap-3">
-              {/* Angebot ansehen */}
-              <button
-                onClick={() => navigate(`/project/${selectedProject.id}/offer/${offer.id}`)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-              >
-                📋 Angebot im Detail ansehen
-              </button>
-              
-              {/* Verbindlich beauftragen - nur wenn bestätigt */}
-              {offer.status === 'confirmed' && (
-                <button 
-                  onClick={() => handleFinalOrder(offer)}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg font-semibold hover:shadow-xl transform hover:scale-[1.02] transition-all"
-                >
-                  ✓ Jetzt verbindlich beauftragen
-                </button>
-              )}
-              
-              {/* Vertragsanbahnung beenden */}
-              {offer.status === 'preliminary' && (
-                <button
-                  onClick={async () => {
-                    if (!window.confirm('Möchten Sie diese Vertragsanbahnung wirklich beenden?')) return;
-                    
-                    try {
-                      setLoading(true);
-                      const res = await fetch(apiUrl(`/api/offers/${offer.id}/cancel-preliminary`), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                      });
-                      
-                      if (res.ok) {
-                        alert('Vertragsanbahnung beendet');
-                        loadProjectDetails(selectedProject.id);
-                      } else {
-                        throw new Error('Fehler beim Beenden');
-                      }
-                    } catch (err) {
-                      console.error('Error:', err);
-                      alert('Fehler beim Beenden der Vertragsanbahnung');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  className="px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
-                >
-                  Vertragsanbahnung beenden
-                </button>
-              )}
-            </div>
+<div className="flex flex-wrap gap-3">
+  {/* Angebot ansehen */}
+  <button
+    onClick={() => navigate(`/project/${selectedProject.id}/offer/${offer.id}`)}
+    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+  >
+    📋 Angebot im Detail ansehen
+  </button>
+  
+  {/* PHASE 2: Verbindlich beauftragen - nur wenn bestätigt */}
+  {offer.status === 'confirmed' && (
+    <>
+      <button 
+        onClick={() => handleFinalOrder(offer)}
+        className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg font-semibold hover:shadow-xl transform hover:scale-[1.02] transition-all"
+      >
+        ✓ Jetzt verbindlich beauftragen
+      </button>
+      
+      <button
+        onClick={async () => {
+          if (!window.confirm('Möchten Sie dieses verbindliche Angebot ablehnen? Der Handwerker und sein Angebot werden komplett aus Ihrem Dashboard entfernt.')) return;
+          
+          try {
+            setLoading(true);
+            const res = await fetch(apiUrl(`/api/offers/${offer.id}/reject-confirmed`), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                projectId: selectedProject.id,
+                reason: 'Verbindliches Angebot entspricht nicht den Erwartungen'
+              })
+            });
+            
+            if (res.ok) {
+              alert('Verbindliches Angebot wurde abgelehnt und aus dem Dashboard entfernt.');
+              loadProjectDetails(selectedProject.id);
+            } else {
+              throw new Error('Fehler beim Ablehnen');
+            }
+          } catch (err) {
+            console.error('Error:', err);
+            alert('Fehler beim Ablehnen des Angebots');
+          } finally {
+            setLoading(false);
+          }
+        }}
+        className="px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
+      >
+        ❌ Verbindliches Angebot ablehnen
+      </button>
+    </>
+  )}
+  
+  {/* PHASE 1: Vertragsanbahnung beenden - nur wenn noch nicht bestätigt */}
+  {offer.status === 'preliminary' && (
+    <button
+      onClick={async () => {
+        if (!window.confirm('Möchten Sie diese Vertragsanbahnung beenden? Das Angebot wird zurück zu "Angebote" verschoben.')) return;
+        
+        try {
+          setLoading(true);
+          const res = await fetch(apiUrl(`/api/offers/${offer.id}/end-negotiation`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (res.ok) {
+            alert('Vertragsanbahnung beendet. Das Angebot ist wieder unter "Angebote" verfügbar.');
+            loadProjectDetails(selectedProject.id);
+          } else {
+            throw new Error('Fehler beim Beenden');
+          }
+        } catch (err) {
+          console.error('Error:', err);
+          alert('Fehler beim Beenden der Vertragsanbahnung');
+        } finally {
+          setLoading(false);
+        }
+      }}
+      className="px-4 py-2 bg-orange-500/20 text-orange-300 border border-orange-500/50 rounded-lg hover:bg-orange-500/30 transition-colors text-sm"
+    >
+      🔄 Vertragsanbahnung beenden
+    </button>
+  )}
+</div>
           </div>
         ))}
       </div>
