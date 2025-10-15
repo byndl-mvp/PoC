@@ -990,7 +990,7 @@ const BudgetVisualization = ({ budget }) => {
       <ProjectWizard project={selectedProject} />
       
         {/* Tabs */}
-<div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto relative">
+<div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto relative pt-2">
   {['overview', 'tenders', 'offers', 'contracts', 'orders', 'budget', 'schedule'].map((tab) => {
     // Berechne neue Items pro Tab
     let newCount = 0;
