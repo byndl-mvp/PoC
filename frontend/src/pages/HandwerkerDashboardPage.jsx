@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -24,6 +24,22 @@ export default function HandwerkerDashboardPage() {
   const [orders, setOrders] = useState([]);
   const [schedule, setSchedule] = useState([]); // eslint-disable-line no-unused-vars
 
+  // Tenders laden - Funktion
+  const loadTenders = useCallback(async () => {
+    if (!handwerkerData?.id) return;
+    
+    try {
+      const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/tenders`));
+      
+      if (res.ok) {
+        const data = await res.json();
+        setTenders(data);
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden der Ausschreibungen:', err);
+    }
+  }, [handwerkerData]);
+  
   useEffect(() => {
     const storedData = sessionStorage.getItem('handwerkerData');
     if (!storedData) {
