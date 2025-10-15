@@ -27,6 +27,12 @@ export default function BauherrenDashboardPage() {
   const [unreadOffers, setUnreadOffers] = useState(0);
   const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
   const [withdrawnOffers, setWithdrawnOffers] = useState([]);
+  const [lastViewedTabs, setLastViewedTabs] = useState({
+  tenders: null,
+  offers: null,
+  contracts: null,
+  orders: null
+});
   
   useEffect(() => {
   // Prüfe beide mögliche Keys
@@ -255,6 +261,23 @@ if (withdrawnRes.ok) {
     }
   };
 
+// Lade letzte View-Timestamps aus SessionStorage
+useEffect(() => {
+  if (selectedProject) {
+    const tabs = ['tenders', 'offers', 'contracts', 'orders'];
+    const viewedTabs = {};
+    
+    tabs.forEach(tab => {
+      const lastViewed = sessionStorage.getItem(`lastViewed_${selectedProject.id}_${tab}`);
+      if (lastViewed) {
+        viewedTabs[tab] = lastViewed;
+      }
+    });
+    
+    setLastViewedTabs(viewedTabs);
+  }
+}, [selectedProject]);
+  
   // markAllAsRead VOR dem useEffect definieren mit useCallback
 const markAllAsRead = useCallback(async () => {
   if (!selectedProject) return;
