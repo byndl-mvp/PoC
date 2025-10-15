@@ -161,29 +161,6 @@ if (tendersRes.ok) {
     }
   };
 
-  const handleConfirmOffer = async (contractId) => {
-    if (!window.confirm('Bestätigen Sie Ihr Angebot nach der Besichtigung? Dies ermöglicht die verbindliche Beauftragung.')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/contracts/${contractId}/confirm-offer`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (res.ok) {
-        alert('Angebot bestätigt! Der Bauherr kann nun verbindlich beauftragen.');
-        loadDashboardData(handwerkerData);
-      }
-    } catch (err) {
-      console.error('Fehler:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleWithdrawOffer = async (offerId) => {
   if (!window.confirm('Möchten Sie Ihr Angebot wirklich zurückziehen? Sie können es danach erneut bearbeiten.')) {
     return;
