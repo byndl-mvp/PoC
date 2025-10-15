@@ -15565,42 +15565,44 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
     console.log('🔴 Loading contracts für Handwerker:', handwerkerId);
     
     const result = await query(
-      `SELECT 
-        t.*,
-        tr.name as trade_name,
-        tr.code as trade_code,
-        p.id as project_id,
-        p.category as project_category,
-        p.sub_category as project_sub_category,
-        p.description as project_description,
-        p.street,
-        p.house_number,
-        p.zip_code,
-        p.city,
-        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as project_address,
-        b.name as bauherr_name,
-        b.email as bauherr_email,
-        b.phone as bauherr_phone,
-        b.address as bauherr_address,
-        o.id as offer_id,
-        o.amount as offer_amount,
-        o.status as offer_status,
-        o.preliminary_accepted_at,
-        o.offer_confirmed_at,
-        o.notes as offer_notes,
-        o.execution_start,
-        o.execution_end,
-        o.lv_data
-       FROM offers o
-       JOIN tenders t ON o.tender_id = t.id
-       JOIN trades tr ON t.trade_id = tr.id
-       JOIN projects p ON t.project_id = p.id
-       JOIN bauherren b ON p.bauherr_id = b.id
-       WHERE o.handwerker_id = $1
-       AND (o.status = 'preliminary' OR o.status = 'confirmed')
-       ORDER BY o.preliminary_accepted_at DESC`,
-      [handwerkerId]
-    );
+  `SELECT 
+    t.id as tender_id,
+    t.deadline,
+    t.timeframe,
+    tr.name as trade_name,
+    tr.code as trade_code,
+    p.id as project_id,
+    p.category as project_category,
+    p.sub_category as project_sub_category,
+    p.description as project_description,
+    p.street,
+    p.house_number,
+    p.zip_code,
+    p.city,
+    p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as project_address,
+    b.name as bauherr_name,
+    b.email as bauherr_email,
+    b.phone as bauherr_phone,
+    b.address as bauherr_address,
+    o.id as offer_id,
+    o.amount as offer_amount,
+    o.status as offer_status,
+    o.preliminary_accepted_at,
+    o.offer_confirmed_at,
+    o.notes as offer_notes,
+    o.execution_start,
+    o.execution_end,
+    o.lv_data
+   FROM offers o
+   JOIN tenders t ON o.tender_id = t.id
+   JOIN trades tr ON t.trade_id = tr.id
+   JOIN projects p ON t.project_id = p.id
+   JOIN bauherren b ON p.bauherr_id = b.id
+   WHERE o.handwerker_id = $1
+   AND (o.status = 'preliminary' OR o.status = 'confirmed')
+   ORDER BY o.preliminary_accepted_at DESC`,
+  [handwerkerId]
+);
     
     console.log('🔴 Contracts gefunden:', result.rows.length);
     console.log('🔴 Daten:', result.rows);
