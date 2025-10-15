@@ -1565,64 +1565,167 @@ const BudgetVisualization = ({ budget }) => {
   </div>
 )}
 
-          {/* NEU: Vertragsanbahnung Tab */}
-          {activeTab === 'contracts' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
-              
-              <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <p className="text-yellow-300 text-sm">
-                  <strong>⚠️ Exklusivitätsvereinbarung:</strong> In der Vertragsanbahnung haben Sie exklusiven Kontakt zum Handwerker. 
-                  Die Nachwirkfrist von 24 Monaten ist bereits aktiv.
-                </p>
+          {/* Vertragsanbahnung Tab */}
+{activeTab === 'contracts' && (
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
+    
+    <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+      <p className="text-yellow-300 text-sm">
+        <strong>⚠️ Exklusivitätsvereinbarung:</strong> In der Vertragsanbahnung haben Sie exklusiven Kontakt zum Handwerker. 
+        Die Nachwirkfrist von 24 Monaten ist bereits aktiv.
+      </p>
+    </div>
+    
+    {offers.filter(o => o.status === 'preliminary' || o.status === 'confirmed').length === 0 ? (
+      <p className="text-gray-400">Keine laufenden Vertragsanbahnungen.</p>
+    ) : (
+      <div className="space-y-6">
+        {offers.filter(o => o.status === 'preliminary' || o.status === 'confirmed').map((offer, idx) => (
+          <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {offer.tradeName || offer.trade_name || offer.trade}
+                </h3>
+                <p className="text-gray-300">{offer.companyName || offer.company_name}</p>
+                
+                {/* Status Badge */}
+                <div className="mt-2">
+                  {offer.status === 'preliminary' && !offer.offer_confirmed_at && (
+                    <span className="inline-block px-3 py-1 bg-yellow-500/20 text-yellow-300 text-sm rounded-full">
+                      ⏳ Warte auf Angebotsbestätigung nach Ortstermin
+                    </span>
+                  )}
+                  {offer.status === 'confirmed' && (
+                    <span className="inline-block px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
+                      ✓ Angebot bestätigt - Kann verbindlich beauftragt werden
+                    </span>
+                  )}
+                </div>
               </div>
               
-              {offers.filter(o => o.status === 'vertragsanbahnung').length === 0 ? (
-                <p className="text-gray-400">Keine laufenden Vertragsanbahnungen.</p>
-              ) : (
-                <div className="space-y-4">
-                  {offers.filter(o => o.status === 'vertragsanbahnung').map((offer, idx) => (
-                    <div key={idx} className="bg-white/5 rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-white">{offer.tradeName}</h3>
-                          <p className="text-gray-300">{offer.companyName}</p>
-                          <div className="mt-3 space-y-2">
-                            <p className="text-sm text-gray-400">
-                              <strong>Kontaktdaten:</strong><br />
-                              Tel: {offer.phone}<br />
-                              E-Mail: {offer.email}
-                            </p>
-                            <p className="text-sm text-gray-400">
-                              Vertragsanbahnung seit: {new Date(offer.preliminaryDate).toLocaleDateString('de-DE')}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-teal-400 mb-3">
-                            {offer.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </p>
-                          <div className="space-y-2">
-                            <button 
-                              onClick={() => handleFinalOrder(offer)}
-                              className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                            >
-                              Verbindlich beauftragen
-                            </button>
-                            <button 
-                              className="w-full px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
-                            >
-                              Auftrag zurücknehmen
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <div className="text-right ml-6">
+                <p className="text-2xl font-bold text-teal-400 mb-2">
+                  {formatCurrency(offer.amount)}
+                </p>
+                <p className="text-xs text-gray-400">
+                  Vertragsanbahnung seit:<br />
+                  {new Date(offer.preliminary_accepted_at || offer.created_at).toLocaleDateString('de-DE')}
+                </p>
+              </div>
+            </div>
+            
+            {/* Kontaktdaten */}
+            <div className="bg-white/10 rounded-lg p-4 mb-4">
+              <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Handwerker</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="text-gray-300">
+                  <p><strong className="text-white">Firma:</strong> {offer.companyName || offer.company_name}</p>
+                  <p className="mt-1"><strong className="text-white">Telefon:</strong> {offer.phone || offer.handwerker_phone || 'Nicht verfügbar'}</p>
+                </div>
+                <div className="text-gray-300">
+                  <p><strong className="text-white">E-Mail:</strong> {offer.email || offer.handwerker_email || 'Nicht verfügbar'}</p>
+                  <p className="mt-1"><strong className="text-white">Adresse:</strong> {offer.address || 'Auf Anfrage'}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Ortstermin-Sektion */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+              <div className="flex justify-between items-center">
+                <div className="flex-1">
+                  <h4 className="text-white font-semibold mb-2">📅 Ortstermin vereinbaren</h4>
+                  <p className="text-blue-200 text-sm">
+                    Vereinbaren Sie einen Ortstermin mit dem Handwerker zur Angebotsfinalisierung
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate(`/ortstermin/${offer.id}`)}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold whitespace-nowrap ml-4"
+                >
+                  Zur Terminvereinbarung →
+                </button>
+              </div>
+              
+              {/* Zeige bestätigte Termine an */}
+              {offer.appointment_confirmed && offer.appointment_date && (
+                <div className="mt-4 pt-4 border-t border-blue-500/30">
+                  <div className="bg-green-500/20 border border-green-500/50 rounded p-3">
+                    <p className="text-green-300 font-semibold">✓ Bestätigter Termin</p>
+                    <p className="text-green-200 text-sm mt-1">
+                      {new Date(offer.appointment_date).toLocaleDateString('de-DE', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })} Uhr
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
-          )}
+            
+            {/* Aktionsbuttons */}
+            <div className="flex flex-wrap gap-3">
+              {/* Angebot ansehen */}
+              <button
+                onClick={() => navigate(`/project/${selectedProject.id}/offer/${offer.id}`)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                📋 Angebot im Detail ansehen
+              </button>
+              
+              {/* Verbindlich beauftragen - nur wenn bestätigt */}
+              {offer.status === 'confirmed' && (
+                <button 
+                  onClick={() => handleFinalOrder(offer)}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg font-semibold hover:shadow-xl transform hover:scale-[1.02] transition-all"
+                >
+                  ✓ Jetzt verbindlich beauftragen
+                </button>
+              )}
+              
+              {/* Vertragsanbahnung beenden */}
+              {offer.status === 'preliminary' && (
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Möchten Sie diese Vertragsanbahnung wirklich beenden?')) return;
+                    
+                    try {
+                      setLoading(true);
+                      const res = await fetch(apiUrl(`/api/offers/${offer.id}/cancel-preliminary`), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                      });
+                      
+                      if (res.ok) {
+                        alert('Vertragsanbahnung beendet');
+                        loadProjectDetails(selectedProject.id);
+                      } else {
+                        throw new Error('Fehler beim Beenden');
+                      }
+                    } catch (err) {
+                      console.error('Error:', err);
+                      alert('Fehler beim Beenden der Vertragsanbahnung');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
+                >
+                  Vertragsanbahnung beenden
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
           {/* Aufträge Tab */}
           {activeTab === 'orders' && (
