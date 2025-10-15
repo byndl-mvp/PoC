@@ -1892,39 +1892,38 @@ const BudgetVisualization = ({ budget }) => {
   </div>
 )}
 
-          {/* Terminplan Tab */}
-          {activeTab === 'schedule' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">KI-Terminplanung</h2>
-              
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-                <p className="text-blue-300 text-sm">
-                  <strong>ℹ️ Info:</strong> Die KI erstellt basierend auf Ihren Gewerken und deren Abhängigkeiten einen optimalen Terminplan.
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                {selectedProject?.trades?.map((trade, idx) => (
-                  <div key={idx} className="bg-white/5 rounded-lg p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-white font-semibold">{trade.name}</h3>
-                        <p className="text-gray-400 text-sm mt-1">
-                          Geschätzte Dauer: {trade.estimatedDuration || '5-7'} Tage
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-gray-300 text-sm">Geplanter Start:</p>
-                        <p className="text-white">KW {15 + idx * 2} / 2024</p>
-                      </div>
+         {/* Terminplan Tab */}
+        {activeTab === 'schedule' && (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-6">KI-Terminplanung</h2>
+            
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+              <p className="text-blue-300 text-sm">
+                <strong>ℹ️ Info:</strong> Die KI erstellt basierend auf Ihren Gewerken und deren Abhängigkeiten einen optimalen Terminplan.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              {selectedProject?.trades?.map((trade, idx) => (
+                <div key={idx} className="bg-white/5 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-white font-semibold">{trade.name}</h3>
+                      <p className="text-gray-400 text-sm mt-1">
+                        Geschätzte Dauer: {trade.estimatedDuration || '5-7'} Tage
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-gray-300 text-sm">Geplanter Start:</p>
+                      <p className="text-white">KW {15 + idx * 2} / 2024</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-
+          </div>
+        )}
+        
         {/* Neues Projekt Button */}
         <div className="mt-8 text-center">
           <Link
@@ -1934,12 +1933,10 @@ const BudgetVisualization = ({ budget }) => {
             + Neues Projekt anlegen
           </Link>
         </div>
-        </> 
-        )} 
       </div>
-
-      {/* Modal für Vertragsanbahnung */}
-      {showContractModal && <ContractNegotiationModal />}
-    </div>
-  );
-}
+    </>
+  )}
+  
+  {/* Modal für Vertragsanbahnung */}
+  {showContractModal && <ContractNegotiationModal />}
+</div>
