@@ -1759,47 +1759,121 @@ const BudgetVisualization = ({ budget }) => {
   </div>
 )}
 
-          {/* Aufträge Tab */}
-          {activeTab === 'orders' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Erteilte Aufträge</h2>
-              
-              {orders.length === 0 ? (
-                <p className="text-gray-400">Noch keine Aufträge erteilt.</p>
-              ) : (
-                <div className="space-y-4">
-                  {orders.map((order, idx) => (
-                    <div key={idx} className="bg-white/5 rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">{order.tradeName}</h3>
-                          <p className="text-gray-300">{order.companyName}</p>
-                          <p className="text-sm text-gray-400 mt-1">Beauftragt: {new Date(order.date).toLocaleDateString('de-DE')}</p>
-                          {order.isBundle && (
-                            <span className="inline-block mt-2 bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded">
-                              Teil eines Projektbündels
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-green-400">
-                            {order.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </p>
-                          <span className={`text-xs px-2 py-1 rounded mt-2 inline-block ${
-                            order.status === 'in Arbeit' ? 'bg-blue-600 text-blue-200' :
-                            order.status === 'abgeschlossen' ? 'bg-green-600 text-green-200' :
-                            'bg-gray-600 text-gray-300'
-                          }`}>
-                            {order.status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+          {/* Aufträge Tab - MIT WERKVERTRAG */}
+{activeTab === 'orders' && (
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Erteilte Aufträge / Werkverträge</h2>
+    
+    {orders.length === 0 ? (
+      <p className="text-gray-400">Noch keine Aufträge erteilt.</p>
+    ) : (
+      <div className="space-y-6">
+        {orders.map((order, idx) => (
+          <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-xl font-semibold text-white">{order.tradeName}</h3>
+                  <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
+                    Werkvertrag nach VOB/B
+                  </span>
                 </div>
-              )}
+                <p className="text-gray-300 mb-2">{order.companyName}</p>
+                <p className="text-sm text-gray-400">
+                  Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | 
+                  Auftrags-Nr: #{order.id}
+                </p>
+                
+                {/* Ausführungstermine */}
+                <div className="mt-3 p-3 bg-blue-500/10 rounded">
+                  <p className="text-blue-300 text-sm">
+                    <strong>📅 Ausführungszeitraum:</strong><br />
+                    {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-right ml-6">
+                <p className="text-2xl font-bold text-green-400 mb-2">
+                  {order.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                </p>
+                <p className="text-xs text-gray-400 mb-2">Netto</p>
+                <span className={`text-xs px-3 py-1 rounded inline-block ${
+                  order.status === 'active' ? 'bg-blue-600 text-blue-200' :
+                  order.status === 'completed' ? 'bg-green-600 text-green-200' :
+                  'bg-gray-600 text-gray-300'
+                }`}>
+                  {order.status === 'active' ? 'In Ausführung' :
+                   order.status === 'completed' ? 'Abgeschlossen' :
+                   order.status}
+                </span>
+              </div>
             </div>
-          )}
+            
+            {/* Werkvertrag-Aktionen */}
+            <div className="border-t border-white/10 pt-4 mt-4">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  Werkvertrag als PDF
+                </button>
+                
+                <button
+                  onClick={() => {
+                    // Modal mit Vertragstext öffnen
+                    alert('Vertragsansicht wird geöffnet...');
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                >
+                  📋 Vertrag ansehen
+                </button>
+                
+                {order.status === 'active' && (
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('Möchten Sie die Leistung abnehmen? Dies bestätigt die ordnungsgemäße Ausführung.')) return;
+                      
+                      try {
+                        const res = await fetch(apiUrl(`/api/orders/${order.id}/accept-completion`), {
+                          method: 'POST'
+                        });
+                        
+                        if (res.ok) {
+                          alert('Leistung abgenommen. Gewährleistungsfrist beginnt.');
+                          loadProjectDetails(selectedProject.id);
+                        }
+                      } catch (err) {
+                        console.error('Error:', err);
+                      }
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                  >
+                    ✓ Leistung abnehmen
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Gewährleistungshinweis */}
+            {order.status === 'completed' && (
+              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
+                <p className="text-yellow-300 text-sm">
+                  <strong>⚠️ Gewährleistung:</strong> {order.warranty_period || 4} Jahre ab Abnahme
+                  {order.accepted_at && ` (bis ${new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 4))).toLocaleDateString('de-DE')})`}
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
           {/* Kostenübersicht Tab - VERBESSERT */}
 {activeTab === 'budget' && budgetOverview && (
