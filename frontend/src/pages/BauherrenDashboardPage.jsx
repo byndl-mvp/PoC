@@ -989,37 +989,76 @@ const BudgetVisualization = ({ budget }) => {
       {/* Project Wizard */}
       <ProjectWizard project={selectedProject} />
       
-        {/* Tabs - AKTUALISIERT mit Angebote-Badge */}
-        <div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
-          {['overview', 'tenders', 'offers', 'contracts', 'orders', 'budget', 'schedule'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap relative ${
-                activeTab === tab
-                  ? 'text-teal-400 border-b-2 border-teal-400'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {tab === 'overview' && 'Übersicht'}
-              {tab === 'tenders' && 'Ausschreibungen'}
-              {tab === 'offers' && (
-                <>
-                  Angebote
-                  {unreadOffers > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                      {unreadOffers}
-                    </span>
-                  )}
-                </>
-              )}
-              {tab === 'contracts' && 'Vertragsanbahnung'}
-              {tab === 'orders' && 'Aufträge'}
-              {tab === 'budget' && 'Kostenübersicht'}
-              {tab === 'schedule' && 'Terminplan'}
-            </button>
-          ))}
-        </div>
+        {/* Tabs */}
+<div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
+  {['overview', 'tenders', 'offers', 'contracts', 'orders', 'budget', 'schedule'].map((tab) => {
+    // Berechne neue Items pro Tab
+    let newCount = 0;
+    
+    if (tab === 'tenders' && selectedProject?.tenders) {
+      const lastViewed = lastViewedTabs.tenders;
+      newCount = selectedProject.tenders.filter(t => 
+        !lastViewed || new Date(t.created_at) > new Date(lastViewed)
+      ).length;
+    }
+    
+    if (tab === 'offers') {
+      newCount = unreadOffers; // Bereits vorhanden
+    }
+    
+    if (tab === 'contracts') {
+      const lastViewed = lastViewedTabs.contracts;
+      newCount = offers.filter(o => 
+        o.status === 'preliminary' && 
+        (!lastViewed || new Date(o.preliminary_accepted_at || o.created_at) > new Date(lastViewed))
+      ).length;
+    }
+    
+    if (tab === 'orders') {
+      const lastViewed = lastViewedTabs.orders;
+      newCount = orders.filter(order => 
+        !lastViewed || new Date(order.created_at) > new Date(lastViewed)
+      ).length;
+    }
+    
+    return (
+      <button
+        key={tab}
+        onClick={() => {
+          setActiveTab(tab);
+          // Markiere als gelesen
+          if (['tenders', 'offers', 'contracts', 'orders'].includes(tab)) {
+            setLastViewedTabs(prev => ({
+              ...prev,
+              [tab]: new Date().toISOString()
+            }));
+            sessionStorage.setItem(`lastViewed_${selectedProject?.id}_${tab}`, new Date().toISOString());
+          }
+        }}
+        className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap relative ${
+          activeTab === tab
+            ? 'text-teal-400 border-b-2 border-teal-400'
+            : 'text-gray-400 hover:text-white'
+        }`}
+      >
+        {tab === 'overview' && 'Übersicht'}
+        {tab === 'tenders' && 'Ausschreibungen'}
+        {tab === 'offers' && 'Angebote'}
+        {tab === 'contracts' && 'Vertragsanbahnung'}
+        {tab === 'orders' && 'Aufträge'}
+        {tab === 'budget' && 'Kostenübersicht'}
+        {tab === 'schedule' && 'Terminplan'}
+        
+        {/* Badge nur wenn neue Items vorhanden */}
+        {newCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold z-10">
+            {newCount}
+          </span>
+        )}
+      </button>
+    );
+  })}
+</div>
 
         {/* Content */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
