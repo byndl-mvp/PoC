@@ -1561,6 +1561,8 @@ const BudgetVisualization = ({ budget }) => {
     </>
   );
 })()}
+  </div>
+)}
         
           {/* Vertragsanbahnung Tab */}
 {activeTab === 'contracts' && (
