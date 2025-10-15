@@ -1035,7 +1035,7 @@ const BudgetVisualization = ({ budget }) => {
             sessionStorage.setItem(`lastViewed_${selectedProject?.id}_${tab}`, new Date().toISOString());
           }
         }}
-        className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap relative ${
+        className={`px-4 py-2 pt-3 text-sm font-medium transition-colors whitespace-nowrap relative ${
           activeTab === tab
             ? 'text-teal-400 border-b-2 border-teal-400'
             : 'text-gray-400 hover:text-white'
