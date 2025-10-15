@@ -9695,27 +9695,28 @@ app.post('/api/projects', async (req, res) => {
     
     // INSERT mit korrektem Mapping: zipCode -> zip_code
     const projectResult = await query(
-      `INSERT INTO projects (
-        bauherr_id, category, sub_category, description, 
-        timeframe, budget, 
-        zip_code,    -- Datenbank-Spalte mit Unterstrich
-        city, 
-        metadata
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *`,
-      [
-        bauherrId || null,
-        category || null,
-        subCategory || null,
-        description,
-        timeframe || null,
-        budget || null,
-        zipCode || null,    // JavaScript-Variable in camelCase
-        city || null,
-        JSON.stringify({ extracted: extractedData })
-      ]
-    );
+  `INSERT INTO projects (
+    bauherr_id, category, sub_category, description, 
+    timeframe, budget, 
+    street, house_number, zip_code, city,
+    metadata
+  )
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+  RETURNING *`,
+  [
+    bauherrId || null,
+    category || null,
+    subCategory || null,
+    description,
+    timeframe || null,
+    budget || null,
+    street || null,        // NEU
+    houseNumber || null,   // NEU
+    zipCode || null,
+    city || null,
+    JSON.stringify({ extracted: extractedData })
+  ]
+);
     
     const project = projectResult.rows[0];
     
