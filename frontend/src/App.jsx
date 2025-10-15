@@ -147,7 +147,7 @@ function App() {
           <Route path="/project/:projectId/trade/:tradeId/questions" element={<QuestionsPage />} />
           <Route path="/project/:projectId/result" element={<ResultPage />} />
           <Route path="/project/:projectId/add-trade" element={<AdditionalTradeSelectionPage />} />
-          <Route path="/offer/:offerId/appointment" element={<OrtsterminPage />} />
+          <Route path="/ortstermin/:offerId" element={<OrtsterminPage />} />
           
           {/* Alternative Projekt-Routen (mit :id statt :projectId) */}
           <Route path="/project/:id/intake" element={<IntakeQuestionsPage />} />
