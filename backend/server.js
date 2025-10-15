@@ -7581,35 +7581,29 @@ function validateAndFixPrices(lv, tradeCode) {
     const titleLower = pos.title?.toLowerCase() || '';
     const descLower = pos.description?.toLowerCase() || '';
     
-    // NEUE REGEL: "Lieferung und Demontage" ist VERBOTEN
-if (titleLower.includes('lieferung') && titleLower.includes('demontage') && 
-    !titleLower.includes('montage')) {
-  console.error(`[KRITISCH] Verbotene Kombination "Lieferung und Demontage" in ${tradeCode}`);
+    // REGEL: "Lieferung und Demontage" ist VERBOTEN
+if (titleLower.includes('lieferung') && 
+    (titleLower.includes('demontage') || titleLower.includes('rückbau') || titleLower.includes('abbruch'))) {
   
-  // Korrigiere im Titel (case-insensitive)
-  pos.title = pos.title.replace(/Lieferung\s+(und\s+)?Demontage/gi, 'Lieferung und Montage');
+  console.error(`[KRITISCH] Verbotene Kombination "Lieferung" mit Abbruch/Demontage`);
   
-  // Korrigiere auch in der Beschreibung
-  if (pos.description) {
-    pos.description = pos.description.replace(/Lieferung\s+(und\s+)?Demontage/gi, 'Lieferung und Montage');
+  // Entscheide basierend auf Beschreibung was gemeint ist
+  if (descLower.includes('bestehend') || descLower.includes('alt') || descLower.includes('demontage')) {
+    // Es geht um DEMONTAGE - entferne "Lieferung"
+    pos.title = pos.title.replace(/Lieferung\s+(und\s+)?/gi, '');
+    warnings.push(`"Lieferung" entfernt - Position betrifft Demontage`);
+  } else if (descLower.includes('neu') || descLower.includes('montage')) {
+    // Es geht um NEULIEFERUNG - ersetze "Demontage" mit "Montage"
+    pos.title = pos.title.replace(/Demontage/gi, 'Montage')
+                         .replace(/Rückbau/gi, 'Einbau')
+                         .replace(/Abbruch/gi, 'Montage');
+    warnings.push(`Demontage-Begriffe zu Montage korrigiert`);
+  } else {
+    // Im Zweifel: Nur "Lieferung" entfernen
+    pos.title = pos.title.replace(/Lieferung\s+(und\s+)?/gi, '');
+    warnings.push(`"Lieferung" entfernt aus unklarer Position`);
   }
   
-  warnings.push(`"Lieferung und Demontage" korrigiert zu "Lieferung und Montage"`);
-  fixedCount++;
-}
-
-// Zusätzlich: Demontage ohne Entsorgung ist auch falsch
-if (titleLower.includes('demontage') && 
-    !titleLower.includes('entsorgung') && 
-    !titleLower.includes('lieferung')) {
-  // Füge "und Entsorgung" hinzu
-  pos.title = pos.title.replace(/Demontage\b/gi, 'Demontage und Entsorgung');
-  
-  if (pos.description && !pos.description.toLowerCase().includes('entsorgung')) {
-    pos.description = pos.description.replace(/Demontage\b/gi, 'Demontage und Entsorgung');
-  }
-  
-  warnings.push(`"Demontage" erweitert zu "Demontage und Entsorgung"`);
   fixedCount++;
 }
     
