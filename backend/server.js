@@ -15011,6 +15011,138 @@ app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
   }
 });
 
+// Vertragsanbahnung beenden - Angebot geht zurück zu submitted
+app.post('/api/offers/:offerId/end-negotiation', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query('BEGIN');
+    
+    // Setze Status zurück auf submitted
+    await query(
+      `UPDATE offers 
+       SET status = 'submitted',
+           preliminary_accepted_at = NULL,
+           appointment_confirmed = false,
+           appointment_date = NULL,
+           updated_at = NOW()
+       WHERE id = $1 AND status = 'preliminary'`,
+      [offerId]
+    );
+    
+    // Update auch tender_handwerker Status
+    const tenderResult = await query(
+      'SELECT tender_id, handwerker_id FROM offers WHERE id = $1',
+      [offerId]
+    );
+    
+    if (tenderResult.rows.length > 0) {
+      await query(
+        `UPDATE tender_handwerker 
+         SET status = 'submitted'
+         WHERE tender_id = $1 AND handwerker_id = $2`,
+        [tenderResult.rows[0].tender_id, tenderResult.rows[0].handwerker_id]
+      );
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ success: true, message: 'Vertragsanbahnung beendet' });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error ending negotiation:', error);
+    res.status(500).json({ error: 'Fehler beim Beenden der Vertragsanbahnung' });
+  }
+});
+
+// Verbindliches Angebot ablehnen - Angebot wird rejected und verschwindet
+app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { projectId, reason } = req.body;
+    
+    await query('BEGIN');
+    
+    // Hole Offer-Daten für Logging und Benachrichtigung
+    const offerData = await query(
+      `SELECT o.*, h.email as handwerker_email, h.company_name, t.name as trade_name
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = $1 AND o.status = 'confirmed'`,
+      [offerId]
+    );
+    
+    if (offerData.rows.length === 0) {
+      throw new Error('Angebot nicht gefunden oder nicht im Status confirmed');
+    }
+    
+    const offer = offerData.rows[0];
+    
+    // Status auf 'rejected' setzen
+    await query(
+      `UPDATE offers 
+       SET status = 'rejected',
+           rejection_reason = $2,
+           rejected_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [offerId, reason]
+    );
+    
+    // Log für Audit
+    await query(
+      `INSERT INTO project_logs (project_id, action, details, created_at)
+       VALUES ($1, 'confirmed_offer_rejected', $2, NOW())`,
+      [
+        projectId,
+        JSON.stringify({
+          offerId: offerId,
+          handwerkerId: offer.handwerker_id,
+          companyName: offer.company_name,
+          tradeName: offer.trade_name,
+          amount: offer.amount,
+          reason: reason
+        })
+      ]
+    );
+    
+    // Benachrichtige Handwerker per E-Mail
+    if (offer.handwerker_email && transporter) {
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+          to: offer.handwerker_email,
+          subject: `Verbindliches Angebot abgelehnt - ${offer.trade_name}`,
+          html: `
+            <h2>Ihr verbindliches Angebot wurde abgelehnt</h2>
+            <p>Sehr geehrte Damen und Herren,</p>
+            <p>Der Bauherr hat Ihr verbindliches Angebot für <strong>${offer.trade_name}</strong> leider abgelehnt.</p>
+            <p>Vielen Dank für Ihre Mühe und die Zeit, die Sie in dieses Projekt investiert haben.</p>
+            <p>Mit freundlichen Grüßen<br>Ihr byndl-Team</p>
+          `
+        });
+      } catch (emailError) {
+        console.error('Email-Versand fehlgeschlagen:', emailError);
+      }
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      message: 'Verbindliches Angebot wurde abgelehnt' 
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error rejecting confirmed offer:', error);
+    res.status(500).json({ error: 'Fehler beim Ablehnen des Angebots' });
+  }
+});
+
 // Stufe 2: Verbindliche Beauftragung
 app.post('/api/offers/:offerId/final-accept', async (req, res) => {
   try {
