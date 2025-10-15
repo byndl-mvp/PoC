@@ -12962,8 +12962,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (
       switch (opt.category) {
         case 'material':
           // Material-Optimierung: Titel und Beschreibung anpassen, Preis reduzieren
-          position.title = position.title + ' (optimiert)';
-          position.description = `${opt.alternativeDescription}\n\nUrsprünglich: ${position.description || ''}`;
+          const cleanTitle = position.title.replace(/\s*\(optimiert\)\s*/g, '').split('Ursprünglich:')[0].trim();
+          const cleanDesc = (position.description || '').replace(/Ursprünglich:.*$/s, '').trim();
+
+          position.title = cleanTitle + ' (optimiert)';
+          position.description = `${opt.alternativeDescription}\n\nUrsprünglich: ${cleanDesc}`;
           position.unitPrice = Math.round((position.unitPrice * (100 - opt.savingPercent) / 100) * 100) / 100;
           position.totalPrice = Math.round(position.quantity * position.unitPrice * 100) / 100;
           appliedCount++;
@@ -12971,8 +12974,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (
           
         case 'eigenleistung':
           // Eigenleistung: Position als Eigenleistung markieren, Arbeitskosten abziehen
-          position.title = position.title + ' (Eigenleistung)';
-          position.description = `EIGENLEISTUNG: ${opt.measure}\n\n${position.description || ''}`;
+          const cleanTitle = position.title.replace(/\s*\(Eigenleistung\)\s*/g, '').split('EIGENLEISTUNG:')[0].trim();
+          const cleanDesc = (position.description || '').replace(/EIGENLEISTUNG:.*?(?=\n\n|$)/s, '').trim();
+
+          position.title = cleanTitle + ' (Eigenleistung)';
+          position.description = `EIGENLEISTUNG: ${opt.measure}\n\n${cleanDesc}`;
           // Reduziere nur Arbeitskosten (ca. 60-80% bei Eigenleistung)
           const laborReduction = opt.savingPercent || 70;
           position.unitPrice = Math.round((position.unitPrice * (100 - laborReduction) / 100) * 100) / 100;
@@ -12983,8 +12989,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (
           
         case 'verzicht':
           // Verzicht: Position auf 0 setzen oder als NEP markieren
-          position.title = position.title + ' (ENTFÄLLT)';
-          position.description = `POSITION ENTFÄLLT: ${opt.measure}\n\n${position.description || ''}`;
+          const cleanTitle = position.title.replace(/\s*\(ENTFÄLLT\)\s*/g, '').split('POSITION ENTFÄLLT:')[0].trim();
+          const cleanDesc = (position.description || '').replace(/POSITION ENTFÄLLT:.*?(?=\n\n|$)/s, '').trim();
+
+          position.title = cleanTitle + ' (ENTFÄLLT)';
+          position.description = `POSITION ENTFÄLLT: ${opt.measure}\n\n${cleanDesc}`;
           position.quantity = 0;
           position.totalPrice = 0;
           position.isNEP = true;
@@ -12994,9 +13003,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (
         case 'reduzierung':
           // Reduzierung: Menge oder Umfang reduzieren
           const reductionFactor = (100 - opt.savingPercent) / 100;
-          position.title = position.title + ' (reduziert)';
-          position.description = `REDUZIERT: ${opt.measure}\n\n${position.description || ''}`;
+          const cleanTitle = position.title.replace(/\s*\(reduziert\)\s*/g, '').split('REDUZIERT:')[0].trim();
+          const cleanDesc = (position.description || '').replace(/REDUZIERT:.*?(?=\n\n|$)/s, '').trim();
           
+          position.title = cleanTitle + ' (reduziert)';
+          position.description = `REDUZIERT: ${opt.measure}\n\n${cleanDesc}`;
           // Entscheide ob Menge oder Preis reduziert wird
           if (opt.measure.toLowerCase().includes('menge') || 
               opt.measure.toLowerCase().includes('weniger') ||
@@ -13013,8 +13024,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (
           
         case 'verschiebung':
           // Verschiebung: Als Eventualposition markieren
-          position.title = position.title + ' (Optional - spätere Ausführung)';
-          position.description = `OPTIONAL/SPÄTER: ${opt.measure}\n\n${position.description || ''}`;
+          const cleanTitle = position.title.replace(/\s*\(Optional - spätere Ausführung\)\s*/g, '').split('OPTIONAL/SPÄTER:')[0].trim();
+          const cleanDesc = (position.description || '').replace(/OPTIONAL\/SPÄTER:.*?(?=\n\n|$)/s, '').trim();
+
+          position.title = cleanTitle + ' (Optional - spätere Ausführung)';
+          position.description = `OPTIONAL/SPÄTER: ${opt.measure}\n\n${cleanDesc}`;
           position.isNEP = true;
           appliedCount++;
           break;
