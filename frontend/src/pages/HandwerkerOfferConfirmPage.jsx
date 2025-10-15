@@ -40,17 +40,24 @@ export default function HandwerkerOfferConfirmPage() {
         setOffer(data);
         
         // Parse LV-Daten
-        let parsedLV = data.lv_data;
-        if (typeof parsedLV === 'string') {
-          parsedLV = JSON.parse(parsedLV);
-        }
-        
-        // Sicherstellen dass positions Array existiert
-        if (!parsedLV || !Array.isArray(parsedLV.positions)) {
-          parsedLV = { positions: [] };
-        }
-        
-        setLvData(parsedLV);
+let parsedLV = data.lv_data;
+
+// Falls es ein String ist (sollte nicht sein, aber sicher ist sicher)
+if (typeof parsedLV === 'string') {
+  parsedLV = JSON.parse(parsedLV);
+}
+
+// Normalisiere zu { positions: [...] } Format
+if (Array.isArray(parsedLV)) {
+  // lv_data ist direkt das Array
+  parsedLV = { positions: parsedLV };
+} else if (!parsedLV || !Array.isArray(parsedLV.positions)) {
+  // Fallback
+  parsedLV = { positions: [] };
+}
+
+console.log('🟢 Geladenes LV:', parsedLV);
+setLvData(parsedLV);
         
         setFormData({
           execution_start: data.execution_start || '',
