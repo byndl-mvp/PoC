@@ -669,16 +669,6 @@ if (contractsRes.ok) {
 {activeTab === 'vertragsanbahnung' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
-
-{/* DEBUG BOX - TEMPORÄR */}
-    <div className="bg-red-500 text-white p-4 mb-4 rounded">
-      <p className="font-bold mb-2">🔴 DEBUG INFO:</p>
-      <p>contracts.length: <strong>{contracts.length}</strong></p>
-      <p>contracts State: <strong>{contracts ? 'EXISTS' : 'NULL'}</strong></p>
-      <p className="text-xs mt-2 break-all">
-        Data: {JSON.stringify(contracts).substring(0, 200)}...
-      </p>
-    </div>
     
     <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
       <p className="text-yellow-300 text-sm">
