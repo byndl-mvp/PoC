@@ -15542,7 +15542,7 @@ app.get('/api/handwerker/:identifier/offers', async (req, res) => {
   }
 });
 
-// KORRIGIERTE ROUTE für Vertragsanbahnungen
+// Vertragsanbahnungen für Handwerker
 app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -15562,40 +15562,53 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
       handwerkerId = result.rows[0].id;
     }
     
+    console.log('🔴 Loading contracts für Handwerker:', handwerkerId);
+    
     const result = await query(
       `SELECT 
-        o.*,
-        p.description as projectType,
-        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
-        b.name as clientName,
-        b.email as clientEmail,
-        b.phone as clientPhone,
-        b.street || ' ' || b.house_number || ', ' || b.zip || ' ' || b.city as clientAddress,
-        t.name as trade,
+        t.*,
+        tr.name as trade_name,
+        tr.code as trade_code,
+        p.id as project_id,
+        p.category as project_category,
+        p.sub_category as project_sub_category,
+        p.description as project_description,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as project_address,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone,
+        b.address as bauherr_address,
+        o.id as offer_id,
+        o.amount as offer_amount,
+        o.status as offer_status,
         o.preliminary_accepted_at,
         o.offer_confirmed_at,
-        o.amount,
-        o.notes,
-        o.lv_data,
-        CASE 
-          WHEN o.offer_confirmed_at IS NOT NULL THEN 'Angebot bestätigt - wartet auf finale Beauftragung'
-          ELSE 'Vorläufig beauftragt - Ortstermin ausstehend'
-        END as negotiation_status
+        o.notes as offer_notes,
+        o.execution_start,
+        o.execution_end,
+        o.lv_data
        FROM offers o
-       JOIN tenders tn ON o.tender_id = tn.id
-       JOIN projects p ON tn.project_id = p.id
+       JOIN tenders t ON o.tender_id = t.id
+       JOIN trades tr ON t.trade_id = tr.id
+       JOIN projects p ON t.project_id = p.id
        JOIN bauherren b ON p.bauherr_id = b.id
-       JOIN trades t ON tn.trade_id = t.id
        WHERE o.handwerker_id = $1
-         AND o.status = 'preliminary'
-         AND o.stage = 1
+       AND (o.status = 'preliminary' OR o.status = 'confirmed')
        ORDER BY o.preliminary_accepted_at DESC`,
-      [handwerkerId]  // WICHTIG: handwerkerId
+      [handwerkerId]
     );
     
+    console.log('🔴 Contracts gefunden:', result.rows.length);
+    console.log('🔴 Daten:', result.rows);
+    
     res.json(result.rows);
+    
   } catch (error) {
-    console.error('Error fetching contract negotiations:', error);
+    console.error('Error fetching contracts:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Vertragsanbahnungen' });
   }
 });
