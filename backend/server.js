@@ -18688,7 +18688,7 @@ app.get('/api/handwerker/:handwerkerId/tenders/detailed', async (req, res) => {
        WHERE t.trade_id IN (SELECT trade_id FROM handwerker_trades WHERE handwerker_id = $1)
        AND t.status = 'open'
        AND th.status != 'rejected'
-       AND o.id IS NULL
+       AND (o.id IS NULL OR o.status IN ('preliminary', 'confirmed'))
        ORDER BY t.id, t.created_at DESC`,
       [handwerkerId]
     );
