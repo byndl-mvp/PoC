@@ -16290,11 +16290,20 @@ app.get('/api/orders/:orderId/lv-pdf', async (req, res) => {
     
     const order = orderResult.rows[0];
     
-    // Parse LV-Daten
-    let lvData = null;
-    if (order.lv_data) {
-      lvData = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
-    }
+    // Parse LV-Daten - KORRIGIERT für Array-Format
+let lvData = null;
+if (order.lv_data) {
+  let parsed = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
+  
+  // Wenn es direkt ein Array ist (wie in der DB), wrappe es
+  if (Array.isArray(parsed)) {
+    lvData = { positions: parsed };
+  } else if (parsed.positions) {
+    lvData = parsed;
+  } else {
+    lvData = { positions: [] };
+  }
+}
     
     if (!lvData || !lvData.positions || lvData.positions.length === 0) {
       return res.status(404).json({ error: 'Keine LV-Daten gefunden' });
@@ -16483,11 +16492,20 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     
     const order = orderResult.rows[0];
     
-    // Parse LV-Daten
-    let lvData = null;
-    if (order.lv_data) {
-      lvData = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
-    }
+    // Parse LV-Daten - KORRIGIERT für Array-Format
+let lvData = null;
+if (order.lv_data) {
+  let parsed = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
+  
+  // Wenn es direkt ein Array ist (wie in der DB), wrappe es
+  if (Array.isArray(parsed)) {
+    lvData = { positions: parsed };
+  } else if (parsed.positions) {
+    lvData = parsed;
+  } else {
+    lvData = { positions: [] };
+  }
+}
     
     // PDF erstellen
     const doc = new PDFDocument({
