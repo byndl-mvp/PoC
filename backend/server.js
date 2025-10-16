@@ -16257,6 +16257,190 @@ app.get('/api/orders/:orderId/contract-text', async (req, res) => {
   }
 });
 
+// LV als PDF generieren (nur LV ohne Vertrag)
+app.get('/api/orders/:orderId/lv-pdf', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const orderResult = await query(
+      `SELECT 
+        o.*,
+        h.company_name,
+        b.name as bauherr_name,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        p.description as project_description,
+        t.name as trade_name,
+        of.lv_data
+       FROM orders o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN projects p ON o.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON o.trade_id = t.id
+       JOIN offers of ON o.offer_id = of.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+    
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Auftrag nicht gefunden' });
+    }
+    
+    const order = orderResult.rows[0];
+    
+    // Parse LV-Daten
+    let lvData = null;
+    if (order.lv_data) {
+      lvData = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
+    }
+    
+    if (!lvData || !lvData.positions || lvData.positions.length === 0) {
+      return res.status(404).json({ error: 'Keine LV-Daten gefunden' });
+    }
+    
+    // PDF erstellen
+    const doc = new PDFDocument({
+      size: 'A4',
+      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+    });
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="LV-${orderId}.pdf"`);
+    doc.pipe(res);
+    
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text('Leistungsverzeichnis', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica').text(`Auftrag #${orderId}`, { align: 'center' });
+    doc.moveDown(2);
+    
+    // Projektinfo
+    doc.fontSize(14).font('Helvetica-Bold').text('Projektinformationen');
+    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`Gewerk: ${order.trade_name}`);
+    doc.text(`Projekt: ${order.project_description}`);
+    doc.text(`Ort: ${order.street} ${order.house_number}, ${order.zip_code} ${order.city}`);
+    doc.text(`Bauherr: ${order.bauherr_name}`);
+    doc.text(`Handwerker: ${order.company_name}`);
+    doc.text(`Datum: ${new Date(order.created_at).toLocaleDateString('de-DE')}`);
+    doc.moveDown(2);
+    
+    // LV-Tabelle
+    doc.fontSize(14).font('Helvetica-Bold').text('Positionen');
+    doc.moveDown(1);
+    
+    const tableTop = doc.y;
+    const colWidths = {
+      pos: 40,
+      title: 200,
+      quantity: 50,
+      unit: 40,
+      unitPrice: 70,
+      total: 80
+    };
+    
+    // Tabellenkopf
+    doc.fontSize(9).font('Helvetica-Bold');
+    let xPos = 50;
+    doc.text('Pos.', xPos, tableTop, { width: colWidths.pos, align: 'left' });
+    xPos += colWidths.pos;
+    doc.text('Bezeichnung', xPos, tableTop, { width: colWidths.title, align: 'left' });
+    xPos += colWidths.title;
+    doc.text('Menge', xPos, tableTop, { width: colWidths.quantity, align: 'right' });
+    xPos += colWidths.quantity;
+    doc.text('Einh.', xPos, tableTop, { width: colWidths.unit, align: 'center' });
+    xPos += colWidths.unit;
+    doc.text('EP (€)', xPos, tableTop, { width: colWidths.unitPrice, align: 'right' });
+    xPos += colWidths.unitPrice;
+    doc.text('GP (€)', xPos, tableTop, { width: colWidths.total, align: 'right' });
+    
+    doc.moveTo(50, doc.y + 5).lineTo(545, doc.y + 5).stroke();
+    doc.moveDown(0.5);
+    
+    // Positionen
+    doc.fontSize(8).font('Helvetica');
+    let totalSum = 0;
+    
+    lvData.positions.forEach((pos, index) => {
+      if (doc.y > 700) {
+        doc.addPage();
+        doc.fontSize(8).font('Helvetica');
+      }
+      
+      const startY = doc.y;
+      const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
+      totalSum += posTotal;
+      
+      xPos = 50;
+      doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
+      
+      xPos += colWidths.pos;
+      const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
+      doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
+      
+      xPos += colWidths.title;
+      doc.text((pos.quantity || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
+      
+      xPos += colWidths.quantity;
+      doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
+      
+      xPos += colWidths.unit;
+      doc.text((pos.unitPrice || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
+      
+      xPos += colWidths.unitPrice;
+      doc.text(posTotal.toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
+      
+      doc.moveDown(Math.max(1, titleHeight / 12));
+      
+      if (pos.description) {
+        doc.fontSize(7).font('Helvetica-Oblique');
+        doc.text(pos.description, 90, doc.y, { width: 450 });
+        doc.moveDown(0.5);
+        doc.fontSize(8).font('Helvetica');
+      }
+      
+      if (index < lvData.positions.length - 1) {
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+        doc.moveDown(0.3);
+      }
+    });
+    
+    // Summen
+    doc.moveDown(1);
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke();
+    doc.moveDown(0.5);
+    
+    const mwst = totalSum * 0.19;
+    const brutto = totalSum + mwst;
+    
+    xPos = 370;
+    doc.text('Netto-Summe:', xPos, doc.y, { width: 100, align: 'left' });
+    doc.text(formatCurrency(totalSum), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+    
+    doc.moveDown(0.5);
+    doc.fontSize(9).font('Helvetica');
+    doc.text('zzgl. 19% MwSt:', xPos, doc.y, { width: 100, align: 'left' });
+    doc.text(formatCurrency(mwst), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+    
+    doc.moveDown(0.5);
+    doc.fontSize(11).font('Helvetica-Bold');
+    doc.moveTo(xPos, doc.y).lineTo(xPos + 180, doc.y).stroke();
+    doc.moveDown(0.3);
+    doc.text('Gesamt (Brutto):', xPos, doc.y, { width: 100, align: 'left' });
+    doc.text(formatCurrency(brutto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+    
+    doc.end();
+    
+  } catch (error) {
+    console.error('Error generating LV PDF:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen des PDFs' });
+  }
+});
+
 // Werkvertrag als PDF generieren
 app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
   try {
