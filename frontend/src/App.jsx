@@ -30,6 +30,7 @@ import HandwerkerSettingsPage from './pages/HandwerkerSettingsPage';
 import HandwerkerOfferPage from './pages/HandwerkerOfferPage';
 import HandwerkerOfferDetailsPage from './pages/HandwerkerOfferDetailsPage';
 import HandwerkerOfferConfirmPage from './pages/HandwerkerOfferConfirmPage';
+import HandwerkerLVDetailsPage from './pages/HandwerkerLVDetailsPage';
 
 import OrtsterminPage from './pages/OrtsterminPage';
 
@@ -202,6 +203,8 @@ function App() {
   } 
 />
 
+<Route path="/handwerker/order/:orderId/lv-details" element={<HandwerkerLVDetailsPage />} />
+          
           {/* Ortstermin Route - ergänze diese Route */}
 <Route 
   path="/offer/:offerId/appointment" 
