@@ -27,6 +27,8 @@ export default function BauherrenDashboardPage() {
   const [unreadOffers, setUnreadOffers] = useState(0);
   const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
   const [withdrawnOffers, setWithdrawnOffers] = useState([]);
+  const [showContractView, setShowContractView] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [lastViewedTabs, setLastViewedTabs] = useState({
   tenders: null,
   offers: null,
