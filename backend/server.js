@@ -15911,12 +15911,14 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     
     // Update Offer Status
     await query(
-      `UPDATE offers 
-       SET status = 'accepted', 
-           accepted_at = NOW()
-       WHERE id = $1`,
-      [offerId]
-    );
+  `UPDATE offers 
+   SET status = 'accepted', 
+       stage = 2,  // NEU: Stage auf 2 setzen
+       final_accepted_at = NOW(),
+       accepted_at = NOW()
+   WHERE id = $1`,
+  [offerId]
+);
     
     // Benachrichtige Handwerker
     if (transporter) {
