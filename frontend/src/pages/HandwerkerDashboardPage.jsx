@@ -834,7 +834,7 @@ if (contractsRes.ok) {
 )}
 
          {/* Aufträge Tab - Handwerker */}
-{activeTab === 'orders' && (
+{activeTab === 'auftraege' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Meine Aufträge</h2>
     
