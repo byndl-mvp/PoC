@@ -163,25 +163,31 @@ function App() {
           <Route path="/handwerker/verify" element={<HandwerkerEmailVerification />} />
           <Route path="/handwerker/reset-password" element={<HandwerkerPasswordResetPage />} />
           
-          {/* Geschützte Handwerker-Routen */}
-          <Route 
-            path="/handwerker/dashboard" 
-            element={
-              <ProtectedRoute userType="handwerker">
-                <HandwerkerDashboardPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/handwerker/settings" 
-            element={
-              <ProtectedRoute userType="handwerker">
-                <HandwerkerSettingsPage />
-              </ProtectedRoute>
-            } 
-          />
-
-          <Route path="/handwerker/offer/:offerId/details" element={<HandwerkerOfferDetailsPage />} />
+         {/* Geschützte Handwerker-Routen */}
+<Route 
+  path="/handwerker/dashboard" 
+  element={
+    <ProtectedRoute userType="handwerker">
+      <HandwerkerDashboardPage />
+    </ProtectedRoute>
+  } 
+/>
+<Route 
+  path="/handwerker/settings" 
+  element={
+    <ProtectedRoute userType="handwerker">
+      <HandwerkerSettingsPage />
+    </ProtectedRoute>
+  } 
+/>
+<Route 
+  path="/handwerker/offer/:offerId/details" 
+  element={
+    <ProtectedRoute userType="handwerker">
+      <HandwerkerOfferDetailsPage />
+    </ProtectedRoute>
+  }
+/>
 
 {/* Angebot bestätigen nach Ortstermin */}
 <Route 
@@ -193,7 +199,7 @@ function App() {
   } 
 />
 
-          {/* Handwerker Routen - ergänze diese Route */}
+{/* Handwerker Tender Angebot */}
 <Route 
   path="/handwerker/tender/:tenderId/offer" 
   element={
@@ -203,9 +209,7 @@ function App() {
   } 
 />
 
-<Route path="/handwerker/order/:orderId/lv-details" element={<HandwerkerLVDetailsPage />} />
-          
-          {/* Ortstermin Route - ergänze diese Route */}
+{/* Ortstermin Route - für beide Nutzertypen */}
 <Route 
   path="/offer/:offerId/appointment" 
   element={
@@ -213,6 +217,16 @@ function App() {
       <OrtsterminPage />
     </ProtectedRoute>
   } 
+/>
+
+{/* Handwerker LV-Details für Aufträge */}
+<Route 
+  path="/handwerker/order/:orderId/lv-details" 
+  element={
+    <ProtectedRoute userType="handwerker">
+      <HandwerkerLVDetailsPage />
+    </ProtectedRoute>
+  }
 />
           
           {/* ============= Admin Routen - mit Header/Footer ============= */}
