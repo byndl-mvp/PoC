@@ -17819,34 +17819,34 @@ app.get('/api/handwerker/:identifier/orders', async (req, res) => {
     }
     
     const result = await query(
-      `SELECT 
-        ord.*,
-        o.amount as contract_amount,
-        o.lv_data,
-        o.final_accepted_at as contract_date,
-        p.description as projectType,
-        p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
-        b.name as clientName,
-        b.email as clientEmail,
-        b.phone as clientPhone,
-        t.name as trade,
-        o.execution_time as planned_execution,
-        CASE 
-          WHEN ord.status = 'active' THEN 'In Ausführung'
-          WHEN ord.status = 'completed' THEN 'Abgeschlossen'
-          ELSE ord.status
-        END as status_text
-       FROM orders ord
-       JOIN offers o ON ord.offer_id = o.id
-       JOIN projects p ON ord.project_id = p.id
-       JOIN bauherren b ON p.bauherr_id = b.id
-       JOIN trades t ON ord.trade_id = t.id
-       WHERE ord.handwerker_id = $1
-         AND o.status = 'accepted'
-         AND o.stage = 2
-       ORDER BY ord.created_at DESC`,
-      [handwerkerId]  // WICHTIG: handwerkerId
-    );
+  `SELECT 
+    ord.*,
+    ord.amount as contract_amount,
+    ord.created_at as contract_date,
+    ord.execution_start,
+    ord.execution_end,
+    p.description as projectType,
+    p.street || ' ' || p.house_number || ', ' || p.zip_code || ' ' || p.city as projectAddress,
+    b.name as clientName,
+    b.email as clientEmail,
+    b.phone as clientPhone,
+    t.name as trade,
+    t.name as trade_name,
+    CASE 
+      WHEN ord.status = 'active' THEN 'In Ausführung'
+      WHEN ord.status = 'completed' THEN 'Abgeschlossen'
+      ELSE ord.status
+    END as status_text,
+    of.lv_data
+   FROM orders ord
+   JOIN projects p ON ord.project_id = p.id
+   JOIN bauherren b ON ord.bauherr_id = b.id
+   JOIN trades t ON ord.trade_id = t.id
+   LEFT JOIN offers of ON ord.offer_id = of.id
+   WHERE ord.handwerker_id = $1
+   ORDER BY ord.created_at DESC`,
+  [handwerkerId]
+);
     
     res.json(result.rows);
   } catch (error) {
