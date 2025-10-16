@@ -30,8 +30,8 @@ import HandwerkerSettingsPage from './pages/HandwerkerSettingsPage';
 import HandwerkerOfferPage from './pages/HandwerkerOfferPage';
 import HandwerkerOfferDetailsPage from './pages/HandwerkerOfferDetailsPage';
 import HandwerkerOfferConfirmPage from './pages/HandwerkerOfferConfirmPage';
-import HandwerkerLVDetailsPage from './pages/HandwerkerLVDetailsPage';
 
+import HandwerkerLVDetailsPage from './pages/HandwerkerLVDetailsPage';
 import OrtsterminPage from './pages/OrtsterminPage';
 
 // Admin Pages
@@ -188,7 +188,6 @@ function App() {
     </ProtectedRoute>
   }
 />
-
 {/* Angebot bestätigen nach Ortstermin */}
 <Route 
   path="/handwerker/offer/:offerId/confirm" 
@@ -198,7 +197,6 @@ function App() {
     </ProtectedRoute>
   } 
 />
-
 {/* Handwerker Tender Angebot */}
 <Route 
   path="/handwerker/tender/:tenderId/offer" 
@@ -207,6 +205,16 @@ function App() {
       <HandwerkerOfferPage />
     </ProtectedRoute>
   } 
+/>
+
+{/* LV-Details für Handwerker - geschützt */}
+<Route 
+  path="/handwerker/order/:orderId/lv-details" 
+  element={
+    <ProtectedRoute userType="handwerker">
+      <HandwerkerLVDetailsPage />
+    </ProtectedRoute>
+  }
 />
 
 {/* Ortstermin Route - für beide Nutzertypen */}
@@ -219,11 +227,11 @@ function App() {
   } 
 />
 
-{/* Handwerker LV-Details für Aufträge */}
+{/* LV-Details für Bauherr - geschützt */}
 <Route 
-  path="/handwerker/order/:orderId/lv-details" 
+  path="/bauherr/order/:orderId/lv-details" 
   element={
-    <ProtectedRoute userType="handwerker">
+    <ProtectedRoute userType="bauherr">
       <HandwerkerLVDetailsPage />
     </ProtectedRoute>
   }
