@@ -1809,7 +1809,7 @@ const BudgetVisualization = ({ budget }) => {
               
               <div className="text-right ml-6">
                 <p className="text-2xl font-bold text-green-400 mb-2">
-                  {order.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                  {formatCurrency(order.amount)}
                 </p>
                 <p className="text-xs text-gray-400 mb-2">Netto</p>
                 <span className={`text-xs px-3 py-1 rounded inline-block ${
