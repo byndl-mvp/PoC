@@ -448,26 +448,40 @@ const ContractNegotiationModal = () => {
 
   // Verbindliche Beauftragung (Stufe 2) - MIT Werkvertrag
 const handleFinalOrder = async (offer) => {
+  console.log('🔴 handleFinalOrder CALLED with offer:', offer);
+  
   if (!window.confirm('Möchten Sie diesen Handwerker verbindlich beauftragen? Es entsteht ein rechtsgültiger Werkvertrag nach VOB/B.')) {
+    console.log('🔴 User cancelled');
     return;
   }
 
   try {
     setLoading(true);
+    
+    console.log('🔴 Fetching create-contract for offer ID:', offer.id);
+    
     const res = await fetch(apiUrl(`/api/offers/${offer.id}/create-contract`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
 
+    console.log('🔴 Response received:', res.status, res.ok);
+
     if (res.ok) {
       const data = await res.json();
+      console.log('🔴 Success data:', data);
+      
       alert(`Verbindliche Beauftragung erfolgreich! Werkvertrag wurde erstellt (Auftrag #${data.orderId}).`);
-      loadProjectDetails(selectedProject.id);
-      setActiveTab('orders'); // Wechsle zu Aufträge-Tab
+      await loadProjectDetails(selectedProject.id);
+      setActiveTab('orders');
+    } else {
+      const errorData = await res.json();
+      console.error('🔴 Error response:', errorData);
+      alert('Fehler: ' + errorData.error);
     }
   } catch (err) {
-    console.error('Fehler bei verbindlicher Beauftragung:', err);
-    alert('Fehler beim Erstellen des Werkvertrags');
+    console.error('🔴 Exception:', err);
+    alert('Fehler beim Erstellen des Werkvertrags: ' + err.message);
   } finally {
     setLoading(false);
   }
