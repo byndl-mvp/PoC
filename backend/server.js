@@ -9717,7 +9717,13 @@ app.post('/api/projects', async (req, res) => {
     JSON.stringify({ extracted: extractedData })
   ]
 );
-    
+
+// DEBUG - HIER EINFÜGEN:
+console.log('=== INSERTED PROJECT ===');
+console.log('Street from DB:', projectResult.rows[0].street);
+console.log('House number from DB:', projectResult.rows[0].house_number);
+console.log('Full project:', projectResult.rows[0]);
+
     const project = projectResult.rows[0];
     
     // ERST Trades erkennen
