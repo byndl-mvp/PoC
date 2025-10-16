@@ -16183,6 +16183,37 @@ Auftragnehmer: ${offer.company_name}
   `.trim();
 }
 
+// Route zum Abrufen des Vertragstexts (ohne PDF)
+app.get('/api/orders/:orderId/contract-text', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.contract_text,
+        o.created_at,
+        t.name as trade_name,
+        h.company_name,
+        b.name as bauherr_name
+       FROM orders o
+       JOIN trades t ON o.trade_id = t.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN bauherren b ON o.bauherr_id = b.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Vertrag nicht gefunden' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching contract text:', error);
+    res.status(500).json({ error: 'Fehler beim Laden des Vertrags' });
+  }
+});
+
 // Werkvertrag als PDF generieren
 app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
   try {
