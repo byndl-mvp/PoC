@@ -16812,7 +16812,7 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     // Footer auf allen Seiten - KORRIGIERT (verhindert leere Seiten)
 const range = doc.bufferedPageRange();
 for (let i = 0; i < range.count; i++) {
-  doc.switchToPage(i);
+  doc.switchToPage(range.start + i);
   
   // Footer am unteren Rand
   const bottomY = doc.page.height - 50;
