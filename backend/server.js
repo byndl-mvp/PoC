@@ -15846,6 +15846,42 @@ app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
   }
 });
 
+// LV-Details für einen Auftrag abrufen
+app.get('/api/orders/:orderId/lv-details', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.*,
+        of.lv_data,
+        t.name as trade_name,
+        p.description as project_description,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        b.name as bauherr_name
+       FROM orders o
+       JOIN offers of ON o.offer_id = of.id
+       JOIN trades t ON o.trade_id = t.id
+       JOIN projects p ON o.project_id = p.id
+       JOIN bauherren b ON o.bauherr_id = b.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Auftrag nicht gefunden' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching LV details:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der LV-Details' });
+  }
+});
+
 // Werkvertrag generieren und Auftrag erstellen
 app.post('/api/offers/:offerId/create-contract', async (req, res) => {
   try {
