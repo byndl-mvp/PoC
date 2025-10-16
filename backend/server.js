@@ -16623,7 +16623,7 @@ function addSection(doc, title) {
   
   doc.moveDown(1);
   doc.fontSize(11).font('Helvetica-Bold');
-  doc.text('═'.repeat(80));
+  doc.text('-'.repeat(80));
   doc.moveDown(0.3);
   doc.text(title);
   doc.moveDown(0.3);
