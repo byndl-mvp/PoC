@@ -1592,7 +1592,7 @@ const BudgetVisualization = ({ budget }) => {
       <p className="text-gray-400">Keine laufenden Vertragsanbahnungen.</p>
     ) : (
       <div className="space-y-6">
-        {offers.filter(o => o.status === 'preliminary' || o.status === 'confirmed').map((offer, idx) => (
+       {offers.filter(o => (o.status === 'preliminary' || o.status === 'confirmed') && o.status !== 'accepted').map((offer, idx) => {
           <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
