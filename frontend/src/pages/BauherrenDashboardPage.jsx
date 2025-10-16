@@ -1588,7 +1588,7 @@ const BudgetVisualization = ({ budget }) => {
       </p>
     </div>
     
-    {offers.filter(o => o.status === 'preliminary' || o.status === 'confirmed').length === 0 ? (
+    {offers.filter(o => (o.status === 'preliminary' || o.status === 'confirmed') && o.status !== 'accepted').length === 0 ? (
       <p className="text-gray-400">Keine laufenden Vertragsanbahnungen.</p>
     ) : (
       <div className="space-y-6">
