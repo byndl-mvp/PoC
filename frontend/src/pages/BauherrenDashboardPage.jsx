@@ -1787,12 +1787,12 @@ const BudgetVisualization = ({ budget }) => {
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-semibold text-white">{order.tradeName}</h3>
+                  <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
                   <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
                     Werkvertrag nach VOB/B
                   </span>
                 </div>
-                <p className="text-gray-300 mb-2">{order.companyName}</p>
+                <p className="text-gray-300 mb-2">{order.company_name}</p>
                 <p className="text-sm text-gray-400">
                   Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | 
                   Auftrags-Nr: #{order.id}
