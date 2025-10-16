@@ -997,13 +997,13 @@ if (contractsRes.ok) {
                 <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Auftraggeber</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="text-gray-300">
-                    <p><strong className="text-white">Name:</strong> {order.bauherr_name}</p>
-                    <p className="mt-1"><strong className="text-white">Tel:</strong> {order.bauherr_phone || 'Nicht verfügbar'}</p>
-                  </div>
-                  <div className="text-gray-300">
-                    <p><strong className="text-white">E-Mail:</strong> {order.bauherr_email || 'Nicht verfügbar'}</p>
-                    <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.bauherr_address || 'Siehe Projektadresse'}</p>
-                  </div>
+  <p><strong className="text-white">Name:</strong> {order.clientName}</p>
+  <p className="mt-1"><strong className="text-white">Tel:</strong> {order.clientPhone || 'Nicht verfügbar'}</p>
+</div>
+<div className="text-gray-300">
+  <p><strong className="text-white">E-Mail:</strong> {order.clientEmail || 'Nicht verfügbar'}</p>
+  <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.project_street} {order.project_house_number}, {order.project_zip} {order.project_city}</p>
+</div>
                 </div>
               </div>
               
