@@ -15785,11 +15785,11 @@ app.get('/api/projects/:projectId/withdrawn-offers', async (req, res) => {
 app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
   try {
     const { offerId } = req.params;
-    const { amount, execution_start, execution_end, notes } = req.body;
+    const { amount, execution_start, execution_end, notes, lv_data } = req.body; // lv_data hinzufügen!
     
     await query('BEGIN');
     
-    // Update Offer
+    // Update Offer MIT lv_data
     await query(
       `UPDATE offers 
        SET status = 'confirmed',
@@ -15797,10 +15797,11 @@ app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
            execution_start = $3,
            execution_end = $4,
            notes = $5,
+           lv_data = $6,  -- NEU!
            offer_confirmed_at = NOW(),
            updated_at = NOW()
        WHERE id = $1`,
-      [offerId, amount, execution_start, execution_end, notes]
+      [offerId, amount, execution_start, execution_end, notes, JSON.stringify(lv_data)] // lv_data als JSON
     );
     
     // Benachrichtige Bauherr
