@@ -16374,33 +16374,38 @@ if (order.lv_data) {
     let totalSum = 0;
     
     lvData.positions.forEach((pos, index) => {
-      if (doc.y > 700) {
-        doc.addPage();
-        doc.fontSize(8).font('Helvetica');
-      }
-      
-      const startY = doc.y;
-      const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
-      totalSum += posTotal;
-      
-      xPos = 50;
-      doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
-      
-      xPos += colWidths.pos;
-      const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
-      doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
-      
-      xPos += colWidths.title;
-      doc.text((pos.quantity || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
-      
-      xPos += colWidths.quantity;
-      doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
-      
-      xPos += colWidths.unit;
-      doc.text((pos.unitPrice || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
-      
-      xPos += colWidths.unitPrice;
-      doc.text(posTotal.toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
+  if (doc.y > 700) {
+    doc.addPage();
+    doc.fontSize(8).font('Helvetica');
+  }
+  
+  const startY = doc.y;
+  const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
+  
+  // Position
+  xPos = 50;
+  doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
+  
+  // Bezeichnung (mit Umbruch)
+  xPos += colWidths.pos;
+  const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
+  doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
+  
+  // Menge - MIT parseFloat!
+  xPos += colWidths.title;
+  doc.text((parseFloat(pos.quantity) || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
+  
+  // Einheit
+  xPos += colWidths.quantity;
+  doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
+  
+  // EP - MIT parseFloat!
+  xPos += colWidths.unit;
+  doc.text((parseFloat(pos.unitPrice) || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
+  
+  // GP - MIT parseFloat!
+  xPos += colWidths.unitPrice;
+  doc.text(posTotal.toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
       
       doc.moveDown(Math.max(1, titleHeight / 12));
       
@@ -16754,38 +16759,38 @@ if (order.lv_data) {
       doc.fontSize(8).font('Helvetica');
       
       lvData.positions.forEach((pos, index) => {
-        // Prüfe ob neue Seite nötig
-        if (doc.y > 700) {
-          doc.addPage();
-          doc.fontSize(8).font('Helvetica');
-        }
-        
-        const startY = doc.y;
-        
-        // Position
-        xPos = 50;
-        doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
-        
-        // Bezeichnung (mit Umbruch)
-        xPos += colWidths.pos;
-        const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
-        doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
-        
-        // Menge
-        xPos += colWidths.title;
-        doc.text((pos.quantity || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
-        
-        // Einheit
-        xPos += colWidths.quantity;
-        doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
-        
-        // EP
-        xPos += colWidths.unit;
-        doc.text((pos.unitPrice || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
-        
-        // GP
-        xPos += colWidths.unitPrice;
-        doc.text((pos.totalPrice || 0).toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
+  if (doc.y > 700) {
+    doc.addPage();
+    doc.fontSize(8).font('Helvetica');
+  }
+  
+  const startY = doc.y;
+  const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
+  
+  // Position
+  xPos = 50;
+  doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
+  
+  // Bezeichnung (mit Umbruch)
+  xPos += colWidths.pos;
+  const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
+  doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
+  
+  // Menge - MIT parseFloat!
+  xPos += colWidths.title;
+  doc.text((parseFloat(pos.quantity) || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
+  
+  // Einheit
+  xPos += colWidths.quantity;
+  doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
+  
+  // EP - MIT parseFloat!
+  xPos += colWidths.unit;
+  doc.text((parseFloat(pos.unitPrice) || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
+  
+  // GP - MIT parseFloat!
+  xPos += colWidths.unitPrice;
+  doc.text(posTotal.toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
         
         doc.moveDown(Math.max(1, titleHeight / 12));
         
