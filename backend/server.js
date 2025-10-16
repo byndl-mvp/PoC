@@ -16361,7 +16361,7 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     doc.fontSize(11).font('Helvetica-Bold');
     doc.text(`Vertragssumme (Netto): ${formatCurrency(netto)}`);
     doc.text(`zzgl. gesetzlicher MwSt. (19%): ${formatCurrency(mwst)}`);
-    doc.text('─'.repeat(60));
+    doc.text('-'.repeat(60));
     doc.text(`Gesamtsumme (Brutto): ${formatCurrency(brutto)}`);
     
     doc.moveDown(1);
