@@ -16455,7 +16455,7 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     
     doc.moveDown(2);
     doc.fontSize(10).font('Helvetica-Bold');
-    doc.text('═'.repeat(80));
+    doc.text('='.repeat(80));
     doc.moveDown(0.5);
     doc.text(`Elektronisch bestätigt am: ${new Date(order.created_at).toLocaleDateString('de-DE')}`);
     doc.moveDown(0.5);
