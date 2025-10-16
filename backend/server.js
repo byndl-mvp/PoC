@@ -15855,16 +15855,19 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
         h.contact_person,
         h.phone as handwerker_phone,
         h.email as handwerker_email,
+        h.id as handwerker_id,  // HINZUFÜGEN
         b.name as bauherr_name,
         b.address as bauherr_address,
         b.phone as bauherr_phone,
         b.email as bauherr_email,
+        b.id as bauherr_id,     // HINZUFÜGEN
         p.id as project_id,
         p.street,
         p.house_number,
         p.zip_code,
         p.city,
         p.description as project_description,
+        tn.trade_id,            // HINZUFÜGEN
         t.name as trade_name,
         t.code as trade_code
        FROM offers o
@@ -15901,8 +15904,8 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
         offer.bauherr_id,
         offer.trade_id,
         offer.amount,
-        offer.execution_start,
-        offer.execution_end,
+        offer.execution_start || new Date(),
+        offer.execution_end || new Date(Date.now() + 30*24*60*60*1000),
         contractText
       ]
     );
@@ -15911,14 +15914,14 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     
     // Update Offer Status
     await query(
-  `UPDATE offers 
-   SET status = 'accepted', 
-       stage = 2,  // NEU: Stage auf 2 setzen
-       final_accepted_at = NOW(),
-       accepted_at = NOW()
-   WHERE id = $1`,
-  [offerId]
-);
+      `UPDATE offers 
+       SET status = 'accepted', 
+           stage = 2,
+           final_accepted_at = NOW(),
+           accepted_at = NOW()
+       WHERE id = $1`,
+      [offerId]
+    );
     
     // Benachrichtige Handwerker
     if (transporter) {
