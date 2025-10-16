@@ -16809,28 +16809,29 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
       doc.text(formatCurrency(brutto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
     }
     
-    // Footer auf allen Seiten - KORRIGIERT
-const pages = doc.bufferedPageRange();
-if (pages && pages.count > 0) {
-  for (let i = pages.start; i < pages.start + pages.count; i++) {
-    doc.switchToPage(i);
-    
-    doc.fontSize(8).font('Helvetica');
-    doc.text(
-      `Seite ${i - pages.start + 1} von ${pages.count}`,
-      50,
-      doc.page.height - 50,
-      { align: 'center' }
-    );
-    
-    doc.fontSize(7).font('Helvetica-Oblique');
-    doc.text(
-      'byndl GmbH - Die digitale Handwerkerplattform',
-      50,
-      doc.page.height - 35,
-      { align: 'center' }
-    );
-  }
+    // Footer auf allen Seiten - KORRIGIERT (verhindert leere Seiten)
+const range = doc.bufferedPageRange();
+for (let i = 0; i < range.count; i++) {
+  doc.switchToPage(i);
+  
+  // Footer am unteren Rand
+  const bottomY = doc.page.height - 50;
+  
+  doc.fontSize(8).font('Helvetica');
+  doc.text(
+    `Seite ${i + 1} von ${range.count}`,
+    50,
+    bottomY,
+    { align: 'center', width: doc.page.width - 100 }
+  );
+  
+  doc.fontSize(7).font('Helvetica-Oblique');
+  doc.text(
+    'byndl GmbH - Die digitale Handwerkerplattform',
+    50,
+    bottomY + 15,
+    { align: 'center', width: doc.page.width - 100 }
+  );
 }
     
     // PDF abschließen
