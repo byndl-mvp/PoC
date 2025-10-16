@@ -23,6 +23,8 @@ export default function HandwerkerDashboardPage() {
   const [contracts, setContracts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [schedule, setSchedule] = useState([]); // eslint-disable-line no-unused-vars
+  const [showContractView, setShowContractView] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   
   useEffect(() => {
     const storedData = sessionStorage.getItem('handwerkerData');
@@ -180,6 +182,72 @@ if (contractsRes.ok) {
     navigate('/');
   };
 
+  // Contract View Modal Component  
+const ContractViewModal = ({ orderId, onClose }) => {
+  const [contractData, setContractData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const loadContract = async () => {
+      try {
+        const res = await fetch(apiUrl(`/api/orders/${orderId}/contract-text`));
+        if (res.ok) {
+          const data = await res.json();
+          setContractData(data);
+        }
+      } catch (err) {
+        console.error('Error loading contract:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadContract();
+  }, [orderId]);
+  
+  if (loading) return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="text-white">Lade Vertrag...</div>
+    </div>
+  );
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Werkvertrag</h2>
+          <button 
+            onClick={onClose}
+            className="text-white hover:bg-white/20 rounded-lg p-2"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div className="p-6 overflow-y-auto max-h-[70vh]">
+          <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800">
+            {contractData?.contract_text}
+          </pre>
+        </div>
+        
+        <div className="p-6 border-t flex justify-end gap-3">
+          <button
+            onClick={() => window.open(apiUrl(`/api/orders/${orderId}/contract-pdf`), '_blank')}
+            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            Als PDF herunterladen
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+          >
+            Schließen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+  
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
       <div className="text-center">
