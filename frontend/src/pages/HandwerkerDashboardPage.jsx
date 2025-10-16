@@ -182,8 +182,7 @@ if (contractsRes.ok) {
     navigate('/');
   };
 
-  // Contract View Modal Component  
-const ContractViewModal = ({ orderId, onClose }) => {
+ const ContractViewModal = ({ orderId, onClose }) => {
   const [contractData, setContractData] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -212,8 +211,9 @@ const ContractViewModal = ({ orderId, onClose }) => {
   
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 flex justify-between items-center">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+        {/* Header - fixed height */}
+        <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 flex justify-between items-center rounded-t-2xl">
           <h2 className="text-2xl font-bold">Werkvertrag</h2>
           <button 
             onClick={onClose}
@@ -223,13 +223,15 @@ const ContractViewModal = ({ orderId, onClose }) => {
           </button>
         </div>
         
-        <div className="p-6 overflow-y-auto max-h-[70vh]">
+        {/* Content - scrollable */}
+        <div className="flex-1 p-6 overflow-y-auto min-h-0">
           <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800">
             {contractData?.contract_text}
           </pre>
         </div>
         
-        <div className="p-6 border-t flex justify-end gap-3">
+        {/* Footer - fixed height */}
+        <div className="p-6 border-t flex justify-end gap-3 bg-gray-50 rounded-b-2xl">
           <button
             onClick={() => window.open(apiUrl(`/api/orders/${orderId}/contract-pdf`), '_blank')}
             className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
