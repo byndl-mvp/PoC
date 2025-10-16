@@ -15223,16 +15223,35 @@ async function calculateProvision(offerId) {
   return amount * provisionRate;
 }
 
-// Get project orders
 app.get('/api/projects/:projectId/orders', async (req, res) => {
   try {
     const { projectId } = req.params;
     
     const result = await query(
-      `SELECT o.*, h.company_name, t.name as trade_name
+      `SELECT 
+        o.*,
+        t.name as trade_name,
+        t.code as trade_code,
+        h.company_name,
+        h.contact_person,
+        h.phone as handwerker_phone,
+        h.email as handwerker_email,
+        h.address as handwerker_address,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        p.description as project_description,
+        of.lv_data
        FROM orders o
-       JOIN handwerker h ON o.handwerker_id = h.id
        JOIN trades t ON o.trade_id = t.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN bauherren b ON o.bauherr_id = b.id
+       JOIN projects p ON o.project_id = p.id
+       LEFT JOIN offers of ON o.offer_id = of.id
        WHERE o.project_id = $1
        ORDER BY o.created_at DESC`,
       [projectId]
