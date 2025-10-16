@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -17,11 +17,7 @@ export default function HandwerkerLVDetailsPage() {
   const [orderData, setOrderData] = useState(null);
   const [lvData, setLvData] = useState({ positions: [] });
 
-  useEffect(() => {
-    loadLVDetails();
-  }, [orderId]);
-
-  const loadLVDetails = async () => {
+  const loadLVDetails = useCallback(async () => {
     try {
       const res = await fetch(apiUrl(`/api/orders/${orderId}/lv-details`));
       if (res.ok) {
@@ -45,7 +41,11 @@ export default function HandwerkerLVDetailsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    loadLVDetails();
+  }, [loadLVDetails]);
 
   const calculateTotal = () => {
     if (!lvData.positions || lvData.positions.length === 0) return 0;
