@@ -16018,7 +16018,7 @@ nach VOB/B (Vergabe- und Vertragsordnung für Bauleistungen Teil B)
 Vertragsnummer: WV-${offer.id}-${new Date().getFullYear()}
 Datum: ${today}
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 1 VERTRAGSPARTEIEN
 
@@ -16035,7 +16035,7 @@ Tel: ${offer.handwerker_phone}
 E-Mail: ${offer.handwerker_email}
 ${offer.contact_person ? `Ansprechpartner: ${offer.contact_person}` : ''}
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 2 VERTRAGSGEGENSTAND
 
@@ -16048,7 +16048,7 @@ ${offer.zip_code} ${offer.city}
 Projektbeschreibung:
 ${offer.project_description || 'Wie im Leistungsverzeichnis beschrieben'}
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 3 LEISTUNGSUMFANG
 
@@ -16062,13 +16062,13 @@ Der AN verpflichtet sich, alle im LV aufgeführten Positionen
 fachgerecht und nach den anerkannten Regeln der Technik sowie 
 den einschlägigen DIN-Normen auszuführen.
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 4 VERGÜTUNG
 
 Vertragssumme (Netto): ${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
 zzgl. gesetzlicher MwSt. (${19}%): ${(offer.amount * 0.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
-───────────────────────────────────────────────────────────────
+----------------------------------------------------------------
 Gesamtsumme (Brutto): ${(offer.amount * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
 
 Die Vergütung erfolgt nach tatsächlich erbrachter und abgenommener Leistung 
@@ -16079,7 +16079,7 @@ Zahlungsbedingungen:
 - Schlusszahlung innerhalb von 30 Tagen nach Abnahme
 - Einbehalt von 5% als Sicherheit bis zum Ablauf der Gewährleistungsfrist
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 5 AUSFÜHRUNGSFRISTEN
 
@@ -16093,7 +16093,7 @@ der Gesamtauftragssumme.
 Verlängerungen der Ausführungsfrist sind nur bei Behinderungen 
 gemäß § 6 VOB/B zulässig und bedürfen der schriftlichen Vereinbarung.
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 6 ABNAHME
 
@@ -16108,7 +16108,7 @@ vorliegen, die die Gebrauchsfähigkeit beeinträchtigen.
 Mit der Abnahme geht die Gefahr auf den AG über und die 
 Gewährleistungsfrist beginnt.
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 7 GEWÄHRLEISTUNG
 
@@ -16124,7 +16124,7 @@ während der Gewährleistungsfrist auftreten.
 Bei berechtigten Mängelrügen hat der AN nach seiner Wahl das 
 Recht zur Nacherfüllung durch Nachbesserung oder Neuherstellung.
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 8 VERSICHERUNG
 
@@ -16133,14 +16133,14 @@ ausreichende Betriebshaftpflichtversicherung zu unterhalten.
 
 Der Nachweis ist auf Verlangen vorzulegen.
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 9 SICHERHEITSVORSCHRIFTEN
 
 Der AN verpflichtet sich zur Einhaltung aller einschlägigen 
 Arbeitsschutz-, Unfallverhütungs- und Sicherheitsvorschriften.
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 10 KÜNDIGUNG
 
@@ -16149,7 +16149,7 @@ Beide Parteien können den Vertrag aus wichtigem Grund kündigen.
 Der AG kann den Vertrag jederzeit bis zur Vollendung der Leistung 
 kündigen (§ 8 VOB/B).
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 § 11 SCHLUSSBESTIMMUNGEN
 
@@ -16166,13 +16166,13 @@ Wirksamkeit der übrigen Bestimmungen unberührt.
 Dieser Vertrag wurde auf elektronischem Wege über die 
 Plattform byndl.de geschlossen und ist rechtsgültig.
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 ANLAGEN:
 - Leistungsverzeichnis (LV) mit detaillierter Positionsbeschreibung
 - Planunterlagen (falls vorhanden)
 
-═══════════════════════════════════════════════════════════════
+================================================================
 
 Elektronisch bestätigt am: ${today}
 
