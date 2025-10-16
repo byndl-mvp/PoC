@@ -1895,53 +1895,79 @@ const BudgetVisualization = ({ budget }) => {
             </div>
             
             {/* Werkvertrag-Aktionen */}
-            <div className="border-t border-white/10 pt-4 mt-4">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Werkvertrag als PDF
-                </button>
-                
-                <button
-                  onClick={() => {
-  setSelectedOrderId(order.id);
-  setShowContractView(true);
-}}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                >
-                  📋 Vertrag ansehen
-                </button>
-                
-                {order.status === 'active' && (
-                  <button
-                    onClick={async () => {
-                      if (!window.confirm('Möchten Sie die Leistung abnehmen? Dies bestätigt die ordnungsgemäße Ausführung.')) return;
-                      
-                      try {
-                        const res = await fetch(apiUrl(`/api/orders/${order.id}/accept-completion`), {
-                          method: 'POST'
-                        });
-                        
-                        if (res.ok) {
-                          alert('Leistung abgenommen. Gewährleistungsfrist beginnt.');
-                          loadProjectDetails(selectedProject.id);
-                        }
-                      } catch (err) {
-                        console.error('Error:', err);
-                      }
-                    }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                  >
-                    ✓ Leistung abnehmen
-                  </button>
-                )}
-              </div>
-            </div>
+<div className="border-t border-white/10 pt-4 mt-4">
+  <div className="flex gap-3">
+    <button
+      onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
+      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      </svg>
+      Werkvertrag als PDF
+    </button>
+    
+    <button
+      onClick={() => navigate(`/bauherr/order/${order.id}/lv-details`)}
+      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      LV-Details ansehen
+    </button>
+    
+    <button
+      onClick={() => {
+        setSelectedOrderId(order.id);
+        setShowContractView(true);
+      }}
+      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      Vertrag ansehen
+    </button>
+    
+    {order.status === 'active' && (
+      <button
+        onClick={async () => {
+          if (!window.confirm('Möchten Sie die Leistung abnehmen? Dies bestätigt die ordnungsgemäße Ausführung und startet die Gewährleistungsfrist.')) return;
+          
+          try {
+            setLoading(true);  // ← Wichtig!
+            const res = await fetch(apiUrl(`/api/orders/${order.id}/accept-completion`), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (res.ok) {
+              const data = await res.json();
+              alert('✅ ' + data.message);
+              loadProjectDetails(selectedProject.id);
+            } else {
+              const error = await res.json();
+              alert('❌ Fehler: ' + error.error);
+            }
+          } catch (err) {
+            console.error('Error:', err);
+            alert('❌ Fehler beim Abnehmen der Leistung');
+          } finally {
+            setLoading(false);  // ← Wichtig!
+          }
+        }}
+        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2"
+        disabled={loading}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+        {loading ? 'Wird abgenommen...' : 'Leistung abnehmen'}
+      </button>
+    )}
+  </div>
+</div>
             
             {/* Gewährleistungshinweis */}
             {order.status === 'completed' && (
