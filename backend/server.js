@@ -16381,7 +16381,8 @@ if (order.lv_data) {
   
   const startY = doc.y;
   const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
-  
+  totalSum += posTotal; 
+      
   // Position
   xPos = 50;
   doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
