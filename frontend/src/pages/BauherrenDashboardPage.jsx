@@ -1907,9 +1907,9 @@ const BudgetVisualization = ({ budget }) => {
                 
                 <button
                   onClick={() => {
-                    // Modal mit Vertragstext öffnen
-                    alert('Vertragsansicht wird geöffnet...');
-                  }}
+  setSelectedOrderId(order.id);
+  setShowContractView(true);
+}}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                 >
                   📋 Vertrag ansehen
@@ -2083,8 +2083,19 @@ const BudgetVisualization = ({ budget }) => {
     </>
   )}
   
-  {/* Modal für Vertragsanbahnung */}
-      {showContractModal && <ContractNegotiationModal />}
+   {/* Modal für Vertragsanbahnung */}
+  {showContractModal && <ContractNegotiationModal />}
+  
+  {/* Modal für Vertragsansicht */}
+  {showContractView && (
+    <ContractViewModal 
+      orderId={selectedOrderId}
+      onClose={() => {
+        setShowContractView(false);
+        setSelectedOrderId(null);
+      }}
+    />
+  )}
     </div>  
   </div>
   );
