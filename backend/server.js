@@ -16881,6 +16881,111 @@ function addSection(doc, title) {
   doc.fontSize(10).font('Helvetica');
 }
 
+// Leistung abnehmen
+app.post('/api/orders/:orderId/accept-completion', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    await query('BEGIN');
+    
+    // Update Order Status
+    await query(
+      `UPDATE orders 
+       SET status = 'completed', 
+           accepted_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [orderId]
+    );
+    
+    // Lade Handwerker-Daten für E-Mail
+    const orderData = await query(
+      `SELECT 
+        o.*,
+        h.email as handwerker_email,
+        h.company_name,
+        t.name as trade_name,
+        b.name as bauherr_name
+       FROM orders o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN trades t ON o.trade_id = t.id
+       JOIN bauherren b ON o.bauherr_id = b.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+    
+    if (orderData.rows.length > 0 && transporter) {
+      const order = orderData.rows[0];
+      
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: order.handwerker_email,
+        subject: `✅ Leistung abgenommen - Auftrag #${orderId}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+              <h1>✅ Leistung abgenommen!</h1>
+            </div>
+            
+            <div style="padding: 30px; background: #f7f7f7;">
+              <p>Sehr geehrtes Team von ${order.company_name},</p>
+              
+              <p><strong>${order.bauherr_name}</strong> hat Ihre Leistung für <strong>${order.trade_name}</strong> erfolgreich abgenommen.</p>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #10b981;">Details:</h3>
+                <table style="width: 100%;">
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Auftrag:</strong></td>
+                    <td style="text-align: right;">#${orderId}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Gewerk:</strong></td>
+                    <td style="text-align: right;">${order.trade_name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Abnahmedatum:</strong></td>
+                    <td style="text-align: right;">${new Date().toLocaleDateString('de-DE')}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Auftragssumme:</strong></td>
+                    <td style="text-align: right;">${formatCurrency(order.amount)}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="background: #dbeafe; padding: 15px; border-left: 4px solid #3b82f6; border-radius: 4px; margin: 20px 0;">
+                <strong>📋 Nächste Schritte:</strong><br>
+                • Gewährleistungsfrist beginnt ab heute<br>
+                • Schlusszahlung erfolgt gemäß Vertrag<br>
+                • Dokumentation für Ihre Unterlagen
+              </div>
+              
+              <p>Vielen Dank für die erfolgreiche Zusammenarbeit!</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
+              <p>© 2025 byndl - Die digitale Handwerkerplattform</p>
+            </div>
+          </div>
+        `
+      });
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true,
+      message: 'Leistung erfolgreich abgenommen. Handwerker wurde benachrichtigt.'
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error accepting completion:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============= AUSSCHREIBUNGS-SYSTEM =============
 
 // kleiner Helfer
