@@ -11896,7 +11896,7 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
     // In DB speichern (nur wenn projectId und tradeId vorhanden)
     if (projectId && tradeId) {
       try {
-        await pool.query(`
+        await query(`
           INSERT INTO file_uploads 
           (project_id, trade_id, question_id, file_name, file_type, analysis_result, extracted_data, confidence, document_type)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
