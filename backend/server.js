@@ -5811,7 +5811,7 @@ const uploadCount = enrichedAnswers.filter(a => a.hasUpload).length;
 console.log(`[LV] Enriched ${uploadCount} answers with upload data`);
   
   // Berechne Fragenanzahl
-const answeredQuestionCount = tradeAnswers.length;
+const answeredQuestionCount = enrichedAnswers.length;
 
 // NEU: Erweiterte Orientierungswerte mit Projekt-Context (NUR EINMAL!)
 const orientation = getPositionOrientation(trade.code, answeredQuestionCount, {
