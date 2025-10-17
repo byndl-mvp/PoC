@@ -561,38 +561,6 @@ const bildErkennungsRegeln = {
     ]
   },
   
-  KEL: {
-    erkennungsZiele: [
-      // INNEN KELLER
-      "Kellerräume (Anzahl, Größe)",
-      "Kellerfenster (Anzahl, Größe, Verglasung)",
-      "Lichtschächte (Anzahl, Material, Abdeckung)",
-      "Kellerwände (Material, Zustand)",
-      "Kellerdecke (Höhe, Material)",
-      "Feuchtigkeit erkennbar (Flecken, Schimmel)",
-      "Wasserschäden (Hochwassermarken)",
-      "Salzausblühungen (weiße Beläge)",
-      "Abdichtung erkennbar",
-      "Kellerboden (Estrich, Beton, Erde)",
-      "Bodenablauf vorhanden",
-      "Heizungsraum (Größe, Zugang)",
-      "Hausanschlussraum",
-      "Kellertreppen (Material, Zustand)",
-      "Kellerbeleuchtung",
-      "Steckdosen Keller (Anzahl)",
-      "Wasser-/Abwasseranschlüsse",
-      "Durchbrüche/Maueröffnungen",
-      "Schächte (Größe, Zweck)",
-      "Isolierung Kellerwände",
-      "Isolierung Kellerdecke",
-      "Putz Kellerwände (Zustand)",
-      "Risse in Kellerwänden",
-      "Kellergeruch (muffig, feucht)",
-      "Lagernutzung (Regale, Verschläge)",
-      "Hobby-/Werkstatträume"
-    ]
-  },
-  
   PV: {
     erkennungsZiele: [
       // AUSSEN
@@ -618,6 +586,77 @@ const bildErkennungsRegeln = {
       "Smart-Meter vorhanden",
       "Unterverteilung vorhanden",
       "Potentialausgleich erkennbar"
+     ]
+  },
+  
+INTAKE: {
+    erkennungsZiele: [
+      // ZUGÄNGLICHKEIT & LOGISTIK
+      "Zufahrt für LKW (Breite, Hindernisse, Tor)",
+      "Straßenbreite und Parkmöglichkeiten",
+      "Einfahrt/Hofeinfahrt (Breite, Untergrund)",
+      "Wendmöglichkeit für Fahrzeuge",
+      "Platzverhältnisse für Container",
+      "Lagerplätze für Material (Fläche, Untergrund)",
+      "Abstand zur Straße (für Gerüst/Kran)",
+      "Gehweg vorhanden (Breite, Überbrückung nötig)",
+      
+      // GEBÄUDE ALLGEMEIN
+      "Gebäudetyp (EFH, MFH, RH, DHH)",
+      "Anzahl Geschosse/Etagen",
+      "Geschätzte Gebäudehöhe",
+      "Geschätzte Grundfläche",
+      "Baustil/Baujahr erkennbar",
+      "Dachform (für Gerüstplanung)",
+      "Nachbarbebauung (Abstände)",
+      
+      // HINDERNISSE & SCHUTZ
+      "Bäume nahe am Gebäude",
+      "Büsche/Hecken die stören könnten",
+      "Gartenhäuser/Schuppen",
+      "Carports/Überdachungen",
+      "Zäune/Tore",
+      "Stromleitungen/Freileitungen",
+      "Telefonleitungen",
+      
+      // UNTERGRUND
+      "Bodenbeschaffenheit (Pflaster, Rasen, Kies, Erde)",
+      "Gefälle/Hanglage",
+      "Befestigte Flächen für Gerüst",
+      "Rasenflächen die geschützt werden müssen",
+      
+      // ANSCHLÜSSE
+      "Hausanschlusskasten sichtbar (Strom)",
+      "Wasseranschluss außen erkennbar",
+      "Außenwasserhahn vorhanden",
+      "Schacht/Kanaldeckel (für Entsorgung)",
+      
+      // SICHERHEIT
+      "Öffentlicher Bereich (Gehweg/Straße)",
+      "Spielplatz in der Nähe",
+      "Schulweg",
+      "Nachbargrundstücke betroffen",
+      
+      // BESONDERHEITEN
+      "Denkmalschutz erkennbar (Fachwerk, Stuck)",
+      "Gewerbliche Nutzung erkennbar",
+      "Besondere Architektur",
+      "Sichtbare Schäden am Gebäude",
+      "Bewohnt/unbewohnt erkennbar",
+      
+      // TRANSPORT
+      "Treppenhaus von außen erkennbar",
+      "Aufzug erkennbar (bei MFH)",
+      "Balkone (für Materialtransport)",
+      "Fenster groß genug für Transport",
+      "Dachboden-Zugang erkennbar"
+    ]
+  },
+  
+  INT: {
+    erkennungsZiele: [
+      // Verweis auf INTAKE
+      "Siehe INTAKE-Regeln"
     ]
   }
 };
@@ -627,12 +666,32 @@ async function analyzeImageWithClaude(base64Image, questionContext, tradeCode, q
     apiKey: process.env.ANTHROPIC_API_KEY
   });
   
-  const rules = bildErkennungsRegeln[tradeCode] || { erkennungsZiele: [] };
+  // INTAKE und INT gleich behandeln
+  const actualTradeCode = (tradeCode === 'INT' || tradeCode === 'INTAKE') ? 'INTAKE' : tradeCode;
+  const rules = bildErkennungsRegeln[actualTradeCode] || { erkennungsZiele: [] };
   
-  const systemPrompt = `Du bist ein Experte für Bauanalyse und ${tradeCode}-Arbeiten.
+  // Spezieller Prompt für INTAKE oder normale Gewerke
+  let systemPrompt;
+  
+  if (actualTradeCode === 'INTAKE') {
+    systemPrompt = `Du bist ein Experte für Baustellenplanung und Logistik.
+Analysiere das Bild im Hinblick auf BAUSTELLENBEDINGUNGEN und LOGISTIK.
+
+FOKUS BEI INTAKE/BAUSTELLENANALYSE:
+${rules.erkennungsZiele.map((ziel, i) => `${i+1}. ${ziel}`).join('\n')}
+
+WICHTIG bei Intake-Bildern:
+- Fokus auf ZUGÄNGLICHKEIT und PLATZVERHÄLTNISSE
+- Erkenne HINDERNISSE für Gerüst, Kran, Container
+- Beurteile LAGERUNGSMÖGLICHKEITEN für Material
+- Schätze ABSTÄNDE und BREITEN für Fahrzeuge
+- Identifiziere SCHUTZNOTWENDIGKEITEN (Rasen, Nachbarn)
+- Erkenne ANSCHLÜSSE (Strom, Wasser) für Baustelle`;
+  } else {
+    systemPrompt = `Du bist ein Experte für Bauanalyse und ${actualTradeCode}-Arbeiten.
 Analysiere das Bild präzise im Kontext der gestellten Frage.
 
-ERKENNUNGSZIELE für ${tradeCode}:
+ERKENNUNGSZIELE für ${actualTradeCode}:
 ${rules.erkennungsZiele.map((ziel, i) => `${i+1}. ${ziel}`).join('\n')}
 
 WICHTIG:
@@ -643,7 +702,8 @@ WICHTIG:
 - Wenn nach Anzahl gefragt: Zähle genau
 - Wenn nach Maßen gefragt: Schätze basierend auf Referenzgrößen
 - Wenn nach Material gefragt: Identifiziere anhand visueller Merkmale`;
-
+  }
+  
   const response = await anthropic.messages.create({
     model: "claude-4-5-sonnet-20250929",
     max_tokens: 3000,
