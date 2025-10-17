@@ -28,6 +28,8 @@ export default function IntakeQuestionsPage() {
   const [loadingExplanation, setLoadingExplanation] = useState(false);
   const [expandedExplanations, setExpandedExplanations] = useState({});
   const [cachedExplanations, setCachedExplanations] = useState({});
+  const [uploadedFiles, setUploadedFiles] = useState({});
+  const [processingUploads, setProcessingUploads] = useState({});
   
   // Fake Progress für initiales Laden (45 Sekunden)
   useEffect(() => {
@@ -191,6 +193,61 @@ const toggleDetailedExplanation = async () => {
     console.error('Error loading explanation:', error);
   } finally {
     setLoadingExplanation(false);
+  }
+};
+
+const handleFileUpload = async (questionId, file) => {
+  // EXAKT derselbe Code wie in QuestionsPage
+  if (!file) return;
+  
+  if (file.size > 10 * 1024 * 1024) {
+    alert('Datei zu groß (max. 10MB)');
+    return;
+  }
+  
+  setProcessingUploads(prev => ({ ...prev, [questionId]: true }));
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('questionId', questionId);
+  formData.append('questionText', questions.find(q => q.id === questionId)?.question || '');
+  formData.append('tradeCode', 'INTAKE'); // ← Wichtig: 'INTAKE' statt tradeCode
+  formData.append('projectId', projectId);
+  formData.append('tradeId', '0'); // ← 0 für Intake
+  
+  try {
+    const response = await fetch('/api/analyze-file', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (result.extractedAnswer) {
+      // Antwort automatisch setzen
+      setAnswers(prev => ({
+        ...prev,
+        [questionId]: result.extractedAnswer
+      }));
+      
+      // Upload-Info speichern
+      setUploadedFiles(prev => ({
+        ...prev,
+        [questionId]: {
+          name: file.name,
+          analysis: result.analysis,
+          confidence: result.confidence
+        }
+      }));
+    }
+  } catch (error) {
+    console.error('Upload failed:', error);
+    alert('Fehler bei der Dateianalyse');
+  } finally {
+    setProcessingUploads(prev => ({ ...prev, [questionId]: false }));
   }
 };
   
