@@ -371,7 +371,6 @@ const handleFileUpload = async (questionId, file) => {
   formData.append('tradeId', String(tradeId || ''));
   
   try {
-    // ✅ FIX: apiUrl() verwenden
     const response = await fetch(apiUrl('/api/analyze-file'), {
       method: 'POST',
       headers: {
@@ -388,14 +387,17 @@ const handleFileUpload = async (questionId, file) => {
     const result = await response.json();
     
     if (result.extractedAnswer) {
-      // ✅ WICHTIG: Setze die Antwort ins Eingabefeld
+      // Setze ins Eingabefeld
       setAnswerText(result.extractedAnswer);
       
-      // Speichere auch im answers State
-      setAnswers(prev => ({
-        ...prev,
-        [questionId]: result.extractedAnswer
-      }));
+      // Speichere korrekt im answers ARRAY
+      const newAnswers = [...answers];
+      newAnswers[current] = {
+        questionId: questions[current].id || questions[current].question_id,
+        answer: result.extractedAnswer,
+        assumption: ''
+      };
+      setAnswers(newAnswers);
       
       // Upload-Info für Anzeige
       setUploadedFiles(prev => ({
@@ -407,7 +409,6 @@ const handleFileUpload = async (questionId, file) => {
         }
       }));
       
-      // Optional: Feedback
       console.log('✅ File analyzed successfully:', result);
     } else {
       alert('Keine Antwort aus der Datei extrahiert');
