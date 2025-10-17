@@ -5715,7 +5715,35 @@ async function generateDetailedLV(projectId, tradeId) {
         [projectId, intTrade.id]
       )).rows
     : [];
-    
+
+  const intakeUploadData = intTrade ? await query(
+  `SELECT 
+    question_id,
+    file_name,
+    file_type,
+    document_type,
+    confidence,
+    analysis_result
+   FROM file_uploads
+   WHERE project_id = $1 AND trade_id = $2`,
+  [projectId, intTrade.id]
+) : { rows: [] };
+
+const enrichedIntakeAnswers = intakeAnswers.map(answer => {
+  const upload = intakeUploadData.rows.find(u => u.question_id === answer.question_id);
+  
+  if (upload) {
+    return {
+      ...answer,
+      hasUpload: true,
+      uploadFileName: upload.file_name,
+      uploadType: upload.document_type || upload.file_type
+    };
+  }
+  
+  return answer;
+});
+  
   const tradeAnswers = (await query(
     `SELECT 
        q.text as question, 
