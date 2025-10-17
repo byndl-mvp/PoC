@@ -693,7 +693,7 @@ KLIMA: {
       "Höhenunterschiede im Gelände",
       "Barrierefreiheit erkennbar"
     ]
-  }
+  },
   
 INTAKE: {
     erkennungsZiele: [
