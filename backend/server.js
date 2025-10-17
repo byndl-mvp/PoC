@@ -4559,6 +4559,23 @@ if (tradeCode === 'INT') {
   
   questions = questions.filter(q => {
     const qText = (q.question || '').toLowerCase();
+
+    // NEU: Baustellenbedingungen IMMER behalten
+    const baustellenKeywords = [
+      'lager', 'lagern', 'lagerung', 'lagerplatz', 'lagerfläche',
+      'material.*lager', 'baumaterial.*lager',
+      'zugang', 'zufahrt', 'transport', 'anlieferung',
+      'baustrom', 'bauwasser', 'sanitär.*handwerker',
+      'arbeitszeit', 'lärmschutz', 'staubschutz',
+      'gerüst', 'kran', 'aufzug',
+      'nachbar', 'genehmigung'
+    ];
+    
+    // Wenn Baustellenbedingung → behalten, egal was sonst im Text steht
+    if (baustellenKeywords.some(keyword => qText.match(new RegExp(keyword)))) {
+      console.log(`[INT-FILTER] Behalten (Baustellenbedingung): "${q.question.substring(0,60)}..."`);
+      return true;
+    }
     
     // VERBOTENE technische Details (für alle Gewerke)
     const technischeDetails = [
