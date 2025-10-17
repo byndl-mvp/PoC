@@ -5739,6 +5739,54 @@ async function generateDetailedLV(projectId, tradeId) {
     [projectId, tradeId]
   )).rows;
 
+// ═══════════════════════════════════════════════════════════════
+// NEU: Lade Upload-Analyse-Daten
+// ═══════════════════════════════════════════════════════════════
+
+  const uploadData = await query(
+    `SELECT 
+      question_id,
+      file_name,
+      file_type,
+      document_type,
+      confidence,
+      analysis_result,
+      extracted_data
+     FROM file_uploads
+     WHERE project_id = $1 AND trade_id = $2`,
+    [projectId, tradeId]
+  );
+
+  // Verarbeite Upload-Daten und füge sie zu den Antworten hinzu
+  const enrichedAnswers = tradeAnswers.rows.map(answer => {
+    const upload = uploadData.rows.find(u => u.question_id === answer.question_id);
+    
+    if (upload) {
+      console.log(`[LV] Found upload data for question ${answer.question_id}`);
+      
+      return {
+        ...answer,
+        hasUpload: true,
+        uploadData: {
+          fileName: upload.file_name,
+          fileType: upload.file_type,
+          documentType: upload.document_type,
+          confidence: upload.confidence,
+          extractedAnswer: upload.analysis_result?.answer,
+          structuredData: upload.extracted_data
+        }
+      };
+    }
+    
+    return answer;
+  });
+
+  console.log(`[LV] Enriched ${enrichedAnswers.filter(a => a.hasUpload).length} answers with upload data`);
+
+// ═══════════════════════════════════════════════════════════════
+// Ende der Upload-Integration
+// ═══════════════════════════════════════════════════════════════
+  
   // Berechne Fragenanzahl
 const answeredQuestionCount = tradeAnswers.length;
 
