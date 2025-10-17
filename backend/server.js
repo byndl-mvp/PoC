@@ -28,11 +28,6 @@ const sharp = require('sharp');
 const { analyzeImageWithClaude } = require('./services/imageAnalysis');
 const { parseSpreadsheetContent } = require('./services/spreadsheetParser');
 const { analyzePdfWithClaude } = require('./services/pdfAnalyzer');
-const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }
-});
-
 const nodemailer = require('nodemailer');
 const emailService = require('./emailService');
 const OpenAI = require("openai");
@@ -41,15 +36,27 @@ const Anthropic = require("@anthropic-ai/sdk");
 // ===========================================================================
 // FILE UPLOAD CONFIGURATION
 // ===========================================================================
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  limits: { 
+    fileSize: 10 * 1024 * 1024  // 10MB
+  },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'image/webp',
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv'
+    ];
+    
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Ungültiger Dateityp'));
+      cb(new Error(`Dateityp ${file.mimetype} nicht unterstützt`), false);
     }
   }
 });
