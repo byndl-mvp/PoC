@@ -9060,6 +9060,78 @@ async function getHandwerkerIdFromCompanyId(companyId) {
   return result.rows[0]?.id || null;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// HILFSFUNKTION: Upload-Kontext für System-Prompt
+// ═══════════════════════════════════════════════════════════════
+
+function buildUploadContext(enrichedAnswers) {
+  const uploadsWithData = enrichedAnswers.filter(a => a.hasUpload);
+  
+  if (uploadsWithData.length === 0) {
+    return {
+      hasUploads: false,
+      summary: '',
+      detailedData: ''
+    };
+  }
+  
+  // Zusammenfassung
+  const summary = `Es wurden ${uploadsWithData.length} Fragen mit hochgeladenen Dateien beantwortet:
+
+${uploadsWithData.map((a, idx) => {
+  const conf = (a.uploadMetadata.confidence * 100).toFixed(0);
+  const type = a.uploadMetadata.documentType || a.uploadMetadata.fileType;
+  return `${idx + 1}. ${a.question}
+   → Datei: ${a.uploadMetadata.fileName}
+   → Typ: ${type}
+   → Confidence: ${conf}%`;
+}).join('\n\n')}`;
+
+  // Detaillierte Daten
+  const detailedData = uploadsWithData.map((a, idx) => {
+    let detail = `
+═══ UPLOAD ${idx + 1}: ${a.question} ═══
+
+EXTRAHIERTE ANTWORT:
+${a.extractedAnswer || a.answer_text}
+`;
+
+    // Strukturierte Daten wenn vorhanden
+    if (a.structuredData && a.structuredData.items) {
+      detail += `
+STRUKTURIERTE DATEN:
+- Typ: ${a.structuredData.type || 'unbekannt'}
+- Anzahl Einträge: ${a.structuredData.items.length}
+`;
+      
+      // Zeige erste 5 Items als Beispiel
+      if (a.structuredData.items.length > 0) {
+        detail += `- Erste Einträge:\n`;
+        a.structuredData.items.slice(0, 5).forEach((item, i) => {
+          const itemStr = JSON.stringify(item, null, 2).substring(0, 200);
+          detail += `  ${i + 1}. ${itemStr}...\n`;
+        });
+      }
+      
+      // Statistiken
+      if (a.structuredData.statistics) {
+        detail += `\nSTATISTIKEN:\n`;
+        Object.entries(a.structuredData.statistics).forEach(([key, value]) => {
+          detail += `  - ${key}: ${value}\n`;
+        });
+      }
+    }
+    
+    return detail;
+  }).join('\n');
+  
+  return {
+    hasUploads: true,
+    summary,
+    detailedData
+  };
+}
+
 /**
  * PDF Generation für komplettes Projekt-LV
  */
