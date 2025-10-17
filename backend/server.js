@@ -6716,11 +6716,35 @@ ${intakeAnswers.map(a =>
   Antwort: ${a.answer}${a.assumption ? `\n  Annahme: ${a.assumption}` : ''}`
 ).join('\n\n')}
 
-GEWERK-SPEZIFISCHE ANTWORTEN (${tradeAnswers.length} Antworten):
-${tradeAnswers.map(a => 
-  `[${a.question_id}] ${a.question}${a.unit ? ` (${a.unit})` : ''}
-  Antwort: ${a.answer}${a.assumption ? `\n  Annahme: ${a.assumption}` : ''}`
-).join('\n\n')}
+GEWERK-SPEZIFISCHE ANTWORTEN (${enrichedAnswers.length} Antworten):
+${enrichedAnswers.map(a => {
+  let answer = `[${a.question_id}] ${a.question}${a.unit ? ` (${a.unit})` : ''}
+  Antwort: ${a.answer_text}`;
+  
+  // Upload-Info hinzufügen
+  if (a.hasUpload) {
+    answer += `
+  📎 UPLOAD: ${a.uploadMetadata.fileName} (${a.uploadMetadata.documentType || a.uploadMetadata.fileType})
+  📊 Confidence: ${(a.uploadMetadata.confidence * 100).toFixed(0)}%`;
+    
+    if (a.extractedAnswer && a.extractedAnswer !== a.answer_text) {
+      answer += `
+  🔍 Extrahiert: ${a.extractedAnswer}`;
+    }
+    
+    if (a.structuredData?.items) {
+      answer += `
+  📋 Strukturierte Daten: ${a.structuredData.items.length} Einträge (Typ: ${a.structuredData.type})`;
+    }
+  }
+  
+  if (a.assumption) {
+    answer += `
+  ⚠️ Annahme: ${a.assumption}`;
+  }
+  
+  return answer;
+}).join('\n\n')}
 
 VALIDIERTE WERTE:
 ${validationResult ? JSON.stringify(validationResult, null, 2) : 'Keine Validierung verfügbar'}
