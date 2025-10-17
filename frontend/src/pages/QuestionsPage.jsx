@@ -1065,32 +1065,32 @@ const handleFileUpload = async (questionId, file) => {
   </div>
 )}
 
-{/* Upload-Hint anzeigen wenn vorhanden */}
-{question.uploadHelpful && question.uploadHint && (
+{/* Upload-Hint - KORRIGIERT */}
+{currentQ.uploadHelpful && currentQ.uploadHint && (
   <div className="mt-2 mb-2 flex items-start bg-blue-50 p-2 rounded">
     <svg className="w-4 h-4 mr-2 mt-0.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
       <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/>
     </svg>
-    <span className="text-sm text-gray-700">{question.uploadHint}</span>
+    <span className="text-sm text-gray-700">{currentQ.uploadHint}</span>
   </div>
 )}
 
-{/* Upload-Button nur wenn uploadHelpful = true */}
-{question.uploadHelpful && (
+{/* Upload-Button - KORRIGIERT */}
+{currentQ.uploadHelpful && (
   <div className="mt-3">
     <input
       type="file"
       accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png"
-      onChange={(e) => handleFileUpload(question.id, e.target.files[0])}
-      id={`upload-${question.id}`}
+      onChange={(e) => handleFileUpload(currentQ.id, e.target.files[0])}
+      id={`upload-${currentQ.id}`}
       className="hidden"
-      disabled={processingUploads[question.id]}
+      disabled={processingUploads[currentQ.id]}
     />
     
     <label 
-      htmlFor={`upload-${question.id}`}
+      htmlFor={`upload-${currentQ.id}`}
       className={`inline-flex items-center px-3 py-2 border border-gray-300 
-        text-sm rounded-md shadow-sm ${processingUploads[question.id] 
+        text-sm rounded-md shadow-sm ${processingUploads[currentQ.id] 
           ? 'bg-gray-100 cursor-not-allowed' 
           : 'bg-white hover:bg-gray-50 cursor-pointer'}`}
     >
@@ -1098,24 +1098,24 @@ const handleFileUpload = async (questionId, file) => {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
           d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
       </svg>
-      {processingUploads[question.id] ? 'Analysiere...' : 'Datei hochladen'}
+      {processingUploads[currentQ.id] ? 'Analysiere...' : 'Datei hochladen'}
     </label>
     
-    {/* Upload-Status */}
-    {uploadedFiles[question.id] && (
+    {/* Upload-Status - KORRIGIERT */}
+    {uploadedFiles[currentQ.id] && (
       <div className="mt-2 p-2 bg-green-50 rounded">
         <div className="flex items-center text-sm text-green-800">
           <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
           </svg>
-          {uploadedFiles[question.id].name}
+          {uploadedFiles[currentQ.id].name}
         </div>
-        {uploadedFiles[question.id].analysis && (
+        {uploadedFiles[currentQ.id].analysis && (
           <p className="mt-1 text-xs text-gray-600">
-            {uploadedFiles[question.id].analysis}
-            {uploadedFiles[question.id].confidence && (
+            {uploadedFiles[currentQ.id].analysis}
+            {uploadedFiles[currentQ.id].confidence && (
               <span className="ml-2">
-                (Konfidenz: {Math.round(uploadedFiles[question.id].confidence * 100)}%)
+                (Konfidenz: {Math.round(uploadedFiles[currentQ.id].confidence * 100)}%)
               </span>
             )}
           </p>
