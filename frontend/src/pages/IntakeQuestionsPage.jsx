@@ -215,7 +215,6 @@ const handleFileUpload = async (questionId, file) => {
   formData.append('tradeId', '0');
   
   try {
-    // ✅ WICHTIG: apiUrl() verwenden statt relativer Pfad
     const response = await fetch(apiUrl('/api/analyze-file'), {
       method: 'POST',
       headers: {
@@ -232,18 +231,21 @@ const handleFileUpload = async (questionId, file) => {
     const result = await response.json();
     
     if (result.extractedAnswer) {
-      // Antwort automatisch setzen
+      // ✅ WICHTIG: Setze die Antwort ins Eingabefeld
+      setAnswerText(result.extractedAnswer);
+      
+      // Speichere auch im answers State
       setAnswers(prev => ({
         ...prev,
         [questionId]: result.extractedAnswer
       }));
       
-      // Upload-Info speichern
+      // Upload-Info für Anzeige
       setUploadedFiles(prev => ({
         ...prev,
         [questionId]: {
           name: file.name,
-          analysis: result.analysis,
+          answer: result.extractedAnswer,
           confidence: result.confidence
         }
       }));
