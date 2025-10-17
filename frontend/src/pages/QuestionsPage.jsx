@@ -364,20 +364,26 @@ const handleFileUpload = async (questionId, file) => {
   
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('questionId', questionId);
-  formData.append('questionText', questions.find(q => q.id === questionId)?.question || '');
-  formData.append('tradeCode', tradeCode);
-  formData.append('projectId', projectId);
-  formData.append('tradeId', tradeId);
+  formData.append('questionId', String(questionId || ''));
+  formData.append('questionText', String(questions.find(q => q.id === questionId)?.question || ''));
+  formData.append('tradeCode', String(tradeCode || ''));
+  formData.append('projectId', String(projectId || ''));
+  formData.append('tradeId', String(tradeId || ''));
   
   try {
-    const response = await fetch('/api/analyze-file', {
+    // ✅ FIX: apiUrl() verwenden
+    const response = await fetch(apiUrl('/api/analyze-file'), {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
       },
       body: formData
     });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
     
     const result = await response.json();
     
@@ -397,10 +403,15 @@ const handleFileUpload = async (questionId, file) => {
           confidence: result.confidence
         }
       }));
+      
+      // Optional: Feedback
+      console.log('✅ File analyzed successfully:', result);
+    } else {
+      alert('Keine Antwort aus der Datei extrahiert');
     }
   } catch (error) {
     console.error('Upload failed:', error);
-    alert('Fehler bei der Dateianalyse');
+    alert(`Fehler bei der Dateianalyse: ${error.message}`);
   } finally {
     setProcessingUploads(prev => ({ ...prev, [questionId]: false }));
   }
