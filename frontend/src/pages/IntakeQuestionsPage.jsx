@@ -640,19 +640,19 @@ const handleFileUpload = async (questionId, file) => {
   </div>
 )}
 
-{/* Upload-Hint - KORRIGIERT */}
+{/* Upload-Hint - VERBESSERT */}
 {currentQ.uploadHelpful && currentQ.uploadHint && (
-  <div className="mt-2 mb-2 flex items-start bg-blue-50 p-2 rounded">
-    <svg className="w-4 h-4 mr-2 mt-0.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+  <div className="mt-4 mb-3 flex items-start bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 backdrop-blur-sm">
+    <svg className="w-5 h-5 mr-3 mt-0.5 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
       <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/>
     </svg>
-    <span className="text-sm text-gray-700">{currentQ.uploadHint}</span>
+    <span className="text-sm text-blue-200 leading-relaxed">{currentQ.uploadHint}</span>
   </div>
 )}
 
-{/* Upload-Button - KORRIGIERT */}
+{/* Upload-Button - VERBESSERT */}
 {currentQ.uploadHelpful && (
-  <div className="mt-3">
+  <div className="mt-4">
     <input
       type="file"
       accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png"
@@ -664,37 +664,53 @@ const handleFileUpload = async (questionId, file) => {
     
     <label 
       htmlFor={`upload-${currentQ.id}`}
-      className={`inline-flex items-center px-3 py-2 border border-gray-300 
-        text-sm rounded-md shadow-sm ${processingUploads[currentQ.id] 
-          ? 'bg-gray-100 cursor-not-allowed' 
-          : 'bg-white hover:bg-gray-50 cursor-pointer'}`}
+      className={`inline-flex items-center px-4 py-2.5 border rounded-lg text-sm font-medium transition-all cursor-pointer
+        ${processingUploads[currentQ.id] 
+          ? 'bg-white/10 border-white/20 text-gray-400 cursor-not-allowed' 
+          : 'bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/40 backdrop-blur-sm'}`}
     >
-      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-      </svg>
-      {processingUploads[currentQ.id] ? 'Analysiere...' : 'Datei hochladen'}
+      {processingUploads[currentQ.id] ? (
+        <>
+          <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <span>Analysiere Datei...</span>
+        </>
+      ) : (
+        <>
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+          </svg>
+          <span>Datei hochladen & analysieren</span>
+        </>
+      )}
     </label>
     
-    {/* Upload-Status - KORRIGIERT */}
+    {/* Upload-Status - VERBESSERT */}
     {uploadedFiles[currentQ.id] && (
-      <div className="mt-2 p-2 bg-green-50 rounded">
-        <div className="flex items-center text-sm text-green-800">
-          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+      <div className="mt-3 p-4 bg-green-500/10 border border-green-500/30 rounded-lg backdrop-blur-sm">
+        <div className="flex items-start">
+          <svg className="w-5 h-5 mr-3 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
           </svg>
-          {uploadedFiles[currentQ.id].name}
-        </div>
-        {uploadedFiles[currentQ.id].analysis && (
-          <p className="mt-1 text-xs text-gray-600">
-            {uploadedFiles[currentQ.id].analysis}
-            {uploadedFiles[currentQ.id].confidence && (
-              <span className="ml-2">
-                (Konfidenz: {Math.round(uploadedFiles[currentQ.id].confidence * 100)}%)
-              </span>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-300 mb-1">
+              {uploadedFiles[currentQ.id].name}
+            </p>
+            {uploadedFiles[currentQ.id].analysis && (
+              <p className="text-xs text-green-200 leading-relaxed">
+                {uploadedFiles[currentQ.id].analysis}
+                {uploadedFiles[currentQ.id].confidence && (
+                  <span className="ml-2 inline-block px-2 py-0.5 bg-green-500/20 rounded text-green-300">
+                    {Math.round(uploadedFiles[currentQ.id].confidence * 100)}% Konfidenz
+                  </span>
+                )}
+              </p>
             )}
-          </p>
-        )}
+          </div>
+        </div>
       </div>
     )}
   </div>
