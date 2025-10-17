@@ -588,6 +588,112 @@ const bildErkennungsRegeln = {
       "Potentialausgleich erkennbar"
      ]
   },
+
+KLIMA: {
+    erkennungsZiele: [
+      // AUSSEN
+      "Klimagerät-Außeneinheiten (Anzahl, Position)",
+      "Split-Klimaanlagen erkennbar",
+      "Lüftungsauslässe an Fassade",
+      "Luftwärmepumpen-Außeneinheiten",
+      "Kältemittelleitungen sichtbar außen",
+      "Kondensatablauf außen",
+      
+      // INNEN
+      "Klimagerät-Inneneinheiten (Anzahl, Typ)",
+      "Wandgeräte (Position, Größe)",
+      "Deckengeräte (Kassetten, Unterbau)",
+      "Truhengeräte erkennbar",
+      "Kanalgeräte mit Luftauslässen",
+      "Lüftungsgitter (Anzahl, Größe)",
+      "Luftauslässe Decke/Wand",
+      "Lufteinlässe",
+      "Zentrale Lüftungsanlage erkennbar",
+      "Lüftungskanäle sichtbar",
+      "Wärmerückgewinnung erkennbar",
+      "Luftfilter sichtbar",
+      "Steuereinheiten/Bedienelemente",
+      "Fernbedienungen für Klimageräte",
+      "Kondensatpumpe sichtbar",
+      "Schalldämpfer in Lüftung",
+      "Brandschutzklappen erkennbar",
+      "Volumenstromregler",
+      "Luftqualitätssensoren",
+      "Kältemittelleitungen innen (isoliert/unisoliert)"
+    ]
+  },
+  
+  AUSS: {
+    erkennungsZiele: [
+      // AUSSENANLAGEN ALLGEMEIN
+      "Grundstücksgröße geschätzt (m²)",
+      "Topografie (eben, Hanglage, Gefälle)",
+      "Geländemodellierung vorhanden",
+      
+      // WEGE UND ZUFAHRTEN
+      "Zufahrt (Material, Breite, Länge)",
+      "Pflasterflächen (m², Material, Verlegemuster)",
+      "Gehwege (Material, Breite)",
+      "Garagenzufahrt",
+      "Stellplätze (Anzahl, Größe, Belag)",
+      "Terrassenflächen (m², Material, Höhe)",
+      
+      // GRÜNFLÄCHEN
+      "Rasenflächen (geschätzte m²)",
+      "Beete und Rabatten",
+      "Bepflanzung (Sträucher, Hecken)",
+      "Bäume (Anzahl, Art, Größe)",
+      "Ziergarten oder Nutzgarten erkennbar",
+      
+      // EINFRIEDUNGEN
+      "Zäune (Material, Höhe, Länge)",
+      "Hecken als Grundstücksgrenze (Höhe)",
+      "Mauern (Material, Höhe, Länge)",
+      "Tore und Türen (Anzahl, Material)",
+      "Briefkastenanlage",
+      
+      // ENTWÄSSERUNG
+      "Regenwasserableitung erkennbar",
+      "Drainage sichtbar",
+      "Versickerungsflächen",
+      "Rigolen vorhanden",
+      "Oberflächenwasser-Abfluss",
+      "Gullys und Sinkkästen (Anzahl)",
+      
+      // BELEUCHTUNG AUSSEN
+      "Außenbeleuchtung (Anzahl Leuchten)",
+      "Wegebeleuchtung",
+      "Fassadenbeleuchtung",
+      "Spots im Garten",
+      "Pollerleuchten",
+      
+      // AUSSTATTUNG
+      "Gartenhäuser/Geräteschuppen (Größe)",
+      "Carports (Anzahl, Größe)",
+      "Pergolen oder Lauben",
+      "Mülltonnenbox",
+      "Fahrradunterstand",
+      "Spielgeräte",
+      "Pool oder Teich (Größe)",
+      "Grillplatz",
+      "Gartenmöbel-Stellplätze",
+      
+      // TECHNISCHE ANLAGEN AUSSEN
+      "Regenwassertank oberirdisch",
+      "Zisterne (Zugang sichtbar)",
+      "Außenwasserhähne (Anzahl)",
+      "Bewässerungssystem erkennbar",
+      "Kabelschächte/Verteilerkästen",
+      
+      // SONSTIGES
+      "Böschungen (Höhe, Länge, Befestigung)",
+      "Stützmauern (Material, Höhe)",
+      "Treppen außen (Stufen, Material)",
+      "Rampen (Neigung, Material)",
+      "Höhenunterschiede im Gelände",
+      "Barrierefreiheit erkennbar"
+    ]
+  }
   
 INTAKE: {
     erkennungsZiele: [
