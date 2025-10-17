@@ -197,7 +197,6 @@ const toggleDetailedExplanation = async () => {
 };
 
 const handleFileUpload = async (questionId, file) => {
-  // EXAKT derselbe Code wie in QuestionsPage
   if (!file) return;
   
   if (file.size > 10 * 1024 * 1024) {
@@ -209,20 +208,26 @@ const handleFileUpload = async (questionId, file) => {
   
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('questionId', questionId);
-  formData.append('questionText', questions.find(q => q.id === questionId)?.question || '');
-  formData.append('tradeCode', 'INTAKE'); // ← Wichtig: 'INTAKE' statt tradeCode
-  formData.append('projectId', projectId);
-  formData.append('tradeId', '0'); // ← 0 für Intake
+  formData.append('questionId', String(questionId || ''));
+  formData.append('questionText', String(questions.find(q => q.id === questionId)?.question || ''));
+  formData.append('tradeCode', 'INTAKE');
+  formData.append('projectId', String(projectId || ''));
+  formData.append('tradeId', '0');
   
   try {
-    const response = await fetch('/api/analyze-file', {
+    // ✅ WICHTIG: apiUrl() verwenden statt relativer Pfad
+    const response = await fetch(apiUrl('/api/analyze-file'), {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
       },
       body: formData
     });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
     
     const result = await response.json();
     
@@ -242,10 +247,12 @@ const handleFileUpload = async (questionId, file) => {
           confidence: result.confidence
         }
       }));
+    } else {
+      alert('Keine Antwort aus der Datei extrahiert');
     }
   } catch (error) {
     console.error('Upload failed:', error);
-    alert('Fehler bei der Dateianalyse');
+    alert(`Fehler bei der Dateianalyse: ${error.message}`);
   } finally {
     setProcessingUploads(prev => ({ ...prev, [questionId]: false }));
   }
