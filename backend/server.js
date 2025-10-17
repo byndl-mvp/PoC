@@ -6737,12 +6737,22 @@ KRITISCH: Die Preise und Strukturvorgaben aus dem Template MÜSSEN eingehalten w
 PROJEKTDATEN:
 ${JSON.stringify(project, null, 2)}
 
-INTAKE-ANTWORTEN (${intakeAnswers.length} Antworten):
+INTAKE-ANTWORTEN (${enrichedIntakeAnswers.length} Antworten):
 WICHTIG: Diese Intake-Daten müssen als Vorbemerkungen im LV erscheinen!
-${intakeAnswers.map(a => 
-  `[${a.question_id}] ${a.question}
-  Antwort: ${a.answer}${a.assumption ? `\n  Annahme: ${a.assumption}` : ''}`
-).join('\n\n')}
+${enrichedIntakeAnswers.map(a => {
+  let answer = `[${a.question_id}] ${a.question}
+  Antwort: ${a.answer}`;
+  
+  if (a.hasUpload) {
+    answer += ` 📎 (Upload: ${a.uploadFileName})`;
+  }
+  
+  if (a.assumption) {
+    answer += `\n  Annahme: ${a.assumption}`;
+  }
+  
+  return answer;
+}).join('\n\n')}
 
 GEWERK-SPEZIFISCHE ANTWORTEN (${enrichedAnswers.length} Antworten):
 ${enrichedAnswers.map(a => {
