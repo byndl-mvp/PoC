@@ -11483,6 +11483,196 @@ Gib eine hilfreiche, verständliche Antwort die dem Laien weiterhilft.`;
   }
 });
 
+app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
+  console.log('[FILE-ANALYZE] Starting analysis');
+  console.log('[FILE-ANALYZE] Body:', req.body);
+  console.log('[FILE-ANALYZE] File:', req.file ? req.file.originalname : 'NO FILE');
+  
+  const { questionId, questionText, tradeCode, projectId, tradeId } = req.body;
+  const file = req.file;
+  
+  // Validierung
+  if (!file) {
+    return res.status(400).json({ 
+      error: 'Keine Datei hochgeladen',
+      received: req.body 
+    });
+  }
+  
+  if (!questionText || !tradeCode) {
+    return res.status(400).json({ 
+      error: 'Fehlende Parameter',
+      required: ['questionText', 'tradeCode'],
+      received: { questionText: !!questionText, tradeCode: !!tradeCode }
+    });
+  }
+  
+  try {
+    let extractedAnswer = '';
+    let structuredData = null;
+    let analysis = '';
+    let confidence = 0.7;
+    let documentType = null;
+    
+    // BILD-ANALYSE
+    if (file.mimetype.startsWith('image/')) {
+      console.log('[FILE-ANALYZE] Processing image:', file.originalname);
+      
+      const optimizedBuffer = await sharp(file.buffer)
+        .resize(1920, 1920, { 
+          fit: 'inside',
+          withoutEnlargement: true 
+        })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      
+      const base64 = optimizedBuffer.toString('base64');
+      const result = await analyzeImageWithClaude(base64, questionText, tradeCode, questionId);
+      
+      extractedAnswer = result.answer || result;
+      analysis = `Bild analysiert für ${tradeCode}`;
+      confidence = result.confidence || 0.85;
+      documentType = 'IMAGE';
+    }
+    
+    // EXCEL/CSV-ANALYSE
+    else if (file.originalname.match(/\.(xlsx?|csv)$/i)) {
+      console.log('[FILE-ANALYZE] Processing spreadsheet:', file.originalname);
+      
+      const workbook = xlsx.read(file.buffer);
+      const result = parseSpreadsheetContent(workbook, tradeCode, questionText);
+      
+      extractedAnswer = result.text;
+      structuredData = result.structured;
+      analysis = result.summary || 'Excel-Daten extrahiert';
+      documentType = result.structured.type || 'SPREADSHEET';
+      
+      // Höhere Confidence bei strukturierten Daten
+      if (result.structured?.items && result.structured.items.length > 0) {
+        confidence = 0.95;
+        console.log(`[FILE-ANALYZE] Extracted ${result.structured.items.length} items from spreadsheet`);
+      } else {
+        confidence = 0.7;
+      }
+      
+      // Qualitäts-Score berücksichtigen
+      if (result.metadata?.quality) {
+        confidence = result.metadata.quality.score / 100;
+      }
+    }
+    
+    // PDF-ANALYSE
+    else if (file.mimetype === 'application/pdf') {
+      console.log('[FILE-ANALYZE] Processing PDF:', file.originalname);
+      
+      // KORREKTUR: Verwende die verbesserte Funktion mit Buffer
+      const result = await analyzePdfWithClaude(file.buffer, questionText, tradeCode, questionId);
+      
+      extractedAnswer = result.text;
+      structuredData = result.structured;
+      documentType = result.metadata?.documentType || 'PDF';
+      analysis = `${documentType} mit ${result.metadata?.pageCount || '?'} Seiten analysiert`;
+      confidence = result.metadata?.confidence || 0.8;
+      
+      console.log(`[FILE-ANALYZE] PDF analyzed: type=${documentType}, confidence=${confidence}`);
+    }
+    
+    // ANDERE DATEITYPEN
+    else {
+      console.warn('[FILE-ANALYZE] Unsupported file type:', file.mimetype);
+      return res.status(400).json({ 
+        error: 'Dateityp nicht unterstützt',
+        receivedType: file.mimetype,
+        supportedTypes: {
+          images: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
+          spreadsheets: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv'],
+          documents: ['application/pdf']
+        }
+      });
+    }
+    
+    // KRITISCH: Validiere dass eine Antwort extrahiert wurde
+    if (!extractedAnswer || extractedAnswer.trim().length === 0) {
+      console.error('[FILE-ANALYZE] No answer extracted from file');
+      return res.status(422).json({
+        error: 'Keine verwertbaren Informationen in der Datei gefunden',
+        analysis: analysis,
+        suggestion: 'Bitte überprüfen Sie, ob die Datei die erwarteten Informationen enthält'
+      });
+    }
+    
+    // In DB speichern (nur wenn projectId und tradeId vorhanden)
+    if (projectId && tradeId) {
+      try {
+        await pool.query(`
+          INSERT INTO file_uploads 
+          (project_id, trade_id, question_id, file_name, file_type, analysis_result, extracted_data, confidence, document_type)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          ON CONFLICT (project_id, trade_id, question_id) 
+          DO UPDATE SET 
+            file_name = $4,
+            file_type = $5,
+            analysis_result = $6,
+            extracted_data = $7,
+            confidence = $8,
+            document_type = $9,
+            created_at = NOW()
+        `, [
+          projectId, 
+          tradeId, 
+          questionId, 
+          file.originalname, 
+          file.mimetype,
+          JSON.stringify({ 
+            answer: extractedAnswer, 
+            analysis: analysis
+          }),
+          structuredData ? JSON.stringify(structuredData) : null,
+          confidence,
+          documentType
+        ]);
+        console.log('[FILE-ANALYZE] Saved to database');
+      } catch (dbError) {
+        console.error('[FILE-ANALYZE] Database error:', dbError.message);
+        // Nicht kritisch - Response trotzdem senden
+      }
+    } else {
+      console.log('[FILE-ANALYZE] Skipping database save (missing projectId or tradeId)');
+    }
+    
+    // Erfolgreiche Response
+    res.json({
+      success: true,
+      extractedAnswer,
+      structuredData,
+      analysis,
+      confidence,
+      documentType,
+      metadata: {
+        fileName: file.originalname,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        fileSizeFormatted: `${(file.size / 1024).toFixed(1)} KB`
+      }
+    });
+    
+  } catch (error) {
+    console.error('[FILE-ANALYZE] Error:', error);
+    console.error('[FILE-ANALYZE] Stack:', error.stack);
+    
+    res.status(500).json({ 
+      success: false,
+      error: 'Analyse fehlgeschlagen',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Interner Fehler',
+      fileInfo: {
+        name: file?.originalname,
+        type: file?.mimetype,
+        size: file?.size
+      }
+    });
+  }
+});
+
 // NEUE ROUTE: Füge nach der bestehenden '/question-clarification' Route ein (ca. Zeile 2500+)
 app.post('/api/projects/:projectId/trades/:tradeId/question-explanation', async (req, res) => {
   try {
