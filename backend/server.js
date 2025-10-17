@@ -22,6 +22,17 @@ const crypto = require('crypto');  // Für Reset-Token
 const PDFDocument = require('pdfkit');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const multer = require('multer');
+const pdf = require('pdf-parse');
+const xlsx = require('xlsx');
+const sharp = require('sharp');
+const { analyzeImageWithClaude } = require('./services/imageAnalysis');
+const { parseSpreadsheetContent } = require('./services/spreadsheetParser');
+const { analyzePdfWithClaude } = require('./services/pdfAnalyzer');
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
 const nodemailer = require('nodemailer');
 const emailService = require('./emailService');
 const OpenAI = require("openai");
