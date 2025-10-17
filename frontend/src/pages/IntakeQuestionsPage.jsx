@@ -231,14 +231,16 @@ const handleFileUpload = async (questionId, file) => {
     const result = await response.json();
     
     if (result.extractedAnswer) {
-      // ✅ WICHTIG: Setze die Antwort ins Eingabefeld
+      // Setze ins Eingabefeld
       setAnswerText(result.extractedAnswer);
       
-      // Speichere auch im answers State
-      setAnswers(prev => ({
-        ...prev,
-        [questionId]: result.extractedAnswer
-      }));
+      // Speichere korrekt im answers ARRAY
+      const newAnswers = [...answers];
+      newAnswers[current] = {
+        questionId: questions[current].id,
+        answer: result.extractedAnswer
+      };
+      setAnswers(newAnswers);
       
       // Upload-Info für Anzeige
       setUploadedFiles(prev => ({
@@ -249,6 +251,8 @@ const handleFileUpload = async (questionId, file) => {
           confidence: result.confidence
         }
       }));
+      
+      console.log('✅ File analyzed successfully:', result);
     } else {
       alert('Keine Antwort aus der Datei extrahiert');
     }
