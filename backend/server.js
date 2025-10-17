@@ -4519,6 +4519,40 @@ if (!cleanedResponse.endsWith(']')) {
     throw detailedError;
   }
 
+// ═══════════════════════════════════════════════════════════════
+// HIER EINFÜGEN: Upload-Felder Validierung
+// ═══════════════════════════════════════════════════════════════
+
+console.log(`[QUESTIONS] Validating upload fields for ${questions.length} questions`);
+
+questions = questions.map(q => {
+  // 1. uploadHelpful muss gesetzt sein
+  if (q.uploadHelpful === undefined) {
+    console.warn(`[QUESTIONS] Missing uploadHelpful in: ${q.question}`);
+    q.uploadHelpful = false;
+  }
+  
+  // 2. Bei uploadHelpful=true muss uploadHint gesetzt sein
+  if (q.uploadHelpful && !q.uploadHint) {
+    console.warn(`[QUESTIONS] Missing uploadHint despite uploadHelpful=true: ${q.question}`);
+    q.uploadHint = "Optional: Relevante Dateien hochladen";
+  }
+  
+  // 3. Bei uploadHelpful=false muss uploadHint null sein
+  if (!q.uploadHelpful && q.uploadHint !== null) {
+    console.warn(`[QUESTIONS] uploadHint set despite uploadHelpful=false: ${q.question}`);
+    q.uploadHint = null;
+  }
+  
+  // 4. uploadHint muss mit "Optional:" beginnen
+  if (q.uploadHint && !q.uploadHint.startsWith('Optional:')) {
+    console.warn(`[QUESTIONS] uploadHint doesn't start with 'Optional:': ${q.uploadHint}`);
+    q.uploadHint = 'Optional: ' + q.uploadHint;
+  }
+  
+  return q;
+});
+    
 // SPEZIELLE INTAKE-VALIDIERUNG: Entferne gewerkespezifische Fragen
 if (tradeCode === 'INT') {
   const vorherAnzahl = questions.length;
