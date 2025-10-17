@@ -700,27 +700,40 @@ const handleFileUpload = async (questionId, file) => {
       </label>
     </div>
     
-    {/* Upload-Status */}
+    {/* Upload-Status - VERBESSERT */}
     {uploadedFiles[currentQ.id] && (
-      <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg backdrop-blur-sm">
-        <div className="flex items-start">
-          <svg className="w-5 h-5 mr-3 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+      <div className="mt-4 p-5 bg-gradient-to-r from-green-500/10 to-teal-500/10 border border-green-500/30 rounded-xl backdrop-blur-sm">
+        <div className="flex items-start space-x-3">
+          <svg className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
           </svg>
           <div className="flex-1">
-            <p className="text-sm font-medium text-green-300 mb-1">
-              {uploadedFiles[currentQ.id].name}
+            <p className="text-green-300 font-semibold mb-2 flex items-center">
+              ✓ Bild analysiert
+              {uploadedFiles[currentQ.id].confidence && (
+                <span className="ml-2 text-xs bg-green-500/20 px-2 py-0.5 rounded">
+                  {Math.round(uploadedFiles[currentQ.id].confidence * 100)}% Konfidenz
+                </span>
+              )}
             </p>
-            {uploadedFiles[currentQ.id].analysis && (
-              <p className="text-xs text-green-200 leading-relaxed">
-                {uploadedFiles[currentQ.id].analysis}
-                {uploadedFiles[currentQ.id].confidence && (
-                  <span className="ml-2 inline-block px-2 py-0.5 bg-green-500/20 rounded text-green-300">
-                    {Math.round(uploadedFiles[currentQ.id].confidence * 100)}% Konfidenz
-                  </span>
-                )}
-              </p>
+            
+            {/* Erkannter Inhalt */}
+            {uploadedFiles[currentQ.id].answer && (
+              <div className="bg-white/5 rounded-lg p-3 border border-green-500/20 mb-2">
+                <p className="text-sm text-gray-400 mb-1">Erkannt:</p>
+                <p className="text-white text-base leading-relaxed">
+                  {uploadedFiles[currentQ.id].answer}
+                </p>
+              </div>
             )}
+            
+            <p className="text-xs text-green-300/60 mt-2">
+              📎 {uploadedFiles[currentQ.id].name}
+            </p>
+            
+            <p className="text-xs text-gray-400 mt-2 italic">
+              💡 Sie können die Antwort unten noch anpassen
+            </p>
           </div>
         </div>
       </div>
