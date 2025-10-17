@@ -6061,6 +6061,35 @@ Der PREIS definiert die Qualität, NICHT umgekehrt!
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
 
+${(() => {
+  const uploadContext = buildUploadContext(enrichedAnswers);
+  if (!uploadContext.hasUploads) return '';
+  
+  return `
+╔══════════════════════════════════════════════════════════════════╗
+║              HOCHGELADENE DATEIEN - ZUSÄTZLICHE DATENQUELLE      ║
+╚══════════════════════════════════════════════════════════════════╝
+
+${uploadContext.summary}
+
+REGELN FÜR UPLOAD-DATEN:
+1. Upload-Daten sind ZUSÄTZLICHE Informationsquelle zu den Antworten
+2. Bei strukturierten Listen (Excel): Nutze für detaillierte Mengenermittlung
+3. Bei Maßangaben aus PDFs/Plänen: Verwende als Referenz
+4. Bei Bildern: Nutze für Zustandsbewertung und Mengenabschätzung
+
+WICHTIG BEI WIDERSPRÜCHEN:
+- Wenn Upload-Daten und Textantworten UNTERSCHIEDLICH sind:
+  → Erwähne BEIDE Werte im LV
+  → Füge Hinweis in Notes hinzu: "Abweichung zwischen Upload (X) und Angabe (Y) - Klärung empfohlen"
+  → Verwende den PLAUSIBLEREN Wert für die Kalkulation
+- Confidence >80%: Hohe Verlässlichkeit der Upload-Daten
+- Confidence <60%: Upload-Daten nur als grobe Orientierung
+
+${uploadContext.detailedData}
+`;
+})()}
+
 STRIKTE REGEL: Du MUSST zwischen ${orientation.min} und ${orientation.max} Positionen erstellen.
 NICHT WENIGER ALS ${orientation.min}, NICHT MEHR ALS ${orientation.max}!
 
