@@ -4204,6 +4204,114 @@ FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Bei Vollständigkeit 50-80%: Reduziere auf ${Math.floor(targetQuestionCount * 0.8)} Fragen
 - Bei Vollständigkeit <50%: Stelle alle ${targetQuestionCount} Fragen
 
+╔══════════════════════════════════════════════════════════════════╗
+║                   DATEI-UPLOAD UNTERSTÜTZUNG                      ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Bei JEDER Frage musst du entscheiden: Würde ein Datei-Upload dem Nutzer helfen?
+
+UPLOAD IST HILFREICH (uploadHelpful: true) bei:
+
+1. LISTEN MIT VIELEN ELEMENTEN:
+   ✓ Fenster/Türenlisten (>3 verschiedene Größen)
+   ✓ Sanitärobjekte in mehreren Räumen
+   ✓ Heizkörper-Übersicht
+   ✓ Elektroausstattung pro Raum
+   ✓ Raumlisten mit Flächen
+   ✓ Materialspezifikationen
+   
+2. VISUELLE BEWERTUNGEN:
+   ✓ Zustandsbewertung (Risse, Schäden, Verschmutzung)
+   ✓ Farbauswahl (Muster, Referenzbilder)
+   ✓ Materialerkennung (Putzstruktur, Bodenbelag)
+   ✓ Bestandsaufnahme (vorhandene Installation)
+   
+3. TECHNISCHE DOKUMENTE:
+   ✓ Pläne, Grundrisse, Schnitte
+   ✓ Bestehende Angebote/LVs zum Vergleich
+   ✓ Technische Datenblätter
+   ✓ Heizlastberechnungen
+   ✓ Statische Gutachten
+   ✓ Energieausweise
+   
+4. MAßE UND ABMESSUNGEN:
+   ✓ Aufmaß-Listen (Excel/PDF)
+   ✓ Vermessungsdaten
+   ✓ CAD-Zeichnungen
+
+UPLOAD IST NICHT HILFREICH (uploadHelpful: false) bei:
+
+✗ Einzelne Zahlenwerte (z.B. "Wie groß ist die Fläche?")
+✗ Ja/Nein-Fragen
+✗ Einfache Auswahlfelder
+✗ Zeitangaben (Startdatum, Dauer)
+✗ Textfragen (Beschreibungen, Namen)
+✗ Einfache Mengen bis 3 Items
+
+UPLOAD-HINTS - STRIKTE REGELN:
+
+1. IMMER mit "Optional:" beginnen
+2. MAXIMAL 15 Wörter
+3. Konkret benennen WAS hochgeladen werden kann
+4. Mehrere Optionen mit "oder" trennen
+5. NUR wenn uploadHelpful=true, sonst null
+
+BEISPIELE FÜR GUTE UPLOAD-HINTS:
+
+✓ "Optional: Excel-Liste mit Fenstermaßen oder Fotos der Fenster"
+✓ "Optional: Raumliste mit Flächen als Excel/PDF"
+✓ "Optional: Fotos des aktuellen Zustands für Schadensanalyse"
+✓ "Optional: Grundriss-PDF oder Bauplan zur Maßermittlung"
+✓ "Optional: Bestehende Angebote oder LVs zum Vergleich"
+✓ "Optional: Heizlastberechnung als PDF falls vorhanden"
+✓ "Optional: Excel mit Sanitärobjekten pro Raum"
+✓ "Optional: Produktdatenblätter oder Spezifikationen"
+
+BEISPIELE FÜR SCHLECHTE UPLOAD-HINTS:
+
+✗ "Sie können hier eine Datei hochladen" (zu allgemein)
+✗ "Optional: Alle relevanten Dokumente" (nicht konkret)
+✗ "Bitte Dateien anhängen wenn vorhanden" (zu lang)
+✗ "Fotos, Pläne, Excel, PDFs möglich" (zu viele Optionen)
+
+TRADE-SPEZIFISCHE UPLOAD-EMPFEHLUNGEN:
+
+FEN (Fenster):
+- Bei Frage nach Einzelmaßen: uploadHelpful=true
+- Hint: "Optional: Excel-Liste mit Fenstermaßen oder Fotos"
+
+TIS (Türen):
+- Bei Frage nach Türliste: uploadHelpful=true
+- Hint: "Optional: Excel-Liste mit Türmaßen pro Raum"
+
+SAN (Sanitär):
+- Bei Objektauswahl: uploadHelpful=true
+- Hint: "Optional: Raumplan mit Sanitärobjekten oder Fotos"
+
+HEI (Heizung):
+- Bei Heizkörpern: uploadHelpful=true
+- Hint: "Optional: Heizlastberechnung oder Raumliste mit Größen"
+
+ELEKT (Elektro):
+- Bei Ausstattung: uploadHelpful=true
+- Hint: "Optional: Raumplan mit Steckdosen/Schalter-Positionen"
+
+MAL/FLI/BOD (Flächen):
+- Bei Raumliste: uploadHelpful=true
+- Hint: "Optional: Raumliste mit Flächen als Excel"
+
+DACH/FASS:
+- Bei Zustand: uploadHelpful=true
+- Hint: "Optional: Fotos für Zustandsbewertung"
+
+GER (Gerüst):
+- Bei Fassadenmaßen: uploadHelpful=true
+- Hint: "Optional: Grundriss oder Fotos der Fassaden"
+
+ROH/ABBR:
+- Bei Durchbrüchen: uploadHelpful=true
+- Hint: "Optional: Grundriss mit markierten Durchbrüchen"
+
 OUTPUT (NUR valides JSON-Array):
 [
   {
@@ -4223,12 +4331,22 @@ OUTPUT (NUR valides JSON-Array):
     "commonMistakes": "Optional: Häufige Fehler die vermieden werden sollten",
     "defaultRecommendation": "Optional: Unsere Standard-Empfehlung mit Begründung",
     "dependsOn": "ID der Vorfrage oder null",
-    "showIf": "Antwort die gegeben sein muss oder null"
+    "showIf": "Antwort die gegeben sein muss oder null",
+    "uploadHelpful": boolean,
+    "uploadHint": "string|null"
   }
 ]
 
+KRITISCH: 
+- uploadHelpful und uploadHint MÜSSEN in JEDER Frage gesetzt sein!
+- Bei uploadHelpful=false → uploadHint=null
+- Bei uploadHelpful=true → uploadHint MUSS gesetzt sein (max 15 Wörter)
+- Upload-Hints IMMER mit "Optional:" beginnen
+
 ERKLÄRUNG:
 - "explanation": MAXIMAL 15-20 Wörter - nur das Wichtigste!
+- "uploadHelpful": true/false - Entscheidung ob Upload sinnvoll
+- "uploadHint": Konkreter Hinweis WAS hochgeladen werden kann
 - Keine strukturierten Teile mehr
 - Nur Kernaussage warum die Info benötigt wird
 
