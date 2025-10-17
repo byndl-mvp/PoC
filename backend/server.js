@@ -5740,52 +5740,75 @@ async function generateDetailedLV(projectId, tradeId) {
   )).rows;
 
 // ═══════════════════════════════════════════════════════════════
-// NEU: Lade Upload-Analyse-Daten
+// LADE UPLOAD-DATEN
 // ═══════════════════════════════════════════════════════════════
 
-  const uploadData = await query(
-    `SELECT 
-      question_id,
-      file_name,
-      file_type,
-      document_type,
-      confidence,
-      analysis_result,
-      extracted_data
-     FROM file_uploads
-     WHERE project_id = $1 AND trade_id = $2`,
-    [projectId, tradeId]
-  );
+console.log('[LV] Loading upload data...');
 
-  // Verarbeite Upload-Daten und füge sie zu den Antworten hinzu
-  const enrichedAnswers = tradeAnswers.rows.map(answer => {
-    const upload = uploadData.rows.find(u => u.question_id === answer.question_id);
+const uploadData = await query(
+  `SELECT 
+    question_id,
+    file_name,
+    file_type,
+    document_type,
+    confidence,
+    analysis_result,
+    extracted_data
+   FROM file_uploads
+   WHERE project_id = $1 AND trade_id = $2
+   ORDER BY created_at DESC`,
+  [projectId, tradeId]
+);
+
+console.log(`[LV] Found ${uploadData.rows.length} uploaded files`);
+
+// Reichere Antworten mit Upload-Daten an
+const enrichedAnswers = tradeAnswers.rows.map(answer => {
+  const upload = uploadData.rows.find(u => u.question_id === answer.question_id);
+  
+  if (upload) {
+    // Parse JSON fields
+    let analysisResult = null;
+    let extractedData = null;
     
-    if (upload) {
-      console.log(`[LV] Found upload data for question ${answer.question_id}`);
-      
-      return {
-        ...answer,
-        hasUpload: true,
-        uploadData: {
-          fileName: upload.file_name,
-          fileType: upload.file_type,
-          documentType: upload.document_type,
-          confidence: upload.confidence,
-          extractedAnswer: upload.analysis_result?.answer,
-          structuredData: upload.extracted_data
-        }
-      };
+    try {
+      analysisResult = typeof upload.analysis_result === 'string' 
+        ? JSON.parse(upload.analysis_result) 
+        : upload.analysis_result;
+    } catch (e) {
+      console.warn(`[LV] Could not parse analysis_result for question ${answer.question_id}`);
     }
     
-    return answer;
-  });
+    try {
+      extractedData = typeof upload.extracted_data === 'string' 
+        ? JSON.parse(upload.extracted_data) 
+        : upload.extracted_data;
+    } catch (e) {
+      // Kein Problem wenn extracted_data nicht existiert
+    }
+    
+    return {
+      ...answer,
+      hasUpload: true,
+      uploadMetadata: {
+        fileName: upload.file_name,
+        fileType: upload.file_type,
+        documentType: upload.document_type,
+        confidence: parseFloat(upload.confidence) || 0.7
+      },
+      extractedAnswer: analysisResult?.answer || null,
+      structuredData: extractedData || null
+    };
+  }
+  
+  return {
+    ...answer,
+    hasUpload: false
+  };
+});
 
-  console.log(`[LV] Enriched ${enrichedAnswers.filter(a => a.hasUpload).length} answers with upload data`);
-
-// ═══════════════════════════════════════════════════════════════
-// Ende der Upload-Integration
-// ═══════════════════════════════════════════════════════════════
+const uploadCount = enrichedAnswers.filter(a => a.hasUpload).length;
+console.log(`[LV] Enriched ${uploadCount} answers with upload data`);
   
   // Berechne Fragenanzahl
 const answeredQuestionCount = tradeAnswers.length;
