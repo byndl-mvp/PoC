@@ -16698,11 +16698,11 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
                 <table style="width: 100%;">
                   <tr>
                     <td style="padding: 8px 0;"><strong>Auftragssumme:</strong></td>
-                    <td style="text-align: right;">${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
+                    <td style="text-align: right;">${formatCurrency(offer.amount)}</td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0;"><strong>Ausführung:</strong></td>
-                    <td style="text-align: right;">${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}</td>
+                    <td style="text-align: right;">${offer.execution_start ? new Date(offer.execution_start).toLocaleDateString('de-DE') : 'N/A'} - ${offer.execution_end ? new Date(offer.execution_end).toLocaleDateString('de-DE') : 'N/A'}</td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
