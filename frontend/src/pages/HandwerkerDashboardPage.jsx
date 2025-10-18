@@ -312,16 +312,16 @@ export default function HandwerkerDashboardPage() {
       <div className="flex items-center gap-4">
         {/* ═══ HIER DAS NOTIFICATION CENTER EINFÜGEN ═══ */}
         <NotificationCenter 
-    userType="handwerker"
-    userId={handwerker.id}
-    apiUrl={apiUrl}
-  />
-  <MessageCenter
-    userType="handwerker"
-    userId={handwerker.id}
-    userName={handwerker.company_name}
-    apiUrl={apiUrl}
-  />  
+  userType="handwerker"
+  userId={handwerkerData?.id}
+  apiUrl={apiUrl}
+/>
+<MessageCenter
+  userType="handwerker"
+  userId={handwerkerData?.id}
+  userName={handwerkerData?.company_name}
+  apiUrl={apiUrl}
+/> 
         <div className="text-right">
           <p className="text-white font-semibold">{handwerkerData?.companyName}</p>
           <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
