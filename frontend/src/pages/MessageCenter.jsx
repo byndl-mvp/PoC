@@ -125,7 +125,9 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
   }
 };
 
-  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+  const totalUnread = Array.isArray(conversations) 
+  ? conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0)
+  : 0;
 
   const filteredConversations = conversations.filter(conv => {
     const title = getConversationTitle(conv).toLowerCase();
