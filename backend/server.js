@@ -15898,6 +15898,15 @@ app.post('/api/offers/:offerId/final-accept', async (req, res) => {
        RETURNING id`,
       [offerId]
     );
+
+    // ===== HIER EINFÜGEN =====
+await query(
+  `UPDATE tender_handwerker 
+   SET status = 'awarded'
+   WHERE tender_id = (SELECT tender_id FROM offers WHERE id = $1) 
+   AND handwerker_id = (SELECT handwerker_id FROM offers WHERE id = $1)`,
+  [offerId]
+);
     
     // Aktiviere Premium-Features
     await query(
