@@ -29,6 +29,10 @@ export default function BauherrenDashboardPage() {
   const [withdrawnOffers, setWithdrawnOffers] = useState([]);
   const [showContractView, setShowContractView] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectingOffer, setRejectingOffer] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectNotes, setRejectNotes] = useState('');
   const [lastViewedTabs, setLastViewedTabs] = useState({
   tenders: null,
   offers: null,
@@ -420,6 +424,40 @@ const ContractNegotiationModal = () => {
   );
 };
 
+// ═══ NEU HINZUFÜGEN ═══
+const handleRejectClick = (offer) => {
+  setRejectingOffer(offer);
+  setRejectModalOpen(true);
+};
+
+const handleRejectConfirm = async () => {
+  try {
+    await fetch(apiUrl(`/api/offers/${rejectingOffer.id}/reject`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reason: rejectReason,
+        notes: rejectNotes,
+        projectId: selectedProject.id
+      })
+    });
+    
+    // Angebote neu laden
+    loadOffers();
+    
+    // Modal schließen
+    setRejectModalOpen(false);
+    setRejectReason('');
+    setRejectNotes('');
+    setRejectingOffer(null);
+    
+    alert('Angebot wurde abgelehnt');
+  } catch (error) {
+    console.error('Fehler:', error);
+    alert('Fehler beim Ablehnen');
+  }
+};
+  
   // NEUE FUNKTION: Vorläufige Beauftragung bestätigen
   const confirmPreliminaryOrder = async () => {
     if (!selectedOffer) return;
