@@ -2,47 +2,95 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { Bell, X, Check, Trash2, Clock } from 'lucide-react';
 
-const NotificationCenter = ({ userType, userId, apiUrl }) => {
+const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) => {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const buttonRef = useRef(null);
+  const dropdownRef = useRef(null);
 
+  // Hilfsfunktion zum sicheren Parsen von metadata
+  const parseMetadata = (metadata) => {
+    if (!metadata) return {};
+    if (typeof metadata === 'object') return metadata;
+    try {
+      return JSON.parse(metadata);
+    } catch (e) {
+      console.error('Failed to parse metadata:', e);
+      return {};
+    }
+  };
+
+  // Notifications laden
   const loadNotifications = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !apiUrl) return;
     
+    setIsLoading(true);
     try {
       const endpoint = userType === 'bauherr' 
         ? `/api/bauherr/${userId}/notifications`
         : `/api/handwerker/${userId}/notifications`;
       
       const res = await fetch(apiUrl(endpoint));
-      const data = await res.json();
-      setNotifications(data);
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(Array.isArray(data) ? data : []);
+      }
     } catch (error) {
-      console.error('Fehler beim Laden:', error);
+      console.error('Fehler beim Laden der Benachrichtigungen:', error);
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [userId, userType, apiUrl]);
 
+  // Initial laden und Polling
   useEffect(() => {
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [loadNotifications]);
+    if (userId) {
+      loadNotifications();
+      const interval = setInterval(loadNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [loadNotifications, userId]);
 
-  // Close dropdown when clicking outside
+  // Click outside handler
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (buttonRef.current && !buttonRef.current.contains(event.target)) {
+      if (
+        buttonRef.current && 
+        dropdownRef.current && 
+        !buttonRef.current.contains(event.target) &&
+        !dropdownRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // ESC key handler
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen]);
 
@@ -51,9 +99,9 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
       await fetch(apiUrl(`/api/notifications/${notificationId}/mark-read`), {
         method: 'POST'
       });
-      loadNotifications();
+      await loadNotifications();
     } catch (error) {
-      console.error('Fehler:', error);
+      console.error('Fehler beim Markieren als gelesen:', error);
     }
   };
 
@@ -64,86 +112,161 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userType, userId })
       });
-      loadNotifications();
+      await loadNotifications();
     } catch (error) {
-      console.error('Fehler:', error);
+      console.error('Fehler beim Markieren aller als gelesen:', error);
     }
   };
 
-  const deleteNotification = async (notificationId) => {
+  const deleteNotification = async (notificationId, e) => {
+    e.stopPropagation();
     try {
       await fetch(apiUrl(`/api/notifications/${notificationId}`), {
         method: 'DELETE'
       });
-      loadNotifications();
+      await loadNotifications();
     } catch (error) {
-      console.error('Fehler:', error);
+      console.error('Fehler beim Löschen:', error);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    // Als gelesen markieren wenn ungelesen
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+
+    // Callback ausführen falls vorhanden
+    if (onNotificationClick) {
+      onNotificationClick(notification);
+    }
+
+    // Link öffnen falls vorhanden
+    const metadata = parseMetadata(notification.metadata);
+    if (metadata.link || notification.link) {
+      window.location.href = metadata.link || notification.link;
     }
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'new_offer': return '💰';
-      case 'new_tender': return '📢';
-      case 'preliminary_accepted': return '🤝';
-      case 'offer_confirmed': return '✅';
-      case 'offer_rejected': return '❌';
-      case 'awarded': return '🎉';
-      case 'appointment_request': return '📅';
-      default: return '🔔';
-    }
+    const icons = {
+      'new_offer': '💰',
+      'new_tender': '📢',
+      'preliminary_accepted': '🤝',
+      'offer_confirmed': '✅',
+      'offer_rejected': '❌',
+      'awarded': '🎉',
+      'appointment_request': '📅',
+      'appointment_confirmed': '📆',
+      'message': '💬',
+      'warning': '⚠️',
+      'info': 'ℹ️'
+    };
+    return icons[type] || '🔔';
   };
 
   const getNotificationColor = (type) => {
-    switch (type) {
-      case 'new_offer': return 'from-green-500/20 to-emerald-500/20 border-green-500/30';
-      case 'new_tender': return 'from-blue-500/20 to-cyan-500/20 border-blue-500/30';
-      case 'preliminary_accepted': return 'from-purple-500/20 to-pink-500/20 border-purple-500/30';
-      case 'offer_confirmed': return 'from-teal-500/20 to-green-500/20 border-teal-500/30';
-      case 'offer_rejected': return 'from-red-500/20 to-orange-500/20 border-red-500/30';
-      case 'awarded': return 'from-yellow-500/20 to-amber-500/20 border-yellow-500/30';
-      case 'appointment_request': return 'from-indigo-500/20 to-blue-500/20 border-indigo-500/30';
-      default: return 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
-    }
-  };
-
-  const formatMessage = (notification) => {
-    const details = notification.details || {};
-    
-    switch (notification.type) {
-      case 'new_offer':
-        return `Neues Angebot von ${details.company_name} für ${details.trade_name} (${formatCurrency(details.amount)})`;
-      case 'new_tender':
-        return `Neue Ausschreibung: ${details.trade_name} in ${details.project_zip}`;
-      case 'preliminary_accepted':
-        return `Vorläufige Beauftragung von ${details.bauherr_name} für ${details.trade_name}`;
-      case 'offer_confirmed':
-        return `${details.company_name} hat das Angebot für ${details.trade_name} bestätigt`;
-      case 'offer_rejected':
-        return notification.message;
-      case 'awarded':
-        return `Auftrag erteilt: ${details.trade_name} (${formatCurrency(details.amount)})`;
-      case 'appointment_request':
-        return `Terminvorschlag von ${details.company_name}`;
-      default:
-        return notification.message;
-    }
+    const colors = {
+      'new_offer': 'from-green-500/20 to-emerald-500/20 border-green-500/30',
+      'new_tender': 'from-blue-500/20 to-cyan-500/20 border-blue-500/30',
+      'preliminary_accepted': 'from-purple-500/20 to-pink-500/20 border-purple-500/30',
+      'offer_confirmed': 'from-teal-500/20 to-green-500/20 border-teal-500/30',
+      'offer_rejected': 'from-red-500/20 to-orange-500/20 border-red-500/30',
+      'awarded': 'from-yellow-500/20 to-amber-500/20 border-yellow-500/30',
+      'appointment_request': 'from-indigo-500/20 to-blue-500/20 border-indigo-500/30',
+      'appointment_confirmed': 'from-blue-500/20 to-indigo-500/20 border-blue-500/30'
+    };
+    return colors[type] || 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
   };
 
   const formatCurrency = (amount) => {
-    if (!amount) return 'N/A';
+    if (!amount && amount !== 0) return 'N/A';
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
       currency: 'EUR'
     }).format(amount);
   };
 
-  // Calculate position for dropdown
+  const formatMessage = (notification) => {
+    // Parse metadata und details
+    const metadata = parseMetadata(notification.metadata);
+    const details = notification.details || metadata || {};
+    
+    // Helper für sichere Werte
+    const getValue = (keys, fallback = 'Unbekannt') => {
+      for (const key of keys) {
+        if (details[key]) return details[key];
+      }
+      return fallback;
+    };
+
+    switch (notification.type) {
+      case 'new_offer':
+        return `Neues Angebot von ${getValue(['company_name', 'companyName'], 'Handwerker')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} (${formatCurrency(details.amount)})`;
+      
+      case 'new_tender':
+        return `Neue Ausschreibung: ${getValue(['trade_name', 'tradeName'], 'Projekt')}${details.project_zip ? ` in ${details.project_zip}` : ''}`;
+      
+      case 'preliminary_accepted':
+        return `Vorläufige Beauftragung von ${getValue(['bauherr_name', 'bauherrName', 'clientName'], 'Bauherr')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')}`;
+      
+      case 'offer_confirmed':
+        return `${getValue(['company_name', 'companyName'], 'Handwerker')} hat das Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} bestätigt`;
+      
+      case 'offer_rejected':
+        const reason = details.reason || 'Kein Grund angegeben';
+        return `Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} abgelehnt: ${reason}`;
+      
+      case 'awarded':
+        return `Auftrag erteilt: ${getValue(['trade_name', 'tradeName'], 'Gewerk')} (${formatCurrency(details.amount)})`;
+      
+      case 'appointment_request':
+        return `Terminvorschlag von ${getValue(['company_name', 'companyName'], 'Handwerker')}`;
+      
+      case 'appointment_confirmed':
+        return `Termin bestätigt mit ${getValue(['company_name', 'companyName'], 'Handwerker')}`;
+      
+      default:
+        return notification.message || 'Neue Benachrichtigung';
+    }
+  };
+
+  const formatTime = (date) => {
+    const now = new Date();
+    const notificationDate = new Date(date);
+    const diffInMs = now - notificationDate;
+    const diffInMinutes = Math.floor(diffInMs / 60000);
+    const diffInHours = Math.floor(diffInMs / 3600000);
+    const diffInDays = Math.floor(diffInMs / 86400000);
+
+    if (diffInMinutes < 1) return 'Gerade eben';
+    if (diffInMinutes < 60) return `vor ${diffInMinutes} Min.`;
+    if (diffInHours < 24) return `vor ${diffInHours} Std.`;
+    if (diffInDays < 7) return `vor ${diffInDays} Tag${diffInDays !== 1 ? 'en' : ''}`;
+    
+    return notificationDate.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
+    });
+  };
+
   const getDropdownPosition = () => {
     if (!buttonRef.current) return {};
     const rect = buttonRef.current.getBoundingClientRect();
+    const dropdownHeight = 600;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    
+    // Position above if not enough space below
+    if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+      return {
+        bottom: window.innerHeight - rect.top + 8,
+        right: window.innerWidth - rect.right
+      };
+    }
+    
     return {
       top: rect.bottom + 8,
       right: window.innerWidth - rect.right
@@ -156,21 +279,24 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
       <div ref={buttonRef} className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="relative p-3 bg-white/10 backdrop-blur rounded-lg border border-white/20 hover:bg-white/20 transition-all"
+          className="relative p-3 bg-white/10 backdrop-blur rounded-lg border border-white/20 hover:bg-white/20 transition-all group"
+          aria-label="Benachrichtigungen"
+          aria-expanded={isOpen}
         >
-          <Bell className="w-6 h-6 text-white" />
+          <Bell className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-              {unreadCount > 9 ? '9+' : unreadCount}
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center animate-pulse">
+              {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </button>
       </div>
 
-      {/* Notification Panel - Rendered with Portal */}
+      {/* Notification Panel - Portal */}
       {isOpen && ReactDOM.createPortal(
         <div 
-          className="fixed w-96 max-h-[600px] bg-gray-900 rounded-lg border border-white/20 shadow-2xl overflow-hidden flex flex-col"
+          ref={dropdownRef}
+          className="fixed w-96 max-h-[600px] bg-gray-900 rounded-lg border border-white/20 shadow-2xl overflow-hidden flex flex-col animate-fadeIn"
           style={{
             ...getDropdownPosition(),
             zIndex: 999999
@@ -183,23 +309,24 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
                 <Bell className="w-5 h-5" />
                 Benachrichtigungen
                 {unreadCount > 0 && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                    {unreadCount}
+                  <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                    {unreadCount} neu
                   </span>
                 )}
               </h3>
               <button
                 onClick={() => setIsOpen(false)}
                 className="p-1 hover:bg-white/10 rounded transition-colors"
+                aria-label="Schließen"
               >
-                <X className="w-5 h-5 text-gray-400" />
+                <X className="w-5 h-5 text-gray-400 hover:text-white" />
               </button>
             </div>
             
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="mt-2 text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
+                className="mt-2 text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1 transition-colors"
               >
                 <Check className="w-3 h-3" />
                 Alle als gelesen markieren
@@ -209,85 +336,103 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
 
           {/* Notifications List */}
           <div className="flex-1 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {isLoading ? (
+              <div className="p-8 text-center">
+                <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-gray-400 mt-2">Lade Benachrichtigungen...</p>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="p-8 text-center">
                 <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                 <p className="text-gray-400">Keine Benachrichtigungen</p>
+                <p className="text-gray-500 text-xs mt-1">Neue Benachrichtigungen erscheinen hier</p>
               </div>
             ) : (
               <div className="divide-y divide-white/10">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-4 hover:bg-white/5 transition-colors ${
-                      !notification.read ? 'bg-white/5' : ''
-                    }`}
-                  >
-                    <div className="flex gap-3">
-                      <div className="flex-shrink-0">
-                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getNotificationColor(notification.type)} flex items-center justify-center text-xl border`}>
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${!notification.read ? 'text-white font-semibold' : 'text-gray-300'}`}>
-                          {formatMessage(notification)}
-                        </p>
-                        
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock className="w-3 h-3 text-gray-500" />
-                          <span className="text-xs text-gray-500">
-                            {new Date(notification.created_at).toLocaleString('de-DE', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </div>
-
-                        {notification.type === 'offer_rejected' && notification.metadata && (
-                          <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
-                            <p className="text-red-300">
-                              {typeof notification.metadata === 'string' 
-                                ? JSON.parse(notification.metadata).reason 
-                                : notification.metadata.reason}
-                            </p>
-                            {(typeof notification.metadata === 'string' 
-                                ? JSON.parse(notification.metadata).notes 
-                                : notification.metadata.notes) && (
-                              <p className="text-gray-400 mt-1">
-                                {typeof notification.metadata === 'string' 
-                                  ? JSON.parse(notification.metadata).notes 
-                                  : notification.metadata.notes}
-                              </p>
-                            )}
+                {notifications.map((notification) => {
+                  const metadata = parseMetadata(notification.metadata);
+                  
+                  return (
+                    <div
+                      key={notification.id}
+                      className={`p-4 hover:bg-white/5 transition-colors cursor-pointer ${
+                        !notification.read ? 'bg-white/5' : ''
+                      }`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0">
+                          <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getNotificationColor(notification.type)} flex items-center justify-center text-xl border`}>
+                            {getNotificationIcon(notification.type)}
                           </div>
-                        )}
-                      </div>
+                        </div>
 
-                      <div className="flex flex-col gap-1">
-                        {!notification.read && (
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm ${!notification.read ? 'text-white font-semibold' : 'text-gray-300'}`}>
+                            {formatMessage(notification)}
+                          </p>
+                          
+                          <div className="flex items-center gap-2 mt-1">
+                            <Clock className="w-3 h-3 text-gray-500" />
+                            <span className="text-xs text-gray-500">
+                              {formatTime(notification.created_at)}
+                            </span>
+                          </div>
+
+                          {/* Spezielle Anzeige für abgelehnte Angebote */}
+                          {notification.type === 'offer_rejected' && metadata.reason && (
+                            <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
+                              <p className="text-red-300 font-semibold">Ablehnungsgrund:</p>
+                              <p className="text-red-200 mt-1">{metadata.reason}</p>
+                              {metadata.notes && (
+                                <p className="text-gray-400 mt-2">
+                                  Zusätzliche Anmerkung: {metadata.notes}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Termin-Details */}
+                          {(notification.type === 'appointment_request' || notification.type === 'appointment_confirmed') && metadata.date && (
+                            <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs">
+                              <p className="text-blue-300">
+                                📅 {new Date(metadata.date).toLocaleDateString('de-DE', {
+                                  weekday: 'long',
+                                  day: '2-digit',
+                                  month: 'long',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })} Uhr
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          {!notification.read && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsRead(notification.id);
+                              }}
+                              className="p-1 hover:bg-white/10 rounded transition-colors group"
+                              title="Als gelesen markieren"
+                            >
+                              <Check className="w-4 h-4 text-green-400 group-hover:scale-110 transition-transform" />
+                            </button>
+                          )}
                           <button
-                            onClick={() => markAsRead(notification.id)}
-                            className="p-1 hover:bg-white/10 rounded transition-colors"
-                            title="Als gelesen markieren"
+                            onClick={(e) => deleteNotification(notification.id, e)}
+                            className="p-1 hover:bg-white/10 rounded transition-colors group"
+                            title="Löschen"
                           >
-                            <Check className="w-4 h-4 text-green-400" />
+                            <Trash2 className="w-4 h-4 text-red-400 group-hover:scale-110 transition-transform" />
                           </button>
-                        )}
-                        <button
-                          onClick={() => deleteNotification(notification.id)}
-                          className="p-1 hover:bg-white/10 rounded transition-colors"
-                          title="Löschen"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-400" />
-                        </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
