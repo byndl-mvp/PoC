@@ -16440,10 +16440,15 @@ app.get('/api/conversations/:userType/:userId', async (req, res) => {
     const { userType, userId } = req.params;
     
     const result = await query(
-      `SELECT DISTINCT
-        c.*,
-        CASE 
-          WHEN c.type = 'direct' THEN (
+  `SELECT
+    c.id,
+    c.type,
+    c.project_id,
+    c.offer_id,
+    c.created_at,
+    c.updated_at,
+    CASE 
+      WHEN c.type = 'direct' THEN (
             CASE 
               WHEN $1 = 'bauherr' THEN (
                 SELECT json_build_object(
