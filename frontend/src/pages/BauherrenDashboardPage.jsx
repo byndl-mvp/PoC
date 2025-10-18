@@ -1482,10 +1482,11 @@ const BudgetVisualization = ({ budget }) => {
 {/* Filtere vorläufig beauftragte Angebote raus */}
 {(() => {
   const filteredOffers = offers.filter(o => 
-    o.status !== 'preliminary' && 
-    o.status !== 'confirmed' && 
-    o.status !== 'accepted'
-  );
+  o.status !== 'preliminary' && 
+  o.status !== 'confirmed' && 
+  o.status !== 'accepted' &&
+  o.status !== 'rejected'  
+);
   
   return (
     <>
