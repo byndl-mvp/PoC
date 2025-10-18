@@ -256,35 +256,57 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
               {selectedConversation ? (
                 <>
                   {/* Chat Header */}
-                  <div className="p-4 border-b border-white/20 bg-gradient-to-r from-teal-600/10 to-blue-600/10">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setSelectedConversation(null)}
-                        className="md:hidden p-2 hover:bg-white/10 rounded"
-                      >
-                        <ChevronLeft className="w-5 h-5 text-white" />
-                      </button>
-                      
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
-                        selectedConversation.type === 'direct' 
-                          ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30'
-                          : selectedConversation.type === 'project_group'
-                          ? 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30'
-                          : 'bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-orange-500/30'
-                      }`}>
-                        {selectedConversation.type === 'direct' ? '💬' : selectedConversation.type === 'project_group' ? '📁' : '🔧'}
-                      </div>
-                      
-                      <div className="flex-1">
-                        <h3 className="font-bold text-white">
-                          {getConversationTitle(selectedConversation)}
-                        </h3>
-                        <p className="text-xs text-gray-400">
-                          {getConversationSubtitle(selectedConversation)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+      <div className="p-4 border-b border-white/20 bg-gradient-to-r from-teal-600/10 to-blue-600/10">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSelectedConversation(null)}
+            className="md:hidden p-2 hover:bg-white/10 rounded"
+          >
+            <ChevronLeft className="w-5 h-5 text-white" />
+          </button>
+          
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
+            selectedConversation.type === 'direct' 
+              ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30'
+              : selectedConversation.type === 'project_group'
+              ? 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30'
+              : 'bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-orange-500/30'
+          }`}>
+            {selectedConversation.type === 'direct' ? '💬' : selectedConversation.type === 'project_group' ? '📁' : '🔧'}
+          </div>
+          
+          <div className="flex-1">
+            <h3 className="font-bold text-white">
+              {getConversationTitle(selectedConversation)}
+            </h3>
+            <p className="text-xs text-gray-400">
+              {getConversationSubtitle(selectedConversation)}
+            </p>
+          </div>
+        </div>
+        
+        {/* ═══ NEU: Info-Banner für Handwerker-Koordination ═══ */}
+        {selectedConversation.type === 'handwerker_coordination' && (
+          <div className={`mt-3 p-3 rounded-lg text-sm ${
+            userType === 'bauherr' 
+              ? 'bg-blue-500/10 border border-blue-500/30 text-blue-300'
+              : 'bg-orange-500/10 border border-orange-500/30 text-orange-300'
+          }`}>
+            {userType === 'bauherr' ? (
+              <>
+                <strong>ℹ️ Beobachter-Modus:</strong> Dies ist der Koordinations-Chat der Handwerker. 
+                Sie können mitlesen und bei Bedarf Anmerkungen machen.
+              </>
+            ) : (
+              <>
+                <strong>🔧 Handwerker-Koordination:</strong> Koordinieren Sie sich hier mit den anderen 
+                Gewerken zur Baustelle. Der Bauherr kann mitlesen.
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      
 
                   {/* Messages Area */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
