@@ -16764,6 +16764,13 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
 function generateVOBContract(offer) {
   const today = new Date().toLocaleDateString('de-DE');
   
+  // ✅ FORMATIERE VORHER:
+  const netto = formatCurrency(offer.amount);
+  const mwst = formatCurrency(offer.amount * 0.19);
+  const brutto = formatCurrency(offer.amount * 1.19);
+  const executionStart = new Date(offer.execution_start).toLocaleDateString('de-DE');
+  const executionEnd = new Date(offer.execution_end).toLocaleDateString('de-DE');
+  
   return `
 WERKVERTRAG
 nach VOB/B (Vergabe- und Vertragsordnung für Bauleistungen Teil B)
@@ -16819,10 +16826,10 @@ den einschlägigen DIN-Normen auszuführen.
 
 § 4 VERGÜTUNG
 
-Vertragssumme (Netto): ${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
-zzgl. gesetzlicher MwSt. (${19}%): ${(offer.amount * 0.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+Vertragssumme (Netto): ${netto}
+zzgl. gesetzlicher MwSt. (19%): ${mwst}
 ----------------------------------------------------------------
-Gesamtsumme (Brutto): ${(offer.amount * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+Gesamtsumme (Brutto): ${brutto}
 
 Die Vergütung erfolgt nach tatsächlich erbrachter und abgenommener Leistung 
 gemäß den Mengen und Einheitspreisen des Leistungsverzeichnisses.
@@ -16836,8 +16843,8 @@ Zahlungsbedingungen:
 
 § 5 AUSFÜHRUNGSFRISTEN
 
-Beginn der Ausführung: ${new Date(offer.execution_start).toLocaleDateString('de-DE')}
-Fertigstellung bis: ${new Date(offer.execution_end).toLocaleDateString('de-DE')}
+Beginn der Ausführung: ${executionStart}
+Fertigstellung bis: ${executionEnd}
 
 Bei Verzug ist der AN verpflichtet, eine Vertragsstrafe in Höhe von 
 0,2% der Auftragssumme pro Werktag zu zahlen, maximal jedoch 5% 
@@ -16866,7 +16873,7 @@ Gewährleistungsfrist beginnt.
 § 7 GEWÄHRLEISTUNG
 
 Gewährleistungsfrist:
-- 4 Jahre für Arbeiten an Bauwerken (§ 634a Abs. 1 Nr. 2 BGB)
+- 5 Jahre für Arbeiten an Bauwerken (§ 634a Abs. 1 Nr. 2 BGB)
 - 2 Jahre für andere Arbeiten
 
 Die Gewährleistungsfrist beginnt mit der Abnahme der Leistung.
