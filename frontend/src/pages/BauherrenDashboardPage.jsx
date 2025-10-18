@@ -477,10 +477,16 @@ const handleRejectConfirm = async () => {
       });
 
       if (res.ok) {
-        alert('Vorläufige Beauftragung erfolgreich! Die Kontaktdaten wurden freigegeben. Sie haben nun Zeit für eine Kennenlernphase.');
-        setShowContractModal(false);
-        loadProjectDetails(selectedProject.id);
-      }
+  alert('Vorläufige Beauftragung erfolgreich! Die Kontaktdaten wurden freigegeben. Sie haben nun Zeit für eine Kennenlernphase.');
+  
+  // ═══ HINZUFÜGEN: Modal schließen & State zurücksetzen ═══
+  setShowContractModal(false);
+  setSelectedOffer(null);  // ← DIESE ZEILE FEHLT!
+  
+  // Daten neu laden
+  loadProjectDetails(selectedProject.id);
+  await loadUserProjects(userData.email);  // ← AUCH WICHTIG für Angebote neu laden
+}
     } catch (err) {
       console.error('Fehler bei vorläufiger Beauftragung:', err);
     } finally {
