@@ -16608,19 +16608,19 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
         h.contact_person,
         h.phone as handwerker_phone,
         h.email as handwerker_email,
-        h.id as handwerker_id,  // HINZUFÜGEN
+        h.id as handwerker_id,  
         b.name as bauherr_name,
         b.address as bauherr_address,
         b.phone as bauherr_phone,
         b.email as bauherr_email,
-        b.id as bauherr_id,     // HINZUFÜGEN
+        b.id as bauherr_id,     
         p.id as project_id,
         p.street,
         p.house_number,
         p.zip_code,
         p.city,
         p.description as project_description,
-        tn.trade_id,            // HINZUFÜGEN
+        tn.trade_id,            
         t.name as trade_name,
         t.code as trade_code
        FROM offers o
@@ -16698,11 +16698,11 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
                 <table style="width: 100%;">
                   <tr>
                     <td style="padding: 8px 0;"><strong>Auftragssumme:</strong></td>
-                    <td style="text-align: right;">${formatCurrency(offer.amount)}</td>
+                    <td style="text-align: right;">${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0;"><strong>Ausführung:</strong></td>
-                    <td style="text-align: right;">${offer.execution_start ? new Date(offer.execution_start).toLocaleDateString('de-DE') : 'N/A'} - ${offer.execution_end ? new Date(offer.execution_end).toLocaleDateString('de-DE') : 'N/A'}</td>
+                    <td style="text-align: right;">${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}</td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
@@ -16764,13 +16764,6 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
 function generateVOBContract(offer) {
   const today = new Date().toLocaleDateString('de-DE');
   
-  // ✅ FORMATIERE VORHER:
-  const netto = formatCurrency(offer.amount);
-  const mwst = formatCurrency(offer.amount * 0.19);
-  const brutto = formatCurrency(offer.amount * 1.19);
-  const executionStart = new Date(offer.execution_start).toLocaleDateString('de-DE');
-  const executionEnd = new Date(offer.execution_end).toLocaleDateString('de-DE');
-  
   return `
 WERKVERTRAG
 nach VOB/B (Vergabe- und Vertragsordnung für Bauleistungen Teil B)
@@ -16826,10 +16819,10 @@ den einschlägigen DIN-Normen auszuführen.
 
 § 4 VERGÜTUNG
 
-Vertragssumme (Netto): ${netto}
-zzgl. gesetzlicher MwSt. (19%): ${mwst}
+Vertragssumme (Netto): ${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+zzgl. gesetzlicher MwSt. (${19}%): ${(offer.amount * 0.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
 ----------------------------------------------------------------
-Gesamtsumme (Brutto): ${brutto}
+Gesamtsumme (Brutto): ${(offer.amount * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
 
 Die Vergütung erfolgt nach tatsächlich erbrachter und abgenommener Leistung 
 gemäß den Mengen und Einheitspreisen des Leistungsverzeichnisses.
@@ -16843,8 +16836,8 @@ Zahlungsbedingungen:
 
 § 5 AUSFÜHRUNGSFRISTEN
 
-Beginn der Ausführung: ${executionStart}
-Fertigstellung bis: ${executionEnd}
+Beginn der Ausführung: ${new Date(offer.execution_start).toLocaleDateString('de-DE')}
+Fertigstellung bis: ${new Date(offer.execution_end).toLocaleDateString('de-DE')}
 
 Bei Verzug ist der AN verpflichtet, eine Vertragsstrafe in Höhe von 
 0,2% der Auftragssumme pro Werktag zu zahlen, maximal jedoch 5% 
