@@ -5510,7 +5510,7 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'ROH': ['mauerwerk', 'ziegelmauerwerk', 'durchbruch', 'beton', 'maurerarbeiten', 'sturz', 'kalksandstein'],
     'SAN': ['wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn', 'armatur'],
     'FEN': ['verglasung', 'haustür', 'rolladen', 'jalousie', 'außentür', 'terrassentür', 'isolierglas'],
-    'TIS': ['innentür', 'zarge', 'möbel', 'einbauschrank', 'küche', 'wohnungseingangstür', 'arbeitsplatte'],
+    'TIS': ['innentür', 'zarge', 'einbauschrank', 'küche', 'wohnungseingangstür', 'arbeitsplatte'],
     'DACH': ['dachziegel', 'dachrinne', 'schneefang', 'gauben', 'eindeckung', 'dampfbremse', 'unterspannbahn'],
     'FASS': ['fassade', 'wdvs', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
     'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
