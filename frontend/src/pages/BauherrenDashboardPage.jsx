@@ -443,7 +443,7 @@ const handleRejectConfirm = async () => {
     });
     
     // Angebote neu laden
-    loadOffers();
+    await loadUserProjects();
     
     // Modal schließen
     setRejectModalOpen(false);
