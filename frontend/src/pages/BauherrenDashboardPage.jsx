@@ -850,11 +850,17 @@ const BudgetVisualization = ({ budget }) => {
       <div className="flex items-center gap-4">
         {/* ═══ HIER DAS NOTIFICATION CENTER EINFÜGEN ═══ */}
         <NotificationCenter 
-          userType="bauherr"
-          userId={userData?.id}
-          apiUrl={apiUrl}
-        />
-        
+  userType="bauherr"
+  userId={userData?.id}
+  apiUrl={apiUrl}
+/>
+<MessageCenter
+  userType="bauherr"
+  userId={userData?.id}
+  userName={userData?.name}
+  apiUrl={apiUrl}
+/>
+</div>        
         <Link 
           to="/bauherr/settings"
           className="text-gray-300 hover:text-white transition-colors flex items-center gap-2"
