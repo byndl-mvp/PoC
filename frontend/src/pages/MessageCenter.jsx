@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, Users, X, Search, ChevronLeft, Paperclip } from 'lucide-react';
+import { MessageSquare, Send, X, Search, ChevronLeft } from 'lucide-react';
 
 const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -8,27 +8,26 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
   
   const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
 
   useEffect(() => {
-    if (isOpen) {
-      loadConversations();
-      const interval = setInterval(loadConversations, 10000); // Alle 10s
-      return () => clearInterval(interval);
-    }
-  }, [isOpen, userId]);
+  if (isOpen) {
+    loadConversations();
+    const interval = setInterval(loadConversations, 10000);
+    return () => clearInterval(interval);
+  }
+}, [isOpen, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (selectedConversation) {
-      loadMessages(selectedConversation.id);
-      markAsRead(selectedConversation.id);
-      const interval = setInterval(() => loadMessages(selectedConversation.id), 5000);
-      return () => clearInterval(interval);
-    }
-  }, [selectedConversation]);
+  if (selectedConversation) {
+    loadMessages(selectedConversation.id);
+    markAsRead(selectedConversation.id);
+    const interval = setInterval(() => loadMessages(selectedConversation.id), 5000);
+    return () => clearInterval(interval);
+  }
+}, [selectedConversation]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     scrollToBottom();
