@@ -15606,6 +15606,19 @@ await query(
         timestamp: new Date().toISOString()
       })]
     );
+
+    // 1:1 Chat zwischen Bauherr und Handwerker erstellen
+const convRes = await fetch(apiUrl('/api/conversations/direct'), {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    user1Type: 'bauherr',
+    user1Id: offer.bauherr_id,
+    user2Type: 'handwerker',
+    user2Id: offer.handwerker_id,
+    offerId: offerId
+  })
+});
     
     // Sende E-Mail-Benachrichtigungen
 if (transporter) {
