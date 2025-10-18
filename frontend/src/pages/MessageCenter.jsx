@@ -50,7 +50,7 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
 
   const loadMessages = async (conversationId) => {
     try {
-      const res = await fetch(apiUrl(`/api/conversations/${conversationId}/messages`));
+      const res = await fetch(apiUrl(`/api/messages/${conversationId}`));
       const data = await res.json();
       setMessages(data);
     } catch (error) {
