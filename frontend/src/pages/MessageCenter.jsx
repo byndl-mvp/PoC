@@ -129,10 +129,12 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
   ? conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0)
   : 0;
 
-  const filteredConversations = conversations.filter(conv => {
-    const title = getConversationTitle(conv).toLowerCase();
-    return title.includes(searchTerm.toLowerCase());
-  });
+  const filteredConversations = Array.isArray(conversations)
+  ? conversations.filter(conv => {
+      const title = getConversationTitle(conv).toLowerCase();
+      return title.includes(searchTerm.toLowerCase());
+    })
+  : [];
 
   return (
     <>
