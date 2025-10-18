@@ -1,19 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, X, Check, Trash2, Clock, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Bell, X, Check, Trash2, Clock } from 'lucide-react';
 
 const NotificationCenter = ({ userType, userId, apiUrl }) => {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadNotifications();
-    // Polling alle 30 Sekunden
-    const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [userId, userType]);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!userId) return;
     
     try {
@@ -27,7 +19,14 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
     } catch (error) {
       console.error('Fehler beim Laden:', error);
     }
-  };
+  }, [userId, userType, apiUrl]);
+
+  useEffect(() => {
+    loadNotifications();
+    // Polling alle 30 Sekunden
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
 
   const markAsRead = async (notificationId) => {
     try {
