@@ -7727,10 +7727,23 @@ if (summeOhneStundenlohn < 2000) {
       // Adress-Anonymisierung in Vorbemerkungen
 if (lv.vorbemerkungen && Array.isArray(lv.vorbemerkungen)) {
   lv.vorbemerkungen = lv.vorbemerkungen.map(vorbemerkung => {
-    return vorbemerkung
-      .replace(/[A-ZÄÖÜ][a-zäöüß\-]+\s+(?:straße|str\.?|strasse|weg|platz|allee|gasse|ring|pfad)\.?\s+\d+[a-zA-Z]?,?\s*/gi, '')
-      .replace(/,\s*,/g, ',')
-      .replace(/,\s*(\d{5})/g, ' $1');
+    // Variante 1: "Straße Nr, PLZ Stadt" → "PLZ Stadt"
+    let result = vorbemerkung.replace(
+      /[A-ZÄÖÜ][a-zäöüß\-]+\s+(?:straße|str\.?|strasse|weg|platz|allee|gasse|ring|pfad)\.?\s+\d+[a-zA-Z]?,?\s*/gi, 
+      ''
+    );
+    
+    // Variante 2: "PLZ Stadt, Straße Nr" → "PLZ Stadt"
+    result = result.replace(
+      /,\s*[A-ZÄÖÜ][a-zäöüß\-]+\s+(?:straße|str\.?|strasse|weg|platz|allee|gasse|ring|pfad)\.?\s+\d+[a-zA-Z]?\.?/gi,
+      ''
+    );
+    
+    // Aufräumen
+    result = result.replace(/,\s*,/g, ',');
+    result = result.replace(/,\s*$/g, ''); // Komma am Ende entfernen
+    
+    return result;
   });
 }
       
