@@ -16435,7 +16435,7 @@ app.delete('/api/notifications/:notificationId', async (req, res) => {
 // ============= NACHRICHTENSYSTEM =============
 
 // Konversationen für User laden
-app.get('/api/conversations/:userType/:userId', async (req, res) => {
+app.get('/api/user-conversations/:userType/:userId', async (req, res) => {
   try {
     const { userType, userId } = req.params;
     
