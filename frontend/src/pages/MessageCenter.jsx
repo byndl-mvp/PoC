@@ -390,7 +390,8 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
