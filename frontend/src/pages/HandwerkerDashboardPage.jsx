@@ -671,7 +671,6 @@ if (contractsRes.ok) {
                     </>
                   )}
                   
-                  {/* WICHTIG: Hier die Funktion verwenden! */}
                   {offer.status === 'vorlaeufig_beauftragt' && (
                     <>
                       <span className="block text-xs bg-yellow-600 text-yellow-200 px-3 py-2 rounded mb-2">
@@ -730,6 +729,97 @@ if (contractsRes.ok) {
             </div>
           );
         })}
+      </div>
+    )}
+    
+    {/* ═══════════════════════════════════════════════════════════════ */}
+    {/* NEU: Abgelehnte Angebote */}
+    {/* ═══════════════════════════════════════════════════════════════ */}
+    {notifications?.filter(n => n.type === 'offer_rejected').length > 0 && (
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <span>❌ Abgelehnte Angebote</span>
+          <span className="text-sm text-gray-400">
+            ({notifications.filter(n => n.type === 'offer_rejected').length})
+          </span>
+        </h3>
+        
+        <div className="space-y-3">
+          {notifications
+            .filter(n => n.type === 'offer_rejected')
+            .map((notification, idx) => {
+              const metadata = typeof notification.metadata === 'string' 
+                ? JSON.parse(notification.metadata) 
+                : notification.metadata;
+              
+              return (
+                <div 
+                  key={idx} 
+                  className={`bg-white/5 rounded-lg p-4 border ${
+                    notification.read ? 'border-white/10' : 'border-red-500/30'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-white">
+                          {metadata?.tradeName || 'Angebot'}
+                        </h4>
+                        {!notification.read && (
+                          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
+                            NEU
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="text-sm space-y-1">
+                        <p className="text-gray-400">
+                          📅 Abgelehnt am: {new Date(notification.created_at).toLocaleDateString('de-DE')}
+                        </p>
+                        <p className="text-gray-400">
+                          💼 Projekt: {metadata?.projectCategory || 'N/A'}
+                        </p>
+                        {metadata?.amount && (
+                          <p className="text-gray-400">
+                            💰 Angebotssumme: {formatCurrency(metadata.amount)}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Ablehnungsgrund */}
+                      <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded">
+                        <p className="text-xs text-red-300 mb-1">Ablehnungsgrund:</p>
+                        <p className="text-sm text-white">
+                          {metadata?.reason || 'Nicht angegeben'}
+                        </p>
+                        {metadata?.notes && (
+                          <>
+                            <p className="text-xs text-red-300 mt-2 mb-1">Anmerkung:</p>
+                            <p className="text-sm text-gray-300">{metadata.notes}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {!notification.read && (
+                      <button
+                        onClick={async () => {
+                          await fetch(apiUrl(`/api/notifications/${notification.id}/mark-read`), {
+                            method: 'POST'
+                          });
+                          // Notifications neu laden
+                          loadNotifications();
+                        }}
+                        className="ml-4 px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+                      >
+                        Als gelesen markieren
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
       </div>
     )}
   </div>
