@@ -16547,7 +16547,7 @@ app.get('/api/conversations/:userType/:userId', async (req, res) => {
 });
 
 // Nachrichten einer Konversation laden
-app.get('/api/conversations/:conversationId/messages', async (req, res) => {
+app.get('/api/messages/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { limit = 50, before } = req.query;
