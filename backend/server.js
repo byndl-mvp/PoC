@@ -16483,18 +16483,23 @@ app.get('/api/conversations/:userType/:userId', async (req, res) => {
             WHERE p.id = c.project_id
           )
           WHEN c.type = 'handwerker_coordination' THEN (
-            SELECT json_build_object(
-              'project_id', c.project_id,
-              'project_title', p.title,
-              'member_count', (
-                SELECT COUNT(*) 
-                FROM conversation_participants 
-                WHERE conversation_id = c.id
-              )
-            )
-            FROM projects p
-            WHERE p.id = c.project_id
-          )
+  SELECT json_build_object(
+    'project_id', c.project_id,
+    'project_title', p.title,
+    'member_count', (
+      SELECT COUNT(*) 
+      FROM conversation_participants 
+      WHERE conversation_id = c.id
+    ),
+    'handwerker_count', (
+      SELECT COUNT(*) 
+      FROM conversation_participants 
+      WHERE conversation_id = c.id AND user_type = 'handwerker'
+    )
+  )
+  FROM projects p
+  WHERE p.id = c.project_id
+)
         END as conversation_info,
         (
           SELECT json_build_object(
