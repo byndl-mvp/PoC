@@ -139,22 +139,23 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
   return (
     <>
       {/* Message Icon Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-white/10 backdrop-blur rounded-lg border border-white/20 hover:bg-white/20 transition-all"
-      >
-        <MessageSquare className="w-6 h-6 text-white" />
-        {totalUnread > 0 && (
-          <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-            {totalUnread > 9 ? '9+' : totalUnread}
-          </span>
-        )}
-      </button>
+<div className="relative z-50">
+  <button
+    onClick={() => setIsOpen(!isOpen)}
+    className="relative p-3 bg-white/10 backdrop-blur rounded-lg border border-white/20 hover:bg-white/20 transition-all"
+  >
+    <MessageSquare className="w-6 h-6 text-white" />
+    {totalUnread > 0 && (
+      <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+        {totalUnread > 9 ? '9+' : totalUnread}
+      </span>
+    )}
+  </button>
 
-      {/* Message Center Panel */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-lg border border-white/20 shadow-2xl w-full max-w-6xl h-[80vh] flex overflow-hidden">
+      {{/* Message Center Panel */}
+{isOpen && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999999] p-4">
+    <div className="bg-gray-900 rounded-lg border border-white/20 shadow-2xl w-full max-w-6xl h-[80vh] flex overflow-hidden">
             
             {/* Sidebar - Conversations List */}
             <div className={`${selectedConversation ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 border-r border-white/20`}>
