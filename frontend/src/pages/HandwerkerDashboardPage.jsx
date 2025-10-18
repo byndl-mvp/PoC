@@ -25,6 +25,7 @@ export default function HandwerkerDashboardPage() {
   const [schedule, setSchedule] = useState([]); // eslint-disable-line no-unused-vars
   const [showContractView, setShowContractView] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   
   useEffect(() => {
     const storedData = sessionStorage.getItem('handwerkerData');
@@ -37,26 +38,52 @@ export default function HandwerkerDashboardPage() {
     setHandwerkerData(data);
     loadDashboardData(data);
   }, [navigate]);
+
+  // Neue Funktion zum Laden der Notifications
+  const loadNotifications = async () => {
+    if (!handwerkerData?.id) return;
+    
+    try {
+      const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/notifications`));
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Benachrichtigungen:', error);
+    }
+  };
+
+  // Neuer useEffect für Notifications
+  useEffect(() => {
+    if (handwerkerData?.id) {
+      loadNotifications();
+      
+      // Optional: Notifications alle 30 Sekunden aktualisieren
+      const interval = setInterval(loadNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [handwerkerData?.id]);
   
   const loadDashboardData = async (handwerker) => {
     try {
       setLoading(true);
-
+      
       // Lade verfügbare Ausschreibungen
-const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/new`));
-if (tendersRes.ok) {
-  const tendersData = await tendersRes.json();
-  // Filtere nur doppelte Einträge und final beauftragte
-  const uniqueTenders = tendersData.filter((tender, index, self) =>
-    index === self.findIndex((t) => t.id === tender.id) &&
-    tender.offer_status !== 'accepted' &&
-    tender.offer_status !== 'final_accepted' &&
-    tender.offer_status !== 'preliminary' &&
-    tender.offer_status !== 'confirmed' &&
-    tender.status !== 'rejected'
-  );
-  setTenders(uniqueTenders);
-}
+      const tendersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/tenders/new`));
+      if (tendersRes.ok) {
+        const tendersData = await tendersRes.json();
+        // Filtere nur doppelte Einträge und final beauftragte
+        const uniqueTenders = tendersData.filter((tender, index, self) =>
+          index === self.findIndex((t) => t.id === tender.id) &&
+          tender.offer_status !== 'accepted' &&
+          tender.offer_status !== 'final_accepted' &&
+          tender.offer_status !== 'preliminary' &&
+          tender.offer_status !== 'confirmed' &&
+          tender.status !== 'rejected'
+        );
+        setTenders(uniqueTenders);
+      }
       
       // Lade verfügbare Bündel
       const bundlesRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/bundles`));
@@ -73,16 +100,16 @@ if (tendersRes.ok) {
       }
       
       // Lade Vertragsanbahnungen
-const contractsRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/contracts`));
-console.log('🔴 Contracts Response:', contractsRes.ok, contractsRes.status);
-
-if (contractsRes.ok) {
-  const contractsData = await contractsRes.json();
-  console.log('🔴 Contracts Data empfangen:', contractsData);
-  console.log('🔴 Contracts Length:', contractsData.length);
-  setContracts(contractsData);
-  console.log('🔴 setContracts() aufgerufen');
-}
+      const contractsRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/contracts`));
+      console.log('🔴 Contracts Response:', contractsRes.ok, contractsRes.status);
+      
+      if (contractsRes.ok) {
+        const contractsData = await contractsRes.json();
+        console.log('🔴 Contracts Data empfangen:', contractsData);
+        console.log('🔴 Contracts Length:', contractsData.length);
+        setContracts(contractsData);
+        console.log('🔴 setContracts() aufgerufen');
+      }
       
       // Lade erteilte Aufträge
       const ordersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/orders`));
@@ -91,13 +118,22 @@ if (contractsRes.ok) {
         setOrders(ordersData);
       }
       
+      // Lade auch die Notifications beim initialen Laden
+      if (handwerker.id) {
+        const notifRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/notifications`));
+        if (notifRes.ok) {
+          const notifData = await notifRes.json();
+          setNotifications(notifData);
+        }
+      }
+      
     } catch (err) {
       console.error('Fehler beim Laden der Dashboard-Daten:', err);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const handleRejectTender = async (tenderId) => {
     if (!window.confirm('Diese Ausschreibung wirklich ablehnen? Sie wird dauerhaft ausgeblendet.')) {
       return;
