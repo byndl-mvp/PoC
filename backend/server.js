@@ -16236,6 +16236,579 @@ app.get('/api/projects/:projectId/supplements', async (req, res) => {
   }
 });
 
+// ============= BENACHRICHTIGUNGSSYSTEM =============
+
+// Benachrichtigungen für Bauherr laden
+app.get('/api/bauherr/:bauherrId/notifications', async (req, res) => {
+  try {
+    const { bauherrId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        n.*,
+        CASE 
+          WHEN n.type = 'new_offer' THEN (
+            SELECT json_build_object(
+              'company_name', h.company_name,
+              'trade_name', t.name,
+              'amount', o.amount
+            )
+            FROM offers o
+            JOIN handwerker h ON o.handwerker_id = h.id
+            JOIN tenders tn ON o.tender_id = tn.id
+            JOIN trades t ON tn.trade_id = t.id
+            WHERE o.id = n.reference_id
+          )
+          WHEN n.type = 'offer_confirmed' THEN (
+            SELECT json_build_object(
+              'company_name', h.company_name,
+              'trade_name', t.name
+            )
+            FROM offers o
+            JOIN handwerker h ON o.handwerker_id = h.id
+            JOIN tenders tn ON o.tender_id = tn.id
+            JOIN trades t ON tn.trade_id = t.id
+            WHERE o.id = n.reference_id
+          )
+          WHEN n.type = 'appointment_request' THEN (
+            SELECT json_build_object(
+              'company_name', h.company_name,
+              'proposed_date', ap.proposed_date
+            )
+            FROM appointment_proposals ap
+            JOIN offers o ON ap.offer_id = o.id
+            JOIN handwerker h ON o.handwerker_id = h.id
+            WHERE ap.id = n.reference_id
+          )
+        END as details
+       FROM notifications n
+       WHERE n.user_type = 'bauherr' 
+       AND n.user_id = $1 
+       ORDER BY n.created_at DESC 
+       LIMIT 20`,
+      [bauherrId]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error loading notifications:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Benachrichtigungen' });
+  }
+});
+
+// Benachrichtigungen für Handwerker laden
+app.get('/api/handwerker/:handwerkerId/notifications', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        n.*,
+        CASE 
+          WHEN n.type = 'new_tender' THEN (
+            SELECT json_build_object(
+              'trade_name', t.name,
+              'project_zip', p.zip_code,
+              'deadline', tn.deadline
+            )
+            FROM tenders tn
+            JOIN trades t ON tn.trade_id = t.id
+            JOIN projects p ON tn.project_id = p.id
+            WHERE tn.id = n.reference_id
+          )
+          WHEN n.type = 'preliminary_accepted' THEN (
+            SELECT json_build_object(
+              'trade_name', t.name,
+              'bauherr_name', b.name
+            )
+            FROM offers o
+            JOIN tenders tn ON o.tender_id = tn.id
+            JOIN trades t ON tn.trade_id = t.id
+            JOIN projects p ON tn.project_id = p.id
+            JOIN bauherren b ON p.bauherr_id = b.id
+            WHERE o.id = n.reference_id
+          )
+          WHEN n.type = 'offer_rejected' THEN n.metadata
+          WHEN n.type = 'awarded' THEN (
+            SELECT json_build_object(
+              'trade_name', t.name,
+              'amount', ord.amount
+            )
+            FROM orders ord
+            JOIN trades t ON ord.trade_id = t.id
+            WHERE ord.id = n.reference_id
+          )
+        END as details
+       FROM notifications n
+       WHERE n.user_type = 'handwerker' 
+       AND n.user_id = $1 
+       ORDER BY n.created_at DESC 
+       LIMIT 20`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error loading notifications:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Benachrichtigungen' });
+  }
+});
+
+// Benachrichtigung als gelesen markieren
+app.post('/api/notifications/:notificationId/mark-read', async (req, res) => {
+  try {
+    await query(
+      `UPDATE notifications 
+       SET read = true, read_at = NOW() 
+       WHERE id = $1`,
+      [req.params.notificationId]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// Alle Benachrichtigungen als gelesen markieren
+app.post('/api/notifications/mark-all-read', async (req, res) => {
+  try {
+    const { userType, userId } = req.body;
+    
+    await query(
+      `UPDATE notifications 
+       SET read = true, read_at = NOW() 
+       WHERE user_type = $1 AND user_id = $2 AND read = false`,
+      [userType, userId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// Benachrichtigung löschen
+app.delete('/api/notifications/:notificationId', async (req, res) => {
+  try {
+    await query('DELETE FROM notifications WHERE id = $1', [req.params.notificationId]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// ============= NACHRICHTENSYSTEM =============
+
+// Konversationen für User laden
+app.get('/api/conversations/:userType/:userId', async (req, res) => {
+  try {
+    const { userType, userId } = req.params;
+    
+    const result = await query(
+      `SELECT DISTINCT
+        c.*,
+        CASE 
+          WHEN c.type = 'direct' THEN (
+            CASE 
+              WHEN $1 = 'bauherr' THEN (
+                SELECT json_build_object(
+                  'id', h.id,
+                  'name', h.company_name,
+                  'type', 'handwerker'
+                )
+                FROM conversation_participants cp
+                JOIN handwerker h ON cp.user_id = h.id
+                WHERE cp.conversation_id = c.id 
+                  AND cp.user_type = 'handwerker'
+                LIMIT 1
+              )
+              ELSE (
+                SELECT json_build_object(
+                  'id', b.id,
+                  'name', b.name,
+                  'type', 'bauherr'
+                )
+                FROM conversation_participants cp
+                JOIN bauherren b ON cp.user_id = b.id
+                WHERE cp.conversation_id = c.id 
+                  AND cp.user_type = 'bauherr'
+                LIMIT 1
+              )
+            END
+          )
+          WHEN c.type = 'project_group' THEN (
+            SELECT json_build_object(
+              'project_id', c.project_id,
+              'title', p.title,
+              'member_count', (
+                SELECT COUNT(*) 
+                FROM conversation_participants 
+                WHERE conversation_id = c.id
+              )
+            )
+            FROM projects p
+            WHERE p.id = c.project_id
+          )
+          WHEN c.type = 'handwerker_coordination' THEN (
+            SELECT json_build_object(
+              'project_id', c.project_id,
+              'project_title', p.title,
+              'member_count', (
+                SELECT COUNT(*) 
+                FROM conversation_participants 
+                WHERE conversation_id = c.id
+              )
+            )
+            FROM projects p
+            WHERE p.id = c.project_id
+          )
+        END as conversation_info,
+        (
+          SELECT json_build_object(
+            'text', m.message,
+            'sender_name', 
+              CASE 
+                WHEN m.sender_type = 'bauherr' THEN b.name
+                WHEN m.sender_type = 'handwerker' THEN h.company_name
+              END,
+            'sent_at', m.created_at
+          )
+          FROM messages m
+          LEFT JOIN bauherren b ON m.sender_type = 'bauherr' AND m.sender_id = b.id
+          LEFT JOIN handwerker h ON m.sender_type = 'handwerker' AND m.sender_id = h.id
+          WHERE m.conversation_id = c.id
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) as last_message,
+        (
+          SELECT COUNT(*)
+          FROM messages m
+          WHERE m.conversation_id = c.id
+            AND m.read = false
+            AND NOT (m.sender_type = $1 AND m.sender_id = $2)
+        ) as unread_count
+       FROM conversations c
+       JOIN conversation_participants cp ON c.id = cp.conversation_id
+       WHERE cp.user_type = $1 AND cp.user_id = $2
+       ORDER BY c.updated_at DESC`,
+      [userType, userId]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error loading conversations:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Konversationen' });
+  }
+});
+
+// Nachrichten einer Konversation laden
+app.get('/api/conversations/:conversationId/messages', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { limit = 50, before } = req.query;
+    
+    let query_text = `
+      SELECT 
+        m.*,
+        CASE 
+          WHEN m.sender_type = 'bauherr' THEN b.name
+          WHEN m.sender_type = 'handwerker' THEN h.company_name
+        END as sender_name
+      FROM messages m
+      LEFT JOIN bauherren b ON m.sender_type = 'bauherr' AND m.sender_id = b.id
+      LEFT JOIN handwerker h ON m.sender_type = 'handwerker' AND m.sender_id = h.id
+      WHERE m.conversation_id = $1`;
+    
+    const params = [conversationId];
+    
+    if (before) {
+      query_text += ` AND m.created_at < $2`;
+      params.push(before);
+    }
+    
+    query_text += ` ORDER BY m.created_at DESC LIMIT $${params.length + 1}`;
+    params.push(limit);
+    
+    const result = await query(query_text, params);
+    
+    res.json(result.rows.reverse());
+  } catch (error) {
+    console.error('Error loading messages:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Nachrichten' });
+  }
+});
+
+// Nachricht senden
+app.post('/api/conversations/:conversationId/messages', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { senderType, senderId, message, attachments } = req.body;
+    
+    await query('BEGIN');
+    
+    // Nachricht einfügen
+    const result = await query(
+      `INSERT INTO messages 
+       (conversation_id, sender_type, sender_id, message, attachments, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       RETURNING *`,
+      [conversationId, senderType, senderId, message, JSON.stringify(attachments || [])]
+    );
+    
+    // Conversation aktualisieren
+    await query(
+      `UPDATE conversations 
+       SET updated_at = NOW() 
+       WHERE id = $1`,
+      [conversationId]
+    );
+    
+    // Benachrichtigungen für andere Teilnehmer erstellen
+    const participants = await query(
+      `SELECT user_type, user_id 
+       FROM conversation_participants 
+       WHERE conversation_id = $1 
+         AND NOT (user_type = $2 AND user_id = $3)`,
+      [conversationId, senderType, senderId]
+    );
+    
+    for (const participant of participants.rows) {
+      await query(
+        `INSERT INTO notifications 
+         (user_type, user_id, type, reference_id, message, created_at)
+         VALUES ($1, $2, 'new_message', $3, $4, NOW())`,
+        [
+          participant.user_type,
+          participant.user_id,
+          result.rows[0].id,
+          `Neue Nachricht erhalten`
+        ]
+      );
+    }
+    
+    await query('COMMIT');
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error sending message:', error);
+    res.status(500).json({ error: 'Fehler beim Senden der Nachricht' });
+  }
+});
+
+// Nachrichten als gelesen markieren
+app.post('/api/conversations/:conversationId/mark-read', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { userType, userId } = req.body;
+    
+    await query(
+      `UPDATE messages 
+       SET read = true, read_at = NOW()
+       WHERE conversation_id = $1 
+         AND NOT (sender_type = $2 AND sender_id = $3)
+         AND read = false`,
+      [conversationId, userType, userId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking as read:', error);
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// Konversation erstellen/finden (Direct Message)
+app.post('/api/conversations/direct', async (req, res) => {
+  try {
+    const { user1Type, user1Id, user2Type, user2Id, offerId } = req.body;
+    
+    await query('BEGIN');
+    
+    // Prüfe ob Konversation bereits existiert
+    const existing = await query(
+      `SELECT c.id 
+       FROM conversations c
+       JOIN conversation_participants cp1 ON c.id = cp1.conversation_id
+       JOIN conversation_participants cp2 ON c.id = cp2.conversation_id
+       WHERE c.type = 'direct'
+         AND cp1.user_type = $1 AND cp1.user_id = $2
+         AND cp2.user_type = $3 AND cp2.user_id = $4`,
+      [user1Type, user1Id, user2Type, user2Id]
+    );
+    
+    if (existing.rows.length > 0) {
+      await query('COMMIT');
+      return res.json({ conversationId: existing.rows[0].id });
+    }
+    
+    // Neue Konversation erstellen
+    const convResult = await query(
+      `INSERT INTO conversations (type, offer_id, created_at, updated_at)
+       VALUES ('direct', $1, NOW(), NOW())
+       RETURNING id`,
+      [offerId]
+    );
+    
+    const conversationId = convResult.rows[0].id;
+    
+    // Teilnehmer hinzufügen
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
+       VALUES ($1, $2, $3), ($1, $4, $5)`,
+      [conversationId, user1Type, user1Id, user2Type, user2Id]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ conversationId });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error creating conversation:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen der Konversation' });
+  }
+});
+
+// Projekt-Gruppenkonversation erstellen (automatisch bei Beauftragung)
+app.post('/api/conversations/project-group', async (req, res) => {
+  try {
+    const { projectId, bauherrId } = req.body;
+    
+    await query('BEGIN');
+    
+    // Prüfe ob bereits existiert
+    const existing = await query(
+      `SELECT id FROM conversations 
+       WHERE type = 'project_group' AND project_id = $1`,
+      [projectId]
+    );
+    
+    if (existing.rows.length > 0) {
+      await query('COMMIT');
+      return res.json({ conversationId: existing.rows[0].id });
+    }
+    
+    // Neue Projekt-Gruppe erstellen
+    const convResult = await query(
+      `INSERT INTO conversations (type, project_id, created_at, updated_at)
+       VALUES ('project_group', $1, NOW(), NOW())
+       RETURNING id`,
+      [projectId]
+    );
+    
+    const conversationId = convResult.rows[0].id;
+    
+    // Bauherr hinzufügen
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
+       VALUES ($1, 'bauherr', $2)`,
+      [conversationId, bauherrId]
+    );
+    
+    // Alle beauftragten Handwerker hinzufügen
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
+       SELECT $1, 'handwerker', DISTINCT o.handwerker_id
+       FROM orders o
+       WHERE o.project_id = $2`,
+      [conversationId, projectId]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ conversationId });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error creating project group:', error);
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// Handwerker-Koordinations-Chat erstellen
+app.post('/api/conversations/handwerker-coordination', async (req, res) => {
+  try {
+    const { projectId } = req.body;
+    
+    await query('BEGIN');
+    
+    // Prüfe ob bereits existiert
+    const existing = await query(
+      `SELECT id FROM conversations 
+       WHERE type = 'handwerker_coordination' AND project_id = $1`,
+      [projectId]
+    );
+    
+    if (existing.rows.length > 0) {
+      await query('COMMIT');
+      return res.json({ conversationId: existing.rows[0].id });
+    }
+    
+    // Neue Koordinations-Gruppe erstellen
+    const convResult = await query(
+      `INSERT INTO conversations (type, project_id, created_at, updated_at)
+       VALUES ('handwerker_coordination', $1, NOW(), NOW())
+       RETURNING id`,
+      [projectId]
+    );
+    
+    const conversationId = convResult.rows[0].id;
+    
+    // Alle beauftragten Handwerker hinzufügen (ohne Bauherr!)
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
+       SELECT $1, 'handwerker', DISTINCT o.handwerker_id
+       FROM orders o
+       WHERE o.project_id = $2`,
+      [conversationId, projectId]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ conversationId });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error creating coordination chat:', error);
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// Handwerker zu Gruppenkonversationen hinzufügen (bei neuer Beauftragung)
+app.post('/api/conversations/add-handwerker', async (req, res) => {
+  try {
+    const { projectId, handwerkerId } = req.body;
+    
+    await query('BEGIN');
+    
+    // Zu Projekt-Gruppe hinzufügen
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
+       SELECT c.id, 'handwerker', $2
+       FROM conversations c
+       WHERE c.type = 'project_group' AND c.project_id = $1
+       ON CONFLICT DO NOTHING`,
+      [projectId, handwerkerId]
+    );
+    
+    // Zu Handwerker-Koordination hinzufügen
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
+       SELECT c.id, 'handwerker', $2
+       FROM conversations c
+       WHERE c.type = 'handwerker_coordination' AND c.project_id = $1
+       ON CONFLICT DO NOTHING`,
+      [projectId, handwerkerId]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ success: true });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error adding handwerker:', error);
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
 // Bauherr Settings Endpoints
 
 // Get Bauherr Settings
