@@ -838,12 +838,20 @@ export default function HandwerkerDashboardPage() {
                     {!notification.read && (
                       <button
                         onClick={async () => {
-                          await fetch(apiUrl(`/api/notifications/${notification.id}/mark-read`), {
-                            method: 'POST'
-                          });
-                          // Notifications neu laden
-                          loadNotifications();
-                        }}
+  await fetch(apiUrl(`/api/notifications/${notification.id}/mark-read`), {
+    method: 'POST'
+  });
+  // Notifications neu laden - direkt hier ohne loadNotifications()
+  try {
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/notifications`));
+    if (res.ok) {
+      const data = await res.json();
+      setNotifications(data);
+    }
+  } catch (error) {
+    console.error('Fehler beim Laden der Benachrichtigungen:', error);
+  }
+}}
                         className="ml-4 px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
                       >
                         Als gelesen markieren
