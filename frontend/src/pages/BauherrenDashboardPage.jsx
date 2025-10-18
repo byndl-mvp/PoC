@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 import NotificationCenter from '../pages/NotificationCenter';
+import MessageCenter from '../pages/MessageCenter';
 
 function formatCurrency(value) {
   if (!value && value !== 0) return '0 €';
