@@ -17509,6 +17509,103 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     );
     
     const orderId = orderResult.rows[0].id;
+
+    // 1. Zu Projekt-Gruppe hinzufügen
+await query(
+  `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+   SELECT c.id, 'handwerker', $2, 'participant'
+   FROM conversations c
+   WHERE c.type = 'project_group' AND c.project_id = $1
+   ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
+  [offer.project_id, offer.handwerker_id]
+);
+
+// 2. Zu Handwerker-Koordination hinzufügen
+await query(
+  `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+   SELECT c.id, 'handwerker', $2, 'participant'
+   FROM conversations c
+   WHERE c.type = 'handwerker_coordination' AND c.project_id = $1
+   ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
+  [offer.project_id, offer.handwerker_id]
+);
+
+// 3. Projekt-Gruppe erstellen falls noch nicht vorhanden
+const projectGroupExists = await query(
+  `SELECT id FROM conversations 
+   WHERE type = 'project_group' AND project_id = $1`,
+  [offer.project_id]
+);
+
+if (projectGroupExists.rows.length === 0) {
+  const convResult = await query(
+    `INSERT INTO conversations (type, project_id, created_at, updated_at)
+     VALUES ('project_group', $1, NOW(), NOW())
+     RETURNING id`,
+    [offer.project_id]
+  );
+  
+  const conversationId = convResult.rows[0].id;
+  
+  // Bauherr hinzufügen
+  await query(
+    `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+     VALUES ($1, 'bauherr', $2, 'participant')`,
+    [conversationId, offer.bauherr_id]
+  );
+  
+  // Alle bereits beauftragten Handwerker hinzufügen
+  await query(
+    `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+     SELECT $1, 'handwerker', DISTINCT o.handwerker_id, 'participant'
+     FROM orders o
+     WHERE o.project_id = $2`,
+    [conversationId, offer.project_id]
+  );
+}
+
+// 4. Handwerker-Koordination erstellen falls 2+ Handwerker
+const handwerkerCount = await query(
+  `SELECT COUNT(DISTINCT handwerker_id) as count 
+   FROM orders 
+   WHERE project_id = $1`,
+  [offer.project_id]
+);
+
+if (handwerkerCount.rows[0].count >= 2) {
+  const coordExists = await query(
+    `SELECT id FROM conversations 
+     WHERE type = 'handwerker_coordination' AND project_id = $1`,
+    [offer.project_id]
+  );
+  
+  if (coordExists.rows.length === 0) {
+    const convResult = await query(
+      `INSERT INTO conversations (type, project_id, created_at, updated_at)
+       VALUES ('handwerker_coordination', $1, NOW(), NOW())
+       RETURNING id`,
+      [offer.project_id]
+    );
+    
+    const conversationId = convResult.rows[0].id;
+    
+    // Bauherr als Observer hinzufügen
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+       VALUES ($1, 'bauherr', $2, 'observer')`,
+      [conversationId, offer.bauherr_id]
+    );
+    
+    // Alle Handwerker hinzufügen
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+       SELECT $1, 'handwerker', DISTINCT o.handwerker_id, 'participant'
+       FROM orders o
+       WHERE o.project_id = $2`,
+      [conversationId, offer.project_id]
+    );
+  }
+}
     
     // Update Offer Status
     await query(
