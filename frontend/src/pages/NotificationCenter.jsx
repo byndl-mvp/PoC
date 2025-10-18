@@ -140,7 +140,7 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
 
         {/* Notification Panel */}
         {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-96 max-h-[600px] bg-gray-900 rounded-lg border border-white/20 shadow-2xl z-50 overflow-hidden flex flex-col">
+          <div className="absolute right-0 top-full mt-2 w-96 max-h-[600px] bg-gray-900 rounded-lg border border-white/20 shadow-2xl z-[9999] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-white/20 bg-gradient-to-r from-purple-600/20 to-blue-600/20">
               <div className="flex justify-between items-center">
