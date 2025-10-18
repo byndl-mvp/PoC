@@ -859,8 +859,7 @@ const BudgetVisualization = ({ budget }) => {
   userId={userData?.id}
   userName={userData?.name}
   apiUrl={apiUrl}
-/>
-</div>        
+/>     
         <Link 
           to="/bauherr/settings"
           className="text-gray-300 hover:text-white transition-colors flex items-center gap-2"
