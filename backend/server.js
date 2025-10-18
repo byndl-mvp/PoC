@@ -7822,7 +7822,106 @@ function validateAndFixPrices(lv, tradeCode) {
   if (!lv.positions || !Array.isArray(lv.positions)) {
     return { lv, fixedCount, warnings };
   }
- 
+
+    // ============== KOMMAFEHLER-ERKENNUNG DURCH VERHÄLTNISMÄSSIGKEIT ==============
+  // Regel: Wenn eine Position mehr als 50% der Gesamtsumme ausmacht, prüfe auf Kommafehler
+  
+  // Berechne Gesamtsumme aller Positionen
+  const gesamtSumme = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+  
+  lv.positions = lv.positions.map(pos => {
+    
+    // Prüfe ob diese Position unverhältnismäßig teuer ist
+    if (pos.totalPrice > gesamtSumme * 0.4 && lv.positions.length > 3) {
+      // Diese Position macht mehr als 40% der Gesamtsumme aus (bei mehr als 3 Positionen)
+      
+      // Berechne Summe OHNE diese Position
+      const summeOhnePosition = gesamtSumme - pos.totalPrice;
+      
+      // Wenn Position mehr als doppelt so teuer wie alle anderen zusammen
+      if (pos.totalPrice > summeOhnePosition * 2) {
+        console.error(`[KOMMAFEHLER-VERDACHT] Position macht ${((pos.totalPrice/gesamtSumme)*100).toFixed(1)}% der Gesamtsumme aus!`);
+        console.error(`  Position: "${pos.title?.substring(0, 60)}..."`);
+        console.error(`  Preis: ${pos.unitPrice}€ × ${pos.quantity} = ${pos.totalPrice}€`);
+        console.error(`  Summe aller anderen: ${summeOhnePosition}€`);
+        
+        // Teste Korrektur durch Division
+        const kandidaten = [
+          { divisor: 100, neuPreis: pos.unitPrice / 100 },
+          { divisor: 1000, neuPreis: pos.unitPrice / 1000 },
+          { divisor: 10, neuPreis: pos.unitPrice / 10 }
+        ];
+        
+        for (const k of kandidaten) {
+          const neueGesamtPosition = k.neuPreis * pos.quantity;
+          
+          // Prüfe ob korrigierter Preis plausibel wird
+          // Sollte maximal 50% der anderen Positionen ausmachen
+          if (neueGesamtPosition < summeOhnePosition * 0.5) {
+            const oldPrice = pos.unitPrice;
+            pos.unitPrice = Math.round(k.neuPreis * 100) / 100;
+            pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+            
+            console.error(`[KOMMAFEHLER KORRIGIERT] Division durch ${k.divisor}:`);
+            console.error(`  ${oldPrice}€ → ${pos.unitPrice}€`);
+            console.error(`  Neue Positionssumme: ${pos.totalPrice}€ (${((pos.totalPrice/(summeOhnePosition + pos.totalPrice))*100).toFixed(1)}% der Gesamtsumme)`);
+            
+            warnings.push(`KOMMAFEHLER behoben bei "${pos.title?.substring(0, 40)}...": ${oldPrice}€ → ${pos.unitPrice}€`);
+            fixedCount++;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Zusätzlich: Extreme Einzelpreise im Vergleich zum Durchschnitt
+    if (pos.unitPrice > 1000 && lv.positions.length > 5) {
+      const gleicheEinheit = lv.positions.filter(p => 
+        p !== pos && 
+        p.unit === pos.unit && 
+        p.unitPrice > 0
+      );
+      
+      if (gleicheEinheit.length >= 2) {
+        const durchschnitt = gleicheEinheit.reduce((sum, p) => sum + p.unitPrice, 0) / gleicheEinheit.length;
+        
+        // Wenn Preis mehr als 50x höher als Durchschnitt
+        if (pos.unitPrice > durchschnitt * 50) {
+          const kandidaten = [
+            { divisor: 100, neuPreis: pos.unitPrice / 100 },
+            { divisor: 1000, neuPreis: pos.unitPrice / 1000 }
+          ];
+          
+          for (const k of kandidaten) {
+            // Neuer Preis sollte maximal 5x Durchschnitt sein
+            if (k.neuPreis > durchschnitt * 0.5 && k.neuPreis < durchschnitt * 5) {
+              const oldPrice = pos.unitPrice;
+              pos.unitPrice = Math.round(k.neuPreis * 100) / 100;
+              pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+              
+              console.error(`[AUSREISSER KORRIGIERT] ${oldPrice}€ war ${(oldPrice/durchschnitt).toFixed(0)}x Durchschnitt`);
+              console.error(`  Korrigiert auf ${pos.unitPrice}€ (${(pos.unitPrice/durchschnitt).toFixed(1)}x Durchschnitt)`);
+              
+              warnings.push(`Preisausreißer korrigiert: ${oldPrice}€ → ${pos.unitPrice}€`);
+              fixedCount++;
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    return pos;
+  });
+  
+  // ============== ENDE KOMMAFEHLER-ERKENNUNG ==============
+  
+  // Neuberechnung der Gesamtsumme nach Korrekturen
+  if (fixedCount > 0) {
+    const neueGesamtsumme = lv.positions.reduce((sum, pos) => sum + (pos.totalPrice || 0), 0);
+    console.log(`[KOMMAFEHLER] Gesamtsumme korrigiert: ${gesamtSumme.toFixed(2)}€ → ${neueGesamtsumme.toFixed(2)}€`);
+  }
+  
   lv.positions = lv.positions.map(pos => {
 
   // Entferne Preisspannen und korrigiere Qualitätsbegriffe
