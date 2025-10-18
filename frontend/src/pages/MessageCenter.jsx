@@ -94,29 +94,37 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
   };
 
   const getConversationTitle = (conv) => {
-    const info = conv.conversation_info;
-    
-    switch (conv.type) {
-      case 'direct':
-        return info?.name || 'Direktnachricht';
-      case 'project_group':
-        return `📁 ${info?.title || 'Projekt-Gruppe'}`;
-      case 'handwerker_coordination':
+  const info = conv.conversation_info;
+  
+  switch (conv.type) {
+    case 'direct':
+      return info?.name || 'Direktnachricht';
+    case 'project_group':
+      return `📁 ${info?.title || 'Projekt-Gruppe'}`;
+    case 'handwerker_coordination':
+      // ═══ NEU: Unterschiedlicher Titel je nach User-Typ ═══
+      if (userType === 'bauherr') {
+        return `👀 Handwerker-Koordination: ${info?.project_title || 'Projekt'}`;
+      } else {
         return `🔧 Handwerker-Koordination: ${info?.project_title || 'Projekt'}`;
-      default:
-        return 'Konversation';
-    }
-  };
+      }
+    default:
+      return 'Konversation';
+  }
+};
 
   const getConversationSubtitle = (conv) => {
-    const info = conv.conversation_info;
-    
-    if (conv.type === 'direct') {
-      return info?.type === 'bauherr' ? 'Bauherr' : 'Handwerker';
-    } else {
-      return `${info?.member_count || 0} Teilnehmer`;
-    }
-  };
+  const info = conv.conversation_info;
+  
+  if (conv.type === 'direct') {
+    return info?.type === 'bauherr' ? 'Bauherr' : 'Handwerker';
+  } else if (conv.type === 'handwerker_coordination' && userType === 'bauherr') {
+    // ═══ NEU: Hinweis für Bauherr ═══
+    return `Sie können mitlesen & Anmerkungen machen`;
+  } else {
+    return `${info?.member_count || 0} Teilnehmer`;
+  }
+};
 
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
 
