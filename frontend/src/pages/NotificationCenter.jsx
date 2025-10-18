@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { Bell, X, Check, Trash2, Clock } from 'lucide-react';
 
 const NotificationCenter = ({ userType, userId, apiUrl }) => {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef(null);
 
   const loadNotifications = useCallback(async () => {
     if (!userId) return;
@@ -23,10 +25,26 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
 
   useEffect(() => {
     loadNotifications();
-    // Polling alle 30 Sekunden
     const interval = setInterval(loadNotifications, 30000);
     return () => clearInterval(interval);
   }, [loadNotifications]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (buttonRef.current && !buttonRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const markAsRead = async (notificationId) => {
     try {
@@ -122,10 +140,20 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
     }).format(amount);
   };
 
+  // Calculate position for dropdown
+  const getDropdownPosition = () => {
+    if (!buttonRef.current) return {};
+    const rect = buttonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 8,
+      right: window.innerWidth - rect.right
+    };
+  };
+
   return (
     <>
       {/* Notification Bell Button */}
-      <div className="relative">
+      <div ref={buttonRef} className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="relative p-3 bg-white/10 backdrop-blur rounded-lg border border-white/20 hover:bg-white/20 transition-all"
@@ -137,128 +165,135 @@ const NotificationCenter = ({ userType, userId, apiUrl }) => {
             </span>
           )}
         </button>
+      </div>
 
-        {/* Notification Panel */}
-        {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-96 max-h-[600px] bg-gray-900 rounded-lg border border-white/20 shadow-2xl z-[9999] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-white/20 bg-gradient-to-r from-purple-600/20 to-blue-600/20">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Bell className="w-5 h-5" />
-                  Benachrichtigungen
-                  {unreadCount > 0 && (
-                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                      {unreadCount}
-                    </span>
-                  )}
-                </h3>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 hover:bg-white/10 rounded transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-              
-              {unreadCount > 0 && (
-                <button
-                  onClick={markAllAsRead}
-                  className="mt-2 text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
-                >
-                  <Check className="w-3 h-3" />
-                  Alle als gelesen markieren
-                </button>
-              )}
+      {/* Notification Panel - Rendered with Portal */}
+      {isOpen && ReactDOM.createPortal(
+        <div 
+          className="fixed w-96 max-h-[600px] bg-gray-900 rounded-lg border border-white/20 shadow-2xl overflow-hidden flex flex-col"
+          style={{
+            ...getDropdownPosition(),
+            zIndex: 999999
+          }}
+        >
+          {/* Header */}
+          <div className="p-4 border-b border-white/20 bg-gradient-to-r from-purple-600/20 to-blue-600/20">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Benachrichtigungen
+                {unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
+              </h3>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 hover:bg-white/10 rounded transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
             </div>
+            
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="mt-2 text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1"
+              >
+                <Check className="w-3 h-3" />
+                Alle als gelesen markieren
+              </button>
+            )}
+          </div>
 
-            {/* Notifications List */}
-            <div className="flex-1 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-400">Keine Benachrichtigungen</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-white/10">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 hover:bg-white/5 transition-colors ${
-                        !notification.read ? 'bg-white/5' : ''
-                      }`}
-                    >
-                      <div className="flex gap-3">
-                        <div className="flex-shrink-0">
-                          <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getNotificationColor(notification.type)} flex items-center justify-center text-xl border`}>
-                            {getNotificationIcon(notification.type)}
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm ${!notification.read ? 'text-white font-semibold' : 'text-gray-300'}`}>
-                            {formatMessage(notification)}
-                          </p>
-                          
-                          <div className="flex items-center gap-2 mt-1">
-                            <Clock className="w-3 h-3 text-gray-500" />
-                            <span className="text-xs text-gray-500">
-                              {new Date(notification.created_at).toLocaleString('de-DE', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-
-                          {notification.type === 'offer_rejected' && notification.metadata && (
-                            <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
-                              <p className="text-red-300">
-                                {typeof notification.metadata === 'string' 
-                                  ? JSON.parse(notification.metadata).reason 
-                                  : notification.metadata.reason}
-                              </p>
-                              {(typeof notification.metadata === 'string' 
-                                  ? JSON.parse(notification.metadata).notes 
-                                  : notification.metadata.notes) && (
-                                <p className="text-gray-400 mt-1">
-                                  {typeof notification.metadata === 'string' 
-                                    ? JSON.parse(notification.metadata).notes 
-                                    : notification.metadata.notes}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                          {!notification.read && (
-                            <button
-                              onClick={() => markAsRead(notification.id)}
-                              className="p-1 hover:bg-white/10 rounded transition-colors"
-                              title="Als gelesen markieren"
-                            >
-                              <Check className="w-4 h-4 text-green-400" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => deleteNotification(notification.id)}
-                            className="p-1 hover:bg-white/10 rounded transition-colors"
-                            title="Löschen"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </button>
+          {/* Notifications List */}
+          <div className="flex-1 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="p-8 text-center">
+                <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-400">Keine Benachrichtigungen</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/10">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-4 hover:bg-white/5 transition-colors ${
+                      !notification.read ? 'bg-white/5' : ''
+                    }`}
+                  >
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0">
+                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getNotificationColor(notification.type)} flex items-center justify-center text-xl border`}>
+                          {getNotificationIcon(notification.type)}
                         </div>
                       </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${!notification.read ? 'text-white font-semibold' : 'text-gray-300'}`}>
+                          {formatMessage(notification)}
+                        </p>
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          <Clock className="w-3 h-3 text-gray-500" />
+                          <span className="text-xs text-gray-500">
+                            {new Date(notification.created_at).toLocaleString('de-DE', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+
+                        {notification.type === 'offer_rejected' && notification.metadata && (
+                          <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
+                            <p className="text-red-300">
+                              {typeof notification.metadata === 'string' 
+                                ? JSON.parse(notification.metadata).reason 
+                                : notification.metadata.reason}
+                            </p>
+                            {(typeof notification.metadata === 'string' 
+                                ? JSON.parse(notification.metadata).notes 
+                                : notification.metadata.notes) && (
+                              <p className="text-gray-400 mt-1">
+                                {typeof notification.metadata === 'string' 
+                                  ? JSON.parse(notification.metadata).notes 
+                                  : notification.metadata.notes}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        {!notification.read && (
+                          <button
+                            onClick={() => markAsRead(notification.id)}
+                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                            title="Als gelesen markieren"
+                          >
+                            <Check className="w-4 h-4 text-green-400" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteNotification(notification.id)}
+                          className="p-1 hover:bg-white/10 rounded transition-colors"
+                          title="Löschen"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 };
