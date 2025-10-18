@@ -16353,8 +16353,11 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
    JOIN projects p ON t.project_id = p.id
    JOIN bauherren b ON p.bauherr_id = b.id
    WHERE o.handwerker_id = $1
-   AND (o.status = 'preliminary' OR o.status = 'confirmed' OR o.status = 'accepted')
-   ORDER BY o.preliminary_accepted_at DESC`,
+   AND (o.status = 'preliminary' OR o.status = 'confirmed')
+   AND NOT EXISTS (
+   SELECT 1 FROM orders WHERE offer_id = o.id
+  )  
+  ORDER BY o.preliminary_accepted_at DESC`,
   [handwerkerId]
 );
     
