@@ -321,9 +321,7 @@ export default function HandwerkerDashboardPage() {
     userId={handwerker.id}
     userName={handwerker.company_name}
     apiUrl={apiUrl}
-  />
-</div>
-        
+  />  
         <div className="text-right">
           <p className="text-white font-semibold">{handwerkerData?.companyName}</p>
           <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
