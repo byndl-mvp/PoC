@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
+import NotificationCenter from '../pages/NotificationCenter';
 
 function formatCurrency(amount) {
   if (!amount && amount !== 0) return '0 €';
