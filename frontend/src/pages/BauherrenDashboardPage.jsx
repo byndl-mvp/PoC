@@ -836,36 +836,43 @@ const BudgetVisualization = ({ budget }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
-      <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
-                byndl
-              </Link>
-              <span className="text-gray-400">|</span>
-              <h1 className="text-xl text-white">Bauherren-Dashboard</h1>
-            </div>
-            <div className="flex items-center gap-4">
-  <Link 
-    to="/bauherr/settings"
-    className="text-gray-300 hover:text-white transition-colors flex items-center gap-2"
-  >
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-    </svg>
-    {userData?.name || userData?.email}
-  </Link>
-  <button
-    onClick={handleLogout}
-    className="px-4 py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
-  >
-    Abmelden
-  </button>
-</div>
-          </div>
-        </div>
-      </header>
+<header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="flex justify-between items-center">
+      <div className="flex items-center gap-4">
+        <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+          byndl
+        </Link>
+        <span className="text-gray-400">|</span>
+        <h1 className="text-xl text-white">Bauherren-Dashboard</h1>
+      </div>
+      <div className="flex items-center gap-4">
+        {/* ═══ HIER DAS NOTIFICATION CENTER EINFÜGEN ═══ */}
+        <NotificationCenter 
+          userType="bauherr"
+          userId={userData?.id}
+          apiUrl={apiUrl}
+        />
+        
+        <Link 
+          to="/bauherr/settings"
+          className="text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          {userData?.name || userData?.email}
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
+        >
+          Abmelden
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">  
   {/* Projekt-Karten Grid - Hauptübersicht */}
