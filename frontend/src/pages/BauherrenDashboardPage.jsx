@@ -462,37 +462,39 @@ const handleRejectConfirm = async () => {
   
   // NEUE FUNKTION: Vorläufige Beauftragung bestätigen
   const confirmPreliminaryOrder = async () => {
-    if (!selectedOffer) return;
-
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/offers/${selectedOffer.id}/preliminary-accept`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: selectedProject.id,
-          offerId: selectedOffer.id,
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      if (res.ok) {
-  alert('Vorläufige Beauftragung erfolgreich! Die Kontaktdaten wurden freigegeben. Sie haben nun Zeit für eine Kennenlernphase.');
-  
-  // ═══ HINZUFÜGEN: Modal schließen & State zurücksetzen ═══
-  setShowContractModal(false);
-  setSelectedOffer(null);  // ← DIESE ZEILE FEHLT!
-  
-  // Daten neu laden
-  loadProjectDetails(selectedProject.id);
-  await loadUserProjects(userData.email);  // ← AUCH WICHTIG für Angebote neu laden
-}
-    } catch (err) {
-      console.error('Fehler bei vorläufiger Beauftragung:', err);
-    } finally {
-      setLoading(false);
+  if (!selectedOffer) return;
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/offers/${selectedOffer.id}/preliminary-accept`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId: selectedProject.id,
+        offerId: selectedOffer.id,
+        timestamp: new Date().toISOString()
+      })
+    });
+    
+    if (res.ok) {
+      // Modal schließen SOFORT
+      setShowContractModal(false);
+      setSelectedOffer(null);
+      
+      alert('Vorläufige Beauftragung erfolgreich! Die Kontaktdaten wurden freigegeben. Sie haben nun Zeit für eine Kennenlernphase.');
+      
+      // Daten neu laden
+      await loadProjectDetails(selectedProject.id);
+      await loadUserProjects(userData.email);
+    } else {
+      alert('Fehler bei der Beauftragung');
     }
-  };
+  } catch (err) {
+    console.error('Fehler bei vorläufiger Beauftragung:', err);
+    alert('Fehler: ' + err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const ContractViewModal = ({ orderId, onClose }) => {
   const [contractData, setContractData] = useState(null);
