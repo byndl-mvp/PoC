@@ -16179,6 +16179,40 @@ app.get('/api/projects/:projectId/orders', async (req, res) => {
   }
 });
 
+// Benachrichtigungen für Handwerker laden
+app.get('/api/handwerker/:handwerkerId/notifications', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    const result = await query(
+      `SELECT * FROM notifications 
+       WHERE user_type = 'handwerker' 
+       AND user_id = $1 
+       ORDER BY created_at DESC 
+       LIMIT 50`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error loading notifications:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Benachrichtigungen' });
+  }
+});
+
+// Benachrichtigung als gelesen markieren
+app.post('/api/notifications/:notificationId/mark-read', async (req, res) => {
+  try {
+    await query(
+      'UPDATE notifications SET read = true WHERE id = $1',
+      [req.params.notificationId]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
 // Get project supplements
 app.get('/api/projects/:projectId/supplements', async (req, res) => {
   try {
