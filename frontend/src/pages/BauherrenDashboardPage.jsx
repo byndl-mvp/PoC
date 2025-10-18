@@ -1684,7 +1684,69 @@ const BudgetVisualization = ({ budget }) => {
 })()}
   </div>
 )}
-        
+
+{rejectModalOpen && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 border border-white/20">
+      <h3 className="text-xl font-bold text-white mb-4">Angebot ablehnen</h3>
+      
+      <div className="mb-4">
+        <label className="block text-sm text-gray-400 mb-2">Ablehnungsgrund</label>
+        <select
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+        >
+          <option value="">Bitte wählen...</option>
+          <option value="too_expensive">Angebot zu hoch</option>
+          <option value="timeline">Ausführungszeitraum passt nicht</option>
+          <option value="quality_concerns">Bedenken bezüglich Qualität</option>
+          <option value="better_offer">Besseres Angebot erhalten</option>
+          <option value="project_cancelled">Projekt verschoben/abgesagt</option>
+          <option value="other">Sonstiges</option>
+        </select>
+      </div>
+      
+      {rejectReason === 'other' && (
+        <div className="mb-4">
+          <label className="block text-sm text-gray-400 mb-2">Anmerkungen</label>
+          <textarea
+            value={rejectNotes}
+            onChange={(e) => setRejectNotes(e.target.value)}
+            rows={3}
+            placeholder="Bitte erläutern Sie kurz den Grund..."
+            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+          />
+        </div>
+      )}
+      
+      <p className="text-sm text-gray-400 mb-4">
+        Der Handwerker wird über die Ablehnung informiert.
+      </p>
+      
+      <div className="flex gap-3">
+        <button
+          onClick={() => {
+            setRejectModalOpen(false);
+            setRejectReason('');
+            setRejectNotes('');
+          }}
+          className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+        >
+          Abbrechen
+        </button>
+        <button
+          onClick={handleRejectConfirm}
+          disabled={!rejectReason}
+          className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Angebot ablehnen
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+          
           {/* Vertragsanbahnung Tab */}
 {activeTab === 'contracts' && (
   <div>
