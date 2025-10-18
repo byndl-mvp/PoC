@@ -16598,6 +16598,21 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     const { offerId } = req.params;
     
     await query('BEGIN');
+
+    const existingOrder = await query(
+      `SELECT id FROM orders WHERE offer_id = $1`,
+      [offerId]
+    );
+    
+    if (existingOrder.rows.length > 0) {
+      await query('ROLLBACK');
+      return res.json({
+        success: true,
+        orderId: existingOrder.rows[0].id,
+        message: 'Auftrag wurde bereits erstellt',
+        alreadyExists: true
+      });
+    }
     
     // Hole alle relevanten Daten
     const offerData = await query(
