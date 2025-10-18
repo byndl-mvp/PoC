@@ -15607,18 +15607,38 @@ await query(
       })]
     );
 
-    // 1:1 Chat zwischen Bauherr und Handwerker erstellen
-const convRes = await fetch(apiUrl('/api/conversations/direct'), {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    user1Type: 'bauherr',
-    user1Id: offer.bauherr_id,
-    user2Type: 'handwerker',
-    user2Id: offer.handwerker_id,
-    offerId: offerId
-  })
-});
+    // Prüfe ob Konversation bereits existiert
+const existingConv = await query(
+  `SELECT c.id 
+   FROM conversations c
+   JOIN conversation_participants cp1 ON c.id = cp1.conversation_id
+   JOIN conversation_participants cp2 ON c.id = cp2.conversation_id
+   WHERE c.type = 'direct'
+     AND cp1.user_type = 'bauherr' AND cp1.user_id = $1
+     AND cp2.user_type = 'handwerker' AND cp2.user_id = $2`,
+  [offer.bauherr_id, offer.handwerker_id]
+);
+
+if (existingConv.rows.length === 0) {
+  // Neue Direct-Conversation erstellen
+  const convResult = await query(
+    `INSERT INTO conversations (type, offer_id, created_at, updated_at)
+     VALUES ('direct', $1, NOW(), NOW())
+     RETURNING id`,
+    [offerId]
+  );
+  
+  const conversationId = convResult.rows[0].id;
+  
+  // Beide Teilnehmer hinzufügen
+  await query(
+    `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+     VALUES 
+       ($1, 'bauherr', $2, 'participant'),
+       ($1, 'handwerker', $3, 'participant')`,
+    [conversationId, offer.bauherr_id, offer.handwerker_id]
+  );
+}
     
     // Sende E-Mail-Benachrichtigungen
 if (transporter) {
