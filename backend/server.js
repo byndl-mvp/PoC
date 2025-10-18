@@ -7723,6 +7723,16 @@ if (summeOhneStundenlohn < 2000) {
         lv.vorbemerkungen.push('Alle Preise verstehen sich inklusive aller Nebenleistungen gemäß VOB/C');
         lv.vorbemerkungen.push('Baustrom und Bauwasser werden bauseits gestellt');
       }
+
+      // Adress-Anonymisierung in Vorbemerkungen
+    if (lv.vorbemerkungen && Array.isArray(lv.vorbemerkungen)) {
+      lv.vorbemerkungen = lv.vorbemerkungen.map(vorbemerkung => {
+        return vorbemerkung
+          .replace(/[A-ZÄÖÜ][a-zäöüß\-]+(?:straße|str\.|strasse|weg|platz|allee|gasse|ring|pfad)\.?\s+\d+[a-zA-Z]?,?\s*/gi, '')
+          .replace(/,\s*,/g, ',')
+          .replace(/,\s*(\d{5})/g, ' $1');
+      });
+    }
       
       // Statistiken
       lv.statistics = {
