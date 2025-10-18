@@ -5808,7 +5808,7 @@ const uploadData = await query(
 console.log(`[LV] Found ${uploadData.rows.length} uploaded files`);
 
 // Reichere Antworten mit Upload-Daten an
-const enrichedAnswers = tradeAnswers.rows.map(answer => {
+const enrichedAnswers = tradeAnswers.map(answer => {
   const upload = uploadData.rows.find(u => u.question_id === answer.question_id);
   
   if (upload) {
