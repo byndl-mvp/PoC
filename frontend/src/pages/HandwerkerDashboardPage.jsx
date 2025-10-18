@@ -39,30 +39,28 @@ export default function HandwerkerDashboardPage() {
     loadDashboardData(data);
   }, [navigate]);
 
-  // Neue Funktion zum Laden der Notifications
-  const loadNotifications = async () => {
+  // useEffect für Notifications mit der Funktion direkt darin definiert
+  useEffect(() => {
     if (!handwerkerData?.id) return;
     
-    try {
-      const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/notifications`));
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data);
+    const loadNotifications = async () => {
+      try {
+        const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/notifications`));
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Benachrichtigungen:', error);
       }
-    } catch (error) {
-      console.error('Fehler beim Laden der Benachrichtigungen:', error);
-    }
-  };
-
-  // Neuer useEffect für Notifications
-  useEffect(() => {
-    if (handwerkerData?.id) {
-      loadNotifications();
-      
-      // Optional: Notifications alle 30 Sekunden aktualisieren
-      const interval = setInterval(loadNotifications, 30000);
-      return () => clearInterval(interval);
-    }
+    };
+    
+    // Initial laden
+    loadNotifications();
+    
+    // Optional: Notifications alle 30 Sekunden aktualisieren
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
   }, [handwerkerData?.id]);
   
   const loadDashboardData = async (handwerker) => {
