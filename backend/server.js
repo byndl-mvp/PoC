@@ -16724,10 +16724,10 @@ app.post('/api/conversations/project-group', async (req, res) => {
   }
 });
 
-// Handwerker-Koordinations-Chat erstellen
+// Handwerker-Koordinations-Chat erstellen (MIT Bauherr als stiller Beobachter)
 app.post('/api/conversations/handwerker-coordination', async (req, res) => {
   try {
-    const { projectId } = req.body;
+    const { projectId, bauherrId } = req.body;
     
     await query('BEGIN');
     
@@ -16753,10 +16753,19 @@ app.post('/api/conversations/handwerker-coordination', async (req, res) => {
     
     const conversationId = convResult.rows[0].id;
     
-    // Alle beauftragten Handwerker hinzufügen (ohne Bauherr!)
+    // ═══════════════════════════════════════════════════════════════
+    // NEU: Bauherr auch hinzufügen (als Beobachter/Moderator)
+    // ═══════════════════════════════════════════════════════════════
     await query(
-      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
-       SELECT $1, 'handwerker', DISTINCT o.handwerker_id
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+       VALUES ($1, 'bauherr', $2, 'observer')`,
+      [conversationId, bauherrId]
+    );
+    
+    // Alle beauftragten Handwerker hinzufügen
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+       SELECT $1, 'handwerker', DISTINCT o.handwerker_id, 'participant'
        FROM orders o
        WHERE o.project_id = $2`,
       [conversationId, projectId]
@@ -16781,21 +16790,21 @@ app.post('/api/conversations/add-handwerker', async (req, res) => {
     
     // Zu Projekt-Gruppe hinzufügen
     await query(
-      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
-       SELECT c.id, 'handwerker', $2
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+       SELECT c.id, 'handwerker', $2, 'participant'
        FROM conversations c
        WHERE c.type = 'project_group' AND c.project_id = $1
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
       [projectId, handwerkerId]
     );
     
     // Zu Handwerker-Koordination hinzufügen
     await query(
-      `INSERT INTO conversation_participants (conversation_id, user_type, user_id)
-       SELECT c.id, 'handwerker', $2
+      `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+       SELECT c.id, 'handwerker', $2, 'participant'
        FROM conversations c
        WHERE c.type = 'handwerker_coordination' AND c.project_id = $1
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
       [projectId, handwerkerId]
     );
     
