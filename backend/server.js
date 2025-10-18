@@ -15796,6 +15796,173 @@ app.post('/api/offers/:offerId/end-negotiation', async (req, res) => {
   }
 });
 
+// Angebot ablehnen mit Begründung
+app.post('/api/offers/:offerId/reject', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    const { reason, notes, projectId } = req.body;
+    
+    await query('BEGIN');
+    
+    // Hole Offer-Daten für E-Mail
+    const offerData = await query(
+      `SELECT 
+        o.*,
+        h.email as handwerker_email,
+        h.company_name,
+        t.name as trade_name,
+        b.name as bauherr_name,
+        p.category as project_category
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       WHERE o.id = $1`,
+      [offerId]
+    );
+    
+    if (offerData.rows.length === 0) {
+      throw new Error('Angebot nicht gefunden');
+    }
+    
+    const offer = offerData.rows[0];
+    
+    // Status auf 'rejected' setzen
+    await query(
+      `UPDATE offers 
+       SET status = 'rejected',
+           rejection_reason = $2,
+           rejection_notes = $3,
+           rejected_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [offerId, reason, notes]
+    );
+    
+    // Tender-Handwerker Status aktualisieren
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'rejected'
+       WHERE tender_id = $1 AND handwerker_id = $2`,
+      [offer.tender_id, offer.handwerker_id]
+    );
+    
+    // Log für Audit
+    await query(
+      `INSERT INTO project_logs (project_id, action, details, created_at)
+       VALUES ($1, 'offer_rejected', $2, NOW())`,
+      [
+        projectId,
+        JSON.stringify({
+          offerId: offerId,
+          handwerkerId: offer.handwerker_id,
+          companyName: offer.company_name,
+          tradeName: offer.trade_name,
+          amount: offer.amount,
+          reason: reason,
+          notes: notes
+        })
+      ]
+    );
+    
+    // Übersetzung der Gründe für E-Mail
+    const reasonTexts = {
+      'too_expensive': 'Das Angebot lag über dem Budget',
+      'timeline': 'Der Ausführungszeitraum passte nicht',
+      'quality_concerns': 'Es gab Bedenken bezüglich der Qualität',
+      'better_offer': 'Ein anderes Angebot wurde bevorzugt',
+      'project_cancelled': 'Das Projekt wurde verschoben oder abgesagt',
+      'other': 'Sonstiger Grund'
+    };
+    
+    // E-Mail an Handwerker
+    if (offer.handwerker_email && transporter) {
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+          to: offer.handwerker_email,
+          subject: `Angebot abgelehnt - ${offer.trade_name}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1>Angebot wurde abgelehnt</h1>
+              </div>
+              
+              <div style="padding: 30px; background: #f7f7f7;">
+                <p>Sehr geehrtes Team von ${offer.company_name},</p>
+                
+                <p>Leider müssen wir Ihnen mitteilen, dass Ihr Angebot für <strong>${offer.trade_name}</strong> nicht berücksichtigt wurde.</p>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #ef4444;">Details:</h3>
+                  <table style="width: 100%;">
+                    <tr>
+                      <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
+                      <td>${offer.project_category}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0;"><strong>Gewerk:</strong></td>
+                      <td>${offer.trade_name}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0;"><strong>Ihre Angebotssumme:</strong></td>
+                      <td>${offer.amount ? formatCurrency(offer.amount) : 'N/A'}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; vertical-align: top;"><strong>Grund:</strong></td>
+                      <td>${reasonTexts[reason] || 'Nicht angegeben'}</td>
+                    </tr>
+                    ${notes ? `
+                    <tr>
+                      <td style="padding: 8px 0; vertical-align: top;"><strong>Anmerkung:</strong></td>
+                      <td>${notes}</td>
+                    </tr>
+                    ` : ''}
+                  </table>
+                </div>
+                
+                <p>Wir danken Ihnen für Ihre Mühe und die Zeit, die Sie in dieses Angebot investiert haben.</p>
+                
+                <p>Wir würden uns freuen, Sie bei zukünftigen Projekten wieder berücksichtigen zu können.</p>
+                
+                <div style="margin-top: 30px; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                  <strong>Hinweis:</strong> Die 24-monatige Nachwirkfrist bleibt bestehen, falls der Bauherr das Projekt später doch mit Ihnen durchführen möchte.
+                </div>
+              </div>
+              
+              <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
+                <p>© 2025 byndl - Die digitale Handwerkerplattform</p>
+              </div>
+            </div>
+          `
+        });
+        
+        await query(
+          `INSERT INTO email_logs (recipient_email, email_type, reference_id, status, sent_at)
+           VALUES ($1, 'offer_rejected', $2, 'sent', NOW())`,
+          [offer.handwerker_email, offerId]
+        );
+      } catch (emailError) {
+        console.error('E-Mail-Versand fehlgeschlagen:', emailError);
+      }
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      message: 'Angebot wurde abgelehnt und Handwerker informiert' 
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error rejecting offer:', error);
+    res.status(500).json({ error: error.message || 'Fehler beim Ablehnen des Angebots' });
+  }
+});
+
 // Verbindliches Angebot ablehnen - Angebot wird rejected und verschwindet
 app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
   try {
