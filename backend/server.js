@@ -15804,12 +15804,13 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
     
     await query('BEGIN');
     
-    // Hole Offer-Daten für E-Mail
+    // Hole Offer-Daten für Benachrichtigung
     const offerData = await query(
       `SELECT 
         o.*,
         h.email as handwerker_email,
         h.company_name,
+        h.id as handwerker_id,
         t.name as trade_name,
         b.name as bauherr_name,
         p.category as project_category
@@ -15829,19 +15830,43 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
     
     const offer = offerData.rows[0];
     
-    // Status auf 'rejected' setzen
+    // Übersetzung der Gründe
+    const reasonTexts = {
+      'too_expensive': 'Das Angebot lag über dem Budget',
+      'timeline': 'Der Ausführungszeitraum passte nicht',
+      'quality_concerns': 'Es gab Bedenken bezüglich der Qualität',
+      'better_offer': 'Ein anderes Angebot wurde bevorzugt',
+      'project_cancelled': 'Das Projekt wurde verschoben oder abgesagt',
+      'other': 'Sonstiger Grund'
+    };
+    
+    // ═══════════════════════════════════════════════════════════════
+    // WICHTIG: Speichere Ablehnungsgrund in Notifications
+    // ═══════════════════════════════════════════════════════════════
     await query(
-      `UPDATE offers 
-       SET status = 'rejected',
-           rejection_reason = $2,
-           rejection_notes = $3,
-           rejected_at = NOW(),
-           updated_at = NOW()
-       WHERE id = $1`,
-      [offerId, reason, notes]
+      `INSERT INTO notifications 
+       (user_type, user_id, type, reference_id, message, metadata, created_at, read)
+       VALUES ('handwerker', $1, 'offer_rejected', $2, $3, $4, NOW(), false)`,
+      [
+        offer.handwerker_id,
+        offerId,
+        `Angebot für ${offer.trade_name} wurde abgelehnt`,
+        JSON.stringify({
+          reason: reasonTexts[reason] || 'Nicht angegeben',
+          notes: notes,
+          tradeName: offer.trade_name,
+          projectCategory: offer.project_category,
+          amount: offer.amount
+        })
+      ]
     );
     
-    // Tender-Handwerker Status aktualisieren
+    // ═══════════════════════════════════════════════════════════════
+    // ANGEBOT LÖSCHEN (statt Status ändern)
+    // ═══════════════════════════════════════════════════════════════
+    await query('DELETE FROM offers WHERE id = $1', [offerId]);
+    
+    // Tender-Handwerker Status zurücksetzen
     await query(
       `UPDATE tender_handwerker 
        SET status = 'rejected'
@@ -15866,16 +15891,6 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
         })
       ]
     );
-    
-    // Übersetzung der Gründe für E-Mail
-    const reasonTexts = {
-      'too_expensive': 'Das Angebot lag über dem Budget',
-      'timeline': 'Der Ausführungszeitraum passte nicht',
-      'quality_concerns': 'Es gab Bedenken bezüglich der Qualität',
-      'better_offer': 'Ein anderes Angebot wurde bevorzugt',
-      'project_cancelled': 'Das Projekt wurde verschoben oder abgesagt',
-      'other': 'Sonstiger Grund'
-    };
     
     // E-Mail an Handwerker
     if (offer.handwerker_email && transporter) {
@@ -15907,10 +15922,6 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
                       <td>${offer.trade_name}</td>
                     </tr>
                     <tr>
-                      <td style="padding: 8px 0;"><strong>Ihre Angebotssumme:</strong></td>
-                      <td>${offer.amount ? formatCurrency(offer.amount) : 'N/A'}</td>
-                    </tr>
-                    <tr>
                       <td style="padding: 8px 0; vertical-align: top;"><strong>Grund:</strong></td>
                       <td>${reasonTexts[reason] || 'Nicht angegeben'}</td>
                     </tr>
@@ -15923,13 +15934,7 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
                   </table>
                 </div>
                 
-                <p>Wir danken Ihnen für Ihre Mühe und die Zeit, die Sie in dieses Angebot investiert haben.</p>
-                
-                <p>Wir würden uns freuen, Sie bei zukünftigen Projekten wieder berücksichtigen zu können.</p>
-                
-                <div style="margin-top: 30px; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
-                  <strong>Hinweis:</strong> Die 24-monatige Nachwirkfrist bleibt bestehen, falls der Bauherr das Projekt später doch mit Ihnen durchführen möchte.
-                </div>
+                <p>Vielen Dank für Ihre Mühe und die investierte Zeit.</p>
               </div>
               
               <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
@@ -15938,12 +15943,6 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
             </div>
           `
         });
-        
-        await query(
-          `INSERT INTO email_logs (recipient_email, email_type, reference_id, status, sent_at)
-           VALUES ($1, 'offer_rejected', $2, 'sent', NOW())`,
-          [offer.handwerker_email, offerId]
-        );
       } catch (emailError) {
         console.error('E-Mail-Versand fehlgeschlagen:', emailError);
       }
@@ -15953,13 +15952,13 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
     
     res.json({ 
       success: true, 
-      message: 'Angebot wurde abgelehnt und Handwerker informiert' 
+      message: 'Angebot wurde abgelehnt und gelöscht' 
     });
     
   } catch (error) {
     await query('ROLLBACK');
     console.error('Error rejecting offer:', error);
-    res.status(500).json({ error: error.message || 'Fehler beim Ablehnen des Angebots' });
+    res.status(500).json({ error: error.message || 'Fehler beim Ablehnen' });
   }
 });
 
