@@ -485,7 +485,7 @@ const handleFileUpload = async (questionId, file) => {
     const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
       .includes(parseInt(tradeId));
 
-   if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.includes('-CONTEXT') || questions[current].isContextQuestion)) {
+   if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))) {
       try {
         setGeneratingQuestions(true);
         
@@ -502,6 +502,9 @@ const handleFileUpload = async (questionId, file) => {
         if (response.ok) {
           const data = await response.json();
           setQuestions(data.questions || data); 
+          const currentUrl = new URL(window.location);
+          currentUrl.searchParams.set('manual', 'true');
+          window.history.replaceState({}, '', currentUrl);
           setAnswers(new Array(data.questions?.length || data.length).fill(null));
           setCurrent(0);
           setAnswerText('');
@@ -514,6 +517,7 @@ const handleFileUpload = async (questionId, file) => {
       } catch (err) {
         console.error('Failed to generate context questions:', err);
         setGeneratingQuestions(false);
+        setError('Fehler beim Generieren der Folgefragen');
       }
     }    
 
