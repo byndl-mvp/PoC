@@ -492,17 +492,18 @@ const handleFileUpload = async (questionId, file) => {
         const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contextAnswer: answerText }),
+          body: JSON.stringify({
+            contextAnswer: answerText,
+            isManuallyAdded: true
+          }),
           keepalive: true
         });
         
         if (response.ok) {
           const data = await response.json();
-          const contextQuestion = questions[0];
-          const newQuestions = [contextQuestion, ...data.questions];
-          setQuestions(newQuestions);
-          setAnswers([newAnswers[0], ...new Array(data.questions.length).fill(null)]);
-          setCurrent(1);
+          setQuestions(data.questions || data); 
+          setAnswers(new Array(data.questions?.length || data.length).fill(null));
+          setCurrent(0);
           setAnswerText('');
           setAssumption('');
           setExpandedExplanations({});
