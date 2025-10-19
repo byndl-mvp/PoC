@@ -11801,44 +11801,28 @@ app.post('/api/projects/:projectId/intake/answers', async (req, res) => {
 app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
-    const { contextAnswer, isManuallyAdded, isAdditional } = req.body;  // BEIDE Flags
+    const { contextAnswer } = req.body;
     
     if (!contextAnswer) {
       return res.status(400).json({ error: 'Kontextantwort fehlt' });
     }
     
-    console.log('[CONTEXT-QUESTIONS] Type:', {
-      isManuallyAdded,
-      isAdditional
-    });
-    
-    // Generiere adaptive Fragen (gleich für beide Typen)
+    // HIER: Rufe die verbesserte Funktion auf (aus Änderung 3)
     const questions = await generateContextBasedQuestions(tradeId, projectId, contextAnswer);
     
-    if (!questions || questions.length === 0) {
-      console.error('[CONTEXT-QUESTIONS] No questions generated!');
-      return res.status(500).json({ error: 'Keine Fragen generiert' });
-    }
-    
-    // Speichere die Fragen
+    // Speichere die neuen Fragen (dieser Teil bleibt gleich)
     for (const q of questions) {
       await query(
         `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
          VALUES ($1,$2,$3,$4,$5,$6,$7)
          ON CONFLICT (project_id, trade_id, question_id)
          DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
-        [projectId, tradeId, q.id || `CTX-${Date.now()}`, q.question || q.text, q.type || 'text', q.required ?? true, 
+        [projectId, tradeId, q.id, q.question || q.text, q.type || 'text', q.required ?? true, 
          q.options ? JSON.stringify(q.options) : null]
       );
     }
     
-    // WICHTIG: Gib die Flags zurück, damit Frontend weiß was es ist
-    res.json({ 
-      questions, 
-      count: questions.length,
-      isManuallyAdded,  // Zurückgeben
-      isAdditional      // Zurückgeben
-    });
+    res.json({ questions, count: questions.length });
     
   } catch (err) {
     console.error('Context questions generation failed:', err);
