@@ -135,8 +135,10 @@ export default function LVReviewPage() {
   
   // Navigation Funktionen
   const handleStartQuestions = (tradeId) => {
-    navigate(`/project/${projectId}/trade/${tradeId}/questions`);
-  };
+  const trade = selectedTrades.find(t => t.id === tradeId);
+  const queryParam = trade?.isManual ? '?manual=true' : '';
+  navigate(`/project/${projectId}/trade/${tradeId}/questions${queryParam}`);
+};
   
   const handleContinueToResult = () => {
     const incompleteTrades = selectedTrades.filter(t => !t.hasLV);
