@@ -506,7 +506,7 @@ const handleFileUpload = async (questionId, file) => {
           currentUrl.searchParams.set('manual', 'true');
           window.history.replaceState({}, '', currentUrl);
           setAnswers(new Array(data.questions?.length || data.length).fill(null));
-          setCurrent(1);
+          setCurrent(0);
           setAnswerText('');
           setAssumption('');
           setExpandedExplanations({});
