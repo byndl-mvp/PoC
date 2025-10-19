@@ -3344,15 +3344,15 @@ if (!isIntake && projectContext.projectId) {
   });
   
   // NEU: Unterscheide zwischen AI-empfohlen und manuell
-if (projectContext.isManuallyAdded === true && !projectContext.isAiRecommended) {
-  // NUR bei MANUELL hinzugefügten Gewerken: Kontextfrage zuerst
+if (projectContext.isManuallyAdded === true && !projectContext.isAiRecommended && !projectContext.hasContextAnswer) {
+  // NUR bei MANUELL hinzugefügten Gewerken UND noch keine Kontextantwort: Kontextfrage zuerst
   console.log(`[QUESTIONS] Manually added trade ${tradeCode} - returning context question only`);
   
   const contextQuestion = `Sie haben ${tradeName} als zusätzliches Gewerk ausgewählt. 
     Basierend auf Ihrem Projekt "${projectContext.description?.substring(0, 100)}..." - was genau soll in diesem Bereich gemacht werden?`;
   
   return [{
-    id: 'context_reason',
+    id: `${tradeCode}-CONTEXT`,  
     question: contextQuestion,
     text: contextQuestion,
     type: 'text',
