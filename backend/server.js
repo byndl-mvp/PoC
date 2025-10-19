@@ -11782,16 +11782,24 @@ app.post('/api/projects/:projectId/intake/answers', async (req, res) => {
 app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (req, res) => {
   try {
     const { projectId, tradeId } = req.params;
-    const { contextAnswer } = req.body;
+    const { contextAnswer, isAdditional, isManuallyAdded, isAiRecommended } = req.body;
     
     if (!contextAnswer) {
       return res.status(400).json({ error: 'Kontextantwort fehlt' });
     }
     
-    // HIER: Rufe die verbesserte Funktion auf (aus Änderung 3)
+    // Log für Debugging
+    console.log('[CONTEXT-QUESTIONS] Processing:', {
+      tradeId,
+      isAdditional,
+      isManuallyAdded,
+      isAiRecommended
+    });
+    
+    // Rufe die BESTEHENDE Funktion auf - sie ist bereits korrekt!
     const questions = await generateContextBasedQuestions(tradeId, projectId, contextAnswer);
     
-    // Speichere die neuen Fragen (dieser Teil bleibt gleich)
+    // Speichere die neuen Fragen
     for (const q of questions) {
       await query(
         `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
@@ -11803,7 +11811,14 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
       );
     }
     
-    res.json({ questions, count: questions.length });
+    // WICHTIG: Gib die Flags zurück ans Frontend
+    res.json({ 
+      questions, 
+      count: questions.length,
+      isAdditional: !!isAdditional,
+      isManuallyAdded: !!isManuallyAdded,
+      isAiRecommended: !!isAiRecommended
+    });
     
   } catch (err) {
     console.error('Context questions generation failed:', err);
