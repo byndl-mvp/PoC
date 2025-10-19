@@ -485,7 +485,7 @@ const handleFileUpload = async (questionId, file) => {
     const isManualTrade = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
       .includes(parseInt(tradeId));
 
-    if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))) {
+   if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.includes('-CONTEXT') || questions[current].isContextQuestion)) {
       try {
         setGeneratingQuestions(true);
         
