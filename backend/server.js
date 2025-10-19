@@ -5605,8 +5605,6 @@ async function generateContextBasedQuestions(tradeId, projectId, contextAnswer) 
   const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
   const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
   
-  console.log(`[CONTEXT-QUESTIONS-FUNC] Starting for ${trade.rows[0]?.code}`);
-  
   // Lade Intake-Kontext
   const intakeAnswers = await query(
     `SELECT q.text as question, a.answer_text as answer
@@ -5630,8 +5628,6 @@ async function generateContextBasedQuestions(tradeId, projectId, contextAnswer) 
   const complexity = determineProjectComplexity(projectContext, intakeAnswers.rows);
   const intelligentCount = getIntelligentQuestionCount(trade.rows[0].code, projectContext, intakeAnswers.rows);
   
-  console.log(`[CONTEXT-QUESTIONS-FUNC] Target: ${intelligentCount.count} questions, Complexity: ${complexity}`);
-  
   // Lade das BESTEHENDE Prompt-Template für dieses Gewerk
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
   
@@ -5645,18 +5641,13 @@ WICHTIG: Wende ALLE bestehenden Regeln aus dem System an:
 
 ${questionPrompt ? `Template-Basis:\n${questionPrompt}` : ''}
 
-OUTPUT als JSON-Array mit EXAKT ${intelligentCount.count} Fragen.
-Jede Frage MUSS haben: id, question, type, required, category`;
+OUTPUT als JSON-Array mit EXAKT ${intelligentCount.count} Fragen.`;
   
   try {
     const response = await llmWithPolicy('questions', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Erstelle detaillierte Folgefragen für: ${contextAnswer}` }
-    ], { 
-      maxTokens: 10000, 
-      temperature: 0.35,
-      jsonMode: true  
-    });
+    ], { maxTokens: 10000, temperature: 0.35 });
     
     const cleaned = response
       .replace(/```json\n?/g, '')
@@ -5665,24 +5656,14 @@ Jede Frage MUSS haben: id, question, type, required, category`;
     
     let questions = JSON.parse(cleaned);
     
-    console.log(`[CONTEXT-QUESTIONS-FUNC] Generated ${questions.length} raw questions`);
-    
-    // Füge IDs hinzu falls fehlend
-    questions = questions.map((q, idx) => ({
-      ...q,
-      id: q.id || `${trade.rows[0].code}-CTX-${idx + 1}`
-    }));
-    
     // Verwende BESTEHENDE Validierungslogik
     questions = validateTradeQuestions(trade.rows[0].code, questions, projectContext);
     questions = filterDuplicateQuestions(questions, intakeAnswers.rows);
     
-    console.log(`[CONTEXT-QUESTIONS-FUNC] After validation: ${questions.length} questions`);
-    
     return Array.isArray(questions) ? questions : [];
     
   } catch (err) {
-    console.error('[CONTEXT-QUESTIONS-FUNC] Failed:', err);
+    console.error('[CONTEXT] Failed to generate adaptive questions:', err);
     return [];
   }
 }
