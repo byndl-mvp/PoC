@@ -5643,18 +5643,76 @@ ${questionPrompt ? `Template-Basis:\n${questionPrompt}` : ''}
 
 OUTPUT als JSON-Array mit EXAKT ${intelligentCount.count} Fragen.`;
   
-  try {
+ try {
     const response = await llmWithPolicy('questions', [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Erstelle detaillierte Folgefragen für: ${contextAnswer}` }
-    ], { maxTokens: 10000, temperature: 0.35 });
+    ], { 
+      maxTokens: 10000, 
+      temperature: 0.35,
+      jsonMode: true  // WICHTIG: JSON-Mode erzwingen!
+    });
     
-    const cleaned = response
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
+    // Robustere Bereinigung
+    let cleaned = response
+      .replace(/```json\n?/gi, '')
+      .replace(/```\n?/gi, '')
+      .replace(/^json\s*\n?/i, '')
       .trim();
     
-    let questions = JSON.parse(cleaned);
+    // Entferne trailing commas (häufiger Fehler)
+    cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
+    
+    // Finde das JSON Array
+    const startIdx = cleaned.indexOf('[');
+    const endIdx = cleaned.lastIndexOf(']');
+    
+    if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
+    }
+    
+    let questions;
+    try {
+      questions = JSON.parse(cleaned);
+    } catch (parseError) {
+      console.error('[CONTEXT] Parse failed at position:', parseError.message);
+      console.error('[CONTEXT] Problematic JSON (first 1000 chars):', cleaned.substring(0, 1000));
+      
+      // Bei Parse-Fehler: NEUER Versuch mit dem LLM!
+      console.log('[CONTEXT] Retrying with stricter prompt...');
+      
+      const retryResponse = await llmWithPolicy('questions', [
+        { 
+          role: 'system', 
+          content: `KRITISCH: Erstelle NUR ein valides JSON-Array ohne zusätzlichen Text!
+Keine Markdown, keine Erklärungen, NUR das Array.
+Beispiel: [{"question": "...", "type": "text", ...}]` 
+        },
+        { role: 'user', content: systemPrompt + '\n\nErstelle Fragen für: ' + contextAnswer }
+      ], { 
+        maxTokens: 10000, 
+        temperature: 0.3,  
+        jsonMode: true
+      });
+      
+      const retryCleaned = retryResponse
+        .replace(/```json\n?/gi, '')
+        .replace(/```\n?/gi, '')
+        .trim();
+      
+      questions = JSON.parse(retryCleaned);
+    }
+    
+    // Füge trade info zu jeder Frage hinzu
+    questions = questions.map((q, idx) => ({
+      ...q,
+      id: q.id || `${trade.rows[0].code}-CTX-${idx}`,
+      tradeId: parseInt(tradeId),
+      trade_id: parseInt(tradeId),
+      tradeName: trade.rows[0].name,
+      trade_name: trade.rows[0].name,
+      trade_code: trade.rows[0].code
+    }));
     
     // Verwende BESTEHENDE Validierungslogik
     questions = validateTradeQuestions(trade.rows[0].code, questions, projectContext);
@@ -5663,8 +5721,8 @@ OUTPUT als JSON-Array mit EXAKT ${intelligentCount.count} Fragen.`;
     return Array.isArray(questions) ? questions : [];
     
   } catch (err) {
-    console.error('[CONTEXT] Failed to generate adaptive questions:', err);
-    return [];
+    console.error('[CONTEXT] Complete failure:', err);
+    throw err;  // Fehler durchreichen, kein schlechter Fallback!
   }
 }
   
