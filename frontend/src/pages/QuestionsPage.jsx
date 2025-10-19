@@ -503,7 +503,7 @@ const handleFileUpload = async (questionId, file) => {
           const data = await response.json();
           setQuestions(data.questions || data); 
           const currentUrl = new URL(window.location);
-          currentUrl.searchParams.set('manual', 'true');
+          currentUrl.searchParams.set('additional', 'true');
           window.history.replaceState({}, '', currentUrl);
           setAnswers(new Array(data.questions?.length || data.length).fill(null));
           setCurrent(0);
