@@ -240,9 +240,13 @@ export default function TradeConfirmationPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-64 bg-white/20 rounded-full h-2 backdrop-blur mb-4">
+  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400 mb-4"></div>
+      <p className="text-white">Lade Gewerke-Übersicht...</p>
+    </div>
+  </div>
+);
           <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-2 rounded-full animate-pulse" 
                style={{ width: '75%' }} />
         </div>
