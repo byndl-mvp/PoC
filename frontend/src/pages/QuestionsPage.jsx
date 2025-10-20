@@ -563,51 +563,53 @@ const handleFileUpload = async (questionId, file) => {
       }
     }    
 
-    const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
-  .includes(parseInt(tradeId));
+    const isAiRecommendedTrade = new URLSearchParams(window.location.search).get('airecommended') === 'true';
 
 if (
   current === 0 && 
-  isAiRecommended && 
+  isAiRecommendedTrade && 
   questions[current].isContextQuestion === true  
 ) {
-      try {
-        setGeneratingQuestions(true);
-        
-        const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contextAnswer: answerText,
-            isAiRecommended: true
-          }),
-          keepalive: true
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[DEBUG] AI-recommended context response:', data);
-          console.log('[DEBUG] Questions count:', data.questions?.length || data.length);
-          
-          setQuestions(data.questions || data);
-          setAnswers(new Array(data.questions?.length || data.length).fill(null));
-          setCurrent(0);
-          setAnswerText('');
-          setAssumption('');
-          setExpandedExplanations({});
-          setCachedExplanations({});
-          setUserQuestion('');
-          setAiResponse('');
-          setShowQuestionDialog(false);
-          setGeneratingQuestions(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Failed to generate AI-recommended context questions:', err);
-        setGeneratingQuestions(false);
-        setError('Fehler beim Generieren der Folgefragen');
-      }
-    }    
+  try {
+    setGeneratingQuestions(true);
+    
+    const response = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/context-questions`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contextAnswer: answerText,
+        isAiRecommended: true
+      }),
+      keepalive: true
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('[DEBUG] AI-recommended context response:', data);
+      console.log('[DEBUG] Questions count:', data.questions?.length || data.length);
+      
+      setQuestions(data.questions || data);
+      setAnswers(new Array(data.questions?.length || data.length).fill(null));
+      setCurrent(0);
+      setAnswerText('');
+      setAssumption('');
+      setExpandedExplanations({});
+      setCachedExplanations({});
+      setUserQuestion('');
+      setAiResponse('');
+      setShowQuestionDialog(false);
+      const currentUrl = new URL(window.location);
+      currentUrl.searchParams.set('airecommended', 'true');
+      window.history.replaceState({}, '', currentUrl);      
+      setGeneratingQuestions(false);
+      return;
+    }
+  } catch (err) {
+    console.error('Failed to generate AI-recommended context questions:', err);
+    setGeneratingQuestions(false);
+    setError('Fehler beim Generieren der Folgefragen');
+  }
+}   
     
     if (current + 1 < questions.length) {
       setCurrent(current + 1);
