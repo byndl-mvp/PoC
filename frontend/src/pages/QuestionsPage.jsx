@@ -499,6 +499,9 @@ const handleFileUpload = async (questionId, file) => {
           setAssumption('');
           setExpandedExplanations({});
           setCachedExplanations({});
+          setUserQuestion('');
+          setAiResponse('');
+          setShowQuestionDialog(false);
           setGeneratingQuestions(false);
           return;
         }
@@ -537,6 +540,9 @@ const handleFileUpload = async (questionId, file) => {
           setAssumption('');
           setExpandedExplanations({});
           setCachedExplanations({});
+          setUserQuestion('');
+          setAiResponse('');
+          setShowQuestionDialog(false);
           setGeneratingQuestions(false);
           return;
         }
@@ -576,6 +582,9 @@ const handleFileUpload = async (questionId, file) => {
           setAssumption('');
           setExpandedExplanations({});
           setCachedExplanations({});
+          setUserQuestion('');
+          setAiResponse('');
+          setShowQuestionDialog(false);
           setGeneratingQuestions(false);
           return;
         }
@@ -589,6 +598,9 @@ const handleFileUpload = async (questionId, file) => {
     if (current + 1 < questions.length) {
       setCurrent(current + 1);
       setExpandedExplanations({});
+      setUserQuestion('');
+      setAiResponse('');
+      setShowQuestionDialog(false);
       if (newAnswers[current + 1]) {
         setAnswerText(newAnswers[current + 1].answer || '');
         setAssumption(newAnswers[current + 1].assumption || '');
@@ -620,6 +632,9 @@ const handleFileUpload = async (questionId, file) => {
       setAnswerText('');
       setAssumption('');
       setExpandedExplanations({});
+      setUserQuestion('');
+      setAiResponse('');
+      setShowQuestionDialog(false);
     } else {
       saveAllAnswersAndContinue(newAnswers);
     }
@@ -639,6 +654,9 @@ const handleFileUpload = async (questionId, file) => {
       setAnswerText(newAnswers[current - 1]?.answer || '');
       setAssumption(newAnswers[current - 1]?.assumption || '');
       setExpandedExplanations({});
+      setUserQuestion('');
+      setAiResponse('');
+      setShowQuestionDialog(false);
     }
   };
 
