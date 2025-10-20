@@ -12633,6 +12633,358 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
   }
 });
 
+// NEU: Trigger Fragengenerierung im Hintergrund
+app.post('/api/projects/:projectId/trades/:tradeId/generate-questions-background', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    // Prüfe ob bereits Fragen existieren
+    const existing = await query(
+      'SELECT COUNT(*) as count FROM questions WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (existing.rows[0].count > 0) {
+      return res.json({ 
+        success: true, 
+        message: 'Fragen existieren bereits',
+        status: 'ready'
+      });
+    }
+    
+    // Setze Status auf "generating"
+    await query(
+      `INSERT INTO trade_progress (project_id, trade_id, status, updated_at)
+       VALUES ($1, $2, 'generating_questions', NOW())
+       ON CONFLICT (project_id, trade_id)
+       DO UPDATE SET status = 'generating_questions', updated_at = NOW()`,
+      [projectId, tradeId]
+    );
+    
+    // Starte im Hintergrund (nicht awaiten!)
+    generateQuestionsInBackground(projectId, tradeId);
+    
+    res.json({ 
+      success: true, 
+      message: 'Fragengenerierung gestartet',
+      status: 'generating'
+    });
+    
+  } catch (err) {
+    console.error('Error starting background generation:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// NEU: Status-Check
+app.get('/api/projects/:projectId/trades/:tradeId/questions-status', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const statusRes = await query(
+      'SELECT status, current_question_index FROM trade_progress WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    const questionCountRes = await query(
+      'SELECT COUNT(*) as count FROM questions WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    const answerCountRes = await query(
+      'SELECT COUNT(*) as count FROM answers WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    const status = statusRes.rows[0]?.status || 'not_started';
+    const questionCount = parseInt(questionCountRes.rows[0]?.count || 0);
+    const answerCount = parseInt(answerCountRes.rows[0]?.count || 0);
+    const currentIndex = statusRes.rows[0]?.current_question_index || 0;
+    
+    res.json({
+      status,
+      questionCount,
+      answerCount,
+      currentIndex,
+      ready: questionCount > 0,
+      inProgress: answerCount > 0 && answerCount < questionCount
+    });
+    
+  } catch (err) {
+    console.error('Error checking status:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// NEU: Progress speichern
+app.post('/api/projects/:projectId/trades/:tradeId/save-progress', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    const { currentQuestionIndex, answers } = req.body;
+    
+    // Speichere alle Antworten
+    for (const answer of answers) {
+      if (answer && answer.answer) {
+        await query(
+          `INSERT INTO answers (project_id, trade_id, question_id, answer_text, assumption)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (project_id, trade_id, question_id)
+           DO UPDATE SET answer_text = $4, assumption = $5, updated_at = NOW()`,
+          [projectId, tradeId, answer.questionId, answer.answer, answer.assumption || null]
+        );
+      }
+    }
+    
+    // Update Progress
+    await query(
+      `INSERT INTO trade_progress (project_id, trade_id, current_question_index, updated_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (project_id, trade_id)
+       DO UPDATE SET current_question_index = $3, updated_at = NOW()`,
+      [projectId, tradeId, currentQuestionIndex]
+    );
+    
+    res.json({ success: true });
+    
+  } catch (err) {
+    console.error('Error saving progress:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// NEU: Progress laden
+app.get('/api/projects/:projectId/trades/:tradeId/progress', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const answersRes = await query(
+      `SELECT question_id, answer_text, assumption 
+       FROM answers 
+       WHERE project_id = $1 AND trade_id = $2
+       ORDER BY updated_at`,
+      [projectId, tradeId]
+    );
+    
+    const progressRes = await query(
+      'SELECT current_question_index FROM trade_progress WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    const answers = answersRes.rows.map(a => ({
+      questionId: a.question_id,
+      answer: a.answer_text,
+      assumption: a.assumption
+    }));
+    
+    res.json({
+      answers,
+      currentQuestionIndex: progressRes.rows[0]?.current_question_index || 0
+    });
+    
+  } catch (err) {
+    console.error('Error loading progress:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Hintergrund-Funktion für Fragengenerierung
+async function generateQuestionsInBackground(projectId, tradeId) {
+  try {
+    console.log(`[BG] Starting question generation for trade ${tradeId}`);
+    
+    // 1. Lade Trade-Status aus DB
+    const tradeStatusResult = await query(
+      `SELECT is_manual, is_ai_recommended, is_additional   
+       FROM project_trades 
+       WHERE project_id = $1 AND trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    const tradeStatus = tradeStatusResult.rows[0] || {};
+    const isManuallyAdded = tradeStatus.is_manual || false;
+    const isAiRecommended = tradeStatus.is_ai_recommended || false;
+    const isAdditional = tradeStatus.is_additional || false;
+    
+    // 2. Lade Trade-Info
+    const tradeInfo = await query('SELECT code, name FROM trades WHERE id = $1', [tradeId]);
+    const tradeCode = tradeInfo.rows[0]?.code;
+    const tradeName = tradeInfo.rows[0]?.name;
+    
+    // 3. Lade Projekt
+    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    if (projectResult.rows.length === 0) {
+      throw new Error('Project not found');
+    }
+    
+    const project = projectResult.rows[0];
+    
+    // Parse metadata
+    if (project.metadata && typeof project.metadata === 'string') {
+      project.metadata = JSON.parse(project.metadata);
+    }
+    
+    // 4. Lade Intake-Context
+    let intakeContext = '';
+    if (tradeCode !== 'INT') {
+      const intakeAnswers = await query(
+        `SELECT q.text as question, a.answer_text as answer
+         FROM answers a
+         JOIN questions q ON q.project_id = a.project_id 
+           AND q.trade_id = a.trade_id 
+           AND q.question_id = a.question_id
+         JOIN trades t ON t.id = a.trade_id
+         WHERE a.project_id = $1 
+         AND t.code = 'INT'`,
+        [projectId]
+      );
+      
+      if (intakeAnswers.rows.length > 0) {
+        intakeContext = intakeAnswers.rows
+          .map(a => `${a.question}: ${a.answer}`)
+          .join('\n');
+      }
+    }
+    
+    // 5. Lade Projekt-Trades
+    const projectTrades = await query(
+      `SELECT t.code, t.name FROM trades t 
+       JOIN project_trades pt ON t.id = pt.trade_id 
+       WHERE pt.project_id = $1`,
+      [projectId]
+    );
+    
+    // 6. Erstelle projectContext
+    const projectContext = {
+      category: project.category,
+      subCategory: project.sub_category,
+      description: project.description,
+      timeframe: project.timeframe,
+      budget: project.budget,
+      projectId: projectId,
+      isManuallyAdded: isManuallyAdded,
+      isAiRecommended: isAiRecommended,
+      isAdditional: isAdditional,
+      intakeContext: intakeContext,
+      hasIntakeAnswers: intakeContext.length > 0,
+      trades: projectTrades.rows,
+      complexity: project.metadata?.complexity?.level || 'MITTEL',
+      metadata: project.metadata
+    };
+    
+    // 7. Prüfe ob Kontextfrage oder normale Fragen
+    let questions;
+    
+    if (isManuallyAdded || isAiRecommended || isAdditional) {
+      // Erstelle Kontextfrage
+      const getContextExplanation = (tradeCode, tradeName) => {
+        const explanations = {
+          'TIS': 'Wichtig für Materialkalkulation und Arbeitsaufwand bei Tischlerarbeiten',
+          'FEN': 'Bestimmt Anzahl, Maße und Ausführung der Fenster für präzise Kalkulation',
+          'SAN': 'Definiert Umfang der Sanitärarbeiten für Material- und Zeitplanung',
+          'ELEKT': 'Legt fest welche Elektroinstallationen für Kalkulation berücksichtigt werden',
+          'MAL': 'Bestimmt zu streichende Flächen und Qualität für Materialberechnung',
+          'FLI': 'Definiert Fliesenbereiche und -arten für Mengen- und Preiskalkulation',
+          'HEI': 'Legt Umfang der Heizungsarbeiten für Komponentenwahl und Kalkulation fest',
+          'DACH': 'Bestimmt Art und Umfang der Dacharbeiten für Material- und Zeitplanung',
+          'FASS': 'Definiert Fassadenarbeiten für Dämmstärke und Flächenberechnung',
+          'TRO': 'Legt fest welche Trockenbauarbeiten für Material- und Arbeitszeitkalkulation',
+          'BOD': 'Bestimmt Bodenbelagsart und -flächen für präzise Materialkalkulation',
+          'ROH': 'Definiert Rohbauarbeiten für statische Anforderungen und Materialbedarf',
+          'GER': 'Legt Gerüstumfang für Höhe, Fläche und Standzeit-Kalkulation fest',
+          'SCHL': 'Bestimmt Schlosserarbeiten für Material, Maße und Montageart',
+          'ABBR': 'Definiert Abbruch-Umfang für Entsorgungsmengen und Arbeitsaufwand',
+          'ZIMM': 'Legt Zimmererarbeiten für Holzkonstruktion und Materialbedarf fest',
+          'PV': 'Bestimmt PV-Anlage für Leistung, Modulmenge und Systemkomponenten',
+          'KLIMA': 'Legt fest welche Klimaanlage/Lüftung für Raumgröße und Kühlleistung',
+          'AUSS': 'Definiert Außenanlagen für Flächenberechnung und Materialauswahl',
+          'ESTR': 'Bestimmt Estricharbeiten für Fläche, Stärke und Materialwahl'
+        };
+        return explanations[tradeCode] || `Wichtig für die präzise Kalkulation der ${tradeName}-Arbeiten`;
+      };
+      
+      questions = [{
+        id: `${tradeCode}-CONTEXT`,
+        question: `Sie haben das Gewerk ${tradeName} ${isAdditional ? 'nachträglich hinzugefügt' : isManuallyAdded ? 'manuell hinzugefügt' : 'als optionales Gewerk ausgewählt'}. Was genau soll in diesem Bereich gemacht werden?`,
+        type: 'text',
+        required: true,
+        category: 'Projektkontext',
+        explanation: getContextExplanation(tradeCode, tradeName),
+        tradeId: parseInt(tradeId),
+        tradeName: tradeName,
+        trade_name: tradeName,
+        trade_code: tradeCode,
+        isContextQuestion: true,
+        requiresFollowUp: true,
+        uploadHelpful: true,
+        uploadHint: "Optional: Fotos, Pläne oder Dokumente zur besseren Einschätzung hochladen"
+      }];
+    } else {
+      // 8. Generiere normale Fragen
+      questions = await generateQuestions(tradeId, projectContext);
+      
+      // Filter Duplikate
+      questions = filterDuplicateQuestions(questions, projectContext.intakeData || []);
+    }
+    
+    // 9. Speichere Fragen in DB
+    for (const question of questions) {
+      await query(
+        `INSERT INTO questions (
+          project_id, trade_id, question_id, text, type, required, options, 
+          depends_on, show_if, explanation, upload_helpful, upload_hint, category
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ON CONFLICT (project_id, trade_id, question_id) 
+        DO UPDATE SET 
+          text = $4, type = $5, required = $6, options = $7, 
+          depends_on = $8, show_if = $9, explanation = $10,
+          upload_helpful = $11, upload_hint = $12, category = $13`,
+        [
+          projectId,
+          tradeId,
+          question.id,
+          question.question || question.text,
+          question.multiSelect ? 'multiselect' : (question.type || 'text'),
+          question.required !== undefined ? question.required : false,
+          question.options ? JSON.stringify({
+            values: question.options,
+            multiSelect: question.multiSelect || false,
+            dependsOn: question.dependsOn || null,
+            showIf: question.showIf || null
+          }) : null,
+          question.dependsOn || null,
+          question.showIf || null,
+          question.explanation || null,
+          question.uploadHelpful || false,
+          question.uploadHint || null,
+          question.category || null
+        ]
+      );
+    }
+    
+    // 10. Update Status auf "ready"
+    await query(
+      `INSERT INTO trade_progress (project_id, trade_id, status, updated_at)
+       VALUES ($1, $2, 'questions_ready', NOW())
+       ON CONFLICT (project_id, trade_id)
+       DO UPDATE SET status = 'questions_ready', updated_at = NOW()`,
+      [projectId, tradeId]
+    );
+    
+    console.log(`[BG] ✓ Generated and saved ${questions.length} questions for trade ${tradeId} (${tradeName})`);
+    
+  } catch (err) {
+    console.error(`[BG] ✗ Failed for trade ${tradeId}:`, err);
+    
+    // Setze Error-Status
+    await query(
+      `UPDATE trade_progress SET status = 'error', updated_at = NOW()
+       WHERE project_id = $1 AND trade_id = $2`,
+      [projectId, tradeId]
+    ).catch(console.error);
+  }
+}
+
 // Endpoint für Rückfragen zu Fragen - "Frage zur Frage" Feature
 app.post('/api/projects/:projectId/trades/:tradeId/question-clarification', async (req, res) => {
   try {
