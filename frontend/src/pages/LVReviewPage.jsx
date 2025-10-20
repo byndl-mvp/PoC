@@ -821,7 +821,9 @@ const handleGenerateAllQuestions = async () => {
                     
                     {!trade.hasLV ? (
   <div className="flex gap-2">
-    {questionsStatus[trade.id]?.ready ? (
+    {/* Prüfe ob Fragen existieren */}
+    {questionsStatus[trade.id]?.questionCount > 0 ? (
+      // Fragen sind DA - zeige "Fragen starten"
       <button
         onClick={() => handleStartQuestions(trade.id)}
         className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
@@ -829,6 +831,7 @@ const handleGenerateAllQuestions = async () => {
         Fragen starten →
       </button>
     ) : generatingQuestions[trade.id] ? (
+      // Wird gerade generiert
       <button
         disabled
         className="px-6 py-2 bg-gray-500 text-white rounded-lg opacity-50 cursor-not-allowed flex items-center gap-2"
@@ -840,6 +843,7 @@ const handleGenerateAllQuestions = async () => {
         <span>Fragen werden erstellt...</span>
       </button>
     ) : (
+      // Noch keine Fragen - zeige "Generieren"
       <button
         onClick={() => handleGenerateQuestions(trade.id)}
         className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
