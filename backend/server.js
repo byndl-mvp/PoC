@@ -5601,9 +5601,17 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
 /**
  * Generiert adaptive Folgefragen basierend auf Kontext-Antwort
  */
-async function generateContextBasedQuestions(tradeId, projectId, contextAnswer) {
-  const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
+async function generateContextBasedQuestions(tradeId, projectId, contextAnswer, flags = {}) {
+  console.log(`[CONTEXT-QUESTIONS] Generating follow-up questions for trade ${tradeId}`);
+  console.log(`[CONTEXT-QUESTIONS] User context: "${contextAnswer}"`);
+  console.log(`[CONTEXT-QUESTIONS] Flags:`, flags);
+  
+  // Lade Projekt-Daten
   const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+  
+  if (project.rows.length === 0) {
+    throw new Error('Project not found');
+  }
   
   // Lade Intake-Kontext
   const intakeAnswers = await query(
@@ -5617,113 +5625,45 @@ async function generateContextBasedQuestions(tradeId, projectId, contextAnswer) 
     [projectId]
   );
   
-  // Bestimme Fragenanzahl basierend auf BESTEHENDER Komplexitätslogik
+  // Erstelle vollständigen Projekt-Context für generateQuestions()
   const projectContext = {
     description: project.rows[0].description,
     category: project.rows[0].category,
     budget: project.rows[0].budget,
-    intakeData: intakeAnswers.rows
+    projectId: projectId,
+    intakeData: intakeAnswers.rows,
+    // ✅ KRITISCH: Flags für Context-basierte Generierung
+    hasContextAnswer: true,
+    contextAnswer: contextAnswer,
+    isManuallyAdded: flags.isManuallyAdded || false,
+    isAdditional: flags.isAdditional || false,
+    isAiRecommended: flags.isAiRecommended || false
   };
   
-  const complexity = determineProjectComplexity(projectContext, intakeAnswers.rows);
-  const intelligentCount = getIntelligentQuestionCount(trade.rows[0].code, projectContext, intakeAnswers.rows);
+  console.log(`[CONTEXT-QUESTIONS] Calling main generateQuestions() with full rule set`);
   
-  // Lade das BESTEHENDE Prompt-Template für dieses Gewerk
-  const questionPrompt = await getPromptForTrade(tradeId, 'questions');
+  // ✅ HAUPTÄNDERUNG: Nutze die HAUPTFUNKTION mit ALLEN Regeln!
+  // Diese enthält:
+  // - explanation-Felder (15-20 Wörter)
+  // - uploadHelpful/uploadHint
+  // - Gewerke-spezifische Validierungen
+  // - Duplikat-Filter
+  // - Abhängigkeitslogik
+  // - Multiselect-Support
+  // - Robuste JSON-Parsing-Logik
+  // - Alle anderen Features
+  const questions = await generateQuestions(tradeId, projectContext);
   
-  const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
-Der Nutzer hat angegeben: "${contextAnswer}"
-
-WICHTIG: Wende ALLE bestehenden Regeln aus dem System an:
-- Erstelle ${intelligentCount.count} Fragen (Komplexität: ${complexity})
-- Verwende das Standard-Template für ${trade.rows[0].code}
-- ALLE gewerkespezifischen Regeln aus dem Code MÜSSEN beachtet werden
-
-${questionPrompt ? `Template-Basis:\n${questionPrompt}` : ''}
-
-OUTPUT als JSON-Array mit EXAKT ${intelligentCount.count} Fragen.`;
+  console.log(`[CONTEXT-QUESTIONS] Generated ${questions.length} follow-up questions`);
   
- try {
-    const response = await llmWithPolicy('questions', [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Erstelle detaillierte Folgefragen für: ${contextAnswer}` }
-    ], { 
-      maxTokens: 10000, 
-      temperature: 0.35,
-      jsonMode: true  // WICHTIG: JSON-Mode erzwingen!
-    });
-    
-    // Robustere Bereinigung
-    let cleaned = response
-      .replace(/```json\n?/gi, '')
-      .replace(/```\n?/gi, '')
-      .replace(/^json\s*\n?/i, '')
-      .trim();
-    
-    // Entferne trailing commas (häufiger Fehler)
-    cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
-    
-    // Finde das JSON Array
-    const startIdx = cleaned.indexOf('[');
-    const endIdx = cleaned.lastIndexOf(']');
-    
-    if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
-      cleaned = cleaned.substring(startIdx, endIdx + 1);
-    }
-    
-    let questions;
-    try {
-      questions = JSON.parse(cleaned);
-    } catch (parseError) {
-      console.error('[CONTEXT] Parse failed at position:', parseError.message);
-      console.error('[CONTEXT] Problematic JSON (first 1000 chars):', cleaned.substring(0, 1000));
-      
-      // Bei Parse-Fehler: NEUER Versuch mit dem LLM!
-      console.log('[CONTEXT] Retrying with stricter prompt...');
-      
-      const retryResponse = await llmWithPolicy('questions', [
-        { 
-          role: 'system', 
-          content: `KRITISCH: Erstelle NUR ein valides JSON-Array ohne zusätzlichen Text!
-Keine Markdown, keine Erklärungen, NUR das Array.
-Beispiel: [{"question": "...", "type": "text", ...}]` 
-        },
-        { role: 'user', content: systemPrompt + '\n\nErstelle Fragen für: ' + contextAnswer }
-      ], { 
-        maxTokens: 10000, 
-        temperature: 0.3,  
-        jsonMode: true
-      });
-      
-      const retryCleaned = retryResponse
-        .replace(/```json\n?/gi, '')
-        .replace(/```\n?/gi, '')
-        .trim();
-      
-      questions = JSON.parse(retryCleaned);
-    }
-    
-    // Füge trade info zu jeder Frage hinzu
-    questions = questions.map((q, idx) => ({
-      ...q,
-      id: q.id || `${trade.rows[0].code}-CTX-${idx}`,
-      tradeId: parseInt(tradeId),
-      trade_id: parseInt(tradeId),
-      tradeName: trade.rows[0].name,
-      trade_name: trade.rows[0].name,
-      trade_code: trade.rows[0].code
-    }));
-    
-    // Verwende BESTEHENDE Validierungslogik
-    questions = validateTradeQuestions(trade.rows[0].code, questions, projectContext);
-    questions = filterDuplicateQuestions(questions, intakeAnswers.rows);
-    
-    return Array.isArray(questions) ? questions : [];
-    
-  } catch (err) {
-    console.error('[CONTEXT] Complete failure:', err);
-    throw err;  // Fehler durchreichen, kein schlechter Fallback!
-  }
+  // Füge Marker hinzu dass es Folgefragen sind (für potenzielle spätere Nutzung)
+  const enrichedQuestions = questions.map(q => ({
+    ...q,
+    isContextFollowUp: true,
+    baseContextAnswer: contextAnswer
+  }));
+  
+  return enrichedQuestions;
 }
   
 /**
