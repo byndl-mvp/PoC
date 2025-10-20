@@ -209,57 +209,57 @@ export default function IntakeQuestionsPage() {
         setTradeCode(currentTrade.code);
 
         if (isAdditionalTrade || isManuallyAdded) {
-  const getContextExplanation = (tradeCode, tradeName) => {
-  const explanations = {
-    'TIS': 'Wichtig für Materialkalkulation und Arbeitsaufwand bei Tischlerarbeiten',
-    'FEN': 'Bestimmt Anzahl, Maße und Ausführung der Fenster für präzise Kalkulation',
-    'SAN': 'Definiert Umfang der Sanitärarbeiten für Material- und Zeitplanung',
-    'ELEKT': 'Legt fest welche Elektroinstallationen für Kalkulation berücksichtigt werden',
-    'MAL': 'Bestimmt zu streichende Flächen und Qualität für Materialberechnung',
-    'FLI': 'Definiert Fliesenbereiche und -arten für Mengen- und Preiskalkulation',
-    'HEI': 'Legt Umfang der Heizungsarbeiten für Komponentenwahl und Kalkulation fest',
-    'DACH': 'Bestimmt Art und Umfang der Dacharbeiten für Material- und Zeitplanung',
-    'FASS': 'Definiert Fassadenarbeiten für Dämmstärke und Flächenberechnung',
-    'TRO': 'Legt fest welche Trockenbauarbeiten für Material- und Arbeitszeitkalkulation',
-    'BOD': 'Bestimmt Bodenbelagsart und -flächen für präzise Materialkalkulation',
-    'ROH': 'Definiert Rohbauarbeiten für statische Anforderungen und Materialbedarf',
-    'GER': 'Legt Gerüstumfang für Höhe, Fläche und Standzeit-Kalkulation fest',
-    'SCHL': 'Bestimmt Schlosserarbeiten für Material, Maße und Montageart',
-    'ABBR': 'Definiert Abbruch-Umfang für Entsorgungsmengen und Arbeitsaufwand',
-    'ZIMM': 'Legt Zimmererarbeiten für Holzkonstruktion und Materialbedarf fest',
-    'PV': 'Bestimmt PV-Anlage für Leistung, Modulmenge und Systemkomponenten',
-    'AUSS': 'Definiert Außenanlagen für Flächenberechnung und Materialauswahl'
+    const getContextExplanation = (tradeCode, tradeName) => {
+    const explanations = {
+      'TIS': 'Wichtig für Materialkalkulation und Arbeitsaufwand bei Tischlerarbeiten',
+      'FEN': 'Bestimmt Anzahl, Maße und Ausführung der Fenster für präzise Kalkulation',
+      'SAN': 'Definiert Umfang der Sanitärarbeiten für Material- und Zeitplanung',
+      'ELEKT': 'Legt fest welche Elektroinstallationen für Kalkulation berücksichtigt werden',
+      'MAL': 'Bestimmt zu streichende Flächen und Qualität für Materialberechnung',
+      'FLI': 'Definiert Fliesenbereiche und -arten für Mengen- und Preiskalkulation',
+      'HEI': 'Legt Umfang der Heizungsarbeiten für Komponentenwahl und Kalkulation fest',
+      'DACH': 'Bestimmt Art und Umfang der Dacharbeiten für Material- und Zeitplanung',
+      'FASS': 'Definiert Fassadenarbeiten für Dämmstärke und Flächenberechnung',
+      'TRO': 'Legt fest welche Trockenbauarbeiten für Material- und Arbeitszeitkalkulation',
+      'BOD': 'Bestimmt Bodenbelagsart und -flächen für präzise Materialkalkulation',
+      'ROH': 'Definiert Rohbauarbeiten für statische Anforderungen und Materialbedarf',
+      'GER': 'Legt Gerüstumfang für Höhe, Fläche und Standzeit-Kalkulation fest',
+      'SCHL': 'Bestimmt Schlosserarbeiten für Material, Maße und Montageart',
+      'ABBR': 'Definiert Abbruch-Umfang für Entsorgungsmengen und Arbeitsaufwand',
+      'ZIMM': 'Legt Zimmererarbeiten für Holzkonstruktion und Materialbedarf fest',
+      'PV': 'Bestimmt PV-Anlage für Leistung, Modulmenge und Systemkomponenten',
+      'AUSS': 'Definiert Außenanlagen für Flächenberechnung und Materialauswahl'
+    };
+    
+    return explanations[tradeCode] || `Wichtig für die präzise Kalkulation der ${tradeName}-Arbeiten`;
   };
   
-  return explanations[tradeCode] || `Wichtig für die präzise Kalkulation der ${tradeName}-Arbeiten`;
-};
-
-const contextQuestion = {
-  id: `${currentTrade.code}-CONTEXT`,
-  question: `Sie haben ${currentTrade.name} als ${isAdditional ? 'nachträglich' : 'zusätzliches'} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`,
-  type: 'text',
-  required: true,
-  category: 'Projektkontext',
-  explanation: getContextExplanation(currentTrade.code, currentTrade.name), // ✅ GEÄNDERT
-  tradeId: parseInt(tradeId),
-  tradeName: currentTrade.name,
-  trade_name: currentTrade.name,
-  trade_code: currentTrade.code,
-  isContextQuestion: true,
-  requiresFollowUp: true,
-  uploadHelpful: true,
-  uploadHint: "Optional: Fotos, Pläne oder Dokumente zur besseren Einschätzung hochladen"
-};
-          
-          sessionStorage.setItem('currentTradeIsAdditional', 'true');
-          setQuestions([contextQuestion]);
-          setAnswers([null]);
-          setCurrent(0);
-          setLoading(false);
-          clearInterval(loadingIntervalRef.current);
-          setLoadingProgress(100);
-          return;
-        }
+  const contextQuestion = {
+    id: `${currentTrade.code}-CONTEXT`,
+    question: `Sie haben ${currentTrade.name} als ${isAdditionalTrade ? 'nachträglich hinzugefügtes' : 'manuell hinzugefügtes'} Gewerk ausgewählt. Was genau soll in diesem Bereich gemacht werden?`, // ✅ KORRIGIERT
+    type: 'text',
+    required: true,
+    category: 'Projektkontext',
+    explanation: getContextExplanation(currentTrade.code, currentTrade.name),
+    tradeId: parseInt(tradeId),
+    tradeName: currentTrade.name,
+    trade_name: currentTrade.name,
+    trade_code: currentTrade.code,
+    isContextQuestion: true,
+    requiresFollowUp: true,
+    uploadHelpful: true,
+    uploadHint: "Optional: Fotos, Pläne oder Dokumente zur besseren Einschätzung hochladen"
+  };
+  
+  sessionStorage.setItem('currentTradeIsAdditional', 'true');
+  setQuestions([contextQuestion]);
+  setAnswers([null]);
+  setCurrent(0);
+  setLoading(false);
+  clearInterval(loadingIntervalRef.current);
+  setLoadingProgress(100);
+  return;
+}
 
         console.log(`Generating adaptive questions for trade ${tradeId} (${currentTrade.code})...`);
         
