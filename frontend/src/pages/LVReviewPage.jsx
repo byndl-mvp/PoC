@@ -134,6 +134,61 @@ export default function LVReviewPage() {
       return sum;
     }, 0);
   };
+
+  // Starte Fragengenerierung im Hintergrund
+const handleGenerateQuestions = async (tradeId) => {
+  try {
+    setGeneratingQuestions(prev => ({ ...prev, [tradeId]: true }));
+    
+    const res = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${tradeId}/generate-questions-background`),
+      { method: 'POST' }
+    );
+    
+    if (res.ok) {
+      // Starte Status-Polling
+      pollQuestionStatus(tradeId);
+    }
+  } catch (err) {
+    console.error('Failed to start question generation:', err);
+    setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+  }
+};
+
+// Status-Polling
+const pollQuestionStatus = (tradeId) => {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-status`)
+      );
+      
+      if (res.ok) {
+        const data = await res.json();
+        setQuestionsStatus(prev => ({ ...prev, [tradeId]: data }));
+        
+        if (data.ready) {
+          clearInterval(interval);
+          setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+          
+          // Reload Data
+          window.location.reload();
+        }
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, 3000);
+};
+
+// Alle Fragen auf einmal starten
+const handleGenerateAllQuestions = async () => {
+  const pendingTradesWithoutQuestions = selectedTrades.filter(t => !t.hasLV);
+  
+  for (const trade of pendingTradesWithoutQuestions) {
+    await handleGenerateQuestions(trade.id);
+  }
+};
   
   // Navigation Funktionen
   const handleStartQuestions = (tradeId) => {
