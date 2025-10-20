@@ -6410,6 +6410,8 @@ Der PREIS definiert die Qualität, NICHT umgekehrt!
   const systemPrompt = `Du bist ein Experte für VOB-konforme Leistungsverzeichnisse mit 25+ Jahren Erfahrung.
 Erstelle ein PRÄZISES und REALISTISCHES Leistungsverzeichnis für ${trade.name}.
 
+${manualTradeContext}
+
 ${(() => {
   const uploadContext = buildUploadContext(enrichedAnswers);
   if (!uploadContext.hasUploads) return '';
