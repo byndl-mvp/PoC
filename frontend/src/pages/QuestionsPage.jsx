@@ -221,7 +221,9 @@ export default function IntakeQuestionsPage() {
             trade_name: currentTrade.name,
             trade_code: currentTrade.code,
             isContextQuestion: true,
-            requiresFollowUp: true
+            requiresFollowUp: true,
+            uploadHelpful: true,
+            uploadHint: "Optional: Fotos, Pläne oder Dokumente hochladen zur besseren Einschätzung"            
           };
           
           sessionStorage.setItem('currentTradeIsAdditional', 'true');
