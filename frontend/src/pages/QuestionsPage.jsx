@@ -158,6 +158,12 @@ export default function IntakeQuestionsPage() {
         const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
         const aiRecommendedTrades = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]');
         const isAiRecommended = aiRecommendedTrades.includes(parseInt(tradeId));
+        if (isAiRecommended && !new URLSearchParams(window.location.search).get('airecommended')) {
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('airecommended', 'true');
+        window.history.replaceState({}, '', currentUrl);
+        console.log('Set airecommended=true in URL for trade', tradeId);
+      }
         
         console.log('Is manually added trade?:', isManuallyAdded);
         console.log('Is additional trade?:', isAdditionalTrade);
