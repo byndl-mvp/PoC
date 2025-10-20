@@ -219,7 +219,7 @@ const handleGenerateAllQuestions = async () => {
   const handleStartQuestions = (tradeId) => {
   const trade = selectedTrades.find(t => t.id === tradeId);
   const queryParam = trade?.isManual ? '?manual=true' : '';
-  navigate(`/project/${projectId}/trade/${tradeId}/questions${queryParam}`);
+  navigate(`/project/${projectId}/questions/${tradeId}${queryParam}`);
 };
   
   const handleContinueToResult = () => {
