@@ -1336,7 +1336,21 @@ if (current + 1 < questions.length) {
   <p className="text-red-400 text-sm mt-3">* Diese Frage ist erforderlich</p>
 )}
 
-{/* NEU: Rückfrage Button - PROMINENT, ZENTRIERT, AMBER */}
+{/* Anmerkung Field - NUR IN QUESTIONSPAGE! */}
+<div className="mt-6">
+  <label className="block text-gray-300 text-sm mb-2">
+    Anmerkung (optional)
+  </label>
+  <input
+    type="text"
+    value={assumption}
+    onChange={(e) => setAssumption(e.target.value)}
+    className="w-full bg-white/10 backdrop-blur border border-white/30 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+    placeholder="Falls Sie eine Annahme treffen müssen..."
+  />
+</div>
+
+{/* NEU: Rückfrage Button */}
 <div className="mt-6 flex justify-center">
   <button
     onClick={() => setShowQuestionDialog(true)}
