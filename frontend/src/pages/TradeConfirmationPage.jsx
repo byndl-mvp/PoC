@@ -16,7 +16,6 @@ export default function TradeConfirmationPage() {
   const [detectedTrades, setDetectedTrades] = useState([]);
   const [allTrades, setAllTrades] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState('Analysiere Projektdaten...');
   const [error, setError] = useState('');
   const [intakeSummary, setIntakeSummary] = useState(null);
   const [addingTrade, setAddingTrade] = useState(false);
