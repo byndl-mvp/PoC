@@ -211,7 +211,7 @@ export default function IntakeQuestionsPage() {
         setTradeName(currentTrade.name);
         setTradeCode(currentTrade.code);
 
-        if (isAdditionalTrade || isManuallyAdded) {
+        if (isAdditionalTrade || isManuallyAdded || isAiRecommended) { 
     const getContextExplanation = (tradeCode, tradeName) => {
     const explanations = {
       'TIS': 'Wichtig für Materialkalkulation und Arbeitsaufwand bei Tischlerarbeiten',
@@ -231,6 +231,7 @@ export default function IntakeQuestionsPage() {
       'ABBR': 'Definiert Abbruch-Umfang für Entsorgungsmengen und Arbeitsaufwand',
       'ZIMM': 'Legt Zimmererarbeiten für Holzkonstruktion und Materialbedarf fest',
       'PV': 'Bestimmt PV-Anlage für Leistung, Modulmenge und Systemkomponenten',
+      'KLIMA': 'Legt fest welche Klimaanlage/Lüftung für Raumgröße und Kühlleistung',
       'AUSS': 'Definiert Außenanlagen für Flächenberechnung und Materialauswahl'
     };
     
@@ -239,7 +240,9 @@ export default function IntakeQuestionsPage() {
   
   const contextQuestion = {
     id: `${currentTrade.code}-CONTEXT`,
-    question: `Sie haben das Gewerk ${currentTrade.name} ${isAdditionalTrade ? 'nachträglich hinzugefügt' : 'manuell hinzugefügt'}. Was genau soll in diesem Bereich gemacht werden?`,
+    const contextQuestion = {
+    id: `${currentTrade.code}-CONTEXT`,
+    question: `Sie haben das Gewerk ${currentTrade.name} ${isAdditionalTrade ? 'nachträglich hinzugefügt' : isManuallyAdded ? 'manuell hinzugefügt' : 'als optionales Gewerk ausgewählt'}. Was genau soll in diesem Bereich gemacht werden?`,
     type: 'text',
     required: true,
     category: 'Projektkontext',
