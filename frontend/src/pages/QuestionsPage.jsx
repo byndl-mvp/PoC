@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -26,9 +26,7 @@ export default function IntakeQuestionsPage() {
   // eslint-disable-next-line no-unused-vars
   const [nextTradeName, setNextTradeName] = useState('');
   const [questionsLoading, setQuestionsLoading] = useState(false);
-  const [questionsStatus, setQuestionsStatus] = useState('not_started');
-  const [savedProgress, setSavedProgress] = useState(null);
-  const [autoSaveInterval, setAutoSaveInterval] = useState(null);
+  const autoSaveIntervalRef = useRef(null);
   
   // Refs für Interval-Cleanup
   const loadingIntervalRef = useRef(null);
@@ -450,7 +448,7 @@ export default function IntakeQuestionsPage() {
 }, [projectId, tradeId]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
 // Status-Polling für Fragengenerierung
-const startStatusPolling = () => {
+const startStatusPolling = useCallback(() => {
   const pollInterval = setInterval(async () => {
     try {
       const statusRes = await fetch(
@@ -459,12 +457,10 @@ const startStatusPolling = () => {
       
       if (statusRes.ok) {
         const statusData = await statusRes.json();
-        setQuestionsStatus(statusData.status);
         
         if (statusData.ready && statusData.questionCount > 0) {
-          // Fragen sind fertig!
           clearInterval(pollInterval);
-          window.location.reload(); // Neu laden um Fragen anzuzeigen
+          window.location.reload();
         }
         
         if (statusData.status === 'error') {
@@ -476,34 +472,37 @@ const startStatusPolling = () => {
     } catch (err) {
       console.error('Polling error:', err);
     }
-  }, 3000); // Alle 3 Sekunden prüfen
-};
+  }, 3000);
+}, [projectId, tradeId]);
 
 // Auto-Save für Progress
-const startAutoSave = () => {
-  const interval = setInterval(async () => {
-    if (answers.filter(a => a && a.answer).length > 0) {
-      try {
-        await fetch(
-          apiUrl(`/api/projects/${projectId}/trades/${tradeId}/save-progress`),
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              currentQuestionIndex: current,
-              answers: answers.filter(a => a && a.answer)
-            })
-          }
-        );
-        console.log('[AUTO-SAVE] Progress saved');
-      } catch (err) {
-        console.error('[AUTO-SAVE] Failed:', err);
-      }
-    }
-  }, 30000); // Alle 30 Sekunden
+const startAutoSave = useCallback(() => {
+  // Clear existing interval
+  if (autoSaveIntervalRef.current) {
+    clearInterval(autoSaveIntervalRef.current);
+  }
   
-  setAutoSaveInterval(interval);
-};
+  const interval = setInterval(async () => {
+    try {
+      await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/save-progress`),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentQuestionIndex: current,
+            answers: answers.filter(a => a && a.answer)
+          })
+        }
+      );
+      console.log('[AUTO-SAVE] Progress saved');
+    } catch (err) {
+      console.error('[AUTO-SAVE] Failed:', err);
+    }
+  }, 30000);
+  
+  autoSaveIntervalRef.current = interval;
+}, [projectId, tradeId, current, answers]);
   
   const toggleDetailedExplanation = async () => {
   const questionId = currentQ.id || `q-${current}`;
