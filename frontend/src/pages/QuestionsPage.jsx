@@ -147,7 +147,64 @@ export default function IntakeQuestionsPage() {
       // Optional: Zeige Info, dass vorherige LVs gespeichert sind
     }
   }, []);
+
+ // Status-Polling für Fragengenerierung
+const startStatusPolling = useCallback(() => {
+  const pollInterval = setInterval(async () => {
+    try {
+      const statusRes = await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-status`)
+      );
+      
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        
+        if (statusData.ready && statusData.questionCount > 0) {
+          clearInterval(pollInterval);
+          window.location.reload();
+        }
+        
+        if (statusData.status === 'error') {
+          clearInterval(pollInterval);
+          setError('Fehler beim Generieren der Fragen');
+          setQuestionsLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, 3000);
+}, [projectId, tradeId]);
+
+// Auto-Save für Progress
+const startAutoSave = useCallback(() => {
+  // Clear existing interval
+  if (autoSaveIntervalRef.current) {
+    clearInterval(autoSaveIntervalRef.current);
+  }
   
+  const interval = setInterval(async () => {
+    try {
+      await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/save-progress`),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentQuestionIndex: current,
+            answers: answers.filter(a => a && a.answer)
+          })
+        }
+      );
+      console.log('[AUTO-SAVE] Progress saved');
+    } catch (err) {
+      console.error('[AUTO-SAVE] Failed:', err);
+    }
+  }, 30000);
+  
+  autoSaveIntervalRef.current = interval;
+}, [projectId, tradeId, current, answers]);
+                                  
   useEffect(() => {
   async function initialize() {
     try {
@@ -423,7 +480,7 @@ export default function IntakeQuestionsPage() {
       // Starte Auto-Save
       startAutoSave();
       
-    } catch (err) {
+     } catch (err) {
       console.error('Error in initialization:', err);
       setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
     } finally {
@@ -440,70 +497,13 @@ export default function IntakeQuestionsPage() {
   initialize();
   
   return () => {
-  sessionStorage.removeItem('currentTradeIsAdditional');
-  if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-  if (lvIntervalRef.current) clearInterval(lvIntervalRef.current);
-  if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
-  if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
-}; 
-}, [projectId, tradeId, startAutoSave, startStatusPolling]); // eslint-disable-next-line react-hooks/exhaustive-deps
-
-// Status-Polling für Fragengenerierung
-const startStatusPolling = useCallback(() => {
-  const pollInterval = setInterval(async () => {
-    try {
-      const statusRes = await fetch(
-        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-status`)
-      );
-      
-      if (statusRes.ok) {
-        const statusData = await statusRes.json();
-        
-        if (statusData.ready && statusData.questionCount > 0) {
-          clearInterval(pollInterval);
-          window.location.reload();
-        }
-        
-        if (statusData.status === 'error') {
-          clearInterval(pollInterval);
-          setError('Fehler beim Generieren der Fragen');
-          setQuestionsLoading(false);
-        }
-      }
-    } catch (err) {
-      console.error('Polling error:', err);
-    }
-  }, 3000);
-}, [projectId, tradeId]);
-
-// Auto-Save für Progress
-const startAutoSave = useCallback(() => {
-  // Clear existing interval
-  if (autoSaveIntervalRef.current) {
-    clearInterval(autoSaveIntervalRef.current);
-  }
-  
-  const interval = setInterval(async () => {
-    try {
-      await fetch(
-        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/save-progress`),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            currentQuestionIndex: current,
-            answers: answers.filter(a => a && a.answer)
-          })
-        }
-      );
-      console.log('[AUTO-SAVE] Progress saved');
-    } catch (err) {
-      console.error('[AUTO-SAVE] Failed:', err);
-    }
-  }, 30000);
-  
-  autoSaveIntervalRef.current = interval;
-}, [projectId, tradeId, current, answers]);
+    sessionStorage.removeItem('currentTradeIsAdditional');
+    if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+    if (lvIntervalRef.current) clearInterval(lvIntervalRef.current);
+    if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
+    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
+  };
+}, [projectId, tradeId, startAutoSave, startStatusPolling]);
   
   const toggleDetailedExplanation = async () => {
   const questionId = currentQ.id || `q-${current}`;
