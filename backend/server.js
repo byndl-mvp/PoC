@@ -5735,12 +5735,10 @@ WICHTIG:
       console.log('[CONTEXT] Retrying with stricter prompt...');
       
       const retryResponse = await llmWithPolicy('questions', [
-        { 
-          role: 'system', 
-          content: `KRITISCH: Erstelle NUR ein valides JSON-Array!
-Keine Markdown (```), keine Erklärungen, NUR das Array.
-Beginne direkt mit [ und ende mit ]` 
-        },
+  { 
+    role: 'system', 
+    content: 'KRITISCH: Erstelle NUR ein valides JSON-Array!\nKeine Markdown-Blöcke, keine Erklärungen, NUR das Array.\nBeginne direkt mit [ und ende mit ]'
+  },
         { role: 'user', content: systemPrompt }
       ], { 
         maxTokens: 10000, 
