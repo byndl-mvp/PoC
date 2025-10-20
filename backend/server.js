@@ -7233,6 +7233,143 @@ if (!lv || !lv.positions || !Array.isArray(lv.positions)) {
   throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Ungültige LV-Struktur`);
 }
 
+// STRIKTE KONTEXT-VALIDIERUNG FÜR MANUELL/ZUSÄTZLICH HINZUGEFÜGTE GEWERKE
+if ((projectMetadata.isManual || projectMetadata.isAiRecommended) && contextAnswer) {
+  console.log(`[LV-VALIDATION] Starting strict context validation for ${trade.code}`);
+  console.log(`[LV-VALIDATION] User scope: "${contextAnswer.answer}"`);
+  
+  const userScope = (contextAnswer.answer || '').toLowerCase().trim();
+  const keywords = extractKeywordsFromScope(userScope, trade.code);
+  
+  console.log(`[LV-VALIDATION] Extracted keywords: ${keywords.join(', ')}`);
+  
+  const beforeFilter = lv.positions.length;
+  const filteredPositions = [];
+  const rejectedPositions = [];
+  
+  lv.positions.forEach(pos => {
+    const posTitle = (pos.title || '').toLowerCase();
+    const posDesc = (pos.description || '').toLowerCase();
+    const combined = posTitle + ' ' + posDesc;
+    
+    // 1. Prüfe ob Position zu Kontext-Keywords passt
+    const matchesContext = keywords.some(keyword => 
+      combined.includes(keyword.toLowerCase())
+    );
+    
+    // 2. Nebenleistungen sind immer erlaubt (wenn sie zu den Hauptleistungen passen)
+    const isAuxiliaryService = 
+      posTitle.includes('demontage') ||
+      posTitle.includes('entsorgung') ||
+      posTitle.includes('kleinmaterial') ||
+      posTitle.includes('befestigung') ||
+      posTitle.includes('anfahrt') ||
+      posTitle.includes('baustelleneinrichtung') ||
+      posTitle.includes('koordination') ||
+      posTitle.includes('stundenlohn') ||
+      posTitle.includes('vorbereitung') ||
+      posTitle.includes('nachbehandlung');
+    
+    // 3. Entscheidung
+    if (matchesContext || isAuxiliaryService) {
+      filteredPositions.push(pos);
+      if (matchesContext) {
+        console.log(`[LV-VALIDATION] ✓ KEPT (matches context): "${pos.title}"`);
+      } else {
+        console.log(`[LV-VALIDATION] ✓ KEPT (auxiliary): "${pos.title}"`);
+      }
+    } else {
+      rejectedPositions.push(pos);
+      console.log(`[LV-VALIDATION] ✗ REJECTED (not in scope): "${pos.title}"`);
+      console.log(`[LV-VALIDATION]   → Not mentioned in: "${contextAnswer.answer}"`);
+    }
+  });
+  
+  lv.positions = filteredPositions;
+  
+  const filteredCount = beforeFilter - lv.positions.length;
+  
+  if (filteredCount > 0) {
+    console.log(`[LV-VALIDATION] ═══════════════════════════════════════`);
+    console.log(`[LV-VALIDATION] FILTERED ${filteredCount} non-contextual positions`);
+    console.log(`[LV-VALIDATION] Remaining: ${lv.positions.length} positions`);
+    console.log(`[LV-VALIDATION] ═══════════════════════════════════════`);
+    
+    // Füge Hinweis zu Notes hinzu
+    if (!lv.additionalNotes) lv.additionalNotes = '';
+    lv.additionalNotes += `\n\nHINWEIS: Dieses LV wurde streng auf den angegebenen Projektumfang beschränkt: "${contextAnswer.answer}". ${filteredCount} nicht relevante Position(en) wurden entfernt.`;
+  }
+  
+  // KRITISCHE PRÜFUNG: Wenn fast alles gefiltert wurde
+  if (lv.positions.length < 3) {
+    console.error(`[LV-VALIDATION] CRITICAL: Only ${lv.positions.length} positions remain after filtering!`);
+    console.error(`[LV-VALIDATION] User scope was: "${contextAnswer.answer}"`);
+    console.error(`[LV-VALIDATION] Rejected positions:`, rejectedPositions.map(p => p.title));
+    
+    // Bei zu wenig Positionen: Warnung aber nicht abbrechen
+    if (lv.positions.length === 0) {
+      throw new Error(`LV-Generierung fehlgeschlagen: Keine Positionen entsprechen dem angegebenen Projektumfang "${contextAnswer.answer}". Bitte präzisieren Sie die gewünschten Arbeiten.`);
+    }
+  }
+}
+
+// Hilfsfunktion: Keywords aus User-Scope extrahieren
+function extractKeywordsFromScope(scopeText, tradeCode) {
+  const keywords = [];
+  
+  // Basis-Keywords aus dem Text selbst
+  const words = scopeText.split(/\s+/);
+  
+  // Gewerk-spezifische relevante Begriffe
+  const tradeKeywordMap = {
+  'ELEKT': ['steckdose', 'schalter', 'lampe', 'elektro', 'kabel', 'sicherung', 'strom', 'leitung', 'verteiler', 'fi-schalter'],
+  'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'fußbodenheizung', 'radiator'],
+  'KLIMA': ['lüftung', 'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage', 'wärmerückgewinnung'],
+  'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängte decke', 'schallschutz'],
+  'FLI': ['fliesen', 'verfugen', 'mosaik', 'bad', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
+  'MAL': ['streichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln', 'anstrich', 'farbe', 'lackieren', 'grundierung', 'malerarbeiten'],
+  'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'bodenbelag'],
+  'ROH': ['mauerwerk', 'durchbruch', 'beton', 'wand', 'decke', 'maurerarbeiten'],
+  'SAN': ['bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'sanitär', 'abfluss', 'wasserhahn', 'armatur'],
+  'FEN': ['fenster', 'verglasung', 'rolladen', 'jalousie', 'fensterbank', 'glasbruch', 'isolierglas'],
+  'TIS': ['tür', 'innentür', 'zarge', 'möbel', 'einbauschrank', 'holzarbeiten', 'küche', 'arbeitsplatte'],
+  'DACH': ['dach', 'ziegel', 'dachrinne', 'schneefang', 'dachfenster', 'gauben', 'dachstuhl', 'eindeckung'],
+  'FASS': ['fassade', 'wdvs', 'außenputz', 'dämmung', 'verblendung', 'klinker', 'fassadenfarbe'],
+  'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst'],
+  'ZIMM': ['holzbau', 'gaube', 'dachstuhl', 'balken', 'carport', 'pergola', 'holzkonstruktion', 'fachwerk'],
+  'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
+  'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'gitter', 'schlosserarbeiten'],
+  'AUSS': ['pflaster', 'terrasse', 'einfahrt', 'garten', 'außenanlage', 'randstein', 'rasen'],
+  'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'speicher', 'batterie', 'einspeisung'],
+  'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage', 'entsorgung', 'schutt']
+  };
+  
+  const relevantTerms = tradeKeywordMap[tradeCode] || [];
+  
+  // Finde alle relevanten Begriffe im User-Text
+  relevantTerms.forEach(term => {
+    const regex = new RegExp(term, 'i');
+    if (regex.test(scopeText)) {
+      keywords.push(term);
+      // Auch Plural/Singular-Varianten hinzufügen
+      if (!term.endsWith('en') && !scopeText.includes(term + 'en')) {
+        keywords.push(term + 'en');
+      }
+    }
+  });
+  
+  // Extrahiere auch direkte Substantive aus dem Text
+  words.forEach(word => {
+    const cleanWord = word.replace(/[^a-zäöüß]/gi, '').toLowerCase();
+    if (cleanWord.length > 3) {
+      keywords.push(cleanWord);
+    }
+  });
+  
+  // Dedupliziere
+  return [...new Set(keywords)];
+}
+    
 // ERWEITERTE VALIDIERUNG für alle maßrelevanten Bauteile
 const dimensionConfig = DIMENSION_REQUIRED_ITEMS[trade.code];
 if (dimensionConfig) {
