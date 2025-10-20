@@ -3331,41 +3331,49 @@ if (!isIntake && projectContext.projectId) {
     // Der intakeContext wird später im System-Prompt verwendet
   }
   
-  // Falls es ein empfohlenes Gewerk ist
-  if (projectContext.isAiRecommended && !isIntake) {
-    console.log('[QUESTIONS] Trade is AI-recommended, will add specific instructions');
-  }
-  
   console.log(`[QUESTIONS] Generating for ${tradeName} with context:`, {
-    hasExtractedData: !!extractedData,
-    extractedQuantities: extractedData?.quantities || {},
-    intakeAnswerCount: allAnsweredInfo.fromIntake.length,
-    isManuallyAdded: projectContext.isManuallyAdded,
-  });
+  hasExtractedData: !!extractedData,
+  extractedQuantities: extractedData?.quantities || {},
+  intakeAnswerCount: allAnsweredInfo.fromIntake.length,
+  isManuallyAdded: projectContext.isManuallyAdded,
+  isAdditional: projectContext.isAdditional,
+  isAiRecommended: projectContext.isAiRecommended,
+  hasContextAnswer: projectContext.hasContextAnswer
+});
+
+// ✅ Kontextfrage für manuell/zusätzlich/AI-empfohlene Gewerke (falls noch keine Antwort)
+if (
+  (projectContext.isManuallyAdded || 
+   projectContext.isAdditional || 
+   projectContext.isAiRecommended) &&
+  !projectContext.hasContextAnswer &&
+  !isIntake
+) {
+  console.log(`[QUESTIONS] ${tradeCode} needs context question (manual/additional/AI-recommended)`);
   
-  // NEU: Unterscheide zwischen AI-empfohlen und manuell
-if (projectContext.isManuallyAdded === true && !projectContext.isAiRecommended && !projectContext.hasContextAnswer) {
-  // NUR bei MANUELL hinzugefügten Gewerken UND noch keine Kontextantwort: Kontextfrage zuerst
-  console.log(`[QUESTIONS] Manually added trade ${tradeCode} - returning context question only`);
-  
-  const contextQuestion = `Sie haben ${tradeName} als zusätzliches Gewerk ausgewählt. 
-    Basierend auf Ihrem Projekt "${projectContext.description?.substring(0, 100)}..." - was genau soll in diesem Bereich gemacht werden?`;
+  const tradeTypeText = projectContext.isAdditional ? 'nachträglich hinzugefügt' :
+                        projectContext.isManuallyAdded ? 'manuell hinzugefügt' :
+                        'als optionales Gewerk ausgewählt';
   
   return [{
-    id: `${tradeCode}-CONTEXT`,  
-    question: contextQuestion,
-    text: contextQuestion,
+    id: `${tradeCode}-CONTEXT`,
+    question: `Sie haben das Gewerk ${tradeName} ${tradeTypeText}. Was genau soll in diesem Bereich gemacht werden?`,
+    text: `Sie haben das Gewerk ${tradeName} ${tradeTypeText}. Was genau soll in diesem Bereich gemacht werden?`,
     type: 'text',
     required: true,
     category: 'Projektkontext',
-    explanation: 'Basierend auf Ihrer Antwort erstellen wir passende Detailfragen für dieses Gewerk.'
+    explanation: `Wichtig für die präzise Kalkulation der ${tradeName}-Arbeiten`,
+    isContextQuestion: true,
+    requiresFollowUp: true,
+    uploadHelpful: true,
+    uploadHint: "Optional: Fotos, Pläne oder Dokumente zur besseren Einschätzung hochladen"
   }];
 }
 
-// AI-empfohlene Gewerke: KEINE Kontextfrage, direkt vollständiger Fragenkatalog
-if (projectContext.isAiRecommended === true) {
-  console.log(`[QUESTIONS] AI-recommended trade ${tradeCode} - generating FULL question catalog with project context`);
-  // Weiter mit normalem Fragenkatalog-Prozess (kein early return!)
+// ✅ Falls Kontextantwort vorhanden: Weiter mit normalem Fragenkatalog
+if (projectContext.hasContextAnswer) {
+  console.log(`[QUESTIONS] ${tradeCode} has context answer: "${projectContext.contextAnswer?.substring(0, 50)}..." - generating follow-up questions`);
+  // Weiter mit normalem Prozess
 }
   
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
