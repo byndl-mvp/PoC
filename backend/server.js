@@ -12635,23 +12635,29 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
 
 // NEU: Trigger Fragengenerierung im Hintergrund
 app.post('/api/projects/:projectId/trades/:tradeId/generate-questions-background', async (req, res) => {
+ console.log('[ROUTE] generate-questions-background called');
+  
   try {
     const { projectId, tradeId } = req.params;
+    console.log('[ROUTE] Params:', projectId, tradeId);
     
     // Prüfe ob bereits Fragen existieren
     const existing = await query(
       'SELECT COUNT(*) as count FROM questions WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
+    console.log('[ROUTE] Existing questions:', existing.rows[0].count);
     
     if (existing.rows[0].count > 0) {
+      console.log('[ROUTE] Questions already exist, returning');
       return res.json({ 
         success: true, 
         message: 'Fragen existieren bereits',
         status: 'ready'
       });
     }
-    
+
+    console.log('[ROUTE] Setting status to generating...');    
     // Setze Status auf "generating"
     await query(
       `INSERT INTO trade_progress (project_id, trade_id, status, updated_at)
@@ -12660,9 +12666,12 @@ app.post('/api/projects/:projectId/trades/:tradeId/generate-questions-background
        DO UPDATE SET status = 'generating_questions', updated_at = NOW()`,
       [projectId, tradeId]
     );
+
+    console.log('[ROUTE] Calling background function...');
     
     // Starte im Hintergrund (nicht awaiten!)
     generateQuestionsInBackground(projectId, tradeId);
+    console.log('[ROUTE] Background function triggered, returning response');
     
     res.json({ 
       success: true, 
@@ -12789,6 +12798,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/progress', async (req, res) =>
 
 // Hintergrund-Funktion für Fragengenerierung
 async function generateQuestionsInBackground(projectId, tradeId) {
+  console.log(`[BG] FUNCTION CALLED for project ${projectId}, trade ${tradeId}`);
   try {
     console.log(`[BG] Starting question generation for trade ${tradeId}`);
     
