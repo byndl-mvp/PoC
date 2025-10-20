@@ -2041,11 +2041,13 @@ async function ensureProjectTrade(projectId, tradeId, source = 'unknown') {
  * Alle Trades eines Projekts abrufen
  */
 async function getProjectTrades(projectId) {
-  // Sort project trades so that manually added trades appear last regardless of sort_order.
-  // We join project_trades to access the is_manual flag and use a CASE expression in ORDER BY
-  // to push manual trades to the end. Within each group we still sort by sort_order and id.
+  // FIXED: Lade auch die Flags aus project_trades
   const result = await query(
-    `SELECT t.*
+    `SELECT 
+       t.*,
+       pt.is_manual,
+       pt.is_ai_recommended,
+       pt.is_additional
      FROM trades t
      JOIN project_trades pt ON pt.trade_id = t.id
      WHERE pt.project_id = $1
