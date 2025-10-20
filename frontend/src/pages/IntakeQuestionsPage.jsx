@@ -794,19 +794,20 @@ const handleFileUpload = async (questionId, file) => {
           )}
           
           {currentQ.required && (
-            <p className="text-red-400 text-sm mt-3">* Diese Frage ist erforderlich</p>
-          )}
-        
-{/* Button für Rückfragen */}
-<button
-  onClick={() => setShowQuestionDialog(true)}
-  className="text-sm text-gray-400 hover:text-white mt-2 flex items-center space-x-1 transition-colors"
->
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-  </svg>
-  <span>Rückfrage zu dieser Frage stellen</span>
-</button>
+  <p className="text-red-400 text-sm mt-3">* Diese Frage ist erforderlich</p>
+)}
+
+{/* NEU: Rückfrage Button - PROMINENT, ZENTRIERT, AMBER */}
+<div className="mt-6 flex justify-center">
+  <button
+    onClick={() => setShowQuestionDialog(true)}
+    className="w-full max-w-md bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 px-6 py-3 rounded-lg transition-all flex items-center justify-center space-x-2 backdrop-blur-sm shadow-lg hover:shadow-xl hover:scale-[1.02]"
+  >
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+    </svg>
+    <span className="font-medium">Rückfrage zu dieser Frage stellen</span>
+  </button>
 </div>
         
         {/* Navigation */}
