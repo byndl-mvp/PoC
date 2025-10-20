@@ -484,6 +484,8 @@ const startStatusPolling = useCallback(() => {
   
   initialize();
   
+  initialize();
+  
   return () => {
     sessionStorage.removeItem('currentTradeIsAdditional');
     if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
