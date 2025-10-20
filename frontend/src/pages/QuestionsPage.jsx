@@ -148,9 +148,22 @@ export default function IntakeQuestionsPage() {
     }
   }, []);
 
- // Status-Polling für Fragengenerierung
+// Status-Polling für Fragengenerierung
 const startStatusPolling = useCallback(() => {
+  let pollCount = 0;
+  const maxPolls = 60; // Max 3 Minuten (60 * 3 Sekunden)
+  
   const pollInterval = setInterval(async () => {
+    pollCount++;
+    
+    // STOP nach 3 Minuten
+    if (pollCount >= maxPolls) {
+      clearInterval(pollInterval);
+      setError('Timeout: Fragen konnten nicht geladen werden');
+      setQuestionsLoading(false);
+      return;
+    }
+    
     try {
       const statusRes = await fetch(
         apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-status`)
@@ -158,6 +171,7 @@ const startStatusPolling = useCallback(() => {
       
       if (statusRes.ok) {
         const statusData = await statusRes.json();
+        console.log('[POLL]', pollCount, statusData);
         
         if (statusData.ready && statusData.questionCount > 0) {
           clearInterval(pollInterval);
@@ -174,36 +188,10 @@ const startStatusPolling = useCallback(() => {
       console.error('Polling error:', err);
     }
   }, 3000);
+  
+  // Speichere Interval-Ref für Cleanup
+  return pollInterval;
 }, [projectId, tradeId]);
-
-// Auto-Save für Progress
-const startAutoSave = useCallback(() => {
-  // Clear existing interval
-  if (autoSaveIntervalRef.current) {
-    clearInterval(autoSaveIntervalRef.current);
-  }
-  
-  const interval = setInterval(async () => {
-    try {
-      await fetch(
-        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/save-progress`),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            currentQuestionIndex: current,
-            answers: answers.filter(a => a && a.answer)
-          })
-        }
-      );
-      console.log('[AUTO-SAVE] Progress saved');
-    } catch (err) {
-      console.error('[AUTO-SAVE] Failed:', err);
-    }
-  }, 30000);
-  
-  autoSaveIntervalRef.current = interval;
-}, [projectId, tradeId, current, answers]);
                                   
   useEffect(() => {
   async function initialize() {
