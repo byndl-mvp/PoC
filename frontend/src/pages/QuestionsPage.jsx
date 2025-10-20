@@ -560,9 +560,13 @@ const handleFileUpload = async (questionId, file) => {
     }    
 
     const isAiRecommended = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]')
-      .includes(parseInt(tradeId));
+  .includes(parseInt(tradeId));
 
-    if (current === 0 && isAiRecommended && questions[current].id === 'context_reason') {
+if (
+  current === 0 && 
+  isAiRecommended && 
+  questions[current].isContextQuestion === true  
+) {
       try {
         setGeneratingQuestions(true);
         
