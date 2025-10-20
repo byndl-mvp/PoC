@@ -1559,9 +1559,12 @@ if (generatingLV) {
               onChange={(e) => setAnswerText(e.target.value)}
             >
               <option value="" className="bg-slate-800">Bitte wählen...</option>
-              {currentQ.options.map((opt, idx) => (
-                <option key={idx} value={opt} className="bg-slate-800">{opt}</option>
-              ))}
+              {(Array.isArray(currentQ.options) 
+  ? currentQ.options 
+  : currentQ.options?.values || []
+).map((opt, idx) => (
+  <option key={idx} value={opt} className="bg-slate-800">{opt}</option>
+))}
             </select>
           ) : currentQ.type === 'number' ? (
             <div>
