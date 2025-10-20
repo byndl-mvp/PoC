@@ -12153,6 +12153,45 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       projectBudget: budgetFromBody
     } = req.body;
     
+    // NEU: Prüfe ob Fragen bereits existieren
+    const existingQuestions = await query(
+      'SELECT COUNT(*) as count FROM questions WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (existingQuestions.rows[0].count > 0) {
+      console.log(`[QUESTIONS] Questions already exist for trade ${tradeId}, loading from DB`);
+      
+      // Lade vorhandene Fragen
+      const savedQuestions = await query(
+        `SELECT question_id as id, text as question, type, required, options, 
+                explanation, upload_helpful, upload_hint, category,
+                depends_on, show_if
+         FROM questions 
+         WHERE project_id = $1 AND trade_id = $2
+         ORDER BY question_id`,
+        [projectId, tradeId]
+      );
+      
+      const formattedQuestions = savedQuestions.rows.map(q => ({
+        ...q,
+        options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null,
+        uploadHelpful: q.upload_helpful,
+        uploadHint: q.upload_hint,
+        dependsOn: q.depends_on,
+        showIf: q.show_if
+      }));
+      
+      const tradeInfo = await query('SELECT name FROM trades WHERE id = $1', [tradeId]);
+      
+      return res.json({ 
+        questions: formattedQuestions,
+        actualCount: formattedQuestions.length,
+        tradeName: tradeInfo.rows[0]?.name,
+        fromCache: true
+      });
+    }
+    
     // Prüfe Trade-Status
     const tradeStatusResult = await query(
       `SELECT is_manual, is_ai_recommended, is_additional   
@@ -12168,16 +12207,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     const isAiRecommended = tradeStatus.is_ai_recommended || aiRecommendedFromBody || false;
     const isAdditional = tradeStatus.is_additional || additionalFromBody || false; 
     
-    console.log('[QUESTIONS-API] Trade flags:', {
+    console.log('[QUESTIONS-API] Generating NEW questions for trade:', {
+      tradeId,
       isManuallyAdded,
       isAiRecommended,
-      isAdditional,  
-      fromBody: { manualFromBody, aiRecommendedFromBody, additionalFromBody },
-      fromDB: { 
-        is_manual: tradeStatus.is_manual, 
-        is_ai_recommended: tradeStatus.is_ai_recommended,
-        is_additional: tradeStatus.is_additional
-      }
+      isAdditional
     });
     
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
@@ -12202,7 +12236,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       project.metadata = JSON.parse(project.metadata);
     }
     
-    // ERST intakeContext laden
+    // Lade intakeContext
     let intakeContext = '';
     if (tradeCode !== 'INT') {
       const intakeAnswers = await query(
@@ -12232,7 +12266,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       [projectId]
     );
     
-    // DANN EINMAL projectContext erstellen mit ALLEN Daten
+    // Erstelle projectContext
     const projectContext = {
       category: req.body.projectCategory || project.category,
       subCategory: project.sub_category,
@@ -12250,24 +12284,25 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       metadata: project.metadata
     };
     
-    console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
-    console.log('[DEBUG] projectContext.isAiRecommended:', projectContext.isAiRecommended);  
-    console.log('[DEBUG] projectContext.isAdditional:', projectContext.isAdditional);  
-    console.log('[DEBUG] Project complexity:', projectContext.complexity);
-    
     const questions = await generateQuestions(tradeId, projectContext);
     
     // Filter anwenden
     const filteredQuestions = filterDuplicateQuestions(questions, projectContext.intakeData || []);
     console.log(`[QUESTIONS] Filtered ${questions.length - filteredQuestions.length} duplicate questions`);
     
-    // Speichere Fragen
+    // NEU: Speichere Fragen MIT ALLEN FELDERN
     for (const question of filteredQuestions) {
       await query(
-        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options, depends_on, show_if)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (project_id, trade_id, question_id) 
-         DO UPDATE SET text = $4, type = $5, required = $6, options = $7, depends_on = $8, show_if = $9`,
+        `INSERT INTO questions (
+          project_id, trade_id, question_id, text, type, required, options, 
+          depends_on, show_if, explanation, upload_helpful, upload_hint, category
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ON CONFLICT (project_id, trade_id, question_id) 
+        DO UPDATE SET 
+          text = $4, type = $5, required = $6, options = $7, 
+          depends_on = $8, show_if = $9, explanation = $10,
+          upload_helpful = $11, upload_hint = $12, category = $13`,
         [
           projectId,
           tradeId,
@@ -12282,12 +12317,24 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
             showIf: question.showIf || null
           }) : null,
           question.dependsOn || null,
-          question.showIf || null
+          question.showIf || null,
+          question.explanation || null,
+          question.uploadHelpful || false,
+          question.uploadHint || null,
+          question.category || null
         ]
       );
     }
     
-    // Verwende projectContext für intelligente Count
+    // Setze Status auf "questions_ready"
+    await query(
+      `INSERT INTO trade_progress (project_id, trade_id, status, updated_at)
+       VALUES ($1, $2, 'questions_ready', NOW())
+       ON CONFLICT (project_id, trade_id)
+       DO UPDATE SET status = 'questions_ready', updated_at = NOW()`,
+      [projectId, tradeId]
+    );
+    
     const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, []);
     
     res.json({ 
@@ -12297,7 +12344,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       completeness: intelligentCount.completeness,
       missingInfo: intelligentCount.missingInfo,
       tradeName: tradeName
-      // needsContextQuestion entfernt - war undefined
     });
     
   } catch (err) {
