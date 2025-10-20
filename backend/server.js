@@ -5634,7 +5634,10 @@ async function generateContextBasedQuestions(tradeId, projectId, contextAnswer, 
     description: project.rows[0].description,
     category: project.rows[0].category,
     budget: project.rows[0].budget,
-    intakeData: intakeAnswers.rows
+    intakeData: intakeAnswers.rows,
+    isManuallyAdded: flags.isManuallyAdded || false,
+    isAdditional: flags.isAdditional || false,
+    isAiRecommended: flags.isAiRecommended || false
   };
   
   const complexity = determineProjectComplexity(projectContext, intakeAnswers.rows);
