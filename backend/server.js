@@ -12005,6 +12005,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     const {
       includeIntakeContext,
       isManuallyAdded: manualFromBody,
+      isAiRecommended: aiRecommendedFromBody,
+      isAdditional: additionalFromBody,  // ✅ NEU
       projectDescription: descriptionFromBody,
       projectCategory: categoryFromBody,
       projectBudget: budgetFromBody
@@ -12012,20 +12014,29 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     // Prüfe Trade-Status
     const tradeStatusResult = await query(
-      `SELECT is_manual, is_ai_recommended 
+      `SELECT is_manual, is_ai_recommended, is_additional   // ✅ ERWEITERT
        FROM project_trades 
        WHERE project_id = $1 AND trade_id = $2`,
       [projectId, tradeId]
     );
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
-    const needsContextQuestion = tradeStatus.is_manual && !tradeStatus.is_ai_recommended;
-    // NUR manuelle Gewerke brauchen Kontextfrage, AI-empfohlene NICHT!
     
-    console.log('[QUESTIONS] Trade status:', {
-      manual: tradeStatus.is_manual,
-      aiRecommended: tradeStatus.is_ai_recommended,
-      needsContext: needsContextQuestion
+    // ✅ Kombiniere Body-Werte mit DB-Werten (Body hat Vorrang)
+    const isManuallyAdded = manualFromBody !== undefined ? manualFromBody : tradeStatus.is_manual;
+    const isAiRecommended = aiRecommendedFromBody !== undefined ? aiRecommendedFromBody : tradeStatus.is_ai_recommended;
+    const isAdditional = additionalFromBody !== undefined ? additionalFromBody : tradeStatus.is_additional;  // ✅ NEU
+    
+    console.log('[QUESTIONS-API] Trade flags:', {
+      isManuallyAdded,
+      isAiRecommended,
+      isAdditional,  // ✅ NEU
+      fromBody: { manualFromBody, aiRecommendedFromBody, additionalFromBody },
+      fromDB: { 
+        is_manual: tradeStatus.is_manual, 
+        is_ai_recommended: tradeStatus.is_ai_recommended,
+        is_additional: tradeStatus.is_additional
+      }
     });
     
     const isAssigned = await isTradeAssignedToProject(projectId, tradeId);
@@ -12088,17 +12099,19 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       timeframe: project.timeframe,
       budget: req.body.projectBudget || project.budget,
       projectId: projectId,
-      isManuallyAdded: tradeStatus.is_manual || req.body.isManuallyAdded,
-      isAiRecommended: tradeStatus.is_ai_recommended || req.body.isAiRecommended,
+      isManuallyAdded: isManuallyAdded,    // ✅ Nutze kombinierte Variable
+      isAiRecommended: isAiRecommended,    // ✅ Nutze kombinierte Variable
+      isAdditional: isAdditional,          // ✅ NEU
       intakeContext: intakeContext,
       hasIntakeAnswers: intakeContext.length > 0,
       trades: projectTrades.rows,
-      // NEU: Komplexität aus Metadata
       complexity: project.metadata?.complexity?.level || 'MITTEL',
       metadata: project.metadata
     };
     
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
+    console.log('[DEBUG] projectContext.isAiRecommended:', projectContext.isAiRecommended);  // ✅ NEU
+    console.log('[DEBUG] projectContext.isAdditional:', projectContext.isAdditional);  // ✅ NEU
     console.log('[DEBUG] Project complexity:', projectContext.complexity);
     
     const questions = await generateQuestions(tradeId, projectContext);
@@ -12142,8 +12155,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       actualCount: questions.length,
       completeness: intelligentCount.completeness,
       missingInfo: intelligentCount.missingInfo,
-      tradeName: tradeName,
-      needsContextQuestion
+      tradeName: tradeName
+      // needsContextQuestion entfernt - war undefined
     });
     
   } catch (err) {
