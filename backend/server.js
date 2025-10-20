@@ -6514,9 +6514,9 @@ const universalLVRules = `
 ╚════════════════════════════════════════════════════════════════╝
 
 PREISE IN BESCHREIBUNGEN - ABSOLUT VERBOTEN:
-❌ NIEMALS Preisspannen: "Premium (400-1000€)", "Standard (50-150€)"  
-❌ NIEMALS Preisangaben: "hochwertig (ab 500€)", "günstig (unter 100€)"
-✅ NUR Qualitätsbeschreibung: "Premium-Qualität", "Standardausführung"
+NIEMALS Preisspannen: "Premium (400-1000€)", "Standard (50-150€)"  
+NIEMALS Preisangaben: "hochwertig (ab 500€)", "günstig (unter 100€)"
+NUR Qualitätsbeschreibung: "Premium-Qualität", "Standardausführung"
 
 QUALITÄT MUSS ZUM EP PASSEN:
 - EP < 100€ → "Standard" oder keine Qualitätsangabe
