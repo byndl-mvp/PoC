@@ -754,46 +754,47 @@ const handleFileUpload = async (questionId, file) => {
   )}
 </div>
           
-    {currentQ.type === 'select' && currentQ.options ? (
-            <select
-              className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-            >
-              <option value="" className="bg-slate-800">Bitte wählen...</option>
-              {currentQ.options.map((opt, idx) => (
-                <option key={idx} value={opt} className="bg-slate-800">{opt}</option>
-              ))}
-            </select>
-          ) : currentQ.type === 'number' ? (
-            <div>
-              <input
-                type="number"
-                className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                value={answerText}
-                onChange={(e) => setAnswerText(e.target.value)}
-                placeholder="Ihre Antwort"
-              />
-              {currentQ.options?.includes('unsicher') && (
-                <button
-                  onClick={() => setAnswerText('unsicher')}
-                  className="mt-2 text-sm text-teal-400 hover:text-teal-300"
-                >
-                  Ich bin unsicher / weiß nicht
-                </button>
-              )}
-            </div>
-          ) : (
-            <textarea
-              className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              rows={4}
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Ihre Antwort"
-            />
-          )}
-          
-          {currentQ.required && (
+    {/* Answer Input */}
+{currentQ.type === 'select' && currentQ.options ? (
+  <select
+    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+    value={answerText}
+    onChange={(e) => setAnswerText(e.target.value)}
+  >
+    <option value="" className="bg-slate-800">Bitte wählen...</option>
+    {currentQ.options.map((opt, idx) => (
+      <option key={idx} value={opt} className="bg-slate-800">{opt}</option>
+    ))}
+  </select>
+) : currentQ.type === 'number' ? (
+  <div>
+    <input
+      type="number"
+      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+      value={answerText}
+      onChange={(e) => setAnswerText(e.target.value)}
+      placeholder="Ihre Antwort"
+    />
+    {currentQ.options?.includes('unsicher') && (
+      <button
+        onClick={() => setAnswerText('unsicher')}
+        className="mt-2 text-sm text-teal-400 hover:text-teal-300"
+      >
+        Ich bin unsicher / weiß nicht
+      </button>
+    )}
+  </div>
+) : (
+  <textarea
+    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+    rows={4}
+    value={answerText}
+    onChange={(e) => setAnswerText(e.target.value)}
+    placeholder="Ihre Antwort"
+  />
+)}
+
+{currentQ.required && (
   <p className="text-red-400 text-sm mt-3">* Diese Frage ist erforderlich</p>
 )}
 
@@ -808,6 +809,7 @@ const handleFileUpload = async (questionId, file) => {
     </svg>
     <span className="font-medium">Rückfrage zu dieser Frage stellen</span>
   </button>
+</div>
 </div>
         
         {/* Navigation */}
