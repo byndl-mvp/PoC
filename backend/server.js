@@ -12025,10 +12025,10 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
     
-    // Kombiniere Body-Werte mit DB-Werten (Body hat Vorrang)
-    const isManuallyAdded = manualFromBody !== undefined ? manualFromBody : tradeStatus.is_manual;
-    const isAiRecommended = aiRecommendedFromBody !== undefined ? aiRecommendedFromBody : tradeStatus.is_ai_recommended;
-    const isAdditional = additionalFromBody !== undefined ? additionalFromBody : tradeStatus.is_additional;  
+    // Kombiniere Body-Werte mit DB-Werten (DB hat Vorrang)
+    const isManuallyAdded = tradeStatus.is_manual || manualFromBody || false;
+    const isAiRecommended = tradeStatus.is_ai_recommended || aiRecommendedFromBody || false;
+    const isAdditional = tradeStatus.is_additional || additionalFromBody || false; 
     
     console.log('[QUESTIONS-API] Trade flags:', {
       isManuallyAdded,
