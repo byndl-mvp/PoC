@@ -472,7 +472,7 @@ const handleFileUpload = async (questionId, file) => {
     if (
       current === 0 &&
       isAdditionalTrade &&
-      (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))
+      questions[current].isContextQuestion === true
     ) {
       try {
         setGeneratingQuestions(true);
@@ -520,7 +520,11 @@ const handleFileUpload = async (questionId, file) => {
     
     const isManualTrade = new URLSearchParams(window.location.search).get('manual') === 'true';
 
-   if (current === 0 && isManualTrade && (questions[current].id === 'context_reason' || questions[current].id?.endsWith('-CONTEXT'))) {
+   if (
+  current === 0 && 
+  isManualTrade && 
+  questions[current].isContextQuestion === true  
+) {
       try {
         setGeneratingQuestions(true);
         
