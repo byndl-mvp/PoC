@@ -12885,43 +12885,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
       console.log(`[LV] Trade ${tradeId} not assigned to project ${projectId}, adding it now`);
       await ensureProjectTrade(projectId, tradeId, 'lv_generation');
     }
-
-    // VALIDIERUNG: Antworten vorhanden bei manuell/zusätzlich hinzugefügten Gewerken
-const tradeStatus = await query(
-  `SELECT is_manual, is_ai_recommended 
-   FROM project_trades 
-   WHERE project_id = $1 AND trade_id = $2`,
-  [projectId, tradeId]
-);
-
-const isManualOrAdditional = tradeStatus.rows[0]?.is_manual || 
-                              tradeStatus.rows[0]?.is_ai_recommended;
-
-if (isManualOrAdditional) {
-  console.log(`[LV-API] Checking answers for manual/additional trade ${tradeCode}`);
-  
-  // ✅ Prüfe ob überhaupt Antworten vorhanden sind (Fragebogen wurde durchlaufen)
-  const answerCount = await query(
-    `SELECT COUNT(*) as count FROM answers 
-     WHERE project_id = $1 AND trade_id = $2`,
-    [projectId, tradeId]
-  );
-  
-  const hasAnswers = parseInt(answerCount.rows[0]?.count || 0) > 0;
-  
-  if (!hasAnswers) {
-    console.error(`[LV-API] Manual/Additional trade ${tradeCode} has no answers yet`);
-    return res.status(400).json({ 
-      error: 'Fragen noch nicht beantwortet',
-      message: `Bitte beantworten Sie zuerst die Fragen für ${tradeInfo.rows[0]?.name}.`,
-      requiredAction: 'ANSWER_QUESTIONS',
-      tradeId: tradeId,
-      tradeName: tradeInfo.rows[0]?.name
-    });
-  }
-  
-  console.log(`[LV-API] Manual/Additional trade ${tradeCode} has ${answerCount.rows[0].count} answers - proceeding with LV generation`);
-}
     
     // Generiere detailliertes LV
     const lv = await generateDetailedLVWithRetry(projectId, tradeId);
