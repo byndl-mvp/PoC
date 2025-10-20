@@ -5648,7 +5648,6 @@ async function generateContextBasedQuestions(tradeId, projectId, contextAnswer, 
   // Lade das BESTEHENDE Prompt-Template für dieses Gewerk
   const questionPrompt = await getPromptForTrade(tradeId, 'questions');
   
-  // ✅ ERWEITERTER System-Prompt mit ALLEN wichtigen Regeln
   const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
 
 ╔══════════════════════════════════════════════════════════════════╗
