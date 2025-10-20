@@ -619,6 +619,7 @@ const handleFileUpload = async (questionId, file) => {
       setCurrent(current + 1);
       setAnswerText('');
       setAssumption('');
+      setExpandedExplanations({});
     } else {
       saveAllAnswersAndContinue(newAnswers);
     }
@@ -637,6 +638,7 @@ const handleFileUpload = async (questionId, file) => {
       setCurrent(current - 1);
       setAnswerText(newAnswers[current - 1]?.answer || '');
       setAssumption(newAnswers[current - 1]?.assumption || '');
+      setExpandedExplanations({});
     }
   };
 
