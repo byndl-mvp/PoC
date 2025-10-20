@@ -5779,7 +5779,6 @@ WICHTIG:
       tradeName: trade.rows[0].name,
       trade_name: trade.rows[0].name,
       trade_code: trade.rows[0].code,
-      // ✅ Stelle sicher dass uploadHelpful gesetzt ist
       uploadHelpful: q.uploadHelpful !== undefined ? q.uploadHelpful : false,
       uploadHint: q.uploadHint || null
     }));
@@ -5830,7 +5829,7 @@ function generateContextSpecificExample(contextAnswer, tradeCode) {
   uploadHelpful: true
   uploadHint: "Optional: Excel-Liste mit Fenstermaßen oder Fotos"
 
-❌ FALSCH: "Sollen auch Türen getauscht werden?" (nicht genannt!)`;
+FALSCH: "Sollen auch Türen getauscht werden?" (nicht genannt!)`;
   }
   
   if (lower.includes('streichen') || lower.includes('maler')) {
@@ -5991,18 +5990,18 @@ KRITISCHE REGEL - NUR ERSTELLEN WAS ERWÄHNT WURDE:
 Diese Antwort definiert den KOMPLETTEN Projektumfang für ${trade.name}.
 
 ABSOLUT VERBOTEN:
-❌ Positionen die NICHT in dieser Beschreibung vorkommen
-❌ "Typische" Arbeiten dieses Gewerks hinzufügen
-❌ "Üblicherweise gehört auch..." - NEIN, nur das Genannte!
-❌ Ergänzungen ohne explizite Erwähnung
-❌ "Sinnvolle Ergänzungen" - NEIN!
-❌ Standard-Annahmen über weitere Leistungen
+- Positionen die NICHT in dieser Beschreibung vorkommen
+- "Typische" Arbeiten dieses Gewerks hinzufügen
+- "Üblicherweise gehört auch..." - NEIN, nur das Genannte!
+- Ergänzungen ohne explizite Erwähnung
+- "Sinnvolle Ergänzungen" - NEIN!
+- Standard-Annahmen über weitere Leistungen
 
 BEISPIELE WAS VERBOTEN IST:
-- Nutzer sagt "Badezimmertür": ❌ KEINE Möbel, Spiegel, Schränke
-- Nutzer sagt "Fenster tauschen": ❌ KEINE Fensterbänke ohne Erwähnung
-- Nutzer sagt "Parkett verlegen": ❌ KEINE Sockelleisten ohne Erwähnung
-- Nutzer sagt "Wand verputzen": ❌ KEINE Malerarbeiten ohne Erwähnung
+- Nutzer sagt "Badezimmertür": KEINE Möbel, Spiegel, Schränke
+- Nutzer sagt "Fenster tauschen": KEINE Fensterbänke ohne Erwähnung
+- Nutzer sagt "Parkett verlegen": KEINE Sockelleisten ohne Erwähnung
+- Nutzer sagt "Wand verputzen": KEINE Malerarbeiten ohne Erwähnung
 
 NUR ERLAUBT:
 ✓ Explizit genannte Arbeiten/Objekte
@@ -6060,114 +6059,114 @@ function generateScopeExamples(userScope, tradeCode) {
   const examples = [];
   
   if (scopeLower.includes('tür')) {
-    examples.push('✓ ERSTELLEN: Demontage Alttür, Lieferung+Montage neue Tür, Zarge, Türdrücker');
-    examples.push('❌ NICHT: Fensterbank, Spiegel, Möbel (nicht genannt!)');
+    examples.push('ERSTELLEN: Demontage Alttür, Lieferung+Montage neue Tür, Zarge, Türdrücker');
+    examples.push('NICHT: Fensterbank, Spiegel, Möbel (nicht genannt!)');
   }
   if (scopeLower.includes('parkett') || scopeLower.includes('laminat') || scopeLower.includes('boden')) {
-    examples.push('✓ ERSTELLEN: Untergrundvorbereitung, Lieferung+Verlegung Bodenbelag');
-    examples.push('❌ NICHT: Sockelleisten, Türschwellen (außer explizit genannt)');
+    examples.push('ERSTELLEN: Untergrundvorbereitung, Lieferung+Verlegung Bodenbelag');
+    examples.push('NICHT: Sockelleisten, Türschwellen (außer explizit genannt)');
   }
   if (scopeLower.includes('möbel') || scopeLower.includes('schrank') || scopeLower.includes('einbau')) {
-    examples.push('✓ ERSTELLEN: Die explizit genannten Möbelstücke');
-    examples.push('❌ NICHT: Weitere Möbel "die üblicherweise dazu gehören"');
+    examples.push('ERSTELLEN: Die explizit genannten Möbelstücke');
+    examples.push('NICHT: Weitere Möbel "die üblicherweise dazu gehören"');
   }
   
   // FEN - Fensterarbeiten
   if (scopeLower.includes('fenster')) {
-    examples.push('✓ ERSTELLEN: Demontage Altfenster, Lieferung+Montage neue Fenster');
-    examples.push('❌ NICHT: Rollläden, Fensterbänke, Außenfensterbank (außer explizit genannt)');
+    examples.push('ERSTELLEN: Demontage Altfenster, Lieferung+Montage neue Fenster');
+    examples.push('NICHT: Rollläden, Fensterbänke, Außenfensterbank (außer explizit genannt)');
   }
   
   // SAN - Sanitär
   if (scopeLower.includes('bad') || scopeLower.includes('sanitär')) {
-    examples.push('✓ ERSTELLEN: Die explizit genannten Sanitärobjekte');
-    examples.push('❌ NICHT: Komplett-Bad wenn nur "WC erneuern" gesagt wurde');
+    examples.push('ERSTELLEN: Die explizit genannten Sanitärobjekte');
+    examples.push('NICHT: Komplett-Bad wenn nur "WC erneuern" gesagt wurde');
   }
   if (scopeLower.includes('wc') || scopeLower.includes('toilette')) {
-    examples.push('✓ ERSTELLEN: WC-Demontage, neues WC, Anschluss, Spülkasten');
-    examples.push('❌ NICHT: Waschbecken, Dusche, Armaturen (nicht genannt!)');
+    examples.push('ERSTELLEN: WC-Demontage, neues WC, Anschluss, Spülkasten');
+    examples.push('NICHT: Waschbecken, Dusche, Armaturen (nicht genannt!)');
   }
   if (scopeLower.includes('waschbecken') || scopeLower.includes('waschtisch')) {
-    examples.push('✓ ERSTELLEN: Waschbecken, Armatur, Siphon, Anschluss');
-    examples.push('❌ NICHT: WC, Dusche, Badmöbel (nicht genannt!)');
+    examples.push('ERSTELLEN: Waschbecken, Armatur, Siphon, Anschluss');
+    examples.push('NICHT: WC, Dusche, Badmöbel (nicht genannt!)');
   }
   if (scopeLower.includes('dusche')) {
-    examples.push('✓ ERSTELLEN: Duschwanne/bodengleich, Armatur, Ablauf, Anschlüsse');
-    examples.push('❌ NICHT: Badewanne, WC, Komplettbad (nicht genannt!)');
+    examples.push('ERSTELLEN: Duschwanne/bodengleich, Armatur, Ablauf, Anschlüsse');
+    examples.push('NICHT: Badewanne, WC, Komplettbad (nicht genannt!)');
   }
   
   // ELEKT - Elektro
   if (scopeLower.includes('steckdose')) {
-    examples.push('✓ ERSTELLEN: Neue Steckdosen, Unterputzdosen, Leitungen, Anschluss');
-    examples.push('❌ NICHT: Beleuchtung, Schalter, Verteiler (außer genannt)');
+    examples.push('ERSTELLEN: Neue Steckdosen, Unterputzdosen, Leitungen, Anschluss');
+    examples.push('NICHT: Beleuchtung, Schalter, Verteiler (außer genannt)');
   }
   if (scopeLower.includes('licht') || scopeLower.includes('lampe') || scopeLower.includes('leuchte')) {
-    examples.push('✓ ERSTELLEN: Lichtauslässe, Schalter, Leitungen');
-    examples.push('❌ NICHT: Steckdosen, Verteiler, Smart Home (außer genannt)');
+    examples.push('ERSTELLEN: Lichtauslässe, Schalter, Leitungen');
+    examples.push('NICHT: Steckdosen, Verteiler, Smart Home (außer genannt)');
   }
   if (scopeLower.includes('verteiler') || scopeLower.includes('sicherung')) {
-    examples.push('✓ ERSTELLEN: Verteiler, Sicherungen, FI-Schalter');
-    examples.push('❌ NICHT: Rauminstallation, Leuchten (außer genannt)');
+    examples.push('ERSTELLEN: Verteiler, Sicherungen, FI-Schalter');
+    examples.push('NICHT: Rauminstallation, Leuchten (außer genannt)');
   }
   
   // MAL - Malerarbeiten
   if (scopeLower.includes('streichen') || scopeLower.includes('anstrich')) {
-    examples.push('✓ ERSTELLEN: Untergrundvorbereitung, Grundierung, Anstrich der genannten Flächen');
-    examples.push('❌ NICHT: Tapezieren, Spachteln ganzer Räume (außer genannt)');
+    examples.push('ERSTELLEN: Untergrundvorbereitung, Grundierung, Anstrich der genannten Flächen');
+    examples.push('NICHT: Tapezieren, Spachteln ganzer Räume (außer genannt)');
   }
   if (scopeLower.includes('tapete') || scopeLower.includes('tapezieren')) {
-    examples.push('✓ ERSTELLEN: Alte Tapete entfernen, Untergrund, neue Tapete');
-    examples.push('❌ NICHT: Anstrich, Stuck, Deckengestaltung (außer genannt)');
+    examples.push('ERSTELLEN: Alte Tapete entfernen, Untergrund, neue Tapete');
+    examples.push('NICHT: Anstrich, Stuck, Deckengestaltung (außer genannt)');
   }
   if (scopeLower.includes('wand') && !scopeLower.includes('alle')) {
-    examples.push('✓ ERSTELLEN: NUR die genannte(n) Wand/Wände');
-    examples.push('❌ NICHT: Automatisch alle Wände im Raum');
+    examples.push('ERSTELLEN: NUR die genannte(n) Wand/Wände');
+    examples.push('NICHT: Automatisch alle Wände im Raum');
   }
   
   // FLI - Fliesenarbeiten
   if (scopeLower.includes('fliese')) {
-    examples.push('✓ ERSTELLEN: Alte Fliesen entfernen, Untergrund, neue Fliesen der genannten Bereiche');
-    examples.push('❌ NICHT: Komplettes Bad wenn nur "Duschbereich" genannt');
+    examples.push('ERSTELLEN: Alte Fliesen entfernen, Untergrund, neue Fliesen der genannten Bereiche');
+    examples.push('NICHT: Komplettes Bad wenn nur "Duschbereich" genannt');
   }
   if (scopeLower.includes('dusch') && scopeLower.includes('fliese')) {
-    examples.push('✓ ERSTELLEN: Abdichtung, Fliesen NUR im Duschbereich');
-    examples.push('❌ NICHT: Bodenfliesen, Wandfliesen Rest-Bad (außer genannt)');
+    examples.push('ERSTELLEN: Abdichtung, Fliesen NUR im Duschbereich');
+    examples.push('NICHT: Bodenfliesen, Wandfliesen Rest-Bad (außer genannt)');
   }
   
   // HEI - Heizung
   if (scopeLower.includes('heizkörper')) {
-    examples.push('✓ ERSTELLEN: Alte Heizkörper ab, neue Heizkörper, Anschluss');
-    examples.push('❌ NICHT: Heizkessel, Rohrleitungen, Thermostate (außer genannt)');
+    examples.push('ERSTELLEN: Alte Heizkörper ab, neue Heizkörper, Anschluss');
+    examples.push('NICHT: Heizkessel, Rohrleitungen, Thermostate (außer genannt)');
   }
   if (scopeLower.includes('heizung') && scopeLower.includes('tausch')) {
-    examples.push('✓ ERSTELLEN: Heizkessel Demontage, neuer Kessel, Anschluss');
-    examples.push('❌ NICHT: Alle Heizkörper, Fußbodenheizung (außer genannt)');
+    examples.push('ERSTELLEN: Heizkessel Demontage, neuer Kessel, Anschluss');
+    examples.push('NICHT: Alle Heizkörper, Fußbodenheizung (außer genannt)');
   }
   
   // DACH - Dacharbeiten
   if (scopeLower.includes('dach') && !scopeLower.includes('fenster')) {
-    examples.push('✓ ERSTELLEN: Die genannten Dacharbeiten (Eindeckung/Dämmung/etc.)');
-    examples.push('❌ NICHT: Dachfenster, Gauben, Dachrinnen (außer genannt)');
+    examples.push('ERSTELLEN: Die genannten Dacharbeiten (Eindeckung/Dämmung/etc.)');
+    examples.push('NICHT: Dachfenster, Gauben, Dachrinnen (außer genannt)');
   }
   if (scopeLower.includes('dachfenster')) {
-    examples.push('✓ ERSTELLEN: Dachfenster Einbau, Eindeckrahmen, Anschluss');
-    examples.push('❌ NICHT: Dacheindeckung, Dämmung (außer genannt)');
+    examples.push('ERSTELLEN: Dachfenster Einbau, Eindeckrahmen, Anschluss');
+    examples.push('NICHT: Dacheindeckung, Dämmung (außer genannt)');
   }
   
   // FASS - Fassade
   if (scopeLower.includes('fassade') || scopeLower.includes('dämmung')) {
-    examples.push('✓ ERSTELLEN: WDVS/Dämmung der genannten Flächen, Putz, Anstrich');
-    examples.push('❌ NICHT: Alle Fassaden wenn nur "Südseite" genannt');
+    examples.push('ERSTELLEN: WDVS/Dämmung der genannten Flächen, Putz, Anstrich');
+    examples.push('NICHT: Alle Fassaden wenn nur "Südseite" genannt');
   }
   if (scopeLower.includes('sockel')) {
-    examples.push('✓ ERSTELLEN: Sockeldämmung, Sockelputz der genannten Bereiche');
-    examples.push('❌ NICHT: Komplette Fassadendämmung (außer genannt)');
+    examples.push('ERSTELLEN: Sockeldämmung, Sockelputz der genannten Bereiche');
+    examples.push('NICHT: Komplette Fassadendämmung (außer genannt)');
   }
   
   // TRO - Trockenbau
   if (scopeLower.includes('wand') || scopeLower.includes('rigips')) {
-    examples.push('✓ ERSTELLEN: Trockenbau-Wand wie beschrieben, Ständerwerk, Beplankung');
-    examples.push('❌ NICHT: Deckenabhängung, weitere Wände (außer genannt)');
+    examples.push('ERSTELLEN: Trockenbau-Wand wie beschrieben, Ständerwerk, Beplankung');
+    examples.push('NICHT: Deckenabhängung, weitere Wände (außer genannt)');
   }
   if (scopeLower.includes('decke') || scopeLower.includes('abhäng')) {
     examples.push('✓ ERSTELLEN: Deckenabhängung wie beschrieben, Unterkonstruktion, Beplankung');
@@ -6176,36 +6175,36 @@ function generateScopeExamples(userScope, tradeCode) {
   
   // GER - Gerüst
   if (scopeLower.includes('gerüst')) {
-    examples.push('✓ ERSTELLEN: Gerüst für die genannten Fassadenseiten/Bereiche');
-    examples.push('❌ NICHT: Gerüst um gesamtes Haus wenn nur "Südseite" genannt');
+    examples.push('ERSTELLEN: Gerüst für die genannten Fassadenseiten/Bereiche');
+    examples.push('NICHT: Gerüst um gesamtes Haus wenn nur "Südseite" genannt');
   }
   
   // ROH - Rohbau
   if (scopeLower.includes('durchbruch')) {
-    examples.push('✓ ERSTELLEN: Die genannten Durchbrüche, Sturz, Statik');
-    examples.push('❌ NICHT: Weitere Durchbrüche, Mauerwerk (außer genannt)');
+    examples.push('ERSTELLEN: Die genannten Durchbrüche, Sturz, Statik');
+    examples.push('NICHT: Weitere Durchbrüche, Mauerwerk (außer genannt)');
   }
   if (scopeLower.includes('wand') && scopeLower.includes('neu')) {
-    examples.push('✓ ERSTELLEN: Neue Wand wie beschrieben, Mauerwerk, Mörtel');
-    examples.push('❌ NICHT: Verputzen, Estrich, weitere Wände (außer genannt)');
+    examples.push('ERSTELLEN: Neue Wand wie beschrieben, Mauerwerk, Mörtel');
+    examples.push('NICHT: Verputzen, Estrich, weitere Wände (außer genannt)');
   }
   
   // SCHL - Schlosserarbeiten
   if (scopeLower.includes('geländer')) {
-    examples.push('✓ ERSTELLEN: Geländer wie beschrieben, Material, Montage');
-    examples.push('❌ NICHT: Treppenrenovierung, weitere Geländer (außer genannt)');
+    examples.push('ERSTELLEN: Geländer wie beschrieben, Material, Montage');
+    examples.push('NICHT: Treppenrenovierung, weitere Geländer (außer genannt)');
   }
   
   // BOD - Bodenbeläge
   if (scopeLower.includes('vinyl') || scopeLower.includes('designboden')) {
-    examples.push('✓ ERSTELLEN: Untergrund, Vinyl/Designboden der genannten Räume');
-    examples.push('❌ NICHT: Sockelleisten, weitere Räume (außer genannt)');
+    examples.push('ERSTELLEN: Untergrund, Vinyl/Designboden der genannten Räume');
+    examples.push('NICHT: Sockelleisten, weitere Räume (außer genannt)');
   }
   
   // Fallback wenn keine spezifischen Keywords
   if (examples.length === 0) {
-    examples.push('✓ ERSTELLEN: Nur was in der Beschreibung vorkommt');
-    examples.push('❌ NICHT: Standard-Annahmen über weitere Arbeiten');
+    examples.push('ERSTELLEN: Nur was in der Beschreibung vorkommt');
+    examples.push('NICHT: Standard-Annahmen über weitere Arbeiten');
     examples.push(`Für ${tradeCode}: Prüfe JEDE Position ob sie explizit genannt wurde`);
   }
   
@@ -6620,16 +6619,16 @@ ${projectComplexity === 'SEHR_HOCH' ? `
 `}
 
 VERBOTENE POSITIONEN (WERDEN AUTOMATISCH ENTFERNT):
-❌ Positionen mit "(nicht vorhanden)", "(nicht enthalten)", "(nicht definiert)"
-❌ Positionen mit Menge = 0, "-" oder ohne Menge
-❌ Positionen ohne reale Leistung
-❌ Künstliche Positionen nur zur Mengenerhöhung
-❌ Doppelte/redundante Positionen
+- Positionen mit "(nicht vorhanden)", "(nicht enthalten)", "(nicht definiert)"
+- Positionen mit Menge = 0, "-" oder ohne Menge
+- Positionen ohne reale Leistung
+- Künstliche Positionen nur zur Mengenerhöhung
+- Doppelte/redundante Positionen
 
 ERLAUBT:
-✅ Sinnvolle Zusammenfassung ähnlicher Arbeiten
-✅ Unterschreitung der Vorgabe um bis zu 20% wenn nötig
-✅ Fokus auf realistische, ausführbare Leistungen
+- Sinnvolle Zusammenfassung ähnlicher Arbeiten
+- Unterschreitung der Vorgabe um bis zu 20% wenn nötig
+- Fokus auf realistische, ausführbare Leistungen
 
 Ziel: Ein vollständiges, realistisches LV ohne künstliche Aufblähung
 
@@ -6733,12 +6732,12 @@ KRITISCHE ANFORDERUNGEN FÜR PRÄZISE LV-ERSTELLUNG:
    - Pos 3: Fenster [NUTZER-MATERIAL], 60 x 80 cm, Kipp, 3 Stück
    
    BEISPIEL FALSCH:
-   - "Demontage Fenster 1" ❌
-   - "Demontage Fenster 2" ❌
-   - "Entsorgung Fenster" ❌   
-   - "Einbau von 6 Fenstern" ❌
-   - "Fenster gesamt 25 m²" ❌
-   - Falsches Material verwenden ❌
+   - "Demontage Fenster 1" 
+   - "Demontage Fenster 2" 
+   - "Entsorgung Fenster"  
+   - "Einbau von 6 Fenstern" 
+   - "Fenster gesamt 25 m²" 
+   - Falsches Material verwenden 
    ` : ''}
 
   9. LIEFERUNG UND MONTAGE IMMER ZUSAMMEN:
@@ -6913,7 +6912,7 @@ KRITISCH FÜR HEIZUNGSARBEITEN:
    - Wenn NEIN: Nach Raumgrößen fragen, "gemäß Heizlastberechnung" ins LV
 
 2. FUSSBODENHEIZUNG - EXKLUSIVE ZUSTÄNDIGKEIT:
-   ✅ IMMER im Heizungs-LV:
+   IMMER im Heizungs-LV:
    - Fußbodenheizung komplett
    - Heizrohre/Heizkreise verlegen
    - Verteiler für FBH inkl. Durchflussmesser
@@ -6922,7 +6921,7 @@ KRITISCH FÜR HEIZUNGSARBEITEN:
    - Befüllung und Druckprobe FBH
    - Heizkreisverteiler inkl. Stellantriebe
    
-   ❌ NIEMALS im Heizungs-LV:
+   NIEMALS im Heizungs-LV:
    - Estrich (gehört zu ESTR)
    - Dämmung unter Estrich (gehört zu ESTR)
    - Randdämmstreifen (gehört zu ESTR)
@@ -6949,9 +6948,9 @@ KRITISCH FÜR ESTRICHARBEITEN:
    - KEINE Rohdecken oder Betonarbeiten!
 
 3. FUSSBODENHEIZUNG - KLARE ABGRENZUNG:
-   ❌ NIEMALS "Fußbodenheizung verlegen" im Estrich-LV!
-   ❌ NIEMALS "Heizrohre verlegen" oder "Heizkreise"!
-   ✅ NUR "Heizestrich" oder "Estrich auf Fußbodenheizung"
+   NIEMALS "Fußbodenheizung verlegen" im Estrich-LV!
+   NIEMALS "Heizrohre verlegen" oder "Heizkreise"!
+   NUR "Heizestrich" oder "Estrich auf Fußbodenheizung"
    
    Die Fußbodenheizung selbst = IMMER Gewerk HEIZUNG
    Der Estrich darüber = Gewerk ESTRICH
