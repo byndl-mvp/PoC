@@ -439,12 +439,12 @@ export default function IntakeQuestionsPage() {
   initialize();
   
   return () => {
-    sessionStorage.removeItem('currentTradeIsAdditional');
-    if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-    if (lvIntervalRef.current) clearInterval(lvIntervalRef.current);
-    if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
-    if (autoSaveInterval) clearInterval(autoSaveInterval);
-  };  
+  sessionStorage.removeItem('currentTradeIsAdditional');
+  if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+  if (lvIntervalRef.current) clearInterval(lvIntervalRef.current);
+  if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
+  if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
+}; 
 }, [projectId, tradeId]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
 // Status-Polling für Fragengenerierung
