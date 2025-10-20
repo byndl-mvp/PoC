@@ -70,54 +70,79 @@ export default function LVReviewPage() {
   };
   
   // Daten laden
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        
-        // 1. Projekt laden
-        const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-        if (!projectRes.ok) throw new Error('Projekt konnte nicht geladen werden');
-        const projectData = await projectRes.json();
-        setProject(projectData);
-        
-        // 2. Gewählte Gewerke laden (aus Session oder Backend)
-        const tradesRes = await fetch(apiUrl(`/api/projects/${projectId}/selected-trades`));
-        if (!tradesRes.ok) throw new Error('Gewerke konnten nicht geladen werden');
-        const tradesData = await tradesRes.json();
-
-        // 3. LVs für fertige Gewerke laden
-        let lvsData = { lvs: [] };  // NEU: Variable außerhalb des if-Blocks definieren
-        const lvsRes = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
-        if (lvsRes.ok) {
-          lvsData = await lvsRes.json();  // ÄNDERN: const entfernen
-          setLvs(lvsData.lvs || []);
-        }
-
-        const combinedTrades = tradesData.trades.map(trade => {
-          const lv = (lvsData?.lvs || []).find(l => 
-            parseInt(l.trade_id) === parseInt(trade.id)  // Beide als Number vergleichen!
-          );
-          return {
-            ...trade,
-            hasLV: !!lv,
-            lv: lv,
-            totalCost: lv ? calculateTotal(lv) : 0
-          };
-        });
-        
-        setSelectedTrades(combinedTrades);
-        
-      } catch (err) {
-        console.error('Error loading data:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+useEffect(() => {
+  async function loadData() {
+    try {
+      setLoading(true);
+      
+      // 1. Projekt laden
+      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+      if (!projectRes.ok) throw new Error('Projekt konnte nicht geladen werden');
+      const projectData = await projectRes.json();
+      setProject(projectData);
+      
+      // 2. Gewählte Gewerke laden (aus Session oder Backend)
+      const tradesRes = await fetch(apiUrl(`/api/projects/${projectId}/selected-trades`));
+      if (!tradesRes.ok) throw new Error('Gewerke konnten nicht geladen werden');
+      const tradesData = await tradesRes.json();
+      
+      // 3. LVs für fertige Gewerke laden
+      let lvsData = { lvs: [] };
+      const lvsRes = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
+      if (lvsRes.ok) {
+        lvsData = await lvsRes.json();
+        setLvs(lvsData.lvs || []);
       }
+      
+      const combinedTrades = tradesData.trades.map(trade => {
+        const lv = (lvsData?.lvs || []).find(l => 
+          parseInt(l.trade_id) === parseInt(trade.id)
+        );
+        return {
+          ...trade,
+          hasLV: !!lv,
+          lv: lv,
+          totalCost: lv ? calculateTotal(lv) : 0
+        };
+      });
+      
+      setSelectedTrades(combinedTrades);
+      
+      // NEU: Lade Status für alle Trades (NACH setSelectedTrades!)
+      const statusPromises = combinedTrades.map(async (trade) => {
+        try {
+          const res = await fetch(
+            apiUrl(`/api/projects/${projectId}/trades/${trade.id}/questions-status`)
+          );
+          if (res.ok) {
+            const data = await res.json();
+            console.log(`Status for trade ${trade.id}:`, data);
+            return { tradeId: trade.id, status: data };
+          }
+        } catch (err) {
+          console.error(`Failed to load status for trade ${trade.id}`);
+        }
+        return null;
+      });
+      
+      const statuses = await Promise.all(statusPromises);
+      const statusMap = {};
+      statuses.forEach(s => {
+        if (s) statusMap[s.tradeId] = s.status;
+      });
+      
+      console.log('All statuses:', statusMap);
+      setQuestionsStatus(statusMap);
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    
-    loadData();
-  }, [projectId]);
+  }
+  
+  loadData();
+}, [projectId]);
   
   const calculateTotal = (lv) => {
     if (lv.content?.totalSum) {
