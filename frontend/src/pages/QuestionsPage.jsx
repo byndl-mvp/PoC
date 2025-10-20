@@ -26,6 +26,7 @@ export default function IntakeQuestionsPage() {
   // eslint-disable-next-line no-unused-vars
   const [nextTradeName, setNextTradeName] = useState('');
   const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [questionsStatus, setQuestionsStatus] = useState('not_started');
   const autoSaveIntervalRef = useRef(null);
   
   // Refs für Interval-Cleanup
