@@ -3341,7 +3341,7 @@ if (!isIntake && projectContext.projectId) {
   hasContextAnswer: projectContext.hasContextAnswer
 });
 
-// ✅ Kontextfrage für manuell/zusätzlich/AI-empfohlene Gewerke (falls noch keine Antwort)
+// Kontextfrage für manuell/zusätzlich/AI-empfohlene Gewerke (falls noch keine Antwort)
 if (
   (projectContext.isManuallyAdded || 
    projectContext.isAdditional || 
@@ -3370,7 +3370,7 @@ if (
   }];
 }
 
-// ✅ Falls Kontextantwort vorhanden: Weiter mit normalem Fragenkatalog
+// Falls Kontextantwort vorhanden: Weiter mit normalem Fragenkatalog
 if (projectContext.hasContextAnswer) {
   console.log(`[QUESTIONS] ${tradeCode} has context answer: "${projectContext.contextAnswer?.substring(0, 50)}..." - generating follow-up questions`);
   // Weiter mit normalem Prozess
