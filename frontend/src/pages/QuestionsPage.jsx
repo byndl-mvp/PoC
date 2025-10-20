@@ -588,6 +588,7 @@ const handleFileUpload = async (questionId, file) => {
     
     if (current + 1 < questions.length) {
       setCurrent(current + 1);
+      setExpandedExplanations({});
       if (newAnswers[current + 1]) {
         setAnswerText(newAnswers[current + 1].answer || '');
         setAssumption(newAnswers[current + 1].assumption || '');
