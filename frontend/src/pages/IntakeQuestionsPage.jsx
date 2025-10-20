@@ -133,6 +133,36 @@ export default function IntakeQuestionsPage() {
     };
   }, [projectId]);
 
+// Auto-Save für Intake
+useEffect(() => {
+  const interval = setInterval(async () => {
+    if (answers.filter(a => a && a.answer).length > 0) {
+      try {
+        const intTrade = (await fetch(apiUrl('/api/trades')).then(r => r.json()))
+          .find(t => t.code === 'INT');
+        
+        if (intTrade) {
+          await fetch(
+            apiUrl(`/api/projects/${projectId}/trades/${intTrade.id}/save-progress`),
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                currentQuestionIndex: current,
+                answers: answers.filter(a => a && a.answer)
+              })
+            }
+          );
+        }
+      } catch (err) {
+        console.error('[AUTO-SAVE] Failed:', err);
+      }
+    }
+  }, 30000); // Alle 30 Sekunden
+  
+  return () => clearInterval(interval);
+}, [answers, current, projectId]);
+  
   // NEUE FUNKTION einfügen nach den useEffect Hooks (ca. Zeile 150):
 const toggleDetailedExplanation = async () => {
   const questionId = currentQ.id || `q-${current}`;
