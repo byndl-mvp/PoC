@@ -2675,18 +2675,18 @@ function createCalculationContext(knownData, tradeCode) {
   
   // Beispiele was NICHT mehr gefragt werden darf
   if (knownData.flaechen.badflaeche_gesamt) {
-    context += `❌ NICHT fragen: "Wie groß ist das Bad?" → Bereits bekannt: ${knownData.flaechen.badflaeche_gesamt}\n`;
-    context += `✅ ERLAUBT: "Davon Wandfläche zu fliesen?" oder "Davon Bodenfläche?"\n`;
+    context += `NICHT fragen: "Wie groß ist das Bad?" → Bereits bekannt: ${knownData.flaechen.badflaeche_gesamt}\n`;
+    context += `ERLAUBT: "Davon Wandfläche zu fliesen?" oder "Davon Bodenfläche?"\n`;
   }
   
   if (knownData.hoehen.raumhoehe) {
-    context += `❌ NICHT fragen: "Wie hoch sind die Räume?" → Bereits bekannt: ${knownData.hoehen.raumhoehe}\n`;
-    context += `✅ ERLAUBT: Nutze diese Höhe für deine Berechnungen\n`;
+    context += `NICHT fragen: "Wie hoch sind die Räume?" → Bereits bekannt: ${knownData.hoehen.raumhoehe}\n`;
+    context += `ERLAUBT: Nutze diese Höhe für deine Berechnungen\n`;
   }
   
   if (knownData.stueckzahlen.fenster) {
-    context += `❌ NICHT fragen: "Wie viele Fenster?" → Bereits bekannt: ${knownData.stueckzahlen.fenster}\n`;
-    context += `✅ ERLAUBT: "Welche Maße haben die einzelnen Fenster?"\n`;
+    context += `NICHT fragen: "Wie viele Fenster?" → Bereits bekannt: ${knownData.stueckzahlen.fenster}\n`;
+    context += `ERLAUBT: "Welche Maße haben die einzelnen Fenster?"\n`;
   }
   
   context += `\nREGEL: Frage NUR nach DETAILS die für DEIN Gewerk spezifisch sind!`;
