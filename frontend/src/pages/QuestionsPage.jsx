@@ -156,8 +156,12 @@ export default function IntakeQuestionsPage() {
         const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
         const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
         const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
-        const aiRecommendedTrades = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]');
-        const isAiRecommended = aiRecommendedTrades.includes(parseInt(tradeId));
+        let isAiRecommended = false;
+if (projektData && projektData.trades) {
+  const currentTrade = projektData.trades.find(t => t.id === parseInt(tradeId));
+  isAiRecommended = currentTrade?.isAiRecommended || currentTrade?.is_ai_recommended || false;
+  console.log('[DEBUG] Found trade in project data:', currentTrade);
+}
         if (isAiRecommended && !new URLSearchParams(window.location.search).get('airecommended')) {
         const currentUrl = new URL(window.location);
         currentUrl.searchParams.set('airecommended', 'true');
