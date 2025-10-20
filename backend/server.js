@@ -3685,46 +3685,6 @@ ${knownCalculationData ? createCalculationContext(knownCalculationData, tradeCod
 
 WICHTIG: Berücksichtige alle nachfolgenden Regeln und bereits vorhandene Informationen!`}
 
-${projectContext.hasContextAnswer ? `
-╔══════════════════════════════════════════════════════════════════╗
-║          FOLGEFRAGEN NACH KONTEXTANTWORT                          ║
-╚══════════════════════════════════════════════════════════════════╝
-
-DER NUTZER HAT BEREITS ANGEGEBEN:
-"${projectContext.contextAnswer}"
-
-KRITISCHE REGELN FÜR FOLGEFRAGEN:
-1. Erstelle NUR noch ${targetQuestionCount} DETAILLIERTE Folgefragen zu dieser Angabe
-2. KEINE erneute Kontextfrage ("Was soll gemacht werden?")
-3. KEINE allgemeinen Fragen die nicht zur Nutzer-Angabe passen
-4. NUR spezifische Detail-Fragen zu den genannten Arbeiten
-5. ALLE Standard-Regeln MÜSSEN trotzdem gelten:
-   - explanation: 15-20 Wörter (PFLICHT!)
-   - uploadHelpful/uploadHint (wo sinnvoll)
-   - Gewerke-spezifische Regeln
-   - Laienverständliche Formulierung
-
-BEISPIEL:
-Nutzer sagte: "Badezimmertür austauschen"
-✅ RICHTIGE Folgefragen:
-- "Welche Maße hat die Türöffnung (Breite x Höhe in cm)?"
-  explanation: "Benötigt für Bestellung der passenden Tür und Zarge"
-  uploadHelpful: true
-  uploadHint: "Optional: Foto der Türöffnung für präzise Maßermittlung"
-
-- "Soll die Tür feuchtraumgeeignet sein?"
-  explanation: "Bestimmt Material und Oberflächenbehandlung der Tür"
-  
-- "Welche Ausführung wünschen Sie (CPL, Echtholz, lackiert)?"
-  explanation: "Beeinflusst Preis und Haltbarkeit erheblich"
-
-❌ FALSCHE Folgefragen:
-- "Welche Tischlerarbeiten sollen durchgeführt werden?" (= Kontextfrage!)
-- "Sollen Fenster getauscht werden?" (nicht genannt!)
-- Frage ohne explanation-Feld (VERBOTEN!)
-
-` : ''}
-
 ${extractedData ? `
 BEREITS AUS PROJEKTBESCHREIBUNG EXTRAHIERT (NIEMALS ERNEUT FRAGEN!):
 ${extractedData.quantities ? Object.entries(extractedData.quantities).map(([key, value]) => 
@@ -5642,15 +5602,11 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
  * Generiert adaptive Folgefragen basierend auf Kontext-Antwort
  */
 async function generateContextBasedQuestions(tradeId, projectId, contextAnswer, flags = {}) {
-  console.log(`[CONTEXT-QUESTIONS] Generating follow-up questions for trade ${tradeId}`);
-  console.log(`[CONTEXT-QUESTIONS] User context: "${contextAnswer}"`);
-  console.log(`[CONTEXT-QUESTIONS] Flags:`, flags);
-  
-  // Lade Projekt-Daten
+  const trade = await query('SELECT name, code FROM trades WHERE id = $1', [tradeId]);
   const project = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
   
-  if (project.rows.length === 0) {
-    throw new Error('Project not found');
+  if (trade.rows.length === 0 || project.rows.length === 0) {
+    throw new Error('Trade or Project not found');
   }
   
   // Lade Intake-Kontext
@@ -5665,45 +5621,223 @@ async function generateContextBasedQuestions(tradeId, projectId, contextAnswer, 
     [projectId]
   );
   
-  // Erstelle vollständigen Projekt-Context für generateQuestions()
+  // Bestimme Fragenanzahl basierend auf BESTEHENDER Komplexitätslogik
   const projectContext = {
     description: project.rows[0].description,
     category: project.rows[0].category,
     budget: project.rows[0].budget,
-    projectId: projectId,
-    intakeData: intakeAnswers.rows,
-    // ✅ KRITISCH: Flags für Context-basierte Generierung
-    hasContextAnswer: true,
-    contextAnswer: contextAnswer,
-    isManuallyAdded: flags.isManuallyAdded || false,
-    isAdditional: flags.isAdditional || false,
-    isAiRecommended: flags.isAiRecommended || false
+    intakeData: intakeAnswers.rows
   };
   
-  console.log(`[CONTEXT-QUESTIONS] Calling main generateQuestions() with full rule set`);
+  const complexity = determineProjectComplexity(projectContext, intakeAnswers.rows);
+  const intelligentCount = getIntelligentQuestionCount(trade.rows[0].code, projectContext, intakeAnswers.rows);
   
-  // ✅ HAUPTÄNDERUNG: Nutze die HAUPTFUNKTION mit ALLEN Regeln!
-  // Diese enthält:
-  // - explanation-Felder (15-20 Wörter)
-  // - uploadHelpful/uploadHint
-  // - Gewerke-spezifische Validierungen
-  // - Duplikat-Filter
-  // - Abhängigkeitslogik
-  // - Multiselect-Support
-  // - Robuste JSON-Parsing-Logik
-  // - Alle anderen Features
-  const questions = await generateQuestions(tradeId, projectContext);
+  // Lade das BESTEHENDE Prompt-Template für dieses Gewerk
+  const questionPrompt = await getPromptForTrade(tradeId, 'questions');
   
-  console.log(`[CONTEXT-QUESTIONS] Generated ${questions.length} follow-up questions`);
+  // ✅ ERWEITERTER System-Prompt mit ALLEN wichtigen Regeln
+  const systemPrompt = `Du bist ein Experte für ${trade.rows[0].name}.
+
+╔══════════════════════════════════════════════════════════════════╗
+║          FOLGEFRAGEN NACH KONTEXTANTWORT                          ║
+╚══════════════════════════════════════════════════════════════════╝
+
+DER NUTZER HAT BEREITS ANGEGEBEN:
+"${contextAnswer}"
+
+AUFGABE: Erstelle ${intelligentCount.count} DETAILLIERTE Folgefragen zu dieser Angabe.
+
+KRITISCHE REGELN:
+1. KEINE erneute Kontextfrage ("Was soll gemacht werden?")
+2. NUR spezifische Detail-Fragen zu den vom Nutzer genannten Arbeiten
+3. Komplexität: ${complexity}
+
+PFLICHTFELDER FÜR JEDE FRAGE:
+- "explanation": 15-20 Wörter - warum diese Info benötigt wird
+  Beispiele:
+  * "Benötigt für präzise Materialkalkulation und Arbeitsaufwand"
+  * "Bestimmt Qualität und Preis der Ausführung erheblich"
+  * "Wichtig für korrekte Mengenberechnung"
+
+- "uploadHelpful": true/false - ob Datei-Upload sinnvoll ist
+  true bei: Listen, Maßen, Plänen, Fotos zur Zustandsbewertung
+  false bei: einfachen Ja/Nein-Fragen, Texteingaben
+
+- "uploadHint": "Optional: ..." wenn uploadHelpful=true
+  Format: "Optional: [Was kann hochgeladen werden]"
+  Beispiele:
+  * "Optional: Foto der Türöffnung für präzise Maßermittlung"
+  * "Optional: Excel-Liste mit Fenstermaßen"
+  * "Optional: Grundriss-PDF für Flächenberechnung"
+  Wenn uploadHelpful=false → uploadHint=null
+
+BEISPIEL FÜR KONTEXTANTWORT "${contextAnswer}":
+${generateContextSpecificExample(contextAnswer, trade.rows[0].code)}
+
+${questionPrompt ? `\nGEWERKE-SPEZIFISCHE REGELN:\n${questionPrompt.substring(0, 3000)}\n` : ''}
+
+AUSGABE-FORMAT (NUR valides JSON-Array):
+[
+  {
+    "id": "${trade.rows[0].code}-1",
+    "question": "Konkrete, laienverständliche Frage",
+    "explanation": "15-20 Wörter warum benötigt",
+    "type": "text|number|select|multiselect",
+    "required": true,
+    "unit": "m²|m|Stk|null",
+    "uploadHelpful": true,
+    "uploadHint": "Optional: Beschreibung was hochgeladen werden kann",
+    "options": ["Option 1", "Option 2"] // nur bei select/multiselect
+  }
+]
+
+WICHTIG: 
+- Erstelle EXAKT ${intelligentCount.count} Fragen
+- JEDE Frage muss explanation UND uploadHelpful haben
+- Antworte NUR mit dem JSON-Array, kein Text davor/danach`;
+
+  try {
+    const response = await llmWithPolicy('questions', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Erstelle ${intelligentCount.count} detaillierte Folgefragen für: "${contextAnswer}"` }
+    ], { 
+      maxTokens: 10000, 
+      temperature: 0.35,
+      jsonMode: true
+    });
+    
+    // Robustere Bereinigung
+    let cleaned = response
+      .replace(/```json\n?/gi, '')
+      .replace(/```\n?/gi, '')
+      .replace(/^json\s*\n?/i, '')
+      .trim();
+    
+    // Entferne trailing commas
+    cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
+    
+    // Finde das JSON Array
+    const startIdx = cleaned.indexOf('[');
+    const endIdx = cleaned.lastIndexOf(']');
+    
+    if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
+    }
+    
+    let questions;
+    try {
+      questions = JSON.parse(cleaned);
+    } catch (parseError) {
+      console.error('[CONTEXT] Parse failed:', parseError.message);
+      console.error('[CONTEXT] First 500 chars:', cleaned.substring(0, 500));
+      
+      // Retry mit strikterem Prompt
+      console.log('[CONTEXT] Retrying with stricter prompt...');
+      
+      const retryResponse = await llmWithPolicy('questions', [
+        { 
+          role: 'system', 
+          content: `KRITISCH: Erstelle NUR ein valides JSON-Array!
+Keine Markdown (```), keine Erklärungen, NUR das Array.
+Beginne direkt mit [ und ende mit ]` 
+        },
+        { role: 'user', content: systemPrompt }
+      ], { 
+        maxTokens: 10000, 
+        temperature: 0.3,  
+        jsonMode: true
+      });
+      
+      const retryCleaned = retryResponse
+        .replace(/```json\n?/gi, '')
+        .replace(/```\n?/gi, '')
+        .trim();
+      
+      questions = JSON.parse(retryCleaned);
+    }
+    
+    if (!Array.isArray(questions) || questions.length === 0) {
+      throw new Error('Keine Fragen generiert');
+    }
+    
+    // Füge trade info zu jeder Frage hinzu
+    questions = questions.map((q, idx) => ({
+      ...q,
+      id: q.id || `${trade.rows[0].code}-${idx + 1}`,
+      tradeId: parseInt(tradeId),
+      trade_id: parseInt(tradeId),
+      tradeName: trade.rows[0].name,
+      trade_name: trade.rows[0].name,
+      trade_code: trade.rows[0].code,
+      // ✅ Stelle sicher dass uploadHelpful gesetzt ist
+      uploadHelpful: q.uploadHelpful !== undefined ? q.uploadHelpful : false,
+      uploadHint: q.uploadHint || null
+    }));
+    
+    console.log(`[CONTEXT] Generated ${questions.length} questions for ${trade.rows[0].code}`);
+    
+    // Verwende BESTEHENDE Validierungslogik
+    questions = validateTradeQuestions(trade.rows[0].code, questions, projectContext);
+    questions = filterDuplicateQuestions(questions, intakeAnswers.rows);
+    
+    console.log(`[CONTEXT] After validation: ${questions.length} questions`);
+    
+    return Array.isArray(questions) ? questions : [];
+    
+  } catch (err) {
+    console.error('[CONTEXT] Complete failure:', err);
+    throw err;
+  }
+}
+
+// ✅ Hilfsfunktion für kontextspezifische Beispiele
+function generateContextSpecificExample(contextAnswer, tradeCode) {
+  const lower = contextAnswer.toLowerCase();
   
-  // Füge Marker hinzu dass es Folgefragen sind (für potenzielle spätere Nutzung)
-  const enrichedQuestions = questions.map(q => ({
-    ...q,
-    isContextFollowUp: true,
-    baseContextAnswer: contextAnswer
-  }));
+  if (lower.includes('tür')) {
+    return `✅ RICHTIGE Folgefragen:
+- "Welche Maße hat die Türöffnung (Breite x Höhe in cm)?"
+  explanation: "Benötigt für Bestellung der passenden Tür und Zarge"
+  uploadHelpful: true
+  uploadHint: "Optional: Foto der Türöffnung für präzise Maßermittlung"
+
+- "Welche Ausführung wünschen Sie (CPL, Echtholz, lackiert)?"
+  explanation: "Beeinflusst Preis und Haltbarkeit der Tür erheblich"
+  uploadHelpful: false
+  uploadHint: null
+
+❌ FALSCH: "Welche Tischlerarbeiten sollen durchgeführt werden?" (= Kontextfrage!)`;
+  }
   
-  return enrichedQuestions;
+  if (lower.includes('fenster')) {
+    return `✅ RICHTIGE Folgefragen:
+- "Wie viele Fenster sollen insgesamt ausgetauscht werden?"
+  explanation: "Bestimmt Gesamtaufwand und Materialbedarf"
+  uploadHelpful: false
+  
+- "Welche Maße haben die einzelnen Fenster (Breite x Höhe)?"
+  explanation: "Jedes Fenster muss einzeln kalkuliert werden"
+  uploadHelpful: true
+  uploadHint: "Optional: Excel-Liste mit Fenstermaßen oder Fotos"
+
+❌ FALSCH: "Sollen auch Türen getauscht werden?" (nicht genannt!)`;
+  }
+  
+  if (lower.includes('streichen') || lower.includes('maler')) {
+    return `✅ RICHTIGE Folgefragen:
+- "Welche Fläche soll gestrichen werden (in m²)?"
+  explanation: "Benötigt für Materialkalkulation und Zeitplanung"
+  uploadHelpful: true
+  uploadHint: "Optional: Grundriss-PDF für Flächenberechnung"
+
+- "Wie ist der aktuelle Zustand der Wände?"
+  explanation: "Bestimmt ob Spachtel- oder Grundierarbeiten nötig sind"
+  uploadHelpful: true
+  uploadHint: "Optional: Fotos der zu streichenden Wände"`;
+  }
+  
+  return `Erstelle spezifische Fragen zu "${contextAnswer}".
+Keine allgemeinen Fragen, nur Details zu den genannten Arbeiten.`;
 }
   
 /**
