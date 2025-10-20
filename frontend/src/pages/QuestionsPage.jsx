@@ -153,21 +153,32 @@ export default function IntakeQuestionsPage() {
        
         console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
         
-        const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
-        const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
-        const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
-        let isAiRecommended = false;
-if (projektData && projektData.trades) {
-  const currentTrade = projektData.trades.find(t => t.id === parseInt(tradeId));
-  isAiRecommended = currentTrade?.isAiRecommended || currentTrade?.is_ai_recommended || false;
-  console.log('[DEBUG] Found trade in project data:', currentTrade);
+        // ZUERST Projektdaten laden
+const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+if (!projectRes.ok) {
+  throw new Error('Projekt konnte nicht geladen werden');
 }
-        if (isAiRecommended && !new URLSearchParams(window.location.search).get('airecommended')) {
-        const currentUrl = new URL(window.location);
-        currentUrl.searchParams.set('airecommended', 'true');
-        window.history.replaceState({}, '', currentUrl);
-        console.log('Set airecommended=true in URL for trade', tradeId);
-      }
+const projectData = await projectRes.json();
+
+const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
+const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
+const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
+
+// Lade isAiRecommended aus den Projektdaten
+let isAiRecommended = false;
+if (projectData && projectData.trades) {
+  const currentTrade = projectData.trades.find(t => t.id === parseInt(tradeId));
+  isAiRecommended = currentTrade?.isAiRecommended || currentTrade?.is_ai_recommended || false;
+  console.log('[DEBUG] isAiRecommended from project:', isAiRecommended, currentTrade);
+}
+
+// Setze URL-Parameter wenn AI-recommended
+if (isAiRecommended && !new URLSearchParams(window.location.search).get('airecommended')) {
+  const currentUrl = new URL(window.location);
+  currentUrl.searchParams.set('airecommended', 'true');
+  window.history.replaceState({}, '', currentUrl);
+  console.log('[DEBUG] Set airecommended=true in URL for trade', tradeId);
+}
         
         console.log('Is manually added trade?:', isManuallyAdded);
         console.log('Is additional trade?:', isAdditionalTrade);
