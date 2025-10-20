@@ -654,9 +654,10 @@ if (current + 1 < questions.length) {
   // Warte kurz, damit React den Screen rendert
   setTimeout(() => {
     saveAllAnswersAndContinue(newAnswers);
-  }, 100);
-}
-
+    }, 100);
+  }
+ }; 
+  
   const handleSkipQuestion = () => {
     const newAnswers = [...answers];
     newAnswers[current] = {
