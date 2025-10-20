@@ -351,57 +351,58 @@ const handleFileUpload = async (questionId, file) => {
 };
   
   async function saveIntakeAnswers(allAnswers) {
-    try {
-      setSubmitting(true);
-      
-      const intTradeRes = await fetch(apiUrl('/api/trades'));
-      const allTrades = await intTradeRes.json();
-      const intTrade = allTrades.find(t => t.code === 'INT');
-      
-      if (!intTrade) throw new Error('Allgemeine Projektaufnahme nicht gefunden');
-      
-      const validAnswers = allAnswers.filter(a => a.answer && a.answer.trim());
-      
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/intake/answers`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: validAnswers })
-      });
-      
-      if (!res.ok) throw new Error('Fehler beim Speichern der Antworten');
-      
-      const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
-      if (summaryRes.ok) {
-        const summary = await summaryRes.json();
-        console.log('Projekt-Zusammenfassung:', summary);
-      }
-      
-      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-      if (!projectRes.ok) throw new Error('Projekt konnte nicht geladen werden');
-      
-      // Cleanup Analyze interval
-      if (analyzeIntervalRef.current) {
-        clearInterval(analyzeIntervalRef.current);
-      }
-      setAnalyzeProgress(100);
-      
-      // Kurz warten dann navigieren
-      setTimeout(() => {
-        navigate(`/project/${projectId}/trades`);
-      }, 200);
-      
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-      setAnalyzingAnswers(false);
-      // Cleanup on error
-      if (analyzeIntervalRef.current) {
-        clearInterval(analyzeIntervalRef.current);
-      }
-    } finally {
-      setSubmitting(false);
+  try {
+    setSubmitting(true);
+    
+    const intTradeRes = await fetch(apiUrl('/api/trades'));
+    const allTrades = await intTradeRes.json();
+    const intTrade = allTrades.find(t => t.code === 'INT');
+    
+    if (!intTrade) throw new Error('Allgemeine Projektaufnahme nicht gefunden');
+    
+    const validAnswers = allAnswers.filter(a => a.answer && a.answer.trim());
+    
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/intake/answers`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers: validAnswers })
+    });
+    
+    if (!res.ok) throw new Error('Fehler beim Speichern der Antworten');
+    
+    // WICHTIG: Summary FERTIG laden bevor wir navigieren
+    const summaryRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/summary`));
+    if (summaryRes.ok) {
+      const summary = await summaryRes.json();
+      console.log('Projekt-Zusammenfassung:', summary);
     }
+    
+    const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+    if (!projectRes.ok) throw new Error('Projekt konnte nicht geladen werden');
+    
+    // Cleanup Analyze interval
+    if (analyzeIntervalRef.current) {
+      clearInterval(analyzeIntervalRef.current);
+    }
+    setAnalyzeProgress(100);
+    
+    // Warte kurz damit User den 100% sieht, dann navigiere
+    setTimeout(() => {
+      setAnalyzingAnswers(false);
+      navigate(`/project/${projectId}/trades`);
+    }, 500);
+    
+  } catch (err) {
+    console.error(err);
+    setError(err.message);
+    setAnalyzingAnswers(false);
+    if (analyzeIntervalRef.current) {
+      clearInterval(analyzeIntervalRef.current);
+    }
+  } finally {
+    setSubmitting(false);
   }
+}
 
   // Loading State mit Fortschrittsbalken
   if (loading) {
