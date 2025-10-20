@@ -12010,7 +12010,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       includeIntakeContext,
       isManuallyAdded: manualFromBody,
       isAiRecommended: aiRecommendedFromBody,
-      isAdditional: additionalFromBody,  // ✅ NEU
+      isAdditional: additionalFromBody,  
       projectDescription: descriptionFromBody,
       projectCategory: categoryFromBody,
       projectBudget: budgetFromBody
@@ -12018,7 +12018,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     // Prüfe Trade-Status
     const tradeStatusResult = await query(
-      `SELECT is_manual, is_ai_recommended, is_additional   // ✅ ERWEITERT
+      `SELECT is_manual, is_ai_recommended, is_additional   
        FROM project_trades 
        WHERE project_id = $1 AND trade_id = $2`,
       [projectId, tradeId]
@@ -12026,15 +12026,15 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     
     const tradeStatus = tradeStatusResult.rows[0] || {};
     
-    // ✅ Kombiniere Body-Werte mit DB-Werten (Body hat Vorrang)
+    // Kombiniere Body-Werte mit DB-Werten (Body hat Vorrang)
     const isManuallyAdded = manualFromBody !== undefined ? manualFromBody : tradeStatus.is_manual;
     const isAiRecommended = aiRecommendedFromBody !== undefined ? aiRecommendedFromBody : tradeStatus.is_ai_recommended;
-    const isAdditional = additionalFromBody !== undefined ? additionalFromBody : tradeStatus.is_additional;  // ✅ NEU
+    const isAdditional = additionalFromBody !== undefined ? additionalFromBody : tradeStatus.is_additional;  
     
     console.log('[QUESTIONS-API] Trade flags:', {
       isManuallyAdded,
       isAiRecommended,
-      isAdditional,  // ✅ NEU
+      isAdditional,  
       fromBody: { manualFromBody, aiRecommendedFromBody, additionalFromBody },
       fromDB: { 
         is_manual: tradeStatus.is_manual, 
@@ -12103,9 +12103,9 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
       timeframe: project.timeframe,
       budget: req.body.projectBudget || project.budget,
       projectId: projectId,
-      isManuallyAdded: isManuallyAdded,    // ✅ Nutze kombinierte Variable
-      isAiRecommended: isAiRecommended,    // ✅ Nutze kombinierte Variable
-      isAdditional: isAdditional,          // ✅ NEU
+      isManuallyAdded: isManuallyAdded,    
+      isAiRecommended: isAiRecommended,    
+      isAdditional: isAdditional,          
       intakeContext: intakeContext,
       hasIntakeAnswers: intakeContext.length > 0,
       trades: projectTrades.rows,
@@ -12114,8 +12114,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     };
     
     console.log('[DEBUG] projectContext.isManuallyAdded:', projectContext.isManuallyAdded);
-    console.log('[DEBUG] projectContext.isAiRecommended:', projectContext.isAiRecommended);  // ✅ NEU
-    console.log('[DEBUG] projectContext.isAdditional:', projectContext.isAdditional);  // ✅ NEU
+    console.log('[DEBUG] projectContext.isAiRecommended:', projectContext.isAiRecommended);  
+    console.log('[DEBUG] projectContext.isAdditional:', projectContext.isAdditional);  
     console.log('[DEBUG] Project complexity:', projectContext.complexity);
     
     const questions = await generateQuestions(tradeId, projectContext);
