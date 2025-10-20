@@ -240,8 +240,6 @@ export default function IntakeQuestionsPage() {
   
   const contextQuestion = {
     id: `${currentTrade.code}-CONTEXT`,
-    const contextQuestion = {
-    id: `${currentTrade.code}-CONTEXT`,
     question: `Sie haben das Gewerk ${currentTrade.name} ${isAdditionalTrade ? 'nachträglich hinzugefügt' : isManuallyAdded ? 'manuell hinzugefügt' : 'als optionales Gewerk ausgewählt'}. Was genau soll in diesem Bereich gemacht werden?`,
     type: 'text',
     required: true,
