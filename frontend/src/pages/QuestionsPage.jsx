@@ -156,9 +156,12 @@ export default function IntakeQuestionsPage() {
         const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
         const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
         const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
+        const aiRecommendedTrades = JSON.parse(sessionStorage.getItem('aiRecommendedTrades') || '[]');
+        const isAiRecommended = aiRecommendedTrades.includes(parseInt(tradeId));
         
         console.log('Is manually added trade?:', isManuallyAdded);
         console.log('Is additional trade?:', isAdditionalTrade);
+        console.log('Is AI recommended trade?:', isAiRecommended);
         
         const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
         if (!projectRes.ok) {
