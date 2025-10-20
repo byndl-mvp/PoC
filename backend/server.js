@@ -3685,6 +3685,46 @@ ${knownCalculationData ? createCalculationContext(knownCalculationData, tradeCod
 
 WICHTIG: Berücksichtige alle nachfolgenden Regeln und bereits vorhandene Informationen!`}
 
+${projectContext.hasContextAnswer ? `
+╔══════════════════════════════════════════════════════════════════╗
+║          FOLGEFRAGEN NACH KONTEXTANTWORT                          ║
+╚══════════════════════════════════════════════════════════════════╝
+
+DER NUTZER HAT BEREITS ANGEGEBEN:
+"${projectContext.contextAnswer}"
+
+KRITISCHE REGELN FÜR FOLGEFRAGEN:
+1. Erstelle NUR noch ${targetQuestionCount} DETAILLIERTE Folgefragen zu dieser Angabe
+2. KEINE erneute Kontextfrage ("Was soll gemacht werden?")
+3. KEINE allgemeinen Fragen die nicht zur Nutzer-Angabe passen
+4. NUR spezifische Detail-Fragen zu den genannten Arbeiten
+5. ALLE Standard-Regeln MÜSSEN trotzdem gelten:
+   - explanation: 15-20 Wörter (PFLICHT!)
+   - uploadHelpful/uploadHint (wo sinnvoll)
+   - Gewerke-spezifische Regeln
+   - Laienverständliche Formulierung
+
+BEISPIEL:
+Nutzer sagte: "Badezimmertür austauschen"
+✅ RICHTIGE Folgefragen:
+- "Welche Maße hat die Türöffnung (Breite x Höhe in cm)?"
+  explanation: "Benötigt für Bestellung der passenden Tür und Zarge"
+  uploadHelpful: true
+  uploadHint: "Optional: Foto der Türöffnung für präzise Maßermittlung"
+
+- "Soll die Tür feuchtraumgeeignet sein?"
+  explanation: "Bestimmt Material und Oberflächenbehandlung der Tür"
+  
+- "Welche Ausführung wünschen Sie (CPL, Echtholz, lackiert)?"
+  explanation: "Beeinflusst Preis und Haltbarkeit erheblich"
+
+❌ FALSCHE Folgefragen:
+- "Welche Tischlerarbeiten sollen durchgeführt werden?" (= Kontextfrage!)
+- "Sollen Fenster getauscht werden?" (nicht genannt!)
+- Frage ohne explanation-Feld (VERBOTEN!)
+
+` : ''}
+
 ${extractedData ? `
 BEREITS AUS PROJEKTBESCHREIBUNG EXTRAHIERT (NIEMALS ERNEUT FRAGEN!):
 ${extractedData.quantities ? Object.entries(extractedData.quantities).map(([key, value]) => 
