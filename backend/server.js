@@ -12886,57 +12886,42 @@ app.post('/api/projects/:projectId/trades/:tradeId/lv', async (req, res) => {
       await ensureProjectTrade(projectId, tradeId, 'lv_generation');
     }
 
-    // VALIDIERUNG: Kontextantwort bei manuell/zusätzlich hinzugefügten Gewerken
-    const tradeStatus = await query(
-      `SELECT is_manual, is_ai_recommended 
-       FROM project_trades 
-       WHERE project_id = $1 AND trade_id = $2`,
-      [projectId, tradeId]
-    );
-    
-    const isManualOrAdditional = tradeStatus.rows[0]?.is_manual || 
-                                  tradeStatus.rows[0]?.is_ai_recommended;
-    
-    if (isManualOrAdditional) {
-      console.log(`[LV-API] Validating context answer for manual/additional trade ${tradeCode}`);
-      
-      // Prüfe ob Kontextantwort existiert
-      const contextAnswer = await query(
-        `SELECT a.answer_text, q.text as question_text
-         FROM answers a
-         JOIN questions q ON q.project_id = a.project_id 
-           AND q.trade_id = a.trade_id 
-           AND q.question_id = a.question_id
-         WHERE a.project_id = $1 
-           AND a.trade_id = $2 
-           AND a.question_id LIKE '%CONTEXT%'`,
-        [projectId, tradeId]
-      );
-      
-      if (!contextAnswer.rows[0] || !contextAnswer.rows[0].answer_text) {
-        console.error(`[LV-API] CRITICAL: Manual/Additional trade ${tradeCode} missing context answer`);
-        return res.status(400).json({ 
-          error: 'Kontextantwort fehlt',
-          message: `Für nachträglich hinzugefügte Gewerke muss zuerst die Frage beantwortet werden: "Welche ${tradeInfo.rows[0]?.name || 'Arbeiten'} sollen ausgeführt werden?"`,
-          requiredAction: 'ANSWER_CONTEXT_QUESTION',
-          tradeId: tradeId,
-          tradeName: tradeInfo.rows[0]?.name
-        });
-      }
-      
-      // Validiere dass Antwort nicht leer ist
-      const answerText = contextAnswer.rows[0].answer_text.trim();
-      if (answerText.length < 10) {
-        console.error(`[LV-API] Context answer too short: "${answerText}"`);
-        return res.status(400).json({
-          error: 'Unzureichende Kontextantwort',
-          message: 'Bitte beschreiben Sie genauer, welche Arbeiten ausgeführt werden sollen (mindestens 10 Zeichen).',
-          currentAnswer: answerText
-        });
-      }
-      
-      console.log(`[LV-API] Context answer validated: "${answerText}"`);
-    }
+    // VALIDIERUNG: Antworten vorhanden bei manuell/zusätzlich hinzugefügten Gewerken
+const tradeStatus = await query(
+  `SELECT is_manual, is_ai_recommended 
+   FROM project_trades 
+   WHERE project_id = $1 AND trade_id = $2`,
+  [projectId, tradeId]
+);
+
+const isManualOrAdditional = tradeStatus.rows[0]?.is_manual || 
+                              tradeStatus.rows[0]?.is_ai_recommended;
+
+if (isManualOrAdditional) {
+  console.log(`[LV-API] Checking answers for manual/additional trade ${tradeCode}`);
+  
+  // ✅ Prüfe ob überhaupt Antworten vorhanden sind (Fragebogen wurde durchlaufen)
+  const answerCount = await query(
+    `SELECT COUNT(*) as count FROM answers 
+     WHERE project_id = $1 AND trade_id = $2`,
+    [projectId, tradeId]
+  );
+  
+  const hasAnswers = parseInt(answerCount.rows[0]?.count || 0) > 0;
+  
+  if (!hasAnswers) {
+    console.error(`[LV-API] Manual/Additional trade ${tradeCode} has no answers yet`);
+    return res.status(400).json({ 
+      error: 'Fragen noch nicht beantwortet',
+      message: `Bitte beantworten Sie zuerst die Fragen für ${tradeInfo.rows[0]?.name}.`,
+      requiredAction: 'ANSWER_QUESTIONS',
+      tradeId: tradeId,
+      tradeName: tradeInfo.rows[0]?.name
+    });
+  }
+  
+  console.log(`[LV-API] Manual/Additional trade ${tradeCode} has ${answerCount.rows[0].count} answers - proceeding with LV generation`);
+}
     
     // Generiere detailliertes LV
     const lv = await generateDetailedLVWithRetry(projectId, tradeId);
