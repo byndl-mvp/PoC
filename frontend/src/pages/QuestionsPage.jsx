@@ -571,11 +571,24 @@ const handleFileUpload = async (questionId, file) => {
 
     const isAiRecommendedTrade = new URLSearchParams(window.location.search).get('airecommended') === 'true';
 
+// DEBUG-LOGS
+console.log('[DEBUG-AI] Checking AI-recommended handler:', {
+  current,
+  isAiRecommendedTrade,
+  urlSearch: window.location.search,
+  hasQuestion: !!questions[current],
+  isContextQuestion: questions[current]?.isContextQuestion,
+  questionId: questions[current]?.id,
+  questionsLength: questions.length
+});
+
 if (
   current === 0 && 
   isAiRecommendedTrade && 
   questions[current].isContextQuestion === true  
 ) {
+  console.log('[DEBUG-AI] Handler TRIGGERED - generating context questions');
+  
   try {
     setGeneratingQuestions(true);
     
@@ -609,36 +622,40 @@ if (
       window.history.replaceState({}, '', currentUrl);      
       setGeneratingQuestions(false);
       return;
+    } else {
+      console.error('[DEBUG-AI] Response not OK:', response.status);
     }
   } catch (err) {
     console.error('Failed to generate AI-recommended context questions:', err);
     setGeneratingQuestions(false);
     setError('Fehler beim Generieren der Folgefragen');
   }
-}   
+} else {
+  console.log('[DEBUG-AI] Handler NOT triggered - one or more conditions failed');
+}
     
-    if (current + 1 < questions.length) {
-      setCurrent(current + 1);
-      setExpandedExplanations({});
-      setUserQuestion('');
-      setAiResponse('');
-      setShowQuestionDialog(false);
-      if (newAnswers[current + 1]) {
-        setAnswerText(newAnswers[current + 1].answer || '');
-        setAssumption(newAnswers[current + 1].assumption || '');
-      } else {
-        setAnswerText('');
-        setAssumption('');
-      }
-    } else {
-      // WICHTIG: Zeige LV-Screen SOFORT beim Klick auf "Abschließen & LV generieren"
-      setGeneratingLV(true);
-      // Warte kurz, damit React den Screen rendert
-      setTimeout(() => {
-        saveAllAnswersAndContinue(newAnswers);
-      }, 100);
-    }
-  };
+if (current + 1 < questions.length) {
+  setCurrent(current + 1);
+  setExpandedExplanations({});
+  setUserQuestion('');
+  setAiResponse('');
+  setShowQuestionDialog(false);
+  if (newAnswers[current + 1]) {
+    setAnswerText(newAnswers[current + 1].answer || '');
+    setAssumption(newAnswers[current + 1].assumption || '');
+  } else {
+    setAnswerText('');
+    setAssumption('');
+  }
+} else {
+  // WICHTIG: Zeige LV-Screen SOFORT beim Klick auf "Abschließen & LV generieren"
+  console.log('[DEBUG] No more questions - generating LV');
+  setGeneratingLV(true);
+  // Warte kurz, damit React den Screen rendert
+  setTimeout(() => {
+    saveAllAnswersAndContinue(newAnswers);
+  }, 100);
+}
 
   const handleSkipQuestion = () => {
     const newAnswers = [...answers];
