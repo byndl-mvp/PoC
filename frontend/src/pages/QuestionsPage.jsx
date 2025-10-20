@@ -865,31 +865,68 @@ if (current + 1 < questions.length) {
   }
 
   // LV Generation Screen
-  if (generatingLV) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center max-w-lg">
-          <h2 className="text-3xl font-bold text-white mb-6">
-            Erstelle Leistungsverzeichnis
-          </h2>
-          <p className="text-xl text-gray-300 mb-8">
-            für {tradeName || 'Gewerk'}
-          </p>
-          <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur mb-4">
-            <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out" 
-                 style={{ width: `${lvProgress}%` }} />  
-          </div>
-          <p className="mt-4 text-gray-300">
-            {lvProgress < 25 ? 'Analysiere Antworten...' :
-             lvProgress < 50 ? 'Erstelle VOB-konforme Positionen...' :
-             lvProgress < 75 ? 'Kalkuliere Mengen und Einheiten...' :
-             lvProgress < 95 ? 'Finalisiere Leistungsverzeichnis...' :
-             'Abgeschlossen!'}
-          </p>
+if (generatingLV) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+      <div className="text-center max-w-lg mx-auto px-4">
+        <h2 className="text-3xl font-bold text-white mb-6">
+          Erstelle Leistungsverzeichnis
+        </h2>
+        <p className="text-xl text-gray-300 mb-8">
+          für {tradeName || 'Gewerk'}
+        </p>
+        
+        {/* Progress Bar */}
+        <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur mb-4">
+          <div className="bg-gradient-to-r from-teal-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out" 
+               style={{ width: `${lvProgress}%` }} />  
         </div>
+        
+        {/* Status Text */}
+        <p className="mt-4 text-gray-300 mb-8">
+          {lvProgress < 25 ? 'Analysiere Antworten...' :
+           lvProgress < 50 ? 'Erstelle VOB-konforme Positionen...' :
+           lvProgress < 75 ? 'Kalkuliere Mengen und Einheiten...' :
+           lvProgress < 95 ? 'Finalisiere Leistungsverzeichnis...' :
+           'Abgeschlossen!'}
+        </p>
+        
+        {/* NEU: Info-Box mit Hinweis */}
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6 mb-6 backdrop-blur-sm">
+          <div className="flex items-start space-x-3">
+            <svg className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="text-left">
+              <h3 className="text-blue-300 font-semibold mb-2">
+                💡 Hinweis
+              </h3>
+              <p className="text-blue-200 text-sm leading-relaxed">
+                Das Leistungsverzeichnis wird im Hintergrund erstellt. 
+                Sie können bereits zur Übersicht zurückkehren und weitere Gewerke bearbeiten. 
+                Das fertige LV erscheint in wenigen Minuten automatisch in der Übersicht.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* NEU: Zurück zur Übersicht Button */}
+        <button
+          onClick={() => {
+            navigate(`/project/${projectId}/lv-review`);
+          }}
+          className="px-8 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 font-semibold"
+        >
+          ← Zurück zur Übersicht
+        </button>
+        
+        <p className="mt-4 text-gray-400 text-sm">
+          Die LV-Generierung läuft weiter, auch wenn Sie diese Seite verlassen
+        </p>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // ÄNDERUNG: Final Screen Text anpassen
   if (finalizing) {
