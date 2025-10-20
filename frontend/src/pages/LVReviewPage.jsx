@@ -1121,16 +1121,28 @@ const handleGenerateAllQuestions = async () => {
         )}
         
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4 justify-center mt-12">
-          {pendingTrades.length > 0 && (
-            <button
-              onClick={() => handleStartQuestions(pendingTrades[0].id)}
-              className="px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-            >
-              <span className="text-xl mr-2">▶</span>
-              Nächstes Gewerk starten ({pendingTrades[0].name})
-            </button>
-          )}
+<div className="flex flex-wrap gap-4 justify-center mt-12">
+  {/* NEU: Alle Fragen generieren */}
+  {pendingTrades.length > 0 && (
+    <button
+      onClick={handleGenerateAllQuestions}
+      className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+    >
+      <span className="text-xl mr-2">⚡</span>
+      Alle Fragen im Hintergrund laden ({pendingTrades.length})
+    </button>
+  )}
+  
+  {/* Bestehende Buttons bleiben */}
+  {pendingTrades.length > 0 && questionsStatus[pendingTrades[0].id]?.ready && (
+    <button
+      onClick={() => handleStartQuestions(pendingTrades[0].id)}
+      className="px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+    >
+      <span className="text-xl mr-2">▶</span>
+      Nächstes Gewerk starten ({pendingTrades[0].name})
+    </button>
+  )}
           
           <button
             onClick={handleAddAdditionalTrade}
