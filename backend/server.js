@@ -3428,14 +3428,19 @@ WICHTIG:
   
   const projectComplexity = determineProjectComplexity(projectContext, answeredQuestions);
   const intelligentCount = getIntelligentQuestionCount(tradeCode, projectContext, answeredQuestions);
-  // Bei manuell hinzugefügten: Erste Frage MUSS Kontextfrage sein
+  // Bei manuell/zusätzlich/AI-empfohlenen: Erste Frage MUSS Kontextfrage sein
 let targetQuestionCount = intelligentCount.count;
 let forceContextQuestion = false;
 
-if (projectContext.isManuallyAdded) {
+if (projectContext.isManuallyAdded || projectContext.isAdditional || projectContext.isAiRecommended) {  
   forceContextQuestion = true;
-  targetQuestionCount = Math.max(10, targetQuestionCount); // Mindestens 10 Fragen bei manuellen Gewerken
-  console.log(`[QUESTIONS] Context question required for ${tradeName} - manually added`);
+  targetQuestionCount = Math.max(15, targetQuestionCount);
+  
+  const tradeType = projectContext.isManuallyAdded ? 'manually added' :
+                    projectContext.isAdditional ? 'additional' :
+                    'AI-recommended';
+  
+  console.log(`[QUESTIONS] Context question required for ${tradeName} - ${tradeType}`);
 }
 
 // Spezielle Behandlung für Intake-Fragen basierend auf Gewerke-Anzahl
