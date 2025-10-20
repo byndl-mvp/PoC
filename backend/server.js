@@ -5800,12 +5800,12 @@ WICHTIG:
   }
 }
 
-// ✅ Hilfsfunktion für kontextspezifische Beispiele
+// Hilfsfunktion für kontextspezifische Beispiele
 function generateContextSpecificExample(contextAnswer, tradeCode) {
   const lower = contextAnswer.toLowerCase();
   
   if (lower.includes('tür')) {
-    return `✅ RICHTIGE Folgefragen:
+    return `RICHTIGE Folgefragen:
 - "Welche Maße hat die Türöffnung (Breite x Höhe in cm)?"
   explanation: "Benötigt für Bestellung der passenden Tür und Zarge"
   uploadHelpful: true
@@ -5820,7 +5820,7 @@ function generateContextSpecificExample(contextAnswer, tradeCode) {
   }
   
   if (lower.includes('fenster')) {
-    return `✅ RICHTIGE Folgefragen:
+    return `RICHTIGE Folgefragen:
 - "Wie viele Fenster sollen insgesamt ausgetauscht werden?"
   explanation: "Bestimmt Gesamtaufwand und Materialbedarf"
   uploadHelpful: false
@@ -5834,7 +5834,7 @@ function generateContextSpecificExample(contextAnswer, tradeCode) {
   }
   
   if (lower.includes('streichen') || lower.includes('maler')) {
-    return `✅ RICHTIGE Folgefragen:
+    return `RICHTIGE Folgefragen:
 - "Welche Fläche soll gestrichen werden (in m²)?"
   explanation: "Benötigt für Materialkalkulation und Zeitplanung"
   uploadHelpful: true
