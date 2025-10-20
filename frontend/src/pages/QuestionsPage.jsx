@@ -265,7 +265,6 @@ export default function IntakeQuestionsPage() {
               
               if (progressRes.ok) {
                 const progressData = await progressRes.json();
-                setSavedProgress(progressData);
                 
                 if (progressData.answers && progressData.answers.length > 0) {
                   // Mappe gespeicherte Antworten
