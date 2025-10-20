@@ -26,6 +26,7 @@ export default function IntakeQuestionsPage() {
   // eslint-disable-next-line no-unused-vars
   const [nextTradeName, setNextTradeName] = useState('');
   const [questionsLoading, setQuestionsLoading] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [questionsStatus, setQuestionsStatus] = useState('not_started');
   const autoSaveIntervalRef = useRef(null);
   
@@ -445,7 +446,7 @@ export default function IntakeQuestionsPage() {
   if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
   if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
 }; 
-}, [projectId, tradeId]); // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [projectId, tradeId, startAutoSave, startStatusPolling]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
 // Status-Polling für Fragengenerierung
 const startStatusPolling = useCallback(() => {
