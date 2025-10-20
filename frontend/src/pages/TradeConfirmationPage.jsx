@@ -44,14 +44,12 @@ export default function TradeConfirmationPage() {
     async function loadData() {
       try {
         setLoading(true);
-        setLoadingMessage('Lade Projektdetails...');
         
         const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
         if (!projectRes.ok) throw new Error('Projekt nicht gefunden');
         const projectData = await projectRes.json();
         setProject(projectData);
-        
-        setLoadingMessage('Analysiere Ihre Antworten...');
+
         let hasIntakeSummary = false;
         
         try {
