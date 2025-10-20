@@ -184,16 +184,6 @@ if (isAiRecommended && !new URLSearchParams(window.location.search).get('airecom
         console.log('Is additional trade?:', isAdditionalTrade);
         console.log('Is AI recommended trade?:', isAiRecommended);
         
-        const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-        if (!projectRes.ok) {
-          throw new Error('Projekt konnte nicht geladen werden');
-        }
-        
-        const projectData = await projectRes.json();
-        console.log('Project data loaded:', projectData);
-        console.log('NUMBER OF TRADES:', projectData.trades?.length);
-        console.log('TRADE CODES:', projectData.trades?.map(t => t.code));
-        
         let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
 
         const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
