@@ -25,6 +25,10 @@ export default function IntakeQuestionsPage() {
   const [lvProgress, setLvProgress] = useState(0);
   // eslint-disable-next-line no-unused-vars
   const [nextTradeName, setNextTradeName] = useState('');
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [questionsStatus, setQuestionsStatus] = useState('not_started');
+  const [savedProgress, setSavedProgress] = useState(null);
+  const [autoSaveInterval, setAutoSaveInterval] = useState(null);
   
   // Refs für Interval-Cleanup
   const loadingIntervalRef = useRef(null);
@@ -145,215 +149,362 @@ export default function IntakeQuestionsPage() {
   }, []);
   
   useEffect(() => {
-    async function initialize() {
-      try {
-        setLoading(true);
-        setError('');
-        setSubmitting(false);
-       
-        console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
+  async function initialize() {
+    try {
+      setLoading(true);
+      setError('');
+      setSubmitting(false);
+     
+      console.log(`Initializing questions for project ${projectId}, trade ${tradeId}`);
+      
+      // 1. Lade Projektdaten
+      const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
+      if (!projectRes.ok) {
+        throw new Error('Projekt konnte nicht geladen werden');
+      }
+      const projectData = await projectRes.json();
+
+      const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
+      const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
+      const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
+
+      // Lade isAiRecommended aus den Projektdaten
+      let isAiRecommended = false;
+      if (projectData && projectData.trades) {
+        const currentTrade = projectData.trades.find(t => t.id === parseInt(tradeId));
+        isAiRecommended = currentTrade?.isAiRecommended || currentTrade?.is_ai_recommended || false;
+        console.log('[DEBUG] isAiRecommended from project:', isAiRecommended, currentTrade);
+      }
+
+      // Setze URL-Parameter wenn AI-recommended
+      if (isAiRecommended && !new URLSearchParams(window.location.search).get('airecommended')) {
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('airecommended', 'true');
+        window.history.replaceState({}, '', currentUrl);
+        console.log('[DEBUG] Set airecommended=true in URL for trade', tradeId);
+      }
+      
+      console.log('Trade type:', { isManuallyAdded, isAdditionalTrade, isAiRecommended });
+      
+      let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
+
+      const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
+        .map(id => parseInt(id));
         
-        // ZUERST Projektdaten laden
-const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
-if (!projectRes.ok) {
-  throw new Error('Projekt konnte nicht geladen werden');
-}
-const projectData = await projectRes.json();
-
-const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
-const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
-const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
-
-// Lade isAiRecommended aus den Projektdaten
-let isAiRecommended = false;
-if (projectData && projectData.trades) {
-  const currentTrade = projectData.trades.find(t => t.id === parseInt(tradeId));
-  isAiRecommended = currentTrade?.isAiRecommended || currentTrade?.is_ai_recommended || false;
-  console.log('[DEBUG] isAiRecommended from project:', isAiRecommended, currentTrade);
-}
-
-// Setze URL-Parameter wenn AI-recommended
-if (isAiRecommended && !new URLSearchParams(window.location.search).get('airecommended')) {
-  const currentUrl = new URL(window.location);
-  currentUrl.searchParams.set('airecommended', 'true');
-  window.history.replaceState({}, '', currentUrl);
-  console.log('[DEBUG] Set airecommended=true in URL for trade', tradeId);
-}
+      if (manuallyAddedTradeIds.length > 0) {
+        const tradesResponse = await fetch(apiUrl('/api/trades'));
+        const allTrades = await tradesResponse.json();
         
-        console.log('Is manually added trade?:', isManuallyAdded);
-        console.log('Is additional trade?:', isAdditionalTrade);
-        console.log('Is AI recommended trade?:', isAiRecommended);
-        
-        let detectedTrades = (projectData.trades || []).filter(t => t.code !== 'INT');
-
-        const manuallyAddedTradeIds = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]')
-          .map(id => parseInt(id));
-          
-        if (manuallyAddedTradeIds.length > 0) {
-          const tradesResponse = await fetch(apiUrl('/api/trades'));
-          const allTrades = await tradesResponse.json();
-          
-          for (const manualId of manuallyAddedTradeIds) {
-            if (!detectedTrades.find(t => t.id === parseInt(manualId))) {
-              const fullTradeInfo = allTrades.find(t => t.id === parseInt(manualId));
-              if (fullTradeInfo) {
-                detectedTrades.push(fullTradeInfo);
-              }
+        for (const manualId of manuallyAddedTradeIds) {
+          if (!detectedTrades.find(t => t.id === parseInt(manualId))) {
+            const fullTradeInfo = allTrades.find(t => t.id === parseInt(manualId));
+            if (fullTradeInfo) {
+              detectedTrades.push(fullTradeInfo);
             }
           }
         }
+      }
 
-        console.log('Detected trades for this project:', detectedTrades);
-        setProjectTrades(detectedTrades);
-        
-        const currentIdx = detectedTrades.findIndex(t => t.id === parseInt(tradeId));
-        setCurrentTradeIndex(currentIdx);
-        
-        // Setze nextTradeName für späteren Gebrauch
-        if (currentIdx !== -1 && currentIdx + 1 < detectedTrades.length) {
-          setNextTradeName(detectedTrades[currentIdx + 1].name);
-        }
-        
-        const currentTrade = detectedTrades.find(t => t.id === parseInt(tradeId));
-        if (!currentTrade) {
-          throw new Error(`Gewerk ${tradeId} gehört nicht zu diesem Projekt`);
-        }
-        
-        setTradeName(currentTrade.name);
-        setTradeCode(currentTrade.code);
+      console.log('Detected trades for this project:', detectedTrades);
+      setProjectTrades(detectedTrades);
+      
+      const currentIdx = detectedTrades.findIndex(t => t.id === parseInt(tradeId));
+      setCurrentTradeIndex(currentIdx);
+      
+      if (currentIdx !== -1 && currentIdx + 1 < detectedTrades.length) {
+        setNextTradeName(detectedTrades[currentIdx + 1].name);
+      }
+      
+      const currentTrade = detectedTrades.find(t => t.id === parseInt(tradeId));
+      if (!currentTrade) {
+        throw new Error(`Gewerk ${tradeId} gehört nicht zu diesem Projekt`);
+      }
+      
+      setTradeName(currentTrade.name);
+      setTradeCode(currentTrade.code);
 
-        if (isAdditionalTrade || isManuallyAdded || isAiRecommended) { 
-    const getContextExplanation = (tradeCode, tradeName) => {
-    const explanations = {
-      'TIS': 'Wichtig für Materialkalkulation und Arbeitsaufwand bei Tischlerarbeiten',
-      'FEN': 'Bestimmt Anzahl, Maße und Ausführung der Fenster für präzise Kalkulation',
-      'SAN': 'Definiert Umfang der Sanitärarbeiten für Material- und Zeitplanung',
-      'ELEKT': 'Legt fest welche Elektroinstallationen für Kalkulation berücksichtigt werden',
-      'MAL': 'Bestimmt zu streichende Flächen und Qualität für Materialberechnung',
-      'FLI': 'Definiert Fliesenbereiche und -arten für Mengen- und Preiskalkulation',
-      'HEI': 'Legt Umfang der Heizungsarbeiten für Komponentenwahl und Kalkulation fest',
-      'DACH': 'Bestimmt Art und Umfang der Dacharbeiten für Material- und Zeitplanung',
-      'FASS': 'Definiert Fassadenarbeiten für Dämmstärke und Flächenberechnung',
-      'TRO': 'Legt fest welche Trockenbauarbeiten für Material- und Arbeitszeitkalkulation',
-      'BOD': 'Bestimmt Bodenbelagsart und -flächen für präzise Materialkalkulation',
-      'ROH': 'Definiert Rohbauarbeiten für statische Anforderungen und Materialbedarf',
-      'GER': 'Legt Gerüstumfang für Höhe, Fläche und Standzeit-Kalkulation fest',
-      'SCHL': 'Bestimmt Schlosserarbeiten für Material, Maße und Montageart',
-      'ABBR': 'Definiert Abbruch-Umfang für Entsorgungsmengen und Arbeitsaufwand',
-      'ZIMM': 'Legt Zimmererarbeiten für Holzkonstruktion und Materialbedarf fest',
-      'PV': 'Bestimmt PV-Anlage für Leistung, Modulmenge und Systemkomponenten',
-      'KLIMA': 'Legt fest welche Klimaanlage/Lüftung für Raumgröße und Kühlleistung',
-      'AUSS': 'Definiert Außenanlagen für Flächenberechnung und Materialauswahl'
-    };
-    
-    return explanations[tradeCode] || `Wichtig für die präzise Kalkulation der ${tradeName}-Arbeiten`;
-  };
-  
-  const contextQuestion = {
-    id: `${currentTrade.code}-CONTEXT`,
-    question: `Sie haben das Gewerk ${currentTrade.name} ${isAdditionalTrade ? 'nachträglich hinzugefügt' : isManuallyAdded ? 'manuell hinzugefügt' : 'als optionales Gewerk ausgewählt'}. Was genau soll in diesem Bereich gemacht werden?`,
-    type: 'text',
-    required: true,
-    category: 'Projektkontext',
-    explanation: getContextExplanation(currentTrade.code, currentTrade.name),
-    tradeId: parseInt(tradeId),
-    tradeName: currentTrade.name,
-    trade_name: currentTrade.name,
-    trade_code: currentTrade.code,
-    isContextQuestion: true,
-    requiresFollowUp: true,
-    uploadHelpful: true,
-    uploadHint: "Optional: Fotos, Pläne oder Dokumente zur besseren Einschätzung hochladen"
-  };
-  
-  sessionStorage.setItem('currentTradeIsAdditional', 'true');
-  setQuestions([contextQuestion]);
-  setAnswers([null]);
-  setCurrent(0);
-  setLoading(false);
-  clearInterval(loadingIntervalRef.current);
-  setLoadingProgress(100);
-  return;
-}
-
-        console.log(`Generating adaptive questions for trade ${tradeId} (${currentTrade.code})...`);
+      // 2. NEU: Prüfe Status der Fragen
+      const statusRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-status`));
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        setQuestionsStatus(statusData.status);
         
-        const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-  includeIntakeContext: true,
-  isManuallyAdded: isManuallyAdded || false,     
-  isAiRecommended: isAiRecommended || false,     
-  isAdditional: isAdditionalTrade || false,      
-  projectDescription: projectData.description,
-  projectCategory: projectData.category,        
-  projectBudget: projectData.budget            
-}),
-          keepalive: true
-        });
+        console.log('[QUESTIONS-STATUS]', statusData);
         
-        console.log('Generate response status:', generateRes.status);
-        
-        if (!generateRes.ok) {
-          const errorData = await generateRes.json().catch(() => ({}));
-          throw new Error(errorData.error || `Fehler beim Generieren der Fragen (Status: ${generateRes.status})`);
-        }
-        
-        const data = await generateRes.json();
-        console.log('Adaptive questions generated:', data);
-        
-        if (!data.questions || data.questions.length === 0) {
-          throw new Error('Keine Fragen wurden generiert');
-        }
-        
-        const validQuestions = data.questions.filter(q => 
-          q.question || q.text || q.q
-        );
-        
-        if (validQuestions.length === 0) {
-          throw new Error('Keine gültigen Fragen erhalten');
-        }
-        
-        setQuestions(validQuestions);
-        
-        if (data.tradeName) setTradeName(data.tradeName);
-        if (data.tradeCode) setTradeCode(data.tradeCode);
-        
-        setAnswers(new Array(validQuestions.length).fill(null));
-        setCurrent(0);
-        setAnswerText('');
-        setAssumption('');
-        
-      } catch (err) {
-        console.error('Error in initialization:', err);
-        setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
-      } finally {
-        // Cleanup interval und setze auf 100%
-        if (loadingIntervalRef.current) {
-          clearInterval(loadingIntervalRef.current);
-        }
-        setLoadingProgress(100);
-        setTimeout(() => {
+        if (statusData.status === 'generating_questions') {
+          // Fragen werden gerade generiert
+          setQuestionsLoading(true);
           setLoading(false);
-        }, 200); // Kurze Verzögerung für smooth transition
+          clearInterval(loadingIntervalRef.current);
+          setLoadingProgress(100);
+          
+          // Starte Polling
+          startStatusPolling();
+          return;
+        }
+        
+        if (statusData.ready && statusData.questionCount > 0) {
+          // Fragen existieren bereits - lade sie
+          console.log('[QUESTIONS] Loading existing questions from DB');
+          
+          const questionsRes = await fetch(
+            apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`),
+            { method: 'GET' }
+          );
+          
+          if (questionsRes.ok) {
+            const data = await questionsRes.json();
+            
+            if (data.questions && data.questions.length > 0) {
+              setQuestions(data.questions);
+              setTradeName(data.tradeName || currentTrade.name);
+              setTradeCode(data.tradeCode || currentTrade.code);
+              
+              // 3. NEU: Lade gespeicherten Progress
+              const progressRes = await fetch(
+                apiUrl(`/api/projects/${projectId}/trades/${tradeId}/progress`)
+              );
+              
+              if (progressRes.ok) {
+                const progressData = await progressRes.json();
+                setSavedProgress(progressData);
+                
+                if (progressData.answers && progressData.answers.length > 0) {
+                  // Mappe gespeicherte Antworten
+                  const answersArray = new Array(data.questions.length).fill(null);
+                  
+                  progressData.answers.forEach(savedAnswer => {
+                    const questionIdx = data.questions.findIndex(
+                      q => q.id === savedAnswer.questionId
+                    );
+                    if (questionIdx !== -1) {
+                      answersArray[questionIdx] = {
+                        questionId: savedAnswer.questionId,
+                        answer: savedAnswer.answer,
+                        assumption: savedAnswer.assumption
+                      };
+                    }
+                  });
+                  
+                  setAnswers(answersArray);
+                  
+                  // Setze auf gespeicherte Position
+                  const savedIndex = progressData.currentQuestionIndex || 0;
+                  setCurrent(savedIndex);
+                  
+                  if (answersArray[savedIndex]) {
+                    setAnswerText(answersArray[savedIndex].answer || '');
+                    setAssumption(answersArray[savedIndex].assumption || '');
+                  }
+                  
+                  console.log(`[PROGRESS] Restored to question ${savedIndex + 1}/${data.questions.length}`);
+                }
+              }
+              
+              // Starte Auto-Save
+              startAutoSave();
+              
+              setLoading(false);
+              clearInterval(loadingIntervalRef.current);
+              setLoadingProgress(100);
+              return;
+            }
+          }
+        }
+      }
+
+      // 3. Fragen müssen neu generiert werden
+      if (isAdditionalTrade || isManuallyAdded || isAiRecommended) { 
+        // Kontextfrage erstellen
+        const getContextExplanation = (tradeCode, tradeName) => {
+          const explanations = {
+            'TIS': 'Wichtig für Materialkalkulation und Arbeitsaufwand bei Tischlerarbeiten',
+            'FEN': 'Bestimmt Anzahl, Maße und Ausführung der Fenster für präzise Kalkulation',
+            'SAN': 'Definiert Umfang der Sanitärarbeiten für Material- und Zeitplanung',
+            'ELEKT': 'Legt fest welche Elektroinstallationen für Kalkulation berücksichtigt werden',
+            'MAL': 'Bestimmt zu streichende Flächen und Qualität für Materialberechnung',
+            'FLI': 'Definiert Fliesenbereiche und -arten für Mengen- und Preiskalkulation',
+            'HEI': 'Legt Umfang der Heizungsarbeiten für Komponentenwahl und Kalkulation fest',
+            'DACH': 'Bestimmt Art und Umfang der Dacharbeiten für Material- und Zeitplanung',
+            'FASS': 'Definiert Fassadenarbeiten für Dämmstärke und Flächenberechnung',
+            'TRO': 'Legt fest welche Trockenbauarbeiten für Material- und Arbeitszeitkalkulation',
+            'BOD': 'Bestimmt Bodenbelagsart und -flächen für präzise Materialkalkulation',
+            'ROH': 'Definiert Rohbauarbeiten für statische Anforderungen und Materialbedarf',
+            'GER': 'Legt Gerüstumfang für Höhe, Fläche und Standzeit-Kalkulation fest',
+            'SCHL': 'Bestimmt Schlosserarbeiten für Material, Maße und Montageart',
+            'ABBR': 'Definiert Abbruch-Umfang für Entsorgungsmengen und Arbeitsaufwand',
+            'ZIMM': 'Legt Zimmererarbeiten für Holzkonstruktion und Materialbedarf fest',
+            'PV': 'Bestimmt PV-Anlage für Leistung, Modulmenge und Systemkomponenten',
+            'KLIMA': 'Legt fest welche Klimaanlage/Lüftung für Raumgröße und Kühlleistung',
+            'AUSS': 'Definiert Außenanlagen für Flächenberechnung und Materialauswahl'
+          };
+          
+          return explanations[tradeCode] || `Wichtig für die präzise Kalkulation der ${tradeName}-Arbeiten`;
+        };
+        
+        const contextQuestion = {
+          id: `${currentTrade.code}-CONTEXT`,
+          question: `Sie haben das Gewerk ${currentTrade.name} ${isAdditionalTrade ? 'nachträglich hinzugefügt' : isManuallyAdded ? 'manuell hinzugefügt' : 'als optionales Gewerk ausgewählt'}. Was genau soll in diesem Bereich gemacht werden?`,
+          type: 'text',
+          required: true,
+          category: 'Projektkontext',
+          explanation: getContextExplanation(currentTrade.code, currentTrade.name),
+          tradeId: parseInt(tradeId),
+          tradeName: currentTrade.name,
+          trade_name: currentTrade.name,
+          trade_code: currentTrade.code,
+          isContextQuestion: true,
+          requiresFollowUp: true,
+          uploadHelpful: true,
+          uploadHint: "Optional: Fotos, Pläne oder Dokumente zur besseren Einschätzung hochladen"
+        };
+        
+        sessionStorage.setItem('currentTradeIsAdditional', 'true');
+        setQuestions([contextQuestion]);
+        setAnswers([null]);
+        setCurrent(0);
+        setLoading(false);
+        clearInterval(loadingIntervalRef.current);
+        setLoadingProgress(100);
+        return;
+      }
+
+      // 4. Normale Fragen generieren
+      console.log(`Generating adaptive questions for trade ${tradeId} (${currentTrade.code})...`);
+      
+      const generateRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions`), {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          includeIntakeContext: true,
+          isManuallyAdded: isManuallyAdded || false,     
+          isAiRecommended: isAiRecommended || false,     
+          isAdditional: isAdditionalTrade || false,      
+          projectDescription: projectData.description,
+          projectCategory: projectData.category,        
+          projectBudget: projectData.budget            
+        }),
+        keepalive: true
+      });
+      
+      console.log('Generate response status:', generateRes.status);
+      
+      if (!generateRes.ok) {
+        const errorData = await generateRes.json().catch(() => ({}));
+        throw new Error(errorData.error || `Fehler beim Generieren der Fragen (Status: ${generateRes.status})`);
+      }
+      
+      const data = await generateRes.json();
+      console.log('Adaptive questions generated:', data);
+      
+      if (!data.questions || data.questions.length === 0) {
+        throw new Error('Keine Fragen wurden generiert');
+      }
+      
+      const validQuestions = data.questions.filter(q => 
+        q.question || q.text || q.q
+      );
+      
+      if (validQuestions.length === 0) {
+        throw new Error('Keine gültigen Fragen erhalten');
+      }
+      
+      setQuestions(validQuestions);
+      
+      if (data.tradeName) setTradeName(data.tradeName);
+      if (data.tradeCode) setTradeCode(data.tradeCode);
+      
+      setAnswers(new Array(validQuestions.length).fill(null));
+      setCurrent(0);
+      setAnswerText('');
+      setAssumption('');
+      
+      // Starte Auto-Save
+      startAutoSave();
+      
+    } catch (err) {
+      console.error('Error in initialization:', err);
+      setError(err.message || 'Unbekannter Fehler beim Laden der Fragen');
+    } finally {
+      if (loadingIntervalRef.current) {
+        clearInterval(loadingIntervalRef.current);
+      }
+      setLoadingProgress(100);
+      setTimeout(() => {
+        setLoading(false);
+      }, 200);
+    }
+  }
+  
+  initialize();
+  
+  return () => {
+    sessionStorage.removeItem('currentTradeIsAdditional');
+    if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+    if (lvIntervalRef.current) clearInterval(lvIntervalRef.current);
+    if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
+    if (autoSaveInterval) clearInterval(autoSaveInterval);
+  };  
+}, [projectId, tradeId]); // eslint-disable-next-line react-hooks/exhaustive-deps
+
+// Status-Polling für Fragengenerierung
+const startStatusPolling = () => {
+  const pollInterval = setInterval(async () => {
+    try {
+      const statusRes = await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-status`)
+      );
+      
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        setQuestionsStatus(statusData.status);
+        
+        if (statusData.ready && statusData.questionCount > 0) {
+          // Fragen sind fertig!
+          clearInterval(pollInterval);
+          window.location.reload(); // Neu laden um Fragen anzuzeigen
+        }
+        
+        if (statusData.status === 'error') {
+          clearInterval(pollInterval);
+          setError('Fehler beim Generieren der Fragen');
+          setQuestionsLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, 3000); // Alle 3 Sekunden prüfen
+};
+
+// Auto-Save für Progress
+const startAutoSave = () => {
+  const interval = setInterval(async () => {
+    if (answers.filter(a => a && a.answer).length > 0) {
+      try {
+        await fetch(
+          apiUrl(`/api/projects/${projectId}/trades/${tradeId}/save-progress`),
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              currentQuestionIndex: current,
+              answers: answers.filter(a => a && a.answer)
+            })
+          }
+        );
+        console.log('[AUTO-SAVE] Progress saved');
+      } catch (err) {
+        console.error('[AUTO-SAVE] Failed:', err);
       }
     }
-    
-    initialize();
-    
-    return () => {
-      sessionStorage.removeItem('currentTradeIsAdditional');
-      // Cleanup all intervals on unmount
-      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-      if (lvIntervalRef.current) clearInterval(lvIntervalRef.current);
-      if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, tradeId]);
-
+  }, 30000); // Alle 30 Sekunden
+  
+  setAutoSaveInterval(interval);
+};
+  
   const toggleDetailedExplanation = async () => {
   const questionId = currentQ.id || `q-${current}`;
   
@@ -466,18 +617,35 @@ const handleFileUpload = async (questionId, file) => {
 };
   
   const handleNext = async () => {
-    console.log('handleNext called, submitting=', submitting);
-    console.log('current=', current, 'questions.length=', questions.length);
-    
-    if (!questions[current]) return;
-    
-    const newAnswers = [...answers];
-    newAnswers[current] = {
-      questionId: questions[current].id || questions[current].question_id,
-      answer: answerText,
-      assumption: assumption
-    };
-    setAnswers(newAnswers);
+  console.log('handleNext called, submitting=', submitting);
+  console.log('current=', current, 'questions.length=', questions.length);
+  
+  if (!questions[current]) return;
+  
+  const newAnswers = [...answers];
+  newAnswers[current] = {
+    questionId: questions[current].id || questions[current].question_id,
+    answer: answerText,
+    assumption: assumption
+  };
+  setAnswers(newAnswers);
+
+  // NEU: Speichere Progress nach jeder Antwort
+  try {
+    await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${tradeId}/save-progress`),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentQuestionIndex: current + 1,
+          answers: newAnswers.filter(a => a && a.answer)
+        })
+      }
+    );
+  } catch (err) {
+    console.error('Failed to save progress:', err);
+  }
 
     const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
     if (
