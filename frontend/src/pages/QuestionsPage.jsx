@@ -273,12 +273,14 @@ export default function IntakeQuestionsPage() {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            includeIntakeContext: true,
-            isManuallyAdded: false,
-            projectDescription: projectData.description,
-            projectCategory: projectData.category,        
-            projectBudget: projectData.budget            
-          }),
+  includeIntakeContext: true,
+  isManuallyAdded: isManuallyAdded || false,     
+  isAiRecommended: isAiRecommended || false,     
+  isAdditional: isAdditionalTrade || false,      
+  projectDescription: projectData.description,
+  projectCategory: projectData.category,        
+  projectBudget: projectData.budget            
+}),
           keepalive: true
         });
         
