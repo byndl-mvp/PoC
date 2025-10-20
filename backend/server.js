@@ -2352,28 +2352,164 @@ Analysiere diese Daten und gib die benötigten Gewerke als JSON zurück.`;
       }
     }
 
-    // Kernsanierung - ALLE Gewerke außer AUSS, PV, KLIMA
-    const isKernsanierung = project.description?.toLowerCase().includes('kernsanierung') || 
-                            project.description?.toLowerCase().includes('komplettsanierung');
+// ═══════════════════════════════════════════════════════════════
+// KERNSANIERUNG-DETECTION MIT GEBÄUDE/WOHNUNGS-DIFFERENZIERUNG
+// ═══════════════════════════════════════════════════════════════
 
-    if (isKernsanierung) {
-      console.log('[DETECT] Kernsanierung erkannt - füge ALLE Gewerke hinzu (außer AUSS, PV, KLIMA)');
+const descLower = (project.description || '').toLowerCase();
+const categoryLower = (project.category || '').toLowerCase();
+const subCategoryLower = (project.subCategory || '').toLowerCase();
+const fullText = `${descLower} ${categoryLower} ${subCategoryLower}`;
+
+// 1. Prüfe auf Kernsanierung-Keywords
+const hasKernsanierungKeyword = 
+  fullText.includes('kernsanierung') || 
+  fullText.includes('totalsanierung') ||
+  fullText.includes('vollsanierung') ||
+  fullText.includes('komplettsanierung') ||
+  fullText.includes('komplette sanierung');
+
+if (hasKernsanierungKeyword) {
+  console.log('[DETECT] Kernsanierung-Keyword erkannt, analysiere Scope...');
+  
+  // 2. AUSSCHLUSS: Einzelne Räume (KEINE Kernsanierung)
+  const isSingleRoom = 
+    fullText.includes('bad') ||
+    fullText.includes('badezimmer') ||
+    fullText.includes('wc') ||
+    fullText.includes('küche') ||
+    fullText.includes('wohnzimmer') ||
+    fullText.includes('schlafzimmer') ||
+    fullText.includes('kinderzimmer') ||
+    fullText.includes('arbeitszimmer') ||
+    fullText.includes('flur') ||
+    fullText.includes('balkon') ||
+    fullText.includes('terrasse') ||
+    fullText.includes('keller') && !fullText.includes('kellersanierung') ||
+    fullText.includes('dachboden') && !fullText.includes('dachausbau') ||
+    (fullText.match(/(\d+)\s*m[²2]/) && parseInt(fullText.match(/(\d+)\s*m[²2]/)?.[1] || '0') < 40);
+  
+  if (isSingleRoom) {
+    console.log('[DETECT] Kernsanierung-Keyword, aber nur einzelner Raum - normale Detection');
+    // Fahre mit normaler Detection fort (kein Override)
+  } else {
+    // 3. Unterscheide: Ganzes GEBÄUDE vs. WOHNUNG/ETAGE
+    const isFullBuilding = 
+      fullText.includes('einfamilienhaus') ||
+      fullText.includes('mehrfamilienhaus') ||
+      fullText.includes('reihenhaus') ||
+      fullText.includes('doppelhaushälfte') ||
+      fullText.includes('haus kernsanierung') ||
+      fullText.includes('haus komplettsanierung') ||
+      fullText.includes('gebäude') && !fullText.includes('wohnung') ||
+      fullText.includes('villa') ||
+      fullText.includes('bungalow');
+    
+    const isApartmentOrFloor = 
+      fullText.includes('wohnung') ||
+      fullText.includes('eigentumswohnung') ||
+      fullText.includes('mietwohnung') ||
+      fullText.includes('apartment') ||
+      fullText.includes('etage') ||
+      fullText.includes('stockwerk') ||
+      fullText.includes('geschoss') ||
+      fullText.includes('penthouse') ||
+      fullText.includes('maisonette') ||
+      (fullText.match(/(\d+)\s*m[²2]/) && parseInt(fullText.match(/(\d+)\s*m[²2]/)?.[1] || '0') >= 40 && parseInt(fullText.match(/(\d+)\s*m[²2]/)?.[1] || '0') <= 200);
+    
+    // ═══════════════════════════════════════════════════════════
+    // CASE A: GEBÄUDE-KERNSANIERUNG (Haus, Villa, etc.)
+    // ═══════════════════════════════════════════════════════════
+    if (isFullBuilding) {
+      console.log('[DETECT] GEBÄUDE-Kernsanierung erkannt - füge ALLE Gewerke hinzu');
       
-      const excludeForKernsanierung = ['AUSS', 'PV', 'KLIMA', 'INT'];
+      // ALLE Gewerke außer AUSS, PV, KLIMA
+      const fullBuildingTrades = ['ABBR', 'ROH', 'ELEKT', 'SAN', 'HEI', 'TRO', 'FLI', 'MAL', 
+                                   'GER', 'ZIMM', 'DACH', 'FEN', 'FASS', 'ESTR', 'TIS', 'BOD', 'SCHL'];
       
-      for (const trade of availableTrades) {
-        if (excludeForKernsanierung.includes(trade.code)) continue;
-        if (usedIds.has(trade.id)) continue;
-        
-        detectedTrades.push({
-          id: trade.id,
-          code: trade.code,
-          name: trade.name
-        });
-        usedIds.add(trade.id);
-        console.log(`[DETECT] Kernsanierung: Added ${trade.code}`);
+      for (const tradeCode of fullBuildingTrades) {
+        const trade = availableTrades.find(t => t.code === tradeCode);
+        if (trade && !usedIds.has(trade.id)) {
+          detectedTrades.push({
+            id: trade.id,
+            code: trade.code,
+            name: trade.name
+          });
+          usedIds.add(trade.id);
+          console.log(`[DETECT] Gebäude-Kernsanierung: Added ${trade.code} (required)`);
+        }
       }
     }
+    
+    // ═══════════════════════════════════════════════════════════
+    // CASE B: WOHNUNGS/ETAGEN-KERNSANIERUNG
+    // ═══════════════════════════════════════════════════════════
+    else if (isApartmentOrFloor) {
+      console.log('[DETECT] WOHNUNGS-Kernsanierung erkannt');
+      
+      // INNEN-Gewerke (Required)
+      const apartmentRequiredTrades = ['ABBR', 'ELEKT', 'SAN', 'HEI', 'TRO', 'FLI', 
+                                        'MAL', 'ESTR', 'TIS', 'BOD'];
+      
+      // GEBÄUDEHÜLLE-Gewerke (Optional/AI-recommended)
+      const apartmentOptionalTrades = ['ROH', 'ZIMM', 'DACH', 'FEN', 'FASS', 'GER', 'SCHL'];
+      
+      // Füge REQUIRED Gewerke hinzu
+      for (const tradeCode of apartmentRequiredTrades) {
+        const trade = availableTrades.find(t => t.code === tradeCode);
+        if (trade && !usedIds.has(trade.id)) {
+          detectedTrades.push({
+            id: trade.id,
+            code: trade.code,
+            name: trade.name
+          });
+          usedIds.add(trade.id);
+          console.log(`[DETECT] Wohnungs-Kernsanierung: Added ${trade.code} (required)`);
+        }
+      }
+      
+      // Füge OPTIONAL Gewerke als AI-recommended hinzu
+      for (const tradeCode of apartmentOptionalTrades) {
+        const trade = availableTrades.find(t => t.code === tradeCode);
+        if (trade && !usedIds.has(trade.id)) {
+          // Markiere als optional/AI-recommended
+          detectedTrades.push({
+            id: trade.id,
+            code: trade.code,
+            name: trade.name,
+            isAiRecommended: true,  // Als optional markieren
+            reason: 'Kann bei Wohnungssanierung relevant sein (z.B. bei Fenstertausch oder statischen Änderungen)'
+          });
+          usedIds.add(trade.id);
+          console.log(`[DETECT] Wohnungs-Kernsanierung: Added ${trade.code} (ai-recommended)`);
+        }
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // CASE C: Unklar - konservativ ALLE hinzufügen
+    // ═══════════════════════════════════════════════════════════
+    else {
+      console.log('[DETECT] Kernsanierung erkannt, aber Scope unklar - füge ALLE hinzu');
+      
+      const allKernsanierungTrades = ['ABBR', 'ROH', 'ELEKT', 'SAN', 'HEI', 'TRO', 'FLI', 'MAL', 
+                                       'GER', 'ZIMM', 'DACH', 'FEN', 'FASS', 'ESTR', 'TIS', 'BOD', 'SCHL'];
+      
+      for (const tradeCode of allKernsanierungTrades) {
+        const trade = availableTrades.find(t => t.code === tradeCode);
+        if (trade && !usedIds.has(trade.id)) {
+          detectedTrades.push({
+            id: trade.id,
+            code: trade.code,
+            name: trade.name
+          });
+          usedIds.add(trade.id);
+          console.log(`[DETECT] Kernsanierung (unklar): Added ${trade.code}`);
+        }
+      }
+    }
+  }
+}
     
     if (detectedTrades.length === 0) {
       throw new Error('No valid trades detected');
