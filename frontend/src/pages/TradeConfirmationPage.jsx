@@ -214,7 +214,6 @@ export default function TradeConfirmationPage() {
     
     try {
       setLoading(true);
-      setLoadingMessage('Speichere Gewerkeauswahl...');
       
       const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
         method: 'POST',
