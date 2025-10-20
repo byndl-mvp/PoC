@@ -12180,7 +12180,15 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
     });
     
     // Rufe die BESTEHENDE Funktion auf - sie ist bereits korrekt!
-    const questions = await generateContextBasedQuestions(tradeId, projectId, contextAnswer);
+const questions = await generateContextBasedQuestions(
+  tradeId, 
+  projectId, 
+  contextAnswer,
+  { 
+    isManuallyAdded: isManuallyAdded || false,
+    isAdditional: isAdditional || false,
+  }
+);
     
     // Speichere die neuen Fragen
     for (const q of questions) {
