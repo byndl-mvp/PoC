@@ -5516,8 +5516,8 @@ function validateTradeQuestions(tradeCode, questions, projectContext = {}) {
     'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
     'ZIMM': ['holzbau', 'dachstuhl', 'gaube', 'carport', 'holzkonstruktion', 'fachwerk'],
     'ESTR': ['fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
-    'SCHL': ['geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe', 'schlosserarbeiten'],
-    'AUSS': ['pflaster', 'einfahrt', 'außenanlage', 'randstein', 'rasen'],
+    'SCHL': ['geländer', 'metallbau', 'stahltreppe', 'schlosserarbeiten'],
+    'AUSS': ['pflaster', 'einfahrt', 'außenanlage', 'randstein', 'gartenzaun', 'rasen'],
     'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'batterie', 'einspeisung'],
     'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau']
   };
