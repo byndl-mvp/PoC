@@ -192,8 +192,37 @@ const startStatusPolling = useCallback(() => {
   // Speichere Interval-Ref für Cleanup
   return pollInterval;
 }, [projectId, tradeId]);
-                                  
-  useEffect(() => {
+
+// Auto-Save für Progress
+const startAutoSave = useCallback(() => {
+  // Clear existing interval
+  if (autoSaveIntervalRef.current) {
+    clearInterval(autoSaveIntervalRef.current);
+  }
+  
+  const interval = setInterval(async () => {
+    try {
+      await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/save-progress`),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentQuestionIndex: current,
+            answers: answers.filter(a => a && a.answer)
+          })
+        }
+      );
+      console.log('[AUTO-SAVE] Progress saved');
+    } catch (err) {
+      console.error('[AUTO-SAVE] Failed:', err);
+    }
+  }, 30000);
+  
+  autoSaveIntervalRef.current = interval;
+}, [projectId, tradeId, current, answers]);
+
+useEffect(() => {
   async function initialize() {
     try {
       setLoading(true);
