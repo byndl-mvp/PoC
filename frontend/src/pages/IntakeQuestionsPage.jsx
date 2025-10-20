@@ -58,11 +58,11 @@ export default function IntakeQuestionsPage() {
     }
   }, [loading, error]);
 
-  // Fake Progress für Antworten-Analyse (45 Sekunden)
+  // Fake Progress für Antworten-Analyse (60 Sekunden)
   useEffect(() => {
     if (analyzingAnswers) {
       setAnalyzeProgress(0);
-      const totalDuration = 45000; // 45 Sekunden
+      const totalDuration = 60000; // 60 Sekunden
       const interval = 100; // Update alle 100ms
       const increment = (100 / (totalDuration / interval));
       
