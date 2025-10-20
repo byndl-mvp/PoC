@@ -12551,7 +12551,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
       return res.status(400).json({ error: 'Kontextantwort fehlt' });
     }
     
-    // Log für Debugging
     console.log('[CONTEXT-QUESTIONS] Processing:', {
       tradeId,
       isAdditional,
@@ -12559,30 +12558,67 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
       isAiRecommended
     });
     
-    // Rufe die BESTEHENDE Funktion auf - sie ist bereits korrekt!
-const questions = await generateContextBasedQuestions(
-  tradeId, 
-  projectId, 
-  contextAnswer,
-  { 
-    isManuallyAdded: isManuallyAdded || false,
-    isAdditional: isAdditional || false,
-  }
-);
+    // Speichere Kontextantwort SOFORT
+    const tradeInfo = await query('SELECT code FROM trades WHERE id = $1', [tradeId]);
+    const tradeCode = tradeInfo.rows[0]?.code;
     
-    // Speichere die neuen Fragen
+    await query(
+      `INSERT INTO answers (project_id, trade_id, question_id, answer_text)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (project_id, trade_id, question_id)
+       DO UPDATE SET answer_text = $4, updated_at = NOW()`,
+      [projectId, tradeId, `${tradeCode}-CONTEXT`, contextAnswer]
+    );
+    
+    // Generiere Folgefragen
+    const questions = await generateContextBasedQuestions(
+      tradeId, 
+      projectId, 
+      contextAnswer,
+      { 
+        isManuallyAdded: isManuallyAdded || false,
+        isAdditional: isAdditional || false,
+        isAiRecommended: isAiRecommended || false
+      }
+    );
+    
+    // NEU: Speichere die neuen Fragen MIT ALLEN FELDERN
     for (const q of questions) {
       await query(
-        `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (project_id, trade_id, question_id)
-         DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
-        [projectId, tradeId, q.id, q.question || q.text, q.type || 'text', q.required ?? true, 
-         q.options ? JSON.stringify(q.options) : null]
+        `INSERT INTO questions (
+          project_id, trade_id, question_id, text, type, required, options,
+          explanation, upload_helpful, upload_hint, category
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (project_id, trade_id, question_id)
+        DO UPDATE SET 
+          text=$4, type=$5, required=$6, options=$7,
+          explanation=$8, upload_helpful=$9, upload_hint=$10, category=$11`,
+        [
+          projectId, 
+          tradeId, 
+          q.id, 
+          q.question || q.text, 
+          q.type || 'text', 
+          q.required ?? true, 
+          q.options ? JSON.stringify(q.options) : null,
+          q.explanation || null,
+          q.uploadHelpful || false,
+          q.uploadHint || null,
+          q.category || null
+        ]
       );
     }
     
-    // WICHTIG: Gib die Flags zurück ans Frontend
+    // Setze Status
+    await query(
+      `INSERT INTO trade_progress (project_id, trade_id, status, updated_at)
+       VALUES ($1, $2, 'questions_ready', NOW())
+       ON CONFLICT (project_id, trade_id)
+       DO UPDATE SET status = 'questions_ready', updated_at = NOW()`,
+      [projectId, tradeId]
+    );
+    
     res.json({ 
       questions, 
       count: questions.length,
