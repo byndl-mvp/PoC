@@ -1664,42 +1664,56 @@ if (pendingConfirmation) {
       </div>
       
       {/* Upload-Status - GREEN, VOLLE BREITE */}
-      {uploadedFiles[currentQ.id] && (
-        <div className="p-5 bg-gradient-to-r from-green-500/10 to-teal-500/10 border border-green-500/30 rounded-xl backdrop-blur-sm">
-          <div className="flex items-start space-x-3">
-            <svg className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
-            </svg>
-            <div className="flex-1 text-center">
-              <p className="text-green-300 font-semibold mb-2 flex items-center justify-center">
-                ✓ Bild analysiert
-                {uploadedFiles[currentQ.id].confidence && (
-                  <span className="ml-2 text-xs bg-green-500/20 px-2 py-0.5 rounded">
-                    {Math.round(uploadedFiles[currentQ.id].confidence * 100)}% Konfidenz
-                  </span>
-                )}
-              </p>
-              
-              {uploadedFiles[currentQ.id].answer && (
-                <div className="bg-white/5 rounded-lg p-3 border border-green-500/20 mb-2">
-                  <p className="text-sm text-gray-400 mb-1">Erkannt:</p>
-                  <p className="text-white text-base leading-relaxed">
-                    {uploadedFiles[currentQ.id].answer}
-                  </p>
-                </div>
-              )}
-              
-              <p className="text-xs text-green-300/60 mt-2">
-                🔎 {uploadedFiles[currentQ.id].name}
-              </p>
-              
-              <p className="text-xs text-gray-400 mt-2 italic">
-                💡 Sie können die Antwort unten noch anpassen
-              </p>
-            </div>
+{uploadedFiles[currentQ.id] && !pendingConfirmation && (
+  <div className="p-5 bg-gradient-to-r from-green-500/10 to-teal-500/10 border border-green-500/30 rounded-xl backdrop-blur-sm">
+    <div className="flex items-start space-x-3">
+      <svg className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+      </svg>
+      <div className="flex-1">
+        <p className="text-green-300 font-semibold mb-2 flex items-center">
+          ✓ Daten übernommen
+          {uploadedFiles[currentQ.id].confidence && (
+            <span className="ml-2 text-xs bg-green-500/20 px-2 py-0.5 rounded">
+              {Math.round(uploadedFiles[currentQ.id].confidence * 100)}% Konfidenz
+            </span>
+          )}
+        </p>
+        
+        {uploadedFiles[currentQ.id].answer && (
+          <div className="bg-white/5 rounded-lg p-3 border border-green-500/20 mb-2 max-h-60 overflow-y-auto">
+            <p className="text-sm text-gray-400 mb-1">Übernommene Daten:</p>
+            <pre className="text-white text-sm leading-relaxed whitespace-pre-wrap font-mono">
+              {uploadedFiles[currentQ.id].answer}
+            </pre>
           </div>
-        </div>
-      )}
+        )}
+        
+        <p className="text-xs text-green-300/60 mt-2">
+          🔎 {uploadedFiles[currentQ.id].name}
+        </p>
+        
+        <p className="text-xs text-gray-400 mt-2 italic">
+          💡 Sie können die Antwort unten noch anpassen
+        </p>
+        
+        <button
+          onClick={() => {
+            setUploadedFiles(prev => {
+              const copy = {...prev};
+              delete copy[currentQ.id];
+              return copy;
+            });
+            setAnswerText('');
+          }}
+          className="text-xs text-red-400 hover:text-red-300 mt-2 underline"
+        >
+          ✕ Entfernen und neu hochladen
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   )}
 </div>
