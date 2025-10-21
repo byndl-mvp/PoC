@@ -12748,19 +12748,23 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions-status', async (req,
     );
     
     const status = statusRes.rows[0]?.status || 'not_started';
-    const questionCount = parseInt(questionCountRes.rows[0]?.count || 0);
-    const answerCount = parseInt(answerCountRes.rows[0]?.count || 0);
-    const currentIndex = statusRes.rows[0]?.current_question_index || 0;
-    
-    res.json({
-      status,
-      questionCount,
-      answerCount,
-      currentIndex,
-      ready: questionCount > 0,
-      inProgress: answerCount > 0 && answerCount < questionCount,
-      requiresContext: isSpecial && questionCount === 0  // NEU!
-    });
+const questionCount = parseInt(questionCountRes.rows[0]?.count || 0);
+const answerCount = parseInt(answerCountRes.rows[0]?.count || 0);
+const currentIndex = statusRes.rows[0]?.current_question_index || 0;
+
+const responseData = {
+  status,
+  questionCount,
+  answerCount,
+  currentIndex,
+  ready: questionCount > 0,
+  inProgress: answerCount > 0 && answerCount < questionCount,
+  requiresContext: isSpecial && questionCount === 0
+};
+
+console.log('[QUESTIONS-STATUS] Response data:', responseData);
+
+res.json(responseData);
     
   } catch (err) {
     console.error('Error checking status:', err);
