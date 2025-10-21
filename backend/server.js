@@ -12381,10 +12381,18 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
     (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : null;
   
   return {
-    ...q,
+    id: q.question_id,
+    question: q.text,
+    text: q.text,
+    type: q.type,
+    required: q.required,
     options: parsedOptions,
     dependsOn: q.depends_on || null,
-    showIf: q.show_if || null
+    showIf: q.show_if || null,
+    explanation: q.explanation,
+    uploadHelpful: q.upload_helpful,
+    uploadHint: q.upload_hint,
+    category: q.category
   };
 });
     
