@@ -13896,6 +13896,63 @@ await query(
   }
 });
 
+// DELETE TRADE - Gewerk komplett löschen
+app.delete('/api/projects/:projectId/trades/:tradeId/delete', async (req, res) => {
+  const { projectId, tradeId } = req.params;
+  
+  console.log(`[DELETE-TRADE] Deleting trade ${tradeId} from project ${projectId}`);
+  
+  try {
+    // 1. Lösche alle Antworten für dieses Gewerk
+    await db.query(
+      'DELETE FROM trade_answers WHERE project_id = ? AND trade_id = ?',
+      [projectId, tradeId]
+    );
+    console.log(`[DELETE-TRADE] Deleted answers for trade ${tradeId}`);
+    
+    // 2. Lösche das LV
+    await db.query(
+      'DELETE FROM project_lvs WHERE project_id = ? AND trade_id = ?',
+      [projectId, tradeId]
+    );
+    console.log(`[DELETE-TRADE] Deleted LV for trade ${tradeId}`);
+    
+    // 3. Lösche die Fragen
+    await db.query(
+      'DELETE FROM trade_questions WHERE project_id = ? AND trade_id = ?',
+      [projectId, tradeId]
+    );
+    console.log(`[DELETE-TRADE] Deleted questions for trade ${tradeId}`);
+    
+    // 4. Entferne das Gewerk aus project_trades
+    await db.query(
+      'DELETE FROM project_trades WHERE project_id = ? AND trade_id = ?',
+      [projectId, tradeId]
+    );
+    console.log(`[DELETE-TRADE] Removed trade ${tradeId} from project_trades`);
+    
+    // 5. Optional: Lösche auch gespeicherten Progress
+    await db.query(
+      'DELETE FROM trade_progress WHERE project_id = ? AND trade_id = ?',
+      [projectId, tradeId]
+    );
+    console.log(`[DELETE-TRADE] Deleted progress for trade ${tradeId}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Gewerk ${tradeId} erfolgreich gelöscht`,
+      deletedTradeId: tradeId
+    });
+    
+  } catch (error) {
+    console.error('[DELETE-TRADE] Error:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Löschen des Gewerks',
+      details: error.message 
+    });
+  }
+});
+
 // ANPASSUNG des bestehenden Endpoints: Get aggregated LVs for a project
 app.get('/api/projects/:projectId/lv', async (req, res) => {
   try {
