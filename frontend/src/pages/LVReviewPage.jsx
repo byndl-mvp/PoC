@@ -228,7 +228,7 @@ const progressInterval = setInterval(() => {
 };
 
 // Status-Polling
-const pollQuestionStatus = (tradeId) => {
+const pollQuestionStatus = (tradeId, progressInterval) => {
   const interval = setInterval(async () => {
     try {
       const res = await fetch(
@@ -239,12 +239,20 @@ const pollQuestionStatus = (tradeId) => {
         const data = await res.json();
         setQuestionsStatus(prev => ({ ...prev, [tradeId]: data }));
         
-        if (data.ready) {
+        if (data.questionCount > 0) {
+          console.log('✅ Questions ready for trade', tradeId);
           clearInterval(interval);
-          setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+          clearInterval(progressInterval); // Stop Fake-Progress
           
-          // Reload Data
-          window.location.reload();
+          // Setze auf 100%
+          setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 100 }));
+          
+          // Warte kurz, dann Status zurücksetzen
+          setTimeout(() => {
+            setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+            setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
+            window.location.reload();
+          }, 500);
         }
       }
     } catch (err) {
