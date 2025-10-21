@@ -620,17 +620,48 @@ const handleFileUpload = async (questionId, file) => {
       setEditableData(result.extractedAnswer);
       console.log('📊 Structured data detected, showing confirmation dialog');
     } else {
-      // Direkt übernehmen (wie bisher)
-      setAnswerText(result.extractedAnswer);
-      
-      // Speichere im answers Array
-      const newAnswers = [...answers];
-      newAnswers[current] = {
-        questionId: questions[current].id || questions[current].question_id,
-        answer: result.extractedAnswer,
-        assumption: ''
-      };
-      setAnswers(newAnswers);
+  // Direkt übernehmen (wie bisher)
+  const extractedText = result.extractedAnswer;
+  
+  // NEU: Wenn Dropdown, versuche exakten Match zu finden
+  if (currentQ.type === 'select' && currentQ.options) {
+    const optionValues = Array.isArray(currentQ.options) 
+      ? currentQ.options 
+      : currentQ.options?.values || [];
+    
+    // Suche exakte Übereinstimmung
+    const exactMatch = optionValues.find(opt => 
+      opt.toLowerCase() === extractedText.toLowerCase()
+    );
+    
+    // Oder suche Teilübereinstimmung
+    const partialMatch = optionValues.find(opt => 
+      extractedText.toLowerCase().includes(opt.toLowerCase()) ||
+      opt.toLowerCase().includes(extractedText.toLowerCase())
+    );
+    
+    const matchedOption = exactMatch || partialMatch;
+    
+    if (matchedOption) {
+      console.log(`✅ Matched dropdown option: "${matchedOption}"`);
+      setAnswerText(matchedOption);
+    } else {
+      console.log(`⚠️ No dropdown match found, using extracted text`);
+      setAnswerText(extractedText);
+    }
+  } else {
+    // Normales Textfeld
+    setAnswerText(extractedText);
+  }
+  
+  // Speichere im answers Array
+  const newAnswers = [...answers];
+  newAnswers[current] = {
+    questionId: questions[current].id || questions[current].question_id,
+    answer: answerText, // Wird im nächsten Render aktualisiert
+    assumption: ''
+  };
+  setAnswers(newAnswers);
       
       // Upload-Info für Anzeige
       setUploadedFiles(prev => ({
