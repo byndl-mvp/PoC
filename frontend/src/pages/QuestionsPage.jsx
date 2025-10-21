@@ -522,7 +522,8 @@ useEffect(() => {
     if (finalIntervalRef.current) clearInterval(finalIntervalRef.current);
     if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current);
   };
-}, [projectId, tradeId, startAutoSave, startStatusPolling]);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [projectId, tradeId]);
   
   const toggleDetailedExplanation = async () => {
   const questionId = currentQ.id || `q-${current}`;
