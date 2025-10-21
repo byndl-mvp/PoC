@@ -242,7 +242,8 @@ useEffect(() => {
 
       const isAdditionalTrade = new URLSearchParams(window.location.search).get('additional') === 'true';
       const manuallyAddedTrades = JSON.parse(sessionStorage.getItem('manuallyAddedTrades') || '[]');
-      const isManuallyAdded = manuallyAddedTrades.includes(parseInt(tradeId));
+      const isManualFromURL = new URLSearchParams(window.location.search).get('manual') === 'true';
+      const isManuallyAdded = isManualFromURL || manuallyAddedTrades.includes(parseInt(tradeId));
 
       // Lade isAiRecommended aus den Projektdaten
       let isAiRecommended = false;
