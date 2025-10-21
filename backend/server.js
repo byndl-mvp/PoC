@@ -13904,15 +13904,15 @@ app.delete('/api/projects/:projectId/trades/:tradeId/delete', async (req, res) =
   
   try {
     // Optional: Logging was gelöscht wird
-    const answersCheck = await pool.query(
+    const answersCheck = await query(
       'SELECT COUNT(*) FROM answers WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
-    const questionsCheck = await pool.query(
+    const questionsCheck = await query(
       'SELECT COUNT(*) FROM questions WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
-    const lvsCheck = await pool.query(
+    const lvsCheck = await query(
       'SELECT COUNT(*) FROM lvs WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
@@ -13920,7 +13920,7 @@ app.delete('/api/projects/:projectId/trades/:tradeId/delete', async (req, res) =
     console.log(`[DELETE-TRADE] Will delete: ${answersCheck.rows[0].count} answers, ${questionsCheck.rows[0].count} questions, ${lvsCheck.rows[0].count} lvs`);
     
     // EINE Query - CASCADE löscht den Rest automatisch
-    const result = await pool.query(
+    const result = await query(
       'DELETE FROM project_trades WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
