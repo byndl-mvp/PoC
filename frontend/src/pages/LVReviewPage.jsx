@@ -77,13 +77,18 @@ useEffect(() => {
     try {
       setLoading(true);
       
+      // ⚡ NEU: Lade generatingLVs aus sessionStorage
+      const savedGeneratingLVs = JSON.parse(sessionStorage.getItem('generatingLVs') || '{}');
+      console.log('📂 Loaded generatingLVs from sessionStorage:', savedGeneratingLVs);
+      setGeneratingLVs(savedGeneratingLVs);
+      
       // 1. Projekt laden
       const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
       if (!projectRes.ok) throw new Error('Projekt konnte nicht geladen werden');
       const projectData = await projectRes.json();
       setProject(projectData);
       
-      // 2. Gewählte Gewerke laden (aus Session oder Backend)
+      // 2. Gewählte Gewerke laden
       const tradesRes = await fetch(apiUrl(`/api/projects/${projectId}/selected-trades`));
       if (!tradesRes.ok) throw new Error('Gewerke konnten nicht geladen werden');
       const tradesData = await tradesRes.json();
@@ -100,6 +105,12 @@ useEffect(() => {
         const lv = (lvsData?.lvs || []).find(l => 
           parseInt(l.trade_id) === parseInt(trade.id)
         );
+        
+        // ⚡ NEU: Wenn LV vorhanden, entferne aus generatingLVs
+        if (lv) {
+          delete savedGeneratingLVs[trade.id];
+        }
+        
         return {
           ...trade,
           hasLV: !!lv,
@@ -108,9 +119,13 @@ useEffect(() => {
         };
       });
       
+      // ⚡ NEU: Update sessionStorage falls LVs fertig sind
+      sessionStorage.setItem('generatingLVs', JSON.stringify(savedGeneratingLVs));
+      setGeneratingLVs(savedGeneratingLVs);
+      
       setSelectedTrades(combinedTrades);
       
-      // NEU: Lade Status für alle Trades (NACH setSelectedTrades!)
+      // Status für alle Trades laden
       const statusPromises = combinedTrades.map(async (trade) => {
         try {
           const res = await fetch(
@@ -146,15 +161,22 @@ useEffect(() => {
   loadData();
 }, [projectId]);
 
-// Polling für LV-Generierung
+// ERSETZE das Polling useEffect (ca. Zeile 160) mit diesem Code:
 useEffect(() => {
   const activeGenerations = Object.entries(generatingLVs)
     .filter(([_, isGenerating]) => isGenerating)
     .map(([tradeId]) => parseInt(tradeId));
   
-  if (activeGenerations.length === 0) return;
+  if (activeGenerations.length === 0) {
+    console.log('⏸️ No active LV generations - polling stopped');
+    return;
+  }
+  
+  console.log('▶️ Starting polling for trades:', activeGenerations);
   
   const interval = setInterval(async () => {
+    console.log('🔄 Polling LV status...');
+    
     for (const tradeId of activeGenerations) {
       try {
         const res = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
@@ -163,20 +185,43 @@ useEffect(() => {
           const lvExists = data.lvs?.some(lv => parseInt(lv.trade_id) === tradeId);
           
           if (lvExists) {
-            console.log(`✅ LV for trade ${tradeId} is ready`);
-            setGeneratingLVs(prev => ({ ...prev, [tradeId]: false }));
-            // Reload data
-            window.location.reload();
+            console.log(`✅ LV for trade ${tradeId} is ready!`);
+            
+            // ⚡ NEU: Entferne aus generatingLVs und sessionStorage
+            setGeneratingLVs(prev => {
+              const updated = { ...prev };
+              delete updated[tradeId];
+              sessionStorage.setItem('generatingLVs', JSON.stringify(updated));
+              console.log('💾 Updated generatingLVs in sessionStorage:', updated);
+              return updated;
+            });
+            
+            // Reload Seite um neue LVs anzuzeigen
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
+          } else {
+            console.log(`⏳ LV for trade ${tradeId} still generating...`);
           }
         }
       } catch (err) {
-        console.error('Polling error:', err);
+        console.error('❌ Polling error:', err);
       }
     }
   }, 5000); // Alle 5 Sekunden prüfen
   
-  return () => clearInterval(interval);
+  return () => {
+    console.log('🛑 Polling cleanup');
+    clearInterval(interval);
+  };
 }, [generatingLVs, projectId]);
+
+useEffect(() => {
+  // Cleanup beim Unmount oder Seitenwechsel
+  return () => {
+    console.log('🧹 LVReviewPage unmounting - cleaning up');
+  };
+}, []);
   
   const calculateTotal = (lv) => {
     if (lv.content?.totalSum) {
