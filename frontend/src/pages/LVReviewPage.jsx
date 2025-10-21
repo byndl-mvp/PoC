@@ -271,24 +271,29 @@ const handleGenerateAllQuestions = async () => {
 };
   
   // Navigation Funktionen
-  const handleStartQuestions = (tradeId) => {
+ const handleStartQuestions = (tradeId) => {
   const trade = selectedTrades.find(t => t.id === parseInt(tradeId));
+  
+  if (!trade) {
+    console.error('Trade not found:', tradeId);
+    return;
+  }
   
   // Baue URL mit korrekten Parametern
   let url = `/project/${projectId}/trade/${tradeId}/questions`;
   
-  if (trade?.is_additional) {
+  if (trade.is_additional) {
     url += '?additional=true';
-  } else if (trade?.is_manual || trade?.isManual) {
+  } else if (trade.is_manual || trade.isManual) {
     url += '?manual=true';
-  } else if (trade?.is_ai_recommended || trade?.isAiRecommended) {
+  } else if (trade.is_ai_recommended || trade.isAiRecommended) {
     url += '?airecommended=true';
   }
   
   console.log('🎯 Navigating to:', url, 'Trade flags:', {
-    is_manual: trade?.is_manual,
-    is_ai_recommended: trade?.is_ai_recommended,
-    is_additional: trade?.is_additional
+    is_manual: trade.is_manual,
+    is_ai_recommended: trade.is_ai_recommended,
+    is_additional: trade.is_additional
   });
   
   navigate(url);
