@@ -399,7 +399,7 @@ const handleGenerateAllQuestions = async () => {
     navigate(`/project/${projectId}/add-trade?additional=true`);
   };
 
-  const handleDeleteTrade = async (trade) => {
+ const handleDeleteTrade = async (trade) => {
   // Bestätigungs-Dialog mit Warnhinweis
   const confirmMessage = `Möchten Sie das Gewerk "${trade.name}" wirklich löschen?\n\n` +
     `⚠️ ACHTUNG: Dies wird folgendes entfernen:\n` +
