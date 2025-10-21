@@ -1039,6 +1039,11 @@ if (current + 1 < questions.length) {
     }
     
     console.log('LV generated successfully');
+
+    console.log('🔍 DEBUG - Before saving to sessionStorage:');
+    console.log('  - projectId:', projectId);
+    console.log('  - tradeId:', tradeId);
+    console.log('  - typeof tradeId:', typeof tradeId);
     
     // Markiere als abgeschlossen
     await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/complete`), {
@@ -1059,6 +1064,7 @@ if (current + 1 < questions.length) {
     generatingLVs[tradeId] = true;
     sessionStorage.setItem('generatingLVs', JSON.stringify(generatingLVs));
     console.log('💾 Saved generatingLVs to sessionStorage:', generatingLVs);
+    console.log('  - sessionStorage content:', sessionStorage.getItem('generatingLVs'));
     
     setFinalizing(true);
     
