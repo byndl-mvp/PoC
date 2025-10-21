@@ -85,8 +85,12 @@ useEffect(() => {
       console.log('  - Raw sessionStorage:', sessionStorage.getItem('generatingLVs'));
       console.log('  - Parsed object:', savedGeneratingLVs);
       console.log('  - Object keys:', Object.keys(savedGeneratingLVs));
-      
-      setGeneratingLVs(savedGeneratingLVs);
+
+      const normalizedGeneratingLVs = {};
+      Object.keys(savedGeneratingLVs).forEach(key => {
+        normalizedGeneratingLVs[parseInt(key)] = savedGeneratingLVs[key];
+      });
+      setGeneratingLVs(normalizedGeneratingLVs);
       
       // 1. Projekt laden
       const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
