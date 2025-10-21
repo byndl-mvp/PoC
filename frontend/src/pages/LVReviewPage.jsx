@@ -398,6 +398,51 @@ const handleGenerateAllQuestions = async () => {
     sessionStorage.setItem('returnToReview', 'true');
     navigate(`/project/${projectId}/add-trade?additional=true`);
   };
+
+  const handleDeleteTrade = async (trade) => {
+  // Bestätigungs-Dialog mit Warnhinweis
+  const confirmMessage = `Möchten Sie das Gewerk "${trade.name}" wirklich löschen?\n\n` +
+    `⚠️ ACHTUNG: Dies wird folgendes entfernen:\n` +
+    `• Alle beantworteten Fragen\n` +
+    `• Das generierte Leistungsverzeichnis\n` +
+    `• Alle Positionen und Berechnungen\n\n` +
+    `Diese Aktion kann NICHT rückgängig gemacht werden!`;
+  
+  if (!window.confirm(confirmMessage)) {
+    return;
+  }
+  
+  // Zweite Bestätigung für Sicherheit
+  if (!window.confirm(`Letzte Bestätigung: "${trade.name}" wirklich unwiderruflich löschen?`)) {
+    return;
+  }
+  
+  try {
+    // Backend-Request zum Löschen
+    const response = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${trade.id}/delete`),
+      {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Fehler beim Löschen des Gewerks');
+    }
+    
+    // Erfolgsmeldung
+    alert(`✅ Gewerk "${trade.name}" wurde erfolgreich gelöscht.`);
+    
+    // Seite neu laden um aktualisierte Liste zu zeigen
+    window.location.reload();
+    
+  } catch (error) {
+    console.error('Error deleting trade:', error);
+    alert(`❌ Fehler beim Löschen: ${error.message}`);
+  }
+};
   
   // eslint-disable-next-line no-unused-vars
   const handleEditPosition = (lvIndex, posIndex, field, value) => {
