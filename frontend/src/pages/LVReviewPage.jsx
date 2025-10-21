@@ -15,6 +15,7 @@ export default function LVReviewPage() {
   const [generatingQuestions, setGeneratingQuestions] = useState({});
   const [questionsStatus, setQuestionsStatus] = useState({});
   const [generatingLVs, setGeneratingLVs] = useState({});
+  const [questionGenerationProgress, setQuestionGenerationProgress] = useState({});
   
   // Bearbeitungs-States (wie ResultPage)
   const [selectedLv, setSelectedLv] = useState(null);
