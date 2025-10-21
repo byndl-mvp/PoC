@@ -239,15 +239,23 @@ const pollQuestionStatus = (tradeId, progressInterval) => {
         const data = await res.json();
         setQuestionsStatus(prev => ({ ...prev, [tradeId]: data }));
         
+        // NEU: Wenn Special Trade, stoppe Polling
+        if (data.requiresContext) {
+          console.log('✅ Special trade - stopping poll');
+          clearInterval(interval);
+          clearInterval(progressInterval);
+          setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+          setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
+          return;
+        }
+        
         if (data.questionCount > 0) {
           console.log('✅ Questions ready for trade', tradeId);
           clearInterval(interval);
-          clearInterval(progressInterval); // Stop Fake-Progress
+          clearInterval(progressInterval);
           
-          // Setze auf 100%
           setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 100 }));
           
-          // Warte kurz, dann Status zurücksetzen
           setTimeout(() => {
             setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
             setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
