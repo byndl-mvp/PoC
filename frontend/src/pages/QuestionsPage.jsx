@@ -1257,13 +1257,140 @@ if (generatingLV) {
   const currentQ = questions[current];
   const progress = ((current + 1) / questions.length) * 100;
 
-// DEBUG
-console.log('🔍 Current Question Debug:', {
-  id: currentQ?.id,
-  uploadHelpful: currentQ?.uploadHelpful,
-  uploadHint: currentQ?.uploadHint,
-  hasUploadField: !!currentQ?.uploadHelpful
-});
+// Bestätigungs-Dialog für Upload-Daten
+if (pendingConfirmation) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-8">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              📊 Daten aus {pendingConfirmation.documentType} erkannt
+            </h2>
+            <p className="text-gray-300 text-sm">
+              Datei: {pendingConfirmation.fileName}
+            </p>
+            <p className="text-teal-400 text-sm mt-1">
+              ✓ {pendingConfirmation.detectedItems.length} Elemente erkannt 
+              ({Math.round(pendingConfirmation.confidence * 100)}% Konfidenz)
+            </p>
+          </div>
+          
+          <button
+            onClick={() => {
+              setPendingConfirmation(null);
+              setEditableData(null);
+            }}
+            className="text-gray-400 hover:text-white transition"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Suggestions */}
+        {pendingConfirmation.suggestions?.length > 0 && (
+          <div className="mb-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <h3 className="text-blue-300 font-semibold mb-2 flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Hinweise
+            </h3>
+            <ul className="space-y-1">
+              {pendingConfirmation.suggestions.map((suggestion, idx) => (
+                <li key={idx} className="text-blue-200 text-sm">
+                  {suggestion}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {/* Editierbare Daten */}
+        <div className="mb-6">
+          <label className="block text-white font-semibold mb-3">
+            Erkannte Daten (bearbeitbar):
+          </label>
+          <textarea
+            value={editableData}
+            onChange={(e) => setEditableData(e.target.value)}
+            className="w-full bg-white/10 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-sm"
+            rows={Math.min(20, Math.max(8, editableData.split('\n').length + 2))}
+            style={{ minHeight: '200px', maxHeight: '600px' }}
+          />
+          <p className="text-gray-400 text-xs mt-2">
+            💡 Sie können die erkannten Daten hier korrigieren oder ergänzen
+          </p>
+        </div>
+        
+        {/* Erkannte Items Preview */}
+        {pendingConfirmation.detectedItems?.length > 0 && (
+          <div className="mb-6 max-h-40 overflow-y-auto">
+            <h3 className="text-white font-semibold mb-2">
+              Erkannte Elemente ({pendingConfirmation.detectedItems.length}):
+            </h3>
+            <div className="space-y-2">
+              {pendingConfirmation.detectedItems.slice(0, 5).map((item, idx) => (
+                <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                  <p className="text-gray-300 text-sm">
+                    {typeof item === 'string' 
+                      ? item 
+                      : Object.entries(item)
+                          .filter(([k, v]) => v)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(' | ')
+                    }
+                  </p>
+                </div>
+              ))}
+              {pendingConfirmation.detectedItems.length > 5 && (
+                <p className="text-gray-400 text-sm italic">
+                  ... und {pendingConfirmation.detectedItems.length - 5} weitere
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Action Buttons */}
+        <div className="flex gap-4">
+          <button
+            onClick={() => {
+              // Übernehmen und speichern
+              setUploadedFiles(prev => ({
+                ...prev,
+                [pendingConfirmation.questionId]: {
+                  name: pendingConfirmation.fileName,
+                  answer: editableData,
+                  confidence: pendingConfirmation.confidence
+                }
+              }));
+              setAnswerText(editableData);
+              setPendingConfirmation(null);
+              setEditableData(null);
+            }}
+            className="flex-1 px-8 py-4 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
+          >
+            ✓ Daten übernehmen & weiter
+          </button>
+          
+          <button
+            onClick={() => {
+              setPendingConfirmation(null);
+              setEditableData(null);
+            }}
+            className="px-8 py-4 bg-white/10 border border-white/30 text-white rounded-lg hover:bg-white/20 transition"
+          >
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
