@@ -80,6 +80,12 @@ useEffect(() => {
       // ⚡ NEU: Lade generatingLVs aus sessionStorage
       const savedGeneratingLVs = JSON.parse(sessionStorage.getItem('generatingLVs') || '{}');
       console.log('📂 Loaded generatingLVs from sessionStorage:', savedGeneratingLVs);
+      
+      console.log('🔍 DEBUG - After loading from sessionStorage:');
+      console.log('  - Raw sessionStorage:', sessionStorage.getItem('generatingLVs'));
+      console.log('  - Parsed object:', savedGeneratingLVs);
+      console.log('  - Object keys:', Object.keys(savedGeneratingLVs));
+      
       setGeneratingLVs(savedGeneratingLVs);
       
       // 1. Projekt laden
