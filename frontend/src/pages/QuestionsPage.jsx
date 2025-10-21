@@ -1389,20 +1389,55 @@ if (pendingConfirmation) {
         {/* Action Buttons */}
         <div className="flex gap-4">
           <button
-            onClick={() => {
-              // Übernehmen und speichern
-              setUploadedFiles(prev => ({
-                ...prev,
-                [pendingConfirmation.questionId]: {
-                  name: pendingConfirmation.fileName,
-                  answer: editableData,
-                  confidence: pendingConfirmation.confidence
-                }
-              }));
-              setAnswerText(editableData);
-              setPendingConfirmation(null);
-              setEditableData(null);
-            }}
+  onClick={() => {
+    const finalAnswer = editableData;
+    let matchedValue = finalAnswer;
+    
+    // NEU: Wenn Dropdown, versuche Match zu finden
+    if (currentQ.type === 'select' && currentQ.options) {
+      const optionValues = Array.isArray(currentQ.options) 
+        ? currentQ.options 
+        : currentQ.options?.values || [];
+      
+      const exactMatch = optionValues.find(opt => 
+        opt.toLowerCase() === finalAnswer.toLowerCase()
+      );
+      
+      const partialMatch = optionValues.find(opt => 
+        finalAnswer.toLowerCase().includes(opt.toLowerCase()) ||
+        opt.toLowerCase().includes(finalAnswer.toLowerCase())
+      );
+      
+      matchedValue = exactMatch || partialMatch || finalAnswer;
+      console.log(`✅ Dialog matched: "${matchedValue}"`);
+    }
+    
+    // Setze Dropdown/Textfeld
+    setAnswerText(matchedValue);
+    
+    // Speichere in answers Array
+    const newAnswers = [...answers];
+    newAnswers[current] = {
+      questionId: currentQ.id || currentQ.question_id,
+      answer: matchedValue,
+      assumption: ''
+    };
+    setAnswers(newAnswers);
+    
+    // Upload-Info
+    setUploadedFiles(prev => ({
+      ...prev,
+      [pendingConfirmation.questionId]: {
+        name: pendingConfirmation.fileName,
+        answer: matchedValue,
+        confidence: pendingConfirmation.confidence
+      }
+    }));
+    
+    // Dialog schließen
+    setPendingConfirmation(null);
+    setEditableData(null);
+  }}
             className="flex-1 px-8 py-4 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
           >
             ✓ Daten übernehmen & weiter
