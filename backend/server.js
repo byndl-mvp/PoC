@@ -13290,11 +13290,13 @@ Antworte NUR mit diesem JSON-Format:
   "suggestions": ["Verbesserungsvorschlag 1", "..."]
 }`;
 
-    const response = await callLLM(prompt, {
-      taskType: 'data_extraction',
-      maxTokens: 2000,
-      temperature: 0.3
-    });
+    const response = await llmWithPolicy('questions', [
+  { role: 'user', content: prompt }
+], { 
+  maxTokens: 2000,
+  temperature: 0.3,
+  jsonMode: true 
+});
     
     const parsed = JSON.parse(response);
     
@@ -13338,11 +13340,13 @@ Antworte NUR mit diesem JSON-Format:
   "suggestions": ["Hinweis 1", "..."]
 }`;
 
-    const response = await callLLM(prompt, {
-      taskType: 'data_extraction',
-      maxTokens: 2000,
-      temperature: 0.3
-    });
+    const response = await llmWithPolicy('questions', [
+  { role: 'user', content: prompt }
+], { 
+  maxTokens: 2000,
+  temperature: 0.3,
+  jsonMode: true 
+});
     
     const parsed = JSON.parse(response);
     
