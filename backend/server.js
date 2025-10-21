@@ -13904,44 +13904,51 @@ app.delete('/api/projects/:projectId/trades/:tradeId/delete', async (req, res) =
   
   try {
     // 1. Lösche alle Antworten für dieses Gewerk
-    await db.query(
-      'DELETE FROM trade_answers WHERE project_id = ? AND trade_id = ?',
+    await pool.query(
+      'DELETE FROM answers WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
     console.log(`[DELETE-TRADE] Deleted answers for trade ${tradeId}`);
     
-    // 2. Lösche das LV
-    await db.query(
-      'DELETE FROM project_lvs WHERE project_id = ? AND trade_id = ?',
-      [projectId, tradeId]
-    );
-    console.log(`[DELETE-TRADE] Deleted LV for trade ${tradeId}`);
-    
-    // 3. Lösche die Fragen
-    await db.query(
-      'DELETE FROM trade_questions WHERE project_id = ? AND trade_id = ?',
+    // 2. Lösche alle Fragen für dieses Gewerk
+    await pool.query(
+      'DELETE FROM questions WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
     console.log(`[DELETE-TRADE] Deleted questions for trade ${tradeId}`);
     
-    // 4. Entferne das Gewerk aus project_trades
-    await db.query(
-      'DELETE FROM project_trades WHERE project_id = ? AND trade_id = ?',
+    // 3. Lösche LV-Items für dieses Gewerk
+    await pool.query(
+      'DELETE FROM lv_items WHERE lv_id IN (SELECT id FROM lvs WHERE project_id = $1 AND trade_id = $2)',
       [projectId, tradeId]
     );
-    console.log(`[DELETE-TRADE] Removed trade ${tradeId} from project_trades`);
+    console.log(`[DELETE-TRADE] Deleted lv_items for trade ${tradeId}`);
     
-    // 5. Optional: Lösche auch gespeicherten Progress
-    await db.query(
-      'DELETE FROM trade_progress WHERE project_id = ? AND trade_id = ?',
+    // 4. Lösche das LV selbst
+    await pool.query(
+      'DELETE FROM lvs WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    console.log(`[DELETE-TRADE] Deleted lvs for trade ${tradeId}`);
+    
+    // 5. Lösche Progress
+    await pool.query(
+      'DELETE FROM trade_progress WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
     console.log(`[DELETE-TRADE] Deleted progress for trade ${tradeId}`);
     
+    // 6. Entferne das Gewerk aus project_trades (ZULETZT!)
+    await pool.query(
+      'DELETE FROM project_trades WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    console.log(`[DELETE-TRADE] Removed trade ${tradeId} from project_trades`);
+    
     res.json({ 
       success: true, 
       message: `Gewerk ${tradeId} erfolgreich gelöscht`,
-      deletedTradeId: tradeId
+      deletedTradeId: parseInt(tradeId)
     });
     
   } catch (error) {
