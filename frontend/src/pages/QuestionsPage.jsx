@@ -622,6 +622,7 @@ const handleFileUpload = async (questionId, file) => {
     } else {
   // Direkt übernehmen (wie bisher)
   const extractedText = result.extractedAnswer;
+  let matchedValue = extractedText; // Default: Extrahierter Text
   
   // NEU: Wenn Dropdown, versuche exakten Match zu finden
   if (currentQ.type === 'select' && currentQ.options) {
@@ -644,37 +645,36 @@ const handleFileUpload = async (questionId, file) => {
     
     if (matchedOption) {
       console.log(`✅ Matched dropdown option: "${matchedOption}"`);
-      setAnswerText(matchedOption);
+      matchedValue = matchedOption;
     } else {
-      console.log(`⚠️ No dropdown match found, using extracted text`);
-      setAnswerText(extractedText);
+      console.log(`⚠️ No dropdown match found, using extracted text: "${extractedText}"`);
     }
-  } else {
-    // Normales Textfeld
-    setAnswerText(extractedText);
   }
   
-  // Speichere im answers Array
+  // Setze Textfeld/Dropdown
+  setAnswerText(matchedValue);
+  
+  // Speichere im answers Array mit dem korrekten Wert
   const newAnswers = [...answers];
   newAnswers[current] = {
     questionId: questions[current].id || questions[current].question_id,
-    answer: answerText, // Wird im nächsten Render aktualisiert
+    answer: matchedValue, // ← Nutze direkt den gematchten/extrahierten Wert
     assumption: ''
   };
   setAnswers(newAnswers);
-      
-      // Upload-Info für Anzeige
-      setUploadedFiles(prev => ({
-        ...prev,
-        [questionId]: {
-          name: file.name,
-          answer: result.extractedAnswer,
-          confidence: result.confidence
-        }
-      }));
-      
-      console.log('File analyzed and applied directly:', result);
+  
+  // Upload-Info für Anzeige
+  setUploadedFiles(prev => ({
+    ...prev,
+    [questionId]: {
+      name: file.name,
+      answer: matchedValue, // ← Auch hier den korrekten Wert
+      confidence: result.confidence
     }
+  }));
+  
+  console.log('✅ File analyzed and applied directly:', result);
+}
     
   } catch (error) {
     console.error('Upload failed:', error);
