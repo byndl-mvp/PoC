@@ -197,20 +197,31 @@ useEffect(() => {
   // Starte Fragengenerierung im Hintergrund
 const handleGenerateQuestions = async (tradeId) => {
   try {
+    // NEU: Prüfe ob Special Trade
+    const trade = selectedTrades.find(t => t.id === parseInt(tradeId));
+    const isSpecial = trade?.is_manual || trade?.is_ai_recommended || trade?.is_additional;
+    
+    if (isSpecial) {
+      console.log('🎯 Special trade - navigating directly to questions');
+      handleStartQuestions(tradeId);
+      return;
+    }
+    
+    // Normale Trades: Background-Generierung
     setGeneratingQuestions(prev => ({ ...prev, [tradeId]: true }));
     setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
     
     // Starte Fake-Progress (0 → 90% in 60 Sekunden)
-const progressInterval = setInterval(() => {
-  setQuestionGenerationProgress(prev => {
-    const currentProgress = prev[tradeId] || 0;
-    if (currentProgress >= 90) {
-      clearInterval(progressInterval);
-      return { ...prev, [tradeId]: 90 };
-    }
-    return { ...prev, [tradeId]: currentProgress + 1.5 };
-  });
-}, 1000); // Alle 1 Sekunde +1.5%
+    const progressInterval = setInterval(() => {
+      setQuestionGenerationProgress(prev => {
+        const currentProgress = prev[tradeId] || 0;
+        if (currentProgress >= 90) {
+          clearInterval(progressInterval);
+          return { ...prev, [tradeId]: 90 };
+        }
+        return { ...prev, [tradeId]: currentProgress + 1.5 };
+      });
+    }, 1000);
     
     const res = await fetch(
       apiUrl(`/api/projects/${projectId}/trades/${tradeId}/generate-questions-background`),
