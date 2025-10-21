@@ -44,6 +44,8 @@ export default function IntakeQuestionsPage() {
   const [cachedExplanations, setCachedExplanations] = useState({});
   const [uploadedFiles, setUploadedFiles] = useState({});
   const [processingUploads, setProcessingUploads] = useState({});
+  const [pendingConfirmation, setPendingConfirmation] = useState(null); 
+  const [editableData, setEditableData] = useState(null); 
   
   // ÄNDERUNG: Skip-Button Funktion angepasst
   const handleSkipTrade = async () => {
