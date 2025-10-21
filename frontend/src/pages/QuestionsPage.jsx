@@ -580,7 +580,7 @@ const handleFileUpload = async (questionId, file) => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('questionId', String(questionId || ''));
-  formData.append('questionText', String(questions.find(q => q.id === questionId)?.question || ''));
+  formData.append('questionText', String(questions.find(q => q.id === questionId)?.question || currentQ.question || currentQ.text || ''));
   formData.append('tradeCode', String(tradeCode || ''));
   formData.append('projectId', String(projectId || ''));
   formData.append('tradeId', String(tradeId || ''));
@@ -601,11 +601,29 @@ const handleFileUpload = async (questionId, file) => {
     
     const result = await response.json();
     
-    if (result.extractedAnswer) {
-      // Setze ins Eingabefeld
+    if (!result.extractedAnswer) {
+      alert('Keine Antwort aus der Datei extrahiert');
+      return;
+    }
+    
+    // NEU: Wenn strukturierte Daten → Bestätigungs-Dialog
+    if (result.requiresConfirmation && result.detectedItems?.length > 0) {
+      setPendingConfirmation({
+        questionId,
+        fileName: file.name,
+        extractedAnswer: result.extractedAnswer,
+        detectedItems: result.detectedItems,
+        suggestions: result.suggestions || [],
+        confidence: result.confidence,
+        documentType: result.documentType
+      });
+      setEditableData(result.extractedAnswer);
+      console.log('📊 Structured data detected, showing confirmation dialog');
+    } else {
+      // Direkt übernehmen (wie bisher)
       setAnswerText(result.extractedAnswer);
       
-      // Speichere korrekt im answers ARRAY
+      // Speichere im answers Array
       const newAnswers = [...answers];
       newAnswers[current] = {
         questionId: questions[current].id || questions[current].question_id,
@@ -624,10 +642,9 @@ const handleFileUpload = async (questionId, file) => {
         }
       }));
       
-      console.log('✅ File analyzed successfully:', result);
-    } else {
-      alert('Keine Antwort aus der Datei extrahiert');
+      console.log('File analyzed and applied directly:', result);
     }
+    
   } catch (error) {
     console.error('Upload failed:', error);
     alert(`Fehler bei der Dateianalyse: ${error.message}`);
