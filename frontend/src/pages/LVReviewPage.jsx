@@ -925,18 +925,30 @@ const handleGenerateAllQuestions = async () => {
         Fragen starten →
       </button>
     ) : generatingQuestions[trade.id] ? (
-      // Fragen werden generiert
-      <button
-        disabled
-        className="px-6 py-2 bg-gray-500 text-white rounded-lg opacity-50 cursor-not-allowed flex items-center gap-2"
-      >
-        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-        <span>Fragen werden erstellt...</span>
-      </button>
-    ) : (
+  <div className="w-full">
+    <button
+      disabled
+      className="w-full px-6 py-2 bg-gray-500 text-white rounded-lg opacity-50 cursor-not-allowed flex items-center justify-center gap-2"
+    >
+      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      </svg>
+      <span>Fragen werden erstellt...</span>
+    </button>
+    
+    {/* Fake-Ladebalken */}
+    <div className="mt-2 w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
+      <div 
+        className="bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full transition-all duration-1000 ease-out"
+        style={{ width: `${questionGenerationProgress[trade.id] || 0}%` }}
+      />
+    </div>
+    <p className="text-xs text-gray-400 mt-1 text-center">
+      {questionGenerationProgress[trade.id] || 0}% abgeschlossen
+    </p>
+  </div>
+) : (
       // Noch keine Fragen - zeige "Generieren"
       <button
         onClick={() => handleGenerateQuestions(trade.id)}
