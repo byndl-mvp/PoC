@@ -12724,10 +12724,13 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions-status', async (req,
       'SELECT is_manual, is_ai_recommended, is_additional FROM project_trades WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
     );
+    console.log('[QUESTIONS-STATUS] Trade check for', tradeId, ':', tradeCheck.rows[0]);
     
     const isSpecial = tradeCheck.rows[0]?.is_manual || 
                      tradeCheck.rows[0]?.is_ai_recommended || 
                      tradeCheck.rows[0]?.is_additional;
+
+    console.log('[QUESTIONS-STATUS] isSpecial:', isSpecial);
     
     const statusRes = await query(
       'SELECT status, current_question_index FROM trade_progress WHERE project_id = $1 AND trade_id = $2',
