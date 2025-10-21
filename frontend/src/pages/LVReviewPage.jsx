@@ -877,19 +877,33 @@ const handleGenerateAllQuestions = async () => {
                       </span>
                     )}
                     
-                    {!trade.hasLV ? (
+                   {!trade.hasLV ? (
   <div className="flex gap-2">
-    {/* Prüfe ob Fragen existieren */}
-    {questionsStatus[trade.id]?.questionCount > 0 ? (
+    {/* LV wird gerade erstellt */}
+    {generatingLVs[trade.id] ? (
+      <button
+        disabled
+        className="px-6 py-2 bg-gray-500 text-white rounded-lg opacity-50 cursor-not-allowed flex items-center gap-2"
+      >
+        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <span>LV in Erstellung...</span>
+      </button>
+    ) : questionsStatus[trade.id]?.questionCount > 0 ? (
       // Fragen sind DA - zeige "Fragen starten"
       <button
-        onClick={() => handleStartQuestions(trade.id)}
+        onClick={() => {
+          handleStartQuestions(trade.id);
+          setGeneratingLVs(prev => ({ ...prev, [trade.id]: true }));
+        }}
         className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
       >
         Fragen starten →
       </button>
     ) : generatingQuestions[trade.id] ? (
-      // Wird gerade generiert
+      // Fragen werden generiert
       <button
         disabled
         className="px-6 py-2 bg-gray-500 text-white rounded-lg opacity-50 cursor-not-allowed flex items-center gap-2"
@@ -911,22 +925,22 @@ const handleGenerateAllQuestions = async () => {
     )}
   </div>
 ) : (
-                      <>
-                        <button
-                          onClick={() => setSelectedLv(selectedLv === idx ? null : idx)}
-                          className="text-sm bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all"
-                        >
-                          {selectedLv === idx ? 'Schließen' : 'Details anzeigen'}
-                        </button>
-                        <button
-                          onClick={() => setShowTradeHelp({ ...showTradeHelp, [trade.id]: !showTradeHelp[trade.id] })}
-                          className="text-sm bg-blue-600/50 text-white px-3 py-2 rounded-lg hover:bg-blue-600/70 transition-all"
-                          title="Hilfe für dieses Gewerk"
-                        >
-                          ?
-                        </button>
-                      </>
-                    )}
+  <>
+    <button
+      onClick={() => setSelectedLv(selectedLv === idx ? null : idx)}
+      className="text-sm bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all"
+    >
+      {selectedLv === idx ? 'Schließen' : 'Details anzeigen'}
+    </button>
+    <button
+      onClick={() => setShowTradeHelp({ ...showTradeHelp, [trade.id]: !showTradeHelp[trade.id] })}
+      className="text-sm bg-blue-600/50 text-white px-3 py-2 rounded-lg hover:bg-blue-600/70 transition-all"
+      title="Hilfe für dieses Gewerk"
+    >
+      ?
+    </button>
+  </>
+)}
                   </div>
                 </div>
                 
