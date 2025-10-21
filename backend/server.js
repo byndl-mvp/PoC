@@ -12719,6 +12719,16 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions-status', async (req,
   try {
     const { projectId, tradeId } = req.params;
     
+    // NEU: Prüfe ob Special Trade
+    const tradeCheck = await query(
+      'SELECT is_manual, is_ai_recommended, is_additional FROM project_trades WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    const isSpecial = tradeCheck.rows[0]?.is_manual || 
+                     tradeCheck.rows[0]?.is_ai_recommended || 
+                     tradeCheck.rows[0]?.is_additional;
+    
     const statusRes = await query(
       'SELECT status, current_question_index FROM trade_progress WHERE project_id = $1 AND trade_id = $2',
       [projectId, tradeId]
@@ -12745,7 +12755,8 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions-status', async (req,
       answerCount,
       currentIndex,
       ready: questionCount > 0,
-      inProgress: answerCount > 0 && answerCount < questionCount
+      inProgress: answerCount > 0 && answerCount < questionCount,
+      requiresContext: isSpecial && questionCount === 0  // NEU!
     });
     
   } catch (err) {
@@ -12843,6 +12854,17 @@ async function generateQuestionsInBackground(projectId, tradeId) {
     const isManuallyAdded = tradeStatus.is_manual || false;
     const isAiRecommended = tradeStatus.is_ai_recommended || false;
     const isAdditional = tradeStatus.is_additional || false;
+    
+    // NEU: Stoppe wenn Special Trade
+    if (isManuallyAdded || isAiRecommended || isAdditional) {
+      console.log('[BG] Special trade - should not generate in background, stopping');
+      await query(
+        `UPDATE trade_progress SET status = 'requires_context', updated_at = NOW()
+         WHERE project_id = $1 AND trade_id = $2`,
+        [projectId, tradeId]
+      );
+      return; // WICHTIG: Stoppe hier!
+    }
     
     // 2. Lade Trade-Info
     const tradeInfo = await query('SELECT code, name FROM trades WHERE id = $1', [tradeId]);
