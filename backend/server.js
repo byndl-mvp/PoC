@@ -12643,11 +12643,30 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
 
 // NEU: Trigger Fragengenerierung im Hintergrund
 app.post('/api/projects/:projectId/trades/:tradeId/generate-questions-background', async (req, res) => {
- console.log('[ROUTE] generate-questions-background called');
+  console.log('[ROUTE] generate-questions-background called');
   
   try {
     const { projectId, tradeId } = req.params;
     console.log('[ROUTE] Params:', projectId, tradeId);
+    
+    // NEU: Prüfe Trade-Flags ZUERST
+    const tradeCheck = await query(
+      'SELECT is_manual, is_ai_recommended, is_additional FROM project_trades WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    const isSpecial = tradeCheck.rows[0]?.is_manual || 
+                     tradeCheck.rows[0]?.is_ai_recommended || 
+                     tradeCheck.rows[0]?.is_additional;
+    
+    if (isSpecial) {
+      console.log('[ROUTE] Special trade detected - skipping background generation');
+      return res.json({ 
+        status: 'skipped',
+        message: 'Special trades require context question flow',
+        requiresContext: true
+      });
+    }
     
     // Prüfe ob bereits Fragen existieren
     const existing = await query(
@@ -12664,8 +12683,9 @@ app.post('/api/projects/:projectId/trades/:tradeId/generate-questions-background
         status: 'ready'
       });
     }
-
+    
     console.log('[ROUTE] Setting status to generating...');    
+    
     // Setze Status auf "generating"
     await query(
       `INSERT INTO trade_progress (project_id, trade_id, status, updated_at)
@@ -12674,11 +12694,12 @@ app.post('/api/projects/:projectId/trades/:tradeId/generate-questions-background
        DO UPDATE SET status = 'generating_questions', updated_at = NOW()`,
       [projectId, tradeId]
     );
-
+    
     console.log('[ROUTE] Calling background function...');
     
     // Starte im Hintergrund (nicht awaiten!)
     generateQuestionsInBackground(projectId, tradeId);
+    
     console.log('[ROUTE] Background function triggered, returning response');
     
     res.json({ 
