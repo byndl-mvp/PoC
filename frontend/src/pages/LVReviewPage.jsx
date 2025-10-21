@@ -198,6 +198,19 @@ useEffect(() => {
 const handleGenerateQuestions = async (tradeId) => {
   try {
     setGeneratingQuestions(prev => ({ ...prev, [tradeId]: true }));
+    setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
+    
+    // Starte Fake-Progress (0 → 90% in 60 Sekunden)
+const progressInterval = setInterval(() => {
+  setQuestionGenerationProgress(prev => {
+    const currentProgress = prev[tradeId] || 0;
+    if (currentProgress >= 90) {
+      clearInterval(progressInterval);
+      return { ...prev, [tradeId]: 90 };
+    }
+    return { ...prev, [tradeId]: currentProgress + 1.5 };
+  });
+}, 1000); // Alle 1 Sekunde +1.5%
     
     const res = await fetch(
       apiUrl(`/api/projects/${projectId}/trades/${tradeId}/generate-questions-background`),
@@ -205,12 +218,12 @@ const handleGenerateQuestions = async (tradeId) => {
     );
     
     if (res.ok) {
-      // Starte Status-Polling
-      pollQuestionStatus(tradeId);
+      pollQuestionStatus(tradeId, progressInterval);
     }
   } catch (err) {
     console.error('Failed to start question generation:', err);
     setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+    setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
   }
 };
 
