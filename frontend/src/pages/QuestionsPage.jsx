@@ -686,6 +686,16 @@ const handleFileUpload = async (questionId, file) => {
 };
   
   const handleNext = async () => {
+  console.log('🔍 DEBUG handleNext:', {
+    current,
+    currentQuestion: questions[current],
+    isContextQuestion: questions[current]?.isContextQuestion,
+    requiresFollowUp: questions[current]?.requiresFollowUp,
+    urlParams: window.location.search,
+    isAdditional: new URLSearchParams(window.location.search).get('additional'),
+    isManual: new URLSearchParams(window.location.search).get('manual'),
+    isAiRecommended: new URLSearchParams(window.location.search).get('airecommended')
+  });
   console.log('handleNext called, submitting=', submitting);
   console.log('current=', current, 'questions.length=', questions.length);
   
