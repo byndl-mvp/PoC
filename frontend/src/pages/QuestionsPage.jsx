@@ -1825,7 +1825,7 @@ if (pendingConfirmation) {
                 onChange={(e) => setAnswerText(e.target.value)}
                 placeholder="Ihre Antwort..."
               />
-              {currentQ.options?.includes('unsicher') && (
+              {(Array.isArray(currentQ.options) && currentQ.options.includes('unsicher')) && (
                 <button
                   onClick={() => setAnswerText('unsicher')}
                   className="mt-2 text-sm text-teal-400 hover:text-teal-300"
