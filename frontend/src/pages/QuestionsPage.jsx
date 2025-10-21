@@ -658,10 +658,10 @@ const handleFileUpload = async (questionId, file) => {
   // Speichere im answers Array mit dem korrekten Wert
   const newAnswers = [...answers];
   newAnswers[current] = {
-    questionId: questions[current].id || questions[current].question_id,
-    answer: matchedValue, // ← Nutze direkt den gematchten/extrahierten Wert
-    assumption: ''
-  };
+  questionId: currentQ.id || currentQ.question_id,  
+  answer: matchedValue,
+  assumption: ''
+};
   setAnswers(newAnswers);
   
   // Upload-Info für Anzeige
