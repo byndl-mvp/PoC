@@ -197,9 +197,14 @@ useEffect(() => {
   // Starte Fragengenerierung im Hintergrund
 const handleGenerateQuestions = async (tradeId) => {
   try {
-    // NEU: Prüfe ob Special Trade
     const trade = selectedTrades.find(t => t.id === parseInt(tradeId));
-    const isSpecial = trade?.is_manual || trade?.is_ai_recommended || trade?.is_additional;
+    
+    // FIX: Beide Schreibweisen prüfen
+    const isSpecial = trade?.isManual || trade?.is_manual || 
+                     trade?.isAiRecommended || trade?.is_ai_recommended || 
+                     trade?.isAdditional || trade?.is_additional;
+    
+    console.log('🔍 Trade check:', trade, 'isSpecial:', isSpecial);
     
     if (isSpecial) {
       console.log('🎯 Special trade - navigating directly to questions');
