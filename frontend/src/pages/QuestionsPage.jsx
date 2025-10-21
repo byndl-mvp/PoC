@@ -1061,7 +1061,7 @@ if (current + 1 < questions.length) {
     
     // ⚡ NEU: Speichere LV-Generierungs-Status vor Navigation
     const generatingLVs = JSON.parse(sessionStorage.getItem('generatingLVs') || '{}');
-    generatingLVs[tradeId] = true;
+    generatingLVs[parseInt(tradeId)] = true;
     sessionStorage.setItem('generatingLVs', JSON.stringify(generatingLVs));
     console.log('💾 Saved generatingLVs to sessionStorage:', generatingLVs);
     console.log('  - sessionStorage content:', sessionStorage.getItem('generatingLVs'));
