@@ -272,9 +272,26 @@ const handleGenerateAllQuestions = async () => {
   
   // Navigation Funktionen
   const handleStartQuestions = (tradeId) => {
-  const trade = selectedTrades.find(t => t.id === tradeId);
-  const queryParam = trade?.isManual ? '?manual=true' : '';
-  navigate(`/project/${projectId}/trade/${tradeId}/questions${queryParam}`);
+  const trade = selectedTrades.find(t => t.id === parseInt(tradeId));
+  
+  // Baue URL mit korrekten Parametern
+  let url = `/project/${projectId}/questions/${tradeId}`;
+  
+  if (trade?.is_additional) {
+    url += '?additional=true';
+  } else if (trade?.is_manual || trade?.isManual) {
+    url += '?manual=true';
+  } else if (trade?.is_ai_recommended || trade?.isAiRecommended) {
+    url += '?airecommended=true';
+  }
+  
+  console.log('🎯 Navigating to:', url, 'Trade flags:', {
+    is_manual: trade?.is_manual,
+    is_ai_recommended: trade?.is_ai_recommended,
+    is_additional: trade?.is_additional
+  });
+  
+  navigate(url);
 };
   
   const handleContinueToResult = () => {
