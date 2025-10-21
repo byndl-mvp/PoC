@@ -13298,7 +13298,15 @@ Antworte NUR mit diesem JSON-Format:
   jsonMode: true 
 });
     
-    const parsed = JSON.parse(response);
+    // NEU: Bereinige Markdown-Code-Blocks
+let cleanedResponse = response.trim();
+if (cleanedResponse.startsWith('```json')) {
+  cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+} else if (cleanedResponse.startsWith('```')) {
+  cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/```\s*$/, '');
+}
+
+const parsed = JSON.parse(cleanedResponse);
     
     return {
       structured: { type: 'IMAGE_EXTRACTION', items: parsed.items },
@@ -13348,7 +13356,15 @@ Antworte NUR mit diesem JSON-Format:
   jsonMode: true 
 });
     
-    const parsed = JSON.parse(response);
+    // NEU: Bereinige Markdown-Code-Blocks
+let cleanedResponse = response.trim();
+if (cleanedResponse.startsWith('```json')) {
+  cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+} else if (cleanedResponse.startsWith('```')) {
+  cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/```\s*$/, '');
+}
+
+const parsed = JSON.parse(cleanedResponse);
     
     return {
       structured: { type: 'PDF_EXTRACTION', items: parsed.items },
