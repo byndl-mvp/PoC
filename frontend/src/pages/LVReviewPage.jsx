@@ -1000,7 +1000,7 @@ const handleGenerateAllQuestions = async () => {
                       </span>
                     )}
                     
-                   {!trade.hasLV ? (
+                   {!trade.hasLV || generatingLVs[trade.id] ? (
   <div className="flex gap-2">
     {/* FÜGE HIER EIN: */}
     {console.log('🔍 Button render for trade:', trade.id, {
