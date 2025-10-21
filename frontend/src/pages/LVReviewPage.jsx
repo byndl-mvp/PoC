@@ -998,7 +998,13 @@ const handleGenerateAllQuestions = async () => {
                     
                    {!trade.hasLV ? (
   <div className="flex gap-2">
-    {/* LV wird gerade erstellt */}
+    {/* FÜGE HIER EIN: */}
+    {console.log('🔍 Button render for trade:', trade.id, {
+      generatingLVs_state: generatingLVs,
+      isGenerating: generatingLVs[trade.id],
+      tradeIdType: typeof trade.id
+    })}
+    
     {generatingLVs[trade.id] ? (
       <button
         disabled
