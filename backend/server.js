@@ -13091,26 +13091,17 @@ Gib eine hilfreiche, verständliche Antwort die dem Laien weiterhilft.`;
 
 app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
   console.log('[FILE-ANALYZE] Starting analysis');
-  console.log('[FILE-ANALYZE] Body:', req.body);
   console.log('[FILE-ANALYZE] File:', req.file ? req.file.originalname : 'NO FILE');
   
   const { questionId, questionText, tradeCode, projectId, tradeId } = req.body;
   const file = req.file;
   
-  // Validierung
   if (!file) {
-    return res.status(400).json({ 
-      error: 'Keine Datei hochgeladen',
-      received: req.body 
-    });
+    return res.status(400).json({ error: 'Keine Datei hochgeladen' });
   }
   
   if (!questionText || !tradeCode) {
-    return res.status(400).json({ 
-      error: 'Fehlende Parameter',
-      required: ['questionText', 'tradeCode'],
-      received: { questionText: !!questionText, tradeCode: !!tradeCode }
-    });
+    return res.status(400).json({ error: 'Fehlende Parameter' });
   }
   
   try {
@@ -13119,6 +13110,8 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
     let analysis = '';
     let confidence = 0.7;
     let documentType = null;
+    let detectedItems = [];
+    let suggestions = null;
     
     // BILD-ANALYSE
     if (file.mimetype.startsWith('image/')) {
@@ -13135,8 +13128,18 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
       const base64 = optimizedBuffer.toString('base64');
       const result = await analyzeImageWithClaude(base64, questionText, tradeCode, questionId);
       
-      extractedAnswer = result.answer || result;
-      analysis = `Bild analysiert für ${tradeCode}`;
+      // NEU: Strukturierte Extraktion aus Bild
+      const imageStructure = await extractStructuredDataFromImage(
+        result.answer, 
+        tradeCode, 
+        questionText
+      );
+      
+      extractedAnswer = result.answer;
+      structuredData = imageStructure.structured;
+      detectedItems = imageStructure.items;
+      suggestions = imageStructure.suggestions;
+      analysis = `Bild analysiert: ${detectedItems.length} Elemente erkannt`;
       confidence = result.confidence || 0.85;
       documentType = 'IMAGE';
     }
@@ -13148,20 +13151,25 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
       const workbook = xlsx.read(file.buffer);
       const result = parseSpreadsheetContent(workbook, tradeCode, questionText);
       
-      extractedAnswer = result.text;
       structuredData = result.structured;
-      analysis = result.summary || 'Excel-Daten extrahiert';
       documentType = result.structured.type || 'SPREADSHEET';
+      detectedItems = result.structured.items || [];
       
-      // Höhere Confidence bei strukturierten Daten
-      if (result.structured?.items && result.structured.items.length > 0) {
+      if (detectedItems.length > 0) {
         confidence = 0.95;
-        console.log(`[FILE-ANALYZE] Extracted ${result.structured.items.length} items from spreadsheet`);
+        extractedAnswer = await generateStructuredAnswer(
+          result.structured,
+          questionText,
+          tradeCode
+        );
+        analysis = `${detectedItems.length} Einträge aus Excel extrahiert`;
+        suggestions = generateDataSuggestions(detectedItems, tradeCode);
       } else {
+        extractedAnswer = result.text;
         confidence = 0.7;
+        analysis = 'Excel-Daten extrahiert';
       }
       
-      // Qualitäts-Score berücksichtigen
       if (result.metadata?.quality) {
         confidence = result.metadata.quality.score / 100;
       }
@@ -13171,113 +13179,401 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
     else if (file.mimetype === 'application/pdf') {
       console.log('[FILE-ANALYZE] Processing PDF:', file.originalname);
       
-      // KORREKTUR: Verwende die verbesserte Funktion mit Buffer
       const result = await analyzePdfWithClaude(file.buffer, questionText, tradeCode, questionId);
       
-      extractedAnswer = result.text;
-      structuredData = result.structured;
-      documentType = result.metadata?.documentType || 'PDF';
-      analysis = `${documentType} mit ${result.metadata?.pageCount || '?'} Seiten analysiert`;
-      confidence = result.metadata?.confidence || 0.8;
+      // NEU: Strukturierte Extraktion aus PDF
+      const pdfStructure = await extractStructuredDataFromText(
+        result.text,
+        tradeCode,
+        questionText
+      );
       
-      console.log(`[FILE-ANALYZE] PDF analyzed: type=${documentType}, confidence=${confidence}`);
+      extractedAnswer = result.text;
+      structuredData = pdfStructure.structured;
+      detectedItems = pdfStructure.items;
+      suggestions = pdfStructure.suggestions;
+      documentType = result.metadata?.documentType || 'PDF';
+      analysis = `${documentType}: ${detectedItems.length} Elemente erkannt`;
+      confidence = result.metadata?.confidence || 0.8;
     }
     
-    // ANDERE DATEITYPEN
     else {
-      console.warn('[FILE-ANALYZE] Unsupported file type:', file.mimetype);
       return res.status(400).json({ 
         error: 'Dateityp nicht unterstützt',
-        receivedType: file.mimetype,
-        supportedTypes: {
-          images: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
-          spreadsheets: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv'],
-          documents: ['application/pdf']
-        }
+        supportedTypes: ['image/*', '.xlsx', '.xls', '.csv', '.pdf']
       });
     }
     
-    // KRITISCH: Validiere dass eine Antwort extrahiert wurde
+    // Validierung
     if (!extractedAnswer || extractedAnswer.trim().length === 0) {
-      console.error('[FILE-ANALYZE] No answer extracted from file');
       return res.status(422).json({
-        error: 'Keine verwertbaren Informationen in der Datei gefunden',
-        analysis: analysis,
-        suggestion: 'Bitte überprüfen Sie, ob die Datei die erwarteten Informationen enthält'
+        error: 'Keine verwertbaren Informationen gefunden'
       });
     }
     
-    // In DB speichern (nur wenn projectId und tradeId vorhanden)
+    // In DB speichern
     if (projectId && tradeId) {
       try {
+        await query(`DELETE FROM file_uploads WHERE project_id = $1 AND trade_id = $2 AND question_id = $3`, 
+          [projectId, tradeId, questionId]);
+        
         await query(`
           INSERT INTO file_uploads 
           (project_id, trade_id, question_id, file_name, file_type, analysis_result, extracted_data, confidence, document_type)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-          ON CONFLICT (project_id, trade_id, question_id) 
-          DO UPDATE SET 
-            file_name = $4,
-            file_type = $5,
-            analysis_result = $6,
-            extracted_data = $7,
-            confidence = $8,
-            document_type = $9,
-            created_at = NOW()
         `, [
           projectId, 
           tradeId, 
           questionId, 
           file.originalname, 
           file.mimetype,
-          JSON.stringify({ 
-            answer: extractedAnswer, 
-            analysis: analysis
-          }),
+          JSON.stringify({ answer: extractedAnswer, analysis: analysis }),
           structuredData ? JSON.stringify(structuredData) : null,
           confidence,
           documentType
         ]);
-        console.log('[FILE-ANALYZE] Saved to database');
       } catch (dbError) {
-        console.error('[FILE-ANALYZE] Database error:', dbError.message);
-        // Nicht kritisch - Response trotzdem senden
+        console.error('[FILE-ANALYZE] DB error:', dbError.message);
       }
-    } else {
-      console.log('[FILE-ANALYZE] Skipping database save (missing projectId or tradeId)');
     }
     
-    // Erfolgreiche Response
+    // NEU: Erweiterte Response mit allen Daten
     res.json({
       success: true,
       extractedAnswer,
       structuredData,
+      detectedItems,      // NEU: Liste der erkannten Elemente
+      suggestions,        // NEU: Verbesserungsvorschläge
       analysis,
       confidence,
       documentType,
+      requiresConfirmation: detectedItems.length > 0, // NEU: Flag für Bestätigung
       metadata: {
         fileName: file.originalname,
         fileType: file.mimetype,
         fileSize: file.size,
-        fileSizeFormatted: `${(file.size / 1024).toFixed(1)} KB`
+        itemCount: detectedItems.length
       }
     });
     
   } catch (error) {
     console.error('[FILE-ANALYZE] Error:', error);
-    console.error('[FILE-ANALYZE] Stack:', error.stack);
-    
     res.status(500).json({ 
       success: false,
       error: 'Analyse fehlgeschlagen',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Interner Fehler',
-      fileInfo: {
-        name: file?.originalname,
-        type: file?.mimetype,
-        size: file?.size
-      }
+      details: error.message
     });
   }
 });
+
+// Extrahiere strukturierte Daten aus Bild-Analyse-Text
+async function extractStructuredDataFromImage(analysisText, tradeCode, questionText) {
+  try {
+    const prompt = `Du bist ein Experte für Baudaten-Extraktion.
+
+Analysiere folgenden Text aus einer Bildanalyse und extrahiere strukturierte Daten:
+
+TEXT: "${analysisText}"
+
+KONTEXT: ${tradeCode} - ${questionText}
+
+Extrahiere alle relevanten Elemente (z.B. Fenster, Türen, Räume, Maße, Mengen).
+
+Antworte NUR mit diesem JSON-Format:
+{
+  "items": [
+    {
+      "typ": "...",
+      "details": {...}
+    }
+  ],
+  "suggestions": ["Verbesserungsvorschlag 1", "..."]
+}`;
+
+    const response = await callLLM(prompt, {
+      taskType: 'data_extraction',
+      maxTokens: 2000,
+      temperature: 0.3
+    });
+    
+    const parsed = JSON.parse(response);
+    
+    return {
+      structured: { type: 'IMAGE_EXTRACTION', items: parsed.items },
+      items: parsed.items || [],
+      suggestions: parsed.suggestions || []
+    };
+    
+  } catch (err) {
+    console.error('[IMAGE-STRUCTURE] Error:', err);
+    return {
+      structured: null,
+      items: [],
+      suggestions: []
+    };
+  }
+}
+
+// Extrahiere strukturierte Daten aus PDF-Text
+async function extractStructuredDataFromText(text, tradeCode, questionText) {
+  try {
+    const prompt = `Du bist ein Experte für Baudaten-Extraktion aus Dokumenten.
+
+Extrahiere aus folgendem PDF-Text alle relevanten strukturierten Daten:
+
+TEXT: "${text.substring(0, 5000)}"
+
+KONTEXT: ${tradeCode} - ${questionText}
+
+Suche nach: Listen, Tabellen, Mengen, Maßen, Spezifikationen.
+
+Antworte NUR mit diesem JSON-Format:
+{
+  "items": [
+    {
+      "kategorie": "...",
+      "daten": {...}
+    }
+  ],
+  "suggestions": ["Hinweis 1", "..."]
+}`;
+
+    const response = await callLLM(prompt, {
+      taskType: 'data_extraction',
+      maxTokens: 2000,
+      temperature: 0.3
+    });
+    
+    const parsed = JSON.parse(response);
+    
+    return {
+      structured: { type: 'PDF_EXTRACTION', items: parsed.items },
+      items: parsed.items || [],
+      suggestions: parsed.suggestions || []
+    };
+    
+  } catch (err) {
+    console.error('[PDF-STRUCTURE] Error:', err);
+    return {
+      structured: null,
+      items: [],
+      suggestions: []
+    };
+  }
+}
+
+// Generiere Verbesserungsvorschläge
+function generateDataSuggestions(items, tradeCode) {
+  const suggestions = [];
+  
+  if (items.length === 0) {
+    suggestions.push('Keine Elemente erkannt - bitte Datei prüfen');
+    return suggestions;
+  }
+  
+  // Prüfe fehlende Standardfelder
+  const firstItem = items[0];
+  
+  if (tradeCode === 'FEN' || tradeCode === 'TIS') {
+    if (!firstItem.breite && !firstItem.width) {
+      suggestions.push('💡 Breiten-Angaben fehlen teilweise');
+    }
+    if (!firstItem.hoehe && !firstItem.height) {
+      suggestions.push('💡 Höhen-Angaben fehlen teilweise');
+    }
+    if (!firstItem.material) {
+      suggestions.push('💡 Material-Angaben könnten ergänzt werden');
+    }
+  }
+  
+  if (suggestions.length === 0) {
+    suggestions.push('✓ Daten erscheinen vollständig');
+  }
+  
+  return suggestions;
+}
+
+// Generiere detaillierte Antwort aus strukturierten Daten
+async function generateStructuredAnswer(structured, questionText, tradeCode) {
+  try {
+    const items = structured.items || [];
+    
+    // Spezielle Behandlung nach Typ
+    switch (structured.type) {
+      case 'WINDOW_LIST':
+        return generateWindowListAnswer(items);
+      
+      case 'DOOR_LIST':
+        return generateDoorListAnswer(items);
+      
+      case 'ROOM_LIST':
+        return generateRoomListAnswer(items);
+      
+      case 'MATERIAL_LIST':
+        return generateMaterialListAnswer(items);
+      
+      case 'AREA_CALCULATION':
+        return generateAreaCalculationAnswer(items);
+      
+      default:
+        // Generische strukturierte Antwort
+        return generateGenericStructuredAnswer(items, questionText, tradeCode);
+    }
+    
+  } catch (err) {
+    console.error('[STRUCTURED-ANSWER] Error:', err);
+    // Fallback auf einfache Liste
+    return items.map((item, idx) => 
+      `${idx + 1}. ${JSON.stringify(item)}`
+    ).join('\n');
+  }
+}
+
+// Fensterliste formatieren
+function generateWindowListAnswer(windows) {
+  const summary = `Insgesamt ${windows.length} Fenster erfasst:\n\n`;
+  
+  const details = windows.map((w, idx) => {
+    const parts = [];
+    
+    if (w.raum) parts.push(`Raum: ${w.raum}`);
+    if (w.anzahl) parts.push(`Anzahl: ${w.anzahl}`);
+    if (w.breite && w.hoehe) parts.push(`Maße: ${w.breite} x ${w.hoehe} cm`);
+    if (w.typ) parts.push(`Typ: ${w.typ}`);
+    if (w.material) parts.push(`Material: ${w.material}`);
+    if (w.oeffnungsart) parts.push(`Öffnungsart: ${w.oeffnungsart}`);
+    if (w.verglasung) parts.push(`Verglasung: ${w.verglasung}`);
+    if (w.u_wert) parts.push(`U-Wert: ${w.u_wert}`);
+    if (w.farbe) parts.push(`Farbe: ${w.farbe}`);
+    
+    return `${idx + 1}. ${parts.join(' | ')}`;
+  }).join('\n');
+  
+  // Gruppierung nach Typ
+  const grouped = windows.reduce((acc, w) => {
+    const key = w.typ || 'Sonstige';
+    acc[key] = (acc[key] || 0) + (parseInt(w.anzahl) || 1);
+    return acc;
+  }, {});
+  
+  const groupSummary = '\n\nZusammenfassung nach Typ:\n' + 
+    Object.entries(grouped)
+      .map(([typ, anzahl]) => `- ${typ}: ${anzahl} Stück`)
+      .join('\n');
+  
+  return summary + details + groupSummary;
+}
+
+// Türenliste formatieren
+function generateDoorListAnswer(doors) {
+  const summary = `Insgesamt ${doors.length} Türen erfasst:\n\n`;
+  
+  const details = doors.map((d, idx) => {
+    const parts = [];
+    
+    if (d.raum) parts.push(`Raum: ${d.raum}`);
+    if (d.anzahl) parts.push(`Anzahl: ${d.anzahl}`);
+    if (d.breite && d.hoehe) parts.push(`Maße: ${d.breite} x ${d.hoehe} cm`);
+    if (d.typ) parts.push(`Typ: ${d.typ}`);
+    if (d.material) parts.push(`Material: ${d.material}`);
+    if (d.anschlag) parts.push(`Anschlag: ${d.anschlag}`);
+    if (d.zargentyp) parts.push(`Zarge: ${d.zargentyp}`);
+    
+    return `${idx + 1}. ${parts.join(' | ')}`;
+  }).join('\n');
+  
+  return summary + details;
+}
+
+// Raumliste formatieren
+function generateRoomListAnswer(rooms) {
+  const summary = `Insgesamt ${rooms.length} Räume erfasst:\n\n`;
+  
+  const details = rooms.map((r, idx) => {
+    const parts = [];
+    
+    if (r.raum) parts.push(`Raum: ${r.raum}`);
+    if (r.flaeche) parts.push(`Fläche: ${r.flaeche} m²`);
+    if (r.wandflaeche) parts.push(`Wandfläche: ${r.wandflaeche} m²`);
+    if (r.deckenhoehe) parts.push(`Deckenhöhe: ${r.deckenhoehe} m`);
+    if (r.bodenbelag) parts.push(`Bodenbelag: ${r.bodenbelag}`);
+    
+    return `${idx + 1}. ${parts.join(' | ')}`;
+  }).join('\n');
+  
+  const totalArea = rooms.reduce((sum, r) => sum + (parseFloat(r.flaeche) || 0), 0);
+  const areaSummary = `\n\nGesamtfläche: ${totalArea.toFixed(2)} m²`;
+  
+  return summary + details + areaSummary;
+}
+
+// Materialliste formatieren
+function generateMaterialListAnswer(materials) {
+  const summary = `Insgesamt ${materials.length} Materialien erfasst:\n\n`;
+  
+  const details = materials.map((m, idx) => {
+    const parts = [];
+    
+    if (m.material) parts.push(`Material: ${m.material}`);
+    if (m.menge) parts.push(`Menge: ${m.menge}`);
+    if (m.einheit) parts.push(`Einheit: ${m.einheit}`);
+    if (m.hersteller) parts.push(`Hersteller: ${m.hersteller}`);
+    if (m.artikelnummer) parts.push(`Art.-Nr.: ${m.artikelnummer}`);
+    
+    return `${idx + 1}. ${parts.join(' | ')}`;
+  }).join('\n');
+  
+  return summary + details;
+}
+
+// Flächenberechnung formatieren
+function generateAreaCalculationAnswer(areas) {
+  const summary = `Flächenberechnung mit ${areas.length} Positionen:\n\n`;
+  
+  const details = areas.map((a, idx) => {
+    const parts = [];
+    
+    if (a.position) parts.push(`Position: ${a.position}`);
+    if (a.laenge && a.breite) {
+      const flaeche = parseFloat(a.laenge) * parseFloat(a.breite);
+      parts.push(`${a.laenge} x ${a.breite} = ${flaeche.toFixed(2)} m²`);
+    } else if (a.flaeche) {
+      parts.push(`Fläche: ${a.flaeche} m²`);
+    }
+    
+    return `${idx + 1}. ${parts.join(' | ')}`;
+  }).join('\n');
+  
+  const totalArea = areas.reduce((sum, a) => {
+    if (a.laenge && a.breite) {
+      return sum + (parseFloat(a.laenge) * parseFloat(a.breite));
+    } else if (a.flaeche) {
+      return sum + parseFloat(a.flaeche);
+    }
+    return sum;
+  }, 0);
+  
+  const areaSummary = `\n\nGesamtfläche: ${totalArea.toFixed(2)} m²`;
+  
+  return summary + details + areaSummary;
+}
+
+// Generische strukturierte Antwort
+function generateGenericStructuredAnswer(items, questionText, tradeCode) {
+  const summary = `${items.length} Einträge aus der Datei:\n\n`;
+  
+  const details = items.map((item, idx) => {
+    // Filtere wichtige Felder
+    const important = Object.entries(item)
+      .filter(([key, val]) => val && key !== 'row' && key !== 'index')
+      .map(([key, val]) => `${key}: ${val}`)
+      .join(' | ');
+    
+    return `${idx + 1}. ${important}`;
+  }).join('\n');
+  
+  return summary + details;
+}
 
 // NEUE ROUTE: Füge nach der bestehenden '/question-clarification' Route ein (ca. Zeile 2500+)
 app.post('/api/projects/:projectId/trades/:tradeId/question-explanation', async (req, res) => {
