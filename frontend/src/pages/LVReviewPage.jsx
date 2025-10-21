@@ -144,6 +144,38 @@ useEffect(() => {
   
   loadData();
 }, [projectId]);
+
+// Polling für LV-Generierung
+useEffect(() => {
+  const activeGenerations = Object.entries(generatingLVs)
+    .filter(([_, isGenerating]) => isGenerating)
+    .map(([tradeId]) => parseInt(tradeId));
+  
+  if (activeGenerations.length === 0) return;
+  
+  const interval = setInterval(async () => {
+    for (const tradeId of activeGenerations) {
+      try {
+        const res = await fetch(apiUrl(`/api/projects/${projectId}/lv`));
+        if (res.ok) {
+          const data = await res.json();
+          const lvExists = data.lvs?.some(lv => parseInt(lv.trade_id) === tradeId);
+          
+          if (lvExists) {
+            console.log(`✅ LV for trade ${tradeId} is ready`);
+            setGeneratingLVs(prev => ({ ...prev, [tradeId]: false }));
+            // Reload data
+            window.location.reload();
+          }
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }
+  }, 5000); // Alle 5 Sekunden prüfen
+  
+  return () => clearInterval(interval);
+}, [generatingLVs, projectId]);
   
   const calculateTotal = (lv) => {
     if (lv.content?.totalSum) {
