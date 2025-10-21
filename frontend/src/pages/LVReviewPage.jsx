@@ -275,7 +275,7 @@ const handleGenerateAllQuestions = async () => {
   const trade = selectedTrades.find(t => t.id === parseInt(tradeId));
   
   // Baue URL mit korrekten Parametern
-  let url = `/project/${projectId}/questions/${tradeId}`;
+  let url = `/project/${projectId}/trade/${tradeId}/questions`;
   
   if (trade?.is_additional) {
     url += '?additional=true';
