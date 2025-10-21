@@ -513,8 +513,6 @@ useEffect(() => {
   
   initialize();
   
-  initialize();
-  
   return () => {
     sessionStorage.removeItem('currentTradeIsAdditional');
     if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
