@@ -1237,7 +1237,15 @@ if (generatingLV) {
   
   const currentQ = questions[current];
   const progress = ((current + 1) / questions.length) * 100;
-  
+
+// DEBUG
+console.log('🔍 Current Question Debug:', {
+  id: currentQ?.id,
+  uploadHelpful: currentQ?.uploadHelpful,
+  uploadHint: currentQ?.uploadHint,
+  hasUploadField: !!currentQ?.uploadHelpful
+});
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Background Effects */}
