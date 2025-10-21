@@ -1020,73 +1020,73 @@ if (current + 1 < questions.length) {
 
   // ÄNDERUNG: generateLvAndContinue() - Navigiert IMMER zur LV-Review Page
   async function generateLvAndContinue() {
-    console.log('generateLvAndContinue called');
-    try {
-      // Warte kurz, damit der LV-Screen sichtbar wird
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('Generating LV for trade:', tradeId);
-      
-      const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-        keepalive: true
-      });
+  console.log('generateLvAndContinue called');
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('Generating LV for trade:', tradeId);
+    
+    const lvRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/lv`), { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+      keepalive: true
+    });
 
-      if (!lvRes.ok) {
-        const data = await lvRes.json().catch(() => ({}));
-        throw new Error(data.error || 'Fehler beim Generieren des Leistungsverzeichnisses');
-      }
-      
-      console.log('LV generated successfully');
-      
-      // ÄNDERUNG: Markiere Gewerk als abgeschlossen
-      await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/complete`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionsCompleted: true, lvGenerated: true })
-      });
-      
-      // Cleanup LV interval
-      if (lvIntervalRef.current) {
-        clearInterval(lvIntervalRef.current);
-      }
-      setLvProgress(100);
-      setGeneratingLV(false);
-      
-      // HAUPTÄNDERUNG: IMMER zur LV-Review navigieren
-      console.log('Navigating to LV Review page');
-      setFinalizing(true);
-      
-      // NEU: Lade Info für nächsten Screen
-      const navigationRes = await fetch(apiUrl(`/api/projects/${projectId}/navigation`));
-      if (navigationRes.ok) {
-        const navData = await navigationRes.json();
-        
-        // Setze Text basierend auf verbleibenden Gewerken
-        if (navData.pendingTrades && navData.pendingTrades.length > 0) {
-          setNextTradeName(navData.pendingTrades[0].name);
-        } else {
-          setNextTradeName(null); // Alle Gewerke fertig
-        }
-      }
-      
-      setTimeout(() => {
-        // IMMER zur Review-Page
-        navigate(`/project/${projectId}/lv-review`);
-      }, 3000);
-      
-    } catch (err) {
-      console.error('Error generating LV:', err);
-      setError(err.message);
-      setSubmitting(false);
-      setGeneratingLV(false);
-      if (lvIntervalRef.current) {
-        clearInterval(lvIntervalRef.current);
+    if (!lvRes.ok) {
+      const data = await lvRes.json().catch(() => ({}));
+      throw new Error(data.error || 'Fehler beim Generieren des Leistungsverzeichnisses');
+    }
+    
+    console.log('LV generated successfully');
+    
+    // Markiere als abgeschlossen
+    await fetch(apiUrl(`/api/projects/${projectId}/trades/${tradeId}/complete`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionsCompleted: true, lvGenerated: true })
+    });
+    
+    // Cleanup intervals
+    if (lvIntervalRef.current) {
+      clearInterval(lvIntervalRef.current);
+    }
+    setLvProgress(100);
+    setGeneratingLV(false);
+    
+    // ⚡ NEU: Speichere LV-Generierungs-Status vor Navigation
+    const generatingLVs = JSON.parse(sessionStorage.getItem('generatingLVs') || '{}');
+    generatingLVs[tradeId] = true;
+    sessionStorage.setItem('generatingLVs', JSON.stringify(generatingLVs));
+    console.log('💾 Saved generatingLVs to sessionStorage:', generatingLVs);
+    
+    setFinalizing(true);
+    
+    // Lade Navigation Info
+    const navigationRes = await fetch(apiUrl(`/api/projects/${projectId}/navigation`));
+    if (navigationRes.ok) {
+      const navData = await navigationRes.json();
+      if (navData.pendingTrades && navData.pendingTrades.length > 0) {
+        setNextTradeName(navData.pendingTrades[0].name);
+      } else {
+        setNextTradeName(null);
       }
     }
+    
+    setTimeout(() => {
+      navigate(`/project/${projectId}/lv-review`);
+    }, 3000);
+    
+  } catch (err) {
+    console.error('Error generating LV:', err);
+    setError(err.message);
+    setSubmitting(false);
+    setGeneratingLV(false);
+    if (lvIntervalRef.current) {
+      clearInterval(lvIntervalRef.current);
+    }
   }
+}
 
   // Loading State mit Fortschrittsbalken
   if (loading) {
