@@ -1068,14 +1068,15 @@ const handleGenerateAllQuestions = async () => {
     ) : questionsStatus[trade.id]?.questionCount > 0 ? (
       // Fragen sind DA - zeige "Fragen starten"
       <button
-        onClick={() => {
-          handleStartQuestions(trade.id);
-          setGeneratingLVs(prev => ({ ...prev, [trade.id]: true }));
-        }}
-        className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
-      >
-        Fragen starten →
-      </button>
+  onClick={() => {
+    setGeneratingLVs(prev => ({ ...prev, [trade.id]: true }));
+    
+    handleStartQuestions(trade.id);
+  }}
+  className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+>
+  Fragen starten →
+</button>
     ) : generatingQuestions[trade.id] ? (
   <div className="w-full">
     <button
