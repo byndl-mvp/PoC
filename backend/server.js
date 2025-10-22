@@ -12162,16 +12162,17 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     if (existingQuestions.rows[0].count > 0) {
       console.log(`[QUESTIONS] Questions already exist for trade ${tradeId}, loading from DB`);
       
-      // Lade vorhandene Fragen
       const savedQuestions = await query(
-        `SELECT question_id as id, text as question, type, required, options, 
-                explanation, upload_helpful, upload_hint, category,
-                depends_on, show_if
-         FROM questions 
-         WHERE project_id = $1 AND trade_id = $2
-         ORDER BY question_id`,
-        [projectId, tradeId]
-      );
+  `SELECT question_id as id, text as question, type, required, options, 
+          explanation, upload_helpful, upload_hint, category,
+          depends_on, show_if
+   FROM questions 
+   WHERE project_id = $1 AND trade_id = $2
+   ORDER BY 
+     SPLIT_PART(question_id, '-', 1),
+     CAST(NULLIF(REGEXP_REPLACE(SPLIT_PART(question_id, '-', 2), '[^0-9]', '', 'g'), '') AS INTEGER)`,
+  [projectId, tradeId]
+);
       
       const formattedQuestions = savedQuestions.rows.map(q => ({
         ...q,
@@ -12368,13 +12369,15 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
     }
     
     const result = await query(
-      `SELECT q.*, t.name as trade_name, t.code as trade_code
-       FROM questions q
-       JOIN trades t ON t.id = q.trade_id
-       WHERE q.project_id = $1 AND q.trade_id = $2
-       ORDER BY q.question_id`,
-      [projectId, tradeId]
-    );
+  `SELECT q.*, t.name as trade_name, t.code as trade_code
+   FROM questions q
+   JOIN trades t ON t.id = q.trade_id
+   WHERE q.project_id = $1 AND q.trade_id = $2
+   ORDER BY 
+     SPLIT_PART(q.question_id, '-', 1),
+     CAST(NULLIF(REGEXP_REPLACE(SPLIT_PART(q.question_id, '-', 2), '[^0-9]', '', 'g'), '') AS INTEGER)`,
+  [projectId, tradeId]
+);
     
     const questions = result.rows.map(q => {
   const parsedOptions = q.options ? 
