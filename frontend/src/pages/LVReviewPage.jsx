@@ -195,22 +195,20 @@ useEffect(() => {
           const lvExists = data.lvs?.some(lv => parseInt(lv.trade_id) === tradeId);
           
           if (lvExists) {
-            console.log(`✅ LV for trade ${tradeId} is ready!`);
-            
-            // ⚡ NEU: Entferne aus generatingLVs und sessionStorage
-            setGeneratingLVs(prev => {
-              const updated = { ...prev };
-              delete updated[tradeId];
-              sessionStorage.setItem('generatingLVs', JSON.stringify(updated));
-              console.log('💾 Updated generatingLVs in sessionStorage:', updated);
-              return updated;
-            });
-            
-            // Reload Seite um neue LVs anzuzeigen
-            setTimeout(() => {
-              window.location.reload();
-            }, 500);
-          } else {
+  console.log(`✅ LV for trade ${tradeId} is ready!`);
+  
+  // Entferne aus sessionStorage
+  const currentGeneratingLVs = JSON.parse(sessionStorage.getItem('generatingLVs') || '{}');
+  delete currentGeneratingLVs[tradeId];
+  sessionStorage.setItem('generatingLVs', JSON.stringify(currentGeneratingLVs));
+  
+  console.log('💾 Cleaned generatingLVs before reload:', currentGeneratingLVs);
+  
+  // setTimeout für Sicherheit
+  setTimeout(() => {
+    window.location.reload();
+  }, 100);
+} else {
             console.log(`⏳ LV for trade ${tradeId} still generating...`);
           }
         }
