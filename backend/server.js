@@ -8781,7 +8781,61 @@ if (titleLower.includes('lieferung') &&
   
   fixedCount++;
 }
+
+if (tradeCode === 'TRO') {
+  // PREISVALIDIERUNG - Nur die 2 Hauptpositionen
+  lv.positions = lv.positions.map(pos => {
+    const titleLower = (pos.title || '').toLowerCase();
+    const unit = (pos.unit || '').toLowerCase();
+    let minPrice = null;
+    let reason = '';
     
+    // Ständerwerk CW/UW Profile (Material + Montage)
+    if ((titleLower.includes('ständerwerk') || titleLower.includes('cw') || titleLower.includes('uw')) && 
+        (unit === 'm²' || unit === 'm2')) {
+      minPrice = 25;
+      reason = 'Ständerwerk inkl. Montage';
+    }
+    
+    // Beplankung GKB/GKBI/GKF (Material + Montage)
+    else if ((titleLower.includes('beplanken') || titleLower.includes('beplankung') || 
+              titleLower.includes('gipskarton') || titleLower.includes('gkb') || 
+              titleLower.includes('gkbi') || titleLower.includes('gkf')) && 
+             (unit === 'm²' || unit === 'm2')) {
+      minPrice = 22;
+      reason = 'Beplankung';
+    }
+    
+    // Preiskorrektur wenn zu niedrig
+    if (minPrice && pos.unitPrice < minPrice) {
+      console.warn(`[TRO] Preiskorrektur "${pos.title}": ${pos.unitPrice}€ -> ${minPrice}€ (${reason})`);
+      pos.unitPrice = minPrice;
+      pos.totalPrice = Math.round(pos.quantity * minPrice * 100) / 100;
+      pos.notes = (pos.notes || '') + ` | Preis korrigiert (min. ${minPrice}€/${unit} für ${reason})`;
+      fixedCount++;
+    }
+    
+    return pos;
+  });
+  
+  // Tischlerarbeiten rausfiltern (gehören NICHT zu Trockenbau)
+  const vorher = lv.positions.length;
+  lv.positions = lv.positions.filter(pos => {
+    const titleLower = (pos.title || '').toLowerCase();
+    
+    if (titleLower.includes('zarge') || titleLower.includes('türblatt') || 
+        titleLower.includes('türbeschlag') || titleLower.includes('türdrücker')) {
+      console.warn(`[TRO] Entferne Position (gehört zu Tischler): "${pos.title}"`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  if (vorher !== lv.positions.length) {
+    console.log(`[TRO] ${vorher - lv.positions.length} Nicht-Trockenbau-Positionen entfernt`);
+  }
+}    
     // NEUE REGEL: Vorwandinstallation NUR bei Trockenbau
     if (tradeCode !== 'TRO' && 
         (titleLower.includes('vorwand') || descLower.includes('vorwandinstallation'))) {
