@@ -12290,8 +12290,15 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     console.log(`[QUESTIONS] Filtered ${questions.length - filteredQuestions.length} duplicate questions`);
     
    // NEU: Speichere Fragen MIT ALLEN FELDERN inkl. sort_order
+// VOR dem Loop
+console.log('[DEBUG] filteredQuestions.length:', filteredQuestions.length);
+console.log('[DEBUG] First 3 question IDs:', filteredQuestions.slice(0, 3).map(q => q.id));
+
 for (let i = 0; i < filteredQuestions.length; i++) {
   const question = filteredQuestions[i];
+  
+  console.log(`[DEBUG] Saving ${question.id} with sort_order=${i}`); // WICHTIG!
+  
   await query(
     `INSERT INTO questions (
       project_id, trade_id, question_id, text, type, required, options, 
@@ -12326,6 +12333,8 @@ for (let i = 0; i < filteredQuestions.length; i++) {
     ]
   );
 }
+
+console.log('[DEBUG] Finished saving all questions');
     
     // Setze Status auf "questions_ready"
     await query(
