@@ -12601,32 +12601,34 @@ app.post('/api/projects/:projectId/trades/:tradeId/context-questions', async (re
     );
     
     // NEU: Speichere die neuen Fragen MIT ALLEN FELDERN
-    for (const q of questions) {
-      await query(
-        `INSERT INTO questions (
-          project_id, trade_id, question_id, text, type, required, options,
-          explanation, upload_helpful, upload_hint, category
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        ON CONFLICT (project_id, trade_id, question_id)
-        DO UPDATE SET 
-          text=$4, type=$5, required=$6, options=$7,
-          explanation=$8, upload_helpful=$9, upload_hint=$10, category=$11`,
-        [
-          projectId, 
-          tradeId, 
-          q.id, 
-          q.question || q.text, 
-          q.type || 'text', 
-          q.required ?? true, 
-          q.options ? JSON.stringify(q.options) : null,
-          q.explanation || null,
-          q.uploadHelpful || false,
-          q.uploadHint || null,
-          q.category || null
-        ]
-      );
-    }
+    for (let i = 0; i < questions.length; i++) {
+  const q = questions[i];
+  await query(
+    `INSERT INTO questions (
+      project_id, trade_id, question_id, text, type, required, options,
+      explanation, upload_helpful, upload_hint, category, sort_order
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    ON CONFLICT (project_id, trade_id, question_id)
+    DO UPDATE SET 
+      text=$4, type=$5, required=$6, options=$7,
+      explanation=$8, upload_helpful=$9, upload_hint=$10, category=$11, sort_order=$12`,
+    [
+      projectId, 
+      tradeId, 
+      q.id, 
+      q.question || q.text, 
+      q.type || 'text', 
+      q.required ?? true, 
+      q.options ? JSON.stringify(q.options) : null,
+      q.explanation || null,
+      q.uploadHelpful || false,
+      q.uploadHint || null,
+      q.category || null,
+      i  // ← sort_order
+    ]
+  );
+}
     
     // Setze Status
     await query(
