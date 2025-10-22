@@ -12168,9 +12168,7 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
           depends_on, show_if
    FROM questions 
    WHERE project_id = $1 AND trade_id = $2
-   ORDER BY 
-     SPLIT_PART(question_id, '-', 1),
-     CAST(NULLIF(REGEXP_REPLACE(SPLIT_PART(question_id, '-', 2), '[^0-9]', '', 'g'), '') AS INTEGER)`,
+   ORDER BY sort_order ASC`,
   [projectId, tradeId]
 );
       
