@@ -1214,13 +1214,20 @@ if (generatingLV) {
         
         {/* NEU: Zurück zur Übersicht Button */}
         <button
-          onClick={() => {
-            navigate(`/project/${projectId}/lv-review`);
-          }}
-          className="px-8 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 font-semibold"
-        >
-          ← Zurück zur Übersicht
-        </button>
+  onClick={() => {
+    // ⚡ Setze generatingLVs VOR Navigation
+    const current = JSON.parse(sessionStorage.getItem('generatingLVs') || '{}');
+    current[parseInt(tradeId)] = true;
+    sessionStorage.setItem('generatingLVs', JSON.stringify(current));
+    
+    console.log('💾 SET generatingLVs from LV screen:', current);
+    
+    navigate(`/project/${projectId}/lv-review`);
+  }}
+  className="px-8 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 font-semibold"
+>
+  ← Zurück zur Übersicht
+</button>
         
         <p className="mt-4 text-gray-400 text-sm">
           Die LV-Generierung läuft weiter, auch wenn Sie diese Seite verlassen
