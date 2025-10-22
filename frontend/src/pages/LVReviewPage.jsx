@@ -1065,15 +1065,8 @@ const handleGenerateAllQuestions = async () => {
       </button>
     ) : questionsStatus[trade.id]?.questionCount > 0 ? (
       // Fragen sind DA - zeige "Fragen starten"
-      <button
+     <button
   onClick={() => {
-    const current = JSON.parse(sessionStorage.getItem('generatingLVs') || '{}');
-    current[trade.id] = true;
-    sessionStorage.setItem('generatingLVs', JSON.stringify(current));
-    
-    console.log('💾 SET generatingLVs before navigation:', current);
-    
-    // Dann navigieren
     handleStartQuestions(trade.id);
   }}
   className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
