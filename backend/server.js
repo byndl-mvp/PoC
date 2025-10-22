@@ -12291,41 +12291,43 @@ app.post('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) 
     const filteredQuestions = filterDuplicateQuestions(questions, projectContext.intakeData || []);
     console.log(`[QUESTIONS] Filtered ${questions.length - filteredQuestions.length} duplicate questions`);
     
-    // NEU: Speichere Fragen MIT ALLEN FELDERN
-    for (const question of filteredQuestions) {
-      await query(
-        `INSERT INTO questions (
-          project_id, trade_id, question_id, text, type, required, options, 
-          depends_on, show_if, explanation, upload_helpful, upload_hint, category
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        ON CONFLICT (project_id, trade_id, question_id) 
-        DO UPDATE SET 
-          text = $4, type = $5, required = $6, options = $7, 
-          depends_on = $8, show_if = $9, explanation = $10,
-          upload_helpful = $11, upload_hint = $12, category = $13`,
-        [
-          projectId,
-          tradeId,
-          question.id,
-          question.question || question.text,
-          question.multiSelect ? 'multiselect' : (question.type || 'text'),
-          question.required !== undefined ? question.required : false,
-          question.options ? JSON.stringify({
-            values: question.options,
-            multiSelect: question.multiSelect || false,
-            dependsOn: question.dependsOn || null,
-            showIf: question.showIf || null
-          }) : null,
-          question.dependsOn || null,
-          question.showIf || null,
-          question.explanation || null,
-          question.uploadHelpful || false,
-          question.uploadHint || null,
-          question.category || null
-        ]
-      );
-    }
+   // NEU: Speichere Fragen MIT ALLEN FELDERN inkl. sort_order
+for (let i = 0; i < filteredQuestions.length; i++) {
+  const question = filteredQuestions[i];
+  await query(
+    `INSERT INTO questions (
+      project_id, trade_id, question_id, text, type, required, options, 
+      depends_on, show_if, explanation, upload_helpful, upload_hint, category, sort_order
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    ON CONFLICT (project_id, trade_id, question_id) 
+    DO UPDATE SET 
+      text = $4, type = $5, required = $6, options = $7, 
+      depends_on = $8, show_if = $9, explanation = $10,
+      upload_helpful = $11, upload_hint = $12, category = $13, sort_order = $14`,
+    [
+      projectId,
+      tradeId,
+      question.id,
+      question.question || question.text,
+      question.multiSelect ? 'multiselect' : (question.type || 'text'),
+      question.required !== undefined ? question.required : false,
+      question.options ? JSON.stringify({
+        values: question.options,
+        multiSelect: question.multiSelect || false,
+        dependsOn: question.dependsOn || null,
+        showIf: question.showIf || null
+      }) : null,
+      question.dependsOn || null,
+      question.showIf || null,
+      question.explanation || null,
+      question.uploadHelpful || false,
+      question.uploadHint || null,
+      question.category || null,
+      i  // sort_order
+    ]
+  );
+}
     
     // Setze Status auf "questions_ready"
     await query(
@@ -12373,9 +12375,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/questions', async (req, res) =
    FROM questions q
    JOIN trades t ON t.id = q.trade_id
    WHERE q.project_id = $1 AND q.trade_id = $2
-   ORDER BY 
-     SPLIT_PART(q.question_id, '-', 1),
-     CAST(NULLIF(REGEXP_REPLACE(SPLIT_PART(q.question_id, '-', 2), '[^0-9]', '', 'g'), '') AS INTEGER)`,
+   ORDER BY q.sort_order ASC`,
   [projectId, tradeId]
 );
     
