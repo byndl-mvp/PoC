@@ -13007,40 +13007,42 @@ async function generateQuestionsInBackground(projectId, tradeId) {
     }
     
     // 9. Speichere Fragen in DB
-    for (const question of questions) {
-      await query(
-        `INSERT INTO questions (
-          project_id, trade_id, question_id, text, type, required, options, 
-          depends_on, show_if, explanation, upload_helpful, upload_hint, category
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        ON CONFLICT (project_id, trade_id, question_id) 
-        DO UPDATE SET 
-          text = $4, type = $5, required = $6, options = $7, 
-          depends_on = $8, show_if = $9, explanation = $10,
-          upload_helpful = $11, upload_hint = $12, category = $13`,
-        [
-          projectId,
-          tradeId,
-          question.id,
-          question.question || question.text,
-          question.multiSelect ? 'multiselect' : (question.type || 'text'),
-          question.required !== undefined ? question.required : false,
-          question.options ? JSON.stringify({
-            values: question.options,
-            multiSelect: question.multiSelect || false,
-            dependsOn: question.dependsOn || null,
-            showIf: question.showIf || null
-          }) : null,
-          question.dependsOn || null,
-          question.showIf || null,
-          question.explanation || null,
-          question.uploadHelpful || false,
-          question.uploadHint || null,
-          question.category || null
-        ]
-      );
-    }
+   for (let i = 0; i < questions.length; i++) {
+  const question = questions[i];
+  await query(
+    `INSERT INTO questions (
+      project_id, trade_id, question_id, text, type, required, options, 
+      depends_on, show_if, explanation, upload_helpful, upload_hint, category, sort_order
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    ON CONFLICT (project_id, trade_id, question_id) 
+    DO UPDATE SET 
+      text = $4, type = $5, required = $6, options = $7, 
+      depends_on = $8, show_if = $9, explanation = $10,
+      upload_helpful = $11, upload_hint = $12, category = $13, sort_order = $14`,
+    [
+      projectId,
+      tradeId,
+      question.id,
+      question.question || question.text,
+      question.multiSelect ? 'multiselect' : (question.type || 'text'),
+      question.required !== undefined ? question.required : false,
+      question.options ? JSON.stringify({
+        values: question.options,
+        multiSelect: question.multiSelect || false,
+        dependsOn: question.dependsOn || null,
+        showIf: question.showIf || null
+      }) : null,
+      question.dependsOn || null,
+      question.showIf || null,
+      question.explanation || null,
+      question.uploadHelpful || false,
+      question.uploadHint || null,
+      question.category || null,
+      i  // ← sort_order
+    ]
+  );
+}
     
     // 10. Update Status auf "ready"
     await query(
