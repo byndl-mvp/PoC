@@ -7501,6 +7501,9 @@ try {
   }
 }
 
+// Upload-Context aus enrichedAnswers extrahieren (wurde in Zeile 57 gebaut)
+const uploadContext = buildUploadContext(enrichedAnswers);
+    
 // NEUE VALIDIERUNG HIER:
 console.log('🔍 Starting validation of generated LV...');
 const validatedLV = validateAndCleanLVComplete(lv, enrichedAnswers, uploadContext);
