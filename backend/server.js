@@ -13253,7 +13253,13 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
         questionText
       );
       
-      extractedAnswer = result.answer;
+      extractedAnswer = imageStructure.enhancedText || result.answer;
+      
+      // NEU: Log für Debugging
+      if (imageStructure.structured?.hasQuantities) {
+        console.log(`[FILE-ANALYZE] ✓ ${detectedItems.length} Mengenangaben extrahiert - LV-Anweisungen hinzugefügt`);
+      }
+      
       structuredData = imageStructure.structured;
       detectedItems = imageStructure.items;
       suggestions = imageStructure.suggestions;
