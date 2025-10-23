@@ -13207,98 +13207,121 @@ Gib eine hilfreiche, verständliche Antwort die dem Laien weiterhilft.`;
   }
 });
 
+
 app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
-  console.log('[FILE-ANALYZE] Starting analysis');
-  console.log('[FILE-ANALYZE] File:', req.file ? req.file.originalname : 'NO FILE');
-  
-  const { questionId, questionText, tradeCode, projectId, tradeId } = req.body;
-  const file = req.file;
-  
-  if (!file) {
-    return res.status(400).json({ error: 'Keine Datei hochgeladen' });
-  }
-  
-  if (!questionText || !tradeCode) {
-    return res.status(400).json({ error: 'Fehlende Parameter' });
-  }
-  
   try {
-    let extractedAnswer = '';
-    let structuredData = null;
-    let analysis = '';
-    let confidence = 0.7;
-    let documentType = null;
-    let detectedItems = [];
-    let suggestions = null;
+    const { questionId, projectId, tradeId } = req.body;
+    const file = req.file;
     
+    if (!file) {
+      return res.status(400).json({ success: false, error: 'Keine Datei hochgeladen' });
+    }
+    
+    console.log('[FILE-ANALYZE] Starting analysis:', file.originalname);
+    
+    // Hole Frage-Details
+    const questionResult = await query(
+      `SELECT question_text, trade_code FROM questions WHERE id = $1`,
+      [questionId]
+    );
+    
+    if (questionResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Frage nicht gefunden' });
+    }
+    
+    const { question_text: questionText, trade_code: tradeCode } = questionResult.rows[0];
+    
+    // Variablen initialisieren
+    let extractedAnswer = '';
+    let llmContext = '';              // NEU: Für LLM mit Anweisungen
+    let structuredData = null;
+    let documentType = '';
+    let detectedItems = [];
+    let confidence = 0.8;
+    let analysis = '';
+    let suggestions = [];
+    
+    // ═══════════════════════════════════════════════════════════════
     // BILD-ANALYSE
+    // ═══════════════════════════════════════════════════════════════
     if (file.mimetype.startsWith('image/')) {
       console.log('[FILE-ANALYZE] Processing image:', file.originalname);
       
-      const optimizedBuffer = await sharp(file.buffer)
-        .resize(1920, 1920, { 
-          fit: 'inside',
-          withoutEnlargement: true 
-        })
-        .jpeg({ quality: 85 })
-        .toBuffer();
+      const result = await analyzeImageWithClaude(file.buffer, questionText, tradeCode);
       
-      const base64 = optimizedBuffer.toString('base64');
-      const result = await analyzeImageWithClaude(base64, questionText, tradeCode, questionId);
+      documentType = 'IMAGE';
+      confidence = result.confidence || 0.85;
+      analysis = 'Bild analysiert';
       
-      // NEU: Strukturierte Extraktion aus Bild
+      // Versuche strukturierte Daten zu extrahieren
       const imageStructure = await extractStructuredDataFromImage(
-        result.answer, 
-        tradeCode, 
+        result.answer,
+        tradeCode,
         questionText
       );
       
-      let extractedAnswer = result.answer; // Für Nutzer (Display)
-let llmContext = result.answer;      // Für LV-Generator
-
-if (imageStructure && imageStructure.items && imageStructure.items.length > 0) {
-  // Nutzer sieht: Original-Analyse (ohne LV-Anweisungen)
-  extractedAnswer = imageStructure.userDisplayText || result.answer;
-  
-  // LV-Generator sieht: Analyse + LV-Anweisungen
-  llmContext = imageStructure.llmContextText || imageStructure.enhancedText || result.answer;
-  
-  console.log('[ANALYZE-FILE] Using structured image data');
-  console.log(`[ANALYZE-FILE] User sees: ${extractedAnswer.length} chars`);
-  console.log(`[ANALYZE-FILE] LLM sees: ${llmContext.length} chars (with instructions)`);
-}
-
-// Speichere BEIDE Versionen in DB:
-await query(`
-  UPDATE intake_answers 
-  SET 
-    answer = $1,              -- Nutzer-sichtbar (ohne LV-Anweisungen)
-    llm_context = $2,         -- Für LV-Generator (mit LV-Anweisungen)
-    structured_data = $3,
-    suggestions = $4
-  WHERE id = $5
-`, [
-  extractedAnswer,                           // Nutzer sieht das
-  llmContext,                                // LLM sieht das beim LV-Erstellen
-  JSON.stringify(imageStructure.structured),
-  JSON.stringify(imageStructure.suggestions),
-  answerId
-]);
-      
-      // NEU: Log für Debugging
-      if (imageStructure.structured?.hasQuantities) {
-        console.log(`[FILE-ANALYZE] ✓ ${detectedItems.length} Mengenangaben extrahiert - LV-Anweisungen hinzugefügt`);
+      if (imageStructure && imageStructure.items && imageStructure.items.length > 0) {
+        structuredData = imageStructure.structured;
+        detectedItems = imageStructure.items;
+        suggestions = imageStructure.suggestions || [];
+        
+        // NEU: Trenne Nutzer-Text von LLM-Context
+        extractedAnswer = imageStructure.userDisplayText || result.answer;
+        llmContext = imageStructure.llmContextText || imageStructure.enhancedText || result.answer;
+        
+        console.log('[FILE-ANALYZE] Image: Structured data extracted');
+        console.log(`[FILE-ANALYZE] Image: User sees ${extractedAnswer.length} chars`);
+        console.log(`[FILE-ANALYZE] Image: LLM sees ${llmContext.length} chars (with instructions)`);
+      } else {
+        extractedAnswer = result.answer;
+        llmContext = result.answer;  // NEU: Auch hier llmContext setzen
       }
-      
-      structuredData = imageStructure.structured;
-      detectedItems = imageStructure.items;
-      suggestions = imageStructure.suggestions;
-      analysis = `Bild analysiert: ${detectedItems.length} Elemente erkannt`;
-      confidence = result.confidence || 0.85;
-      documentType = 'IMAGE';
     }
     
+    // ═══════════════════════════════════════════════════════════════
+    // PDF-ANALYSE
+    // ═══════════════════════════════════════════════════════════════
+    else if (file.mimetype === 'application/pdf') {
+      console.log('[FILE-ANALYZE] Processing PDF:', file.originalname);
+      
+      const result = await extractTextFromPDF(file.buffer);
+      
+      documentType = 'PDF';
+      confidence = 0.8;
+      analysis = 'PDF-Text extrahiert';
+      
+      // Versuche strukturierte Daten zu extrahieren
+      const pdfStructure = await extractStructuredDataFromText(
+        result.text,
+        tradeCode,
+        questionText
+      );
+      
+      if (pdfStructure && pdfStructure.items && pdfStructure.items.length > 0) {
+        structuredData = pdfStructure.structured;
+        detectedItems = pdfStructure.items;
+        suggestions = pdfStructure.suggestions || [];
+        
+        // NEU: Trenne Nutzer-Text von LLM-Context
+        extractedAnswer = pdfStructure.userDisplayText || result.text;
+        llmContext = pdfStructure.llmContextText || pdfStructure.enhancedText || result.text;
+        
+        console.log('[FILE-ANALYZE] PDF: Structured data extracted');
+        console.log(`[FILE-ANALYZE] PDF: User sees ${extractedAnswer.length} chars`);
+        console.log(`[FILE-ANALYZE] PDF: LLM sees ${llmContext.length} chars (with instructions)`);
+      } else {
+        extractedAnswer = result.text;
+        llmContext = result.text;  // NEU: Auch hier llmContext setzen
+      }
+      
+      if (result.metadata?.quality) {
+        confidence = result.metadata.quality.score / 100;
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
     // EXCEL/CSV-ANALYSE
+    // ═══════════════════════════════════════════════════════════════
     else if (file.originalname.match(/\.(xlsx?|csv)$/i)) {
       console.log('[FILE-ANALYZE] Processing spreadsheet:', file.originalname);
       
@@ -13311,15 +13334,28 @@ await query(`
       
       if (detectedItems.length > 0) {
         confidence = 0.95;
-        extractedAnswer = await generateStructuredAnswer(
+        
+        // NEU: generateStructuredAnswer gibt Objekt mit 2 Texten zurück
+        const structuredAnswer = await generateStructuredAnswer(
           result.structured,
           questionText,
           tradeCode
         );
+        
+        // NEU: Trenne Nutzer-Text von LLM-Context
+        extractedAnswer = structuredAnswer.userDisplayText || structuredAnswer.text || '';
+        llmContext = structuredAnswer.llmContextText || structuredAnswer.enhancedText || extractedAnswer;
+        
         analysis = `${detectedItems.length} Einträge aus Excel extrahiert`;
         suggestions = generateDataSuggestions(detectedItems, tradeCode);
+        
+        console.log('[FILE-ANALYZE] Excel: Structured data extracted');
+        console.log(`[FILE-ANALYZE] Excel: User sees ${extractedAnswer.length} chars`);
+        console.log(`[FILE-ANALYZE] Excel: LLM sees ${llmContext.length} chars (with instructions)`);
+        
       } else {
         extractedAnswer = result.text;
+        llmContext = result.text;  // NEU: Auch hier llmContext setzen
         confidence = 0.7;
         analysis = 'Excel-Daten extrahiert';
       }
@@ -13329,80 +13365,85 @@ await query(`
       }
     }
     
-    // PDF-ANALYSE
-    else if (file.mimetype === 'application/pdf') {
-      console.log('[FILE-ANALYZE] Processing PDF:', file.originalname);
-      
-      const result = await analyzePdfWithClaude(file.buffer, questionText, tradeCode, questionId);
-      
-      // NEU: Strukturierte Extraktion aus PDF
-      const pdfStructure = await extractStructuredDataFromText(
-        result.text,
-        tradeCode,
-        questionText
-      );
-      
-       let extractedAnswer = result.text;
-let llmContext = result.text;
-
-if (pdfStructure && pdfStructure.items && pdfStructure.items.length > 0) {
-  extractedAnswer = pdfStructure.userDisplayText || result.text;
-  llmContext = pdfStructure.llmContextText || pdfStructure.enhancedText || result.text;
-  
-  console.log('[ANALYZE-FILE] Using structured PDF data');
-  console.log(`[ANALYZE-FILE] User sees: ${extractedAnswer.length} chars`);
-  console.log(`[ANALYZE-FILE] LLM sees: ${llmContext.length} chars (with instructions)`);
-}
-
-await query(`
-  UPDATE intake_answers 
-  SET 
-    answer = $1,
-    llm_context = $2,
-    structured_data = $3,
-    suggestions = $4
-  WHERE id = $5
-`, [
-  extractedAnswer,
-  llmContext,
-  JSON.stringify(pdfStructure.structured),
-  JSON.stringify(pdfStructure.suggestions),
-  answerId
-]);
-      
-      // NEU: Log für Debugging
-      if (pdfStructure.structured?.hasQuantities) {
-        console.log(`[FILE-ANALYZE] ✓ ${detectedItems.length} Mengenangaben extrahiert - LV-Anweisungen hinzugefügt`);
-      }
-      
-      structuredData = pdfStructure.structured;
-      detectedItems = pdfStructure.items;
-      suggestions = pdfStructure.suggestions;
-      documentType = result.metadata?.documentType || 'PDF';
-      analysis = `${documentType}: ${detectedItems.length} Elemente erkannt`;
-      confidence = result.metadata?.confidence || 0.8;
-    }
-    
+    // ═══════════════════════════════════════════════════════════════
+    // NICHT UNTERSTÜTZTE DATEITYPEN
+    // ═══════════════════════════════════════════════════════════════
     else {
       return res.status(400).json({ 
-        error: 'Dateityp nicht unterstützt',
-        supportedTypes: ['image/*', '.xlsx', '.xls', '.csv', '.pdf']
+        success: false, 
+        error: 'Nicht unterstützter Dateityp' 
       });
     }
     
-    // Validierung
-    if (!extractedAnswer || extractedAnswer.trim().length === 0) {
-      return res.status(422).json({
-        error: 'Keine verwertbaren Informationen gefunden'
-      });
+    // ═══════════════════════════════════════════════════════════════
+    // IN ANSWERS TABELLE SPEICHERN
+    // ═══════════════════════════════════════════════════════════════
+    if (projectId && tradeId && questionId) {
+      try {
+        // Prüfe ob bereits eine Antwort existiert
+        const existingAnswer = await query(`
+          SELECT id FROM answers 
+          WHERE project_id = $1 AND trade_id = $2 AND question_id = $3
+        `, [projectId, tradeId, questionId]);
+        
+        if (existingAnswer.rows.length > 0) {
+          // UPDATE: Bestehende Antwort aktualisieren
+          await query(`
+            UPDATE answers 
+            SET 
+              answer_text = $1,        -- Nutzer-sichtbar (ohne LV-Anweisungen)
+              llm_context = $2,        -- LLM-sichtbar (mit LV-Anweisungen)
+              assumption = $3,         -- Structured data (falls vorhanden)
+              updated_at = NOW()
+            WHERE project_id = $4 
+              AND trade_id = $5 
+              AND question_id = $6
+          `, [
+            extractedAnswer,
+            llmContext,
+            structuredData ? JSON.stringify(structuredData) : null,
+            projectId,
+            tradeId,
+            questionId
+          ]);
+          
+          console.log('[FILE-ANALYZE] Updated existing answer');
+        } else {
+          // INSERT: Neue Antwort erstellen
+          await query(`
+            INSERT INTO answers 
+            (project_id, trade_id, question_id, answer_text, llm_context, assumption)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `, [
+            projectId,
+            tradeId,
+            questionId,
+            extractedAnswer,
+            llmContext,
+            structuredData ? JSON.stringify(structuredData) : null
+          ]);
+          
+          console.log('[FILE-ANALYZE] Created new answer');
+        }
+        
+      } catch (dbError) {
+        console.error('[FILE-ANALYZE] DB error:', dbError.message);
+        // Fahre trotzdem fort, um Response zu senden
+      }
     }
     
-    // In DB speichern
+    // ═══════════════════════════════════════════════════════════════
+    // IN FILE_UPLOADS TABELLE SPEICHERN (OPTIONAL)
+    // ═══════════════════════════════════════════════════════════════
     if (projectId && tradeId) {
       try {
-        await query(`DELETE FROM file_uploads WHERE project_id = $1 AND trade_id = $2 AND question_id = $3`, 
-          [projectId, tradeId, questionId]);
+        // Lösche alte Uploads für diese Frage
+        await query(`
+          DELETE FROM file_uploads 
+          WHERE project_id = $1 AND trade_id = $2 AND question_id = $3
+        `, [projectId, tradeId, questionId]);
         
+        // Speichere neuen Upload
         await query(`
           INSERT INTO file_uploads 
           (project_id, trade_id, question_id, file_name, file_type, analysis_result, extracted_data, confidence, document_type)
@@ -13413,33 +13454,50 @@ await query(`
           questionId, 
           file.originalname, 
           file.mimetype,
-          JSON.stringify({ answer: extractedAnswer, analysis: analysis }),
+          JSON.stringify({ 
+            answer: extractedAnswer,      // Nutzer-Version (ohne LV-Anweisungen)
+            analysis: analysis 
+          }),
           structuredData ? JSON.stringify(structuredData) : null,
           confidence,
           documentType
         ]);
+        
+        console.log('[FILE-ANALYZE] Saved to file_uploads');
       } catch (dbError) {
-        console.error('[FILE-ANALYZE] DB error:', dbError.message);
+        console.error('[FILE-ANALYZE] file_uploads error:', dbError.message);
+        // Nicht kritisch, fahre fort
       }
     }
     
-    // NEU: Erweiterte Response mit allen Daten
+    // ═══════════════════════════════════════════════════════════════
+    // RESPONSE SENDEN
+    // ═══════════════════════════════════════════════════════════════
     res.json({
       success: true,
-      extractedAnswer,
+      extractedAnswer,              // Nutzer-sichtbare Version (ohne LV-Anweisungen)
       structuredData,
-      detectedItems,      // NEU: Liste der erkannten Elemente
-      suggestions,        // NEU: Verbesserungsvorschläge
+      detectedItems,                // Liste der erkannten Elemente
+      suggestions,                  // Verbesserungsvorschläge
       analysis,
       confidence,
       documentType,
-      requiresConfirmation: detectedItems.length > 0, // NEU: Flag für Bestätigung
+      requiresConfirmation: detectedItems.length > 0,  // Flag für UI
       metadata: {
         fileName: file.originalname,
         fileType: file.mimetype,
         fileSize: file.size,
-        itemCount: detectedItems.length
+        itemCount: detectedItems.length,
+        hasLvInstructions: llmContext.length > extractedAnswer.length  // NEU: Info ob LV-Anweisungen vorhanden
       }
+    });
+    
+    console.log('[FILE-ANALYZE] Analysis complete:', {
+      documentType,
+      itemsDetected: detectedItems.length,
+      userTextLength: extractedAnswer.length,
+      llmContextLength: llmContext.length,
+      confidence
     });
     
   } catch (error) {
