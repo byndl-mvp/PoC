@@ -1707,17 +1707,23 @@ function validateParsedData(result, tradeCode) {
     return result;
   }
   
-  // Trade-spezifische Validierungen
+  // Trade-spezifische Validierungen - NUR EXTREME FEHLER filtern
   switch (tradeCode) {
     case 'FEN':
       result.items = result.items.filter(item => {
-        if (item.breite <= 0 || item.hoehe <= 0) {
+        // NUR filtern wenn Maße komplett fehlen oder offensichtlich falsch
+        if (!item.breite || !item.hoehe || item.breite <= 0 || item.hoehe <= 0) {
           console.warn(`[EXCEL-PARSER] Invalid window: ${item.bezeichnung} - missing dimensions`);
           return false;
         }
-        if (item.breite > 500 || item.hoehe > 500) {
-          console.warn(`[EXCEL-PARSER] Unrealistic window size: ${item.bezeichnung} - ${item.breite}x${item.hoehe}cm`);
+        // NUR EXTREME Werte filtern (z.B. Tippfehler wie 15000 statt 150)
+        if (item.breite > 1000 || item.hoehe > 1000) {
+          console.warn(`[EXCEL-PARSER] Extreme window size (likely error): ${item.bezeichnung} - ${item.breite}x${item.hoehe}cm`);
           return false;
+        }
+        // Warne bei ungewöhnlichen (aber möglichen) Werten, BEHALTE aber!
+        if (item.breite > 300 || item.hoehe > 300) {
+          console.warn(`[EXCEL-PARSER] ℹ️  Large window (kept): ${item.bezeichnung} - ${item.breite}x${item.hoehe}cm`);
         }
         return true;
       });
@@ -1725,12 +1731,14 @@ function validateParsedData(result, tradeCode) {
       
     case 'TIS':
       result.items = result.items.filter(item => {
-        if (item.breite <= 0 || item.hoehe <= 0) {
+        // NUR filtern wenn Maße komplett fehlen
+        if (!item.breite || !item.hoehe || item.breite <= 0 || item.hoehe <= 0) {
           console.warn(`[EXCEL-PARSER] Invalid door: ${item.bezeichnung} - missing dimensions`);
           return false;
         }
-        if (item.breite > 300 || item.hoehe > 300) {
-          console.warn(`[EXCEL-PARSER] Unrealistic door size: ${item.bezeichnung} - ${item.breite}x${item.hoehe}cm`);
+        // NUR EXTREME Werte filtern
+        if (item.breite > 500 || item.hoehe > 400) {
+          console.warn(`[EXCEL-PARSER] Extreme door size (likely error): ${item.bezeichnung} - ${item.breite}x${item.hoehe}cm`);
           return false;
         }
         return true;
@@ -1739,20 +1747,40 @@ function validateParsedData(result, tradeCode) {
       
     case 'HEI':
       result.items = result.items.filter(item => {
-        if (item.leistung && (item.leistung < 100 || item.leistung > 10000)) {
-          console.warn(`[EXCEL-PARSER] Unrealistic heater power: ${item.raum} - ${item.leistung}W`);
+        // NUR bei EXTREMEN Werten filtern (z.B. Tippfehler)
+        if (item.leistung && (item.leistung < 10 || item.leistung > 50000)) {
+          console.warn(`[EXCEL-PARSER] Extreme heater power (likely error): ${item.raum} - ${item.leistung}W`);
           return false;
+        }
+        // Warne bei ungewöhnlichen Werten, BEHALTE aber!
+        if (item.leistung && (item.leistung < 100 || item.leistung > 10000)) {
+          console.warn(`[EXCEL-PARSER] ℹ️  Unusual heater power (kept): ${item.raum} - ${item.leistung}W`);
         }
         return true;
       });
       break;
+      
+    default:
+      // Für andere Gewerke: NUR komplett leere Items filtern
+      result.items = result.items.filter(item => {
+        const hasAnyValue = Object.values(item).some(val => 
+          val !== null && val !== undefined && val !== '' && val !== 0
+        );
+        if (!hasAnyValue) {
+          console.warn(`[EXCEL-PARSER] Empty item filtered out`);
+          return false;
+        }
+        return true;
+      });
   }
   
   // Update statistics
   if (result.items.length === 0) {
     console.error(`[EXCEL-PARSER] Error: All items filtered out during validation`);
-    result.answer = 'Fehler: Keine gültigen Daten in der Tabelle gefunden';
-    result.summary = 'Validierung fehlgeschlagen';
+    result.answer = 'Fehler: Keine gültigen Daten in der Tabelle gefunden. Bitte prüfen Sie die Eingabewerte.';
+    result.summary = 'Validierung fehlgeschlagen - alle Einträge ungültig';
+  } else {
+    console.log(`[EXCEL-PARSER] ✓ Validation passed: ${result.items.length} valid items`);
   }
   
   return result;
