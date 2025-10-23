@@ -13253,7 +13253,37 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
         questionText
       );
       
-      extractedAnswer = imageStructure.enhancedText || result.answer;
+      let extractedAnswer = result.answer; // Für Nutzer (Display)
+let llmContext = result.answer;      // Für LV-Generator
+
+if (imageStructure && imageStructure.items && imageStructure.items.length > 0) {
+  // Nutzer sieht: Original-Analyse (ohne LV-Anweisungen)
+  extractedAnswer = imageStructure.userDisplayText || result.answer;
+  
+  // LV-Generator sieht: Analyse + LV-Anweisungen
+  llmContext = imageStructure.llmContextText || imageStructure.enhancedText || result.answer;
+  
+  console.log('[ANALYZE-FILE] Using structured image data');
+  console.log(`[ANALYZE-FILE] User sees: ${extractedAnswer.length} chars`);
+  console.log(`[ANALYZE-FILE] LLM sees: ${llmContext.length} chars (with instructions)`);
+}
+
+// Speichere BEIDE Versionen in DB:
+await query(`
+  UPDATE intake_answers 
+  SET 
+    answer = $1,              -- Nutzer-sichtbar (ohne LV-Anweisungen)
+    llm_context = $2,         -- Für LV-Generator (mit LV-Anweisungen)
+    structured_data = $3,
+    suggestions = $4
+  WHERE id = $5
+`, [
+  extractedAnswer,                           // Nutzer sieht das
+  llmContext,                                // LLM sieht das beim LV-Erstellen
+  JSON.stringify(imageStructure.structured),
+  JSON.stringify(imageStructure.suggestions),
+  answerId
+]);
       
       // NEU: Log für Debugging
       if (imageStructure.structured?.hasQuantities) {
