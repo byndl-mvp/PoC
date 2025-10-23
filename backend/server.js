@@ -13281,55 +13281,112 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
       confidence = result.confidence || 0.85;
       documentType = 'IMAGE';
     }
+
+// EXCEL/CSV-ANALYSE
+else if (file.originalname.match(/\.(xlsx?|csv)$/i)) {
+  console.log('[FILE-ANALYZE] Processing spreadsheet:', file.originalname);
+  
+  const workbook = xlsx.read(file.buffer);
+  
+  try {
+    // LLM-basierte Analyse
+    const result = await parseSpreadsheetContent(workbook, tradeCode, questionText);
     
-    // EXCEL/CSV-ANALYSE
-    else if (file.originalname.match(/\.(xlsx?|csv)$/i)) {
-      console.log('[FILE-ANALYZE] Processing spreadsheet:', file.originalname);
+    console.log('[FILE-ANALYZE] parseSpreadsheetContent result:', {
+      hasText: !!result.text,
+      hasStructured: !!result.structured,
+      structuredType: result.structured?.type,
+      itemsCount: result.structured?.items?.length
+    });
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SICHERER ZUGRIFF AUF RESULT
+    // ═══════════════════════════════════════════════════════════════════
+    
+    structuredData = result.structured || { type: 'generic', items: [] };
+    documentType = structuredData.type || 'SPREADSHEET';
+    detectedItems = structuredData.items || [];
+    
+    // Prüfe ob Items gefunden wurden
+    if (detectedItems.length > 0) {
+      confidence = 0.95;
       
-      const workbook = xlsx.read(file.buffer);
-      const result = parseSpreadsheetContent(workbook, tradeCode, questionText);
+      console.log(`[FILE-ANALYZE] Excel: ${detectedItems.length} items found`);
       
-      structuredData = result.structured;
-      documentType = result.structured.type || 'SPREADSHEET';
-      detectedItems = result.structured.items || [];
+      // ═══════════════════════════════════════════════════════════════════
+      // GENERATE STRUCTURED ANSWER
+      // ═══════════════════════════════════════════════════════════════════
       
-      if (detectedItems.length > 0) {
-        confidence = 0.95;
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // NEU: generateStructuredAnswer gibt jetzt Objekt zurück
-        // ═══════════════════════════════════════════════════════════════════
+      try {
         const structuredAnswer = await generateStructuredAnswer(
           result.structured,
           questionText,
           tradeCode
         );
         
-        // Prüfe ob neue Version (mit userDisplayText) oder alte Version (nur String)
-        if (typeof structuredAnswer === 'object' && structuredAnswer.userDisplayText) {
-          extractedAnswer = structuredAnswer.userDisplayText;
-          llmContext = structuredAnswer.llmContextText || structuredAnswer.userDisplayText;
-          console.log(`[FILE-ANALYZE] Excel: User text: ${extractedAnswer.length} chars`);
-          console.log(`[FILE-ANALYZE] Excel: LLM context: ${llmContext.length} chars`);
-        } else {
-          // Fallback für alte Version
+        // Prüfe ob neue Version (Objekt) oder alte (String)
+        if (typeof structuredAnswer === 'object' && structuredAnswer !== null) {
+          if (structuredAnswer.userDisplayText) {
+            extractedAnswer = structuredAnswer.userDisplayText;
+            llmContext = structuredAnswer.llmContextText || structuredAnswer.userDisplayText;
+            
+            console.log(`[FILE-ANALYZE] Excel: User text: ${extractedAnswer.length} chars`);
+            console.log(`[FILE-ANALYZE] Excel: LLM context: ${llmContext.length} chars`);
+          } else {
+            // Objekt ohne userDisplayText - verwende result.text
+            extractedAnswer = result.text || JSON.stringify(structuredAnswer);
+            llmContext = extractedAnswer;
+          }
+        } else if (typeof structuredAnswer === 'string') {
+          // String - alte Version
           extractedAnswer = structuredAnswer;
           llmContext = structuredAnswer;
+        } else {
+          // Fallback
+          extractedAnswer = result.text || `${detectedItems.length} Einträge aus Excel extrahiert`;
+          llmContext = extractedAnswer;
         }
         
-        analysis = `${detectedItems.length} Einträge aus Excel extrahiert`;
-        suggestions = generateDataSuggestions(detectedItems, tradeCode);
-      } else {
-        extractedAnswer = result.text;
-        llmContext = result.text;
-        confidence = 0.7;
-        analysis = 'Excel-Daten extrahiert';
+      } catch (genError) {
+        console.error('[FILE-ANALYZE] generateStructuredAnswer error:', genError);
+        // Fallback: Verwende result.text
+        extractedAnswer = result.text || `${detectedItems.length} Einträge analysiert`;
+        llmContext = extractedAnswer;
       }
       
-      if (result.metadata?.quality) {
-        confidence = result.metadata.quality.score / 100;
-      }
+      analysis = `${detectedItems.length} Einträge aus Excel extrahiert`;
+      suggestions = generateDataSuggestions ? generateDataSuggestions(detectedItems, tradeCode) : null;
+      
+    } else {
+      // Keine Items gefunden
+      console.warn('[FILE-ANALYZE] Excel: No items extracted');
+      
+      extractedAnswer = result.text || 'Excel analysiert, keine strukturierten Daten gefunden';
+      llmContext = extractedAnswer;
+      confidence = 0.7;
+      analysis = 'Excel-Daten extrahiert (keine Items)';
     }
+    
+    // Prüfe Metadata
+    if (result.metadata?.quality) {
+      confidence = result.metadata.quality.score / 100;
+    }
+    
+  } catch (excelError) {
+    console.error('[FILE-ANALYZE] Excel parsing error:', excelError);
+    console.error('[FILE-ANALYZE] Error stack:', excelError.stack);
+    
+    // Fehlerfall: Setze Defaults
+    extractedAnswer = 'Excel-Analyse fehlgeschlagen: ' + excelError.message;
+    llmContext = extractedAnswer;
+    structuredData = { type: 'error', items: [], error: excelError.message };
+    documentType = 'SPREADSHEET';
+    detectedItems = [];
+    confidence = 0.3;
+    analysis = 'Excel-Analyse fehlgeschlagen';
+    suggestions = null;
+  }
+}
     
     // PDF-ANALYSE
     else if (file.mimetype === 'application/pdf') {
