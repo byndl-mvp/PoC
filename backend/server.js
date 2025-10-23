@@ -13217,29 +13217,17 @@ Gib eine hilfreiche, verständliche Antwort die dem Laien weiterhilft.`;
 
 app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
   try {
-    const { questionId, projectId, tradeId } = req.body;
+    const { questionId, questionText, tradeCode, projectId, tradeId } = req.body;
     const file = req.file;
     
     if (!file) {
       return res.status(400).json({ success: false, error: 'Keine Datei hochgeladen' });
     }
-    
-    console.log('[FILE-ANALYZE] Starting analysis:', file.originalname);
-    
-    // Hole Frage-Details
-   const questionResult = await query(
-  `SELECT q.text as question_text, t.code as trade_code 
-   FROM questions q
-   JOIN trades t ON q.trade_id = t.id
-   WHERE q.question_id = $1`,  // ← question_id statt id!
-  [questionId]
-);
-    
-    if (questionResult.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Frage nicht gefunden' });
+    if (!questionText || !tradeCode) {
+      return res.status(400).json({ success: false, error: 'Fehlende Parameter' });
     }
     
-    const { question_text: questionText, trade_code: tradeCode } = questionResult.rows[0];
+    console.log('[FILE-ANALYZE] Starting analysis:', file.originalname);
     
     // Variablen initialisieren
     let extractedAnswer = '';
