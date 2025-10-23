@@ -7706,6 +7706,12 @@ try {
   }
 }
 
+// NEUE VALIDIERUNG HIER:
+console.log('🔍 Starting validation of generated LV...');
+const validatedLV = validateAndCleanLV(lv, enrichedAnswers, uploadContext);
+lv = validatedLV;
+console.log('LV validation completed');
+    
 // Validiere LV-Struktur
 if (!lv || !lv.positions || !Array.isArray(lv.positions)) {
   throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Ungültige LV-Struktur`);
