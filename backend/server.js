@@ -9043,8 +9043,8 @@ if (isSpecialEquipment && pos.unitPrice > 1000) {
       }  
       
     // FENSTER- UND TÜREN-PREISKORREKTUR
-if (trade.code === 'FEN' || trade.code === 'TIS') {
-  lv = applyWindowPriceCorrection(lv, trade.code);
+if (tradeCode === 'FEN' || tradeCode === 'TIS') {
+  lv = applyWindowPriceCorrection(lv, tradeCode);
 }
     
 // ZUSÄTZLICHE REGEL: KEINE PREISE UNTER 10€ (außer Kleinmaterial)
