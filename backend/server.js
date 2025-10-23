@@ -100,31 +100,31 @@ const MODEL_ANTHROPIC_LV = process.env.MODEL_ANTHROPIC_LV || process.env.ANTHROP
 const TRADE_COMPLEXITY = {
   // Sehr komplexe Gewerke (25-40 Fragen)
   DACH:  { complexity: 'SEHR_HOCH', minQuestions: 20, maxQuestions: 28, targetPositionsRatio: 0.9 },
-  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 23, targetPositionsRatio: 0.9 },
-  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 23, targetPositionsRatio: 0.85 },
-  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 23, targetPositionsRatio: 0.8 },
+  ELEKT: { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 0.9 },
+  SAN:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 0.85 },
+  HEI:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 0.8 },
   KLIMA: { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 0.8 },
-  ROH:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 25, targetPositionsRatio: 0.9 },
+  ROH:   { complexity: 'SEHR_HOCH', minQuestions: 18, maxQuestions: 28, targetPositionsRatio: 0.9 },
   
   // Komplexe Gewerke (20-30 Fragen)
-  TIS:   { complexity: 'HOCH', minQuestions: 17, maxQuestions: 20, targetPositionsRatio: 1.0 }, // Türen: oft 1:1
-  FEN:   { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 1.0 }, // Fenster: oft 1:1
-  FASS:  { complexity: 'HOCH', minQuestions: 18, maxQuestions: 22, targetPositionsRatio: 0.9 },
-  SCHL:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.8 },
+  TIS:   { complexity: 'HOCH', minQuestions: 17, maxQuestions: 25, targetPositionsRatio: 1.0 }, // Türen: oft 1:1
+  FEN:   { complexity: 'HOCH', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 1.0 }, // Fenster: oft 1:1
+  FASS:  { complexity: 'HOCH', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 0.9 },
+  SCHL:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.8 },
   PV:    { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.8 },
-  ZIMM:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.8 },
+  ZIMM:  { complexity: 'HOCH', minQuestions: 15, maxQuestions: 25, targetPositionsRatio: 0.8 },
 
   // Mittlere Komplexität (15-20 Fragen)
   FLI:   { complexity: 'MITTEL', minQuestions: 16, maxQuestions: 20, targetPositionsRatio: 0.8 },
   ESTR:  { complexity: 'MITTEL', minQuestions: 12, maxQuestions: 17, targetPositionsRatio: 0.7 },
-  TRO:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
-  BOD:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.8 },
-  AUSS:  { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 20, targetPositionsRatio: 0.75 },
+  TRO:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.8 },
+  BOD:   { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.8 },
+  AUSS:  { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.8 },
 
   // Einfache Gewerke (8-15 Fragen)
-  MAL:   { complexity: 'EINFACH', minQuestions: 10,  maxQuestions: 15, targetPositionsRatio: 0.8 },
+  MAL:   { complexity: 'EINFACH', minQuestions: 10,  maxQuestions: 18, targetPositionsRatio: 0.8 },
   GER:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 12, targetPositionsRatio: 0.8 },
-  ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 15, targetPositionsRatio: 0.8 },
+  ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 17, targetPositionsRatio: 0.8 },
 
   // Intake ist speziell (16-24 Fragen)
   INT:   { complexity: 'INTAKE', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 0.0 }
