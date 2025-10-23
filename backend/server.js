@@ -12880,10 +12880,11 @@ app.get('/api/projects/:projectId/trades/:tradeId/progress', async (req, res) =>
     const { projectId, tradeId } = req.params;
     
     const answersRes = await query(
-      `SELECT question_id, answer_text, assumption 
+      `SELECT question_id, COALESCE(llm_context, answer_text) as answer_text, assumption 
        FROM answers 
        WHERE project_id = $1 AND trade_id = $2
-       ORDER BY updated_at`,
+         AND (answer_text IS NOT NULL OR llm_context IS NOT NULL)
+         ORDER BY updated_at`,
       [projectId, tradeId]
     );
     
