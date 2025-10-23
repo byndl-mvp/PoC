@@ -19147,6 +19147,7 @@ app.delete('/api/projects/:id', async (req, res) => {
     await query('BEGIN');
     
     // Delete all related data
+    await query('DELETE FROM file_uploads WHERE project_id = $1', [req.params.id]);
     await query('DELETE FROM questions WHERE project_id = $1', [req.params.id]);
     await query('DELETE FROM answers WHERE project_id = $1', [req.params.id]);
     await query('DELETE FROM project_trades WHERE project_id = $1', [req.params.id]);
