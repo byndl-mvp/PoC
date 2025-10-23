@@ -6040,17 +6040,22 @@ async function generateDetailedLV(projectId, tradeId) {
   // Lade alle relevanten Antworten
   const intTrade = (await query(`SELECT id FROM trades WHERE code='INT' LIMIT 1`)).rows[0];
   const intakeAnswers = intTrade
-    ? (await query(
-        `SELECT q.text as question, q.question_id, a.answer_text as answer, a.assumption
-         FROM answers a
-         JOIN questions q ON q.project_id = a.project_id 
-           AND q.trade_id = a.trade_id 
-           AND q.question_id = a.question_id
-         WHERE a.project_id=$1 AND a.trade_id=$2
-         ORDER BY q.question_id`,
-        [projectId, intTrade.id]
-      )).rows
-    : [];
+  ? (await query(
+      `SELECT 
+         q.text as question, 
+         q.question_id, 
+         COALESCE(a.llm_context, a.answer_text) as answer,  ← DIESE ZEILE ÄNDERN!
+         a.assumption
+       FROM answers a
+       JOIN questions q ON q.project_id = a.project_id 
+         AND q.trade_id = a.trade_id 
+         AND q.question_id = a.question_id
+       WHERE a.project_id=$1 AND a.trade_id=$2
+         AND (a.answer_text IS NOT NULL OR a.llm_context IS NOT NULL)  ← DIESE HINZUFÜGEN!
+       ORDER BY q.question_id`,
+      [projectId, intTrade.id]
+    )).rows
+  : [];
 
   const intakeUploadData = intTrade ? await query(
   `SELECT 
