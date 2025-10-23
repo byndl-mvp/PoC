@@ -13312,7 +13312,13 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
         questionText
       );
       
-      extractedAnswer = result.text;
+       extractedAnswer = pdfStructure.enhancedText || result.text;
+      
+      // NEU: Log für Debugging
+      if (pdfStructure.structured?.hasQuantities) {
+        console.log(`[FILE-ANALYZE] ✓ ${detectedItems.length} Mengenangaben extrahiert - LV-Anweisungen hinzugefügt`);
+      }
+      
       structuredData = pdfStructure.structured;
       detectedItems = pdfStructure.items;
       suggestions = pdfStructure.suggestions;
