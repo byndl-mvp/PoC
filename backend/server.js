@@ -13617,13 +13617,9 @@ Die analysierten Mengen sind FINAL und VERBINDLICH!
 // Extrahiere strukturierte Daten aus Bild-Analyse-Text
 async function extractStructuredDataFromImage(analysisText, tradeCode, questionText) {
   try {
-    // VERBESSERTER Prompt: Fordert explizit Mengen mit Einheiten
     const prompt = `Du bist ein Experte für Baudaten-Extraktion.
-
 Analysiere folgenden Text aus einer Bildanalyse und extrahiere strukturierte Daten:
-
 TEXT: "${analysisText}"
-
 KONTEXT: ${tradeCode} - ${questionText}
 
 WICHTIG: Extrahiere ALLE Mengenangaben mit Einheiten!
@@ -13643,13 +13639,6 @@ Antworte NUR mit diesem JSON-Format:
       "einheit": "m²",
       "bereich": "85-95",
       "beschreibung": "Alle Räume außer Balkone"
-    },
-    {
-      "typ": "Estrich aufbrechen",
-      "menge": 90,
-      "einheit": "m²",
-      "bereich": "85-95",
-      "beschreibung": ""
     }
   ],
   "suggestions": ["Hinweis wenn nötig"]
@@ -13657,8 +13646,7 @@ Antworte NUR mit diesem JSON-Format:
 
 WICHTIG: 
 - Jedes Item MUSS "typ", "menge" und "einheit" haben
-- Bei Bereichen: "bereich" als String (z.B. "85-95") UND "menge" als Mittelwert
-- "beschreibung" kann leer sein wenn keine Details vorhanden`;
+- Bei Bereichen: "bereich" als String UND "menge" als Mittelwert`;
 
     const response = await llmWithPolicy('questions', [
       { role: 'user', content: prompt }
@@ -13678,13 +13666,13 @@ WICHTIG:
 
     const parsed = JSON.parse(cleanedResponse);
     
-    // NEU: Generiere LV-Anweisungen aus den extrahierten Items
+    // NEU: Generiere LV-Anweisungen (NUR für LLM)
     const lvInstructions = generateLVInstructions(parsed.items, analysisText);
     
-    // NEU: Erstelle enhancedText mit LV-Anweisungen
-    const enhancedText = analysisText + lvInstructions;
+    // NEU: Separate Texte
+    const userDisplayText = analysisText; // NUR die Original-Analyse
+    const llmContextText = analysisText + lvInstructions; // Analyse + Anweisungen
     
-    // NEU: Log für Debugging
     const itemsWithQuantities = parsed.items.filter(item => item.menge && item.einheit);
     if (itemsWithQuantities.length > 0) {
       console.log(`[IMAGE-STRUCTURE] ✓ ${itemsWithQuantities.length} Mengenangaben extrahiert`);
@@ -13697,11 +13685,13 @@ WICHTIG:
       structured: { 
         type: 'IMAGE_EXTRACTION', 
         items: parsed.items,
-        hasQuantities: itemsWithQuantities.length > 0  // NEU
+        hasQuantities: itemsWithQuantities.length > 0
       },
       items: parsed.items || [],
       suggestions: parsed.suggestions || [],
-      enhancedText: enhancedText  // NEU: Text mit LV-Anweisungen
+      userDisplayText: userDisplayText,      // NEU: Für Nutzer
+      llmContextText: llmContextText,        // NEU: Für LV-Generator
+      enhancedText: llmContextText           // Backwards compatibility
     };
     
   } catch (err) {
@@ -13710,7 +13700,9 @@ WICHTIG:
       structured: null,
       items: [],
       suggestions: [],
-      enhancedText: analysisText  // Fallback: Original-Text ohne Anweisungen
+      userDisplayText: analysisText,
+      llmContextText: analysisText,
+      enhancedText: analysisText
     };
   }
 }
@@ -13718,41 +13710,19 @@ WICHTIG:
 // Extrahiere strukturierte Daten aus PDF-Text
 async function extractStructuredDataFromText(text, tradeCode, questionText) {
   try {
-    // VERBESSERTER Prompt: Fordert explizit Mengen mit Einheiten
     const prompt = `Du bist ein Experte für Baudaten-Extraktion aus Dokumenten.
-
 Extrahiere aus folgendem PDF-Text alle relevanten strukturierten Daten:
-
 TEXT: "${text.substring(0, 5000)}"
-
 KONTEXT: ${tradeCode} - ${questionText}
 
 WICHTIG: Suche nach Listen, Tabellen, Mengen, Maßen, Spezifikationen.
 Extrahiere ALLE Mengenangaben mit Einheiten!
-- Flächen in m²
-- Längen in m
-- Anzahlen als Stk
-- Volumen in m³
-
-Wenn du einen Bereich findest (z.B. "85-95 m²"), berechne den Mittelwert für "menge".
 
 Antworte NUR mit diesem JSON-Format:
 {
-  "items": [
-    {
-      "typ": "Position/Arbeit",
-      "menge": 123,
-      "einheit": "m²",
-      "bereich": "optional: 120-125",
-      "beschreibung": "Details zur Position"
-    }
-  ],
-  "suggestions": ["Hinweis 1", "..."]
-}
-
-WICHTIG:
-- Jedes Item SOLLTE "menge" und "einheit" haben (wenn im PDF vorhanden)
-- Bei Bereichen: "bereich" UND "menge" als Mittelwert`;
+  "items": [...],
+  "suggestions": [...]
+}`;
 
     const response = await llmWithPolicy('questions', [
       { role: 'user', content: prompt }
@@ -13762,7 +13732,6 @@ WICHTIG:
       jsonMode: true 
     });
     
-    // Bereinige Markdown-Code-Blocks
     let cleanedResponse = response.trim();
     if (cleanedResponse.startsWith('```json')) {
       cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/```\s*$/, '');
@@ -13772,30 +13741,29 @@ WICHTIG:
 
     const parsed = JSON.parse(cleanedResponse);
     
-    // NEU: Generiere LV-Anweisungen aus den extrahierten Items
+    // NEU: Generiere LV-Anweisungen (NUR für LLM)
     const lvInstructions = generateLVInstructions(parsed.items, text);
     
-    // NEU: Erstelle enhancedText mit LV-Anweisungen
-    const enhancedText = text.substring(0, 5000) + lvInstructions;
+    // NEU: Separate Texte
+    const userDisplayText = text.substring(0, 5000);
+    const llmContextText = text.substring(0, 5000) + lvInstructions;
     
-    // NEU: Log für Debugging
     const itemsWithQuantities = parsed.items.filter(item => item.menge && item.einheit);
     if (itemsWithQuantities.length > 0) {
       console.log(`[PDF-STRUCTURE] ✓ ${itemsWithQuantities.length} Mengenangaben extrahiert`);
-      itemsWithQuantities.forEach(item => {
-        console.log(`  - ${item.typ}: ${item.menge} ${item.einheit}`);
-      });
     }
     
     return {
       structured: { 
         type: 'PDF_EXTRACTION', 
         items: parsed.items,
-        hasQuantities: itemsWithQuantities.length > 0  // NEU
+        hasQuantities: itemsWithQuantities.length > 0
       },
       items: parsed.items || [],
       suggestions: parsed.suggestions || [],
-      enhancedText: enhancedText  // NEU: Text mit LV-Anweisungen
+      userDisplayText: userDisplayText,      // NEU: Für Nutzer
+      llmContextText: llmContextText,        // NEU: Für LV-Generator
+      enhancedText: llmContextText
     };
     
   } catch (err) {
@@ -13804,7 +13772,9 @@ WICHTIG:
       structured: null,
       items: [],
       suggestions: [],
-      enhancedText: text.substring(0, 5000)  // Fallback
+      userDisplayText: text.substring(0, 5000),
+      llmContextText: text.substring(0, 5000),
+      enhancedText: text.substring(0, 5000)
     };
   }
 }
@@ -13856,51 +13826,58 @@ async function generateStructuredAnswer(structured, questionText, tradeCode) {
     
     let baseAnswer = '';
     
-    // Spezielle Behandlung nach Typ
     switch (structured.type) {
       case 'WINDOW_LIST':
-        baseAnswer = generateWindowListAnswer ? await generateWindowListAnswer(items) : generateGenericAnswer(items);
+        baseAnswer = generateWindowListAnswer(items);
         break;
-      
       case 'DOOR_LIST':
-        baseAnswer = generateDoorListAnswer ? await generateDoorListAnswer(items) : generateGenericAnswer(items);
+        baseAnswer = generateDoorListAnswer(items);
         break;
-      
       case 'ROOM_LIST':
-        baseAnswer = generateRoomListAnswer ? await generateRoomListAnswer(items) : generateGenericAnswer(items);
+        baseAnswer = generateRoomListAnswer(items);
         break;
-      
       case 'MATERIAL_LIST':
-        baseAnswer = generateMaterialListAnswer ? await generateMaterialListAnswer(items) : generateGenericAnswer(items);
+        baseAnswer = generateMaterialListAnswer(items);
         break;
-      
       case 'AREA_CALCULATION':
-        baseAnswer = generateAreaCalculationAnswer ? await generateAreaCalculationAnswer(items) : generateGenericAnswer(items);
+        baseAnswer = generateAreaCalculationAnswer(items);
         break;
-      
       default:
-        // Generische strukturierte Antwort
-        baseAnswer = generateGenericStructuredAnswer ? 
-          await generateGenericStructuredAnswer(items, questionText, tradeCode) :
-          generateGenericAnswer(items);
+        baseAnswer = generateGenericStructuredAnswer(items, questionText, tradeCode);
     }
     
-    // NEU: Füge LV-Anweisungen hinzu wenn Mengen vorhanden
+    // NEU: Generiere LV-Anweisungen (NUR für LLM)
     const lvInstructions = generateLVInstructions(items, baseAnswer);
-    const finalAnswer = baseAnswer + lvInstructions;
     
-    return finalAnswer;
+    // NEU: Separate Texte
+    const userDisplayText = baseAnswer; // NUR die Zusammenfassung
+    const llmContextText = baseAnswer + lvInstructions; // Zusammenfassung + Anweisungen
+    
+    if (lvInstructions.length > 0) {
+      console.log(`[STRUCTURED-ANSWER] ✓ LV-Anweisungen generiert (${lvInstructions.length} Zeichen)`);
+    }
+    
+    return {
+      userDisplayText: userDisplayText,      // NEU: Für Nutzer
+      llmContextText: llmContextText,        // NEU: Für LV-Generator
+      text: userDisplayText,                 // Backwards compatibility
+      enhancedText: llmContextText           // Backwards compatibility
+    };
     
   } catch (err) {
     console.error('[STRUCTURED-ANSWER] Error:', err);
-    // Fallback auf einfache Liste
     const fallbackAnswer = items.map((item, idx) => 
       `${idx + 1}. ${JSON.stringify(item)}`
     ).join('\n');
     
-    // Auch im Fehlerfall LV-Anweisungen versuchen
     const lvInstructions = generateLVInstructions(items, fallbackAnswer);
-    return fallbackAnswer + lvInstructions;
+    
+    return {
+      userDisplayText: fallbackAnswer,
+      llmContextText: fallbackAnswer + lvInstructions,
+      text: fallbackAnswer,
+      enhancedText: fallbackAnswer + lvInstructions
+    };
   }
 }
 
