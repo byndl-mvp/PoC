@@ -13231,7 +13231,7 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
   `SELECT q.text as question_text, t.code as trade_code 
    FROM questions q
    JOIN trades t ON q.trade_id = t.id
-   WHERE q.id = $1`,
+   WHERE q.question_id = $1`,  // ← question_id statt id!
   [questionId]
 );
     
