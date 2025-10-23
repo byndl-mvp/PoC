@@ -83,55 +83,293 @@ function correctWindowPosition(pos, fullText, warnings) {
       
       let basePrice = 0;
       let areaPrice = 0;
+      let materialName = '';
       
-      // Material-basierte Kalkulation
+      // ═══════════════════════════════════════════
+      // MATERIAL-BASIERTE GRUNDPREISE
+      // ═══════════════════════════════════════════
       if (fullText.includes('holz-alu') || fullText.includes('holz-aluminium')) {
         basePrice = 600;
         areaPrice = 700;
+        materialName = 'Holz-Alu';
       } else if (fullText.includes('aluminium') || fullText.includes('alu')) {
         basePrice = 500;
         areaPrice = 600;
+        materialName = 'Aluminium';
       } else if (fullText.includes('holz')) {
-        basePrice = 450;
-        areaPrice = 550;
+        // Differenzierung nach Holzart
+        if (fullText.includes('eiche') || fullText.includes('lärche') || fullText.includes('meranti')) {
+          basePrice = 500;
+          areaPrice = 600;
+          materialName = 'Hartholz';
+        } else {
+          basePrice = 450;
+          areaPrice = 550;
+          materialName = 'Holz';
+        }
       } else if (fullText.includes('kunststoff') || fullText.includes('pvc')) {
-        basePrice = 350;
-        areaPrice = 400;
+        // Differenzierung nach Kammern
+        if (fullText.includes('7-kammer') || fullText.includes('8-kammer')) {
+          basePrice = 380;
+          areaPrice = 450;
+          materialName = 'Kunststoff Premium';
+        } else if (fullText.includes('5-kammer') || fullText.includes('6-kammer')) {
+          basePrice = 350;
+          areaPrice = 400;
+          materialName = 'Kunststoff Standard';
+        } else {
+          basePrice = 350;
+          areaPrice = 400;
+          materialName = 'Kunststoff';
+        }
       } else {
         basePrice = 400;
         areaPrice = 450;
+        materialName = 'Standard';
       }
       
-      // Zusatzfaktoren
+      // ═══════════════════════════════════════════
+      // DETAILLIERTE EIGENSCHAFTS-FAKTOREN
+      // ═══════════════════════════════════════════
       let priceFactor = 1.0;
+      const properties = [];
       
-      if (fullText.includes('3-fach') || fullText.includes('dreifach')) {
+      // 1. VERGLASUNG
+      if (fullText.includes('4-fach') || fullText.includes('vierfach')) {
+        priceFactor *= 1.35;
+        properties.push('4-fach');
+      } else if (fullText.includes('3-fach') || fullText.includes('dreifach')) {
+        // Differenzierung nach Ug-Wert
+        if (fullText.includes('ug 0.5') || fullText.includes('ug 0,5')) {
+          priceFactor *= 1.25;
+          properties.push('3-fach Ug 0.5');
+        } else if (fullText.includes('ug 0.6') || fullText.includes('ug 0,6')) {
+          priceFactor *= 1.18;
+          properties.push('3-fach Ug 0.6');
+        } else {
+          priceFactor *= 1.15;
+          properties.push('3-fach');
+        }
+      } else if (fullText.includes('2-fach') || fullText.includes('zweifach')) {
+        priceFactor *= 1.0; // Basis
+        properties.push('2-fach');
+      } else {
+        // Standard ist 2-fach
+        priceFactor *= 1.0;
+      }
+      
+      // 2. SICHERHEIT (Einbruchschutz)
+      if (fullText.includes('rc3') || fullText.includes('wk3')) {
+        priceFactor *= 1.45;
+        properties.push('RC3');
+      } else if (fullText.includes('rc2n')) {
+        priceFactor *= 1.25;
+        properties.push('RC2N');
+      } else if (fullText.includes('rc2') || fullText.includes('wk2')) {
+        priceFactor *= 1.35;
+        properties.push('RC2');
+      } else if (fullText.includes('rc1')) {
         priceFactor *= 1.15;
+        properties.push('RC1');
       }
-      if (fullText.includes('rc2') || fullText.includes('einbruch')) {
-        priceFactor *= 1.2;
+      
+      // VSG (Verbundsicherheitsglas)
+      if (fullText.includes('vsg') && !properties.some(p => p.includes('RC'))) {
+        if (fullText.includes('p4a')) {
+          priceFactor *= 1.20;
+          properties.push('VSG P4A');
+        } else if (fullText.includes('p2a')) {
+          priceFactor *= 1.15;
+          properties.push('VSG P2A');
+        } else {
+          priceFactor *= 1.12;
+          properties.push('VSG');
+        }
       }
-      if (fullText.includes('rc3')) {
-        priceFactor *= 1.3;
+      
+      // 3. SCHALLSCHUTZ
+      if (fullText.includes('schallschutzklasse')) {
+        if (fullText.includes('klasse 5') || fullText.includes('sk5') || fullText.includes('rw 45')) {
+          priceFactor *= 1.30;
+          properties.push('Schallschutz Klasse 5');
+        } else if (fullText.includes('klasse 4') || fullText.includes('sk4') || fullText.includes('rw 42')) {
+          priceFactor *= 1.22;
+          properties.push('Schallschutz Klasse 4');
+        } else if (fullText.includes('klasse 3') || fullText.includes('sk3') || fullText.includes('rw 38')) {
+          priceFactor *= 1.15;
+          properties.push('Schallschutz Klasse 3');
+        } else if (fullText.includes('klasse 2') || fullText.includes('sk2') || fullText.includes('rw 32')) {
+          priceFactor *= 1.08;
+          properties.push('Schallschutz Klasse 2');
+        }
+      } else if (fullText.includes('schallschutz')) {
+        priceFactor *= 1.10;
+        properties.push('Schallschutz');
       }
-      if (fullText.includes('schallschutz')) {
-        priceFactor *= 1.1;
+      
+      // 4. WÄRMESCHUTZ (U-Wert)
+      if (fullText.includes('passivhaus')) {
+        priceFactor *= 1.35;
+        properties.push('Passivhaus');
+      } else if (fullText.includes('uw 0.8') || fullText.includes('uw 0,8')) {
+        priceFactor *= 1.25;
+        properties.push('Uw 0.8');
+      } else if (fullText.includes('uw 0.9') || fullText.includes('uw 0,9')) {
+        priceFactor *= 1.18;
+        properties.push('Uw 0.9');
+      } else if (fullText.includes('uw 1.0') || fullText.includes('uw 1,0')) {
+        priceFactor *= 1.10;
+        properties.push('Uw 1.0');
       }
+      
+      // 5. SPEZIALGLAS
+      if (fullText.includes('sonnenschutz') || fullText.includes('sun')) {
+        priceFactor *= 1.12;
+        properties.push('Sonnenschutz');
+      }
+      if (fullText.includes('ornament') || fullText.includes('struktur')) {
+        priceFactor *= 1.15;
+        properties.push('Ornamentglas');
+      }
+      if (fullText.includes('milchglas') || fullText.includes('satiniert')) {
+        priceFactor *= 1.10;
+        properties.push('Satiniert');
+      }
+      if (fullText.includes('selbstreinigend') || fullText.includes('lotuseffekt')) {
+        priceFactor *= 1.20;
+        properties.push('Selbstreinigend');
+      }
+      
+      // 6. KONSTRUKTIONSMERKMALE
       if (fullText.includes('bodentief') || heightCm > 200) {
         priceFactor *= 1.15;
+        properties.push('Bodentief');
+      }
+      if (fullText.includes('festverglasung') || fullText.includes('festverglast')) {
+        priceFactor *= 0.85; // Günstiger da keine Beschläge
+        properties.push('Festverglasung');
+      }
+      if (fullText.includes('oberlicht')) {
+        priceFactor *= 0.9;
+        properties.push('Oberlicht');
       }
       
+      // 7. ÖFFNUNGSARTEN
+      if (fullText.includes('schiebe')) {
+        if (fullText.includes('hebe-schiebe') || fullText.includes('hebeschiebe')) {
+          priceFactor *= 1.60;
+          properties.push('Hebe-Schiebe');
+        } else if (fullText.includes('parallel-schiebe')) {
+          priceFactor *= 1.40;
+          properties.push('Parallel-Schiebe');
+        } else {
+          priceFactor *= 1.30;
+          properties.push('Schiebe');
+        }
+      } else if (fullText.includes('schwing')) {
+        priceFactor *= 1.20;
+        properties.push('Schwingflügel');
+      } else if (fullText.includes('klapp')) {
+        priceFactor *= 1.25;
+        properties.push('Klappflügel');
+      } else if (fullText.includes('dreh-kipp') || fullText.includes('drehkipp') || fullText.includes('dk')) {
+        priceFactor *= 1.05;
+        properties.push('Dreh-Kipp');
+      }
+      
+      // 8. SONDERFORMEN
+      if (fullText.includes('rundbogen') || fullText.includes('segmentbogen')) {
+        priceFactor *= 1.35;
+        properties.push('Rundbogen');
+      } else if (fullText.includes('dreieck') || fullText.includes('giebelfen')) {
+        priceFactor *= 1.30;
+        properties.push('Dreieck');
+      } else if (fullText.includes('schräg') || fullText.includes('trapez')) {
+        priceFactor *= 1.25;
+        properties.push('Schräg');
+      } else if (fullText.includes('rund') || fullText.includes('kreis')) {
+        priceFactor *= 1.40;
+        properties.push('Rund');
+      }
+      
+      // 9. SPROSSEN
+      if (fullText.includes('sprosse')) {
+        if (fullText.includes('glasteilend') || fullText.includes('echt')) {
+          priceFactor *= 1.25;
+          properties.push('Echte Sprossen');
+        } else if (fullText.includes('helima') || fullText.includes('zwischenraum')) {
+          priceFactor *= 1.12;
+          properties.push('Helima-Sprossen');
+        } else if (fullText.includes('aufgesetzt') || fullText.includes('aufgeklebt')) {
+          priceFactor *= 1.08;
+          properties.push('Aufgesetzte Sprossen');
+        } else {
+          priceFactor *= 1.10;
+          properties.push('Sprossen');
+        }
+      }
+      
+      // 10. BESCHICHTUNGEN & FARBEN
+      if (fullText.includes('ral') || fullText.includes('sonderfarbe')) {
+        if (fullText.includes('zweifarbig') || fullText.includes('bicolor')) {
+          priceFactor *= 1.15;
+          properties.push('Zweifarbig');
+        } else {
+          priceFactor *= 1.08;
+          properties.push('RAL-Farbe');
+        }
+      }
+      if (fullText.includes('foliert') || fullText.includes('dekorfolie')) {
+        priceFactor *= 1.10;
+        properties.push('Foliert');
+      }
+      
+      // ═══════════════════════════════════════════
+      // FINALE PREISBERECHNUNG
+      // ═══════════════════════════════════════════
+      
+      // Grundformel: (Basispreis + (Fläche × Flächenpreis)) × Faktoren
       let calculatedPrice = (basePrice + (area * areaPrice)) * priceFactor;
+      
+      // Größenbasierte Anpassungen
+      if (area < 0.5) {
+        // Kleine Fenster haben Mindestpreis
+        calculatedPrice = Math.max(calculatedPrice, 380 * priceFactor);
+      } else if (area > 3.0) {
+        // Sehr große Fenster: Transport/Montage-Aufschlag
+        calculatedPrice *= 1.08;
+      } else if (area > 4.0) {
+        // Übergroße Fenster: Spezialtransport
+        calculatedPrice *= 1.15;
+      }
+      
+      // Mengenrabatt (wenn quantity > 10)
+      if (pos.quantity && pos.quantity > 10) {
+        calculatedPrice *= 0.95; // 5% Mengenrabatt
+      } else if (pos.quantity && pos.quantity > 20) {
+        calculatedPrice *= 0.92; // 8% Mengenrabatt
+      }
+      
+      // Runde auf 10€
       calculatedPrice = Math.round(calculatedPrice / 10) * 10;
       
-      if (Math.abs(oldPrice - calculatedPrice) > oldPrice * 0.15) {
+      // Setze neuen Preis wenn Abweichung signifikant
+      if (Math.abs(oldPrice - calculatedPrice) > oldPrice * 0.15 || oldPrice === 0) {
         pos.unitPrice = calculatedPrice;
-        warnings.push(`✏️ Fenster ${widthCm}x${heightCm}cm: €${oldPrice} → €${calculatedPrice}`);
+        
+        const propsInfo = properties.length > 0 ? ` [${properties.join(', ')}]` : '';
+        warnings.push(
+          `✏️ ${materialName}-Fenster ${widthCm}x${heightCm}cm (${area.toFixed(2)}m²)${propsInfo}: €${oldPrice} → €${calculatedPrice}`
+        );
       }
     } else {
-      // Fenster ohne Maße - Standardpreise
+      // ═══════════════════════════════════════════
+      // FENSTER OHNE MAßE - STANDARDPREISE
+      // ═══════════════════════════════════════════
+      
       let standardPrice = 800;
       
+      // Material
       if (fullText.includes('holz-alu')) {
         standardPrice = 1200;
       } else if (fullText.includes('alu')) {
@@ -142,9 +380,16 @@ function correctWindowPosition(pos, fullText, warnings) {
         standardPrice = 700;
       }
       
+      // Eigenschaften auch bei Standardpreisen berücksichtigen
+      if (fullText.includes('3-fach')) standardPrice *= 1.15;
+      if (fullText.includes('rc2')) standardPrice *= 1.25;
+      if (fullText.includes('schallschutz')) standardPrice *= 1.10;
+      
+      standardPrice = Math.round(standardPrice / 10) * 10;
+      
       if (Math.abs(oldPrice - standardPrice) > 100) {
         pos.unitPrice = standardPrice;
-        warnings.push(`✏️ Standard-Fenster: €${oldPrice} → €${standardPrice}`);
+        warnings.push(`✏️ Standard-Fenster (ohne Maße): €${oldPrice} → €${standardPrice}`);
       }
     }
     return;
