@@ -554,6 +554,20 @@ function createMissingPositions(validationRules, uploadedData) {
   return missingPositions;
 }
 
+// Import der Upload-Enforcement Funktionen
+const { enforceUploadData, UPLOAD_DATA_CRITICAL_RULES } = require('./upload-data-enforcement');
+
+// Erweiterte Validierungsfunktion die ALLES kombiniert
+function validateAndCleanLVComplete(generatedLV, enrichedAnswers, uploadContext) {
+  // Schritt 1: Normale Validierung (NEIN/JA, Material, etc.)
+  let validatedLV = validateAndCleanLV(generatedLV, enrichedAnswers, uploadContext);
+  
+  // Schritt 2: Upload-Daten Enforcement
+  validatedLV = enforceUploadData(validatedLV, uploadContext, enrichedAnswers);
+  
+  return validatedLV;
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // EXPORT FÜR SERVER.JS
 // ═══════════════════════════════════════════════════════════════════════
@@ -561,6 +575,7 @@ function createMissingPositions(validationRules, uploadedData) {
 module.exports = {
   CRITICAL_PROMPT_ADDITIONS,
   validateAndCleanLV,
+  validateAndCleanLVComplete,
   createMissingPositions,
   GEWERK_KEYWORDS
 };
