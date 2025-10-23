@@ -6097,13 +6097,14 @@ const enrichedIntakeAnswers = intakeAnswers.map(answer => {
          WHEN q.text ILIKE '%kilogramm%' OR q.text ILIKE '% kg %' THEN 'kg'
          ELSE NULL
        END as unit,
-       a.answer_text as answer, 
+       COALESCE(a.llm_context, a.answer_text) as answer, 
        a.assumption
      FROM answers a
      JOIN questions q ON q.project_id = a.project_id 
        AND q.trade_id = a.trade_id 
        AND q.question_id = a.question_id
      WHERE a.project_id=$1 AND a.trade_id=$2
+       AND (a.answer_text IS NOT NULL OR a.llm_context IS NOT NULL)
      ORDER BY q.question_id`,
     [projectId, tradeId]
   )).rows;
