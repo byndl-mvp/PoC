@@ -13342,7 +13342,33 @@ await query(`
         questionText
       );
       
-       extractedAnswer = pdfStructure.enhancedText || result.text;
+       let extractedAnswer = result.text;
+let llmContext = result.text;
+
+if (pdfStructure && pdfStructure.items && pdfStructure.items.length > 0) {
+  extractedAnswer = pdfStructure.userDisplayText || result.text;
+  llmContext = pdfStructure.llmContextText || pdfStructure.enhancedText || result.text;
+  
+  console.log('[ANALYZE-FILE] Using structured PDF data');
+  console.log(`[ANALYZE-FILE] User sees: ${extractedAnswer.length} chars`);
+  console.log(`[ANALYZE-FILE] LLM sees: ${llmContext.length} chars (with instructions)`);
+}
+
+await query(`
+  UPDATE intake_answers 
+  SET 
+    answer = $1,
+    llm_context = $2,
+    structured_data = $3,
+    suggestions = $4
+  WHERE id = $5
+`, [
+  extractedAnswer,
+  llmContext,
+  JSON.stringify(pdfStructure.structured),
+  JSON.stringify(pdfStructure.suggestions),
+  answerId
+]);
       
       // NEU: Log für Debugging
       if (pdfStructure.structured?.hasQuantities) {
