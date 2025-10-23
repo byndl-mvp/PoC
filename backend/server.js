@@ -13228,7 +13228,10 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
     
     // Hole Frage-Details
    const questionResult = await query(
-  `SELECT text as question_text, trade_code FROM questions WHERE id = $1`,
+  `SELECT q.text as question_text, t.code as trade_code 
+   FROM questions q
+   JOIN trades t ON q.trade_id = t.id
+   WHERE q.id = $1`,
   [questionId]
 );
     
