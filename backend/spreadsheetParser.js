@@ -98,8 +98,7 @@ function getTradeSpecificParser(tradeCode) {
     'GER': parseGeruestListe,
     'SCHL': parseSchlosserListe,
     'ABBR': parseAbbruchListe,
-    'PV': parsePVListe,
-    'KEL': parseKellerListe
+    'PV': parsePVListe
   };
   
   return parsers[tradeCode];
