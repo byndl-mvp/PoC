@@ -13403,7 +13403,6 @@ function generateLVInstructions(items, originalText) {
   
   // Filtere nur Items mit Mengenangaben
   const quantityItems = items.filter(item => {
-    // Prüfe verschiedene Möglichkeiten wie Mengen gespeichert sein können
     return (item.menge && item.einheit) || 
            (item.quantity && item.unit) ||
            (item.anzahl && item.einheit) ||
@@ -13414,19 +13413,75 @@ function generateLVInstructions(items, originalText) {
     return '';
   }
   
+  // Erkenne Fläche/Umfang aus originalText (universell)
+  let analyseUmfang = '';
+  const flächeMatch = originalText.match(/(\d+)[-–\s]*(\d*)\s*m²/i);
+  
+  if (flächeMatch) {
+    const flaeche = flächeMatch[2] ? 
+      Math.round((parseInt(flächeMatch[1]) + parseInt(flächeMatch[2])) / 2) : 
+      flächeMatch[1];
+    analyseUmfang = `ca. ${flaeche} m²`;
+  }
+  
+  // Erkenne Art des Dokuments (universell)
+  let dokumentTyp = 'analysiertes Dokument/Plan';
+  if (originalText.match(/wohnung|apartment/i)) dokumentTyp = 'analysierte Wohnung';
+  else if (originalText.match(/haus|einfamilienhaus|efh/i)) dokumentTyp = 'analysiertes Gebäude';
+  else if (originalText.match(/geschoss|etage|og|eg/i)) dokumentTyp = 'analysiertes Geschoss';
+  else if (originalText.match(/raum|zimmer|bereich/i)) dokumentTyp = 'analysierter Bereich';
+  else if (originalText.match(/gewerbe|laden|büro/i)) dokumentTyp = 'analysierte Gewerbeeinheit';
+
   let instructions = `
 
 ═══════════════════════════════════════════════════════════════════
 🔴🔴🔴 KRITISCH: VERBINDLICHE MENGEN FÜR LV-KALKULATION 🔴🔴🔴
 ═══════════════════════════════════════════════════════════════════
 
-Die folgenden Mengen wurden aus der Analyse extrahiert und sind
+╔══════════════════════════════════════════════════════════════════╗
+║  ⚠️⚠️⚠️  ABSOLUTE REGEL - MENGEN NICHT HOCHRECHNEN  ⚠️⚠️⚠️      ║
+╚══════════════════════════════════════════════════════════════════╝
+
+🎯 ANALYSIERTER UMFANG: ${dokumentTyp}${analyseUmfang ? ' (' + analyseUmfang + ')' : ''}
+
+Die unten stehenden Mengen wurden aus dem hochgeladenen Dokument/Plan 
+extrahiert und gelten EXAKT FÜR DIESEN ANALYSIERTEN UMFANG.
+
+⚠️  KRITISCHE REGEL:
+   Diese Mengen sind FINAL und VOLLSTÄNDIG für den analysierten Bereich.
+   
+   → KEINE Hochrechnung auf weitere/andere Bereiche
+   → KEINE Multiplikation mit "Anzahl Einheiten/Wohnungen/Geschosse"
+   → KEINE Annahmen über nicht-analysierte Bereiche
+   → KEINE "Typischen Werte" für Gesamtprojekt einsetzen
+
+🔴 AUCH WENN IM PROJEKT-KONTEXT STEHT:
+   "X Wohneinheiten", "Y Geschosse", "Mehrfamilienhaus", "Gesamtgebäude"
+   
+   GILT FÜR DIESE MENGEN:
+   → Sie beziehen sich NUR auf den analysierten Umfang
+   → NICHT auf das Gesamtprojekt hochrechnen
+   → NICHT mit Projekt-Umfang multiplizieren
+
+📌 PRINZIP:
+   Dokument zeigt → 4 Sanitärobjekte
+   LV erstellt → 4 Sanitärobjekte
+   
+   NICHT:
+   Dokument zeigt → 4 Sanitärobjekte
+   Projekt hat → 5 Einheiten
+   LV erstellt → 20 Objekte (× 5) ❌ FALSCH!
+
+`;
+
+  // Füge die extrahierten Positionen ein
+  instructions += `
+Die folgenden ${quantityItems.length} Positionen wurden extrahiert und sind
 ABSOLUT VERBINDLICH für die LV-Erstellung:
 
 `;
 
   quantityItems.forEach((item, index) => {
-    // Normalisiere die verschiedenen Feld-Namen
     const typ = item.typ || item.type || item.kategorie || item.name || 'Position';
     const menge = item.menge || item.quantity || item.anzahl || item.flaeche;
     const einheit = item.einheit || item.unit || 'Stk';
@@ -13437,7 +13492,8 @@ ABSOLUT VERBINDLICH für die LV-Erstellung:
 ${index + 1}. Position: ${typ}
    → Analysierte Menge: ${bereich || menge} ${einheit}
    → VERWENDE FÜR LV: ${menge} ${einheit}
-   → Quelle: Datenanalyse (Confidence: hoch)`;
+   → Quelle: Datenextraktion aus hochgeladenem Dokument
+   ⛔ NICHT hochrechnen auf Projekt-Gesamtumfang!`;
     
     if (beschreibung) {
       instructions += `
@@ -13454,32 +13510,104 @@ ${index + 1}. Position: ${typ}
 
 KRITISCHE REGELN FÜR LV-ERSTELLUNG:
 
-✓ Die oben genannten Mengen MÜSSEN EXAKT übernommen werden
-✓ Maximal ±5% Abweichung erlaubt (nur bei begründeten Rundungen)
-✓ Bei Bereichen (z.B. "85-95"): Verwende den angegebenen Mittelwert
+✅ PFLICHT-REGELN:
+   ✓ Die oben genannten Mengen MÜSSEN EXAKT übernommen werden
+   ✓ Maximal ±10% Abweichung (nur für sinnvolle Rundungen)
+   ✓ Bei Bereichen (z.B. "85-95"): Verwende den angegebenen Mittelwert
+   ✓ Alle ${quantityItems.length} Positionen MÜSSEN im LV enthalten sein
+   ✓ Diese Mengen sind FINAL - gelten für analysierten Umfang
 
-✗ VERBOTEN: Eigene Schätzungen verwenden
-✗ VERBOTEN: "Typische Werte" aus Templates einsetzen
-✗ VERBOTEN: Mengen ohne Begründung ändern
-✗ VERBOTEN: Positionen mit anderen Mengen erstellen
+❌ VERBOTE:
+   ✗ VERBOTEN: Eigene Schätzungen verwenden
+   ✗ VERBOTEN: "Typische Werte" aus Templates einsetzen
+   ✗ VERBOTEN: Mengen ohne Begründung ändern
+   ✗ VERBOTEN: Hochrechnung auf "Gesamt-Projekt"
+   ✗ VERBOTEN: Multiplikation mit "Anzahl X" (Einheiten/Wohnungen/Geschosse)
+   ✗ VERBOTEN: Annahmen über nicht-analysierte Bereiche
+   ✗ VERBOTEN: Text wie "in X Einheiten" oder "für X Bereiche" hinzufügen
+   ✗ VERBOTEN: Positionen weglassen oder vergessen
 
-WENN EINE LV-POSITION EINE DER OBEN GENANNTEN ARBEITEN BETRIFFT:
-→ Prüfe ob die Menge in der Liste steht
-→ Verwende EXAKT die angegebene Menge
-→ Bei Abweichung > 5%: FEHLER!
+📋 POSITIONS-PFLICHT:
+   → Oben stehen ${quantityItems.length} Positionen
+   → LV MUSS mindestens ${quantityItems.length} Positionen enthalten
+   → JEDE Position oben = 1 Position im LV
+   → Fehlende Positionen = KRITISCHER FEHLER
 
-BEISPIEL KORREKT:
-- Position: "Estrich aufbrechen und entsorgen"
-- Oben steht: "Estrich aufbrechen → 90 m²"
-- LV verwendet: 90 m² ✓
+KONKRETE FEHLER-BEISPIELE:
 
-BEISPIEL FALSCH:
-- Position: "Estrich aufbrechen und entsorgen"
-- Oben steht: "Estrich aufbrechen → 90 m²"
-- LV verwendet: 300 m² ✗ KRITISCHER FEHLER!
+❌ TYPISCHE FEHLER - SO NICHT:
+
+1. Hochrechnung/Multiplikation:
+   • Analyse: "4 Sanitärobjekte"
+     Projekt-Info: "5 Einheiten"
+     LV erstellt: "20 Sanitärobjekte in 5 Bädern" (× 5 multipliziert!)
+     → ❌ FEHLER! Menge wurde hochgerechnet!
+
+   • Analyse: "87 m² Bodenbelag"
+     Projekt-Info: "5 Wohnungen"
+     LV erstellt: "435 m² Bodenbelag" (× 5 multipliziert!)
+     → ❌ FEHLER! Fläche wurde hochgerechnet!
+
+   • Analyse: "7 Türen"
+     Projekt-Info: "3 Geschosse"
+     LV erstellt: "21 Türen in 3 Etagen" (× 3 multipliziert!)
+     → ❌ FEHLER! Anzahl wurde hochgerechnet!
+
+2. Fehlende Positionen:
+   • Analyse: 12 Positionen (inkl. "7 Türen entfernen")
+     LV erstellt: 11 Positionen - Türen fehlen
+     → ❌ FEHLER! Position wurde vergessen!
+
+3. Falsche Beschreibungen:
+   • Analyse: "4 Sanitärobjekte"
+     LV: "Sanitärobjekte in 5 Bädern demontieren"
+     → ❌ FEHLER! "in 5 Bädern" hinzugefügt!
+
+✅ RICHTIG - SO MUSS ES SEIN:
+
+1. Exakte Übernahme:
+   • Analyse: "4 Sanitärobjekte"
+     LV erstellt: "Sanitärobjekte demontieren, 4 Stück"
+     → ✅ KORREKT! Exakte Menge übernommen
+
+   • Analyse: "87 m² Bodenbelag"
+     LV erstellt: "Bodenbelag entfernen, 87 m²"
+     → ✅ KORREKT! Exakte Fläche übernommen
+
+   • Analyse: "7 Türen"
+     LV erstellt: "Innentüren mit Zargen entfernen, 7 Stück"
+     → ✅ KORREKT! Exakte Anzahl übernommen
+
+2. Alle Positionen vorhanden:
+   • Analyse: 12 Positionen
+     LV erstellt: 12+ Positionen
+     → ✅ KORREKT! Alle Positionen enthalten
+
+3. Neutrale Beschreibungen:
+   • ✅ RICHTIG: "Sanitärobjekte demontieren inkl. Anschlüsse"
+   • ✅ RICHTIG: "Badewanne, WC, Waschbecken und Dusche demontieren"
+   • ❌ FALSCH: "Sanitärobjekte in X Einheiten demontieren"
+   • ❌ FALSCH: "Je Y Objekte pro Bereich in X Bereichen"
+
+VALIDIERUNGS-CHECKLISTE VOR LV-ERSTELLUNG:
+
+□ Habe ich alle ${quantityItems.length} Positionen erstellt?
+□ Habe ich alle Mengen EXAKT übernommen (max. ±10% Rundung)?
+□ Habe ich KEINE Menge mit Projekt-Umfang multipliziert?
+□ Habe ich KEINE Hochrechnung auf Gesamt-Projekt gemacht?
+□ Sind meine Beschreibungen neutral (ohne "in X Einheiten")?
+□ Habe ich KEINE Position vergessen oder weggelassen?
 
 ───────────────────────────────────────────────────────────────────
-Bei Nichtbeachtung: LV gilt als fehlerhaft und muss korrigiert werden!
+Bei Nichtbeachtung dieser Regeln: LV gilt als FEHLERHAFT!
+
+WICHTIG: Diese Anweisungen haben ABSOLUTE PRIORITÄT vor:
+- Projekt-Beschreibung (z.B. "X Einheiten gesamt")
+- LV-Templates ("typische Werte")
+- Eigenen Annahmen oder Schätzungen
+- Jeglichen anderen Informationen
+
+Die analysierten Mengen sind FINAL und VERBINDLICH!
 ═══════════════════════════════════════════════════════════════════
 `;
 
