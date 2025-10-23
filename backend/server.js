@@ -13227,10 +13227,10 @@ app.post('/api/analyze-file', upload.single('file'), async (req, res) => {
     console.log('[FILE-ANALYZE] Starting analysis:', file.originalname);
     
     // Hole Frage-Details
-    const questionResult = await query(
-      `SELECT question_text, trade_code FROM questions WHERE id = $1`,
-      [questionId]
-    );
+   const questionResult = await query(
+  `SELECT text as question_text, trade_code FROM questions WHERE id = $1`,
+  [questionId]
+);
     
     if (questionResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Frage nicht gefunden' });
