@@ -122,9 +122,9 @@ const TRADE_COMPLEXITY = {
   AUSS:  { complexity: 'MITTEL', minQuestions: 15, maxQuestions: 22, targetPositionsRatio: 0.8 },
 
   // Einfache Gewerke (8-15 Fragen)
-  MAL:   { complexity: 'EINFACH', minQuestions: 10,  maxQuestions: 18, targetPositionsRatio: 0.8 },
+  MAL:   { complexity: 'EINFACH', minQuestions: 12,  maxQuestions: 18, targetPositionsRatio: 0.8 },
   GER:   { complexity: 'EINFACH', minQuestions: 8,  maxQuestions: 12, targetPositionsRatio: 0.8 },
-  ABBR:  { complexity: 'EINFACH', minQuestions: 10, maxQuestions: 17, targetPositionsRatio: 0.8 },
+  ABBR:  { complexity: 'EINFACH', minQuestions: 12, maxQuestions: 17, targetPositionsRatio: 0.8 },
 
   // Intake ist speziell (16-24 Fragen)
   INT:   { complexity: 'INTAKE', minQuestions: 18, maxQuestions: 26, targetPositionsRatio: 0.0 }
