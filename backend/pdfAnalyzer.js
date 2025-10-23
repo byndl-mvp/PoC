@@ -153,7 +153,7 @@ function detectDocumentType(text, tradeCode) {
     'ANGEBOT': 'Angebot/Kostenvoranschlag mit Positionen und Preisen',
     'RECHNUNG': 'Rechnung über ausgeführte Leistungen',
     'LEISTUNGSVERZEICHNIS': 'Leistungsverzeichnis nach VOB',
-    'BAUPLAN': 'Bauplan/Grundriss mit Maßen',
+    'PLAN': 'Bauplan/Grundriss mit Maßen',
     'GUTACHTEN': 'Gutachten mit Schadensanalyse',
     'DATENBLATT': 'Technisches Datenblatt',
     'AUFMASS': 'Aufmaß/Vermessung',
