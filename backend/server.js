@@ -6939,6 +6939,8 @@ STRIKTE REGEL:
 
 ${universalLVRules}
 
+${CRITICAL_PROMPT_ADDITIONS}
+
 KRITISCHE REGELN:
 1. Erstelle ${orientation.min} bis ${orientation.max} ECHTE Positionen mit tatsächlichen Leistungen
 2. NIEMALS leere, "nicht vorhanden" oder "nicht definiert" Positionen
