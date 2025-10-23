@@ -156,6 +156,8 @@ Gib das Ergebnis als JSON zurück.`;
   });
 
   const content = response.content[0].text;
+
+  console.log('[EXCEL-LLM] Raw response:', content.substring(0, 500));
   
   // Parse JSON
   let cleanedContent = content.trim();
