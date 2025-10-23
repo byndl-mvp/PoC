@@ -7508,8 +7508,6 @@ console.log('LV validation completed');
 if (!lv || !lv.positions || !Array.isArray(lv.positions)) {
   throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Ungültige LV-Struktur`);
 }
-
-const validation = validateLvAgainstNeinAntworten(lv, enrichedAnswers);
     
 // STRIKTE KONTEXT-VALIDIERUNG FÜR MANUELL/ZUSÄTZLICH HINZUGEFÜGTE GEWERKE
 if ((projectMetadata.isManual || projectMetadata.isAiRecommended) && contextAnswer) {
