@@ -4168,19 +4168,58 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
      * Sanitär-, Elektro-, Ausstattungsfragen
    - NIE nur Dropdown bei offensichtlichen Mehrfachauswahl-Szenarien
    
-   ${tradeCode === 'FEN' ? `
+  ${tradeCode === 'FEN' ? `
 15. SPEZIELLE FENSTER-REGELN:
    PFLICHTFRAGEN für Fenster-Gewerk:
-   - Frage 1: "Wie viele Fenster insgesamt?"
-   - Frage 2: "Welche Maße haben die EINZELNEN Fenster?" 
-     * MUSS Einzelmaße abfragen!
-     * Format: "Fenster 1: Breite x Höhe in cm"
-     * NICHT nur Gesamtfläche!
-   - Frage 3: "Welche Öffnungsart pro Fenstertyp?"
-   - Frage 4: "Welches Material?"
-   - Frage 5: "Sollen alte Fenster demontiert werden?"
    
-   KRITISCH: Die Maßfrage MUSS nach EINZELMASSEN fragen, nicht nach Gesamtfläche!
+   - Frage 1: "Wie viele Fenster insgesamt?"
+   
+   - Frage 2: "Welche EXAKTEN MAßE haben die EINZELNEN Fenster?"
+     * MUSS für JEDES Fenster einzeln erfassen:
+       - Breite x Höhe in cm
+       - Raumbezeichnung/Position
+     * Format: "Fenster 1 (Wohnzimmer): 150x140cm"
+     * NIEMALS nur Gesamtfläche oder Durchschnittswerte!
+   
+   - Frage 3: "Welche ÖFFNUNGSART pro Fenster?"
+     * Optionen: Dreh-Kipp, Fest verglast, Kipp, Dreh, Schiebe, Hebe-Schiebe
+     * MUSS für jeden Fenstertyp spezifiziert werden
+   
+   - Frage 4: "Welches RAHMENMATERIAL?"
+     * Optionen: Kunststoff, Holz, Holz-Aluminium, Aluminium
+     * Preisunterschied bis zu 100% zwischen Kunststoff und Holz-Alu!
+   
+   - Frage 5: "Welche VERGLASUNG/ENERGETIK?"
+     * PFLICHT: 2-fach, 3-fach Standard, 3-fach Premium
+     * Mit Uw-Werten: 2-fach (~1.3), 3-fach (~1.0), 3-fach Premium (~0.8)
+     * Beeinflusst Preis um 15-35%
+   
+   - Frage 6: "Welche SICHERHEITSANFORDERUNGEN?"
+     * Optionen: Keine, RC1, RC2, RC2N, RC3
+     * RC2 = Standard Einbruchschutz (+25-35% Preis)
+     * RC3 = Erhöhter Einbruchschutz (+45% Preis)
+     * WICHTIG für Erdgeschoss und zugängliche Fenster
+   
+   - Frage 7: "Sollen alte Fenster DEMONTIERT werden?"
+     * Inkl. Entsorgung oder nur Demontage?
+   
+   KRITISCHE REGEL FÜR LV-ERSTELLUNG:
+   ════════════════════════════════════
+   JEDES Fenster im LV MUSS enthalten:
+   1. EXAKTE Einzelmaße (BxH in cm) - KEINE Typen oder Durchschnitte!
+   2. Rahmenmaterial (exakt wie vom Nutzer gewählt)
+   3. Verglasungsart (2-fach/3-fach mit Uw-Wert)
+   4. Öffnungsart (Dreh-Kipp, Fest, etc.)
+   5. Sicherheitsklasse wenn angegeben (RC2, RC3)
+   
+   BEISPIEL KORREKTE LV-POSITION:
+   "Lieferung und Montage Holzfenster 150x140cm, 3-fach Verglasung Uw 0.8, 
+    Dreh-Kipp, RC2, etc."
+   
+   BEISPIEL FALSCHE LV-POSITION:
+   "5 Stk. Fenster Typ A" → KEINE Typisierung!
+   "25 m² Fensterfläche" → KEINE Flächenangaben!
+   "Fenster verschiedene Größen" → JEDES einzeln aufführen!
 ` : ''}
 
 ${tradeCode === 'HEI' ? `
