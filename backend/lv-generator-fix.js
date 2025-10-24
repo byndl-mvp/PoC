@@ -1,581 +1,276 @@
 // ═══════════════════════════════════════════════════════════════════════
-// UNIVERSELLE LV-GENERATOR VALIDIERUNG FÜR ALLE GEWERKE
+// LLM-BASIERTE LV-VALIDIERUNG
+// Nutzt KI zur intelligenten Validierung statt komplexer Hardcode-Regeln
 // ═══════════════════════════════════════════════════════════════════════
 
 const CRITICAL_PROMPT_ADDITIONS = `
-
 // ╔═══════════════════════════════════════════════════════════════════════╗
-// ║  🚨 KRITISCHE VALIDIERUNGSREGELN - ABSOLUTE PRIORITÄT 🚨              ║
+// ║  🚨 ABSOLUTE PRIORITÄT: ANTWORTEN 1:1 UMSETZEN 🚨                    ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
-WARNUNG: Diese Regeln haben ABSOLUTE PRIORITÄT über alle anderen Anweisungen!
-Sie gelten für ALLE 21 GEWERKE: ELEKT, HEI, KLIMA, TRO, FLI, MAL, BOD, ROH, SAN, 
-FEN, TIS, DACH, FASS, GER, ZIMM, ESTR, SCHL, AUSS, PV, ABBR
-
-═══════════════════════════════════════════════════════════════════════════
-GRUNDPRINZIP: Die enrichedAnswers sind die EINZIGE WAHRHEITQUELLE!
-═══════════════════════════════════════════════════════════════════════════
-
-1. UNIVERSELLE NEIN-REGEL (HÖCHSTE PRIORITÄT):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Für JEDES Gewerk und JEDE Leistung gilt:
-❌ Wenn Antwort = "NEIN", "Nein", "nein", "false", "nicht", "keine", "ohne"
-   → NIEMALS eine Position dafür erstellen
-❌ Wenn Antwort = "vorhanden bleiben", "bestehende bleiben", "nicht erneuern"
-   → KEINE Erneuerungsposition erstellen
-
-Konkrete Beispiele nach Gewerk:
-- ELEKT_schalter_erneuern: "NEIN" → KEINE Schalter-Positionen
-- ELEKT_zusaetzliche_steckdosen: "NEIN" → KEINE zusätzlichen Steckdosen
-- HEI_heizkoerper_tauschen: "NEIN" → KEINE Heizkörper-Austausch
-- HEI_thermostat_erneuern: "NEIN" → KEINE neuen Thermostate
-- KLIMA_klimaanlage: "NEIN" → KEINE Klimaanlagen-Position
-- TRO_abgehängte_decke: "NEIN" → KEINE Decken-Positionen
-- FLI_bodenfliesen_erneuern: "NEIN" → KEINE neuen Bodenfliesen
-- MAL_waende_streichen: "NEIN" → KEINE Malerarbeiten
-- BOD_parkett_schleifen: "NEIN" → KEIN Parkett schleifen
-- ROH_wanddurchbruch: "NEIN" → KEINE Durchbrüche
-- SAN_armaturen_erneuern: "NEIN" → KEINE neuen Armaturen
-- SAN_wc_austauschen: "NEIN" → KEIN WC-Austausch
-- FEN_rolladen_neu: "NEIN" → KEINE Rollläden
-- FEN_fensterbanke_erneuern: "NEIN" → KEINE neuen Fensterbänke
-- TIS_innentüren_erneuern: "NEIN" → KEINE neuen Türen
-- DACH_neueindeckung: "NEIN" → KEINE Dacheindeckung
-- FASS_daemmung: "NEIN" → KEINE Fassadendämmung
-- GER_geruest: "NEIN" → KEIN Gerüst
-- ZIMM_dachstuhl_erneuern: "NEIN" → KEIN neuer Dachstuhl
-- ESTR_neuer_estrich: "NEIN" → KEIN neuer Estrich
-- SCHL_gelaender_erneuern: "NEIN" → KEINE neuen Geländer
-- AUSS_pflasterarbeiten: "NEIN" → KEINE Pflasterarbeiten
-- PV_solaranlage: "NEIN" → KEINE Solaranlage
-- ABBR_entkernung: "NEIN" → KEINE Entkernung
-
-2. UNIVERSELLE JA-REGEL:
-━━━━━━━━━━━━━━━━━━━━━━
-Für JEDES Gewerk und JEDE Leistung gilt:
-✅ Wenn Antwort = "JA", "Ja", "ja", "true", oder enthält konkrete Angaben
-   → Position MUSS erstellt werden
-
-Beispiele mit konkreten Angaben:
-- "JA, 24 Steckdosen" → 24 Steckdosen-Positionen MÜSSEN rein
-- "Ja, in allen 8 Räumen" → Positionen für 8 Räume MÜSSEN rein
-- "5 neue Heizkörper" → 5 Heizkörper MÜSSEN rein (auch ohne "Ja")
-- "Parkett in 120m²" → Parkett-Position mit 120m² MUSS rein
-
-3. MATERIAL-/AUSFÜHRUNGS-TREUE REGEL:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Material/Ausführung EXAKT wie in Antworten angegeben
-❌ NIEMALS eigenmächtig ändern oder "Erfahrungswerte" nutzen
-
-Beispiele:
-- FEN_material: "Holz" → NUR Holzfenster, NICHT Kunststoff
-- TIS_material: "Eiche massiv" → NUR Eiche massiv, NICHT Buche oder Furnier
-- BOD_bodenbelag: "Vinyl" → NUR Vinyl, NICHT Laminat
-- FLI_fliesenformat: "30x60cm" → GENAU dieses Format, NICHT 60x60
-- ELEKT_schalter: "Jung LS990" → GENAU diese Serie, NICHT Gira
-- HEI_heizung: "Fußbodenheizung" → NUR Fußbodenheizung, NICHT Heizkörper
-- SAN_armatur: "Grohe" → NUR Grohe, NICHT Hansgrohe
-
-4. MENGEN-/MASSE-GENAUIGKEIT:
-━━━━━━━━━━━━━━━━━━━━━━━━━
-Bei Upload-Daten (Excel/PDF) oder konkreten Angaben:
-✅ ECHTE Werte verwenden, keine Typisierung
-❌ KEINE erfundenen "Typ A/B/C" wenn Einzeldaten vorliegen
-
-Beispiele:
-- Excel mit 36 Fenstern mit Einzelmaßen → 36 Einzelpositionen ODER gruppiert nach identischen Maßen
-- "WC im EG, OG und DG" → 3 WC-Positionen, NICHT "3x Standard-WC"
-- "8 Räume mit unterschiedlichen Größen" → Nach echten Größen, NICHT "8x Standardraum"
-
-5. VOLLSTÄNDIGKEITS-REGEL:
-━━━━━━━━━━━━━━━━━━━━━━━━
-✅ JEDES Gewerk mit "JA"-Antworten MUSS Positionen haben
-✅ ALLE bestätigten Leistungen MÜSSEN abgebildet werden
-❌ KEINE Leistungen weglassen, nur weil sie "klein" erscheinen
-
-6. KEINE STANDARD-ANNAHMEN:
-━━━━━━━━━━━━━━━━━━━━━━━━━
-❌ NIEMALS Positionen aus "Erfahrung" hinzufügen ohne Bestätigung
-❌ KEINE "üblichen Nebenleistungen" ohne explizite Antwort
-❌ KEINE "Das gehört normalerweise dazu" Positionen
-
-Beispiele verbotener Annahmen:
-- "Bei Fenstern gehören Fensterbänke dazu" → FALSCH, nur wenn bestätigt
-- "Sanitär braucht immer Vorwandinstallation" → FALSCH, nur wenn bestätigt
-- "Bei Elektro sind FI-Schalter Pflicht" → FALSCH, nur wenn bestätigt
-
-7. VALIDIERUNG VOR AUSGABE:
-━━━━━━━━━━━━━━━━━━━━━━━━
-Prüfe JEDE Position gegen die enrichedAnswers:
-1. Hat diese Leistung eine Bestätigung in den Antworten?
-2. Wenn JA → Stimmen Material/Ausführung/Menge überein?
-3. Wenn NEIN → Position LÖSCHEN
-4. Gibt es JA-Antworten ohne Position? → Position ERGÄNZEN
-
-KRITISCH: Verwende NUR Informationen aus:
-- enrichedAnswers (alle Gewerk-spezifischen Antworten)
-- uploadContext (Excel/PDF Uploads mit Detaildaten)
-- KEINE anderen Quellen oder Annahmen!
+KRITISCHE REGELN:
+1. NEIN-Antworten = KEINE Position dafür erstellen
+2. Material EXAKT wie angegeben verwenden
+3. Mengen EXAKT übernehmen
+4. NUR Positionen für JA-Antworten oder konkret genannte Leistungen
 `;
 
 // ═══════════════════════════════════════════════════════════════════════
-// GEWERK-DEFINITIONEN UND KEYWORD-MAPPING
+// LLM-VALIDIERUNG
 // ═══════════════════════════════════════════════════════════════════════
 
-const GEWERK_KEYWORDS = {
-  'ELEKT': ['schalter', 'steckdose', 'leuchte', 'lampe', 'sicherung', 'verteiler', 'fi-schalter', 'kabel', 'elektro'],
-  'HEI': ['heizung', 'heizkörper', 'thermostat', 'warmwasser', 'kessel', 'brenner', 'radiator', 'fußbodenheizung'],
-  'KLIMA': ['klima', 'klimaanlage', 'lüftung', 'luftwechsel', 'abluft', 'zuluft', 'wärmerückgewinnung'],
-  'TRO': ['rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton', 'abgehängt'],
-  'FLI': ['fliese', 'verfugen', 'mosaik', 'naturstein', 'feinsteinzeug', 'bodenfliesen', 'wandfliesen'],
-  'MAL': ['streichen', 'maler', 'farbe', 'anstrich', 'putz', 'tapezier', 'verputz', 'spachtel', 'lackier', 'grundierung'],
-  'BOD': ['parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork', 'designboden', 'boden'],
-  'ROH': ['maurer', 'durchbruch', 'beton', 'wand', 'decke', 'sturz', 'kalksandstein', 'rohbau'],
-  'SAN': ['wc', 'toilette', 'waschbecken', 'waschtisch', 'dusche', 'badewanne', 'abfluss', 'wasserhahn', 'armatur', 'sanitär'],
-  'FEN': ['fenster', 'verglasung', 'rolladen', 'rollladen', 'jalousie', 'fensterbank', 'leibung'],
-  'TIS': ['tür', 'innentür', 'zarge', 'türblatt', 'drücker', 'schloss', 'tischler'],
-  'DACH': ['dach', 'ziegel', 'dachrinne', 'schneefang', 'gaube', 'eindeckung', 'dampfbremse', 'unterspannbahn'],
-  'FASS': ['fassade', 'wdvs', 'dämmung', 'außenputz', 'verblendung', 'klinker', 'fassadenfarbe'],
-  'GER': ['gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst', 'dachgerüst'],
-  'ZIMM': ['holzbau', 'zimmerer', 'dachstuhl', 'gaube', 'carport', 'holzkonstruktion', 'fachwerk'],
-  'ESTR': ['estrich', 'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich', 'ausgleichsmasse'],
-  'SCHL': ['geländer', 'metallbau', 'schlosser', 'stahltreppe', 'metallarbeiten'],
-  'AUSS': ['pflaster', 'einfahrt', 'außenanlage', 'randstein', 'gartenzaun', 'zaun', 'rasen'],
-  'PV': ['solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'batterie', 'einspeisung'],
-  'ABBR': ['abriss', 'abbruch', 'entkernung', 'rückbau', 'demontage']
-};
+async function validateLVWithLLM(generatedLV, enrichedAnswers, anthropic) {
+  console.log('🤖 Starte LLM-basierte LV-Validierung...');
+  
+  // Bereite Antworten für LLM auf
+  const answersText = enrichedAnswers.map(item => {
+    const question = item.question || item.question_text || '';
+    const answer = item.answer || item.answer_text || '';
+    return `FRAGE: ${question}\nANTWORT: ${answer}`;
+  }).join('\n\n');
+  
+  // Bereite LV-Positionen für LLM auf
+  const positionsText = generatedLV.positions.map((pos, idx) => 
+    `Position ${idx + 1}: ${pos.title}\nBeschreibung: ${pos.description}\nMenge: ${pos.quantity} ${pos.unit}\nPreis: ${pos.unitPrice}€`
+  ).join('\n\n');
+  
+  const validationPrompt = `Du bist ein LV-Korrektur-Experte. Du sollst NUR OFFENSICHTLICHE FEHLER bei der Übernahme von Nutzerantworten korrigieren.
 
-// ═══════════════════════════════════════════════════════════════════════
-// UNIVERSELLE VALIDIERUNGSFUNKTION
-// ═══════════════════════════════════════════════════════════════════════
+NUTZERANTWORTEN:
+═══════════════
+${answersText}
 
-function validateAndCleanLV(generatedLV, enrichedAnswers, uploadContext) {
-  console.log('🔍 Starting universal LV validation against user answers...');
-  console.log(`📊 Processing ${Object.keys(enrichedAnswers).length} answer fields`);
-  
-  // Helper: Normalisiere Antwort für Vergleich
-  const normalizeAnswer = (answer) => {
-    if (!answer) return '';
-    return String(answer).toLowerCase().trim();
-  };
-  
-  // Helper: Check if answer means NO
-  const isNoAnswer = (answer) => {
-    if (!answer) return false;
-    const normalized = normalizeAnswer(answer);
-    
-    // Explizite NEIN-Varianten
-    const noVariants = [
-      'nein', 'no', 'false', 'nicht', 'keine', 'kein', 'ohne',
-      'nicht erforderlich', 'nicht notwendig', 'nicht nötig',
-      'entfällt', 'negativ', 'nicht gewünscht'
-    ];
-    
-    // Check für direkte Matches
-    if (noVariants.includes(normalized)) return true;
-    
-    // Check für Teilstrings am Anfang
-    const noStarts = ['nein', 'nicht', 'kein', 'ohne'];
-    if (noStarts.some(start => normalized.startsWith(start))) return true;
-    
-    // Check für "bleiben" Formulierungen (keine Erneuerung)
-    const keepPhrases = [
-      'bleiben', 'vorhanden bleiben', 'bestehende bleiben', 
-      'behalten', 'nicht erneuern', 'nicht austauschen',
-      'vorhandene nutzen', 'bestehende nutzen'
-    ];
-    if (keepPhrases.some(phrase => normalized.includes(phrase))) return true;
-    
-    return false;
-  };
-  
-  // Helper: Check if answer means YES
-  const isYesAnswer = (answer) => {
-    if (!answer) return false;
-    const normalized = normalizeAnswer(answer);
-    
-    const yesVariants = ['ja', 'yes', 'true', 'jawohl', 'positiv', 'gewünscht'];
-    
-    // Direkte JA-Antworten
-    if (yesVariants.some(yes => normalized.startsWith(yes))) return true;
-    
-    // Enthält konkrete Angaben (Zahlen, Mengen)
-    if (/\d+/.test(normalized)) return true; // Enthält Zahlen
-    if (normalized.includes('stück') || normalized.includes('stk')) return true;
-    if (normalized.includes('m²') || normalized.includes('qm')) return true;
-    if (normalized.includes('lfm') || normalized.includes('meter')) return true;
-    
-    return false;
-  };
-  
-  // Helper: Extrahiere Gewerk aus Answer-Key
-  const extractGewerk = (key) => {
-    const upperKey = key.toUpperCase();
-    for (const gewerk of Object.keys(GEWERK_KEYWORDS)) {
-      if (upperKey.startsWith(gewerk + '_')) {
-        return gewerk;
-      }
+AKTUELLES LV:
+═════════════
+${positionsText}
+
+WICHTIG - NUR DIESE FEHLER KORRIGIEREN:
+════════════════════════════════════════
+1. EXPLIZITE NEIN-Antworten wurden ignoriert (z.B. "Fensterbänke? NEIN" aber trotzdem Fensterbänke im LV)
+2. FALSCHES MATERIAL (z.B. Nutzer sagt "Holz" aber im LV steht "Kunststoff")
+3. FALSCHE MENGEN (z.B. Nutzer sagt "24 Rollläden" aber im LV stehen "36")
+4. ABSURDE PREISE (z.B. 800€/lfd.m für Leibungsverputz, 8000€ für eine Innentür)
+5. Positionen für Dinge die explizit mit "behalte alte" oder "nicht erneuern" beantwortet wurden
+
+NICHT ÄNDERN:
+═════════════
+- Sinnvolle Ergänzungen die das LV vollständig machen
+- Standard-Positionen die üblich sind (z.B. Demontage, Entsorgung)
+- Nebenarbeiten die technisch notwendig sind
+- Positionen ohne direkte Frage (außer sie widersprechen einer NEIN-Antwort)
+
+JSON-FORMAT für deine Antwort:
+{
+  "positionen_zu_entfernen": [
+    {
+      "position_nummer": 1,
+      "grund": "Konkrete NEIN-Antwort oder absurder Preis"
     }
-    return null;
-  };
-  
-  // Helper: Extract material/type from answer
-  const extractSpecification = (answer) => {
-    if (!answer) return null;
-    const normalized = normalizeAnswer(answer);
-    
-    // Material-Extraktion für verschiedene Gewerke
-    const specifications = {
-      // Fenster/Türen
-      'holz': ['holz', 'massivholz', 'eiche', 'buche', 'kiefer'],
-      'kunststoff': ['kunststoff', 'pvc', 'plastic'],
-      'alu': ['alu', 'aluminium', 'aluminum'],
-      'holz-alu': ['holz-alu', 'holz-aluminium'],
-      'stahl': ['stahl', 'steel', 'metall', 'eisen'],
-      // Böden
-      'parkett': ['parkett', 'echtholz'],
-      'laminat': ['laminat'],
-      'vinyl': ['vinyl', 'pvc-boden'],
-      'fliesen': ['fliese', 'keramik', 'feinsteinzeug'],
-      // Sanitär
-      'keramik': ['keramik', 'keramisch'],
-      'edelstahl': ['edelstahl', 'v2a', 'v4a'],
-      // Elektro
-      'unterputz': ['unterputz', 'up'],
-      'aufputz': ['aufputz', 'ap']
-    };
-    
-    for (const [key, variants] of Object.entries(specifications)) {
-      if (variants.some(v => normalized.includes(v))) {
-        return key;
-      }
+  ],
+  "positionen_zu_korrigieren": [
+    {
+      "position_nummer": 2,
+      "korrektur": {
+        "material": "Holz statt Kunststoff",
+        "menge": "24 statt 36",
+        "preis": "80 statt 800"
+      },
+      "grund": "Widerspricht direkter Nutzerantwort"
     }
-    
-    return normalized; // Return as-is if no mapping found
-  };
-  
-  // ═══════════════════════════════════════════
-  // HAUPTVALIDIERUNG: Analyse der Antworten
-  // ═══════════════════════════════════════════
-  
-  const validationRules = {
-    forbidden: [],      // Positionen die NICHT erstellt werden dürfen
-    required: [],       // Positionen die erstellt werden MÜSSEN
-    specifications: {}  // Material/Ausführungs-Vorgaben
-  };
-  
-  // Durchlaufe alle Antworten und baue Regeln auf
-  for (const [key, value] of Object.entries(enrichedAnswers)) {
-    const gewerk = extractGewerk(key);
-    const keyLower = key.toLowerCase();
-    
-    // Skip wenn kein Gewerk zugeordnet werden kann
-    if (!gewerk) {
-      console.log(`⚠️ Skipping non-gewerk answer: ${key}`);
-      continue;
+  ],
+  "preiskorrekturen": [
+    {
+      "position_nummer": 3,
+      "alter_preis": 800,
+      "neuer_preis": 45,
+      "grund": "Absurd hoher Preis für Leibungsverputz"
     }
-    
-    // Regel 1: NEIN-Antworten → Forbidden Keywords
-    if (isNoAnswer(value)) {
-      console.log(`❌ [${gewerk}] ${key} = NEIN → Blocking related positions`);
-      
-      // Extrahiere relevante Keywords aus dem Key
-      const keywordParts = keyLower.replace(gewerk.toLowerCase() + '_', '').split('_');
-      
-      // Füge spezifische Keywords zur Blacklist hinzu
-      keywordParts.forEach(part => {
-        if (part.length > 2) { // Ignoriere sehr kurze Wörter
-          validationRules.forbidden.push({
-            gewerk: gewerk,
-            keyword: part,
-            reason: `${key} = "${value}"`
-          });
-        }
-      });
-      
-      // Füge auch verwandte Keywords hinzu basierend auf Gewerk
-      if (gewerk === 'FEN') {
-        if (keyLower.includes('fensterbank')) {
-          validationRules.forbidden.push(
-            { gewerk: 'FEN', keyword: 'fensterbank', reason: key },
-            { gewerk: 'FEN', keyword: 'fensterbänke', reason: key },
-            { gewerk: 'FEN', keyword: 'außenfensterbank', reason: key },
-            { gewerk: 'FEN', keyword: 'innenfensterbank', reason: key }
-          );
-        }
-        if (keyLower.includes('rolladen') || keyLower.includes('rollladen')) {
-          validationRules.forbidden.push(
-            { gewerk: 'FEN', keyword: 'rolladen', reason: key },
-            { gewerk: 'FEN', keyword: 'rollladen', reason: key },
-            { gewerk: 'FEN', keyword: 'rollläden', reason: key },
-            { gewerk: 'FEN', keyword: 'jalousie', reason: key }
-          );
-        }
-        if (keyLower.includes('leibung')) {
-          validationRules.forbidden.push(
-            { gewerk: 'FEN', keyword: 'leibung', reason: key },
-            { gewerk: 'FEN', keyword: 'laibung', reason: key },
-            { gewerk: 'FEN', keyword: 'leibungsverputz', reason: key }
-          );
-        }
-      }
-      
-      // Weitere gewerk-spezifische Forbidden-Rules
-      if (gewerk === 'SAN' && keyLower.includes('armatur')) {
-        validationRules.forbidden.push(
-          { gewerk: 'SAN', keyword: 'armatur', reason: key },
-          { gewerk: 'SAN', keyword: 'wasserhahn', reason: key },
-          { gewerk: 'SAN', keyword: 'mischbatterie', reason: key }
-        );
-      }
-      
-      if (gewerk === 'ELEKT' && keyLower.includes('steckdose')) {
-        validationRules.forbidden.push(
-          { gewerk: 'ELEKT', keyword: 'steckdose', reason: key },
-          { gewerk: 'ELEKT', keyword: 'schuko', reason: key }
-        );
-      }
-    }
-    
-    // Regel 2: JA-Antworten → Required Positions
-    else if (isYesAnswer(value)) {
-      console.log(`✅ [${gewerk}] ${key} = JA → Must have positions`);
-      
-      validationRules.required.push({
-        gewerk: gewerk,
-        requirement: key,
-        details: value,
-        keywords: keyLower.replace(gewerk.toLowerCase() + '_', '').split('_')
-      });
-      
-      // Extrahiere Mengenangaben aus der Antwort
-      const mengenMatch = value.match(/(\d+)\s*(stück|stk|m²|qm|lfm|meter)/i);
-      if (mengenMatch) {
-        validationRules.required[validationRules.required.length - 1].quantity = {
-          amount: parseInt(mengenMatch[1]),
-          unit: mengenMatch[2]
-        };
-      }
-    }
-    
-    // Regel 3: Material/Spezifikation
-    if (keyLower.includes('material') || keyLower.includes('ausführung') || keyLower.includes('typ')) {
-      const spec = extractSpecification(value);
-      if (spec && spec !== 'nein' && spec !== 'keine') {
-        const category = keyLower.replace(gewerk.toLowerCase() + '_', '').split('_')[0];
-        
-        if (!validationRules.specifications[gewerk]) {
-          validationRules.specifications[gewerk] = {};
-        }
-        
-        validationRules.specifications[gewerk][category] = spec;
-        console.log(`📋 [${gewerk}] Material/Type for ${category} = ${spec}`);
-      }
-    }
-  }
-  
-  // ═══════════════════════════════════════════
-  // Upload-Daten verarbeiten
-  // ═══════════════════════════════════════════
-  
-  let uploadedData = null;
-  if (uploadContext && uploadContext.parsedData) {
-    console.log(`📄 Processing upload data: ${uploadContext.fileType}`);
-    
-    if (uploadContext.fileType === 'excel' && Array.isArray(uploadContext.parsedData)) {
-      uploadedData = {
-        type: 'measurements',
-        items: uploadContext.parsedData,
-        count: uploadContext.parsedData.length
-      };
-      console.log(`📏 Found ${uploadedData.count} items in upload`);
-    }
-  }
-  
-  // ═══════════════════════════════════════════
-  // LV VALIDIERUNG UND BEREINIGUNG
-  // ═══════════════════════════════════════════
-  
-  const cleanedLV = { ...generatedLV };
-  const statistics = {
-    removed: 0,
-    corrected: 0,
-    warnings: []
-  };
-  
-  if (cleanedLV.positions && Array.isArray(cleanedLV.positions)) {
-    // Filtere ungültige Positionen
-    cleanedLV.positions = cleanedLV.positions.filter(position => {
-      const posText = `${position.title} ${position.description}`.toLowerCase();
-      
-      // Check 1: Verbotene Keywords
-      for (const forbidden of validationRules.forbidden) {
-        if (posText.includes(forbidden.keyword)) {
-          console.log(`🗑️ Removing: "${position.title}" (forbidden: ${forbidden.keyword}, reason: ${forbidden.reason})`);
-          statistics.removed++;
-          return false;
-        }
-      }
-      
-      // Check 2: Material-Korrektur
-      for (const [gewerk, specs] of Object.entries(validationRules.specifications)) {
-        // Prüfe ob Position zu diesem Gewerk gehört
-        const gewerkKeywords = GEWERK_KEYWORDS[gewerk];
-        if (!gewerkKeywords) continue;
-        
-        const isGewerkPosition = gewerkKeywords.some(kw => posText.includes(kw));
-        
-        if (isGewerkPosition) {
-          for (const [category, correctSpec] of Object.entries(specs)) {
-            // Liste falscher Materialien basierend auf Gewerk
-            let wrongSpecs = [];
-            
-            if (gewerk === 'FEN' || gewerk === 'TIS') {
-              wrongSpecs = ['kunststoff', 'pvc', 'alu', 'holz', 'stahl', 'holz-alu'];
-            } else if (gewerk === 'BOD') {
-              wrongSpecs = ['vinyl', 'laminat', 'parkett', 'teppich', 'linoleum', 'kork'];
-            } else if (gewerk === 'FLI') {
-              wrongSpecs = ['keramik', 'naturstein', 'feinsteinzeug', 'mosaik'];
-            }
-            
-            for (const wrongSpec of wrongSpecs) {
-              if (wrongSpec !== correctSpec && posText.includes(wrongSpec)) {
-                // Korrigiere das Material
-                const oldTitle = position.title;
-                position.title = position.title.replace(new RegExp(wrongSpec, 'gi'), correctSpec);
-                position.description = position.description.replace(new RegExp(wrongSpec, 'gi'), correctSpec);
-                
-                if (oldTitle !== position.title) {
-                  console.log(`✏️ Corrected [${gewerk}]: "${oldTitle}" → "${position.title}"`);
-                  statistics.corrected++;
-                }
-              }
-            }
-          }
-        }
-      }
-      
-      // Check 3: Warnung bei generischen Typen wenn Upload-Daten existieren
-      if (uploadedData && uploadedData.type === 'measurements') {
-        if (posText.match(/typ [a-z]/i) || posText.includes('standardmaß')) {
-          statistics.warnings.push(`⚠️ Generic type used: "${position.title}" (${uploadedData.count} real measurements available)`);
-        }
-      }
-      
-      return true; // Position behalten
+  ],
+  "zusammenfassung": "Nur Hauptfehler nennen"
+}
+
+BEISPIEL was zu korrigieren ist:
+- Nutzer: "Fensterbänke außen? NEIN" → Fensterbank-Position ENTFERNEN
+- Nutzer: "Material? Holz" → Kunststoff-Positionen zu Holz ÄNDERN
+- Preis: 800€/m für Verputz → auf ~45€/m KORRIGIEREN
+
+BEISPIEL was NICHT zu ändern ist:
+- Demontage alte Fenster (auch wenn nicht explizit gefragt)
+- Abdichtungsarbeiten (technisch notwendig)
+- Reinigung (übliche Schlussleistung)
+
+Antworte NUR mit dem JSON-Objekt.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      temperature: 0,
+      system: 'Du bist ein präziser LV-Validator. Antworte nur mit validem JSON.',
+      messages: [{
+        role: 'user',
+        content: validationPrompt
+      }]
     });
     
+    const validationResult = JSON.parse(response.content[0].text);
+    
     // ═══════════════════════════════════════════
-    // Check für fehlende Required Positions
+    // ANWENDUNG DER VALIDIERUNGSERGEBNISSE
     // ═══════════════════════════════════════════
     
-    for (const required of validationRules.required) {
-      // Prüfe ob mindestens eine Position für diese Anforderung existiert
-      const hasPosition = cleanedLV.positions.some(pos => {
-        const posText = `${pos.title} ${pos.description}`.toLowerCase();
-        return required.keywords.some(kw => kw.length > 2 && posText.includes(kw));
-      });
-      
-      if (!hasPosition) {
-        let warningMsg = `⚠️ MISSING [${required.gewerk}]: No position for "${required.requirement}"`;
-        if (required.quantity) {
-          warningMsg += ` (Required: ${required.quantity.amount} ${required.quantity.unit})`;
-        } else {
-          warningMsg += ` (Answer: "${required.details}")`;
+    console.log('📋 LLM-Validierung abgeschlossen:');
+    console.log(`- ${validationResult.positionen_zu_entfernen?.length || 0} zu entfernen`);
+    console.log(`- ${validationResult.positionen_zu_korrigieren?.length || 0} zu korrigieren`);
+    console.log(`- ${validationResult.fehlende_positionen?.length || 0} hinzuzufügen`);
+    
+    // 1. Positionen entfernen
+    if (validationResult.positionen_zu_entfernen?.length > 0) {
+      const zuEntfernen = new Set(validationResult.positionen_zu_entfernen.map(p => p.position_nummer - 1));
+      generatedLV.positions = generatedLV.positions.filter((pos, idx) => {
+        if (zuEntfernen.has(idx)) {
+          console.log(`🗑️ Entferne: ${pos.title} - ${validationResult.positionen_zu_entfernen.find(p => p.position_nummer === idx + 1)?.grund}`);
+          return false;
         }
-        statistics.warnings.push(warningMsg);
+        return true;
+      });
+    }
+    
+    // 2. Positionen korrigieren
+    if (validationResult.positionen_zu_korrigieren?.length > 0) {
+      validationResult.positionen_zu_korrigieren.forEach(korrektur => {
+        const idx = korrektur.position_nummer - 1;
+        if (generatedLV.positions[idx]) {
+          const pos = generatedLV.positions[idx];
+          
+          if (korrektur.korrektur.material) {
+            const [von, zu] = korrektur.korrektur.material.split(' statt ');
+            pos.title = pos.title.replace(new RegExp(von, 'gi'), zu);
+            pos.description = pos.description.replace(new RegExp(von, 'gi'), zu);
+            console.log(`✏️ Material korrigiert: ${von} → ${zu}`);
+          }
+          
+          if (korrektur.korrektur.menge) {
+            const [neu] = korrektur.korrektur.menge.split(' statt ');
+            pos.quantity = parseInt(neu);
+            console.log(`✏️ Menge korrigiert: → ${neu}`);
+          }
+          
+          if (korrektur.korrektur.preis) {
+            const [neu] = korrektur.korrektur.preis.split(' statt ');
+            pos.unitPrice = parseFloat(neu);
+            console.log(`✏️ Preis korrigiert: → ${neu}€`);
+          }
+        }
+      });
+    }
+    
+    // 3. Preiskorrekturen anwenden
+    if (validationResult.preiskorrekturen?.length > 0) {
+      validationResult.preiskorrekturen.forEach(korrektur => {
+        const idx = korrektur.position_nummer - 1;
+        if (generatedLV.positions[idx]) {
+          const pos = generatedLV.positions[idx];
+          console.log(`💰 Preis korrigiert: ${pos.title} - ${korrektur.alter_preis}€ → ${korrektur.neuer_preis}€ (${korrektur.grund})`);
+          pos.unitPrice = korrektur.neuer_preis;
+          
+          // Gesamtpreis neu berechnen
+          if (pos.quantity) {
+            pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+          }
+        }
+      });
+    }
+    
+    console.log('\n📊 Zusammenfassung:', validationResult.zusammenfassung);
+    
+  } catch (error) {
+    console.error('❌ LLM-Validierung fehlgeschlagen:', error.message);
+    // Fallback auf einfache Validierung
+    return simpleValidation(generatedLV, enrichedAnswers);
+  }
+  
+  return generatedLV;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// EINFACHE FALLBACK-VALIDIERUNG
+// ═══════════════════════════════════════════════════════════════════════
+
+function simpleValidation(generatedLV, enrichedAnswers) {
+  console.log('📋 Fallback auf einfache Validierung...');
+  
+  const neinAntworten = new Set();
+  const material = {};
+  
+  enrichedAnswers.forEach(item => {
+    const answer = (item.answer || '').toLowerCase();
+    const question = (item.question || '').toLowerCase();
+    
+    if (answer.includes('nein') || answer.includes('keine')) {
+      if (question.includes('fensterbank')) neinAntworten.add('fensterbank');
+      if (question.includes('leibung')) neinAntworten.add('leibung');
+      if (question.includes('rollladen')) neinAntworten.add('rollladen');
+    }
+    
+    if (question.includes('material')) {
+      if (answer.includes('holz')) material.type = 'holz';
+      else if (answer.includes('kunststoff')) material.type = 'kunststoff';
+      else if (answer.includes('alu')) material.type = 'aluminium';
+    }
+  });
+  
+  // Filtere Positionen
+  generatedLV.positions = generatedLV.positions.filter(pos => {
+    const text = `${pos.title} ${pos.description}`.toLowerCase();
+    
+    for (const verboten of neinAntworten) {
+      if (text.includes(verboten)) {
+        console.log(`🗑️ Entfernt: ${pos.title}`);
+        return false;
       }
     }
-  }
+    return true;
+  });
   
-  // ═══════════════════════════════════════════
-  // Zusammenfassung ausgeben
-  // ═══════════════════════════════════════════
-  
-  console.log('═══════════════════════════════════════════');
-  console.log('📊 VALIDATION SUMMARY:');
-  console.log(`✅ Positions kept: ${cleanedLV.positions ? cleanedLV.positions.length : 0}`);
-  console.log(`🗑️ Positions removed: ${statistics.removed}`);
-  console.log(`✏️ Positions corrected: ${statistics.corrected}`);
-  
-  if (statistics.warnings.length > 0) {
-    console.log('\n⚠️ WARNINGS:');
-    statistics.warnings.forEach(warning => console.log(warning));
-  }
-  
-  console.log('═══════════════════════════════════════════');
-  
-  return cleanedLV;
+  return generatedLV;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// HILFSFUNKTION: Automatische Position-Erstellung für fehlende Required
+// HAUPT-VALIDIERUNGSFUNKTION
 // ═══════════════════════════════════════════════════════════════════════
 
-function createMissingPositions(validationRules, uploadedData) {
-  // Diese Funktion könnte automatisch fehlende Positionen erstellen
-  // basierend auf den required Rules und Upload-Daten
-  const missingPositions = [];
+async function validateAndCleanLVComplete(generatedLV, enrichedAnswers, uploadContext, anthropic) {
+  // Erst LLM-Validierung versuchen
+  let validatedLV = generatedLV;
   
-  // Implementierung für automatische Position-Erstellung
-  for (const required of validationRules.required) {
-    // Template für neue Position basierend auf Gewerk
-    const positionTemplate = {
-      ELEKT: {
-        title: `Lieferung und Montage ${required.keywords.join(' ')}`,
-        unit: 'Stk',
-        defaultPrice: 150
-      },
-      SAN: {
-        title: `Lieferung und Montage ${required.keywords.join(' ')}`,
-        unit: 'Stk',
-        defaultPrice: 500
-      },
-      FEN: {
-        title: `Lieferung und Montage ${required.keywords.join(' ')}`,
-        unit: 'Stk',
-        defaultPrice: 800
-      },
-      // ... weitere Gewerke
-    };
-    
-    if (positionTemplate[required.gewerk]) {
-      const template = positionTemplate[required.gewerk];
-      missingPositions.push({
-        title: template.title,
-        quantity: required.quantity?.amount || 1,
-        unit: required.quantity?.unit || template.unit,
-        unitPrice: template.defaultPrice,
-        description: `Automatisch erstellt basierend auf: ${required.requirement}`
-      });
+  if (anthropic) {
+    validatedLV = await validateLVWithLLM(generatedLV, enrichedAnswers, anthropic);
+  } else {
+    console.log('⚠️ Kein Anthropic Client verfügbar, nutze einfache Validierung');
+    validatedLV = simpleValidation(generatedLV, enrichedAnswers);
+  }
+  
+  // Dann Upload-Enforcement (falls vorhanden)
+  try {
+    const { enforceUploadData } = require('./upload-data-enforcement');
+    if (typeof enforceUploadData === 'function') {
+      validatedLV = enforceUploadData(validatedLV, uploadContext, enrichedAnswers);
     }
+  } catch (e) {
+    // Upload-Enforcement nicht verfügbar
   }
-  
-  return missingPositions;
-}
-
-// Import der Upload-Enforcement Funktionen
-const { enforceUploadData, UPLOAD_DATA_CRITICAL_RULES } = require('./upload-data-enforcement');
-
-// Erweiterte Validierungsfunktion die ALLES kombiniert
-function validateAndCleanLVComplete(generatedLV, enrichedAnswers, uploadContext) {
-  // Schritt 1: Normale Validierung (NEIN/JA, Material, etc.)
-  let validatedLV = validateAndCleanLV(generatedLV, enrichedAnswers, uploadContext);
-  
-  // Schritt 2: Upload-Daten Enforcement
-  validatedLV = enforceUploadData(validatedLV, uploadContext, enrichedAnswers);
   
   return validatedLV;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// EXPORT FÜR SERVER.JS
+// EXPORT
 // ═══════════════════════════════════════════════════════════════════════
 
 module.exports = {
   CRITICAL_PROMPT_ADDITIONS,
-  validateAndCleanLV,
   validateAndCleanLVComplete,
-  createMissingPositions,
-  GEWERK_KEYWORDS
+  validateLVWithLLM,
+  simpleValidation
 };
