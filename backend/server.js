@@ -7517,6 +7517,9 @@ ${enrichedIntakeAnswers.map(a => {
   return answer;
 }).join('\n\n')}
 
+console.log(`[LV-DEBUG] Building userPrompt with ${enrichedAnswers.length} enriched answers`);
+console.log(`[LV-DEBUG] Sample enriched answer:`, enrichedAnswers[0]);
+
 GEWERK-SPEZIFISCHE ANTWORTEN (${enrichedAnswers.length} Antworten):
 ${enrichedAnswers.map(a => {
   let answer = `[${a.question_id}] ${a.question}${a.unit ? ` (${a.unit})` : ''}
