@@ -7655,15 +7655,20 @@ if (!lv || !lv.positions || !Array.isArray(lv.positions)) {
   throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Ungültige LV-Struktur`);
 }
     
-// STRIKTE KONTEXT-VALIDIERUNG FÜR MANUELL/ZUSÄTZLICH HINZUGEFÜGTE GEWERKE
+// INTELLIGENTE KONTEXT-VALIDIERUNG FÜR MANUELL/ZUSÄTZLICH HINZUGEFÜGTE GEWERKE
 if ((projectMetadata.isManual || projectMetadata.isAiRecommended) && contextAnswer) {
-  console.log(`[LV-VALIDATION] Starting strict context validation for ${trade.code}`);
+  console.log(`[LV-VALIDATION] Starting intelligent context validation for ${trade.code}`);
   console.log(`[LV-VALIDATION] User scope: "${contextAnswer.answer}"`);
   
-  const userScope = (contextAnswer.answer || '').toLowerCase().trim();
-  const keywords = extractKeywordsFromScope(userScope, trade.code);
+  // NEU: Sammle Keywords aus ALLEN verfügbaren Quellen
+  const allKeywords = extractAllRelevantKeywords(
+    contextAnswer,
+    tradeAnswers,
+    extractedData,  // Diese Variable sollte bereits im Scope verfügbar sein
+    trade.code
+  );
   
-  console.log(`[LV-VALIDATION] Extracted keywords: ${keywords.join(', ')}`);
+  console.log(`[LV-VALIDATION] Collected ${allKeywords.length} keywords from all sources`);
   
   const beforeFilter = lv.positions.length;
   const filteredPositions = [];
@@ -7672,38 +7677,84 @@ if ((projectMetadata.isManual || projectMetadata.isAiRecommended) && contextAnsw
   lv.positions.forEach(pos => {
     const posTitle = (pos.title || '').toLowerCase();
     const posDesc = (pos.description || '').toLowerCase();
-    const combined = posTitle + ' ' + posDesc;
+    const posText = `${posTitle} ${posDesc}`;
     
-    // 1. Prüfe ob Position zu Kontext-Keywords passt
-    const matchesContext = keywords.some(keyword => 
-      combined.includes(keyword.toLowerCase())
+    // Relevanz-Score System
+    let relevanceScore = 0;
+    const reasons = [];
+    
+    // 1. Direkte Keyword-Übereinstimmung (40 Punkte)
+    const matchingKeywords = allKeywords.filter(kw => 
+      posText.includes(kw.toLowerCase())
     );
     
-    // 2. Nebenleistungen sind immer erlaubt (wenn sie zu den Hauptleistungen passen)
-    const isAuxiliaryService = 
-      posTitle.includes('demontage') ||
-      posTitle.includes('entsorgung') ||
-      posTitle.includes('kleinmaterial') ||
-      posTitle.includes('befestigung') ||
-      posTitle.includes('anfahrt') ||
-      posTitle.includes('baustelleneinrichtung') ||
-      posTitle.includes('koordination') ||
-      posTitle.includes('stundenlohn') ||
-      posTitle.includes('vorbereitung') ||
-      posTitle.includes('nachbehandlung');
+    if (matchingKeywords.length > 0) {
+      relevanceScore += Math.min(40, matchingKeywords.length * 10);
+      reasons.push(`Keywords: ${matchingKeywords.slice(0, 3).join(', ')}`);
+    }
     
-    // 3. Entscheidung
-    if (matchesContext || isAuxiliaryService) {
-      filteredPositions.push(pos);
-      if (matchesContext) {
-        console.log(`[LV-VALIDATION] ✓ KEPT (matches context): "${pos.title}"`);
-      } else {
-        console.log(`[LV-VALIDATION] ✓ KEPT (auxiliary): "${pos.title}"`);
+    // 2. Mengen-Übereinstimmung (30 Punkte)
+    if (pos.quantity) {
+      const quantityStr = pos.quantity.toString();
+      const hasMatchingQuantity = tradeAnswers.some(ans => 
+        ans.answer?.includes(quantityStr)
+      );
+      
+      if (hasMatchingQuantity) {
+        relevanceScore += 30;
+        reasons.push(`Quantity match: ${quantityStr}`);
       }
+    }
+    
+    // 3. Maß-Übereinstimmung (30 Punkte)
+    const dimensionPattern = /\d+\s*[x×]\s*\d+/gi;
+    const posDimensions = posText.match(dimensionPattern);
+    
+    if (posDimensions) {
+      const hasMatchingDimension = tradeAnswers.some(ans => {
+        return posDimensions.some(dim => 
+          ans.answer?.toLowerCase().includes(dim.toLowerCase())
+        );
+      });
+      
+      if (hasMatchingDimension) {
+        relevanceScore += 30;
+        reasons.push('Dimension match');
+      }
+    }
+    
+    // 4. Basis-Arbeiten (20 Punkte)
+    const baseWorkKeywords = [
+      'vorbereitung', 'abdeckung', 'schutz', 'reinigung', 
+      'entsorgung', 'anfahrt', 'montage', 'demontage',
+      'kleinmaterial', 'befestigung', 'baustelleneinrichtung',
+      'koordination', 'stundenlohn', 'nachbehandlung'
+    ];
+    
+    const isBaseWork = baseWorkKeywords.some(kw => posText.includes(kw));
+    if (isBaseWork) {
+      relevanceScore += 20;
+      reasons.push('Base work');
+    }
+    
+    // 5. File-Upload Kontext Bonus (20 Punkte)
+    if (contextAnswer.answer?.includes('Datei analysiert') || 
+        contextAnswer.answer?.includes('PDF') ||
+        contextAnswer.answer?.includes('Excel') ||
+        contextAnswer.answer?.includes('hochgeladen')) {
+      relevanceScore += 20;
+      reasons.push('File context bonus');
+    }
+    
+    // ENTSCHEIDUNG: Position behalten wenn Score >= 30
+    const shouldKeep = relevanceScore >= 30;
+    
+    if (shouldKeep) {
+      filteredPositions.push(pos);
+      console.log(`[LV-VALIDATION] ✓ KEPT (Score: ${relevanceScore}): "${pos.title}"`);
     } else {
       rejectedPositions.push(pos);
-      console.log(`[LV-VALIDATION] ✗ REJECTED (not in scope): "${pos.title}"`);
-      console.log(`[LV-VALIDATION]   → Not mentioned in: "${contextAnswer.answer}"`);
+      console.log(`[LV-VALIDATION] ✗ REJECTED (Score: ${relevanceScore}): "${pos.title}"`);
     }
   });
   
@@ -7713,25 +7764,58 @@ if ((projectMetadata.isManual || projectMetadata.isAiRecommended) && contextAnsw
   
   if (filteredCount > 0) {
     console.log(`[LV-VALIDATION] ═══════════════════════════════════════`);
-    console.log(`[LV-VALIDATION] FILTERED ${filteredCount} non-contextual positions`);
+    console.log(`[LV-VALIDATION] FILTERED ${filteredCount} positions`);
     console.log(`[LV-VALIDATION] Remaining: ${lv.positions.length} positions`);
     console.log(`[LV-VALIDATION] ═══════════════════════════════════════`);
     
     // Füge Hinweis zu Notes hinzu
     if (!lv.additionalNotes) lv.additionalNotes = '';
-    lv.additionalNotes += `\n\nHINWEIS: Dieses LV wurde streng auf den angegebenen Projektumfang beschränkt: "${contextAnswer.answer}". ${filteredCount} nicht relevante Position(en) wurden entfernt.`;
+    lv.additionalNotes += `\n\nHINWEIS: Dieses LV wurde auf Basis aller verfügbaren Informationen erstellt.`;
+    if (contextAnswer.answer?.includes('Datei') || contextAnswer.answer?.includes('PDF')) {
+      lv.additionalNotes += ` Die hochgeladene Datei wurde berücksichtigt.`;
+    }
+    lv.additionalNotes += ` ${lv.positions.length} relevante Positionen wurden identifiziert.`;
   }
   
-  // KRITISCHE PRÜFUNG: Wenn fast alles gefiltert wurde
-  if (lv.positions.length < 3) {
-    console.error(`[LV-VALIDATION] CRITICAL: Only ${lv.positions.length} positions remain after filtering!`);
-    console.error(`[LV-VALIDATION] User scope was: "${contextAnswer.answer}"`);
-    console.error(`[LV-VALIDATION] Rejected positions:`, rejectedPositions.map(p => p.title));
+  // KRITISCHE PRÜFUNG: Warnung bei zu starker Filterung
+  if (lv.positions.length < 3 && rejectedPositions.length > 5) {
+    console.warn(`[LV-VALIDATION] WARNING: Possibly over-filtered!`);
+    console.warn(`[LV-VALIDATION] Only ${lv.positions.length} positions remain`);
     
-    // Bei zu wenig Positionen: Warnung aber nicht abbrechen
-    if (lv.positions.length === 0) {
-      throw new Error(`LV-Generierung fehlgeschlagen: Keine Positionen entsprechen dem angegebenen Projektumfang "${contextAnswer.answer}". Bitte präzisieren Sie die gewünschten Arbeiten.`);
+    // Bei sehr wenigen Positionen: Die besten verworfenen wieder hinzufügen
+    const highScoreRejects = rejectedPositions
+      .map(pos => {
+        // Berechne Score für verworfene Positionen
+        const posText = `${pos.title} ${pos.description}`.toLowerCase();
+        let score = 0;
+        
+        // Basis-Arbeiten bekommen Extra-Chance
+        if (posText.includes('montage') || posText.includes('demontage') || 
+            posText.includes('entsorgung') || posText.includes('vorbereitung')) {
+          score += 15;
+        }
+        
+        return { pos, score };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 2);
+    
+    if (highScoreRejects.length > 0 && lv.positions.length < 2) {
+      console.log('[LV-VALIDATION] Re-adding essential base work positions');
+      highScoreRejects.forEach(item => {
+        lv.positions.push(item.pos);
+        console.log(`[LV-VALIDATION] + Re-added: "${item.pos.title}"`);
+      });
     }
+  }
+  
+  // Wenn gar keine Positionen: Fehler
+  if (lv.positions.length === 0) {
+    throw new Error(
+      `LV-Generierung fehlgeschlagen: Keine passenden Positionen gefunden. ` +
+      `Bitte stellen Sie sicher, dass alle relevanten Fragen beantwortet wurden.`
+    );
   }
 }
 
