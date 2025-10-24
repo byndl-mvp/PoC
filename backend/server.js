@@ -6583,8 +6583,21 @@ const enrichedAnswers = tradeAnswers.map(answer => {
   };
 });
 
+console.log(`[LV-DEBUG] Created ${enrichedAnswers.length} enriched answers from ${tradeAnswers.length} trade answers`);
+console.log(`[LV-DEBUG] Question IDs in enrichedAnswers:`, enrichedAnswers.map(a => a.question_id).sort());
+  
 const uploadCount = enrichedAnswers.filter(a => a.hasUpload).length;
 console.log(`[LV] Enriched ${uploadCount} answers with upload data`);
+
+// Debug: Prüfe ob wichtige Antworten vorhanden sind
+const materialAnswer = enrichedAnswers.find(a => a.question_id === 'FEN-3');
+const fensterBankInnen = enrichedAnswers.find(a => a.question_id === 'FEN-17');
+const leibungAnswer = enrichedAnswers.find(a => a.question_id === 'FEN-23');
+
+console.log('[LV-DEBUG] Critical answers check:');
+console.log('  Material (FEN-3):', materialAnswer ? materialAnswer.answer : 'MISSING!');
+console.log('  Fensterbänke innen (FEN-17):', fensterBankInnen ? fensterBankInnen.answer : 'MISSING!');
+console.log('  Leibungsverputz (FEN-23):', leibungAnswer ? leibungAnswer.answer : 'MISSING!');
   
   // Berechne Fragenanzahl
 const answeredQuestionCount = enrichedAnswers.length;
