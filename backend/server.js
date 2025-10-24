@@ -5013,56 +5013,112 @@ let processedQuestions = questions.slice(0, targetQuestionCount).map((q, idx) =>
   console.log('[QUESTIONS] Ensuring ALL critical window questions...');
   
   // PFLICHT-CHECKS für Fenster
-  const hasMaßfrage = processedQuestions.some(q => 
-    q.question.toLowerCase().includes('maße')
-  );
-  
-  const hasMaterialFrage = processedQuestions.some(q => 
-    q.question.toLowerCase().includes('material') || 
-    q.question.toLowerCase().includes('rahmen')
-  );
-  
-  const hasÖffnungsFrage = processedQuestions.some(q => 
-    q.question.toLowerCase().includes('öffnung') || 
-    q.question.toLowerCase().includes('dreh')
-  );
-  
-  // FÜGE FEHLENDE FRAGEN HINZU
-  let insertPos = 1;
-  
-  if (!hasMaterialFrage) {
-    processedQuestions.splice(insertPos++, 0, {
-      id: 'FEN-MATERIAL',
-      category: 'Material',
-      question: 'Welches Rahmenmaterial wünschen Sie für die Fenster?',
-      explanation: 'Das Material bestimmt bis zu 40% des Preises!',
-      type: 'select',
-      options: ['Kunststoff', 'Holz', 'Holz-Aluminium', 'Aluminium'],
-      required: true,
-      multiSelect: false,
-      unit: null,
-      tradeId: tradeId,
-      tradeName: tradeName
-    });
-  }
-  
-  if (!hasMaßfrage) {
-    processedQuestions.splice(insertPos++, 0, {
-      id: 'FEN-MASSE',
-      category: 'Abmessungen',
-      question: 'Welche Maße haben die einzelnen Fenster? Bitte für jedes Fenster: Breite x Höhe in cm, Anzahl Flügel, Öffnungsart',
-      explanation: 'Beispiel: "Fenster 1: 120x140cm, 2-flügelig, Dreh-Kipp" oder "3 Stück 80x100cm, 1-flügelig, Kipp"',
-      type: 'text',
-      required: true,
-      multiSelect: false,
-      unit: null,
-      tradeId: tradeId,
-      tradeName: tradeName
-    });
-  }
-  
-  console.log('[QUESTIONS] Window questions verified - Material, Maße, Öffnung checked');
+const hasMaßfrage = processedQuestions.some(q => 
+  q.question.toLowerCase().includes('maße')
+);
+
+const hasMaterialFrage = processedQuestions.some(q => 
+  q.question.toLowerCase().includes('material') || 
+  q.question.toLowerCase().includes('rahmen')
+);
+
+const hasÖffnungsFrage = processedQuestions.some(q => 
+  q.question.toLowerCase().includes('öffnung') || 
+  q.question.toLowerCase().includes('dreh')
+);
+
+// NEU: Sicherheit und Verglasung
+const hasSicherheitsFrage = processedQuestions.some(q => 
+  q.question.toLowerCase().includes('sicherheit') || 
+  q.question.toLowerCase().includes('einbruch') ||
+  q.question.toLowerCase().includes('rc2') ||
+  q.question.toLowerCase().includes('rc3')
+);
+
+const hasVerglasungsFrage = processedQuestions.some(q => 
+  q.question.toLowerCase().includes('verglasung') || 
+  q.question.toLowerCase().includes('2-fach') ||
+  q.question.toLowerCase().includes('3-fach') ||
+  q.question.toLowerCase().includes('u-wert')
+);
+
+// FÜGE FEHLENDE FRAGEN HINZU
+let insertPos = 1;
+
+if (!hasMaterialFrage) {
+  processedQuestions.splice(insertPos++, 0, {
+    id: 'FEN-MATERIAL',
+    category: 'Material',
+    question: 'Welches Rahmenmaterial wünschen Sie für die Fenster?',
+    explanation: 'Das Material bestimmt bis zu 40% des Preises!',
+    type: 'select',
+    options: ['Kunststoff', 'Holz', 'Holz-Aluminium', 'Aluminium'],
+    required: true,
+    multiSelect: false,
+    unit: null,
+    tradeId: tradeId,
+    tradeName: tradeName
+  });
 }
+
+if (!hasMaßfrage) {
+  processedQuestions.splice(insertPos++, 0, {
+    id: 'FEN-MASSE',
+    category: 'Abmessungen',
+    question: 'Welche Maße haben die einzelnen Fenster? Bitte für jedes Fenster: Breite x Höhe in cm, Anzahl Flügel, Öffnungsart',
+    explanation: 'Beispiel: "Fenster 1: 120x140cm, 2-flügelig, Dreh-Kipp" oder "3 Stück 80x100cm, 1-flügelig, Kipp"',
+    type: 'text',
+    required: true,
+    multiSelect: false,
+    unit: null,
+    tradeId: tradeId,
+    tradeName: tradeName
+  });
+}
+
+// NEU: Sicherheitsanforderung
+if (!hasSicherheitsFrage) {
+  processedQuestions.splice(insertPos++, 0, {
+    id: 'FEN-SICHERHEIT',
+    category: 'Sicherheit',
+    question: 'Welche Sicherheitsanforderungen haben Sie für die Fenster?',
+    explanation: 'RC2 ist Standard für EG, RC3 für erhöhte Sicherheit. Beeinflusst den Preis um 15-45%',
+    type: 'select',
+    options: ['Keine besonderen Anforderungen', 'RC1 (Grundschutz)', 'RC2 (Standard Einbruchschutz)', 'RC2N (ohne Sicherheitsverglasung)', 'RC3 (Erhöhter Einbruchschutz)'],
+    required: true,
+    multiSelect: false,
+    unit: null,
+    tradeId: tradeId,
+    tradeName: tradeName
+  });
+}
+
+// NEU: Verglasung/Energetik
+if (!hasVerglasungsFrage) {
+  processedQuestions.splice(insertPos++, 0, {
+    id: 'FEN-VERGLASUNG',
+    category: 'Verglasung',
+    question: 'Welche Verglasung wünschen Sie?',
+    explanation: 'Moderne 3-fach Verglasung spart langfristig Heizkosten. Uw-Wert = Wärmedurchgang des gesamten Fensters',
+    type: 'select',
+    options: [
+      '2-fach Verglasung (Uw ~1.3)', 
+      '3-fach Verglasung Standard (Uw ~1.0)', 
+      '3-fach Verglasung Premium (Uw ~0.8)', 
+      '3-fach Passivhaus (Uw ~0.6-0.7)',
+      '4-fach Verglasung (Uw ~0.5)'
+    ],
+    required: true,
+    multiSelect: false,
+    unit: null,
+    tradeId: tradeId,
+    tradeName: tradeName
+  });
+}
+
+console.log('[QUESTIONS] Window questions verified - Material, Maße, Öffnung, Sicherheit, Verglasung checked');
+}
+    
 // INTELLIGENTE GEWERKE-VALIDIERUNG basierend auf Kontext
 processedQuestions = processedQuestions.map((q, idx) => {
   const qLower = q.question.toLowerCase();
