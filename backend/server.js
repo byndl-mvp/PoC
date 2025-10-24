@@ -7649,6 +7649,15 @@ try {
 
 // Das auch BEHALTEN:
 const uploadContext = buildUploadContext(enrichedAnswers);
+
+// Falls extractedData noch nicht geladen wurde, fügen Sie hinzu:
+let extractedData = null;
+if (project.metadata) {
+  const metadata = typeof project.metadata === 'string' 
+    ? JSON.parse(project.metadata)
+    : project.metadata;
+  extractedData = metadata?.extracted || null;
+}
     
 // Validiere LV-Struktur
 if (!lv || !lv.positions || !Array.isArray(lv.positions)) {
