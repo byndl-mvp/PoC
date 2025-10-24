@@ -7637,6 +7637,11 @@ try {
     throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen - Claude lieferte ungültiges JSON trotz JSON-Mode`);
   }
 }
+
+// Das auch BEHALTEN:
+const uploadContext = buildUploadContext(enrichedAnswers);
+const { enforceUploadData } = require('./upload-data-enforcement');
+lv = enforceUploadData(lv, uploadContext, enrichedAnswers);
     
 // Validiere LV-Struktur
 if (!lv || !lv.positions || !Array.isArray(lv.positions)) {
