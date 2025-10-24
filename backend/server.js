@@ -13412,32 +13412,66 @@ else if (file.originalname.match(/\.(xlsx?|csv)$/i)) {
     detectedItems = structuredData.items || [];
     
     // Prüfe ob Items gefunden wurden
-    if (detectedItems.length > 0) {
-      confidence = 0.95;
-      
-      console.log(`[FILE-ANALYZE] Excel: ${detectedItems.length} items found`);
-      
-// Verwende direkt das Ergebnis vom spreadsheetParser
-if (result.text) {
-  // Der Parser liefert bereits eine formatierte Zusammenfassung
-  extractedAnswer = result.text;
+if (detectedItems.length > 0) {
+  confidence = 0.95;
   
-  // Für LLM: Füge strukturierte Daten als Kontext hinzu
-  if (structuredData && structuredData.items && structuredData.items.length > 0) {
-    llmContext = result.text + '\n\nSTRUKTURIERTE DATEN FÜR LV:\n' + 
-                 JSON.stringify(structuredData.items, null, 2);
+  console.log(`[FILE-ANALYZE] Excel: ${detectedItems.length} items found`);
+  
+  // Verwende direkt das Ergebnis vom spreadsheetParser
+  if (result.text) {
+    // Der Parser liefert bereits eine formatierte Zusammenfassung
+    extractedAnswer = result.text;
+    
+    // Für LLM: Füge strukturierte Daten als Kontext hinzu
+    if (structuredData && structuredData.items && structuredData.items.length > 0) {
+      llmContext = result.text + '\n\nSTRUKTURIERTE DATEN FÜR LV:\n' + 
+                   JSON.stringify(structuredData.items, null, 2);
+    } else {
+      llmContext = result.text;
+    }
+    
+    console.log(`[FILE-ANALYZE] Excel: User text: ${extractedAnswer.length} chars`);
+    console.log(`[FILE-ANALYZE] Excel: LLM context: ${llmContext.length} chars`);
   } else {
-    llmContext = result.text;
+    // Fallback falls kein Text generiert wurde
+    extractedAnswer = `${detectedItems.length} Einträge aus Excel extrahiert`;
+    llmContext = extractedAnswer;
   }
   
-  console.log(`[FILE-ANALYZE] Excel: User text: ${extractedAnswer.length} chars`);
-  console.log(`[FILE-ANALYZE] Excel: LLM context: ${llmContext.length} chars`);
+  analysis = `${detectedItems.length} Einträge aus Excel extrahiert`;
+  suggestions = generateDataSuggestions ? generateDataSuggestions(detectedItems, tradeCode) : null;
+  
 } else {
-  // Fallback falls kein Text generiert wurde
-  extractedAnswer = `${detectedItems.length} Einträge aus Excel extrahiert`;
+  // Keine Items gefunden
+  console.warn('[FILE-ANALYZE] Excel: No items extracted');
+  
+  extractedAnswer = result.text || 'Excel analysiert, keine strukturierten Daten gefunden';
   llmContext = extractedAnswer;
+  confidence = 0.7;
+  analysis = 'Excel-Daten extrahiert (keine Items)';
 }
-} 
+
+// Prüfe Metadata
+if (result.metadata?.quality) {
+  confidence = result.metadata.quality.score / 100;
+}
+
+  } catch (excelError) {
+    console.error('[FILE-ANALYZE] Excel parsing error:', excelError);
+    console.error('[FILE-ANALYZE] Error stack:', excelError.stack);
+    
+    // Fehlerfall: Setze Defaults
+    extractedAnswer = 'Excel-Analyse fehlgeschlagen: ' + excelError.message;
+    llmContext = extractedAnswer;
+    structuredData = { type: 'error', items: [], error: excelError.message };
+    documentType = 'SPREADSHEET';
+    detectedItems = [];
+    confidence = 0.3;
+    analysis = 'Excel-Analyse fehlgeschlagen';
+    suggestions = null;
+  }
+}  // <- Diese Klammer schließt den Excel-Block
+  
     // PDF-ANALYSE
     else if (file.mimetype === 'application/pdf') {
       console.log('[FILE-ANALYZE] Processing PDF:', file.originalname);
