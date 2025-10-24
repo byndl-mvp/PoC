@@ -239,59 +239,25 @@ function generateSummary(result, tradeCode) {
     return 'Keine Einträge in der Excel-Tabelle gefunden';
   }
   
-  // Gewerk-spezifische Zusammenfassung
-  switch (tradeCode) {
-    case 'FEN':
-      return generateFensterSummary(items);
-    case 'TIS':
-      return generateTuerenSummary(items);
-    case 'FLI':
-      return generateFliesenSummary(items);
-    case 'BOD':
-      return generateBodenSummary(items);
-    default:
-      return generateGenericSummary(items, tradeCode);
-  }
-}
-
-function generateFensterSummary(items) {
-  const total = items.reduce((sum, item) => sum + (item.anzahl || 1), 0);
-  const uniqueSizes = [...new Set(items.map(i => `${i.breite}x${i.hoehe}`))];
-  
-  if (items.length <= 3) {
-    // Detailliert für wenige Fenster
-    return items.map(item => 
-      `${item.anzahl || 1}x Fenster ${item.breite}x${item.hoehe}cm${item.bezeichnung ? ` (${item.bezeichnung})` : ''}`
-    ).join(', ');
-  } else {
-    // Zusammengefasst für viele
-    return `${total} Fenster in ${uniqueSizes.length} verschiedenen Größen analysiert`;
-  }
-}
-
-function generateTuerenSummary(items) {
-  const total = items.reduce((sum, item) => sum + (item.anzahl || 1), 0);
-  return `${total} Türen aus Excel extrahiert`;
-}
-
-function generateFliesenSummary(items) {
-  const totalArea = items.reduce((sum, item) => {
-    const area = (item.breite / 100) * (item.hoehe / 100) * (item.anzahl || 1);
-    return sum + area;
-  }, 0);
-  return `${items.length} Fliesenformate, ca. ${Math.round(totalArea)} m² Gesamtfläche`;
-}
-
-function generateBodenSummary(items) {
-  const totalArea = items.reduce((sum, item) => {
-    const area = item.flaeche || ((item.breite / 100) * (item.hoehe / 100));
-    return sum + area;
-  }, 0);
-  return `${items.length} Bodenbereiche, ca. ${Math.round(totalArea)} m² Gesamtfläche`;
-}
-
-function generateGenericSummary(items, tradeCode) {
-  return `${items.length} Einträge aus Excel analysiert (${getTradeNameGerman(tradeCode)})`;
+  // IMMER alle Details ausgeben, egal welches Gewerk
+  return items.map((item, idx) => {
+    let parts = [`${idx + 1}.`];
+    
+    Object.entries(item).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        if (typeof value === 'object' && !Array.isArray(value)) {
+          // Objekte auflösen
+          Object.entries(value).forEach(([subKey, subValue]) => {
+            parts.push(`${subKey}: ${subValue}`);
+          });
+        } else {
+          parts.push(`${key}: ${value}`);
+        }
+      }
+    });
+    
+    return parts.join(' | ');
+  }).join(' ');
 }
 
 /**
