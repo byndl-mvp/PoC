@@ -8136,764 +8136,6 @@ if (trade.code === 'TIS' && lv.positions) {
   
   console.log(`[LV-TIS] Post-processing complete. Final position count: ${lv.positions.length}`);
 }
-    
-// NEUE PREISVALIDIERUNG - HIER EINFÜGEN (Zeile 1921)
-const priceValidation = validateAndFixPrices(lv, trade.code);
-if (priceValidation.fixedCount > 0) {
-  console.warn(`[LV] Fixed ${priceValidation.fixedCount} unrealistic prices for ${trade.code}`);
-  lv = priceValidation.lv;
-}
-    
-    // Duplikatsprüfung durchführen
-const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
-
-if (duplicates.length > 0) {
-  console.log(`Warnung: ${duplicates.length} potenzielle Duplikate gefunden für ${trade.name}`);
-  
-  // Prüfe ob spezialisierte Gewerke vorhanden sind
-  const specializedTrades = await query(
-    `SELECT code FROM trades t 
-     JOIN project_trades pt ON t.id = pt.trade_id 
-     WHERE pt.project_id = $1 AND t.code IN ('GERÜST', 'ABBR', 'ENTSO')`,
-    [projectId]
-  );
-  
-  const hasGerüstbau = specializedTrades.rows.some(t => t.code === 'GERÜST');
-  const hasAbbruch = specializedTrades.rows.some(t => t.code === 'ABBR');
-  
-  // Filtere Duplikate basierend auf Gewerke-Hierarchie
-  lv.positions = lv.positions.filter(pos => {
-    // Entferne Gerüstpositionen wenn Gerüstbau-Gewerk existiert
-    if (hasGerüstbau && trade.code !== 'GERÜST' && 
-        pos.title?.toLowerCase().includes('gerüst')) {
-      console.log(`Entferne Gerüstposition aus ${trade.code}`);
-      return false;
-    }
-    
-    // Entferne Wanddurchbruch aus Rohbau wenn Abbruch existiert
-    if (hasAbbruch && trade.code === 'ROH' && 
-        pos.title?.toLowerCase().includes('durchbruch')) {
-      console.log(`Entferne Durchbruch aus Rohbau (gehört zu Abbruch)`);
-      return false;
-    }
-    
-    return true;
-  });
-  
-  // Füge Hinweis zu Notes hinzu
-  if (!lv.notes) lv.notes = '';
-  lv.notes += '\n\nGewerkeabgrenzung beachtet - Duplikate wurden entfernt.';
-}
-
-    // NEU: Filtere Gerüstpositionen wenn Gerüst separates Gewerk ist
-    if (hasGeruestGewerk && ['DACH', 'FASS', 'FEN'].includes(trade.code)) {
-      const originalCount = lv.positions?.length || 0;
-      lv.positions = lv.positions?.filter(pos => {
-        const title = (pos.title || '').toLowerCase();
-        const desc = (pos.description || '').toLowerCase();
-        const isScaffolding = title.includes('gerüst') || desc.includes('gerüst') || 
-                             title.includes('arbeitsgerüst') || desc.includes('arbeitsgerüst') ||
-                             title.includes('fassadengerüst') || desc.includes('fassadengerüst');
-        if (isScaffolding) {
-          console.log(`[LV] Filtered scaffolding position in ${trade.code}: ${pos.title}`);
-        }
-        return !isScaffolding;
-      }) || [];
-      
-      if (originalCount !== lv.positions.length) {
-        console.log(`[LV] Removed ${originalCount - lv.positions.length} scaffolding positions from ${trade.code}`);
-      }
-      
-      // Füge Vorbemerkungen hinzu wenn noch nicht vorhanden
-      if (!lv.vorbemerkungen) lv.vorbemerkungen = [];
-      if (!lv.vorbemerkungen.includes('Gerüst wird bauseits gestellt')) {
-        lv.vorbemerkungen.unshift('Gerüst wird bauseits gestellt');
-        lv.vorbemerkungen.unshift('Gerüstkosten sind in separatem Gewerk erfasst');
-      }
-    }
-    
-    // Post-Processing und Stundenlohnarbeiten hinzufügen
-    if (lv.positions && Array.isArray(lv.positions)) {
-  // Filtere leere/ungültige Positionen
-  const validPositions = lv.positions.filter(pos => {
-    // Entferne Positionen mit Menge 0, "-" oder ohne Menge
-    if (!pos.quantity || pos.quantity === 0 || pos.quantity === '-') {
-      console.log(`[LV] Filtered empty position: ${pos.title}`);
-      return false;
-    }
-    
-    // Entferne "nicht vorhanden" Positionen
-    const title = (pos.title || '').toLowerCase();
-    const desc = (pos.description || '').toLowerCase();
-    if (title.includes('nicht vorhanden') || 
-        title.includes('nicht enthalten') ||
-        title.includes('nicht definiert') ||
-        desc.includes('nicht vorhanden') ||
-        desc.includes('keine position')) {
-      console.log(`[LV] Filtered invalid position: ${pos.title}`);
-      return false;
-    }
-    
-    return true;
-  });
-  
-  console.log(`[LV] Filtered ${lv.positions.length - validPositions.length} invalid positions`);
-  lv.positions = validPositions;
-  
-  // Prüfe ob noch genug Positionen übrig sind (80% = 20% Toleranz)
-  if (lv.positions.length < orientation.min * 0.8) {
-    console.warn(`[LV] Only ${lv.positions.length} valid positions remain (80% minimum: ${Math.floor(orientation.min * 0.8)})`);
-    // Optional: Hier könnte ein Retry getriggert werden
-  }
-
-// GER-spezifisch: Konsolidiere mehrfache Standzeit-Positionen
-  if (trade.code === 'GER') {
-    console.log('[GER] Prüfe auf mehrfache Standzeit-Positionen...');
-    
-    const weitereWochenPositionen = lv.positions.filter(pos => {
-      const title = (pos.title || '').toLowerCase();
-      return (
-        (title.includes('woche') && 
-         (title.includes('5') || title.includes('6') || title.includes('7') || 
-          title.includes('8') || title.includes('9') || title.includes('10') ||
-          title.includes('11') || title.includes('12'))) ||
-        (title.includes('weitere') && title.includes('woche')) ||
-        (title.includes('zusätzlich') && title.includes('standzeit'))
-      ) && !title.includes('erste');
-    });
-    
-    if (weitereWochenPositionen.length > 1) {
-      console.log(`[GER] ${weitereWochenPositionen.length} Positionen für weitere Wochen - konsolidiere`);
-      
-      const consolidatedPos = {
-        ...weitereWochenPositionen[0],
-        title: "Gerüst-Standzeit jede weitere Woche (Eventualposition)",
-        description: "Gerüstmiete für jede weitere Woche über 4 Wochen hinaus. Eventualposition. Abrechnung nach Bedarf.",
-        unitPrice: 1.20,
-        totalPrice: weitereWochenPositionen[0].quantity * 1.20,
-        isNEP: true
-      };
-      
-      lv.positions = lv.positions.filter(pos => !weitereWochenPositionen.includes(pos));
-      lv.positions.splice(3, 0, consolidatedPos);
-    }
-    
-    // Korrigiere EP
-    lv.positions = lv.positions.map(pos => {
-      const title = (pos.title || '').toLowerCase();
-      if ((title.includes('weitere') || title.includes('eventualposition')) && 
-          title.includes('woche') && pos.unitPrice > 1.20) {
-        pos.unitPrice = 1.20;
-        pos.totalPrice = pos.quantity * 1.20;
-        pos.isNEP = true;
-      }
-      return pos;
-    });
-    
-    // Entferne separate Demontage/Abtransport-Positionen
-    const vorherAnzahl = lv.positions.length;
-    lv.positions = lv.positions.filter(pos => {
-      const title = (pos.title || '').toLowerCase();
-      const desc = (pos.description || '').toLowerCase();
-      
-      // Entferne reine Demontage/Abbau-Positionen (ohne Aufbau)
-      if ((title.includes('demontage') || title.includes('abbau') || title.includes('abtransport')) &&
-          !title.includes('auf') && 
-          !title.includes('lieferung') &&
-          !title.includes('montage')) {
-        console.log(`[GER] Entferne redundante Position: "${pos.title}"`);
-        return false;
-      }
-      
-      return true;
-    });
-    
-    if (vorherAnzahl !== lv.positions.length) {
-      console.log(`[GER] ${vorherAnzahl - lv.positions.length} redundante Abbau/Transport-Positionen entfernt`);
-    }
-  }
-
-  // FASS-spezifisch: Teil 1 - Korrigiere falsche Dämmstärken
-if (trade.code === 'FASS' && lv.positions) {
-  // Prüfe ob Dämmstärke aus Antworten extrahiert wurde
-  if (criticalMeasurements.daemmstaerke) {
-    const korrekteDaemmstaerke = criticalMeasurements.daemmstaerke.value;
-    console.log(`[FASS] Erzwinge Dämmstärke ${korrekteDaemmstaerke}cm aus Nutzerangaben`);
-    
-    // Gültige Dämmstärken (für Validierung)
-    const gueltigeDaemmstaerken = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
-    
-    if (!gueltigeDaemmstaerken.includes(korrekteDaemmstaerke)) {
-      console.warn(`[FASS] Unübliche Dämmstärke ${korrekteDaemmstaerke}cm aus Antworten - verwende trotzdem!`);
-    }
-    
-    lv.positions = lv.positions.map((pos, index) => {
-      // Prüfe ob Position Dämmung betrifft
-      const istDaemmPosition = 
-        pos.title?.toLowerCase().includes('dämm') ||
-        pos.title?.toLowerCase().includes('wdvs') ||
-        pos.title?.toLowerCase().includes('eps') ||
-        pos.title?.toLowerCase().includes('xps') ||
-        pos.title?.toLowerCase().includes('sockeldämm') ||
-        pos.title?.toLowerCase().includes('perimeter') ||
-        pos.title?.toLowerCase().includes('steinwolle') ||
-        pos.title?.toLowerCase().includes('mineralwolle');
-      
-      if (istDaemmPosition) {
-        // Regex findet ALLE Zahlen vor cm (inkl. 0, ungerade, etc.)
-        const daemmRegex = /\b\d+(\.\d+)?\s*cm\b/gi;
-        
-        let aenderungen = [];
-        
-        // Korrigiere Titel
-        if (pos.title) {
-          const oldTitle = pos.title;
-          // Ersetze JEDE Zahl+cm Kombination mit korrektem Wert
-          pos.title = pos.title.replace(daemmRegex, (match) => {
-            const zahl = parseInt(match);
-            // Nur ersetzen wenn: 0, ungerade, unter 10, oder nicht in gültiger Liste
-            if (zahl === 0 || zahl < 10 || zahl % 2 !== 0 || !gueltigeDaemmstaerken.includes(zahl)) {
-              aenderungen.push(`${match} → ${korrekteDaemmstaerke} cm`);
-              return `${korrekteDaemmstaerke} cm`;
-            }
-            // Sonst: Wenn Zahl gültig aber nicht die aus Antworten
-            if (zahl !== korrekteDaemmstaerke) {
-              aenderungen.push(`${match} → ${korrekteDaemmstaerke} cm`);
-              return `${korrekteDaemmstaerke} cm`;
-            }
-            return match;
-          });
-          
-          if (oldTitle !== pos.title) {
-            console.log(`[FASS] Position ${index+1} Titel korrigiert:`, aenderungen.join(', '));
-          }
-        }
-        
-        // Korrigiere Beschreibung mit gleichem Ansatz
-        if (pos.description) {
-          pos.description = pos.description.replace(daemmRegex, (match) => {
-            const zahl = parseInt(match);
-            if (zahl === 0 || zahl < 10 || zahl % 2 !== 0 || zahl !== korrekteDaemmstaerke) {
-              return `${korrekteDaemmstaerke} cm`;
-            }
-            return match;
-          });
-          
-          // Zusätzlich: Spezifische Kontexte korrigieren
-          pos.description = pos.description.replace(/Stärke:\?\s*\d+\s*cm/gi, `Stärke ${korrekteDaemmstaerke} cm`);
-          pos.description = pos.description.replace(/Dicke:\?\s*\d+\s*cm/gi, `Dicke ${korrekteDaemmstaerke} cm`);
-          pos.description = pos.description.replace(/Höhe:\?\s*\d+\s*cm/gi, `Höhe ${korrekteDaemmstaerke} cm`);
-        }
-        
-        // Finale Prüfung: Warne wenn immer noch problematische Werte
-const nachPruefung = (pos.title + ' ' + pos.description).match(/\b\d+\s*cm\b/gi);
-if (nachPruefung) {
-  nachPruefung.forEach(match => {
-    const zahl = parseInt(match);
-    if (zahl !== korrekteDaemmstaerke && (zahl === 0 || zahl < 10 || zahl % 2 !== 0)) {
-      console.error(`[FASS] KRITISCH: Position ${index+1} enthält noch falsche Dämmstärke: ${match}`);
-    }
-  });
-}
-
-// Spezialbehandlung für Sockeldämmung (2cm dünner als WDVS)
-if (pos.title?.toLowerCase().includes('sockel')) {
-  const sockeldaemmstaerke = Math.max(8, korrekteDaemmstaerke - 2); // 2cm dünner, min. 8cm
-  console.log(`[FASS] Sockeldämmung: ${sockeldaemmstaerke}cm (WDVS-2cm)`);
-  
-  // Ersetze ALLE Dämmstärken in Sockelpositionen mit angepasster Stärke
-  const alleZahlenRegex = /\b\d+(\.\d+)?\s*cm\b/gi;
-  
-  if (pos.title) {
-    pos.title = pos.title.replace(alleZahlenRegex, `${sockeldaemmstaerke} cm`);
-  }
-  
-  if (pos.description) {
-  const originalDescription = pos.description; // Speichere Original
-  
-  pos.description = originalDescription.replace(alleZahlenRegex, (match, p1, offset) => {
-    // Prüfe Kontext - verwende originalDescription statt fullString
-    const vorher = originalDescription.substring(Math.max(0, offset - 20), offset).toLowerCase();
-    if (vorher.includes('höhe') || vorher.includes('sichtbar') || vorher.includes('über')) {
-      return match; // Sockelhöhe nicht ändern
-    }
-    return `${sockeldaemmstaerke} cm`;
-  });
-    
-    // Explizit "Stärke X cm" ersetzen
-    pos.description = pos.description.replace(/Stärke\s+\d+\s*cm/gi, `Stärke ${sockeldaemmstaerke} cm`);
-    pos.description = pos.description.replace(/Dicke\s+\d+\s*cm/gi, `Dicke ${sockeldaemmstaerke} cm`);
-    pos.description = pos.description.replace(/XPS-Platten.*?\d+\s*cm/gi, `XPS-Platten WLG 035, ${sockeldaemmstaerke} cm`);
-  }
-  
-  console.log(`[FASS] Sockeldämmung korrigiert auf ${sockeldaemmstaerke}cm`);
-} // DIESE KLAMMER FEHLTE!
-
-      } // Ende von istDaemmPosition
-      return pos;
-    });
-  } else {
-    // KRITISCHER FEHLER: Keine Dämmstärke gefunden
-    console.error('[FASS] KRITISCH: Keine Dämmstärke in Antworten gefunden!');
-    console.error('[FASS] Suche Notfall-Dämmstärke in den LV-Positionen...');
-    
-    // Versuche Dämmstärke aus vorhandenen Positionen zu extrahieren
-    let gefundeneDaemmstaerken = [];
-    lv.positions.forEach(pos => {
-      const matches = (pos.title + ' ' + pos.description).match(/\b(\d+)\s*cm\b/gi);
-      if (matches) {
-        matches.forEach(m => {
-          const zahl = parseInt(m);
-          if (zahl >= 10 && zahl <= 30 && zahl % 2 === 0) {
-            gefundeneDaemmstaerken.push(zahl);
-          }
-        });
-      }
-    });
-    
-    // Wenn keine gültige Dämmstärke gefunden, verwende 16cm als Standard
-    const notfallDaemmstaerke = gefundeneDaemmstaerken.length > 0 ? 
-      gefundeneDaemmstaerken[0] : 16;
-    
-    console.warn(`[FASS] Verwende Notfall-Dämmstärke: ${notfallDaemmstaerke}cm`);
-    
-    // Korrigiere alle falschen Werte NUR FÜR DÄMMUNG
-    lv.positions = lv.positions.map(pos => {
-      if (pos.title?.toLowerCase().includes('dämm') || 
-          pos.title?.toLowerCase().includes('wdvs')) {
-        // Ersetze 0cm und alle ungeraden/falschen Werte
-        pos.title = pos.title?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
-        pos.title = pos.title?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
-        
-        pos.description = pos.description?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
-        pos.description = pos.description?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
-      }
-      return pos;
-    });
-  }
-  
-// TEIL 2: Entferne falsche Positionen (Isokorb etc.)
-  const vorherCount = lv.positions.length;
-  lv.positions = lv.positions.filter(pos => {
-    const title = (pos.title || '').toLowerCase();
-    const desc = (pos.description || '').toLowerCase();
-    
-    if (title.includes('isokorb') || desc.includes('isokorb')) {
-      console.error(`[FASS] FEHLER: Isokorb-Position entfernt - gehört zu Rohbau!`);
-      return false;
-    }   
-    if ((title.includes('balkon') && title.includes('abtrennen')) ||
-        (desc.includes('thermische trennung') && desc.includes('balkon'))) {
-      console.error(`[FASS] FEHLER: Balkon-Trennung entfernt - unmöglich bei Sanierung!`);
-      return false;
-    }
-    
-    return true;
-  });
-  
-  if (vorherCount !== lv.positions.length) {
-    console.log(`[FASS] ${vorherCount - lv.positions.length} falsche Positionen entfernt`);
-  }
-} // Ende des FASS-Blocks
-      
-// MATERIAL-PREISKORREKTUREN (Kleber, Kabel, etc.)
-lv.positions = lv.positions.map(pos => {
-  const titleLower = (pos.title || pos.bezeichnung || '').toLowerCase();
-  const descLower = (pos.description || '').toLowerCase();
-  
-  // UNIVERSELLE REGEL 1: Kleber/Klebstoff-Preise
-  if (titleLower.includes('kleber') || titleLower.includes('klebstoff')) {
-    if (pos.unit === 'm²' && pos.unitPrice > 15) {
-      const oldPrice = pos.unitPrice;
-      
-      // Bestimme Kleber-Typ
-      let neuerPreis = 5; // Standard
-      if (titleLower.includes('2-komponenten') || titleLower.includes('epoxid')) {
-        neuerPreis = 12; // Teurer Spezialkleber
-      } else if (titleLower.includes('flexkleber') || titleLower.includes('naturstein')) {
-        neuerPreis = 8; // Mittelpreisig
-      }
-      
-      pos.unitPrice = neuerPreis;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      console.log(`[KLEBER] Preis korrigiert: ${oldPrice}€/m² → ${neuerPreis}€/m²`);
-    }
-    
-    // Kleber pro kg
-    if (pos.unit === 'kg' && pos.unitPrice > 25) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 8; // Max 8€/kg für Spezialkleber
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      console.log(`[KLEBER] Preis/kg korrigiert: ${oldPrice}€ → 8€`);
-    }
-  }
-  
-  // UNIVERSELLE REGEL 2: Kabel/Leitungs-Preise
-  if (titleLower.includes('nym') || titleLower.includes('kabel') || 
-      titleLower.includes('leitung') || descLower.includes('nym')) {
-    
-    // NYM-J Kabel nach Querschnitt
-    if (titleLower.includes('nym-j') || titleLower.includes('nym j') || 
-        descLower.includes('nym-j')) {
-      
-      // Suche Querschnitt in Title oder Description
-      const fullText = titleLower + ' ' + descLower;
-      const querschnittMatch = fullText.match(/(\d+)\s*x\s*([\d,\.]+)\s*mm/);
-      
-      if (querschnittMatch) {
-        const adern = parseInt(querschnittMatch[1]);
-        const querschnitt = parseFloat(querschnittMatch[2].replace(',', '.'));
-        
-        let maxPreis = 15; // Basis
-        
-        // Preise nach Querschnitt (inkl. Verlegung)
-        if (querschnitt <= 1.5) {
-          maxPreis = 12; 
-        } else if (querschnitt <= 2.5) {
-          maxPreis = 15;
-        } else if (querschnitt <= 4) {
-          maxPreis = 20;
-        } else if (querschnitt <= 6) {
-          maxPreis = 25;
-        } else if (querschnitt <= 10) {
-          maxPreis = 35;
-        } else {
-          maxPreis = 45; // Große Querschnitte
-        }
-        
-        // 5-adrig ist teurer
-        if (adern === 5) {
-          maxPreis = Math.round(maxPreis * 1.3);
-        }
-        
-        if (pos.unit === 'm' && pos.unitPrice > maxPreis) {
-          const oldPrice = pos.unitPrice;
-          pos.unitPrice = maxPreis;
-          pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-          console.log(`[KABEL] NYM-J ${adern}x${querschnitt}mm² korrigiert: ${oldPrice}€/m → ${maxPreis}€/m`);
-        }
-      }
-    }
-    
-    // Datenkabel
-    if (titleLower.includes('cat') || titleLower.includes('netzwerk') || 
-        titleLower.includes('lan')) {
-      if (pos.unit === 'm' && pos.unitPrice > 25) {
-        const oldPrice = pos.unitPrice;
-        let neuerPreis = 12; // Standard CAT
-        
-        if (titleLower.includes('cat7') || titleLower.includes('cat 7')) {
-          neuerPreis = 18; // CAT7 teurer
-        } else if (titleLower.includes('cat6') || titleLower.includes('cat 6')) {
-          neuerPreis = 15; // CAT6 mittel
-        }
-        
-        pos.unitPrice = neuerPreis;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        console.log(`[KABEL] Datenkabel korrigiert: ${oldPrice}€/m → ${neuerPreis}€/m`);
-      }
-    }
-    
-    // Erdkabel NYY
-    if (titleLower.includes('nyy') || titleLower.includes('erdkabel')) {
-      if (pos.unit === 'm' && pos.unitPrice > 50) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = 35; // Erdkabel max 35€/m inkl. Verlegung
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        console.log(`[KABEL] Erdkabel korrigiert: ${oldPrice}€/m → 35€/m`);
-      }
-    }
-  }
-  
-  return pos;
-});
-
-// ROH-spezifisch: Entferne falsche Holzbau-Positionen
-if (trade.code === 'ROH' && lv.positions) {
-  console.log('[ROH] Prüfe auf falsche Holzbau-Positionen...');
-  
-  const vorherCount = lv.positions.length;
-  lv.positions = lv.positions.filter(pos => {
-    const title = (pos.title || '').toLowerCase();
-    const desc = (pos.description || '').toLowerCase();
-    
-    // Holzbau-Keywords die NICHT in ROH gehören
-    const holzbauKeywords = [
-      'holzständer', 'holzrahmen', 'holzbalkendecke', 'holzkonstruktion',
-      'sparren', 'pfetten', 'firstbalken', 'gratbalken', 'windrispen',
-      'konstruktionsvollholz', 'kvh', 'c24', 'balkenschuhe', 'holzschutz'
-    ];
-    
-    // Prüfe ob Position Holzbau enthält
-    const istHolzbau = holzbauKeywords.some(keyword => 
-      title.includes(keyword) || desc.includes(keyword)
-    );
-    
-    if (istHolzbau) {
-      console.log(`[ROH] FEHLER: Holzbau-Position entfernt: "${pos.title}"`);
-      return false; // Position entfernen
-    }
-    
-    // Auch "Aufstockung in Holz" ist Zimmerer-Sache
-    if ((title.includes('aufstockung') || desc.includes('aufstockung')) &&
-        (title.includes('holz') || desc.includes('holz'))) {
-      console.log(`[ROH] FEHLER: Holz-Aufstockung gehört zu ZIMM: "${pos.title}"`);
-      return false;
-    }
-    
-    return true; // Position behalten
-  });
-  
-  if (vorherCount !== lv.positions.length) {
-    console.error(`[ROH] KRITISCH: ${vorherCount - lv.positions.length} Holzbau-Positionen entfernt - gehören zu ZIMMERER!`);
-    
-    // Füge Hinweis-Position ein
-    if (lv.positions.length < orientation.min * 0.7) {
-      lv.positions.push({
-        pos: `${lv.positions.length + 1}.00`,
-        title: "HINWEIS: Holzbauarbeiten",
-        description: "Holzbauarbeiten für Aufstockung siehe separates Gewerk ZIMMERER. Rohbau erstellt nur die Anschlüsse und Verstärkungen am Bestandsmauerwerk.",
-        quantity: 1,
-        unit: "psch",
-        unitPrice: 0,
-        totalPrice: 0,
-        isNEP: true,
-        notes: "Nur zur Information - keine Kosten"
-      });
-    }
-  }
-}  
-    
-// ZIMM-spezifisch: Prüfe ob Holzbau-Positionen vorhanden sind
-if (trade.code === 'ZIMM' && lv.positions) {
-  const hatHolzbau = lv.positions.some(pos => 
-    pos.title?.toLowerCase().includes('holz') || 
-    pos.description?.toLowerCase().includes('holz')
-  );
-  
-  if (!hatHolzbau) {
-    console.error('[ZIMM] WARNUNG: Zimmerer-LV ohne Holzbau-Positionen!');
-  }
-}
-      
-  let calculatedSum = 0;
-  let nepSum = 0; // NEU: Summe der NEP-Positionen
-  
-  lv.positions = lv.positions.map(pos => {
-    // NEU: NEP-Flag standardmäßig false
-    if (pos.isNEP === undefined) {
-      pos.isNEP = false;
-    }
-    
-    if (!pos.totalPrice && pos.quantity && pos.unitPrice) {
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-    }
-    
-    // NEU: NEP-Positionen nicht zur Hauptsumme addieren
-    if (!pos.isNEP) {
-      calculatedSum += pos.totalPrice || 0;
-    } else {
-      nepSum += pos.totalPrice || 0;
-    }
-    
-    return pos;
-  });
-  
-  // NEU: NEP-Summe separat speichern
-  lv.nepSum = Math.round(nepSum * 100) / 100;
-  lv.totalSum = Math.round(calculatedSum * 100) / 100;  // DIESE ZEILE FEHLT!
-      
-      // Stundenlohnarbeiten hinzufügen
-      const stundenSätze = {
-        'MAL': { stunden: 5, satz: 45, bezeichnung: 'Maler/Lackierer' },
-        'GER': { stunden: 5, satz: 35, bezeichnung: 'Gerüstbauer' },
-        'ESTR': { stunden: 5, satz: 50, bezeichnung: 'Estrichleger' },
-        'FLI': { stunden: 8, satz: 55, bezeichnung: 'Fliesenleger' },
-        'DACH': { stunden: 15, satz: 65, bezeichnung: 'Dachdecker' },
-        'ELEKT': { stunden: 12, satz: 70, bezeichnung: 'Elektriker' },
-        'SAN': { stunden: 15, satz: 75, bezeichnung: 'Sanitärinstallateur' },
-        'HEI': { stunden: 12, satz: 75, bezeichnung: 'Heizungsbauer' },
-        'TIS': { stunden: 10, satz: 60, bezeichnung: 'Tischler' },
-        'FEN': { stunden: 8, satz: 60, bezeichnung: 'Fensterbauer' },
-        'ZIMM': { stunden: 12, satz: 65, bezeichnung: 'Zimmerer' },
-        'DEFAULT': { stunden: 8, satz: 55, bezeichnung: 'Handwerker' }
-      };
-      
-      const stundenConfig = stundenSätze[trade.code] || stundenSätze['DEFAULT'];
-      
-      // Füge Stundenlohnposition hinzu
-      const stundenlohnPos = {
-        pos: `${lv.positions.length + 1}.00`,
-        title: `Stundenlohnarbeiten ${stundenConfig.bezeichnung}`,
-        description: `Zusätzliche Arbeiten auf Stundenlohnbasis für unvorhergesehene oder kleinteilige Leistungen, die nicht im LV erfasst sind. Abrechnung nach tatsächlichem Aufwand.`,
-        quantity: stundenConfig.stunden,
-        unit: 'Std',
-        unitPrice: stundenConfig.satz,
-        totalPrice: stundenConfig.stunden * stundenConfig.satz,
-        dataSource: 'standard',
-        notes: 'Pauschal einkalkuliert für Zusatzarbeiten'
-      };
-      
-      lv.positions.push(stundenlohnPos);
-      // NEUE POSITION: Stundenlohn-Korrektur HIER, NACH dem Hinzufügen
-const summeOhneStundenlohn = lv.totalSum; // Summe VOR Stundenlohn
-if (summeOhneStundenlohn < 2000) {
-  const maxStundenlohn = summeOhneStundenlohn * 0.10;
-  
-  if (stundenlohnPos.totalPrice > maxStundenlohn) {
-    console.log(`[STUNDENLOHN] Korrigiere: ${stundenlohnPos.totalPrice}€ -> max ${maxStundenlohn}€`);
-    
-    if (summeOhneStundenlohn < 500) {
-      stundenlohnPos.quantity = 1;
-    } else if (summeOhneStundenlohn < 1000) {
-      stundenlohnPos.quantity = 2;
-    } else {
-      stundenlohnPos.quantity = Math.max(2, Math.floor(maxStundenlohn / stundenlohnPos.unitPrice));
-    }
-    
-    stundenlohnPos.totalPrice = stundenlohnPos.quantity * stundenlohnPos.unitPrice;
-    console.log(`[STUNDENLOHN] Neue Menge: ${stundenlohnPos.quantity} Std`);
-  }
-}
-      
-      calculatedSum += stundenlohnPos.totalPrice;
-      
-      lv.totalSum = Math.round(calculatedSum * 100) / 100;
-
-      // Vorbemerkungen aus Intake-Daten generieren falls nicht vorhanden
-      if (!lv.vorbemerkungen || lv.vorbemerkungen.length === 0) {
-        lv.vorbemerkungen = [];
-        
-        // Extrahiere relevante Intake-Infos
-        const gebäudeInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('gebäude'));
-        const zufahrtInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('zufahrt') || a.question.toLowerCase().includes('zugang'));
-        const zeitInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('zeit') || a.question.toLowerCase().includes('termin'));
-        
-        if (gebäudeInfo) {
-          lv.vorbemerkungen.push(`Gebäude: ${gebäudeInfo.answer}`);
-        }
-        if (zufahrtInfo) {
-          lv.vorbemerkungen.push(`Baustellenzugang: ${zufahrtInfo.answer}`);
-        }
-        if (zeitInfo) {
-          lv.vorbemerkungen.push(`Ausführungszeitraum: ${zeitInfo.answer}`);
-        }
-        
-        // Standard-Vorbemerkungen
-        lv.vorbemerkungen.push('Alle Preise verstehen sich inklusive aller Nebenleistungen gemäß VOB/C');
-        lv.vorbemerkungen.push('Baustrom und Bauwasser werden bauseits gestellt');
-      }
-
-      // Adress-Anonymisierung in Vorbemerkungen
-if (lv.vorbemerkungen && Array.isArray(lv.vorbemerkungen)) {
-  lv.vorbemerkungen = lv.vorbemerkungen.map(vorbemerkung => {
-    // Variante 1: "Straße Nr, PLZ Stadt" → "PLZ Stadt"
-    let result = vorbemerkung.replace(
-      /[A-ZÄÖÜ][a-zäöüß\-]+\s+(?:straße|str\.?|strasse|weg|platz|allee|gasse|ring|pfad)\.?\s+\d+[a-zA-Z]?,?\s*/gi, 
-      ''
-    );
-    
-    // Variante 2: "PLZ Stadt, Straße Nr" → "PLZ Stadt"
-    result = result.replace(
-      /,\s*[A-ZÄÖÜ][a-zäöüß\-]+\s+(?:straße|str\.?|strasse|weg|platz|allee|gasse|ring|pfad)\.?\s+\d+[a-zA-Z]?\.?/gi,
-      ''
-    );
-    
-    // Aufräumen
-    result = result.replace(/,\s*,/g, ',');
-    result = result.replace(/,\s*$/g, ''); // Komma am Ende entfernen
-    
-    return result;
-  });
-}
-      
-      // Statistiken
-      lv.statistics = {
-        positionCount: lv.positions.length,
-        averagePositionValue: Math.round((lv.totalSum / lv.positions.length) * 100) / 100,
-        minPosition: Math.min(...lv.positions.map(p => p.totalPrice || 0)),
-        maxPosition: Math.max(...lv.positions.map(p => p.totalPrice || 0)),
-        measuredPositions: lv.positions.filter(p => p.dataSource === 'measured').length,
-        estimatedPositions: lv.positions.filter(p => p.dataSource === 'estimated').length,
-        hasStundenlohn: true
-      };
-    }
-    
-    // Metadaten
-    const lvWithMeta = {
-      ...lv,
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        projectId,
-        tradeId,
-        hasVorbemerkungen: lv.vorbemerkungen && lv.vorbemerkungen.length > 0,
-        vorbemerkungCount: lv.vorbemerkungen?.length || 0,
-        intakeAnswersCount: intakeAnswers.length,
-        tradeAnswersCount: tradeAnswers.length,
-        positionsCount: lv.positions?.length || 0,
-        totalValue: lv.totalSum || 0,
-        dataQuality: lv.dataQuality || { confidence: 0.5 }
-      }
-    };
-    
-    return lvWithMeta;
-    
-  } catch (err) {
-    console.error('[LV] Generation failed:', err);
-    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen`);
-  }
-}
-
-// Optimierte LV-Generierung - schnell und effizient
-async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
-  let lastError;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`[LV] Generation attempt ${attempt}/${maxRetries} for trade ${tradeId}`);
-      
-      const result = await generateDetailedLV(projectId, tradeId);
-      
-      console.log(`[LV] Successfully generated on attempt ${attempt}`);
-      console.log(`[LV] Generated for trade ${tradeId}: ${result.positions?.length || 0} positions, Total: €${result.totalSum || 0}`);
-      return result;
-      
-    } catch (error) {
-      lastError = error;
-      console.error(`[LV] Attempt ${attempt} failed:`, error.message);
-      
-      // Bei Datenfehlern NICHT wiederholen - das bringt nichts
-      if (error.message.includes('JSON') || 
-          error.message.includes('[object Object]') ||
-          error.message.includes('undefined') ||
-          error.message.includes('duplicate')) {
-        console.error('[LV] Data/Structure error detected - not retrying:', error.message);
-        throw error; // Sofort fehlschlagen
-      }
-      
-      // Nur bei echten API/Netzwerk-Fehlern retry
-      if (attempt < maxRetries) {
-        // Nur bei OpenAI Rate Limits oder Timeouts wiederholen
-        if (error.message.includes('Rate limit') || 
-            error.message.includes('timeout') ||
-            error.message.includes('OpenAI') ||
-            error.message.includes('network')) {
-          const waitTime = 500; // Kurze konstante Wartezeit
-          console.log(`[LV] API/Network issue - waiting ${waitTime}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        } else {
-          // Unbekannter Fehler - nicht wiederholen
-          console.error('[LV] Unknown error type - not retrying');
-          throw error;
-        }
-      }
-    }
-  }
-  
-  // Log den letzten Fehler ausführlich
-  console.error('[LV] All attempts failed. Last error:', lastError);
-  throw new Error(`LV-Generierung fehlgeschlagen: ${lastError.message}`);
-}
 
 /**
  * Intelligentere Preisvalidierung basierend auf Kontext
@@ -10452,6 +9694,764 @@ if (fixedCount > 0) {
 }
   
   return { lv, fixedCount, warnings };
+}
+    
+// NEUE PREISVALIDIERUNG - HIER EINFÜGEN (Zeile 1921)
+const priceValidation = validateAndFixPrices(lv, trade.code);
+if (priceValidation.fixedCount > 0) {
+  console.warn(`[LV] Fixed ${priceValidation.fixedCount} unrealistic prices for ${trade.code}`);
+  lv = priceValidation.lv;
+}
+    
+    // Duplikatsprüfung durchführen
+const duplicates = await checkForDuplicatePositions(projectId, tradeId, lv.positions);
+
+if (duplicates.length > 0) {
+  console.log(`Warnung: ${duplicates.length} potenzielle Duplikate gefunden für ${trade.name}`);
+  
+  // Prüfe ob spezialisierte Gewerke vorhanden sind
+  const specializedTrades = await query(
+    `SELECT code FROM trades t 
+     JOIN project_trades pt ON t.id = pt.trade_id 
+     WHERE pt.project_id = $1 AND t.code IN ('GERÜST', 'ABBR', 'ENTSO')`,
+    [projectId]
+  );
+  
+  const hasGerüstbau = specializedTrades.rows.some(t => t.code === 'GERÜST');
+  const hasAbbruch = specializedTrades.rows.some(t => t.code === 'ABBR');
+  
+  // Filtere Duplikate basierend auf Gewerke-Hierarchie
+  lv.positions = lv.positions.filter(pos => {
+    // Entferne Gerüstpositionen wenn Gerüstbau-Gewerk existiert
+    if (hasGerüstbau && trade.code !== 'GERÜST' && 
+        pos.title?.toLowerCase().includes('gerüst')) {
+      console.log(`Entferne Gerüstposition aus ${trade.code}`);
+      return false;
+    }
+    
+    // Entferne Wanddurchbruch aus Rohbau wenn Abbruch existiert
+    if (hasAbbruch && trade.code === 'ROH' && 
+        pos.title?.toLowerCase().includes('durchbruch')) {
+      console.log(`Entferne Durchbruch aus Rohbau (gehört zu Abbruch)`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // Füge Hinweis zu Notes hinzu
+  if (!lv.notes) lv.notes = '';
+  lv.notes += '\n\nGewerkeabgrenzung beachtet - Duplikate wurden entfernt.';
+}
+
+    // NEU: Filtere Gerüstpositionen wenn Gerüst separates Gewerk ist
+    if (hasGeruestGewerk && ['DACH', 'FASS', 'FEN'].includes(trade.code)) {
+      const originalCount = lv.positions?.length || 0;
+      lv.positions = lv.positions?.filter(pos => {
+        const title = (pos.title || '').toLowerCase();
+        const desc = (pos.description || '').toLowerCase();
+        const isScaffolding = title.includes('gerüst') || desc.includes('gerüst') || 
+                             title.includes('arbeitsgerüst') || desc.includes('arbeitsgerüst') ||
+                             title.includes('fassadengerüst') || desc.includes('fassadengerüst');
+        if (isScaffolding) {
+          console.log(`[LV] Filtered scaffolding position in ${trade.code}: ${pos.title}`);
+        }
+        return !isScaffolding;
+      }) || [];
+      
+      if (originalCount !== lv.positions.length) {
+        console.log(`[LV] Removed ${originalCount - lv.positions.length} scaffolding positions from ${trade.code}`);
+      }
+      
+      // Füge Vorbemerkungen hinzu wenn noch nicht vorhanden
+      if (!lv.vorbemerkungen) lv.vorbemerkungen = [];
+      if (!lv.vorbemerkungen.includes('Gerüst wird bauseits gestellt')) {
+        lv.vorbemerkungen.unshift('Gerüst wird bauseits gestellt');
+        lv.vorbemerkungen.unshift('Gerüstkosten sind in separatem Gewerk erfasst');
+      }
+    }
+    
+    // Post-Processing und Stundenlohnarbeiten hinzufügen
+    if (lv.positions && Array.isArray(lv.positions)) {
+  // Filtere leere/ungültige Positionen
+  const validPositions = lv.positions.filter(pos => {
+    // Entferne Positionen mit Menge 0, "-" oder ohne Menge
+    if (!pos.quantity || pos.quantity === 0 || pos.quantity === '-') {
+      console.log(`[LV] Filtered empty position: ${pos.title}`);
+      return false;
+    }
+    
+    // Entferne "nicht vorhanden" Positionen
+    const title = (pos.title || '').toLowerCase();
+    const desc = (pos.description || '').toLowerCase();
+    if (title.includes('nicht vorhanden') || 
+        title.includes('nicht enthalten') ||
+        title.includes('nicht definiert') ||
+        desc.includes('nicht vorhanden') ||
+        desc.includes('keine position')) {
+      console.log(`[LV] Filtered invalid position: ${pos.title}`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  console.log(`[LV] Filtered ${lv.positions.length - validPositions.length} invalid positions`);
+  lv.positions = validPositions;
+  
+  // Prüfe ob noch genug Positionen übrig sind (80% = 20% Toleranz)
+  if (lv.positions.length < orientation.min * 0.8) {
+    console.warn(`[LV] Only ${lv.positions.length} valid positions remain (80% minimum: ${Math.floor(orientation.min * 0.8)})`);
+    // Optional: Hier könnte ein Retry getriggert werden
+  }
+
+// GER-spezifisch: Konsolidiere mehrfache Standzeit-Positionen
+  if (trade.code === 'GER') {
+    console.log('[GER] Prüfe auf mehrfache Standzeit-Positionen...');
+    
+    const weitereWochenPositionen = lv.positions.filter(pos => {
+      const title = (pos.title || '').toLowerCase();
+      return (
+        (title.includes('woche') && 
+         (title.includes('5') || title.includes('6') || title.includes('7') || 
+          title.includes('8') || title.includes('9') || title.includes('10') ||
+          title.includes('11') || title.includes('12'))) ||
+        (title.includes('weitere') && title.includes('woche')) ||
+        (title.includes('zusätzlich') && title.includes('standzeit'))
+      ) && !title.includes('erste');
+    });
+    
+    if (weitereWochenPositionen.length > 1) {
+      console.log(`[GER] ${weitereWochenPositionen.length} Positionen für weitere Wochen - konsolidiere`);
+      
+      const consolidatedPos = {
+        ...weitereWochenPositionen[0],
+        title: "Gerüst-Standzeit jede weitere Woche (Eventualposition)",
+        description: "Gerüstmiete für jede weitere Woche über 4 Wochen hinaus. Eventualposition. Abrechnung nach Bedarf.",
+        unitPrice: 1.20,
+        totalPrice: weitereWochenPositionen[0].quantity * 1.20,
+        isNEP: true
+      };
+      
+      lv.positions = lv.positions.filter(pos => !weitereWochenPositionen.includes(pos));
+      lv.positions.splice(3, 0, consolidatedPos);
+    }
+    
+    // Korrigiere EP
+    lv.positions = lv.positions.map(pos => {
+      const title = (pos.title || '').toLowerCase();
+      if ((title.includes('weitere') || title.includes('eventualposition')) && 
+          title.includes('woche') && pos.unitPrice > 1.20) {
+        pos.unitPrice = 1.20;
+        pos.totalPrice = pos.quantity * 1.20;
+        pos.isNEP = true;
+      }
+      return pos;
+    });
+    
+    // Entferne separate Demontage/Abtransport-Positionen
+    const vorherAnzahl = lv.positions.length;
+    lv.positions = lv.positions.filter(pos => {
+      const title = (pos.title || '').toLowerCase();
+      const desc = (pos.description || '').toLowerCase();
+      
+      // Entferne reine Demontage/Abbau-Positionen (ohne Aufbau)
+      if ((title.includes('demontage') || title.includes('abbau') || title.includes('abtransport')) &&
+          !title.includes('auf') && 
+          !title.includes('lieferung') &&
+          !title.includes('montage')) {
+        console.log(`[GER] Entferne redundante Position: "${pos.title}"`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    if (vorherAnzahl !== lv.positions.length) {
+      console.log(`[GER] ${vorherAnzahl - lv.positions.length} redundante Abbau/Transport-Positionen entfernt`);
+    }
+  }
+
+  // FASS-spezifisch: Teil 1 - Korrigiere falsche Dämmstärken
+if (trade.code === 'FASS' && lv.positions) {
+  // Prüfe ob Dämmstärke aus Antworten extrahiert wurde
+  if (criticalMeasurements.daemmstaerke) {
+    const korrekteDaemmstaerke = criticalMeasurements.daemmstaerke.value;
+    console.log(`[FASS] Erzwinge Dämmstärke ${korrekteDaemmstaerke}cm aus Nutzerangaben`);
+    
+    // Gültige Dämmstärken (für Validierung)
+    const gueltigeDaemmstaerken = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
+    
+    if (!gueltigeDaemmstaerken.includes(korrekteDaemmstaerke)) {
+      console.warn(`[FASS] Unübliche Dämmstärke ${korrekteDaemmstaerke}cm aus Antworten - verwende trotzdem!`);
+    }
+    
+    lv.positions = lv.positions.map((pos, index) => {
+      // Prüfe ob Position Dämmung betrifft
+      const istDaemmPosition = 
+        pos.title?.toLowerCase().includes('dämm') ||
+        pos.title?.toLowerCase().includes('wdvs') ||
+        pos.title?.toLowerCase().includes('eps') ||
+        pos.title?.toLowerCase().includes('xps') ||
+        pos.title?.toLowerCase().includes('sockeldämm') ||
+        pos.title?.toLowerCase().includes('perimeter') ||
+        pos.title?.toLowerCase().includes('steinwolle') ||
+        pos.title?.toLowerCase().includes('mineralwolle');
+      
+      if (istDaemmPosition) {
+        // Regex findet ALLE Zahlen vor cm (inkl. 0, ungerade, etc.)
+        const daemmRegex = /\b\d+(\.\d+)?\s*cm\b/gi;
+        
+        let aenderungen = [];
+        
+        // Korrigiere Titel
+        if (pos.title) {
+          const oldTitle = pos.title;
+          // Ersetze JEDE Zahl+cm Kombination mit korrektem Wert
+          pos.title = pos.title.replace(daemmRegex, (match) => {
+            const zahl = parseInt(match);
+            // Nur ersetzen wenn: 0, ungerade, unter 10, oder nicht in gültiger Liste
+            if (zahl === 0 || zahl < 10 || zahl % 2 !== 0 || !gueltigeDaemmstaerken.includes(zahl)) {
+              aenderungen.push(`${match} → ${korrekteDaemmstaerke} cm`);
+              return `${korrekteDaemmstaerke} cm`;
+            }
+            // Sonst: Wenn Zahl gültig aber nicht die aus Antworten
+            if (zahl !== korrekteDaemmstaerke) {
+              aenderungen.push(`${match} → ${korrekteDaemmstaerke} cm`);
+              return `${korrekteDaemmstaerke} cm`;
+            }
+            return match;
+          });
+          
+          if (oldTitle !== pos.title) {
+            console.log(`[FASS] Position ${index+1} Titel korrigiert:`, aenderungen.join(', '));
+          }
+        }
+        
+        // Korrigiere Beschreibung mit gleichem Ansatz
+        if (pos.description) {
+          pos.description = pos.description.replace(daemmRegex, (match) => {
+            const zahl = parseInt(match);
+            if (zahl === 0 || zahl < 10 || zahl % 2 !== 0 || zahl !== korrekteDaemmstaerke) {
+              return `${korrekteDaemmstaerke} cm`;
+            }
+            return match;
+          });
+          
+          // Zusätzlich: Spezifische Kontexte korrigieren
+          pos.description = pos.description.replace(/Stärke:\?\s*\d+\s*cm/gi, `Stärke ${korrekteDaemmstaerke} cm`);
+          pos.description = pos.description.replace(/Dicke:\?\s*\d+\s*cm/gi, `Dicke ${korrekteDaemmstaerke} cm`);
+          pos.description = pos.description.replace(/Höhe:\?\s*\d+\s*cm/gi, `Höhe ${korrekteDaemmstaerke} cm`);
+        }
+        
+        // Finale Prüfung: Warne wenn immer noch problematische Werte
+const nachPruefung = (pos.title + ' ' + pos.description).match(/\b\d+\s*cm\b/gi);
+if (nachPruefung) {
+  nachPruefung.forEach(match => {
+    const zahl = parseInt(match);
+    if (zahl !== korrekteDaemmstaerke && (zahl === 0 || zahl < 10 || zahl % 2 !== 0)) {
+      console.error(`[FASS] KRITISCH: Position ${index+1} enthält noch falsche Dämmstärke: ${match}`);
+    }
+  });
+}
+
+// Spezialbehandlung für Sockeldämmung (2cm dünner als WDVS)
+if (pos.title?.toLowerCase().includes('sockel')) {
+  const sockeldaemmstaerke = Math.max(8, korrekteDaemmstaerke - 2); // 2cm dünner, min. 8cm
+  console.log(`[FASS] Sockeldämmung: ${sockeldaemmstaerke}cm (WDVS-2cm)`);
+  
+  // Ersetze ALLE Dämmstärken in Sockelpositionen mit angepasster Stärke
+  const alleZahlenRegex = /\b\d+(\.\d+)?\s*cm\b/gi;
+  
+  if (pos.title) {
+    pos.title = pos.title.replace(alleZahlenRegex, `${sockeldaemmstaerke} cm`);
+  }
+  
+  if (pos.description) {
+  const originalDescription = pos.description; // Speichere Original
+  
+  pos.description = originalDescription.replace(alleZahlenRegex, (match, p1, offset) => {
+    // Prüfe Kontext - verwende originalDescription statt fullString
+    const vorher = originalDescription.substring(Math.max(0, offset - 20), offset).toLowerCase();
+    if (vorher.includes('höhe') || vorher.includes('sichtbar') || vorher.includes('über')) {
+      return match; // Sockelhöhe nicht ändern
+    }
+    return `${sockeldaemmstaerke} cm`;
+  });
+    
+    // Explizit "Stärke X cm" ersetzen
+    pos.description = pos.description.replace(/Stärke\s+\d+\s*cm/gi, `Stärke ${sockeldaemmstaerke} cm`);
+    pos.description = pos.description.replace(/Dicke\s+\d+\s*cm/gi, `Dicke ${sockeldaemmstaerke} cm`);
+    pos.description = pos.description.replace(/XPS-Platten.*?\d+\s*cm/gi, `XPS-Platten WLG 035, ${sockeldaemmstaerke} cm`);
+  }
+  
+  console.log(`[FASS] Sockeldämmung korrigiert auf ${sockeldaemmstaerke}cm`);
+} // DIESE KLAMMER FEHLTE!
+
+      } // Ende von istDaemmPosition
+      return pos;
+    });
+  } else {
+    // KRITISCHER FEHLER: Keine Dämmstärke gefunden
+    console.error('[FASS] KRITISCH: Keine Dämmstärke in Antworten gefunden!');
+    console.error('[FASS] Suche Notfall-Dämmstärke in den LV-Positionen...');
+    
+    // Versuche Dämmstärke aus vorhandenen Positionen zu extrahieren
+    let gefundeneDaemmstaerken = [];
+    lv.positions.forEach(pos => {
+      const matches = (pos.title + ' ' + pos.description).match(/\b(\d+)\s*cm\b/gi);
+      if (matches) {
+        matches.forEach(m => {
+          const zahl = parseInt(m);
+          if (zahl >= 10 && zahl <= 30 && zahl % 2 === 0) {
+            gefundeneDaemmstaerken.push(zahl);
+          }
+        });
+      }
+    });
+    
+    // Wenn keine gültige Dämmstärke gefunden, verwende 16cm als Standard
+    const notfallDaemmstaerke = gefundeneDaemmstaerken.length > 0 ? 
+      gefundeneDaemmstaerken[0] : 16;
+    
+    console.warn(`[FASS] Verwende Notfall-Dämmstärke: ${notfallDaemmstaerke}cm`);
+    
+    // Korrigiere alle falschen Werte NUR FÜR DÄMMUNG
+    lv.positions = lv.positions.map(pos => {
+      if (pos.title?.toLowerCase().includes('dämm') || 
+          pos.title?.toLowerCase().includes('wdvs')) {
+        // Ersetze 0cm und alle ungeraden/falschen Werte
+        pos.title = pos.title?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+        pos.title = pos.title?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+        
+        pos.description = pos.description?.replace(/\b[0-9]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+        pos.description = pos.description?.replace(/\b\d*[13579]\s*cm\b/gi, `${notfallDaemmstaerke} cm`);
+      }
+      return pos;
+    });
+  }
+  
+// TEIL 2: Entferne falsche Positionen (Isokorb etc.)
+  const vorherCount = lv.positions.length;
+  lv.positions = lv.positions.filter(pos => {
+    const title = (pos.title || '').toLowerCase();
+    const desc = (pos.description || '').toLowerCase();
+    
+    if (title.includes('isokorb') || desc.includes('isokorb')) {
+      console.error(`[FASS] FEHLER: Isokorb-Position entfernt - gehört zu Rohbau!`);
+      return false;
+    }   
+    if ((title.includes('balkon') && title.includes('abtrennen')) ||
+        (desc.includes('thermische trennung') && desc.includes('balkon'))) {
+      console.error(`[FASS] FEHLER: Balkon-Trennung entfernt - unmöglich bei Sanierung!`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  if (vorherCount !== lv.positions.length) {
+    console.log(`[FASS] ${vorherCount - lv.positions.length} falsche Positionen entfernt`);
+  }
+} // Ende des FASS-Blocks
+      
+// MATERIAL-PREISKORREKTUREN (Kleber, Kabel, etc.)
+lv.positions = lv.positions.map(pos => {
+  const titleLower = (pos.title || pos.bezeichnung || '').toLowerCase();
+  const descLower = (pos.description || '').toLowerCase();
+  
+  // UNIVERSELLE REGEL 1: Kleber/Klebstoff-Preise
+  if (titleLower.includes('kleber') || titleLower.includes('klebstoff')) {
+    if (pos.unit === 'm²' && pos.unitPrice > 15) {
+      const oldPrice = pos.unitPrice;
+      
+      // Bestimme Kleber-Typ
+      let neuerPreis = 5; // Standard
+      if (titleLower.includes('2-komponenten') || titleLower.includes('epoxid')) {
+        neuerPreis = 12; // Teurer Spezialkleber
+      } else if (titleLower.includes('flexkleber') || titleLower.includes('naturstein')) {
+        neuerPreis = 8; // Mittelpreisig
+      }
+      
+      pos.unitPrice = neuerPreis;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      console.log(`[KLEBER] Preis korrigiert: ${oldPrice}€/m² → ${neuerPreis}€/m²`);
+    }
+    
+    // Kleber pro kg
+    if (pos.unit === 'kg' && pos.unitPrice > 25) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 8; // Max 8€/kg für Spezialkleber
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      console.log(`[KLEBER] Preis/kg korrigiert: ${oldPrice}€ → 8€`);
+    }
+  }
+  
+  // UNIVERSELLE REGEL 2: Kabel/Leitungs-Preise
+  if (titleLower.includes('nym') || titleLower.includes('kabel') || 
+      titleLower.includes('leitung') || descLower.includes('nym')) {
+    
+    // NYM-J Kabel nach Querschnitt
+    if (titleLower.includes('nym-j') || titleLower.includes('nym j') || 
+        descLower.includes('nym-j')) {
+      
+      // Suche Querschnitt in Title oder Description
+      const fullText = titleLower + ' ' + descLower;
+      const querschnittMatch = fullText.match(/(\d+)\s*x\s*([\d,\.]+)\s*mm/);
+      
+      if (querschnittMatch) {
+        const adern = parseInt(querschnittMatch[1]);
+        const querschnitt = parseFloat(querschnittMatch[2].replace(',', '.'));
+        
+        let maxPreis = 15; // Basis
+        
+        // Preise nach Querschnitt (inkl. Verlegung)
+        if (querschnitt <= 1.5) {
+          maxPreis = 12; 
+        } else if (querschnitt <= 2.5) {
+          maxPreis = 15;
+        } else if (querschnitt <= 4) {
+          maxPreis = 20;
+        } else if (querschnitt <= 6) {
+          maxPreis = 25;
+        } else if (querschnitt <= 10) {
+          maxPreis = 35;
+        } else {
+          maxPreis = 45; // Große Querschnitte
+        }
+        
+        // 5-adrig ist teurer
+        if (adern === 5) {
+          maxPreis = Math.round(maxPreis * 1.3);
+        }
+        
+        if (pos.unit === 'm' && pos.unitPrice > maxPreis) {
+          const oldPrice = pos.unitPrice;
+          pos.unitPrice = maxPreis;
+          pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+          console.log(`[KABEL] NYM-J ${adern}x${querschnitt}mm² korrigiert: ${oldPrice}€/m → ${maxPreis}€/m`);
+        }
+      }
+    }
+    
+    // Datenkabel
+    if (titleLower.includes('cat') || titleLower.includes('netzwerk') || 
+        titleLower.includes('lan')) {
+      if (pos.unit === 'm' && pos.unitPrice > 25) {
+        const oldPrice = pos.unitPrice;
+        let neuerPreis = 12; // Standard CAT
+        
+        if (titleLower.includes('cat7') || titleLower.includes('cat 7')) {
+          neuerPreis = 18; // CAT7 teurer
+        } else if (titleLower.includes('cat6') || titleLower.includes('cat 6')) {
+          neuerPreis = 15; // CAT6 mittel
+        }
+        
+        pos.unitPrice = neuerPreis;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        console.log(`[KABEL] Datenkabel korrigiert: ${oldPrice}€/m → ${neuerPreis}€/m`);
+      }
+    }
+    
+    // Erdkabel NYY
+    if (titleLower.includes('nyy') || titleLower.includes('erdkabel')) {
+      if (pos.unit === 'm' && pos.unitPrice > 50) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 35; // Erdkabel max 35€/m inkl. Verlegung
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        console.log(`[KABEL] Erdkabel korrigiert: ${oldPrice}€/m → 35€/m`);
+      }
+    }
+  }
+  
+  return pos;
+});
+
+// ROH-spezifisch: Entferne falsche Holzbau-Positionen
+if (trade.code === 'ROH' && lv.positions) {
+  console.log('[ROH] Prüfe auf falsche Holzbau-Positionen...');
+  
+  const vorherCount = lv.positions.length;
+  lv.positions = lv.positions.filter(pos => {
+    const title = (pos.title || '').toLowerCase();
+    const desc = (pos.description || '').toLowerCase();
+    
+    // Holzbau-Keywords die NICHT in ROH gehören
+    const holzbauKeywords = [
+      'holzständer', 'holzrahmen', 'holzbalkendecke', 'holzkonstruktion',
+      'sparren', 'pfetten', 'firstbalken', 'gratbalken', 'windrispen',
+      'konstruktionsvollholz', 'kvh', 'c24', 'balkenschuhe', 'holzschutz'
+    ];
+    
+    // Prüfe ob Position Holzbau enthält
+    const istHolzbau = holzbauKeywords.some(keyword => 
+      title.includes(keyword) || desc.includes(keyword)
+    );
+    
+    if (istHolzbau) {
+      console.log(`[ROH] FEHLER: Holzbau-Position entfernt: "${pos.title}"`);
+      return false; // Position entfernen
+    }
+    
+    // Auch "Aufstockung in Holz" ist Zimmerer-Sache
+    if ((title.includes('aufstockung') || desc.includes('aufstockung')) &&
+        (title.includes('holz') || desc.includes('holz'))) {
+      console.log(`[ROH] FEHLER: Holz-Aufstockung gehört zu ZIMM: "${pos.title}"`);
+      return false;
+    }
+    
+    return true; // Position behalten
+  });
+  
+  if (vorherCount !== lv.positions.length) {
+    console.error(`[ROH] KRITISCH: ${vorherCount - lv.positions.length} Holzbau-Positionen entfernt - gehören zu ZIMMERER!`);
+    
+    // Füge Hinweis-Position ein
+    if (lv.positions.length < orientation.min * 0.7) {
+      lv.positions.push({
+        pos: `${lv.positions.length + 1}.00`,
+        title: "HINWEIS: Holzbauarbeiten",
+        description: "Holzbauarbeiten für Aufstockung siehe separates Gewerk ZIMMERER. Rohbau erstellt nur die Anschlüsse und Verstärkungen am Bestandsmauerwerk.",
+        quantity: 1,
+        unit: "psch",
+        unitPrice: 0,
+        totalPrice: 0,
+        isNEP: true,
+        notes: "Nur zur Information - keine Kosten"
+      });
+    }
+  }
+}  
+    
+// ZIMM-spezifisch: Prüfe ob Holzbau-Positionen vorhanden sind
+if (trade.code === 'ZIMM' && lv.positions) {
+  const hatHolzbau = lv.positions.some(pos => 
+    pos.title?.toLowerCase().includes('holz') || 
+    pos.description?.toLowerCase().includes('holz')
+  );
+  
+  if (!hatHolzbau) {
+    console.error('[ZIMM] WARNUNG: Zimmerer-LV ohne Holzbau-Positionen!');
+  }
+}
+      
+  let calculatedSum = 0;
+  let nepSum = 0; // NEU: Summe der NEP-Positionen
+  
+  lv.positions = lv.positions.map(pos => {
+    // NEU: NEP-Flag standardmäßig false
+    if (pos.isNEP === undefined) {
+      pos.isNEP = false;
+    }
+    
+    if (!pos.totalPrice && pos.quantity && pos.unitPrice) {
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    }
+    
+    // NEU: NEP-Positionen nicht zur Hauptsumme addieren
+    if (!pos.isNEP) {
+      calculatedSum += pos.totalPrice || 0;
+    } else {
+      nepSum += pos.totalPrice || 0;
+    }
+    
+    return pos;
+  });
+  
+  // NEU: NEP-Summe separat speichern
+  lv.nepSum = Math.round(nepSum * 100) / 100;
+  lv.totalSum = Math.round(calculatedSum * 100) / 100;  // DIESE ZEILE FEHLT!
+      
+      // Stundenlohnarbeiten hinzufügen
+      const stundenSätze = {
+        'MAL': { stunden: 5, satz: 45, bezeichnung: 'Maler/Lackierer' },
+        'GER': { stunden: 5, satz: 35, bezeichnung: 'Gerüstbauer' },
+        'ESTR': { stunden: 5, satz: 50, bezeichnung: 'Estrichleger' },
+        'FLI': { stunden: 8, satz: 55, bezeichnung: 'Fliesenleger' },
+        'DACH': { stunden: 15, satz: 65, bezeichnung: 'Dachdecker' },
+        'ELEKT': { stunden: 12, satz: 70, bezeichnung: 'Elektriker' },
+        'SAN': { stunden: 15, satz: 75, bezeichnung: 'Sanitärinstallateur' },
+        'HEI': { stunden: 12, satz: 75, bezeichnung: 'Heizungsbauer' },
+        'TIS': { stunden: 10, satz: 60, bezeichnung: 'Tischler' },
+        'FEN': { stunden: 8, satz: 60, bezeichnung: 'Fensterbauer' },
+        'ZIMM': { stunden: 12, satz: 65, bezeichnung: 'Zimmerer' },
+        'DEFAULT': { stunden: 8, satz: 55, bezeichnung: 'Handwerker' }
+      };
+      
+      const stundenConfig = stundenSätze[trade.code] || stundenSätze['DEFAULT'];
+      
+      // Füge Stundenlohnposition hinzu
+      const stundenlohnPos = {
+        pos: `${lv.positions.length + 1}.00`,
+        title: `Stundenlohnarbeiten ${stundenConfig.bezeichnung}`,
+        description: `Zusätzliche Arbeiten auf Stundenlohnbasis für unvorhergesehene oder kleinteilige Leistungen, die nicht im LV erfasst sind. Abrechnung nach tatsächlichem Aufwand.`,
+        quantity: stundenConfig.stunden,
+        unit: 'Std',
+        unitPrice: stundenConfig.satz,
+        totalPrice: stundenConfig.stunden * stundenConfig.satz,
+        dataSource: 'standard',
+        notes: 'Pauschal einkalkuliert für Zusatzarbeiten'
+      };
+      
+      lv.positions.push(stundenlohnPos);
+      // NEUE POSITION: Stundenlohn-Korrektur HIER, NACH dem Hinzufügen
+const summeOhneStundenlohn = lv.totalSum; // Summe VOR Stundenlohn
+if (summeOhneStundenlohn < 2000) {
+  const maxStundenlohn = summeOhneStundenlohn * 0.10;
+  
+  if (stundenlohnPos.totalPrice > maxStundenlohn) {
+    console.log(`[STUNDENLOHN] Korrigiere: ${stundenlohnPos.totalPrice}€ -> max ${maxStundenlohn}€`);
+    
+    if (summeOhneStundenlohn < 500) {
+      stundenlohnPos.quantity = 1;
+    } else if (summeOhneStundenlohn < 1000) {
+      stundenlohnPos.quantity = 2;
+    } else {
+      stundenlohnPos.quantity = Math.max(2, Math.floor(maxStundenlohn / stundenlohnPos.unitPrice));
+    }
+    
+    stundenlohnPos.totalPrice = stundenlohnPos.quantity * stundenlohnPos.unitPrice;
+    console.log(`[STUNDENLOHN] Neue Menge: ${stundenlohnPos.quantity} Std`);
+  }
+}
+      
+      calculatedSum += stundenlohnPos.totalPrice;
+      
+      lv.totalSum = Math.round(calculatedSum * 100) / 100;
+
+      // Vorbemerkungen aus Intake-Daten generieren falls nicht vorhanden
+      if (!lv.vorbemerkungen || lv.vorbemerkungen.length === 0) {
+        lv.vorbemerkungen = [];
+        
+        // Extrahiere relevante Intake-Infos
+        const gebäudeInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('gebäude'));
+        const zufahrtInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('zufahrt') || a.question.toLowerCase().includes('zugang'));
+        const zeitInfo = intakeAnswers.find(a => a.question.toLowerCase().includes('zeit') || a.question.toLowerCase().includes('termin'));
+        
+        if (gebäudeInfo) {
+          lv.vorbemerkungen.push(`Gebäude: ${gebäudeInfo.answer}`);
+        }
+        if (zufahrtInfo) {
+          lv.vorbemerkungen.push(`Baustellenzugang: ${zufahrtInfo.answer}`);
+        }
+        if (zeitInfo) {
+          lv.vorbemerkungen.push(`Ausführungszeitraum: ${zeitInfo.answer}`);
+        }
+        
+        // Standard-Vorbemerkungen
+        lv.vorbemerkungen.push('Alle Preise verstehen sich inklusive aller Nebenleistungen gemäß VOB/C');
+        lv.vorbemerkungen.push('Baustrom und Bauwasser werden bauseits gestellt');
+      }
+
+      // Adress-Anonymisierung in Vorbemerkungen
+if (lv.vorbemerkungen && Array.isArray(lv.vorbemerkungen)) {
+  lv.vorbemerkungen = lv.vorbemerkungen.map(vorbemerkung => {
+    // Variante 1: "Straße Nr, PLZ Stadt" → "PLZ Stadt"
+    let result = vorbemerkung.replace(
+      /[A-ZÄÖÜ][a-zäöüß\-]+\s+(?:straße|str\.?|strasse|weg|platz|allee|gasse|ring|pfad)\.?\s+\d+[a-zA-Z]?,?\s*/gi, 
+      ''
+    );
+    
+    // Variante 2: "PLZ Stadt, Straße Nr" → "PLZ Stadt"
+    result = result.replace(
+      /,\s*[A-ZÄÖÜ][a-zäöüß\-]+\s+(?:straße|str\.?|strasse|weg|platz|allee|gasse|ring|pfad)\.?\s+\d+[a-zA-Z]?\.?/gi,
+      ''
+    );
+    
+    // Aufräumen
+    result = result.replace(/,\s*,/g, ',');
+    result = result.replace(/,\s*$/g, ''); // Komma am Ende entfernen
+    
+    return result;
+  });
+}
+      
+      // Statistiken
+      lv.statistics = {
+        positionCount: lv.positions.length,
+        averagePositionValue: Math.round((lv.totalSum / lv.positions.length) * 100) / 100,
+        minPosition: Math.min(...lv.positions.map(p => p.totalPrice || 0)),
+        maxPosition: Math.max(...lv.positions.map(p => p.totalPrice || 0)),
+        measuredPositions: lv.positions.filter(p => p.dataSource === 'measured').length,
+        estimatedPositions: lv.positions.filter(p => p.dataSource === 'estimated').length,
+        hasStundenlohn: true
+      };
+    }
+    
+    // Metadaten
+    const lvWithMeta = {
+      ...lv,
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        projectId,
+        tradeId,
+        hasVorbemerkungen: lv.vorbemerkungen && lv.vorbemerkungen.length > 0,
+        vorbemerkungCount: lv.vorbemerkungen?.length || 0,
+        intakeAnswersCount: intakeAnswers.length,
+        tradeAnswersCount: tradeAnswers.length,
+        positionsCount: lv.positions?.length || 0,
+        totalValue: lv.totalSum || 0,
+        dataQuality: lv.dataQuality || { confidence: 0.5 }
+      }
+    };
+    
+    return lvWithMeta;
+    
+  } catch (err) {
+    console.error('[LV] Generation failed:', err);
+    throw new Error(`LV-Generierung für ${trade.name} fehlgeschlagen`);
+  }
+}
+
+// Optimierte LV-Generierung - schnell und effizient
+async function generateDetailedLVWithRetry(projectId, tradeId, maxRetries = 2) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[LV] Generation attempt ${attempt}/${maxRetries} for trade ${tradeId}`);
+      
+      const result = await generateDetailedLV(projectId, tradeId);
+      
+      console.log(`[LV] Successfully generated on attempt ${attempt}`);
+      console.log(`[LV] Generated for trade ${tradeId}: ${result.positions?.length || 0} positions, Total: €${result.totalSum || 0}`);
+      return result;
+      
+    } catch (error) {
+      lastError = error;
+      console.error(`[LV] Attempt ${attempt} failed:`, error.message);
+      
+      // Bei Datenfehlern NICHT wiederholen - das bringt nichts
+      if (error.message.includes('JSON') || 
+          error.message.includes('[object Object]') ||
+          error.message.includes('undefined') ||
+          error.message.includes('duplicate')) {
+        console.error('[LV] Data/Structure error detected - not retrying:', error.message);
+        throw error; // Sofort fehlschlagen
+      }
+      
+      // Nur bei echten API/Netzwerk-Fehlern retry
+      if (attempt < maxRetries) {
+        // Nur bei OpenAI Rate Limits oder Timeouts wiederholen
+        if (error.message.includes('Rate limit') || 
+            error.message.includes('timeout') ||
+            error.message.includes('OpenAI') ||
+            error.message.includes('network')) {
+          const waitTime = 500; // Kurze konstante Wartezeit
+          console.log(`[LV] API/Network issue - waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          // Unbekannter Fehler - nicht wiederholen
+          console.error('[LV] Unknown error type - not retrying');
+          throw error;
+        }
+      }
+    }
+  }
+  
+  // Log den letzten Fehler ausführlich
+  console.error('[LV] All attempts failed. Last error:', lastError);
+  throw new Error(`LV-Generierung fehlgeschlagen: ${lastError.message}`);
 }
 
 /**
