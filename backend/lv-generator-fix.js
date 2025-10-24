@@ -167,7 +167,7 @@ WENN FEHLER GEFUNDEN:
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',  // Haiku für Speed
+      model: 'claude-sonnet-4-5-20250929',  
       max_tokens: 2000,
       temperature: 0,
       messages: [{
