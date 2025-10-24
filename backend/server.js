@@ -13393,79 +13393,25 @@ else if (file.originalname.match(/\.(xlsx?|csv)$/i)) {
       
       console.log(`[FILE-ANALYZE] Excel: ${detectedItems.length} items found`);
       
-      // ═══════════════════════════════════════════════════════════════════
-      // GENERATE STRUCTURED ANSWER
-      // ═══════════════════════════════════════════════════════════════════
-      
-      try {
-        const structuredAnswer = await generateStructuredAnswer(
-          result.structured,
-          questionText,
-          tradeCode
-        );
-        
-        // Prüfe ob neue Version (Objekt) oder alte (String)
-        if (typeof structuredAnswer === 'object' && structuredAnswer !== null) {
-          if (structuredAnswer.userDisplayText) {
-            extractedAnswer = structuredAnswer.userDisplayText;
-            llmContext = structuredAnswer.llmContextText || structuredAnswer.userDisplayText;
-            
-            console.log(`[FILE-ANALYZE] Excel: User text: ${extractedAnswer.length} chars`);
-            console.log(`[FILE-ANALYZE] Excel: LLM context: ${llmContext.length} chars`);
-          } else {
-            // Objekt ohne userDisplayText - verwende result.text
-            extractedAnswer = result.text || JSON.stringify(structuredAnswer);
-            llmContext = extractedAnswer;
-          }
-        } else if (typeof structuredAnswer === 'string') {
-          // String - alte Version
-          extractedAnswer = structuredAnswer;
-          llmContext = structuredAnswer;
-        } else {
-          // Fallback
-          extractedAnswer = result.text || `${detectedItems.length} Einträge aus Excel extrahiert`;
-          llmContext = extractedAnswer;
-        }
-        
-      } catch (genError) {
-        console.error('[FILE-ANALYZE] generateStructuredAnswer error:', genError);
-        // Fallback: Verwende result.text
-        extractedAnswer = result.text || `${detectedItems.length} Einträge analysiert`;
-        llmContext = extractedAnswer;
-      }
-      
-      analysis = `${detectedItems.length} Einträge aus Excel extrahiert`;
-      suggestions = generateDataSuggestions ? generateDataSuggestions(detectedItems, tradeCode) : null;
-      
-    } else {
-      // Keine Items gefunden
-      console.warn('[FILE-ANALYZE] Excel: No items extracted');
-      
-      extractedAnswer = result.text || 'Excel analysiert, keine strukturierten Daten gefunden';
-      llmContext = extractedAnswer;
-      confidence = 0.7;
-      analysis = 'Excel-Daten extrahiert (keine Items)';
-    }
-    
-    // Prüfe Metadata
-    if (result.metadata?.quality) {
-      confidence = result.metadata.quality.score / 100;
-    }
-    
-  } catch (excelError) {
-    console.error('[FILE-ANALYZE] Excel parsing error:', excelError);
-    console.error('[FILE-ANALYZE] Error stack:', excelError.stack);
-    
-    // Fehlerfall: Setze Defaults
-    extractedAnswer = 'Excel-Analyse fehlgeschlagen: ' + excelError.message;
-    llmContext = extractedAnswer;
-    structuredData = { type: 'error', items: [], error: excelError.message };
-    documentType = 'SPREADSHEET';
-    detectedItems = [];
-    confidence = 0.3;
-    analysis = 'Excel-Analyse fehlgeschlagen';
-    suggestions = null;
+// Verwende direkt das Ergebnis vom spreadsheetParser
+if (result.text) {
+  // Der Parser liefert bereits eine formatierte Zusammenfassung
+  extractedAnswer = result.text;
+  
+  // Für LLM: Füge strukturierte Daten als Kontext hinzu
+  if (structuredData && structuredData.items && structuredData.items.length > 0) {
+    llmContext = result.text + '\n\nSTRUKTURIERTE DATEN FÜR LV:\n' + 
+                 JSON.stringify(structuredData.items, null, 2);
+  } else {
+    llmContext = result.text;
   }
+  
+  console.log(`[FILE-ANALYZE] Excel: User text: ${extractedAnswer.length} chars`);
+  console.log(`[FILE-ANALYZE] Excel: LLM context: ${llmContext.length} chars`);
+} else {
+  // Fallback falls kein Text generiert wurde
+  extractedAnswer = `${detectedItems.length} Einträge aus Excel extrahiert`;
+  llmContext = extractedAnswer;
 }
     
     // PDF-ANALYSE
@@ -14050,214 +13996,6 @@ function generateDataSuggestions(items, tradeCode) {
   }
   
   return suggestions;
-}
-
-// Generiere detaillierte Antwort aus strukturierten Daten
-async function generateStructuredAnswer(structured, questionText, tradeCode) {
-  try {
-    const items = structured.items || [];
-    
-    let baseAnswer = '';
-    
-    switch (structured.type) {
-      case 'WINDOW_LIST':
-        baseAnswer = generateWindowListAnswer(items);
-        break;
-      case 'DOOR_LIST':
-        baseAnswer = generateDoorListAnswer(items);
-        break;
-      case 'ROOM_LIST':
-        baseAnswer = generateRoomListAnswer(items);
-        break;
-      case 'MATERIAL_LIST':
-        baseAnswer = generateMaterialListAnswer(items);
-        break;
-      case 'AREA_CALCULATION':
-        baseAnswer = generateAreaCalculationAnswer(items);
-        break;
-      default:
-        baseAnswer = generateGenericStructuredAnswer(items, questionText, tradeCode);
-    }
-    
-    // NEU: Generiere LV-Anweisungen (NUR für LLM)
-    const lvInstructions = generateLVInstructions(items, baseAnswer);
-    
-    // NEU: Separate Texte
-    const userDisplayText = baseAnswer; // NUR die Zusammenfassung
-    const llmContextText = baseAnswer + lvInstructions; // Zusammenfassung + Anweisungen
-    
-    if (lvInstructions.length > 0) {
-      console.log(`[STRUCTURED-ANSWER] ✓ LV-Anweisungen generiert (${lvInstructions.length} Zeichen)`);
-    }
-    
-    return {
-      userDisplayText: userDisplayText,      // NEU: Für Nutzer
-      llmContextText: llmContextText,        // NEU: Für LV-Generator
-      text: userDisplayText,                 // Backwards compatibility
-      enhancedText: llmContextText           // Backwards compatibility
-    };
-    
-  } catch (err) {
-    console.error('[STRUCTURED-ANSWER] Error:', err);
-    const fallbackAnswer = items.map((item, idx) => 
-      `${idx + 1}. ${JSON.stringify(item)}`
-    ).join('\n');
-    
-    const lvInstructions = generateLVInstructions(items, fallbackAnswer);
-    
-    return {
-      userDisplayText: fallbackAnswer,
-      llmContextText: fallbackAnswer + lvInstructions,
-      text: fallbackAnswer,
-      enhancedText: fallbackAnswer + lvInstructions
-    };
-  }
-}
-
-// Fensterliste formatieren
-function generateWindowListAnswer(windows) {
-  const summary = `Insgesamt ${windows.length} Fenster erfasst:\n\n`;
-  
-  const details = windows.map((w, idx) => {
-    const parts = [];
-    
-    if (w.raum) parts.push(`Raum: ${w.raum}`);
-    if (w.anzahl) parts.push(`Anzahl: ${w.anzahl}`);
-    if (w.breite && w.hoehe) parts.push(`Maße: ${w.breite} x ${w.hoehe} cm`);
-    if (w.typ) parts.push(`Typ: ${w.typ}`);
-    if (w.material) parts.push(`Material: ${w.material}`);
-    if (w.oeffnungsart) parts.push(`Öffnungsart: ${w.oeffnungsart}`);
-    if (w.verglasung) parts.push(`Verglasung: ${w.verglasung}`);
-    if (w.u_wert) parts.push(`U-Wert: ${w.u_wert}`);
-    if (w.farbe) parts.push(`Farbe: ${w.farbe}`);
-    
-    return `${idx + 1}. ${parts.join(' | ')}`;
-  }).join('\n');
-  
-  // Gruppierung nach Typ
-  const grouped = windows.reduce((acc, w) => {
-    const key = w.typ || 'Sonstige';
-    acc[key] = (acc[key] || 0) + (parseInt(w.anzahl) || 1);
-    return acc;
-  }, {});
-  
-  const groupSummary = '\n\nZusammenfassung nach Typ:\n' + 
-    Object.entries(grouped)
-      .map(([typ, anzahl]) => `- ${typ}: ${anzahl} Stück`)
-      .join('\n');
-  
-  return summary + details + groupSummary;
-}
-
-// Türenliste formatieren
-function generateDoorListAnswer(doors) {
-  const summary = `Insgesamt ${doors.length} Türen erfasst:\n\n`;
-  
-  const details = doors.map((d, idx) => {
-    const parts = [];
-    
-    if (d.raum) parts.push(`Raum: ${d.raum}`);
-    if (d.anzahl) parts.push(`Anzahl: ${d.anzahl}`);
-    if (d.breite && d.hoehe) parts.push(`Maße: ${d.breite} x ${d.hoehe} cm`);
-    if (d.typ) parts.push(`Typ: ${d.typ}`);
-    if (d.material) parts.push(`Material: ${d.material}`);
-    if (d.anschlag) parts.push(`Anschlag: ${d.anschlag}`);
-    if (d.zargentyp) parts.push(`Zarge: ${d.zargentyp}`);
-    
-    return `${idx + 1}. ${parts.join(' | ')}`;
-  }).join('\n');
-  
-  return summary + details;
-}
-
-// Raumliste formatieren
-function generateRoomListAnswer(rooms) {
-  const summary = `Insgesamt ${rooms.length} Räume erfasst:\n\n`;
-  
-  const details = rooms.map((r, idx) => {
-    const parts = [];
-    
-    if (r.raum) parts.push(`Raum: ${r.raum}`);
-    if (r.flaeche) parts.push(`Fläche: ${r.flaeche} m²`);
-    if (r.wandflaeche) parts.push(`Wandfläche: ${r.wandflaeche} m²`);
-    if (r.deckenhoehe) parts.push(`Deckenhöhe: ${r.deckenhoehe} m`);
-    if (r.bodenbelag) parts.push(`Bodenbelag: ${r.bodenbelag}`);
-    
-    return `${idx + 1}. ${parts.join(' | ')}`;
-  }).join('\n');
-  
-  const totalArea = rooms.reduce((sum, r) => sum + (parseFloat(r.flaeche) || 0), 0);
-  const areaSummary = `\n\nGesamtfläche: ${totalArea.toFixed(2)} m²`;
-  
-  return summary + details + areaSummary;
-}
-
-// Materialliste formatieren
-function generateMaterialListAnswer(materials) {
-  const summary = `Insgesamt ${materials.length} Materialien erfasst:\n\n`;
-  
-  const details = materials.map((m, idx) => {
-    const parts = [];
-    
-    if (m.material) parts.push(`Material: ${m.material}`);
-    if (m.menge) parts.push(`Menge: ${m.menge}`);
-    if (m.einheit) parts.push(`Einheit: ${m.einheit}`);
-    if (m.hersteller) parts.push(`Hersteller: ${m.hersteller}`);
-    if (m.artikelnummer) parts.push(`Art.-Nr.: ${m.artikelnummer}`);
-    
-    return `${idx + 1}. ${parts.join(' | ')}`;
-  }).join('\n');
-  
-  return summary + details;
-}
-
-// Flächenberechnung formatieren
-function generateAreaCalculationAnswer(areas) {
-  const summary = `Flächenberechnung mit ${areas.length} Positionen:\n\n`;
-  
-  const details = areas.map((a, idx) => {
-    const parts = [];
-    
-    if (a.position) parts.push(`Position: ${a.position}`);
-    if (a.laenge && a.breite) {
-      const flaeche = parseFloat(a.laenge) * parseFloat(a.breite);
-      parts.push(`${a.laenge} x ${a.breite} = ${flaeche.toFixed(2)} m²`);
-    } else if (a.flaeche) {
-      parts.push(`Fläche: ${a.flaeche} m²`);
-    }
-    
-    return `${idx + 1}. ${parts.join(' | ')}`;
-  }).join('\n');
-  
-  const totalArea = areas.reduce((sum, a) => {
-    if (a.laenge && a.breite) {
-      return sum + (parseFloat(a.laenge) * parseFloat(a.breite));
-    } else if (a.flaeche) {
-      return sum + parseFloat(a.flaeche);
-    }
-    return sum;
-  }, 0);
-  
-  const areaSummary = `\n\nGesamtfläche: ${totalArea.toFixed(2)} m²`;
-  
-  return summary + details + areaSummary;
-}
-
-// Generische strukturierte Antwort
-function generateGenericStructuredAnswer(items, questionText, tradeCode) {
-  const summary = `${items.length} Einträge aus der Datei:\n\n`;
-  
-  const details = items.map((item, idx) => {
-    // Filtere wichtige Felder
-    const important = Object.entries(item)
-      .filter(([key, val]) => val && key !== 'row' && key !== 'index')
-      .map(([key, val]) => `${key}: ${val}`)
-      .join(' | ');
-    
-    return `${idx + 1}. ${important}`;
-  }).join('\n');
-  
-  return summary + details;
 }
 
 // NEUE ROUTE: Füge nach der bestehenden '/question-clarification' Route ein (ca. Zeile 2500+)
