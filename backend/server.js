@@ -9376,9 +9376,441 @@ if (isSpecialEquipment && pos.unitPrice > 1000) {
       fixedCount++;  
       }  
       
-    // FENSTER- UND TÜREN-PREISKORREKTUR
-if (tradeCode === 'FEN' || tradeCode === 'TIS') {
-  lv = applyWindowPriceCorrection(lv, tradeCode);
+    // ═══════════════════════════════════════════════════════════════════════════
+// PREISVALIDIERUNG FÜR FENSTER (FEN) - OPTIMIERT
+// Direkt in server.js einfügbar
+// ═══════════════════════════════════════════════════════════════════════════
+
+// 5. FENSTER-SPEZIFISCHE PREISKORREKTUREN
+if (tradeCode === 'FEN') {
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // ROLLLÄDEN - GRÖßENBASIERTE PREISBERECHNUNG
+  // ═══════════════════════════════════════════════════════════════════════
+  if ((titleLower.includes('rollladen') || titleLower.includes('rolladen') || 
+       titleLower.includes('rollläden') || titleLower.includes('rolläden')) &&
+      !titleLower.includes('reparatur') && !titleLower.includes('wartung')) {
+    
+    const oldPrice = pos.unitPrice;
+    const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
+    
+    if (sizeMatch) {
+      // Größe extrahieren
+      const width = parseInt(sizeMatch[1]);
+      const height = parseInt(sizeMatch[2]);
+      
+      // Konvertiere zu cm falls in mm
+      const widthCm = width > 300 ? width / 10 : width;
+      const heightCm = height > 300 ? height / 10 : height;
+      
+      // Berechne Fläche in m²
+      const area = (widthCm * heightCm) / 10000;
+      
+      // Basis-Preiskalkulation
+      let basePrice = 200;      // Grundpreis
+      let pricePerM2 = 180;     // Preis pro m²
+      
+      // Typ erkennen
+      if (titleLower.includes('vorbau')) {
+        basePrice = 180;
+        pricePerM2 = 150;
+      } else if (titleLower.includes('aufsatz')) {
+        basePrice = 220;
+        pricePerM2 = 180;
+      } else if (titleLower.includes('einbau')) {
+        basePrice = 250;
+        pricePerM2 = 200;
+      }
+      
+      // Motor-Faktor
+      let motorFactor = 1.0;
+      if (titleLower.includes('motor') || titleLower.includes('elektrisch') || 
+          titleLower.includes('elektro') || descLower.includes('motor') || 
+          descLower.includes('elektrisch')) {
+        motorFactor = 1.4;
+      }
+      
+      // Smart Home / Funk
+      if (titleLower.includes('smart') || titleLower.includes('funk') || 
+          titleLower.includes('app') || descLower.includes('funksteuerung')) {
+        motorFactor = 1.6;
+      }
+      
+      // Berechne Preis
+      let calculatedPrice = (basePrice + (area * pricePerM2)) * motorFactor;
+      
+      // Größenabhängige Anpassungen
+      if (widthCm > 250 || heightCm > 250) {
+        calculatedPrice *= 1.1; // Übergrößen-Aufschlag
+      }
+      
+      if (area < 0.5) {
+        calculatedPrice = Math.max(calculatedPrice, 280); // Mindestpreis kleine Rollläden
+      }
+      
+      // Runde auf 10€
+      calculatedPrice = Math.round(calculatedPrice / 10) * 10;
+      
+      // Plausibilitätsgrenzen
+      if (calculatedPrice < 280) calculatedPrice = 280;
+      if (calculatedPrice > 1200) calculatedPrice = 1200;
+      
+      // Korrigiere wenn signifikante Abweichung
+      const deviation = Math.abs(oldPrice - calculatedPrice);
+      const deviationPercent = oldPrice > 0 ? deviation / oldPrice : 1;
+      
+      // Korrigiere bei >30% Abweichung ODER >150€ Differenz
+      if (deviationPercent > 0.30 || deviation > 150) {
+        pos.unitPrice = calculatedPrice;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        
+        const motorInfo = motorFactor > 1.3 ? ' (elektrisch)' : ' (manuell)';
+        warnings.push(`Rollladen ${widthCm}×${heightCm}cm${motorInfo}: €${oldPrice} → €${calculatedPrice}`);
+        fixedCount++;
+      }
+      
+    } else {
+      // Rollladen ohne Maße - Standardpreise
+      let standardPrice = 350;
+      
+      if (titleLower.includes('motor') || titleLower.includes('elektrisch') || 
+          descLower.includes('motor') || descLower.includes('elektrisch')) {
+        standardPrice = 500;
+      }
+      
+      if (titleLower.includes('aufsatz')) {
+        standardPrice += 50;
+      }
+      
+      if (Math.abs(oldPrice - standardPrice) > 150) {
+        pos.unitPrice = standardPrice;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Rollladen (ohne Maße): €${oldPrice} → €${standardPrice}`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // HAUPTFENSTER (Lieferung und Montage)
+  // ═══════════════════════════════════════════════════════════════════════
+  if (titleLower.includes('fenster') && 
+      (titleLower.includes('lieferung') || titleLower.includes('montage')) &&
+      !titleLower.includes('reinigung') && 
+      !titleLower.includes('abdichtung') && 
+      !titleLower.includes('vermessung') &&
+      !titleLower.includes('rollladen') &&
+      !titleLower.includes('rolladen')) {
+    
+    const oldPrice = pos.unitPrice;
+    const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
+    
+    if (sizeMatch) {
+      const width = parseInt(sizeMatch[1]);
+      const height = parseInt(sizeMatch[2]);
+      
+      // Konvertiere zu cm falls nötig
+      const widthCm = width > 300 ? width / 10 : width;
+      const heightCm = height > 300 ? height / 10 : height;
+      const area = (widthCm * heightCm) / 10000; // in m²
+      
+      let basePrice = 400;
+      let pricePerM2 = 450;
+      let materialName = 'Standard';
+      
+      // Material erkennen
+      if (titleLower.includes('holz-alu') || titleLower.includes('holz-aluminium') ||
+          descLower.includes('holz-alu') || descLower.includes('holz-aluminium')) {
+        basePrice = 600;
+        pricePerM2 = 700;
+        materialName = 'Holz-Alu';
+      } else if (titleLower.includes('aluminium') || titleLower.includes('alu') ||
+                 descLower.includes('aluminium') || descLower.includes('alu')) {
+        basePrice = 500;
+        pricePerM2 = 600;
+        materialName = 'Aluminium';
+      } else if (titleLower.includes('holz') || descLower.includes('holz')) {
+        basePrice = 450;
+        pricePerM2 = 550;
+        materialName = 'Holz';
+      } else if (titleLower.includes('kunststoff') || titleLower.includes('pvc') ||
+                 descLower.includes('kunststoff') || descLower.includes('pvc')) {
+        basePrice = 350;
+        pricePerM2 = 400;
+        materialName = 'Kunststoff';
+      }
+      
+      // Verglasung
+      let glasFactor = 1.0;
+      const fullText = titleLower + ' ' + descLower;
+      
+      if (fullText.includes('3-fach') || fullText.includes('dreifach')) {
+        glasFactor = 1.15;
+      } else if (fullText.includes('4-fach') || fullText.includes('vierfach')) {
+        glasFactor = 1.3;
+      }
+      
+      // Berechne Preis
+      let calculatedPrice = (basePrice + (area * pricePerM2)) * glasFactor;
+      
+      // Größenanpassungen
+      if (area < 0.5) {
+        calculatedPrice = Math.max(calculatedPrice, 450);
+      } else if (area > 3) {
+        calculatedPrice *= 1.1;
+      }
+      
+      // Runde auf 10€
+      calculatedPrice = Math.round(calculatedPrice / 10) * 10;
+      
+      // Plausibilitätsgrenzen
+      if (calculatedPrice < 450) calculatedPrice = 450;
+      if (calculatedPrice > 8000) calculatedPrice = 8000;
+      
+      // Korrigiere nur bei >20% Abweichung UND >100€ Differenz
+      const deviation = Math.abs(oldPrice - calculatedPrice);
+      const deviationPercent = oldPrice > 0 ? deviation / oldPrice : 1;
+      
+      if (deviationPercent > 0.20 && deviation > 100) {
+        pos.unitPrice = calculatedPrice;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`${materialName}-Fenster ${widthCm}×${heightCm}cm: €${oldPrice} → €${calculatedPrice}`);
+        fixedCount++;
+      }
+      
+    } else if (titleLower.includes('demontage')) {
+      // Demontage
+      if (pos.unitPrice < 60 || pos.unitPrice > 150) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 80;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Fenster-Demontage: €${oldPrice} → €80`);
+        fixedCount++;
+      }
+    } else {
+      // Standard-Fenster ohne Maße - nur bei extremen Abweichungen
+      if (pos.unitPrice < 400 || pos.unitPrice > 1500) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 800;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Standard-Fenster: €${oldPrice} → €800`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // NEBENLEISTUNGEN FENSTER
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Reinigung
+  if (titleLower.includes('reinigung') && !titleLower.includes('grund')) {
+    if (pos.unitPrice > 50) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 25;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Fensterreinigung: €${oldPrice} → €25`);
+      fixedCount++;
+    }
+  }
+  
+  // Abdichtung
+  if (titleLower.includes('abdichtung') && pos.unit === 'm') {
+    if (pos.unitPrice > 60) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 35;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Abdichtung: €${oldPrice}/m → €35/m`);
+      fixedCount++;
+    }
+  }
+
+  // Fensterbänke
+  if (titleLower.includes('fensterbank') || titleLower.includes('fenstersims')) {
+    
+    // Außenfensterbänke
+    if (titleLower.includes('außen') || titleLower.includes('aussen')) {
+      if (pos.unit === 'm' && pos.unitPrice > 85) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 65;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Außenfensterbank: €${oldPrice}/m → €65/m`);
+        fixedCount++;
+      }
+    }
+    // Innenfensterbänke
+    else if (titleLower.includes('innen')) {
+      if (pos.unit === 'm' && pos.unitPrice > 120) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 85;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Innenfensterbank: €${oldPrice}/m → €85/m`);
+        fixedCount++;
+      }
+    }
+    // Unspezifizierte Fensterbänke
+    else {
+      if (pos.unit === 'm' && pos.unitPrice > 100) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = 75;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Fensterbank: €${oldPrice}/m → €75/m`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // Vermessung/Aufmaß
+  if ((titleLower.includes('vermessung') || titleLower.includes('aufmaß')) && 
+      pos.unitPrice > 150) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 75;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Aufmaß: €${oldPrice} → €75`);
+    fixedCount++;
+  }
+  
+  // Silikonverfugung
+  if ((titleLower.includes('silikon') || titleLower.includes('verfugung')) && 
+      pos.unit === 'm' && pos.unitPrice > 25) {
+    const oldPrice = pos.unitPrice;
+    pos.unitPrice = 15;
+    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+    warnings.push(`Verfugung: €${oldPrice}/m → €15/m`);
+    fixedCount++;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TÜREN-SPEZIFISCHE PREISKORREKTUREN (TIS)
+// ═══════════════════════════════════════════════════════════════════════════
+if (tradeCode === 'TIS') {
+  
+  // Extrahiere Maße für Sondermaß-Berechnung
+  const sizeMatch = (pos.description || pos.title || '').match(/(\d+)\s*[x×]\s*(\d+)/);
+  let priceMultiplier = 1;
+  
+  if (sizeMatch) {
+    const width = parseInt(sizeMatch[1]);
+    const height = parseInt(sizeMatch[2]);
+    
+    // Sondermaß-Aufschläge
+    if (width > 100 || height > 210) {
+      priceMultiplier = 1.3;  // 30% Aufschlag
+    }
+    if (width > 120 || height > 230) {
+      priceMultiplier = 1.5;  // 50% Aufschlag
+    }
+  }
+  
+  // Prüfe ob echte Tür (nicht Zubehör)
+  const istEchteTuer = (
+    (titleLower.includes('innentür') || 
+     titleLower.includes('wohnungstür') ||
+     (titleLower.includes('tür') && titleLower.includes('lieferung'))) &&
+    !titleLower.includes('drücker') &&
+    !titleLower.includes('beschlag') &&
+    !titleLower.includes('spion') &&
+    !titleLower.includes('dichtung') &&
+    !titleLower.includes('schloss') &&
+    !titleLower.includes('band') &&
+    !titleLower.includes('zubehör')
+  );
+
+  if (istEchteTuer) {
+    // Wohnungstür/Sicherheitstür
+    if (descLower.includes('wohnungseingang') || 
+        titleLower.includes('wohnungstür') ||
+        titleLower.includes('sicherheit')) {
+      const minPrice = Math.round(1500 * priceMultiplier);
+      const maxPrice = Math.round(3000 * priceMultiplier);
+      
+      if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = Math.round(2200 * priceMultiplier);
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Wohnungstür: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    } 
+    // Standard Innentür
+    else {
+      const minPrice = Math.round(400 * priceMultiplier);
+      const maxPrice = Math.round(800 * priceMultiplier);
+      
+      if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = Math.round(600 * priceMultiplier);
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        warnings.push(`Innentür${sizeMatch ? ` (${sizeMatch[1]}×${sizeMatch[2]}cm)` : ''}: €${oldPrice} → €${pos.unitPrice}`);
+        fixedCount++;
+      }
+    }
+  }
+  
+  // Demontage
+  if (titleLower.includes('demontage') && titleLower.includes('tür')) {
+    if (pos.unitPrice < 60 || pos.unitPrice > 150) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 80;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Tür-Demontage: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
+  
+  // Zargen (mit Sondermaß-Aufschlag)
+  if (titleLower.includes('zarge') && !titleLower.includes('dichtung')) {
+    const minPrice = Math.round(120 * priceMultiplier);
+    const maxPrice = Math.round(300 * priceMultiplier);
+    
+    if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = Math.round(180 * priceMultiplier);
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Zarge${sizeMatch ? ` (${sizeMatch[1]}×${sizeMatch[2]}cm)` : ''}: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
+
+  // Türdrücker/Beschläge
+  if (titleLower.includes('drücker') || 
+      (titleLower.includes('beschlag') && !titleLower.includes('zarge'))) {
+    const istSicherheit = titleLower.includes('sicherheit') || titleLower.includes('wohnungstür');
+    const minPrice = istSicherheit ? 200 : 60;
+    const maxPrice = istSicherheit ? 400 : 150;
+    
+    if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = istSicherheit ? 280 : 95;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`${istSicherheit ? 'Sicherheits-' : ''}Beschlag: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
+
+  // Türspion
+  if (titleLower.includes('spion')) {
+    if (pos.unitPrice < 35 || pos.unitPrice > 80) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 55;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Türspion: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
+
+  // Zargendichtung
+  if (titleLower.includes('zargendichtung') || 
+      (titleLower.includes('dichtung') && titleLower.includes('tür'))) {
+    if (pos.unitPrice < 25 || pos.unitPrice > 60) {
+      const oldPrice = pos.unitPrice;
+      pos.unitPrice = 35;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Zargendichtung: €${oldPrice} → €${pos.unitPrice}`);
+      fixedCount++;
+    }
+  }
 }
     
 // ZUSÄTZLICHE REGEL: KEINE PREISE UNTER 10€ (außer Kleinmaterial)
