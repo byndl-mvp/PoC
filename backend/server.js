@@ -7735,6 +7735,93 @@ if ((projectMetadata.isManual || projectMetadata.isAiRecommended) && contextAnsw
   }
 }
 
+/**
+ * NEUE FUNKTION: Erweiterte Keyword-Extraktion aus ALLEN verfügbaren Quellen
+ * @param {Object} contextAnswer - Die Kontext-Antwort (z.B. von File-Upload)
+ * @param {Array} tradeAnswers - Alle Antworten für dieses Gewerk
+ * @param {Object} extractedData - Extrahierte Daten aus Projektbeschreibung/Files
+ * @param {String} tradeCode - Code des Gewerks
+ * @returns {Array} Array von relevanten Keywords
+ */
+function extractAllRelevantKeywords(contextAnswer, tradeAnswers, extractedData, tradeCode) {
+  const keywords = [];
+  
+  // 1. Keywords aus Kontext-Antwort (z.B. File-Upload Analyse)
+  if (contextAnswer?.answer) {
+    const contextKeywords = extractKeywordsFromScope(contextAnswer.answer, tradeCode);
+    keywords.push(...contextKeywords);
+  }
+  
+  // 2. Keywords aus allen Trade-Antworten extrahieren
+  if (tradeAnswers && tradeAnswers.length > 0) {
+    tradeAnswers.forEach(ans => {
+      // Extrahiere relevante Begriffe aus Antworten
+      const answerWords = (ans.answer || '').toLowerCase().split(/[\s,;.!?]+/);
+      
+      answerWords.forEach(word => {
+        const cleanWord = word.replace(/[^a-zäöüß0-9]/gi, '');
+        if (cleanWord.length > 3 && !keywords.includes(cleanWord)) {
+          keywords.push(cleanWord);
+        }
+      });
+      
+      // Spezielle Muster extrahieren (Maße, Mengen)
+      const patterns = [
+        /\d+\s*x\s*\d+/gi,  // Maße wie "90x200"
+        /\d+\s*(m²|qm|m|cm|mm|stk|stück)/gi,  // Mengenangaben
+      ];
+      
+      patterns.forEach(pattern => {
+        const matches = (ans.answer || '').match(pattern);
+        if (matches) {
+          matches.forEach(match => {
+            const clean = match.toLowerCase().trim();
+            if (!keywords.includes(clean)) {
+              keywords.push(clean);
+            }
+          });
+        }
+      });
+    });
+  }
+  
+  // 3. Keywords aus extrahierten Datei-Daten
+  if (extractedData) {
+    // Aus quantities
+    if (extractedData.quantities) {
+      Object.entries(extractedData.quantities).forEach(([key, value]) => {
+        keywords.push(key.toLowerCase());
+        if (value && typeof value === 'number') {
+          keywords.push(value.toString());
+        }
+      });
+    }
+    
+    // Aus materials
+    if (extractedData.materials) {
+      extractedData.materials.forEach(mat => {
+        if (typeof mat === 'string') {
+          keywords.push(mat.toLowerCase());
+        }
+      });
+    }
+    
+    // Aus scope/description
+    if (extractedData.scope) {
+      const scopeWords = extractedData.scope.toLowerCase().split(/[\s,;.!?]+/);
+      scopeWords.forEach(word => {
+        const cleanWord = word.replace(/[^a-zäöüß0-9]/gi, '');
+        if (cleanWord.length > 3) {
+          keywords.push(cleanWord);
+        }
+      });
+    }
+  }
+  
+  // Deduplizieren und zurückgeben
+  return [...new Set(keywords)];
+}
+    
 // Hilfsfunktion: Keywords aus User-Scope extrahieren
 function extractKeywordsFromScope(scopeText, tradeCode) {
   const keywords = [];
