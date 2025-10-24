@@ -4202,6 +4202,36 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    
    - Frage 7: "Sollen alte Fenster DEMONTIERT werden?"
      * Inkl. Entsorgung oder nur Demontage?
+
+    ABSOLUT KRITISCHE MATERIAL-REGEL:
+   ═══════════════════════════════════════
+   Das vom Nutzer gewählte Rahmenmaterial ist VERBINDLICH und MUSS 
+   1:1 in ALLEN Fenster-Positionen verwendet werden:
+   
+   ⚠️ MATERIAL-ANTWORT → LV-POSITIONEN:
+   ════════════════════════════════════════
+   "Holz" → NUR HOLZFENSTER im gesamten LV!
+   "Kunststoff" oder "PVC" → NUR KUNSTSTOFFFENSTER im gesamten LV!
+   "Aluminium" oder "Alu" → NUR ALUMINIUMFENSTER im gesamten LV!
+   "Holz-Aluminium" → NUR HOLZ-ALU-FENSTER im gesamten LV!
+   
+   ❌ ABSOLUT VERBOTEN:
+   - Nutzer wählt "Holz" → LV hat Kunststofffenster = FALSCH!
+   - Nutzer wählt "Kunststoff" → LV hat Holzfenster = FALSCH!
+   - Material eigenmächtig ändern wegen "Erfahrung" = FALSCH!
+   - Verschiedene Materialien mischen = FALSCH!
+   
+   ✅ KORREKT:
+   - Nutzer wählt "Holz" → ALLE Positionen: "Holzfenster"
+   - Nutzer wählt "Kunststoff" → ALLE Positionen: "Kunststofffenster"
+   - Nutzer wählt "Aluminium" → ALLE Positionen: "Aluminiumfenster"
+   - Nutzer wählt "Holz-Alu" → ALLE Positionen: "Holz-Alu-Fenster"
+   
+   BEISPIEL KORREKTE POSITION bei Material "Holz":
+   "Lieferung und Montage HOLZFENSTER 150x140cm, 3-fach Verglasung..."
+   
+   BEISPIEL FALSCHE POSITION bei Material "Holz":
+   "Lieferung und Montage Kunststofffenster..." → MATERIAL FALSCH!
    
    WICHTIGER HINWEIS - GEWERK-ABGRENZUNG:
    ════════════════════════════════════════
@@ -4221,7 +4251,7 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    ════════════════════════════════════
    JEDES Fenster im LV MUSS enthalten:
    1. EXAKTE Einzelmaße (BxH in cm) - KEINE Typen oder Durchschnitte!
-   2. Rahmenmaterial (exakt wie vom Nutzer gewählt)
+   2. Rahmenmaterial (exakt wie vom Nutzer gewählt!)
    3. Verglasungsart (2-fach/3-fach mit Uw-Wert)
    4. Öffnungsart (Dreh-Kipp, Fest, etc.)
    5. Sicherheitsklasse wenn angegeben (RC2, RC3)
