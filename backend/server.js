@@ -7517,9 +7517,6 @@ ${enrichedIntakeAnswers.map(a => {
   return answer;
 }).join('\n\n')}
 
-console.log(`[LV-DEBUG] Building userPrompt with ${enrichedAnswers.length} enriched answers`);
-console.log(`[LV-DEBUG] Sample enriched answer:`, enrichedAnswers[0]);
-
 GEWERK-SPEZIFISCHE ANTWORTEN (${enrichedAnswers.length} Antworten):
 ${enrichedAnswers.map(a => {
   let answer = `[${a.question_id}] ${a.question}${a.unit ? ` (${a.unit})` : ''}
@@ -7559,6 +7556,9 @@ WICHTIG:
 3. Realistische Preise (Stand 2024/2025)
 4. Dokumentiere alle Annahmen transparent`;  // HIER ENDET der userPrompt String
 
+console.log(`[LV-DEBUG] Building userPrompt with ${enrichedAnswers.length} enriched answers`);
+console.log(`[LV-DEBUG] Sample enriched answer:`, enrichedAnswers[0]);
+  
   try {
   const response = await llmWithPolicy('lv', [
     { role: 'system', content: systemPrompt },
