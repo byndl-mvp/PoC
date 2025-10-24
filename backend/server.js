@@ -8923,6 +8923,46 @@ if (tradeCode === 'FEN') {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+  // LEIBUNGSVERPUTZ (Fensterlaibungen)
+  // ═══════════════════════════════════════════════════════════════════════
+  if ((titleLower.includes('leibung') || descLower.includes('leibung')) &&
+      (titleLower.includes('verputz') || titleLower.includes('putz') ||
+       descLower.includes('verputz') || descLower.includes('putz'))) {
+    
+    // Preis pro laufenden Meter
+    if (pos.unit === 'lfm' || pos.unit === 'm') {
+      
+      let leibungspreis = 35; // Standard
+      
+      // Außen teurer als innen
+      if (titleLower.includes('außen') || titleLower.includes('aussen') ||
+          descLower.includes('außen') || descLower.includes('aussen')) {
+        leibungspreis = 45;
+      } else if (titleLower.includes('innen') || descLower.includes('innen')) {
+        leibungspreis = 30;
+      }
+      
+      // Sonderausführungen
+      if (titleLower.includes('armierung') || descLower.includes('armierung') ||
+          titleLower.includes('gewebe') || descLower.includes('gewebe')) {
+        leibungspreis += 5; // Gewebe-Armierung
+      }
+      
+      // Korrigiere absurde Preise
+      if (pos.unitPrice < 15 || pos.unitPrice > 100) {
+        const oldPrice = pos.unitPrice;
+        pos.unitPrice = leibungspreis;
+        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        
+        const location = titleLower.includes('außen') ? ' (außen)' : 
+                        titleLower.includes('innen') ? ' (innen)' : '';
+        warnings.push(`Leibungsverputz${location}: €${oldPrice}/lfm → €${leibungspreis}/lfm`);
+        fixedCount++;
+      }
+    }
+  }
+    
 // ═══════════════════════════════════════════════════════════════════════════
 // TÜREN-SPEZIFISCHE PREISKORREKTUREN (TIS)
 // ═══════════════════════════════════════════════════════════════════════════
