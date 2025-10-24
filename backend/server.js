@@ -6261,6 +6261,14 @@ const enrichedIntakeAnswers = intakeAnswers.map(answer => {
     [projectId, tradeId]
   )).rows;
 
+console.log(`[LV-DEBUG] Loaded ${tradeAnswers.length} answers from database for ${trade.code}`);
+if (tradeAnswers.length > 0) {
+  console.log(`[LV-DEBUG] First 3 answers:`, tradeAnswers.slice(0, 3).map(a => ({
+    question_id: a.question_id,
+    answer: a.answer ? a.answer.substring(0, 50) : 'null'
+  })));
+}
+  
 // KONTEXT-ANTWORT FÜR MANUELL/ZUSÄTZLICH HINZUGEFÜGTE GEWERKE LADEN
 let manualTradeContext = '';
 let contextAnswer = null;
