@@ -7523,7 +7523,7 @@ console.log(`[LV-DEBUG] Sample enriched answer:`, enrichedAnswers[0]);
 GEWERK-SPEZIFISCHE ANTWORTEN (${enrichedAnswers.length} Antworten):
 ${enrichedAnswers.map(a => {
   let answer = `[${a.question_id}] ${a.question}${a.unit ? ` (${a.unit})` : ''}
-  Antwort: ${a.answer_text}`;
+  Antwort: ${a.answer || a.answer_text}`;
   
   // Upload-Info hinzufügen
   if (a.hasUpload) {
