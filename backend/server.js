@@ -13437,7 +13437,7 @@ if (result.text) {
   extractedAnswer = `${detectedItems.length} Einträge aus Excel extrahiert`;
   llmContext = extractedAnswer;
 }
-    
+} 
     // PDF-ANALYSE
     else if (file.mimetype === 'application/pdf') {
       console.log('[FILE-ANALYZE] Processing PDF:', file.originalname);
