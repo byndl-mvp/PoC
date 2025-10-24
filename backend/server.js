@@ -30,7 +30,6 @@ const { parseSpreadsheetContent } = require('./spreadsheetParser');
 const { analyzePdfWithClaude } = require('./pdfAnalyzer');
 const nodemailer = require('nodemailer');
 const emailService = require('./emailService');
-const { UPLOAD_DATA_CRITICAL_RULES } = require('./upload-data-enforcement');
 const { applyWindowPriceCorrection } = require('./fenster-preis-korrektur');
 const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
