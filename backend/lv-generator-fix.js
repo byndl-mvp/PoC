@@ -102,11 +102,11 @@ Wenn das LV plausibel aussieht → KEINE Änderungen vornehmen!
 4. PREIS-PLAUSIBILITÄT - NUR ABSURDE AUSREISSER:
    
    OFFENSICHTLICH ZU HOCH:
-   - Leibungsverputz > 100€/lfm (normal: 30-60€)
+   - Leibungsverputz, Laibungsverputz > 100€/lfm (normal: 30-60€)
    - Fensterreinigung > 100€/Stk (normal: 15-40€)
    - Abdichtung > 100€/lfm (normal: 20-50€)
    - Aufmaß/Vermessung > 200€ pauschal (normal: 50-100€)
-   - Innentür > 2000€ (normal: 300-900€)
+   - Innentür > 3000€ (normal: 300-900€)
    - Steckdose > 200€ (normal: 30-80€)
    - Anstrich > 100€/m² (normal: 8-30€)
    - Sockelleiste > 50€/lfm (normal: 10-25€)
