@@ -30,7 +30,6 @@ const { parseSpreadsheetContent } = require('./spreadsheetParser');
 const { analyzePdfWithClaude } = require('./pdfAnalyzer');
 const nodemailer = require('nodemailer');
 const emailService = require('./emailService');
-const { CRITICAL_PROMPT_ADDITIONS, validateAndCleanLVComplete } = require('./lv-generator-fix');
 const { UPLOAD_DATA_CRITICAL_RULES } = require('./upload-data-enforcement');
 const { applyWindowPriceCorrection } = require('./fenster-preis-korrektur');
 const OpenAI = require("openai");
