@@ -8742,7 +8742,10 @@ if (tradeCode === 'FEN') {
       !titleLower.includes('abdichtung') && 
       !titleLower.includes('vermessung') &&
       !titleLower.includes('rollladen') &&
-      !titleLower.includes('rolladen')) {
+      !titleLower.includes('rolladen') &&
+      !titleLower.includes('leibung') &&      
+      !titleLower.includes('verputz') &&      
+      !titleLower.includes('putz')) {         
     
     const oldPrice = pos.unitPrice;
     const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
