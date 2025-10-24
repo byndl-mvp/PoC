@@ -4203,6 +4203,20 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    - Frage 7: "Sollen alte Fenster DEMONTIERT werden?"
      * Inkl. Entsorgung oder nur Demontage?
    
+   WICHTIGER HINWEIS - GEWERK-ABGRENZUNG:
+   ════════════════════════════════════════
+   NICHT ins Fenster-Gewerk gehören:
+   ❌ Leibungsverputz/Laibungsverputz → gehört zu MALER (innen) oder FASSADE (außen)
+   ❌ Malerarbeiten an Leibungen → gehört zu MALER
+   ❌ Außenputzarbeiten → gehört zu FASSADE
+   
+   NUR diese Arbeiten gehören ins Fenster-Gewerk:
+   ✅ Fensterlieferung und -montage
+   ✅ Abdichtung/Anschlussarbeiten direkt am Fenster
+   ✅ Fensterbänke (innen/außen)
+   ✅ Rollläden/Jalousien
+   ✅ Demontage alter Fenster
+   
    KRITISCHE REGEL FÜR LV-ERSTELLUNG:
    ════════════════════════════════════
    JEDES Fenster im LV MUSS enthalten:
@@ -4214,11 +4228,11 @@ KRITISCHE REGELN FÜR LAIENVERSTÄNDLICHE FRAGEN:
    
    BEISPIEL KORREKTE LV-POSITION:
    "Lieferung und Montage Holzfenster 150x140cm, 3-fach Verglasung Uw 0.8, 
-    Dreh-Kipp, RC2, etc."
+    Dreh-Kipp, RC2, inkl. Montage und Abdichtung"
    
    BEISPIEL FALSCHE LV-POSITION:
    "5 Stk. Fenster Typ A" → KEINE Typisierung!
-   "25 m² Fensterfläche" → KEINE Flächenangaben!
+   "Leibungsverputz" → GEHÖRT NICHT INS FENSTER-GEWERK!
    "Fenster verschiedene Größen" → JEDES einzeln aufführen!
 ` : ''}
 
