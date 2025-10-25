@@ -8608,14 +8608,22 @@ if (isSpecialEquipment && pos.unitPrice > 1000) {
       
 if (tradeCode === 'FEN') {
   
-  // NUR Elektro-Positionen entfernen
-  const elektroKeywords = ['elektroinstallation', 'verkabelung', 'nym', 'kabel'];
+  // Nur Installation/Verkabelung - NICHT "elektrisch" oder "Elektro"
+  const elektroKeywords = [
+    'elektroinstallation',
+    'verkabelung', 
+    'nym',
+    'kabelverlegung',
+    'unterverteilung',
+    'stromleitung verlegen'
+  ];
+  
   const hatElektroKeyword = elektroKeywords.some(keyword => 
     titleLower.includes(keyword) || descLower.includes(keyword)
   );
   
   if (hatElektroKeyword) {
-    console.log(`❌ ENTFERNT: ${pos.title} (Elektro)`);
+    console.log(`❌ ENTFERNT: ${pos.title} (Elektroinstallation)`);
     pos.unitPrice = 0;
     pos.totalPrice = 0;
     pos._remove = true;
