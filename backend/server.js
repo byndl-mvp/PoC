@@ -8614,6 +8614,32 @@ if (isSpecialEquipment && pos.unitPrice > 1000) {
 
 if (tradeCode === 'FEN') {
   
+  const elektroKeywords = [
+    'elektroinstallation',
+    'verkabelung',
+    'nym',
+    'kabel',
+    'unterverteilung',
+    'stromversorgung',
+    'elektrische installation',
+    'verlegung kabel'
+  ];
+  
+  const hatElektroKeyword = elektroKeywords.some(keyword => 
+    titleLower.includes(keyword) || descLower.includes(keyword)
+  );
+  
+  if (hatElektroKeyword) {
+    console.log(`❌ ENTFERNT: ${pos.title?.substring(0,60)} (Elektroarbeiten gehören nicht zum Fensterbauer)`);
+    warnings.push(`Position entfernt: "${pos.title}" (Elektroinstallation - nicht Fensterbauer-Leistung)`);
+    
+    // Position komplett aus Array löschen
+    positions.splice(idx, 1);
+    idx--; // Index zurücksetzen weil Array jetzt kürzer ist
+    fixedCount++;
+    continue; // Weiter mit nächster Position
+  }
+  
   const PAUSCHALPREISE = [400, 500, 600, 700, 800, 900, 1000];
   const isPauschalPrice = PAUSCHALPREISE.includes(pos.unitPrice);
   
