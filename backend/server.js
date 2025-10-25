@@ -8637,8 +8637,7 @@ if (tradeCode === 'FEN') {
     positions.splice(idx, 1);
     idx--; // Index zurücksetzen weil Array jetzt kürzer ist
     fixedCount++;
-    continue; // Weiter mit nächster Position
-  }
+    } else {
   
   const PAUSCHALPREISE = [400, 500, 600, 700, 800, 900, 1000];
   const isPauschalPrice = PAUSCHALPREISE.includes(pos.unitPrice);
@@ -8766,11 +8765,12 @@ if (tradeCode === 'FEN') {
         console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${calculatedPrice}€ | 🚨 PAUSCHAL`);
         warnings.push(`Fenster: €${oldPrice} → €${calculatedPrice} [Pauschalpreis]`);
         fixedCount++;
-      }
+       }
+     }
     }
   }
 }
-    
+                                  
 // ═══════════════════════════════════════════════════════════════════════════
 // TÜREN-VALIDIERUNG - NUR PAUSCHALPREISE & EXTREME ABWEICHUNGEN
 // ═══════════════════════════════════════════════════════════════════════════
