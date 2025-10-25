@@ -4441,18 +4441,6 @@ ALLGEMEINE MAß-REGEL für ${tradeName}:
 - Bei Unsicherheit: "Maße vor Ort aufnehmen" als Option
 ` : ''}
 
-${uploadContext && uploadContext.parsedData ? `
-
-═══════════════════════════════════════════════════════════════
-WICHTIG: Excel/PDF-Upload vorhanden mit ${uploadContext.parsedData.length} Positionen!
-═══════════════════════════════════════════════════════════════
-Verwende EXAKT diese Daten für das LV:
-- Jede Zeile aus dem Upload = eine Position im LV
-- Alle Maße, Materialien, Eigenschaften 1:1 übernehmen
-- Nichts erfinden, nichts ändern, nichts weglassen
-- Bei Fenstern: Jedes einzelne Fenster mit seinen spezifischen Maßen
-` : ''}
-
    FRAGENANZAHL: ${targetQuestionCount} Fragen
 - Vollständigkeit: ${intelligentCount.completeness}%
 - Fehlende Info: ${intelligentCount.missingInfo.join(', ') || 'keine'}
