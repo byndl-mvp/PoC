@@ -16,6 +16,7 @@ export default function LVReviewPage() {
   const [questionsStatus, setQuestionsStatus] = useState({});
   const [generatingLVs, setGeneratingLVs] = useState({});
   const [questionGenerationProgress, setQuestionGenerationProgress] = useState({});
+  const [lvGenerationProgress, setLvGenerationProgress] = useState({});
   
   // Bearbeitungs-States (wie ResultPage)
   const [selectedLv, setSelectedLv] = useState(null);
@@ -224,6 +225,46 @@ useEffect(() => {
   };
 }, [generatingLVs, projectId]);
 
+// NEU: useEffect für 120-Sekunden Fake-Progress für LV-Generierung
+useEffect(() => {
+  const activeGenerations = Object.entries(generatingLVs)
+    .filter(([_, isGenerating]) => isGenerating)
+    .map(([tradeId]) => parseInt(tradeId));
+  
+  if (activeGenerations.length === 0) return;
+  
+  const intervals = {};
+  
+  activeGenerations.forEach(tradeId => {
+    // Initialisiere Progress wenn noch nicht vorhanden
+    if (!lvGenerationProgress[tradeId]) {
+      setLvGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
+    }
+    
+    const totalDuration = 120000; // 120 Sekunden
+    const updateInterval = 100; // Update alle 100ms
+    const increment = (100 / (totalDuration / updateInterval));
+    
+    intervals[tradeId] = setInterval(() => {
+      setLvGenerationProgress(prev => {
+        const currentProgress = prev[tradeId] || 0;
+        const next = currentProgress + increment;
+        
+        if (next >= 99) {
+          clearInterval(intervals[tradeId]);
+          return { ...prev, [tradeId]: 99 }; // Bleibt bei 99% bis tatsächlich fertig
+        }
+        
+        return { ...prev, [tradeId]: next };
+      });
+    }, updateInterval);
+  });
+  
+  return () => {
+    Object.values(intervals).forEach(interval => clearInterval(interval));
+  };
+}, [generatingLVs]);
+  
 useEffect(() => {
   // Cleanup beim Unmount oder Seitenwechsel
   return () => {
