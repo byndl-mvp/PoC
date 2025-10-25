@@ -226,6 +226,7 @@ useEffect(() => {
 }, [generatingLVs, projectId]);
 
 // NEU: useEffect für 120-Sekunden Fake-Progress für LV-Generierung
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   const activeGenerations = Object.entries(generatingLVs)
     .filter(([_, isGenerating]) => isGenerating)
