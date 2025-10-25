@@ -8605,31 +8605,6 @@ if (isSpecialEquipment && pos.unitPrice > 1000) {
       warnings.push(`Mindestpreis: €${oldPrice} → €50`);  
       fixedCount++;  
       }  
-      
-if (tradeCode === 'FEN') {
-  
-  // Nur Installation/Verkabelung - NICHT "elektrisch" oder "Elektro"
-  const elektroKeywords = [
-    'elektroinstallation',
-    'verkabelung', 
-    'nym',
-    'kabelverlegung',
-    'unterverteilung',
-    'stromleitung verlegen'
-  ];
-  
-  const hatElektroKeyword = elektroKeywords.some(keyword => 
-    titleLower.includes(keyword) || descLower.includes(keyword)
-  );
-  
-  if (hatElektroKeyword) {
-    console.log(`❌ ENTFERNT: ${pos.title} (Elektroinstallation)`);
-    pos.unitPrice = 0;
-    pos.totalPrice = 0;
-    pos._remove = true;
-    fixedCount++;
-  }
-}
                                
 // ZUSÄTZLICHE REGEL: KEINE PREISE UNTER 10€ (außer Kleinmaterial)
 if (!titleLower.includes('kleinmaterial') && 
