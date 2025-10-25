@@ -226,7 +226,6 @@ useEffect(() => {
 }, [generatingLVs, projectId]);
 
 // NEU: useEffect für 120-Sekunden Fake-Progress für LV-Generierung
-// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   const activeGenerations = Object.entries(generatingLVs)
     .filter(([_, isGenerating]) => isGenerating)
@@ -237,14 +236,15 @@ useEffect(() => {
   const intervals = {};
   
   activeGenerations.forEach(tradeId => {
-    // Initialisiere Progress wenn noch nicht vorhanden
-    if (!lvGenerationProgress[tradeId]) {
-      setLvGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
-    }
-    
     const totalDuration = 120000; // 120 Sekunden
     const updateInterval = 100; // Update alle 100ms
     const increment = (100 / (totalDuration / updateInterval));
+    
+    // Initialisiere Progress
+    setLvGenerationProgress(prev => {
+      if (prev[tradeId] !== undefined) return prev; // Bereits initialisiert
+      return { ...prev, [tradeId]: 0 };
+    });
     
     intervals[tradeId] = setInterval(() => {
       setLvGenerationProgress(prev => {
