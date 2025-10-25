@@ -8606,168 +8606,18 @@ if (isSpecialEquipment && pos.unitPrice > 1000) {
       fixedCount++;  
       }  
       
-// ═══════════════════════════════════════════════════════════════════════════
-// FENSTER-VALIDIERUNG - NUR PAUSCHALPREISE FIXEN
-// Korrigiert AUSSCHLIESSLICH: 400€, 500€, 600€, 700€, 800€, 900€, 1000€
-// ALLES ANDERE: In Ruhe lassen!
-// ═══════════════════════════════════════════════════════════════════════════
-
 if (tradeCode === 'FEN') {
   
-  const elektroKeywords = [
-    'elektroinstallation',
-    'verkabelung',
-    'nym',
-    'kabel',
-    'unterverteilung',
-    'stromversorgung',
-    'elektrische installation',
-    'verlegung kabel'
-  ];
-  
+  // NUR Elektro-Positionen entfernen
+  const elektroKeywords = ['elektroinstallation', 'verkabelung', 'nym', 'kabel'];
   const hatElektroKeyword = elektroKeywords.some(keyword => 
     titleLower.includes(keyword) || descLower.includes(keyword)
   );
   
   if (hatElektroKeyword) {
-    console.log(`❌ ENTFERNT: ${pos.title?.substring(0,60)} (Elektroarbeiten gehören nicht zum Fensterbauer)`);
-    warnings.push(`Position entfernt: "${pos.title}" (Elektroinstallation - nicht Fensterbauer-Leistung)`);
-    
-    // Position komplett aus Array löschen
+    console.log(`❌ ENTFERNT: ${pos.title} (Elektro)`);
     positions.splice(idx, 1);
-    idx--; // Index zurücksetzen weil Array jetzt kürzer ist
-    fixedCount++;
-    } else {
-  
-  const PAUSCHALPREISE = [400, 500, 600, 700, 800, 900, 1000];
-  const isPauschalPrice = PAUSCHALPREISE.includes(pos.unitPrice);
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // NUR PAUSCHALPREISE KORRIGIEREN - SONST NIX!
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  if (isPauschalPrice) {
-    
-    // ───────────────────────────────────────────────────────────────────────
-    // FENSTERBÄNKE - ZUERST PRÜFEN!
-    // ───────────────────────────────────────────────────────────────────────
-    if (titleLower.includes('fensterbank') || titleLower.includes('fenstersims') || 
-        titleLower.includes('bank')) {
-      
-      // Fensterbänke NICHT als Pauschalpreis korrigieren!
-      // Der LLM-Preis ist wahrscheinlich korrekt (180-300€ für Außenfensterbänke)
-      // Logging für Debugging
-      console.log(`ℹ️  ${pos.title?.substring(0,50)}: ${pos.unitPrice}€ (Fensterbank - NICHT korrigiert)`);
-    }
-    
-    // ───────────────────────────────────────────────────────────────────────
-    // ROLLLÄDEN
-    // ───────────────────────────────────────────────────────────────────────
-    else if ((titleLower.includes('rollladen') || titleLower.includes('rolladen')) &&
-        !titleLower.includes('reparatur') && !titleLower.includes('wartung')) {
-      
-      const oldPrice = pos.unitPrice;
-      const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
-      
-      if (sizeMatch) {
-        const width = parseInt(sizeMatch[1]);
-        const height = parseInt(sizeMatch[2]);
-        const widthCm = width > 300 ? width / 10 : width;
-        const heightCm = height > 300 ? height / 10 : height;
-        const area = (widthCm * heightCm) / 10000;
-        
-        let basePrice = 200;
-        let pricePerM2 = 180;
-        
-        if (area < 1.2) { basePrice = 220; pricePerM2 = 200; }
-        else if (area < 2.0) { basePrice = 200; pricePerM2 = 180; }
-        else if (area < 3.5) { basePrice = 180; pricePerM2 = 160; }
-        else { basePrice = 150; pricePerM2 = 140; }
-        
-        if (titleLower.includes('vorbau')) pricePerM2 -= 20;
-        else if (titleLower.includes('aufsatz')) pricePerM2 += 10;
-        
-        let motorFactor = 1.0;
-        if (titleLower.includes('motor') || titleLower.includes('elektrisch') || 
-            descLower.includes('motor') || descLower.includes('elektrisch')) {
-          motorFactor = 1.4;
-        }
-        
-        let calculatedPrice = (basePrice + (area * pricePerM2)) * motorFactor;
-        calculatedPrice = Math.round(calculatedPrice / 10) * 10;
-        
-        if (calculatedPrice < 280) calculatedPrice = 280;
-        if (calculatedPrice > 1500) calculatedPrice = 1500;
-        
-        pos.unitPrice = calculatedPrice;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${calculatedPrice}€ | 🚨 PAUSCHAL`);
-        warnings.push(`Rollladen: €${oldPrice} → €${calculatedPrice} [Pauschalpreis]`);
-        fixedCount++;
-      }
-    }
-    
-    // ───────────────────────────────────────────────────────────────────────
-    // FENSTER (aber KEINE Fensterbänke!)
-    // ───────────────────────────────────────────────────────────────────────
-    else if (titleLower.includes('fenster') && 
-             (titleLower.includes('lieferung') || titleLower.includes('montage')) &&
-             !titleLower.includes('reinigung') && 
-             !titleLower.includes('abdichtung') &&
-             !titleLower.includes('rollladen') &&
-             !titleLower.includes('fensterbank') &&  // ✅ WICHTIG!
-             !titleLower.includes('fenstersims') &&  // ✅ WICHTIG!
-             !titleLower.includes('bank') &&         // ✅ WICHTIG!
-             !titleLower.includes('leibung', 'laibung')) {
-      
-      const oldPrice = pos.unitPrice;
-      const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
-      
-      if (sizeMatch) {
-        const width = parseInt(sizeMatch[1]);
-        const height = parseInt(sizeMatch[2]);
-        const widthCm = width > 300 ? width / 10 : width;
-        const heightCm = height > 300 ? height / 10 : height;
-        const area = (widthCm * heightCm) / 10000;
-        
-        let basePrice = 400;
-        let pricePerM2 = 450;
-        
-        if (area < 1.2) { basePrice = 450; pricePerM2 = 500; }
-        else if (area < 2.0) { basePrice = 420; pricePerM2 = 470; }
-        else if (area < 3.5) { basePrice = 400; pricePerM2 = 430; }
-        else if (area < 5.0) { basePrice = 380; pricePerM2 = 400; }
-        else { basePrice = 350; pricePerM2 = 380; }
-        
-        let materialFactor = 1.0;
-        if (titleLower.includes('holz-alu') || descLower.includes('holz-alu')) {
-          materialFactor = 1.65;
-        } else if (titleLower.includes('alu') || descLower.includes('alu')) {
-          materialFactor = 1.45;
-        } else if (titleLower.includes('holz') || descLower.includes('holz')) {
-          materialFactor = 1.25;
-        }
-        
-        let glasFactor = 1.0;
-        if (titleLower.includes('4-fach') || descLower.includes('4-fach')) glasFactor = 1.35;
-        else if (titleLower.includes('3-fach') || descLower.includes('3-fach')) glasFactor = 1.18;
-        
-        let calculatedPrice = (basePrice + (area * pricePerM2)) * materialFactor * glasFactor;
-        calculatedPrice = Math.round(calculatedPrice / 10) * 10;
-        
-        if (calculatedPrice < 600) calculatedPrice = 600;
-        if (calculatedPrice > 4500) calculatedPrice = 4500;
-        
-        pos.unitPrice = calculatedPrice;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${calculatedPrice}€ | 🚨 PAUSCHAL`);
-        warnings.push(`Fenster: €${oldPrice} → €${calculatedPrice} [Pauschalpreis]`);
-        fixedCount++;
-       }
-     }
-    }
+    idx--;
   }
 }
                                
