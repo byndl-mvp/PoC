@@ -8616,8 +8616,10 @@ if (tradeCode === 'FEN') {
   
   if (hatElektroKeyword) {
     console.log(`❌ ENTFERNT: ${pos.title} (Elektro)`);
-    positions.splice(idx, 1);
-    idx--;
+    pos.unitPrice = 0;
+    pos.totalPrice = 0;
+    pos._remove = true;
+    fixedCount++;
   }
 }
                                
