@@ -8607,534 +8607,138 @@ if (isSpecialEquipment && pos.unitPrice > 1000) {
       }  
       
 // ═══════════════════════════════════════════════════════════════════════════
-// PREISVALIDIERUNG FÜR FENSTER (FEN) - BUGFIXES APPLIED
+// FENSTER-VALIDIERUNG - NUR PAUSCHALPREISE FIXEN
+// Korrigiert AUSSCHLIESSLICH: 400€, 500€, 600€, 700€, 800€, 900€, 1000€
+// ALLES ANDERE: In Ruhe lassen!
 // ═══════════════════════════════════════════════════════════════════════════
 
-// 5. FENSTER-SPEZIFISCHE PREISKORREKTUREN
 if (tradeCode === 'FEN') {
   
+  const PAUSCHALPREISE = [400, 500, 600, 700, 800, 900, 1000];
+  const isPauschalPrice = PAUSCHALPREISE.includes(pos.unitPrice);
+  
   // ═══════════════════════════════════════════════════════════════════════
-  // ROLLLÄDEN - GRÖßENBASIERTE PREISBERECHNUNG (VERBESSERT)
+  // NUR PAUSCHALPREISE KORRIGIEREN - SONST NIX!
   // ═══════════════════════════════════════════════════════════════════════
-  if ((titleLower.includes('rollladen') || titleLower.includes('rolladen') || 
-       titleLower.includes('rollläden') || titleLower.includes('rolläden')) &&
-      !titleLower.includes('reparatur') && !titleLower.includes('wartung')) {
+  
+  if (isPauschalPrice) {
     
-    const oldPrice = pos.unitPrice;
-    const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
+    // ───────────────────────────────────────────────────────────────────────
+    // FENSTERBÄNKE - ZUERST PRÜFEN!
+    // ───────────────────────────────────────────────────────────────────────
+    if (titleLower.includes('fensterbank') || titleLower.includes('fenstersims') || 
+        titleLower.includes('bank')) {
+      
+      // Fensterbänke NICHT als Pauschalpreis korrigieren!
+      // Der LLM-Preis ist wahrscheinlich korrekt (180-300€ für Außenfensterbänke)
+      // Logging für Debugging
+      console.log(`ℹ️  ${pos.title?.substring(0,50)}: ${pos.unitPrice}€ (Fensterbank - NICHT korrigiert)`);
+    }
     
-    if (sizeMatch) {
-      // Größe extrahieren
-      const width = parseInt(sizeMatch[1]);
-      const height = parseInt(sizeMatch[2]);
+    // ───────────────────────────────────────────────────────────────────────
+    // ROLLLÄDEN
+    // ───────────────────────────────────────────────────────────────────────
+    else if ((titleLower.includes('rollladen') || titleLower.includes('rolladen')) &&
+        !titleLower.includes('reparatur') && !titleLower.includes('wartung')) {
       
-      // Konvertiere zu cm falls in mm
-      const widthCm = width > 300 ? width / 10 : width;
-      const heightCm = height > 300 ? height / 10 : height;
+      const oldPrice = pos.unitPrice;
+      const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
       
-      // Berechne Fläche in m²
-      const area = (widthCm * heightCm) / 10000;
-      
-      // ✅ BUGFIX: Degressive Preisstaffelung statt linearer Formel
-      let basePrice = 200;
-      let pricePerM2 = 180;
-      
-      // Größenstaffel (degressive Preise bei großen Rollläden)
-      if (area < 1.2) {
-        // Kleine Rollläden (bis ~100×120cm)
-        basePrice = 220;
-        pricePerM2 = 200;
-      } else if (area < 2.0) {
-        // Standard (bis ~140×140cm)
-        basePrice = 200;
-        pricePerM2 = 180;
-      } else if (area < 3.5) {
-        // Große (bis ~180×190cm)
-        basePrice = 180;
-        pricePerM2 = 160;
-      } else {
-        // XXL-Rollläden (>3.5m²)
-        basePrice = 150;
-        pricePerM2 = 140;
-      }
-      
-      // Typ erkennen
-      if (titleLower.includes('vorbau')) {
-        pricePerM2 -= 20; // Vorbau günstiger
-      } else if (titleLower.includes('aufsatz')) {
-        pricePerM2 += 10; // Aufsatz teurer
-      } else if (titleLower.includes('einbau')) {
-        pricePerM2 += 30; // Einbau am teuersten
-      }
-      
-      // Motor-Faktor
-      let motorFactor = 1.0;
-      if (titleLower.includes('motor') || titleLower.includes('elektrisch') || 
-          titleLower.includes('elektro') || descLower.includes('motor') || 
-          descLower.includes('elektrisch')) {
-        motorFactor = 1.4;
-      }
-      
-      // Smart Home / Funk
-      if (titleLower.includes('smart') || titleLower.includes('funk') || 
-          titleLower.includes('app') || descLower.includes('funksteuerung')) {
-        motorFactor = 1.6;
-      }
-      
-      // Berechne Preis
-      let calculatedPrice = (basePrice + (area * pricePerM2)) * motorFactor;
-      
-      // Größenabhängige Anpassungen
-      if (widthCm > 250 || heightCm > 250) {
-        calculatedPrice *= 1.15; // Übergrößen-Aufschlag erhöht
-      }
-      
-      if (area < 0.5) {
-        calculatedPrice = Math.max(calculatedPrice, 280); // Mindestpreis kleine Rollläden
-      }
-      
-      // Runde auf 10€
-      calculatedPrice = Math.round(calculatedPrice / 10) * 10;
-      
-      // Plausibilitätsgrenzen
-      if (calculatedPrice < 280) calculatedPrice = 280;
-      if (calculatedPrice > 1500) calculatedPrice = 1500; // Obergrenze erhöht für XXL
-      
-      // ✅ BUGFIX: Aggressivere Korrektur bei 500€-Pauschalpreis
-      const deviation = Math.abs(oldPrice - calculatedPrice);
-      const deviationPercent = oldPrice > 0 ? deviation / oldPrice : 1;
-      
-      // Korrigiere bei >25% Abweichung ODER >100€ Differenz (vorher 30% / 150€)
-      // UND IMMER korrigieren bei Pauschalpreisen 400/500/600/800€
-      const isPauschalPrice = [400, 500, 600, 800].includes(oldPrice);
-      
-      if (isPauschalPrice || deviationPercent > 0.25 || deviation > 100) {
+      if (sizeMatch) {
+        const width = parseInt(sizeMatch[1]);
+        const height = parseInt(sizeMatch[2]);
+        const widthCm = width > 300 ? width / 10 : width;
+        const heightCm = height > 300 ? height / 10 : height;
+        const area = (widthCm * heightCm) / 10000;
+        
+        let basePrice = 200;
+        let pricePerM2 = 180;
+        
+        if (area < 1.2) { basePrice = 220; pricePerM2 = 200; }
+        else if (area < 2.0) { basePrice = 200; pricePerM2 = 180; }
+        else if (area < 3.5) { basePrice = 180; pricePerM2 = 160; }
+        else { basePrice = 150; pricePerM2 = 140; }
+        
+        if (titleLower.includes('vorbau')) pricePerM2 -= 20;
+        else if (titleLower.includes('aufsatz')) pricePerM2 += 10;
+        
+        let motorFactor = 1.0;
+        if (titleLower.includes('motor') || titleLower.includes('elektrisch') || 
+            descLower.includes('motor') || descLower.includes('elektrisch')) {
+          motorFactor = 1.4;
+        }
+        
+        let calculatedPrice = (basePrice + (area * pricePerM2)) * motorFactor;
+        calculatedPrice = Math.round(calculatedPrice / 10) * 10;
+        
+        if (calculatedPrice < 280) calculatedPrice = 280;
+        if (calculatedPrice > 1500) calculatedPrice = 1500;
+        
         pos.unitPrice = calculatedPrice;
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
         
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${calculatedPrice}€ (Δ${calculatedPrice-oldPrice}€)`);
-        console.log(`   📏 ${widthCm}×${heightCm}cm (${area.toFixed(1)}m²) | ${motorFactor > 1.3 ? '⚡ elektrisch' : '🔧 manuell'} | ${isPauschalPrice ? '🚨 PAUSCHAL' : `Abweichung ${deviationPercent.toFixed(1)}%`}`);
-        
-        const motorInfo = motorFactor > 1.3 ? ' (elektrisch)' : ' (manuell)';
-        const reasonInfo = isPauschalPrice ? ' [Pauschalpreis korrigiert]' : '';
-        warnings.push(`Rollladen ${widthCm}×${heightCm}cm${motorInfo}: €${oldPrice} → €${calculatedPrice}${reasonInfo}`);
-        fixedCount++;
-      }
-      
-    } else {
-      // ✅ BUGFIX: Rollladen ohne Maße - Besser abschätzen statt Pauschalpreis
-      let standardPrice = 380; // Erhöht von 350€
-      
-      if (titleLower.includes('motor') || titleLower.includes('elektrisch') || 
-          descLower.includes('motor') || descLower.includes('elektrisch')) {
-        standardPrice = 530; // Erhöht von 500€
-      }
-      
-      // Bei Pauschalpreisen IMMER korrigieren
-      const isPauschalPrice = [400, 500, 600, 800].includes(oldPrice);
-      
-      if (isPauschalPrice || Math.abs(oldPrice - standardPrice) > 120) {
-        pos.unitPrice = standardPrice;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${standardPrice}€ (Δ${standardPrice-oldPrice}€)`);
-        console.log(`   📏 Keine Maße | ${isPauschalPrice ? '🚨 PAUSCHAL' : 'Abweichung zu groß'}`);
-        
-        const reasonInfo = isPauschalPrice ? ' [Pauschalpreis korrigiert]' : '';
-        warnings.push(`Rollladen (ohne Maße): €${oldPrice} → €${standardPrice}${reasonInfo}`);
+        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${calculatedPrice}€ | 🚨 PAUSCHAL`);
+        warnings.push(`Rollladen: €${oldPrice} → €${calculatedPrice} [Pauschalpreis]`);
         fixedCount++;
       }
     }
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // HAUPTFENSTER (Lieferung und Montage) - VERBESSERT
-  // ═══════════════════════════════════════════════════════════════════════
-  if (titleLower.includes('fenster') && 
-      (titleLower.includes('lieferung') || titleLower.includes('montage')) &&
-      !titleLower.includes('reinigung') && 
-      !titleLower.includes('abdichtung') && 
-      !titleLower.includes('vermessung') &&
-      !titleLower.includes('rollladen') &&
-      !titleLower.includes('rolladen') &&
-      !titleLower.includes('leibung') &&      
-      !titleLower.includes('verputz') &&      
-      !titleLower.includes('putz')) {         
     
-    const oldPrice = pos.unitPrice;
-    const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
-    
-    if (sizeMatch) {
-      const width = parseInt(sizeMatch[1]);
-      const height = parseInt(sizeMatch[2]);
+    // ───────────────────────────────────────────────────────────────────────
+    // FENSTER (aber KEINE Fensterbänke!)
+    // ───────────────────────────────────────────────────────────────────────
+    else if (titleLower.includes('fenster') && 
+             (titleLower.includes('lieferung') || titleLower.includes('montage')) &&
+             !titleLower.includes('reinigung') && 
+             !titleLower.includes('abdichtung') &&
+             !titleLower.includes('rollladen') &&
+             !titleLower.includes('fensterbank') &&  // ✅ WICHTIG!
+             !titleLower.includes('fenstersims') &&  // ✅ WICHTIG!
+             !titleLower.includes('bank') &&         // ✅ WICHTIG!
+             !titleLower.includes('leibung', 'laibung')) {
       
-      // Konvertiere zu cm falls nötig
-      const widthCm = width > 300 ? width / 10 : width;
-      const heightCm = height > 300 ? height / 10 : height;
-      const area = (widthCm * heightCm) / 10000; // in m²
+      const oldPrice = pos.unitPrice;
+      const sizeMatch = (pos.title || pos.description || '').match(/(\d+)\s*[x×]\s*(\d+)/);
       
-      // ✅ BUGFIX: Degressive Preisstaffelung nach Größe
-      let basePrice = 400;
-      let pricePerM2 = 450;
-      
-      if (area < 1.2) {
-        // Kleine Fenster (bis ~100×120cm)
-        basePrice = 450;
-        pricePerM2 = 500;
-      } else if (area < 2.0) {
-        // Standard (bis ~140×140cm)
-        basePrice = 420;
-        pricePerM2 = 470;
-      } else if (area < 3.5) {
-        // Große Fenster (bis ~180×190cm)
-        basePrice = 400;
-        pricePerM2 = 430;
-      } else if (area < 5.0) {
-        // XXL-Fenster (bis ~230×210cm)
-        basePrice = 380;
-        pricePerM2 = 400;
-      } else {
-        // Panoramafenster (>5m²)
-        basePrice = 350;
-        pricePerM2 = 380;
-      }
-      
-      let materialName = 'Standard';
-      let materialFactor = 1.0;
-      
-      // Material erkennen
-      if (titleLower.includes('holz-alu') || titleLower.includes('holz-aluminium') ||
-          descLower.includes('holz-alu') || descLower.includes('holz-aluminium')) {
-        materialFactor = 1.65; // Holz-Alu teuerster
-        materialName = 'Holz-Alu';
-      } else if (titleLower.includes('aluminium') || titleLower.includes('alu') ||
-                 descLower.includes('aluminium') || descLower.includes('alu')) {
-        materialFactor = 1.45; // Aluminium teuer
-        materialName = 'Aluminium';
-      } else if (titleLower.includes('holz') || descLower.includes('holz')) {
-        materialFactor = 1.25; // Holz mittel
-        materialName = 'Holz';
-      } else if (titleLower.includes('kunststoff') || titleLower.includes('pvc') ||
-                 descLower.includes('kunststoff') || descLower.includes('pvc')) {
-        materialFactor = 1.0; // Kunststoff Basis
-        materialName = 'Kunststoff';
-      }
-      
-      // ✅ BUGFIX: Verglasung detaillierter berücksichtigen
-      let glasFactor = 1.0;
-      const fullText = titleLower + ' ' + descLower;
-      
-      if (fullText.includes('4-fach') || fullText.includes('vierfach')) {
-        glasFactor = 1.35; // 4-fach sehr teuer
-      } else if (fullText.includes('3-fach') || fullText.includes('dreifach')) {
-        glasFactor = 1.20; // 3-fach Aufschlag
-      } else if (fullText.includes('2-fach') || fullText.includes('zweifach')) {
-        glasFactor = 1.0; // 2-fach Standard
-      }
-      
-      // U-Wert-basierte Anpassung (überschreibt glasFactor wenn spezifischer)
-      if (fullText.match(/uw?\s*[~=<≤]\s*0[.,][5-7]/i)) {
-        glasFactor = 1.25; // Sehr gute Dämmung (Uw ≤0,7)
-      } else if (fullText.match(/uw?\s*[~=<≤]\s*0[.,][8-9]/i)) {
-        glasFactor = 1.15; // Gute Dämmung (Uw ≤0,9)
-      }
-      
-      // ✅ BUGFIX: Sicherheitsklassen detailliert berücksichtigen
-      let securitySurcharge = 0;
-      if (fullText.includes('rc3') || fullText.includes('rc 3')) {
-        securitySurcharge = 450; // RC3 sehr teuer
-      } else if (fullText.includes('rc2n') || fullText.includes('rc 2n')) {
-        securitySurcharge = 250; // RC2N mittlerer Aufschlag
-      } else if (fullText.includes('rc2') || fullText.includes('rc 2')) {
-        securitySurcharge = 180; // RC2 Standard-Aufschlag
-      } else if (fullText.includes('rc1') || fullText.includes('rc 1')) {
-        securitySurcharge = 80; // RC1 kleiner Aufschlag
-      }
-      
-      // ✅ BUGFIX: Fenstertyp-Faktoren (Schiebe, Dreh-Kipp etc.)
-      let typeFactor = 1.0;
-      if (fullText.includes('hebe-schie') || fullText.includes('hebeschiebe')) {
-        typeFactor = 1.6; // Hebe-Schiebetüren teuer
-      } else if (fullText.includes('schiebe') || fullText.includes('schiebefenster')) {
-        typeFactor = 1.3; // Schiebefenster Aufschlag
-      } else if (fullText.includes('dreh-kipp')) {
-        typeFactor = 1.0; // Dreh-Kipp Standard
-      } else if (fullText.includes('fest')) {
-        typeFactor = 0.75; // Festverglasung günstiger
-      }
-      
-      // Berechne Preis
-      let calculatedPrice = (basePrice + (area * pricePerM2)) * materialFactor * glasFactor * typeFactor + securitySurcharge;
-      
-      // Größenanpassungen
-      if (area < 0.5) {
-        calculatedPrice = Math.max(calculatedPrice, 500); // Mindestpreis erhöht
-      } else if (area > 4) {
-        calculatedPrice *= 1.08; // Sonderanfertigung-Aufschlag für XXL
-      }
-      
-      // Runde auf 10€
-      calculatedPrice = Math.round(calculatedPrice / 10) * 10;
-      
-      // Plausibilitätsgrenzen
-      if (calculatedPrice < 500) calculatedPrice = 500;
-      if (calculatedPrice > 8000) calculatedPrice = 8000;
-      
-      // ✅ BUGFIX: Aggressivere Korrektur bei Pauschalpreisen
-      const deviation = Math.abs(oldPrice - calculatedPrice);
-      const deviationPercent = oldPrice > 0 ? deviation / oldPrice : 1;
-      const isPauschalPrice = [600, 700, 800, 900, 1000].includes(oldPrice);
-      
-      // Korrigiere bei >18% Abweichung UND >80€ Differenz (vorher 20% / 100€)
-      // ODER IMMER bei Pauschalpreisen
-      if (isPauschalPrice || (deviationPercent > 0.18 && deviation > 80)) {
-        pos.unitPrice = calculatedPrice;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      if (sizeMatch) {
+        const width = parseInt(sizeMatch[1]);
+        const height = parseInt(sizeMatch[2]);
+        const widthCm = width > 300 ? width / 10 : width;
+        const heightCm = height > 300 ? height / 10 : height;
+        const area = (widthCm * heightCm) / 10000;
         
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${calculatedPrice}€ (Δ${calculatedPrice-oldPrice}€)`);
-        console.log(`   📏 ${widthCm}×${heightCm}cm (${area.toFixed(1)}m²) | ${materialName} | ${isPauschalPrice ? '🚨 PAUSCHAL' : `Abweichung ${deviationPercent.toFixed(1)}%`}`);
+        let basePrice = 400;
+        let pricePerM2 = 450;
         
-        const sizeInfo = `${widthCm}×${heightCm}cm (${area.toFixed(1)}m²)`;
-        const reasonInfo = isPauschalPrice ? ' [Pauschalpreis korrigiert]' : '';
-        warnings.push(`${materialName}-Fenster ${sizeInfo}: €${oldPrice} → €${calculatedPrice}${reasonInfo}`);
-        fixedCount++;
-      }
-      
-    } else if (titleLower.includes('demontage')) {
-      // Demontage
-      if (pos.unitPrice < 60 || pos.unitPrice > 150) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = 80;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+        if (area < 1.2) { basePrice = 450; pricePerM2 = 500; }
+        else if (area < 2.0) { basePrice = 420; pricePerM2 = 470; }
+        else if (area < 3.5) { basePrice = 400; pricePerM2 = 430; }
+        else if (area < 5.0) { basePrice = 380; pricePerM2 = 400; }
+        else { basePrice = 350; pricePerM2 = 380; }
         
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 80€ (Δ${80-oldPrice}€)`);
-        
-        warnings.push(`Fenster-Demontage: €${oldPrice} → €80`);
-        fixedCount++;
-      }
-    } else {
-      // ✅ BUGFIX: Standard-Fenster ohne Maße - Realistischere Grenzen
-      // Nur bei EXTREMEN Abweichungen korrigieren (vorher 400-1500€)
-      if (pos.unitPrice < 450 || pos.unitPrice > 2500) {
-        const oldPrice = pos.unitPrice;
-        
-        // Intelligentere Schätzung basierend auf Kontext
-        let estimatedPrice = 900; // Erhöht von 800€
-        
-        // Material-basierte Schätzung
+        let materialFactor = 1.0;
         if (titleLower.includes('holz-alu') || descLower.includes('holz-alu')) {
-          estimatedPrice = 1400;
+          materialFactor = 1.65;
         } else if (titleLower.includes('alu') || descLower.includes('alu')) {
-          estimatedPrice = 1200;
+          materialFactor = 1.45;
         } else if (titleLower.includes('holz') || descLower.includes('holz')) {
-          estimatedPrice = 1000;
+          materialFactor = 1.25;
         }
         
-        // Sicherheitsklasse berücksichtigen
-        if (titleLower.includes('rc3') || descLower.includes('rc3')) {
-          estimatedPrice += 400;
-        } else if (titleLower.includes('rc2') || descLower.includes('rc2')) {
-          estimatedPrice += 180;
-        }
+        let glasFactor = 1.0;
+        if (titleLower.includes('4-fach') || descLower.includes('4-fach')) glasFactor = 1.35;
+        else if (titleLower.includes('3-fach') || descLower.includes('3-fach')) glasFactor = 1.18;
         
-        pos.unitPrice = estimatedPrice;
+        let calculatedPrice = (basePrice + (area * pricePerM2)) * materialFactor * glasFactor;
+        calculatedPrice = Math.round(calculatedPrice / 10) * 10;
+        
+        if (calculatedPrice < 600) calculatedPrice = 600;
+        if (calculatedPrice > 4500) calculatedPrice = 4500;
+        
+        pos.unitPrice = calculatedPrice;
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
         
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${estimatedPrice}€ (Δ${estimatedPrice-oldPrice}€)`);
-        console.log(`   📏 Keine Maße | Geschätzt nach Material`);
-        
-        warnings.push(`Standard-Fenster (ohne Maße): €${oldPrice} → €${estimatedPrice}`);
-        fixedCount++;
-      }
-    }
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // NEBENLEISTUNGEN FENSTER
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  // Reinigung
-  if (titleLower.includes('reinigung') && !titleLower.includes('grund')) {
-    if (pos.unitPrice > 50) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 25;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      
-      // 🔍 LOGGING
-      console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 25€ (Δ${25-oldPrice}€)`);
-      
-      warnings.push(`Fensterreinigung: €${oldPrice} → €25`);
-      fixedCount++;
-    }
-  }
-  
-  // Abdichtung
-  if (titleLower.includes('abdichtung') && pos.unit === 'm') {
-    if (pos.unitPrice > 60) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 35;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      
-      // 🔍 LOGGING
-      console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 35€ (Δ${35-oldPrice}€)`);
-      
-      warnings.push(`Abdichtung: €${oldPrice}/m → €35/m`);
-      fixedCount++;
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // FENSTERBÄNKE - ✅ BUGFIX: Unit-agnostische Prüfung
-  // ═══════════════════════════════════════════════════════════════════════
-  if (titleLower.includes('fensterbank') || titleLower.includes('fenstersims')) {
-    
-    // Außenfensterbänke
-    if (titleLower.includes('außen') || titleLower.includes('aussen')) {
-      if (pos.unit === 'm' && pos.unitPrice > 85) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = 65;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 65€ (Δ${65-oldPrice}€)`);
-        
-        warnings.push(`Außenfensterbank: €${oldPrice}/m → €65/m`);
-        fixedCount++;
-      }
-    }
-    // Innenfensterbänke
-    else if (titleLower.includes('innen')) {
-      // Preis pro Meter
-      if (pos.unit === 'm' && pos.unitPrice > 120) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = 85;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 85€ (Δ${85-oldPrice}€)`);
-        
-        warnings.push(`Innenfensterbank: €${oldPrice}/m → €85/m`);
-        fixedCount++;
-      }
-      // ✅ BUGFIX: Preis pro Stück - LLM generiert oft absurde Stückpreise!
-      else if ((pos.unit === 'Stk' || pos.unit === 'stk' || pos.unit === 'St' || pos.unit === 'st') && 
-               (pos.unitPrice < 80 || pos.unitPrice > 400)) {
-        const oldPrice = pos.unitPrice;
-        
-        // Realistische Stückpreise je nach Material
-        let correctPrice = 180; // Standard Kunststein erhöht von 150€
-        
-        if (titleLower.includes('marmor') || descLower.includes('marmor') ||
-            titleLower.includes('granit') || descLower.includes('granit') ||
-            titleLower.includes('naturstein') || descLower.includes('naturstein')) {
-          correctPrice = 280; // Naturstein teurer
-        } else if (titleLower.includes('kunststein') || descLower.includes('kunststein') ||
-                   titleLower.includes('agglo') || descLower.includes('agglo')) {
-          correctPrice = 200; // Kunststein/Agglo-Marmor
-        } else if (titleLower.includes('holz') || descLower.includes('holz')) {
-          correctPrice = 130; // Holz günstiger
-        } else if (titleLower.includes('kunststoff') || descLower.includes('kunststoff')) {
-          correctPrice = 90; // Kunststoff am günstigsten
-        }
-        
-        pos.unitPrice = correctPrice;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${correctPrice}€ (Δ${correctPrice-oldPrice}€)`);
-        console.log(`   Material erkannt | ${oldPrice > 500 ? '🚨 PAUSCHAL' : 'Außerhalb Range'}`);
-        
-        warnings.push(`Innenfensterbank (Stk): €${oldPrice} → €${correctPrice}`);
-        fixedCount++;
-      }
-    }
-    // Unspezifizierte Fensterbänke
-    else {
-      if (pos.unit === 'm' && pos.unitPrice > 100) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = 75;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 75€ (Δ${75-oldPrice}€)`);
-        
-        warnings.push(`Fensterbank: €${oldPrice}/m → €75/m`);
-        fixedCount++;
-      }
-    }
-  }
-  
-  // Vermessung/Aufmaß
-  if ((titleLower.includes('vermessung') || titleLower.includes('aufmaß')) && 
-      pos.unitPrice > 150) {
-    const oldPrice = pos.unitPrice;
-    pos.unitPrice = 75;
-    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-    
-    // 🔍 LOGGING
-    console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 75€ (Δ${75-oldPrice}€)`);
-    
-    warnings.push(`Aufmaß: €${oldPrice} → €75`);
-    fixedCount++;
-  }
-  
-  // Silikonverfugung
-  if ((titleLower.includes('silikon') || titleLower.includes('verfugung')) && 
-      pos.unit === 'm' && pos.unitPrice > 25) {
-    const oldPrice = pos.unitPrice;
-    pos.unitPrice = 15;
-    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-    
-    // 🔍 LOGGING
-    console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 15€ (Δ${15-oldPrice}€)`);
-    
-    warnings.push(`Verfugung: €${oldPrice}/m → €15/m`);
-    fixedCount++;
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // LEIBUNGSVERPUTZ (Fensterlaibungen)
-  // ═══════════════════════════════════════════════════════════════════════
-  if ((titleLower.includes('leibung') || descLower.includes('leibung')) &&
-      (titleLower.includes('verputz') || titleLower.includes('putz') ||
-       descLower.includes('verputz') || descLower.includes('putz'))) {
-    
-    // Preis pro laufenden Meter
-    if (pos.unit === 'lfm' || pos.unit === 'm') {
-      
-      let leibungspreis = 35; // Standard
-      
-      // Außen teurer als innen
-      if (titleLower.includes('außen') || titleLower.includes('aussen') ||
-          descLower.includes('außen') || descLower.includes('aussen')) {
-        leibungspreis = 45;
-      } else if (titleLower.includes('innen') || descLower.includes('innen')) {
-        leibungspreis = 30;
-      }
-      
-      // Sonderausführungen
-      if (titleLower.includes('armierung') || descLower.includes('armierung') ||
-          titleLower.includes('gewebe') || descLower.includes('gewebe')) {
-        leibungspreis += 5; // Gewebe-Armierung
-      }
-      
-      // Korrigiere absurde Preise
-      if (pos.unitPrice < 15 || pos.unitPrice > 100) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = leibungspreis;
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        
-        // 🔍 LOGGING
-        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${leibungspreis}€ (Δ${leibungspreis-oldPrice}€)`);
-        
-        const location = titleLower.includes('außen') ? ' (außen)' : 
-                        titleLower.includes('innen') ? ' (innen)' : '';
-        warnings.push(`Leibungsverputz${location}: €${oldPrice}/lfm → €${leibungspreis}/lfm`);
+        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${calculatedPrice}€ | 🚨 PAUSCHAL`);
+        warnings.push(`Fenster: €${oldPrice} → €${calculatedPrice} [Pauschalpreis]`);
         fixedCount++;
       }
     }
@@ -9142,132 +8746,179 @@ if (tradeCode === 'FEN') {
 }
     
 // ═══════════════════════════════════════════════════════════════════════════
-// TÜREN-SPEZIFISCHE PREISKORREKTUREN (TIS)
+// TÜREN-VALIDIERUNG - NUR PAUSCHALPREISE & EXTREME ABWEICHUNGEN
 // ═══════════════════════════════════════════════════════════════════════════
+
 if (tradeCode === 'TIS') {
   
-  // Extrahiere Maße für Sondermaß-Berechnung
-  const sizeMatch = (pos.description || pos.title || '').match(/(\d+)\s*[x×]\s*(\d+)/);
-  let priceMultiplier = 1;
+  const PAUSCHALPREISE = [400, 500, 600, 700, 800, 900, 1000];
+  const isPauschalPrice = PAUSCHALPREISE.includes(pos.unitPrice);
   
-  if (sizeMatch) {
-    const width = parseInt(sizeMatch[1]);
-    const height = parseInt(sizeMatch[2]);
+  // ═══════════════════════════════════════════════════════════════════════
+  // NUR PAUSCHALPREISE KORRIGIEREN
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  if (isPauschalPrice) {
     
-    // Sondermaß-Aufschläge
-    if (width > 100 || height > 210) {
-      priceMultiplier = 1.3;  // 30% Aufschlag
+    // Extrahiere Maße für Sondermaß-Berechnung
+    const sizeMatch = (pos.description || pos.title || '').match(/(\d+)\s*[x×]\s*(\d+)/);
+    let priceMultiplier = 1;
+    
+    if (sizeMatch) {
+      const width = parseInt(sizeMatch[1]);
+      const height = parseInt(sizeMatch[2]);
+      
+      // Sondermaß-Aufschläge gemäß Prompt (Pos. 2.4.3)
+      // Breite
+      if (width > 120) priceMultiplier *= 2.0;      // >120cm: +100%
+      else if (width > 100) priceMultiplier *= 1.5; // 101-120cm: +50%
+      else if (width > 95) priceMultiplier *= 1.3;  // 95-100cm: +30%
+      
+      // Höhe
+      if (height > 250) priceMultiplier *= 2.0;      // >250cm: +100%
+      else if (height > 230) priceMultiplier *= 1.5; // 231-250cm: +50%
+      else if (height > 210) priceMultiplier *= 1.3; // 211-230cm: +30%
     }
-    if (width > 120 || height > 230) {
-      priceMultiplier = 1.5;  // 50% Aufschlag
+    
+    // Prüfe ob echte Tür (nicht Zubehör)
+    const istEchteTuer = (
+      (titleLower.includes('innentür') || 
+       titleLower.includes('wohnungstür') ||
+       titleLower.includes('tür') && titleLower.includes('lieferung')) &&
+      !titleLower.includes('drücker') &&
+      !titleLower.includes('beschlag') &&
+      !titleLower.includes('spion') &&
+      !titleLower.includes('dichtung') &&
+      !titleLower.includes('schloss') &&
+      !titleLower.includes('band') &&
+      !titleLower.includes('zubehör')
+    );
+
+    if (istEchteTuer) {
+      
+      const oldPrice = pos.unitPrice;
+      let newPrice;
+      
+      // Wohnungstür/Sicherheitstür (Pos. 2.5)
+      if (descLower.includes('wohnungseingang') || 
+          titleLower.includes('wohnungstür') ||
+          titleLower.includes('sicherheit') ||
+          titleLower.includes('rc2') ||
+          titleLower.includes('rc3') ||
+          titleLower.includes('t30') ||
+          titleLower.includes('t60')) {
+        
+        // Prompt sagt: RC2 T30 86cm = 1.000-1.600€
+        // Nimm Mittelwert: 1.300€
+        newPrice = Math.round(1300 * priceMultiplier);
+      }
+      
+      // Premium-Innentür (Echtholz/Massiv) (Pos. 2.2)
+      else if (titleLower.includes('massiv') || titleLower.includes('eiche') || 
+               titleLower.includes('nussbaum') || titleLower.includes('kirsche') ||
+               descLower.includes('massiv') || descLower.includes('echtholz')) {
+        
+        // Prompt sagt: Eiche furniert 73,5cm = 350-650€
+        // Nimm Mittelwert: 500€
+        newPrice = Math.round(500 * priceMultiplier);
+      }
+      
+      // CPL-Tür (mittlere Qualität) (Pos. 2.1.2)
+      else if (titleLower.includes('cpl') || descLower.includes('cpl')) {
+        
+        // Prompt sagt: CPL Eiche 73,5cm = 180-320€
+        // Nimm Mittelwert: 250€
+        newPrice = Math.round(250 * priceMultiplier);
+      }
+      
+      // Standard-Röhrenspan (Pos. 2.1.1)
+      else {
+        
+        // Prompt sagt: Röhrenspan 73,5cm = 120-200€
+        // Nimm Mittelwert: 160€
+        newPrice = Math.round(160 * priceMultiplier);
+      }
+      
+      pos.unitPrice = newPrice;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      
+      console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${newPrice}€ | 🚨 PAUSCHAL`);
+      warnings.push(`Tür: €${oldPrice} → €${newPrice} [Pauschalpreis]`);
+      fixedCount++;
+    }
+    
+    // Zargen (Pos. 2.1.1 / 2.1.2)
+    else if (titleLower.includes('zarge') && !titleLower.includes('dichtung')) {
+      
+      const oldPrice = pos.unitPrice;
+      let newPrice;
+      
+      // Premium-Zarge (Echtholz)
+      if (titleLower.includes('echtholz') || titleLower.includes('massiv') ||
+          titleLower.includes('eiche') || titleLower.includes('nussbaum')) {
+        // Prompt: 120-200€ für CPL-Zargen (Premium ähnlich)
+        newPrice = Math.round(160 * priceMultiplier);
+      }
+      // Standard-Zarge
+      else {
+        // Prompt: 80-140€ für Kiefer weiß
+        newPrice = Math.round(110 * priceMultiplier);
+      }
+      
+      pos.unitPrice = newPrice;
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      
+      console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → ${newPrice}€ | 🚨 PAUSCHAL`);
+      warnings.push(`Zarge: €${oldPrice} → €${newPrice} [Pauschalpreis]`);
+      fixedCount++;
     }
   }
   
-  // Prüfe ob echte Tür (nicht Zubehör)
-  const istEchteTuer = (
-    (titleLower.includes('innentür') || 
-     titleLower.includes('wohnungstür') ||
-     (titleLower.includes('tür') && titleLower.includes('lieferung'))) &&
-    !titleLower.includes('drücker') &&
-    !titleLower.includes('beschlag') &&
-    !titleLower.includes('spion') &&
-    !titleLower.includes('dichtung') &&
-    !titleLower.includes('schloss') &&
-    !titleLower.includes('band') &&
-    !titleLower.includes('zubehör')
-  );
-
-  if (istEchteTuer) {
-    // Wohnungstür/Sicherheitstür
-    if (descLower.includes('wohnungseingang') || 
-        titleLower.includes('wohnungstür') ||
-        titleLower.includes('sicherheit')) {
-      const minPrice = Math.round(1500 * priceMultiplier);
-      const maxPrice = Math.round(3000 * priceMultiplier);
-      
-      if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+  // ═══════════════════════════════════════════════════════════════════════
+  // EXTREME ABWEICHUNGEN VOM PROMPT (nur bei krassen Fehlern)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Türen mit absurd niedrigen/hohen Preisen
+  if ((titleLower.includes('innentür') || titleLower.includes('tür')) &&
+      titleLower.includes('lieferung') &&
+      !titleLower.includes('drücker') &&
+      !titleLower.includes('beschlag')) {
+    
+    // Wohnungstüren sollten mind. 600€, max. 4000€ sein
+    if (titleLower.includes('wohnungstür') || titleLower.includes('sicherheit')) {
+      if (pos.unitPrice < 600 || pos.unitPrice > 4000) {
         const oldPrice = pos.unitPrice;
-        pos.unitPrice = Math.round(2200 * priceMultiplier);
+        pos.unitPrice = 1300; // Mittelwert RC2 T30
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Wohnungstür: €${oldPrice} → €${pos.unitPrice}`);
+        
+        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 1300€ | ⚠️ EXTREM`);
+        warnings.push(`Wohnungstür: €${oldPrice} → €1300 [Extremer Ausreißer]`);
         fixedCount++;
       }
-    } 
-    // Standard Innentür
+    }
+    // Normale Innentüren sollten mind. 100€, max. 2000€ sein
     else {
-      const minPrice = Math.round(400 * priceMultiplier);
-      const maxPrice = Math.round(800 * priceMultiplier);
-      
-      if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+      if (pos.unitPrice < 100 || pos.unitPrice > 2000) {
         const oldPrice = pos.unitPrice;
-        pos.unitPrice = Math.round(600 * priceMultiplier);
+        pos.unitPrice = 250; // Mittelwert CPL
         pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Innentür${sizeMatch ? ` (${sizeMatch[1]}×${sizeMatch[2]}cm)` : ''}: €${oldPrice} → €${pos.unitPrice}`);
+        
+        console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 250€ | ⚠️ EXTREM`);
+        warnings.push(`Innentür: €${oldPrice} → €250 [Extremer Ausreißer]`);
         fixedCount++;
       }
     }
   }
   
-  // Demontage
-  if (titleLower.includes('demontage') && titleLower.includes('tür')) {
-    if (pos.unitPrice < 60 || pos.unitPrice > 150) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 80;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Tür-Demontage: €${oldPrice} → €${pos.unitPrice}`);
-      fixedCount++;
-    }
-  }
-  
-  // Zargen (mit Sondermaß-Aufschlag)
+  // Zargen mit absurd niedrigen/hohen Preisen
   if (titleLower.includes('zarge') && !titleLower.includes('dichtung')) {
-    const minPrice = Math.round(120 * priceMultiplier);
-    const maxPrice = Math.round(300 * priceMultiplier);
-    
-    if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
+    if (pos.unitPrice < 50 || pos.unitPrice > 500) {
       const oldPrice = pos.unitPrice;
-      pos.unitPrice = Math.round(180 * priceMultiplier);
+      pos.unitPrice = 110; // Mittelwert Standard-Zarge
       pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Zarge${sizeMatch ? ` (${sizeMatch[1]}×${sizeMatch[2]}cm)` : ''}: €${oldPrice} → €${pos.unitPrice}`);
-      fixedCount++;
-    }
-  }
-
-  // Türdrücker/Beschläge
-  if (titleLower.includes('drücker') || 
-      (titleLower.includes('beschlag') && !titleLower.includes('zarge'))) {
-    const istSicherheit = titleLower.includes('sicherheit') || titleLower.includes('wohnungstür');
-    const minPrice = istSicherheit ? 200 : 60;
-    const maxPrice = istSicherheit ? 400 : 150;
-    
-    if (pos.unitPrice < minPrice || pos.unitPrice > maxPrice) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = istSicherheit ? 280 : 95;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`${istSicherheit ? 'Sicherheits-' : ''}Beschlag: €${oldPrice} → €${pos.unitPrice}`);
-      fixedCount++;
-    }
-  }
-
-  // Türspion
-  if (titleLower.includes('spion')) {
-    if (pos.unitPrice < 35 || pos.unitPrice > 80) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 55;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Türspion: €${oldPrice} → €${pos.unitPrice}`);
-      fixedCount++;
-    }
-  }
-
-  // Zargendichtung
-  if (titleLower.includes('zargendichtung') || 
-      (titleLower.includes('dichtung') && titleLower.includes('tür'))) {
-    if (pos.unitPrice < 25 || pos.unitPrice > 60) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 35;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Zargendichtung: €${oldPrice} → €${pos.unitPrice}`);
+      
+      console.log(`💰 ${pos.title?.substring(0,50)}: ${oldPrice}€ → 110€ | ⚠️ EXTREM`);
+      warnings.push(`Zarge: €${oldPrice} → €110 [Extremer Ausreißer]`);
       fixedCount++;
     }
   }
