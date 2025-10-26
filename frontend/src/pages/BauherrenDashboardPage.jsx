@@ -155,7 +155,8 @@ console.log('Fertige LVs gezählt:', completedLvs);
             const totalCost = (lvData.lvs || []).reduce((sum, lv) => {
               const trade = relevantTrades.find(t => t.id === lv.trade_id);
               if (!trade) return sum;
-              const lvSum = lv.content?.totalSum || 0;
+              const content = typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content;
+              const lvSum = content?.totalSum || 0;
               return sum + parseFloat(lvSum);
             }, 0);
             
