@@ -554,7 +554,13 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
       </div>
 
       {/* Position Modal */}
-      <PositionModal />
+      <PositionModal 
+        position={editingPosition}
+        isOpen={showPositionModal}
+        onClose={closeModal}
+        onSave={savePosition}
+        isNew={editingIndex === null}
+      />
     </div>
   );
 }
