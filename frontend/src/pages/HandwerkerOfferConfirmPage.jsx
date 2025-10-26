@@ -568,7 +568,7 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
 
         {/* Button */}
         <button
-          onClick={handleConfirm}
+          onClick={checkAppointmentBeforeConfirm}
           disabled={loading || !lvData.positions || lvData.positions.length === 0}
           className="w-full px-8 py-4 bg-gradient-to-r from-green-500 to-teal-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -584,6 +584,54 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
         onSave={savePosition}
         isNew={editingIndex === null}
       />
+{/* Appointment Modal */}
+      {showAppointmentModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-8 border border-white/20">
+            <h3 className="text-2xl font-bold text-white mb-4">Ortstermin nicht vereinbart</h3>
+            <p className="text-gray-300 mb-6">
+              Sie haben noch keinen Ortstermin vereinbart. Möchten Sie ohne Ortstermin fortfahren oder einen Termin vorschlagen?
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={async () => {
+                  try {
+                    // Setze appointment_skipped Flag
+                    await fetch(apiUrl(`/api/offers/${offerId}/skip-appointment`), {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    setShowAppointmentModal(false);
+                    handleConfirm();
+                  } catch (err) {
+                    console.error('Error:', err);
+                    alert('Fehler beim Fortfahren');
+                  }
+                }}
+                className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:shadow-xl transition-all font-semibold"
+              >
+                ✓ Ja, ohne Ortstermin fortfahren
+              </button>
+              
+              <button
+                onClick={() => navigate(`/handwerker/ortstermin/${offerId}`)}
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                📅 Zur Ortsterminvereinbarung
+              </button>
+              
+              <button
+                onClick={() => setShowAppointmentModal(false)}
+                className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}      
     </div>
   );
 }
