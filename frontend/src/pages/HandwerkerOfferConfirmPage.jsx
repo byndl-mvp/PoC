@@ -590,7 +590,8 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
     ✓ Angebot bereits bestätigt
   </div>
 )}
-
+</div>
+      
       {/* Position Modal */}
       <PositionModal 
         position={editingPosition}
