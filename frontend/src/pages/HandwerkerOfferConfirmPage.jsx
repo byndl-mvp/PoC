@@ -191,56 +191,78 @@ setLvData(parsedLV);
   };
 
   // Position Modal Component
-const PositionModal = () => {
-  if (!showPositionModal || !editingPosition) return null;
+const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
+  const [localPosition, setLocalPosition] = useState(null);
+
+  useEffect(() => {
+    if (position) {
+      setLocalPosition({...position});
+    }
+  }, [position]);
+
+  if (!isOpen || !localPosition) return null;
+
+  const handleSave = () => {
+    if (!localPosition.title) {
+      alert('Bitte geben Sie einen Titel ein');
+      return;
+    }
+
+    const quantity = parseFloat(localPosition.quantity) || 0;
+    const unitPrice = parseFloat(localPosition.unitPrice) || 0;
+    const updatedPosition = {
+      ...localPosition,
+      quantity,
+      unitPrice,
+      totalPrice: quantity * unitPrice
+    };
+
+    onSave(updatedPosition);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/20">
         <div className="sticky top-0 bg-gradient-to-r from-slate-800 to-slate-900 p-6 border-b border-white/20">
           <h3 className="text-2xl font-bold text-white">
-            {editingIndex !== null ? 'Position bearbeiten' : 'Neue Position'}
+            {isNew ? 'Neue Position' : 'Position bearbeiten'}
           </h3>
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Positionsnummer */}
           <div>
             <label className="block text-white font-semibold mb-2">Pos.-Nr.</label>
             <input
               type="text"
               className="w-full bg-white/10 border border-white/30 rounded-lg px-4 py-2 text-white"
-              value={editingPosition?.pos || ''}
-              onChange={(e) => setEditingPosition(prev => ({...prev, pos: e.target.value}))}
+              value={localPosition.pos || ''}
+              onChange={(e) => setLocalPosition({...localPosition, pos: e.target.value})}
             />
           </div>
 
-          {/* Titel */}
           <div>
             <label className="block text-white font-semibold mb-2">Titel *</label>
             <input
               type="text"
               className="w-full bg-white/10 border border-white/30 rounded-lg px-4 py-2 text-white"
-              value={editingPosition?.title || ''}
-              onChange={(e) => setEditingPosition(prev => ({...prev, title: e.target.value}))}
+              value={localPosition.title || ''}
+              onChange={(e) => setLocalPosition({...localPosition, title: e.target.value})}
               placeholder="z.B. Dachziegel verlegen"
               autoFocus
             />
           </div>
 
-          {/* Beschreibung */}
           <div>
             <label className="block text-white font-semibold mb-2">Beschreibung</label>
             <textarea
               className="w-full bg-white/10 border border-white/30 rounded-lg px-4 py-2 text-white"
               rows="3"
-              value={editingPosition?.description || ''}
-              onChange={(e) => setEditingPosition(prev => ({...prev, description: e.target.value}))}
+              value={localPosition.description || ''}
+              onChange={(e) => setLocalPosition({...localPosition, description: e.target.value})}
               placeholder="Detaillierte Beschreibung der Leistung..."
             />
           </div>
 
-          {/* Menge, Einheit, Preis */}
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-white font-semibold mb-2">Menge</label>
@@ -248,8 +270,8 @@ const PositionModal = () => {
                 type="number"
                 step="0.01"
                 className="w-full bg-white/10 border border-white/30 rounded-lg px-4 py-2 text-white"
-                value={editingPosition?.quantity || ''}
-                onChange={(e) => setEditingPosition(prev => ({...prev, quantity: e.target.value}))}
+                value={localPosition.quantity || ''}
+                onChange={(e) => setLocalPosition({...localPosition, quantity: e.target.value})}
               />
             </div>
 
@@ -257,8 +279,8 @@ const PositionModal = () => {
               <label className="block text-white font-semibold mb-2">Einheit</label>
               <select
                 className="w-full bg-white/10 border border-white/30 rounded-lg px-4 py-2 text-white"
-                value={editingPosition?.unit || 'Stk'}
-                onChange={(e) => setEditingPosition(prev => ({...prev, unit: e.target.value}))}
+                value={localPosition.unit || 'Stk'}
+                onChange={(e) => setLocalPosition({...localPosition, unit: e.target.value})}
               >
                 <option value="Stk">Stk</option>
                 <option value="m">m</option>
@@ -280,61 +302,53 @@ const PositionModal = () => {
                 type="number"
                 step="0.01"
                 className="w-full bg-white/10 border border-white/30 rounded-lg px-4 py-2 text-white"
-                value={editingPosition?.unitPrice || ''}
-                onChange={(e) => setEditingPosition(prev => ({...prev, unitPrice: e.target.value}))}
+                value={localPosition.unitPrice || ''}
+                onChange={(e) => setLocalPosition({...localPosition, unitPrice: e.target.value})}
               />
             </div>
           </div>
 
-          {/* Gesamtpreis (berechnet) */}
           <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <span className="text-teal-300 font-semibold">Gesamtpreis:</span>
               <span className="text-teal-400 text-2xl font-bold">
-                {formatCurrency((parseFloat(editingPosition?.quantity) || 0) * (parseFloat(editingPosition?.unitPrice) || 0))}
+                {formatCurrency((parseFloat(localPosition.quantity) || 0) * (parseFloat(localPosition.unitPrice) || 0))}
               </span>
             </div>
           </div>
 
-          {/* Notizen */}
           <div>
             <label className="block text-white font-semibold mb-2">Interne Notizen</label>
             <textarea
               className="w-full bg-white/10 border border-white/30 rounded-lg px-4 py-2 text-white"
               rows="2"
-              value={editingPosition?.notes || ''}
-              onChange={(e) => setEditingPosition(prev => ({...prev, notes: e.target.value}))}
+              value={localPosition.notes || ''}
+              onChange={(e) => setLocalPosition({...localPosition, notes: e.target.value})}
               placeholder="Interne Anmerkungen (nicht sichtbar für Bauherr)..."
             />
           </div>
 
-          {/* Preisbasis */}
           <div>
             <label className="block text-white font-semibold mb-2">Preisbasis</label>
             <input
               type="text"
               className="w-full bg-white/10 border border-white/30 rounded-lg px-4 py-2 text-white"
-              value={editingPosition?.priceBase || ''}
-              onChange={(e) => setEditingPosition(prev => ({...prev, priceBase: e.target.value}))}
+              value={localPosition.priceBase || ''}
+              onChange={(e) => setLocalPosition({...localPosition, priceBase: e.target.value})}
               placeholder="z.B. Marktpreis 2024/2025"
             />
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="sticky bottom-0 bg-gradient-to-r from-slate-800 to-slate-900 p-6 border-t border-white/20 flex gap-3">
           <button
-            onClick={() => {
-              setShowPositionModal(false);
-              setEditingPosition(null);
-              setEditingIndex(null);
-            }}
+            onClick={onClose}
             className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
           >
             Abbrechen
           </button>
           <button
-            onClick={savePosition}
+            onClick={handleSave}
             className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:shadow-xl transition-all font-semibold"
           >
             Speichern
