@@ -577,14 +577,19 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
         </div>
 
         {/* Button */}
-        <button
-          onClick={checkAppointmentBeforeConfirm}
-          disabled={loading || !lvData.positions || lvData.positions.length === 0}
-          className="w-full px-8 py-4 bg-gradient-to-r from-green-500 to-teal-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          ✓ Angebot verbindlich bestätigen ({formatCurrency(total)})
-        </button>
-      </div>
+{offer?.status === 'preliminary' ? (
+  <button
+    onClick={checkAppointmentBeforeConfirm}
+    disabled={loading || !lvData.positions || lvData.positions.length === 0}
+    className="w-full px-8 py-4 bg-gradient-to-r from-green-500 to-teal-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    ✓ Angebot verbindlich bestätigen ({formatCurrency(total)})
+  </button>
+) : (
+  <div className="w-full px-8 py-4 bg-green-500/20 border-2 border-green-500 text-green-300 text-lg font-bold rounded-lg text-center">
+    ✓ Angebot bereits bestätigt
+  </div>
+)}
 
       {/* Position Modal */}
       <PositionModal 
