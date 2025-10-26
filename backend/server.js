@@ -19461,24 +19461,34 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
   try {
     const { offerId } = req.params;
     
+    // ===== START TRANSACTION =====
     await query('BEGIN');
 
+    // 1. Prüfe ob Order bereits existiert
     const existingOrder = await query(
       `SELECT id FROM orders WHERE offer_id = $1`,
       [offerId]
     );
     
     if (existingOrder.rows.length > 0) {
-      await query('ROLLBACK');
+      // Stelle sicher dass Offer-Status korrekt ist
+      await query(
+        `UPDATE offers 
+         SET status = 'accepted', 
+             stage = 2,
+             accepted_at = COALESCE(accepted_at, NOW())
+         WHERE id = $1`,
+        [offerId]
+      );
+      await query('COMMIT');
       return res.json({
         success: true,
         orderId: existingOrder.rows[0].id,
-        message: 'Auftrag wurde bereits erstellt',
-        alreadyExists: true
+        message: 'Auftrag wurde bereits erstellt'
       });
     }
     
-    // Hole alle relevanten Daten
+    // 2. Hole alle relevanten Daten
     const offerData = await query(
       `SELECT 
         o.*,
@@ -19508,20 +19518,21 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
        JOIN projects p ON tn.project_id = p.id
        JOIN bauherren b ON p.bauherr_id = b.id
        JOIN trades t ON tn.trade_id = t.id
-       WHERE o.id = $1 AND o.status = 'confirmed'`,
+       WHERE o.id = $1`,
       [offerId]
     );
     
     if (offerData.rows.length === 0) {
-      throw new Error('Angebot nicht gefunden oder nicht bestätigt');
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Angebot nicht gefunden' });
     }
     
     const offer = offerData.rows[0];
     
-    // Werkvertrag-Text generieren (VOB-konform)
+    // 3. Werkvertrag-Text generieren
     const contractText = generateVOBContract(offer);
     
-    // Erstelle Order/Werkvertrag
+    // 4. Erstelle Order/Werkvertrag
     const orderResult = await query(
       `INSERT INTO orders 
        (project_id, offer_id, handwerker_id, bauherr_id, trade_id, 
@@ -19543,107 +19554,8 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     );
     
     const orderId = orderResult.rows[0].id;
-
-    // 1. Zu Projekt-Gruppe hinzufügen
-await query(
-  `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-   SELECT c.id, 'handwerker', $2, 'participant'
-   FROM conversations c
-   WHERE c.type = 'project_group' AND c.project_id = $1
-   ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
-  [offer.project_id, offer.handwerker_id]
-);
-
-// 2. Zu Handwerker-Koordination hinzufügen
-await query(
-  `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-   SELECT c.id, 'handwerker', $2, 'participant'
-   FROM conversations c
-   WHERE c.type = 'handwerker_coordination' AND c.project_id = $1
-   ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
-  [offer.project_id, offer.handwerker_id]
-);
-
-// 3. Projekt-Gruppe erstellen falls noch nicht vorhanden
-const projectGroupExists = await query(
-  `SELECT id FROM conversations 
-   WHERE type = 'project_group' AND project_id = $1`,
-  [offer.project_id]
-);
-
-if (projectGroupExists.rows.length === 0) {
-  const convResult = await query(
-    `INSERT INTO conversations (type, project_id, created_at, updated_at)
-     VALUES ('project_group', $1, NOW(), NOW())
-     RETURNING id`,
-    [offer.project_id]
-  );
-  
-  const conversationId = convResult.rows[0].id;
-  
-  // Bauherr hinzufügen
-  await query(
-    `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-     VALUES ($1, 'bauherr', $2, 'participant')`,
-    [conversationId, offer.bauherr_id]
-  );
-  
-  // Alle bereits beauftragten Handwerker hinzufügen
-  await query(
-  `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-   SELECT $1::integer, 'handwerker', o.handwerker_id, 'participant'
-   FROM orders o
-   WHERE o.project_id = $2
-   ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
-  [conversationId, offer.project_id]
-);
-}
-
-// 4. Handwerker-Koordination erstellen falls 2+ Handwerker
-const handwerkerCount = await query(
-  `SELECT COUNT(DISTINCT handwerker_id) as count 
-   FROM orders 
-   WHERE project_id = $1`,
-  [offer.project_id]
-);
-
-if (handwerkerCount.rows[0].count >= 2) {
-  const coordExists = await query(
-    `SELECT id FROM conversations 
-     WHERE type = 'handwerker_coordination' AND project_id = $1`,
-    [offer.project_id]
-  );
-  
-  if (coordExists.rows.length === 0) {
-    const convResult = await query(
-      `INSERT INTO conversations (type, project_id, created_at, updated_at)
-       VALUES ('handwerker_coordination', $1, NOW(), NOW())
-       RETURNING id`,
-      [offer.project_id]
-    );
     
-    const conversationId = convResult.rows[0].id;
-    
-    // Bauherr als Observer hinzufügen
-    await query(
-      `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-       VALUES ($1, 'bauherr', $2, 'observer')`,
-      [conversationId, offer.bauherr_id]
-    );
-    
-    // Alle Handwerker hinzufügen
-    await query(
-  `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-   SELECT $1::integer, 'handwerker', o.handwerker_id, 'participant'
-   FROM orders o
-   WHERE o.project_id = $2
-   ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
-  [conversationId, offer.project_id]
-);
-  }
-}
-    
-    // Update Offer Status
+    // 5. Update Offer Status
     await query(
       `UPDATE offers 
        SET status = 'accepted', 
@@ -19654,76 +19566,165 @@ if (handwerkerCount.rows[0].count >= 2) {
       [offerId]
     );
     
-    // Benachrichtige Handwerker
-    if (transporter) {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-        to: offer.handwerker_email,
-        subject: `Auftrag erteilt - ${offer.trade_name}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-              <h1>🎉 Auftrag erteilt!</h1>
-            </div>
-            
-            <div style="padding: 30px; background: #f7f7f7;">
-              <p>Sehr geehrte Damen und Herren,</p>
-              
-              <p><strong>${offer.bauherr_name}</strong> hat Ihnen den Auftrag für <strong>${offer.trade_name}</strong> verbindlich erteilt.</p>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #10b981;">Auftragsdetails:</h3>
-                <table style="width: 100%;">
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Auftragssumme:</strong></td>
-                    <td style="text-align: right;">${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Ausführung:</strong></td>
-                    <td style="text-align: right;">${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
-                    <td style="text-align: right;">${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Auftrags-Nr:</strong></td>
-                    <td style="text-align: right;">#${orderId}</td>
-                  </tr>
-                </table>
-              </div>
-              
-              <p><strong>Nächste Schritte:</strong></p>
-              <ul>
-                <li>Prüfen Sie den Werkvertrag in Ihrem Dashboard</li>
-                <li>Laden Sie den Vertrag als PDF herunter</li>
-                <li>Planen Sie die Ausführung gemäß den vereinbarten Terminen</li>
-              </ul>
-              
-              <div style="text-align: center; margin-top: 30px;">
-                <a href="https://byndl.de/handwerker/dashboard" 
-                   style="display: inline-block; padding: 12px 30px; background: #10b981; color: white; text-decoration: none; border-radius: 5px;">
-                  Zum Dashboard →
-                </a>
-              </div>
-              
-              <div style="margin-top: 30px; padding: 15px; background: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px;">
-                <strong>Rechtliche Hinweise:</strong><br>
-                - Werkvertrag nach VOB/B<br>
-                - Gewährleistungsfrist: 4 Jahre für Bauwerke, 2 Jahre für bewegliche Sachen<br>
-                - Abnahme erforderlich
-              </div>
-            </div>
-            
-            <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
-              <p>© 2025 byndl - Die digitale Handwerkerplattform</p>
-            </div>
-          </div>
-        `
-      });
+    // ===== COMMIT - ORDER UND OFFER SIND JETZT SICHER! =====
+    await query('COMMIT');
+    
+    // ===== AB HIER: NICHT-KRITISCHE OPERATIONS =====
+    
+    // 6. Conversations hinzufügen (Fehler hier sind nicht kritisch)
+    try {
+      // Zu Projekt-Gruppe hinzufügen
+      await query(
+        `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+         SELECT c.id, 'handwerker', $2, 'participant'
+         FROM conversations c
+         WHERE c.type = 'project_group' AND c.project_id = $1
+         ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
+        [offer.project_id, offer.handwerker_id]
+      );
+
+      // Zu Handwerker-Koordination hinzufügen
+      await query(
+        `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+         SELECT c.id, 'handwerker', $2, 'participant'
+         FROM conversations c
+         WHERE c.type = 'handwerker_coordination' AND c.project_id = $1
+         ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
+        [offer.project_id, offer.handwerker_id]
+      );
+
+      // Projekt-Gruppe erstellen falls noch nicht vorhanden
+      const projectGroupExists = await query(
+        `SELECT id FROM conversations 
+         WHERE type = 'project_group' AND project_id = $1`,
+        [offer.project_id]
+      );
+
+      if (projectGroupExists.rows.length === 0) {
+        const convResult = await query(
+          `INSERT INTO conversations (type, project_id, created_at, updated_at)
+           VALUES ('project_group', $1, NOW(), NOW())
+           RETURNING id`,
+          [offer.project_id]
+        );
+        
+        const conversationId = convResult.rows[0].id;
+        
+        await query(
+          `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+           VALUES ($1, 'bauherr', $2, 'participant')`,
+          [conversationId, offer.bauherr_id]
+        );
+        
+        await query(
+          `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+           SELECT $1::integer, 'handwerker', o.handwerker_id, 'participant'
+           FROM orders o
+           WHERE o.project_id = $2
+           ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
+          [conversationId, offer.project_id]
+        );
+      }
+
+      // Handwerker-Koordination erstellen falls 2+ Handwerker
+      const handwerkerCount = await query(
+        `SELECT COUNT(DISTINCT handwerker_id) as count 
+         FROM orders 
+         WHERE project_id = $1`,
+        [offer.project_id]
+      );
+
+      if (handwerkerCount.rows[0].count >= 2) {
+        const coordExists = await query(
+          `SELECT id FROM conversations 
+           WHERE type = 'handwerker_coordination' AND project_id = $1`,
+          [offer.project_id]
+        );
+        
+        if (coordExists.rows.length === 0) {
+          const convResult = await query(
+            `INSERT INTO conversations (type, project_id, created_at, updated_at)
+             VALUES ('handwerker_coordination', $1, NOW(), NOW())
+             RETURNING id`,
+            [offer.project_id]
+          );
+          
+          const conversationId = convResult.rows[0].id;
+          
+          await query(
+            `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+             VALUES ($1, 'bauherr', $2, 'observer')`,
+            [conversationId, offer.bauherr_id]
+          );
+          
+          await query(
+            `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+             SELECT $1::integer, 'handwerker', o.handwerker_id, 'participant'
+             FROM orders o
+             WHERE o.project_id = $2
+             ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
+            [conversationId, offer.project_id]
+          );
+        }
+      }
+    } catch (convError) {
+      console.error('⚠️ Non-critical: Conversation setup failed:', convError.message);
     }
     
-    await query('COMMIT');
+    // 7. Email senden (Fehler hier sind nicht kritisch)
+    try {
+      if (transporter) {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+          to: offer.handwerker_email,
+          subject: `Auftrag erteilt - ${offer.trade_name}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1>🎉 Auftrag erteilt!</h1>
+              </div>
+              
+              <div style="padding: 30px; background: #f7f7f7;">
+                <p>Sehr geehrte Damen und Herren,</p>
+                
+                <p><strong>${offer.bauherr_name}</strong> hat Ihnen den Auftrag für <strong>${offer.trade_name}</strong> verbindlich erteilt.</p>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #10b981;">Auftragsdetails:</h3>
+                  <table style="width: 100%;">
+                    <tr>
+                      <td style="padding: 8px 0;"><strong>Auftragssumme:</strong></td>
+                      <td style="text-align: right;">${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0;"><strong>Ausführung:</strong></td>
+                      <td style="text-align: right;">${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
+                      <td style="text-align: right;">${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0;"><strong>Auftrags-Nr:</strong></td>
+                      <td style="text-align: right;">#${orderId}</td>
+                    </tr>
+                  </table>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                  <a href="https://byndl.de/handwerker/dashboard" 
+                     style="display: inline-block; padding: 12px 30px; background: #10b981; color: white; text-decoration: none; border-radius: 5px;">
+                    Zum Dashboard →
+                  </a>
+                </div>
+              </div>
+            </div>
+          `
+        });
+      }
+    } catch (emailError) {
+      console.error('⚠️ Non-critical: Email sending failed:', emailError.message);
+    }
     
     res.json({ 
       success: true, 
@@ -19733,8 +19734,8 @@ if (handwerkerCount.rows[0].count >= 2) {
     
   } catch (error) {
     await query('ROLLBACK');
-    console.error('Error creating contract:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ CRITICAL ERROR creating contract:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen des Auftrags: ' + error.message });
   }
 });
 
