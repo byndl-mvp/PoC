@@ -157,8 +157,13 @@ console.log('Fertige LVs gezählt:', completedLvs);
               if (!trade) return sum;
               const content = typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content;
               const lvSum = content?.totalSum || 0;
+              console.log('🔴 LV Trade:', lv.trade_id, 'Sum:', lvSum, 'Content type:', typeof lv.content); // DEBUG
+              
               return sum + parseFloat(lvSum);
             }, 0);
+
+            console.log('🔴 TOTAL COST CALCULATED:', totalCost); // DEBUG
+            console.log('🔴 Project ID:', project.id); // DEBUG
             
             // Lade Ausschreibungsstatus
             const tendersRes = await fetch(apiUrl(`/api/projects/${project.id}/tenders`));
