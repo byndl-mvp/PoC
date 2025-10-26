@@ -226,48 +226,50 @@ console.log('Fertige LVs gezählt:', completedLvs);
   };
 
   const loadProjectDetails = async (projectId) => {
-    try {
-      const tendersRes = await fetch(apiUrl(`/api/projects/${projectId}/tenders`));
-      if (tendersRes.ok) {
-        const tendersData = await tendersRes.json();
-        setTenders(tendersData);
-      }
-
-      const offersRes = await fetch(apiUrl(`/api/projects/${projectId}/offers`));
-      if (offersRes.ok) {
-        const offersData = await offersRes.json();
-        setOffers(offersData);
-      }
-
-      const ordersRes = await fetch(apiUrl(`/api/projects/${projectId}/orders`));
-      if (ordersRes.ok) {
-        const ordersData = await ordersRes.json();
-        setOrders(ordersData);
-      }
-
-      const supplementsRes = await fetch(apiUrl(`/api/projects/${projectId}/supplements`));
-      if (supplementsRes.ok) {
-        const supplementsData = await supplementsRes.json();
-        setSupplements(supplementsData);
-      }
-
-      // Lade zurückgezogene Angebote
-const withdrawnRes = await fetch(apiUrl(`/api/projects/${projectId}/withdrawn-offers`));
-if (withdrawnRes.ok) {
-  const withdrawnData = await withdrawnRes.json();
-  setWithdrawnOffers(withdrawnData);
-}
-      
-      // Lade ungelesene Angebote
-      const unreadRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/unread-count`));
-      if (unreadRes.ok) {
-        const unreadData = await unreadRes.json();
-        setUnreadOffers(unreadData.count);
-      }
-    } catch (err) {
-      console.error('Fehler beim Laden der Projektdetails:', err);
+  try {
+    const timestamp = Date.now(); // Cache-Busting
+    
+    const tendersRes = await fetch(apiUrl(`/api/projects/${projectId}/tenders?t=${timestamp}`));
+    if (tendersRes.ok) {
+      const tendersData = await tendersRes.json();
+      setTenders(tendersData);
     }
-  };
+    
+    const offersRes = await fetch(apiUrl(`/api/projects/${projectId}/offers?t=${timestamp}`));
+    if (offersRes.ok) {
+      const offersData = await offersRes.json();
+      setOffers(offersData);
+    }
+    
+    const ordersRes = await fetch(apiUrl(`/api/projects/${projectId}/orders?t=${timestamp}`));
+    if (ordersRes.ok) {
+      const ordersData = await ordersRes.json();
+      setOrders(ordersData);
+    }
+    
+    const supplementsRes = await fetch(apiUrl(`/api/projects/${projectId}/supplements?t=${timestamp}`));
+    if (supplementsRes.ok) {
+      const supplementsData = await supplementsRes.json();
+      setSupplements(supplementsData);
+    }
+    
+    // Lade zurückgezogene Angebote
+    const withdrawnRes = await fetch(apiUrl(`/api/projects/${projectId}/withdrawn-offers?t=${timestamp}`));
+    if (withdrawnRes.ok) {
+      const withdrawnData = await withdrawnRes.json();
+      setWithdrawnOffers(withdrawnData);
+    }
+    
+    // Lade ungelesene Angebote
+    const unreadRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/unread-count?t=${timestamp}`));
+    if (unreadRes.ok) {
+      const unreadData = await unreadRes.json();
+      setUnreadOffers(unreadData.count);
+    }
+  } catch (err) {
+    console.error('Fehler beim Laden der Projektdetails:', err);
+  }
+};
 
 // Lade letzte View-Timestamps aus SessionStorage
 useEffect(() => {
