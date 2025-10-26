@@ -108,32 +108,22 @@ setLvData(parsedLV);
   };
 
   // Position speichern
-  const savePosition = () => {
-    if (!editingPosition.title) {
-      alert('Bitte geben Sie einen Titel ein');
-      return;
-    }
-
-    const quantity = parseFloat(editingPosition.quantity) || 0;
-    const unitPrice = parseFloat(editingPosition.unitPrice) || 0;
-    const updatedPosition = {
-      ...editingPosition,
-      quantity,
-      unitPrice,
-      totalPrice: quantity * unitPrice
-    };
-
+  const savePosition = (updatedPosition) => {
     let newPositions = [...(lvData.positions || [])];
     
     if (editingIndex !== null) {
-      // Bearbeiten
       newPositions[editingIndex] = updatedPosition;
     } else {
-      // Neu hinzufügen
       newPositions.push(updatedPosition);
     }
 
     setLvData({ ...lvData, positions: newPositions });
+    setShowPositionModal(false);
+    setEditingPosition(null);
+    setEditingIndex(null);
+  };
+
+  const closeModal = () => {
     setShowPositionModal(false);
     setEditingPosition(null);
     setEditingIndex(null);
