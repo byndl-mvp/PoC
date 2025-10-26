@@ -27,7 +27,8 @@ export default function HandwerkerOfferConfirmPage() {
   const [showPositionModal, setShowPositionModal] = useState(false);
   const [editingPosition, setEditingPosition] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
-
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  
   useEffect(() => {
     loadOffer();
   }, [offerId]); // eslint-disable-line
