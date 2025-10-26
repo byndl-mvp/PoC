@@ -152,15 +152,19 @@ const completedLvs = (lvData.lvs || []).filter(lv => {
 console.log('Fertige LVs gezählt:', completedLvs);
             
             // Berechne Gesamtkosten
-            const totalCost = (lvData.lvs || []).reduce((sum, lv) => {
-              const trade = relevantTrades.find(t => t.id === lv.trade_id);
-              if (!trade) return sum;
-              const content = typeof lv.content === 'string' ? JSON.parse(lv.content) : lv.content;
-              const lvSum = content?.totalSum || 0;
-              console.log('🔴 LV Trade:', lv.trade_id, 'Sum:', lvSum, 'Content type:', typeof lv.content); // DEBUG
-              
-              return sum + parseFloat(lvSum);
-            }, 0);
+            // Berechne Netto-Summe
+const nettoSum = (lvData.lvs || []).reduce((sum, lv) => {
+  const trade = relevantTrades.find(t => t.id === parseInt(lv.trade_id));
+  if (!trade) return sum;
+  const lvSum = lv.content?.totalSum || 0;
+  return sum + parseFloat(lvSum);
+}, 0);
+
+// Berechne Brutto-Summe (wie in ResultPage)
+const contingency = nettoSum * 0.05;  // 5% Unvorhergesehenes
+const subtotal = nettoSum + contingency;
+const vat = subtotal * 0.19;  // 19% MwSt.
+const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
 
             console.log('🔴 TOTAL COST CALCULATED:', totalCost); // DEBUG
             console.log('🔴 Project ID:', project.id); // DEBUG
