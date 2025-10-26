@@ -1650,33 +1650,43 @@ const BudgetVisualization = ({ budget }) => {
                           </div>
                         )}
                         
-                        {offer.status === 'preliminary' && (
-                          <div className="space-y-2">
-                            <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
-                              In Vertragsanbahnung
-                            </span>
-                            <button 
-                              onClick={() => handleFinalOrder(offer)}
-                              className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                            >
-                              Verbindlich beauftragen
-                            </button>
-                          </div>
-                        )}
+                       {/* Button nur wenn ALLE Bedingungen erfüllt */}
+{(offer.status === 'preliminary' || offer.status === 'confirmed') && 
+ (offer.appointment_confirmed || offer.appointment_skipped) && 
+ offer.offer_confirmed_at && (
+  <div className="space-y-2">
+    <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
+      In Vertragsanbahnung
+    </span>
+    <button 
+      onClick={() => handleFinalOrder(offer)}
+      className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+    >
+      Jetzt verbindlich beauftragen
+    </button>
+  </div>
+)}
 
-                        {offer.status === 'confirmed' && (
-                          <div className="space-y-2">
-                            <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
-                              Verbindliches Angebot nach Ortstermin
-                            </span>
-                            <button 
-                              onClick={() => handleFinalOrder(offer)}
-                              className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                            >
-                              Jetzt verbindlich beauftragen
-                            </button>
-                          </div>
-                        )}
+{/* Falls Ortstermin fehlt */}
+{(offer.status === 'preliminary' || offer.status === 'confirmed') && 
+ !(offer.appointment_confirmed || offer.appointment_skipped) && (
+  <div className="space-y-2">
+    <span className="block text-xs bg-yellow-600 text-yellow-200 px-2 py-1 rounded">
+      ⏳ Warte auf Ortstermin-Bestätigung oder Verzicht durch Handwerker
+    </span>
+  </div>
+)}
+
+{/* Falls Angebotsbestätigung fehlt */}
+{(offer.status === 'preliminary' || offer.status === 'confirmed') && 
+ (offer.appointment_confirmed || offer.appointment_skipped) && 
+ !offer.offer_confirmed_at && (
+  <div className="space-y-2">
+    <span className="block text-xs bg-yellow-600 text-yellow-200 px-2 py-1 rounded">
+      ⏳ Warte auf finale Angebotsbestätigung durch Handwerker
+    </span>
+  </div>
+)}
                         
                         {offer.status === 'accepted' && (
                           <span className="block text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
