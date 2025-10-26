@@ -17787,6 +17787,53 @@ app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
   }
 });
 
+// Appointment-Status prüfen
+app.get('/api/offers/:offerId/appointment-status', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    const offerResult = await query(
+      `SELECT appointment_confirmed, appointment_skipped FROM offers WHERE id = $1`,
+      [offerId]
+    );
+    
+    const appointmentsResult = await query(
+      `SELECT COUNT(*) as count FROM appointments 
+       WHERE offer_id = $1 AND status = 'proposed'`,
+      [offerId]
+    );
+    
+    res.json({
+      appointment_confirmed: offerResult.rows[0]?.appointment_confirmed || false,
+      appointment_skipped: offerResult.rows[0]?.appointment_skipped || false,
+      has_proposed: parseInt(appointmentsResult.rows[0]?.count) > 0
+    });
+  } catch (error) {
+    console.error('Error checking appointment status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Ortstermin überspringen
+app.post('/api/offers/:offerId/skip-appointment', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query(
+      `UPDATE offers 
+       SET appointment_skipped = true,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [offerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error skipping appointment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Vertragsanbahnung beenden - Angebot geht zurück zu submitted
 app.post('/api/offers/:offerId/end-negotiation', async (req, res) => {
   try {
