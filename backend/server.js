@@ -19591,9 +19591,10 @@ if (projectGroupExists.rows.length === 0) {
   // Alle bereits beauftragten Handwerker hinzufügen
   await query(
   `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-   SELECT DISTINCT $1, 'handwerker', o.handwerker_id, 'participant'
+   SELECT $1::integer, 'handwerker', o.handwerker_id, 'participant'
    FROM orders o
-   WHERE o.project_id = $2`,
+   WHERE o.project_id = $2
+   ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
   [conversationId, offer.project_id]
 );
 }
@@ -19633,9 +19634,10 @@ if (handwerkerCount.rows[0].count >= 2) {
     // Alle Handwerker hinzufügen
     await query(
   `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-   SELECT DISTINCT $1, 'handwerker', o.handwerker_id, 'participant'
+   SELECT $1::integer, 'handwerker', o.handwerker_id, 'participant'
    FROM orders o
-   WHERE o.project_id = $2`,
+   WHERE o.project_id = $2
+   ON CONFLICT (conversation_id, user_type, user_id) DO NOTHING`,
   [conversationId, offer.project_id]
 );
   }
