@@ -1802,6 +1802,10 @@ const BudgetVisualization = ({ budget }) => {
           {/* Vertragsanbahnung Tab */}
 {activeTab === 'contracts' && (
   <div>
+    {console.log('🔵 DEBUG - Alle Offers:', offers)}
+    {console.log('🔵 DEBUG - Offers Status:', offers.map(o => ({id: o.id, status: o.status})))}
+    {console.log('🔵 DEBUG - Gefiltert:', offers.filter(o => (o.status === 'preliminary' || o.status === 'confirmed') && o.status !== 'accepted'))}
+        
     <h2 className="text-2xl font-bold text-white mb-6">Vertragsanbahnungen</h2>
     
     <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
