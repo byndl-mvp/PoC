@@ -19590,12 +19590,12 @@ if (projectGroupExists.rows.length === 0) {
   
   // Alle bereits beauftragten Handwerker hinzufügen
   await query(
-    `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-     SELECT $1, 'handwerker', DISTINCT o.handwerker_id, 'participant'
-     FROM orders o
-     WHERE o.project_id = $2`,
-    [conversationId, offer.project_id]
-  );
+  `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+   SELECT DISTINCT $1, 'handwerker', o.handwerker_id, 'participant'
+   FROM orders o
+   WHERE o.project_id = $2`,
+  [conversationId, offer.project_id]
+);
 }
 
 // 4. Handwerker-Koordination erstellen falls 2+ Handwerker
@@ -19632,12 +19632,12 @@ if (handwerkerCount.rows[0].count >= 2) {
     
     // Alle Handwerker hinzufügen
     await query(
-      `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-       SELECT $1, 'handwerker', DISTINCT o.handwerker_id, 'participant'
-       FROM orders o
-       WHERE o.project_id = $2`,
-      [conversationId, offer.project_id]
-    );
+  `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+   SELECT DISTINCT $1, 'handwerker', o.handwerker_id, 'participant'
+   FROM orders o
+   WHERE o.project_id = $2`,
+  [conversationId, offer.project_id]
+);
   }
 }
     
