@@ -138,6 +138,28 @@ setLvData(parsedLV);
     }
   };
 
+  // Check ob Ortstermin nötig
+const checkAppointmentBeforeConfirm = async () => {
+  try {
+    // Prüfe ob Ortstermin vereinbart oder übersprungen wurde
+    const res = await fetch(apiUrl(`/api/offers/${offerId}/appointment-status`));
+    if (res.ok) {
+      const data = await res.json();
+      
+      // Falls Termin bestätigt oder übersprungen, direkt fortfahren
+      if (data.appointment_confirmed || data.appointment_skipped) {
+        handleConfirm();
+        return;
+      }
+      
+      // Sonst: Modal zeigen
+      setShowAppointmentModal(true);
+    }
+  } catch (err) {
+    console.error('Error checking appointment:', err);
+  }
+};
+  
   const handleConfirm = async () => {
     if (!formData.execution_start || !formData.execution_end) {
       alert('Bitte geben Sie die Ausführungstermine an.');
