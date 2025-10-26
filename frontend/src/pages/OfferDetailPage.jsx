@@ -110,9 +110,25 @@ export default function OfferDetailPage() {
     );
   }
 
-  const positions = offer.lv_data ? 
-    (typeof offer.lv_data === 'string' ? JSON.parse(offer.lv_data) : offer.lv_data) : 
-    [];
+ // Parse LV-Daten korrekt
+let positions = [];
+if (offer.lv_data) {
+  let parsedLV = offer.lv_data;
+  
+  // Falls String, parse es
+  if (typeof parsedLV === 'string') {
+    parsedLV = JSON.parse(parsedLV);
+  }
+  
+  // Normalisiere zu Array
+  if (Array.isArray(parsedLV)) {
+    // lv_data ist direkt das Array
+    positions = parsedLV;
+  } else if (parsedLV && Array.isArray(parsedLV.positions)) {
+    // lv_data ist ein Objekt mit positions-Key
+    positions = parsedLV.positions;
+  }
+}
 
   const handlePreliminaryOrder = async () => {
   try {
