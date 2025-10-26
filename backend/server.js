@@ -23180,6 +23180,9 @@ app.post('/api/appointments/:appointmentId/respond', async (req, res) => {
     const { appointmentId } = req.params;
     const { response } = req.body; // 'accepted' oder 'rejected'
     
+    await query('BEGIN');
+    
+    // Update appointment status
     await query(
       `UPDATE appointment_proposals 
        SET status = $2, responded_at = NOW()
@@ -23187,9 +23190,24 @@ app.post('/api/appointments/:appointmentId/respond', async (req, res) => {
       [appointmentId, response]
     );
     
+    // Falls accepted: Setze appointment_confirmed im Offer
+    if (response === 'accepted') {
+      await query(
+        `UPDATE offers 
+         SET appointment_confirmed = true,
+             appointment_date = (SELECT proposed_date FROM appointment_proposals WHERE id = $1),
+             updated_at = NOW()
+         WHERE id = (SELECT offer_id FROM appointment_proposals WHERE id = $1)`,
+        [appointmentId]
+      );
+    }
+    
+    await query('COMMIT');
+    
     res.json({ success: true });
     
   } catch (error) {
+    await query('ROLLBACK');
     console.error('Error responding to appointment:', error);
     res.status(500).json({ error: 'Fehler beim Antworten' });
   }
