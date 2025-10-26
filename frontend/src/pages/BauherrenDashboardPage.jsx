@@ -568,6 +568,33 @@ const handleRejectConfirm = async () => {
 const handleFinalOrder = async (offer) => {
   console.log('🔴 handleFinalOrder CALLED with offer:', offer);
   
+  // KRITISCH: Prüfe Ortstermin-Status
+  try {
+    const statusRes = await fetch(apiUrl(`/api/offers/${offer.id}/appointment-status`));
+    if (statusRes.ok) {
+      const statusData = await statusRes.json();
+      
+      // BEDINGUNG: Handwerker MUSS entweder Termin bestätigt haben ODER explizit verzichtet haben
+      const canProceed = statusData.appointment_confirmed || statusData.appointment_skipped;
+      
+      if (!canProceed) {
+        // BLOCKIEREN: Keine Beauftragung möglich
+        alert('❌ Beauftragung noch nicht möglich\n\nDer Handwerker hat sein Angebot noch nicht final bestätigt.\n\nBitte warten Sie auf:\n- Die Bestätigung nach dem Ortstermin, ODER\n- Die finale Angebotsabgabe ohne Ortstermin\n\nSie können den Handwerker auch direkt kontaktieren.');
+        return;
+      }
+      
+      // Falls es einen vorgeschlagenen aber NICHT bestätigten Termin gibt
+      if (statusData.has_proposed && !statusData.appointment_confirmed) {
+        alert('ℹ️ Hinweis: Es gibt einen vorgeschlagenen Ortstermin der noch nicht bestätigt wurde. Der Handwerker hat aber auf einen Ortstermin verzichtet, daher kann fortgefahren werden.');
+      }
+    }
+  } catch (err) {
+    console.error('Error checking appointment status:', err);
+    alert('Fehler beim Prüfen des Ortstermin-Status. Bitte versuchen Sie es erneut.');
+    return;
+  }
+  
+  // Standard-Bestätigung
   if (!window.confirm('Möchten Sie diesen Handwerker verbindlich beauftragen? Es entsteht ein rechtsgültiger Werkvertrag nach VOB/B.')) {
     console.log('🔴 User cancelled');
     return;
