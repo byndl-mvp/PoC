@@ -615,12 +615,20 @@ const handleFinalOrder = async (offer) => {
     console.log('🔴 Response received:', res.status, res.ok);
 
     if (res.ok) {
-      const data = await res.json();
-      console.log('🔴 Success data:', data);
-      
-      alert(`Verbindliche Beauftragung erfolgreich! Werkvertrag wurde erstellt (Auftrag #${data.orderId}).`);
-      await loadProjectDetails(selectedProject.id);
-      setActiveTab('orders');
+  const data = await res.json();
+  console.log('🔴 Success data:', data);
+  
+  alert(`Verbindliche Beauftragung erfolgreich! Werkvertrag wurde erstellt (Auftrag #${data.orderId}).`);
+  
+  // Warte 500ms damit das Backend die Daten committed hat
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  await loadProjectDetails(selectedProject.id);
+  
+  // Nochmal kurz warten damit React die States aktualisiert
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  setActiveTab('orders');
     } else {
       const errorData = await res.json();
       console.error('🔴 Error response:', errorData);
