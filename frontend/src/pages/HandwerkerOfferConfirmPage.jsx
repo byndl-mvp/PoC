@@ -138,7 +138,7 @@ setLvData(parsedLV);
     }
   };
 
-  // Check ob Ortstermin nötig
+// Check ob Ortstermin nötig
 const checkAppointmentBeforeConfirm = async () => {
   try {
     // Prüfe ob Ortstermin vereinbart oder übersprungen wurde
@@ -146,17 +146,27 @@ const checkAppointmentBeforeConfirm = async () => {
     if (res.ok) {
       const data = await res.json();
       
-      // Falls Termin bestätigt oder übersprungen, direkt fortfahren
+      console.log('Appointment Status:', data); // DEBUG
+      
+      // Falls Termin bestätigt ODER übersprungen, direkt fortfahren
       if (data.appointment_confirmed || data.appointment_skipped) {
+        console.log('Appointment confirmed or skipped, proceeding directly');
         handleConfirm();
         return;
       }
       
       // Sonst: Modal zeigen
+      console.log('No appointment, showing modal');
       setShowAppointmentModal(true);
+    } else {
+      console.error('Failed to check appointment status');
+      // Bei Fehler: direkt fortfahren ohne Modal zu blockieren
+      handleConfirm();
     }
   } catch (err) {
     console.error('Error checking appointment:', err);
+    // Bei Fehler: direkt fortfahren ohne Modal zu blockieren
+    handleConfirm();
   }
 };
   
