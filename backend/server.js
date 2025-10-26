@@ -23195,6 +23195,7 @@ app.post('/api/appointments/:appointmentId/respond', async (req, res) => {
       await query(
         `UPDATE offers 
          SET appointment_confirmed = true,
+             appointment_skipped = false,
              appointment_date = (SELECT proposed_date FROM appointment_proposals WHERE id = $1),
              updated_at = NOW()
          WHERE id = (SELECT offer_id FROM appointment_proposals WHERE id = $1)`,
@@ -23248,6 +23249,7 @@ app.post('/api/offers/:offerId/skip-appointment', async (req, res) => {
     await query(
       `UPDATE offers 
        SET appointment_skipped = true,
+           appointment_confirmed = false,
            updated_at = NOW()
        WHERE id = $1`,
       [offerId]
