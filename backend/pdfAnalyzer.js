@@ -335,7 +335,7 @@ Antworte NUR mit der direkten Antwort, KEINE Erklärungen oder Einleitungen!`;
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-4-5-sonnet-20250929",
+      model: "claude-sonnet-4-5-20250929",
       max_tokens: 3000,
       temperature: 0.2,
       messages: [{
