@@ -17956,22 +17956,24 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
     // WICHTIG: Speichere Ablehnungsgrund in Notifications
     // ═══════════════════════════════════════════════════════════════
     await query(
-      `INSERT INTO notifications 
-       (user_type, user_id, type, reference_id, message, metadata, created_at, read)
-       VALUES ('handwerker', $1, 'offer_rejected', $2, $3, $4, NOW(), false)`,
-      [
-        offer.handwerker_id,
-        offerId,
-        `Angebot für ${offer.trade_name} wurde abgelehnt`,
-        JSON.stringify({
-          reason: reasonTexts[reason] || 'Nicht angegeben',
-          notes: notes,
-          tradeName: offer.trade_name,
-          projectCategory: offer.project_category,
-          amount: offer.amount
-        })
-      ]
-    );
+  `INSERT INTO notifications 
+   (user_type, user_id, type, reference_id, message, metadata, created_at, read)
+   VALUES ('handwerker', $1, 'offer_rejected', $2, $3, $4, NOW(), false)`,
+  [
+    offer.handwerker_id,
+    offerId,
+    `Angebot für ${offer.trade_name} wurde abgelehnt`,
+    JSON.stringify({
+      reason: reasonTexts[reason] || 'Nicht angegeben',
+      notes: notes,
+      trade_name: offer.tradeName,  
+      project_name: offer.project_description, 
+      bauherr_name: offer.bauherrName, 
+      project_category: offer.project_category,
+      amount: offer.amount
+    })
+  ]
+);
     
     // ═══════════════════════════════════════════════════════════════
     // ANGEBOT LÖSCHEN (statt Status ändern)
