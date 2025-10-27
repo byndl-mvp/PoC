@@ -18796,8 +18796,23 @@ app.post('/api/conversations/:conversationId/messages', async (req, res) => {
     );
     
     for (const participant of participants.rows) {
-  // Bestimme Absender-Typ (gegenteilig zum Empfänger)
-  const senderType = participant.user_type === 'bauherr' ? 'handwerker' : 'bauherr';
+  // Hole Sender-Informationen und Projekt-Details
+  const senderInfo = await query(
+    `SELECT 
+      CASE 
+        WHEN $1 = 'bauherr' THEN b.name
+        WHEN $1 = 'handwerker' THEN h.company_name
+      END as sender_name,
+      p.description as project_name
+     FROM conversations c
+     LEFT JOIN projects p ON c.project_id = p.id
+     LEFT JOIN bauherren b ON b.id = $2 AND $1 = 'bauherr'
+     LEFT JOIN handwerker h ON h.id = $2 AND $1 = 'handwerker'
+     WHERE c.id = $3`,
+    [senderType, senderId, conversationId]
+  );
+  
+  const notificationType = senderType === 'bauherr' ? 'message_from_bauherr' : 'message_from_handwerker';
   
   await query(
     `INSERT INTO notifications 
@@ -18806,13 +18821,13 @@ app.post('/api/conversations/:conversationId/messages', async (req, res) => {
     [
       participant.user_type,
       participant.user_id,
-      senderType === 'bauherr' ? 'message_from_bauherr' : 'message_from_handwerker', // ÄNDERN
+      notificationType,
       result.rows[0].id,
       `Neue Nachricht erhalten`,
-      JSON.stringify({ // NEU HINZUFÜGEN
-        sender_name: senderName, // Variable muss aus dem Kontext kommen
-        project_name: projectName, // Variable muss aus dem Kontext kommen
-        message_preview: messageText.substring(0, 50)
+      JSON.stringify({
+        sender_name: senderInfo.rows[0]?.sender_name || 'Unbekannt',
+        project_name: senderInfo.rows[0]?.project_name || 'Projekt',
+        message_preview: message.substring(0, 50)
       })
     ]
   );
