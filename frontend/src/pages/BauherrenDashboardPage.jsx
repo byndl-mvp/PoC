@@ -28,7 +28,6 @@ export default function BauherrenDashboardPage() {
   const [pendingLvProjectId, setPendingLvProjectId] = useState(null);
   const [unreadOffers, setUnreadOffers] = useState(0);
   const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
-  const [withdrawnOffers, setWithdrawnOffers] = useState([]);
   const [showContractView, setShowContractView] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
