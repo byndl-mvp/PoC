@@ -200,48 +200,65 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
   };
 
   const formatMessage = (notification) => {
-    // Parse metadata und details
-    const metadata = parseMetadata(notification.metadata);
-    const details = notification.details || metadata || {};
-    
-    // Helper für sichere Werte
-    const getValue = (keys, fallback = 'Unbekannt') => {
-      for (const key of keys) {
-        if (details[key]) return details[key];
-      }
-      return fallback;
-    };
-
-    switch (notification.type) {
-      case 'new_offer':
-        return `Neues Angebot von ${getValue(['company_name', 'companyName'], 'Handwerker')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} (${formatCurrency(details.amount)})`;
-      
-      case 'new_tender':
-        return `Neue Ausschreibung: ${getValue(['trade_name', 'tradeName'], 'Projekt')}${details.project_zip ? ` in ${details.project_zip}` : ''}`;
-      
-      case 'preliminary_accepted':
-        return `Vorläufige Beauftragung von ${getValue(['bauherr_name', 'bauherrName', 'clientName'], 'Bauherr')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')}`;
-      
-      case 'offer_confirmed':
-        return `${getValue(['company_name', 'companyName'], 'Handwerker')} hat das Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} bestätigt`;
-      
-      case 'offer_rejected':
-        const reason = details.reason || 'Kein Grund angegeben';
-        return `Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} abgelehnt: ${reason}`;
-      
-      case 'awarded':
-        return `Auftrag erteilt: ${getValue(['trade_name', 'tradeName'], 'Gewerk')} (${formatCurrency(details.amount)})`;
-      
-      case 'appointment_request':
-        return `Terminvorschlag von ${getValue(['company_name', 'companyName'], 'Handwerker')}`;
-      
-      case 'appointment_confirmed':
-        return `Termin bestätigt mit ${getValue(['company_name', 'companyName'], 'Handwerker')}`;
-      
-      default:
-        return notification.message || 'Neue Benachrichtigung';
+  const metadata = parseMetadata(notification.metadata);
+  const details = notification.details || metadata || {};
+  
+  const getValue = (keys, fallback = 'Unbekannt') => {
+    for (const key of keys) {
+      if (details[key]) return details[key];
     }
+    return fallback;
   };
+  
+  // Projekt-Info hinzufügen
+  const projectInfo = details.project_name ? ` - Projekt: ${details.project_name}` : '';
+  
+  switch (notification.type) {
+    case 'new_offer':
+      return `Neues Angebot von ${getValue(['company_name', 'companyName'], 'Handwerker')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} (${formatCurrency(details.amount)})${projectInfo}`;
+    
+    case 'new_tender':
+      return `Neue Ausschreibung: ${getValue(['trade_name', 'tradeName'], 'Projekt')}${details.project_zip ? ` in ${details.project_zip}` : ''}${projectInfo}`;
+    
+    case 'preliminary_accepted':
+      return `Vorläufige Beauftragung von ${getValue(['bauherr_name', 'bauherrName'], 'Bauherr')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')}${projectInfo}`;
+    
+    case 'offer_confirmed':
+      return `${getValue(['company_name', 'companyName'], 'Handwerker')} hat das Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} bestätigt${projectInfo}`;
+    
+    case 'offer_rejected':
+      const reason = details.reason || 'Kein Grund angegeben';
+      return `Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} abgelehnt: ${reason}${projectInfo}`;
+    
+    case 'offer_withdrawn':
+      return `${getValue(['company_name', 'companyName'], 'Handwerker')} hat das Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} zurückgezogen${projectInfo}`;
+    
+    case 'awarded':
+      return `Auftrag erteilt: ${getValue(['trade_name', 'tradeName'], 'Gewerk')} an ${getValue(['company_name', 'companyName'], 'Handwerker')} (${formatCurrency(details.amount)})${projectInfo}`;
+    
+    case 'contract_created':
+      return `Werkvertrag erstellt für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} mit ${getValue(['company_name', 'companyName'], 'Handwerker')}${projectInfo}`;
+    
+    case 'not_selected':
+      return `Ihr Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} wurde nicht berücksichtigt${projectInfo}`;
+    
+    case 'appointment_request':
+      return `Terminvorschlag von ${getValue(['sender_name', 'senderName', 'company_name'], 'Unbekannt')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')}${projectInfo}`;
+    
+    case 'appointment_confirmed':
+      return `Termin bestätigt mit ${getValue(['sender_name', 'senderName', 'company_name'], 'Unbekannt')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')}${projectInfo}`;
+    
+    case 'message':
+    case 'message_from_bauherr':
+      return `Nachricht von ${getValue(['sender_name', 'senderName', 'bauherr_name'], 'Bauherr')}: "${getValue(['message_preview', 'messagePreview'], 'Neue Nachricht')}"${projectInfo}`;
+    
+    case 'message_from_handwerker':
+      return `Nachricht von ${getValue(['sender_name', 'senderName', 'company_name'], 'Handwerker')}: "${getValue(['message_preview', 'messagePreview'], 'Neue Nachricht')}"${projectInfo}`;
+    
+    default:
+      return notification.message || `Neue Benachrichtigung${projectInfo}`;
+  }
+};
 
   const formatTime = (date) => {
     const now = new Date();
