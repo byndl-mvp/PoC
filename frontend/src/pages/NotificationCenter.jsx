@@ -181,6 +181,11 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
       'offer_rejected': 'from-red-500/20 to-orange-500/20 border-red-500/30',
       'awarded': 'from-yellow-500/20 to-amber-500/20 border-yellow-500/30',
       'appointment_request': 'from-indigo-500/20 to-blue-500/20 border-indigo-500/30',
+      'offer_withdrawn': 'from-orange-500/20 to-red-500/20 border-orange-500/30',
+      'message_from_bauherr': 'from-blue-500/20 to-purple-500/20 border-blue-500/30',
+      'message_from_handwerker': 'from-green-500/20 to-teal-500/20 border-green-500/30',
+      'contract_created': 'from-emerald-500/20 to-green-500/20 border-emerald-500/30',
+      'not_selected': 'from-gray-500/20 to-gray-600/20 border-gray-500/30',
       'appointment_confirmed': 'from-blue-500/20 to-indigo-500/20 border-blue-500/30'
     };
     return colors[type] || 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
