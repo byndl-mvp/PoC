@@ -132,15 +132,54 @@ if (offer.lv_data) {
 
   const handlePreliminaryOrder = async () => {
   try {
+    // Erst prüfen ob bereits eine Vertragsanbahnung existiert
+    const checkRes = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${offer.trade_code}/preliminary-check`)
+    );
+    const checkData = await checkRes.json();
+    
+    if (checkData.hasExisting) {
+      alert(`⚠️ Exklusivität in der Vertragsanbahnung
+
+Sie befinden sich in diesem Gewerk bereits in der Vertragsanbahnung mit ${checkData.companyName}.
+
+In der Kennenlernphase hat der ausgewählte Handwerker Exklusivität zu Ihrem Auftrag. Dies gibt beiden Seiten die nötige Sicherheit, um:
+- Offene Fragen in Ruhe zu klären
+- Einen Ortstermin durchzuführen
+- Die Kalkulation transparent anzupassen
+- Nachträge in der Ausführungsphase zu vermeiden
+
+Diese Regelung verhindert Missverständnisse und schafft faire Bedingungen für alle Beteiligten. 
+
+Falls Sie mit ${checkData.companyName} nicht weitermachen möchten, können Sie die Vertragsanbahnung im Dashboard beenden.`);
+      return;
+    }
+    
+    // Bestätigungsdialog
+    if (!window.confirm(`Möchten Sie mit ${offer.company_name} in die Vertragsanbahnung gehen?
+
+Hinweis: In der Vertragsanbahnung erhält dieser Handwerker Exklusivität für dieses Gewerk. Sie können dann keine anderen Angebote für ${offer.trade_name} vorläufig annehmen.`)) {
+      return;
+    }
+    
     const res = await fetch(apiUrl(`/api/offers/${offerId}/preliminary-accept`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectId })
     });
     
+    const data = await res.json();
+    
+    if (res.status === 400 && data.error === 'conflict') {
+      alert(`⚠️ ${data.message}
+
+In der Kennenlernphase hat der ausgewählte Handwerker Exklusivität. Dies schützt beide Seiten und ermöglicht eine vertrauensvolle Zusammenarbeit.`);
+      return;
+    }
+    
     if (res.ok) {
-      alert('Vorläufige Beauftragung erfolgreich! Die Kontaktdaten wurden freigegeben.');
-      loadData(); // Daten neu laden um Status zu aktualisieren
+      alert('✅ Vorläufige Beauftragung erfolgreich! Die Kontaktdaten wurden freigegeben.');
+      loadData(); // Daten neu laden
     }
   } catch (error) {
     console.error('Error in preliminary order:', error);
