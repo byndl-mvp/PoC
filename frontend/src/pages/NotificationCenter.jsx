@@ -162,6 +162,11 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
       'appointment_confirmed': '📆',
       'message': '💬',
       'warning': '⚠️',
+      'offer_withdrawn': '↩️',
+      'message_from_bauherr': '👤',
+      'message_from_handwerker': '👷',
+      'contract_created': '📄',
+      'not_selected': '📭',
       'info': 'ℹ️'
     };
     return icons[type] || '🔔';
