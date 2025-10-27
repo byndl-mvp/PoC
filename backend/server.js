@@ -23678,9 +23678,9 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       offerId,
       'Neues Angebot eingegangen',
       JSON.stringify({ // NEU HINZUFÜGEN
-        company_name: handwerkerName, // Variable aus dem Kontext
-        trade_name: tradeName, // Variable aus dem Kontext
-        project_name: projectInfo.rows[0].description,
+        companyName: handwerkerName, // Variable aus dem Kontext
+        tradeName: tradeName, // Variable aus dem Kontext
+        projectName: projectInfo.rows[0].description,
         amount: offerAmount // Variable aus dem Kontext
       })
     ]
