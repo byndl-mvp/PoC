@@ -19635,6 +19635,19 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     );
     
     const orderId = orderResult.rows[0].id;
+
+    // NEUE ERGÄNZUNG: Hole alle anderen Angebote für Benachrichtigungen
+    const otherOffers = await query(
+      `SELECT o.*, h.email, h.company_name, h.contact_person
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       WHERE tn.project_id = $1 
+       AND tn.trade_id = $2 
+       AND o.id != $3
+       AND o.status NOT IN ('withdrawn', 'rejected', 'accepted', 'not_selected')`,
+      [offer.project_id, offer.trade_id, offerId]
+    );
     
     // 5. Update Offer Status
     await query(
@@ -19646,6 +19659,29 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
        WHERE id = $1`,
       [offerId]
     );
+
+    // NEUE ERGÄNZUNG: Update Status der anderen Angebote
+    if (otherOffers.rows.length > 0) {
+      await query(
+        `UPDATE offers 
+         SET status = 'not_selected',
+             updated_at = NOW()
+         WHERE tender_id IN (
+           SELECT id FROM tenders 
+           WHERE project_id = $1 AND trade_id = $2
+         )
+         AND id != $3
+         AND status NOT IN ('withdrawn', 'rejected', 'accepted')`,
+        [offer.project_id, offer.trade_id, offerId]
+      );
+      
+      await query(
+        `UPDATE tenders 
+         SET status = 'awarded'
+         WHERE project_id = $1 AND trade_id = $2`,
+        [offer.project_id, offer.trade_id]
+      );
+    }
     
     // ===== COMMIT - ORDER UND OFFER SIND JETZT SICHER! =====
     await query('COMMIT');
@@ -19805,6 +19841,32 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
       }
     } catch (emailError) {
       console.error('⚠️ Non-critical: Email sending failed:', emailError.message);
+    }
+
+    // NEUE ERGÄNZUNG: E-Mails an abgelehnte Bieter
+    if (transporter && otherOffers.rows.length > 0) {
+      for (const otherOffer of otherOffers.rows) {
+        try {
+          await transporter.sendMail({
+            from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+            to: otherOffer.email,
+            subject: `Information zu Ihrer Angebotsabgabe - ${offer.trade_name}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Information zu Ihrem Angebot</h2>
+                <p>Sehr geehrte/r ${otherOffer.contact_person || 'Damen und Herren'},</p>
+                <p>vielen Dank für Ihr Angebot für das Gewerk <strong>${offer.trade_name}</strong>.</p>
+                <p>Nach sorgfältiger Prüfung aller eingegangenen Angebote haben wir uns entschieden, 
+                   den Auftrag an einen anderen Anbieter zu vergeben.</p>
+                <p>Wir würden uns freuen, Sie bei zukünftigen Projekten wieder berücksichtigen zu können.</p>
+                <p>Mit freundlichen Grüßen<br>${offer.bauherr_name}</p>
+              </div>
+            `
+          });
+        } catch (emailError) {
+          console.error(`E-Mail-Fehler ${otherOffer.company_name}:`, emailError);
+        }
+      }
     }
     
     res.json({ 
