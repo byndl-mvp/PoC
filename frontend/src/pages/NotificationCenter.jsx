@@ -268,7 +268,6 @@ case 'appointment_request':
 // Funktion um den richtigen Link für jede Notification zu generieren
 const getNotificationLink = (notification) => {
   const details = notification.details || parseMetadata(notification.metadata) || {};
-  const userType = user?.type || 'bauherr';
   
   switch (notification.type) {
     case 'new_offer':
