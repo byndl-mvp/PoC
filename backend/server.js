@@ -23697,19 +23697,30 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       );
       
       if (projectInfo.rows.length > 0) {
+  // Hole die fehlenden Informationen
+  const offerDetails = await query(
+    `SELECT h.company_name, t.name as trade_name, p.description as project_description
+     FROM handwerker h
+     CROSS JOIN tenders tn
+     JOIN trades t ON tn.trade_id = t.id
+     JOIN projects p ON tn.project_id = p.id
+     WHERE h.id = $1 AND tn.id = $2`,
+    [handwerkerId, tenderId]
+  );
+  
   await query(
     `INSERT INTO notifications 
      (user_type, user_id, type, reference_id, message, metadata)
-     VALUES ('bauherr', $1, 'new_offer', $2, $3, $4)`, // metadata HINZUFÜGEN
+     VALUES ('bauherr', $1, 'new_offer', $2, $3, $4)`,
     [
       projectInfo.rows[0].bauherr_id, 
       offerId,
       'Neues Angebot eingegangen',
-      JSON.stringify({ // NEU HINZUFÜGEN
-        companyName: handwerkerName, // Variable aus dem Kontext
-        tradeName: tradeName, // Variable aus dem Kontext
-        projectName: projectInfo.rows[0].description,
-        amount: offerAmount // Variable aus dem Kontext
+      JSON.stringify({
+        company_name: offerDetails.rows[0]?.company_name || 'Handwerker',
+        trade_name: offerDetails.rows[0]?.trade_name || 'Gewerk',
+        project_name: offerDetails.rows[0]?.project_description || 'Projekt',
+        amount: totalSum  // Diese Variable existiert bereits aus req.body
       })
     ]
   );
