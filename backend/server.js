@@ -23669,14 +23669,23 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       );
       
       if (projectInfo.rows.length > 0) {
-        await query(
-          `INSERT INTO notifications 
-           (user_type, user_id, type, reference_id, message)
-           VALUES ('bauherr', $1, 'new_offer', $2, 'Neues Angebot eingegangen')`,
-          [projectInfo.rows[0].bauherr_id, offerId]
-        );
-      }
-    }
+  await query(
+    `INSERT INTO notifications 
+     (user_type, user_id, type, reference_id, message, metadata)
+     VALUES ('bauherr', $1, 'new_offer', $2, $3, $4)`, // metadata HINZUFÜGEN
+    [
+      projectInfo.rows[0].bauherr_id, 
+      offerId,
+      'Neues Angebot eingegangen',
+      JSON.stringify({ // NEU HINZUFÜGEN
+        company_name: handwerkerName, // Variable aus dem Kontext
+        trade_name: tradeName, // Variable aus dem Kontext
+        project_name: projectInfo.rows[0].description,
+        amount: offerAmount // Variable aus dem Kontext
+      })
+    ]
+  );
+}
     
     await query('COMMIT');
     
