@@ -17558,6 +17558,32 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
     const { projectId } = req.body;
     
     await query('BEGIN');
+
+// NEUE PRÜFUNG: Check ob bereits eine andere Firma in Vertragsanbahnung ist
+const existingPreliminary = await query(
+  `SELECT o.*, h.company_name 
+   FROM offers o
+   JOIN handwerker h ON o.handwerker_id = h.id
+   JOIN tenders tn2 ON o.tender_id = tn2.id
+   WHERE tn2.project_id = $1 
+   AND tn2.trade_id = (
+     SELECT trade_id FROM tenders WHERE id = (
+       SELECT tender_id FROM offers WHERE id = $2
+     )
+   )
+   AND o.status = 'preliminary'
+   AND o.id != $2`,
+  [projectId, offerId]
+);
+
+if (existingPreliminary.rows.length > 0) {
+  await query('ROLLBACK');
+  return res.status(400).json({ 
+    error: 'conflict',
+    existingCompany: existingPreliminary.rows[0].company_name,
+    message: `Sie befinden sich in diesem Gewerk bereits in der Vertragsanbahnung mit ${existingPreliminary.rows[0].company_name}. In diesem Status hat ${existingPreliminary.rows[0].company_name} Exklusivität zu Ihrem Auftrag. Dies ermöglicht beiden Seiten eine vertrauensvolle Kennenlernphase mit ausreichend Zeit für Ortstermine und Kalkulationsanpassungen. Falls Sie mit ${existingPreliminary.rows[0].company_name} nicht fortfahren möchten, beenden Sie bitte zuerst die bestehende Vertragsanbahnung.`
+  });
+}
     
     // Hole Angebotsdaten
 const offerResult = await query(
@@ -17589,6 +17615,24 @@ const offerResult = await query(
       [offerId]
     );
 
+// NEUE AKTION: Setze alle anderen Angebote desselben Gewerks auf "locked"
+await query(
+  `UPDATE offers 
+   SET locked_reason = 'Anderes Angebot in Vertragsanbahnung'
+   WHERE tender_id IN (
+     SELECT tn2.id FROM tenders tn2 
+     WHERE tn2.project_id = $1 
+     AND tn2.trade_id = (
+       SELECT trade_id FROM tenders WHERE id = (
+         SELECT tender_id FROM offers WHERE id = $2
+       )
+     )
+   )
+   AND id != $2
+   AND status NOT IN ('preliminary', 'accepted', 'rejected', 'withdrawn')`,
+  [projectId, offerId]
+);
+    
     // Schritt 2: Tender-Handwerker-Status (HINZUFÜGEN)
 await query(
   `UPDATE tender_handwerker 
@@ -17695,6 +17739,38 @@ if (transporter) {
     await query('ROLLBACK');
     console.error('Error in preliminary acceptance:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Prüft ob bereits eine Vertragsanbahnung für dieses Gewerk existiert
+app.get('/api/projects/:projectId/trades/:tradeId/preliminary-check', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const existingPreliminary = await query(
+      `SELECT o.*, h.company_name 
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders t ON o.tender_id = t.id
+       WHERE t.project_id = $1 
+       AND t.trade_id = $2 
+       AND o.status = 'preliminary'`,
+      [projectId, tradeId]
+    );
+    
+    if (existingPreliminary.rows.length > 0) {
+      return res.json({
+        hasExisting: true,
+        companyName: existingPreliminary.rows[0].company_name,
+        offerId: existingPreliminary.rows[0].id
+      });
+    }
+    
+    res.json({ hasExisting: false });
+    
+  } catch (error) {
+    console.error('Error checking preliminary:', error);
+    res.status(500).json({ error: 'Fehler bei der Prüfung' });
   }
 });
 
