@@ -18795,18 +18795,27 @@ app.post('/api/conversations/:conversationId/messages', async (req, res) => {
     );
     
     for (const participant of participants.rows) {
-      await query(
-        `INSERT INTO notifications 
-         (user_type, user_id, type, reference_id, message, created_at)
-         VALUES ($1, $2, 'new_message', $3, $4, NOW())`,
-        [
-          participant.user_type,
-          participant.user_id,
-          result.rows[0].id,
-          `Neue Nachricht erhalten`
-        ]
-      );
-    }
+  // Bestimme Absender-Typ (gegenteilig zum Empfänger)
+  const senderType = participant.user_type === 'bauherr' ? 'handwerker' : 'bauherr';
+  
+  await query(
+    `INSERT INTO notifications 
+     (user_type, user_id, type, reference_id, message, metadata, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+    [
+      participant.user_type,
+      participant.user_id,
+      senderType === 'bauherr' ? 'message_from_bauherr' : 'message_from_handwerker', // ÄNDERN
+      result.rows[0].id,
+      `Neue Nachricht erhalten`,
+      JSON.stringify({ // NEU HINZUFÜGEN
+        sender_name: senderName, // Variable muss aus dem Kontext kommen
+        project_name: projectName, // Variable muss aus dem Kontext kommen
+        message_preview: messageText.substring(0, 50)
+      })
+    ]
+  );
+}
     
     await query('COMMIT');
     
