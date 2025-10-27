@@ -23359,7 +23359,7 @@ if (offerData.rows.length > 0) {
 await query(
   `INSERT INTO notifications 
    (user_type, user_id, type, reference_id, message, metadata, created_at)
-   VALUES ($1, $2, 'APPOINTMENT_PROPOSED', $3, $4, $5, NOW())`,
+   VALUES ($1, $2, 'appointment_request', $3, $4, $5, NOW())
   [
     recipient_type, 
     recipient_id, 
