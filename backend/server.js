@@ -19360,6 +19360,10 @@ app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
   try {
     const { offerId } = req.params;
     const { amount, execution_start, execution_end, notes, lv_data } = req.body; // lv_data hinzufügen!
+
+    console.log('EMPFANGEN - Offer ID:', offerId);
+    console.log('EMPFANGEN - Amount:', amount);
+    console.log('EMPFANGEN - LV_DATA vorhanden?:', !!lv_data);
     
     await query('BEGIN');
     
