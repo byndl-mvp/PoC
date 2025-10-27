@@ -262,13 +262,6 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
       setSupplements(supplementsData);
     }
     
-    // Lade zurückgezogene Angebote
-    const withdrawnRes = await fetch(apiUrl(`/api/projects/${projectId}/withdrawn-offers?t=${timestamp}`));
-    if (withdrawnRes.ok) {
-      const withdrawnData = await withdrawnRes.json();
-      setWithdrawnOffers(withdrawnData);
-    }
-    
     // Lade ungelesene Angebote
     const unreadRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/unread-count?t=${timestamp}`));
     if (unreadRes.ok) {
