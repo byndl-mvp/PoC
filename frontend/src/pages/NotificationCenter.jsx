@@ -242,8 +242,11 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
     case 'not_selected':
       return `Ihr Angebot für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} wurde nicht berücksichtigt${projectInfo}`;
     
-    case 'appointment_request':
-      return `Terminvorschlag von ${getValue(['sender_name', 'senderName', 'company_name'], 'Unbekannt')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')}${projectInfo}`;
+    // ZEILE 246 ERSETZEN:
+case 'appointment_request':
+  const appointmentSender = getValue(['sender_name', 'senderName']) || 
+    (getValue(['bauherr_name', 'bauherrName']) || getValue(['company_name', 'companyName'], 'Unbekannt'));
+  return `Terminvorschlag von ${appointmentSender} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')}${projectInfo}`;
     
     case 'appointment_confirmed':
       return `Termin bestätigt mit ${getValue(['sender_name', 'senderName', 'company_name'], 'Unbekannt')} für ${getValue(['trade_name', 'tradeName'], 'Gewerk')}${projectInfo}`;
@@ -260,6 +263,58 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
   }
 };
 
+// Funktion um den richtigen Link für jede Notification zu generieren
+const getNotificationLink = (notification) => {
+  const details = notification.details || parseMetadata(notification.metadata) || {};
+  const userType = user?.type || 'bauherr';
+  
+  switch (notification.type) {
+    case 'new_offer':
+      // Bauherr → zur Angebotsdetailseite
+      return `/bauherr/offers/${notification.reference_id}/details`;
+    
+    case 'new_tender':
+      // Handwerker → zur Angebotsabgabe-Seite
+      return `/handwerker/tenders/${notification.reference_id}/submit`;
+    
+    case 'appointment_request':
+    case 'appointment_confirmed':
+      // Beide → zur Ortstermin-Seite
+      return userType === 'bauherr' 
+        ? `/bauherr/offers/${details.offer_id || notification.reference_id}/appointment`
+        : `/handwerker/offers/${details.offer_id || notification.reference_id}/appointment`;
+    
+    case 'message':
+    case 'message_from_bauherr':
+    case 'message_from_handwerker':
+      // Beide → zum Message Center
+      return userType === 'bauherr'
+        ? `/bauherr/messages`
+        : `/handwerker/messages`;
+    
+    case 'preliminary_accepted':
+      // Handwerker → zur Angebotsbestätigungs-Seite
+      return `/handwerker/offers/${notification.reference_id}/confirm`;
+    
+    case 'offer_confirmed':
+      // Bauherr → zur finalen Beauftragungsseite
+      return `/bauherr/offers/${notification.reference_id}/details`;
+    
+    case 'awarded':
+      // Handwerker → zum Dashboard/Aufträge
+      return `/handwerker/orders`;
+    
+    case 'offer_withdrawn':
+    case 'offer_rejected':
+    case 'not_selected':
+      // Zur Übersicht
+      return userType === 'bauherr' ? `/bauherr/dashboard` : `/handwerker/dashboard`;
+    
+    default:
+      return null;
+  }
+};
+  
   const formatTime = (date) => {
     const now = new Date();
     const notificationDate = new Date(date);
