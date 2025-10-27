@@ -19844,30 +19844,47 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     }
 
     // NEUE ERGÄNZUNG: E-Mails an abgelehnte Bieter
-    if (transporter && otherOffers.rows.length > 0) {
-      for (const otherOffer of otherOffers.rows) {
-        try {
-          await transporter.sendMail({
-            from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-            to: otherOffer.email,
-            subject: `Information zu Ihrer Angebotsabgabe - ${offer.trade_name}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Information zu Ihrem Angebot</h2>
-                <p>Sehr geehrte/r ${otherOffer.contact_person || 'Damen und Herren'},</p>
-                <p>vielen Dank für Ihr Angebot für das Gewerk <strong>${offer.trade_name}</strong>.</p>
-                <p>Nach sorgfältiger Prüfung aller eingegangenen Angebote haben wir uns entschieden, 
-                   den Auftrag an einen anderen Anbieter zu vergeben.</p>
-                <p>Wir würden uns freuen, Sie bei zukünftigen Projekten wieder berücksichtigen zu können.</p>
-                <p>Mit freundlichen Grüßen<br>${offer.bauherr_name}</p>
-              </div>
-            `
-          });
-        } catch (emailError) {
-          console.error(`E-Mail-Fehler ${otherOffer.company_name}:`, emailError);
-        }
-      }
+if (transporter && otherOffers.rows.length > 0) {
+  for (const otherOffer of otherOffers.rows) {
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: otherOffer.email,
+        subject: `Information zu Ihrer Angebotsabgabe - ${offer.trade_name}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 10px;">
+              <h2 style="color: #333;">Information zu Ihrem Angebot</h2>
+              
+              <p>Sehr geehrte/r ${otherOffer.contact_person || 'Damen und Herren'},</p>
+              
+              <p>im Namen von <strong>${offer.bauherr_name}</strong> möchten wir uns herzlich für Ihr 
+              detailliertes Angebot für das Gewerk <strong>${offer.trade_name}</strong> bedanken.</p>
+              
+              <p>${offer.bauherr_name} hat nach eingehender Prüfung aller eingegangenen Angebote 
+              eine Entscheidung getroffen. Leider müssen wir Ihnen mitteilen, dass die Wahl in 
+              diesem Fall auf einen anderen Anbieter gefallen ist.</p>
+              
+              <p>Diese Entscheidung basiert auf den spezifischen Projektanforderungen und stellt 
+              keine Bewertung Ihrer fachlichen Kompetenz dar. ${offer.bauherr_name} schätzt die 
+              Zeit und Mühe, die Sie in die Angebotserstellung investiert haben.</p>
+              
+              <p>${offer.bauherr_name} würde sich freuen, Sie bei zukünftigen Projekten wieder 
+              in Betracht ziehen zu können.</p>
+              
+              <p>Mit freundlichen Grüßen<br>
+              <strong>${offer.bauherr_name}</strong><br>
+              <em style="font-size: 12px; color: #666;">Diese Nachricht wurde über die byndl-Plattform versendet</em></p>
+            </div>
+          </div>
+        `
+      });
+      console.log(`Absage-Email gesendet an: ${otherOffer.company_name}`);
+    } catch (emailError) {
+      console.error(`E-Mail-Fehler ${otherOffer.company_name}:`, emailError);
     }
+  }
+}
     
     res.json({ 
       success: true, 
