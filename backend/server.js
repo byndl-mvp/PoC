@@ -23724,6 +23724,7 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       })
     ]
   );
+} 
 }
     
     await query('COMMIT');
