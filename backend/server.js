@@ -18359,40 +18359,76 @@ app.get('/api/bauherr/:bauherrId/notifications', async (req, res) => {
       `SELECT 
         n.*,
         CASE 
-          WHEN n.type = 'new_offer' THEN (
-            SELECT json_build_object(
-              'company_name', h.company_name,
-              'trade_name', t.name,
-              'amount', o.amount
-            )
-            FROM offers o
-            JOIN handwerker h ON o.handwerker_id = h.id
-            JOIN tenders tn ON o.tender_id = tn.id
-            JOIN trades t ON tn.trade_id = t.id
-            WHERE o.id = n.reference_id
-          )
-          WHEN n.type = 'offer_confirmed' THEN (
-            SELECT json_build_object(
-              'company_name', h.company_name,
-              'trade_name', t.name
-            )
-            FROM offers o
-            JOIN handwerker h ON o.handwerker_id = h.id
-            JOIN tenders tn ON o.tender_id = tn.id
-            JOIN trades t ON tn.trade_id = t.id
-            WHERE o.id = n.reference_id
-          )
-          WHEN n.type = 'appointment_request' THEN (
-            SELECT json_build_object(
-              'company_name', h.company_name,
-              'proposed_date', ap.proposed_date
-            )
-            FROM appointment_proposals ap
-            JOIN offers o ON ap.offer_id = o.id
-            JOIN handwerker h ON o.handwerker_id = h.id
-            WHERE ap.id = n.reference_id
-          )
-        END as details
+  WHEN n.type = 'new_offer' THEN (
+    SELECT json_build_object(
+      'company_name', h.company_name,
+      'trade_name', t.name,
+      'amount', o.amount,
+      'project_name', p.description,
+      'project_id', p.id
+    )
+    FROM offers o
+    JOIN handwerker h ON o.handwerker_id = h.id
+    JOIN tenders tn ON o.tender_id = tn.id
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    WHERE o.id = n.reference_id
+  )
+  WHEN n.type = 'offer_confirmed' THEN (
+    SELECT json_build_object(
+      'company_name', h.company_name,
+      'trade_name', t.name,
+      'project_name', p.description,
+      'project_id', p.id
+    )
+    FROM offers o
+    JOIN handwerker h ON o.handwerker_id = h.id
+    JOIN tenders tn ON o.tender_id = tn.id
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    WHERE o.id = n.reference_id
+  )
+  WHEN n.type = 'appointment_request' THEN (
+    SELECT json_build_object(
+      'company_name', h.company_name,
+      'proposed_date', ap.proposed_date,
+      'trade_name', t.name,
+      'project_name', p.description
+    )
+    FROM appointment_proposals ap
+    JOIN offers o ON ap.offer_id = o.id
+    JOIN handwerker h ON o.handwerker_id = h.id
+    JOIN tenders tn ON o.tender_id = tn.id
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    WHERE ap.id = n.reference_id
+  )
+  WHEN n.type = 'offer_withdrawn' THEN (
+    SELECT json_build_object(
+      'company_name', h.company_name,
+      'trade_name', t.name,
+      'project_name', p.description
+    )
+    FROM offers o
+    JOIN handwerker h ON o.handwerker_id = h.id
+    JOIN tenders tn ON o.tender_id = tn.id
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    WHERE o.id = n.reference_id
+  )
+  WHEN n.type = 'message' OR n.type = 'message_from_handwerker' THEN (
+    SELECT json_build_object(
+      'sender_name', h.company_name,
+      'project_name', p.description,
+      'message_preview', LEFT(n.message, 50)
+    )
+    FROM messages m
+    JOIN handwerker h ON m.sender_id = h.id AND m.sender_type = 'handwerker'
+    JOIN conversations c ON m.conversation_id = c.id
+    LEFT JOIN projects p ON c.project_id = p.id
+    WHERE m.id = n.reference_id
+  )
+END as details
        FROM notifications n
        WHERE n.user_type = 'bauherr' 
        AND n.user_id = $1 
@@ -18417,40 +18453,102 @@ app.get('/api/handwerker/:handwerkerId/notifications', async (req, res) => {
       `SELECT 
         n.*,
         CASE 
-          WHEN n.type = 'new_tender' THEN (
-            SELECT json_build_object(
-              'trade_name', t.name,
-              'project_zip', p.zip_code,
-              'deadline', tn.deadline
-            )
-            FROM tenders tn
-            JOIN trades t ON tn.trade_id = t.id
-            JOIN projects p ON tn.project_id = p.id
-            WHERE tn.id = n.reference_id
-          )
-          WHEN n.type = 'preliminary_accepted' THEN (
-            SELECT json_build_object(
-              'trade_name', t.name,
-              'bauherr_name', b.name
-            )
-            FROM offers o
-            JOIN tenders tn ON o.tender_id = tn.id
-            JOIN trades t ON tn.trade_id = t.id
-            JOIN projects p ON tn.project_id = p.id
-            JOIN bauherren b ON p.bauherr_id = b.id
-            WHERE o.id = n.reference_id
-          )
-          WHEN n.type = 'offer_rejected' THEN n.metadata
-          WHEN n.type = 'awarded' THEN (
-            SELECT json_build_object(
-              'trade_name', t.name,
-              'amount', ord.amount
-            )
-            FROM orders ord
-            JOIN trades t ON ord.trade_id = t.id
-            WHERE ord.id = n.reference_id
-          )
-        END as details
+  WHEN n.type = 'new_tender' THEN (
+    SELECT json_build_object(
+      'trade_name', t.name,
+      'project_zip', p.zip_code,
+      'deadline', tn.deadline,
+      'project_name', p.description,
+      'project_id', p.id
+    )
+    FROM tenders tn
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    WHERE tn.id = n.reference_id
+  )
+  WHEN n.type = 'preliminary_accepted' THEN (
+    SELECT json_build_object(
+      'trade_name', t.name,
+      'bauherr_name', b.name,
+      'project_name', p.description,
+      'project_id', p.id
+    )
+    FROM offers o
+    JOIN tenders tn ON o.tender_id = tn.id
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    JOIN bauherren b ON p.bauherr_id = b.id
+    WHERE o.id = n.reference_id
+  )
+  WHEN n.type = 'offer_rejected' THEN (
+    SELECT json_build_object(
+      'trade_name', t.name,
+      'bauherr_name', b.name,
+      'project_name', p.description,
+      'reason', n.metadata->>'reason'
+    )
+    FROM offers o
+    JOIN tenders tn ON o.tender_id = tn.id
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    JOIN bauherren b ON p.bauherr_id = b.id
+    WHERE o.id = n.reference_id
+  )
+  WHEN n.type = 'awarded' THEN (
+    SELECT json_build_object(
+      'trade_name', t.name,
+      'amount', ord.amount,
+      'project_name', p.description,
+      'bauherr_name', b.name
+    )
+    FROM orders ord
+    JOIN trades t ON ord.trade_id = t.id
+    JOIN projects p ON ord.project_id = p.id
+    JOIN bauherren b ON ord.bauherr_id = b.id
+    WHERE ord.id = n.reference_id
+  )
+  WHEN n.type = 'not_selected' THEN (
+    SELECT json_build_object(
+      'trade_name', t.name,
+      'project_name', p.description,
+      'bauherr_name', b.name
+    )
+    FROM offers o
+    JOIN tenders tn ON o.tender_id = tn.id
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    JOIN bauherren b ON p.bauherr_id = b.id
+    WHERE o.id = n.reference_id
+  )
+  WHEN n.type = 'message' OR n.type = 'message_from_bauherr' THEN (
+    SELECT json_build_object(
+      'sender_name', b.name,
+      'bauherr_name', b.name,
+      'project_name', p.description,
+      'message_preview', LEFT(n.message, 50)
+    )
+    FROM messages m
+    JOIN bauherren b ON m.sender_id = b.id AND m.sender_type = 'bauherr'
+    JOIN conversations c ON m.conversation_id = c.id
+    LEFT JOIN projects p ON c.project_id = p.id
+    WHERE m.id = n.reference_id
+  )
+  WHEN n.type = 'appointment_confirmed' THEN (
+    SELECT json_build_object(
+      'bauherr_name', b.name,
+      'trade_name', t.name,
+      'project_name', p.description,
+      'confirmed_date', ap.confirmed_date
+    )
+    FROM appointment_proposals ap
+    JOIN offers o ON ap.offer_id = o.id
+    JOIN tenders tn ON o.tender_id = tn.id
+    JOIN trades t ON tn.trade_id = t.id
+    JOIN projects p ON tn.project_id = p.id
+    JOIN bauherren b ON p.bauherr_id = b.id
+    WHERE ap.id = n.reference_id
+  )
+END as details
        FROM notifications n
        WHERE n.user_type = 'handwerker' 
        AND n.user_id = $1 
