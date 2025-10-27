@@ -19560,6 +19560,7 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
          WHERE id = $1`,
         [offerId]
       );
+      
       await query('COMMIT');
       return res.json({
         success: true,
@@ -19567,7 +19568,7 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
         message: 'Auftrag wurde bereits erstellt'
       });
     }
-    
+
     // 2. Hole alle relevanten Daten
     const offerData = await query(
       `SELECT 
