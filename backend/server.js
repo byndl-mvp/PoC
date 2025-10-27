@@ -23355,23 +23355,27 @@ if (offerData.rows.length > 0) {
   const recipient_name = proposed_by === 'bauherr' ? offer.company_name : offer.bauherr_name;
   const sender_name = proposed_by === 'bauherr' ? offer.bauherr_name : offer.company_name;
   
- // Notification in DB
+// Notification in DB
 await query(
   `INSERT INTO notifications 
    (user_type, user_id, type, reference_id, message, metadata, created_at)
-   VALUES ($1, $2, 'appointment_request', $3, $4, $5, NOW())`,
+   VALUES ($1, $2, 'APPOINTMENT_PROPOSED', $3, $4, $5, NOW())`,
   [
     recipient_type, 
     recipient_id, 
-    result.rows[0].id,
+    offerId,  // WICHTIG: offerId statt result.rows[0].id
     `Neuer Terminvorschlag für Ortstermin`,
     JSON.stringify({
-      senderName: sender_name,  // VERWENDEN SIE DIE BEREITS DEFINIERTE VARIABLE
+      senderName: sender_name,
+      offerId: offerId,  // Fügen Sie die offerId hinzu
+      appointmentId: result.rows[0].id,  // Die proposal ID
       companyName: proposed_by === 'handwerker' ? offer.company_name : undefined,
       bauherrName: proposed_by === 'bauherr' ? offer.bauherr_name : undefined,
-      tradeName: offer.trade_name,  // VERWENDEN SIE offer.trade_name
-      projectName: offer.project_description || `${offer.street} ${offer.house_number}`, // Falls keine Beschreibung vorhanden
-      proposed_date: proposed_date
+      tradeName: offer.trade_name,
+      offerTitle: offer.trade_name,  // Fügen Sie das für die Anzeige hinzu
+      projectName: offer.project_description || `${offer.street} ${offer.house_number}`,
+      appointmentDate: proposed_date,  // Verwenden Sie appointmentDate statt proposed_date
+      appointmentTime: new Date(proposed_date).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})
     })
   ]
 );
