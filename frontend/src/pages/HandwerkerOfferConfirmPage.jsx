@@ -186,6 +186,19 @@ const checkAppointmentBeforeConfirm = async () => {
     try {
       setLoading(true);
       const totalAmount = calculateTotal();
+
+      // DEBUG AUSGABEN
+console.log('=== CONFIRM FINAL - SENDEN ===');
+console.log('Offer ID:', offerId);
+console.log('Berechneter Betrag:', totalAmount);
+console.log('Anzahl Positionen:', lvData.positions.length);
+console.log('Erste 3 Positionen:', lvData.positions.slice(0, 3));
+console.log('Execution Start:', formData.execution_start);
+console.log('Execution End:', formData.execution_end);
+
+// Prüfe ob lvData wirklich die aktualisierten Daten hat
+const positionenMitPreis = lvData.positions.filter(p => p.unitPrice && p.unitPrice > 0);
+console.log('Positionen mit Preis:', positionenMitPreis.length);
       
       const res = await fetch(apiUrl(`/api/offers/${offerId}/confirm-final`), {
         method: 'POST',
@@ -200,11 +213,14 @@ const checkAppointmentBeforeConfirm = async () => {
       });
 
       if (res.ok) {
-        alert('Angebot wurde verbindlich bestätigt! Der Bauherr wird benachrichtigt.');
-        navigate('/handwerker/dashboard');
-      } else {
-        throw new Error('Fehler beim Bestätigen');
-      }
+  console.log('=== ERFOLGREICH GESENDET ===');
+  alert('Angebot wurde verbindlich bestätigt! Der Bauherr wird benachrichtigt.');
+  navigate('/handwerker/dashboard');
+} else {
+  const errorData = await res.json();
+  console.error('=== FEHLER BEIM SENDEN ===', errorData);
+  throw new Error('Fehler beim Bestätigen');
+}
     } catch (err) {
       console.error('Error:', err);
       alert('Fehler beim Bestätigen des Angebots');
