@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { Bell, X, Check, Trash2, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; 
 
 const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) => {
   const [notifications, setNotifications] = useState([]);
@@ -8,7 +9,8 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
   const [isLoading, setIsLoading] = useState(false);
   const buttonRef = useRef(null);
   const dropdownRef = useRef(null);
-
+  const navigate = useNavigate();
+  
   // Hilfsfunktion zum sicheren Parsen von metadata
   const parseMetadata = (metadata) => {
     if (!metadata) return {};
@@ -433,7 +435,8 @@ const getNotificationLink = (notification) => {
               <div className="divide-y divide-white/10">
                 {notifications.map((notification) => {
                   const metadata = parseMetadata(notification.metadata);
-                  
+                  const notificationLink = getNotificationLink(notification);
+                
                   return (
                     <div
                       key={notification.id}
