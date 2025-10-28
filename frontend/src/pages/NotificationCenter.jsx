@@ -140,13 +140,13 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
     }
     
     // Ortstermine - zur OrtsterminPage navigieren
-    if (notification.type === 'appointment_request' || notification.type === 'appointment_confirmed') {
-      const metadata = parseMetadata(notification.metadata);
-      const offerId = metadata?.offer_id || metadata?.offerId || notification.reference_id;
-      navigate(`/ortstermin/${offerId}`);
-      setIsOpen(false);
-      return;
-    }
+if (notification.type === 'appointment_request' || notification.type === 'appointment_confirmed') {
+  const metadata = parseMetadata(notification.metadata);
+  const offerId = metadata?.offer_id || metadata?.offerId || notification.reference_id;
+  navigate(`/ortstermin/${offerId}`);  // KLAMMER HINZUGEFÜGT
+  setIsOpen(false);
+  return;
+}
     
     // Andere Notifications - Tab wechseln wenn onTabChange vorhanden ist
     if (onTabChange) {
