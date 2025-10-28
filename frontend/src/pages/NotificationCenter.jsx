@@ -280,44 +280,44 @@ const getNotificationLink = (notification) => {
       return `/bauherr/offers/${notification.reference_id}/details`;
     
     case 'new_tender':
-      // Handwerker → zur Angebotsabgabe-Seite
-      return `/handwerker/tenders/${notification.reference_id}/submit`;
+      // Handwerker → zum Dashboard Tab Ausschreibungen
+      return `/handwerker/dashboard?tab=ausschreibungen`;
     
     case 'appointment_request':
     case 'appointment_confirmed':
-      // Beide → zur Ortstermin-Seite
+      // Beide → zum Dashboard Tab Angebote (wo Termine verwaltet werden)
       return userType === 'bauherr' 
         ? `/bauherr/offers/${details.offer_id || notification.reference_id}/appointment`
-        : `/handwerker/offers/${details.offer_id || notification.reference_id}/appointment`;
+        : `/handwerker/dashboard?tab=angebote`;
     
     case 'message':
     case 'message_from_bauherr':
     case 'message_from_handwerker':
-      // Beide → zum Message Center
+      // Beide → zum Dashboard Tab Messages
       return userType === 'bauherr'
         ? `/bauherr/messages`
-        : `/handwerker/messages`;
+        : `/handwerker/dashboard?tab=messages`;
     
     case 'preliminary_accepted':
-      // Handwerker → zur Angebotsbestätigungs-Seite
-      return `/handwerker/offers/${notification.reference_id}/confirm`;
+      // Handwerker → zum Dashboard Tab Angebote
+      return `/handwerker/dashboard?tab=angebote`;
     
     case 'offer_confirmed':
       // Bauherr → zur finalen Beauftragungsseite
       return `/bauherr/offers/${notification.reference_id}/details`;
     
     case 'awarded':
-      // Handwerker → zum Dashboard/Aufträge
-      return `/handwerker/orders`;
+      // Handwerker → zum Dashboard Tab Aufträge
+      return `/handwerker/dashboard?tab=auftraege`;
     
     case 'offer_withdrawn':
     case 'offer_rejected':
     case 'not_selected':
       // Zur Übersicht
       return userType === 'bauherr' ? `/bauherr/dashboard` : `/handwerker/dashboard`;
-
+      
     case 'work_completed':
-      return `/handwerker/orders`;
+      return `/handwerker/dashboard?tab=auftraege`;
       
     default:
       return null;
