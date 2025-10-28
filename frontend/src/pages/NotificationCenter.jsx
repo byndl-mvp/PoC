@@ -474,8 +474,7 @@ const getNotificationLink = (notification) => {
               <div className="divide-y divide-white/10">
                 {notifications.map((notification) => {
                   const metadata = parseMetadata(notification.metadata);
-                  const notificationLink = getNotificationLink(notification);
-                
+                          
                   return (
                     <div
                       key={notification.id}
