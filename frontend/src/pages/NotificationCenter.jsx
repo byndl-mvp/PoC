@@ -177,6 +177,8 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
   }
 };
 
+  const unreadCount = notifications.filter(n => !n.read).length;
+  
   const getNotificationIcon = (type) => {
     const icons = {
       'new_offer': '💰',
