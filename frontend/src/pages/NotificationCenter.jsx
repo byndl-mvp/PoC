@@ -132,25 +132,50 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
     }
   };
 
-  const handleNotificationClick = (notification) => {
-    // Als gelesen markieren wenn ungelesen
+ const handleNotificationClick = async (notification) => {
+  try {
+    // Als gelesen markieren
     if (!notification.read) {
       markAsRead(notification.id);
     }
-
-    // Callback ausführen falls vorhanden
+    
+    // Ortstermine - zur OrtsterminPage navigieren
+    if (notification.type === 'appointment_request' || notification.type === 'appointment_confirmed') {
+      const metadata = parseMetadata(notification.metadata);
+      const offerId = metadata?.offer_id || metadata?.offerId || notification.reference_id;
+      navigate(`/handwerker/ortstermin/${offerId}`);
+      setIsOpen(false);
+      return;
+    }
+    
+    // Andere Notifications - Tab wechseln wenn onTabChange vorhanden ist
+    if (onTabChange) {
+      const tabMapping = {
+        'new_tender': 'ausschreibungen',
+        'preliminary_accepted': 'angebote',
+        'offer_rejected': 'angebote', 
+        'offer_withdrawn': 'angebote',
+        'awarded': 'auftraege',
+        'work_completed': 'auftraege',
+        'message_from_bauherr': 'messages',
+        'message_from_handwerker': 'messages'
+      };
+      
+      if (tabMapping[notification.type]) {
+        onTabChange(tabMapping[notification.type]);
+        setIsOpen(false);
+      }
+    }
+    
+    // Falls onNotificationClick Callback vorhanden (für Kompatibilität)
     if (onNotificationClick) {
       onNotificationClick(notification);
     }
-
-    // Link öffnen falls vorhanden
-    const metadata = parseMetadata(notification.metadata);
-    if (metadata.link || notification.link) {
-      window.location.href = metadata.link || notification.link;
-    }
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+    
+  } catch (error) {
+    console.error('Fehler:', error);
+  }
+};
 
   const getNotificationIcon = (type) => {
     const icons = {
