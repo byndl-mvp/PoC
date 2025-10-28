@@ -707,7 +707,7 @@ export default function HandwerkerDashboardPage() {
                   {offer.status === 'submitted' && (
                     <>
                       <button
-                        onClick={() => navigate(`/handwerker/offers/${offer.id}/details`)}
+                        onClick={() => navigate(`/handwerker/offer/${offer.id}/details`)}
                         className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                       >
                         📋 Details ansehen
