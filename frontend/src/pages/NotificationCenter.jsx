@@ -169,7 +169,8 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
       'message_from_handwerker': '👷',
       'contract_created': '📄',
       'not_selected': '📭',
-      'info': 'ℹ️'
+      'info': 'ℹ️',
+      'work_completed': '✔️' 
     };
     return icons[type] || '🔔';
   };
@@ -188,7 +189,8 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) =
       'message_from_handwerker': 'from-green-500/20 to-teal-500/20 border-green-500/30',
       'contract_created': 'from-emerald-500/20 to-green-500/20 border-emerald-500/30',
       'not_selected': 'from-gray-500/20 to-gray-600/20 border-gray-500/30',
-      'appointment_confirmed': 'from-blue-500/20 to-indigo-500/20 border-blue-500/30'
+      'appointment_confirmed': 'from-blue-500/20 to-indigo-500/20 border-blue-500/30',
+      'work_completed': 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30'
     };
     return colors[type] || 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
   };
@@ -259,7 +261,10 @@ case 'appointment_request':
     
     case 'message_from_handwerker':
       return `Nachricht von ${getValue(['sender_name', 'senderName', 'company_name'], 'Handwerker')}: "${getValue(['message_preview', 'messagePreview'], 'Neue Nachricht')}"${projectInfo}`;
-    
+
+    case 'work_completed':
+      return `${getValue(['sender_name', 'senderName'], 'Bauherr')} hat die Leistung für ${getValue(['trade_name', 'tradeName'], 'Auftrag')} abgenommen`;
+      
     default:
       return notification.message || `Neue Benachrichtigung${projectInfo}`;
   }
@@ -310,7 +315,10 @@ const getNotificationLink = (notification) => {
     case 'not_selected':
       // Zur Übersicht
       return userType === 'bauherr' ? `/bauherr/dashboard` : `/handwerker/dashboard`;
-    
+
+    case 'work_completed':
+      return `/handwerker/orders`;
+      
     default:
       return null;
   }
