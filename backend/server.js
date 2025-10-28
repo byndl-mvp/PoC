@@ -21667,7 +21667,7 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
           lv_data, notes, status, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         RETURNING id`,
-        [tenderId, handwerkerId, totalSum, JSON.stringify(positions), notes, status]
+       [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, status]
       );
       offerId = result.rows[0].id;
     }
