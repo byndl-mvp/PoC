@@ -23501,33 +23501,81 @@ await query(
 app.post('/api/appointments/:appointmentId/respond', async (req, res) => {
   try {
     const { appointmentId } = req.params;
-    const { response } = req.body; // 'accepted' oder 'rejected'
+    const { response } = req.body;
     
     await query('BEGIN');
     
-    // Update appointment status
-    await query(
-      `UPDATE appointment_proposals 
-       SET status = $2, responded_at = NOW()
-       WHERE id = $1`,
-      [appointmentId, response]
+    // Hole Appointment-Details für Notification
+    const appointmentData = await query(
+      `SELECT ap.*, o.id as offer_id, 
+       h.id as handwerker_id, h.company_name,
+       b.id as bauherr_id, b.name as bauherr_name,
+       t.name as trade_name
+       FROM appointment_proposals ap
+       JOIN offers o ON ap.offer_id = o.id
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE ap.id = $1`,
+      [appointmentId]
     );
     
-    // Falls accepted: Setze appointment_confirmed im Offer
-    if (response === 'accepted') {
+    if (appointmentData.rows.length > 0) {
+      const appointment = appointmentData.rows[0];
+      
+      // Update appointment status
       await query(
-        `UPDATE offers 
-         SET appointment_confirmed = true,
-             appointment_skipped = false,
-             appointment_date = (SELECT proposed_date FROM appointment_proposals WHERE id = $1),
-             updated_at = NOW()
-         WHERE id = (SELECT offer_id FROM appointment_proposals WHERE id = $1)`,
-        [appointmentId]
+        `UPDATE appointment_proposals 
+         SET status = $2, responded_at = NOW()
+         WHERE id = $1`,
+        [appointmentId, response]
       );
+      
+      // Notification an den ursprünglichen Vorschlagenden
+      const recipient_type = appointment.proposed_by === 'bauherr' ? 'bauherr' : 'handwerker';
+      const recipient_id = appointment.proposed_by === 'bauherr' ? appointment.bauherr_id : appointment.handwerker_id;
+      const responder_name = appointment.proposed_by === 'bauherr' ? appointment.company_name : appointment.bauherr_name;
+      
+      await query(
+        `INSERT INTO notifications 
+         (user_type, user_id, type, reference_id, message, metadata, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [
+          recipient_type,
+          recipient_id,
+          response === 'accepted' ? 'appointment_confirmed' : 'appointment_rejected',
+          appointment.offer_id,  // WICHTIG: offer_id als reference_id!
+          response === 'accepted' 
+            ? `Termin wurde von ${responder_name} bestätigt`
+            : `Termin wurde von ${responder_name} abgelehnt`,
+          JSON.stringify({
+            senderName: responder_name,
+            offerId: appointment.offer_id,  // WICHTIG!
+            appointmentId: appointmentId,
+            tradeName: appointment.trade_name,
+            appointmentDate: appointment.proposed_date,
+            status: response
+          })
+        ]
+      );
+      
+      // Falls accepted: Update offer
+      if (response === 'accepted') {
+        await query(
+          `UPDATE offers 
+           SET appointment_confirmed = true,
+               appointment_skipped = false,
+               appointment_date = $2,
+               updated_at = NOW()
+           WHERE id = $1`,
+          [appointment.offer_id, appointment.proposed_date]
+        );
+      }
     }
     
     await query('COMMIT');
-    
     res.json({ success: true });
     
   } catch (error) {
