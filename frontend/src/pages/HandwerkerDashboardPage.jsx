@@ -316,6 +316,7 @@ export default function HandwerkerDashboardPage() {
   userType="handwerker"
   userId={handwerkerData?.id}
   apiUrl={apiUrl}
+  onTabChange={setActiveTab}         
 />
 <MessageCenter
   userType="handwerker"
