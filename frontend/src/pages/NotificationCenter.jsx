@@ -143,7 +143,7 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
     if (notification.type === 'appointment_request' || notification.type === 'appointment_confirmed') {
       const metadata = parseMetadata(notification.metadata);
       const offerId = metadata?.offer_id || metadata?.offerId || notification.reference_id;
-      navigate(`/handwerker/ortstermin/${offerId}`);
+      navigate(`/ortstermin/${offerId}`);
       setIsOpen(false);
       return;
     }
