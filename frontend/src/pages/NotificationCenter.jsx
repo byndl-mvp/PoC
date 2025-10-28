@@ -301,60 +301,6 @@ case 'appointment_request':
       return notification.message || `Neue Benachrichtigung${projectInfo}`;
   }
 };
-
-// Funktion um den richtigen Link für jede Notification zu generieren
-const getNotificationLink = (notification) => {
-  const details = notification.details || parseMetadata(notification.metadata) || {};
-  
-  switch (notification.type) {
-    case 'new_offer':
-      // Bauherr → zur Angebotsdetailseite
-      return `/bauherr/offers/${notification.reference_id}/details`;
-    
-    case 'new_tender':
-      // Handwerker → zum Dashboard Tab Ausschreibungen
-      return `/handwerker/dashboard?tab=ausschreibungen`;
-    
-    case 'appointment_request':
-    case 'appointment_confirmed':
-      // Beide → zum Dashboard Tab Angebote (wo Termine verwaltet werden)
-      return userType === 'bauherr' 
-        ? `/bauherr/offers/${details.offer_id || notification.reference_id}/appointment`
-        : `/handwerker/dashboard?tab=angebote`;
-    
-    case 'message':
-    case 'message_from_bauherr':
-    case 'message_from_handwerker':
-      // Beide → zum Dashboard Tab Messages
-      return userType === 'bauherr'
-        ? `/bauherr/messages`
-        : `/handwerker/dashboard?tab=messages`;
-    
-    case 'preliminary_accepted':
-      // Handwerker → zum Dashboard Tab Angebote
-      return `/handwerker/dashboard?tab=angebote`;
-    
-    case 'offer_confirmed':
-      // Bauherr → zur finalen Beauftragungsseite
-      return `/bauherr/offers/${notification.reference_id}/details`;
-    
-    case 'awarded':
-      // Handwerker → zum Dashboard Tab Aufträge
-      return `/handwerker/dashboard?tab=auftraege`;
-    
-    case 'offer_withdrawn':
-    case 'offer_rejected':
-    case 'not_selected':
-      // Zur Übersicht
-      return userType === 'bauherr' ? `/bauherr/dashboard` : `/handwerker/dashboard`;
-      
-    case 'work_completed':
-      return `/handwerker/dashboard?tab=auftraege`;
-      
-    default:
-      return null;
-  }
-};
   
   const formatTime = (date) => {
     const now = new Date();
