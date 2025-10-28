@@ -21658,7 +21658,7 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
         `UPDATE offers 
          SET lv_data = $1, notes = $2, amount = $3, status = $4, updated_at = NOW()
          WHERE id = $5`,
-        [JSON.stringify(positions), notes, totalSum, status, offerId]
+        [JSON.stringify({ positions }), notes, totalSum, status, offerId]
       );
     } else {
       const result = await query(
