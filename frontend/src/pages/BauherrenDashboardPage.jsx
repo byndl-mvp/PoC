@@ -2121,8 +2121,8 @@ const BudgetVisualization = ({ budget }) => {
             {order.status === 'completed' && (
               <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
                 <p className="text-yellow-300 text-sm">
-                  <strong>⚠️ Gewährleistung:</strong> {order.warranty_period || 4} Jahre ab Abnahme
-                  {order.accepted_at && ` (bis ${new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 4))).toLocaleDateString('de-DE')})`}
+                  <strong>⚠️ Gewährleistung:</strong> {order.warranty_period || 5} Jahre ab Abnahme
+                  {order.accepted_at && ` (bis ${new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 5))).toLocaleDateString('de-DE')})`}
                 </p>
               </div>
             )}
