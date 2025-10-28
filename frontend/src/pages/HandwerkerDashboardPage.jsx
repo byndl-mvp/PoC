@@ -1186,7 +1186,7 @@ export default function HandwerkerDashboardPage() {
                     </button>
                     
                     {/* LV Details */}
-                    <button
+                     <button
                       onClick={() => navigate(`/handwerker/order/${order.id}/lv-details`)}
                       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
                     >
@@ -1197,6 +1197,23 @@ export default function HandwerkerDashboardPage() {
                     </button>
                   </div>
                 </div>
+                
+                {/* Status-Infos - HIER RICHTIG PLATZIERT */}
+                {order.status === 'active' && (
+                  <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
+                    <p className="text-blue-300 text-sm">
+                      <strong>ℹ️ Status:</strong> Auftrag in Ausführung. Nach Fertigstellung erfolgt die Abnahme durch den Bauherrn.
+                    </p>
+                  </div>
+                )}
+                
+                {/* Anmerkungen - HIER RICHTIG PLATZIERT */}
+                {order.notes && (
+                  <div className="mt-4 p-3 bg-white/5 rounded">
+                    <p className="text-gray-400 text-xs mb-1">Anmerkungen:</p>
+                    <p className="text-gray-300 text-sm">{order.notes}</p>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1204,7 +1221,7 @@ export default function HandwerkerDashboardPage() {
       )}
     </div>
 
-    {/* ABGESCHLOSSENE AUFTRÄGE - NEU */}
+    {/* ABGESCHLOSSENE AUFTRÄGE */}
     <div className="mt-8 pt-8 border-t border-white/20">
       <h3 className="text-lg font-semibold text-white mb-4">Abgeschlossene Aufträge</h3>
       {orders.filter(order => order.status === 'completed').length === 0 ? (
@@ -1239,6 +1256,15 @@ export default function HandwerkerDashboardPage() {
                         <span className="text-gray-500">Ort:</span> {order.project_zip} {order.project_city}
                       </div>
                     </div>
+                    
+                    {/* Gewährleistungshinweis - HIER RICHTIG PLATZIERT */}
+                    {order.accepted_at && (
+                      <div className="mt-3 p-2 bg-green-500/10 border border-green-500/30 rounded">
+                        <p className="text-green-300 text-xs">
+                          <strong>✅ Gewährleistung:</strong> {order.warranty_period || 4} Jahre bis {new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 4))).toLocaleDateString('de-DE')}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Schlussrechnung</p>
@@ -1252,43 +1278,6 @@ export default function HandwerkerDashboardPage() {
         </div>
       )}
     </div>
-  </div>
-)}
-              
-              {/* Status-Infos */}
-              {order.status === 'active' && (
-                <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-                  <p className="text-blue-300 text-sm">
-                    <strong>ℹ️ Status:</strong> Auftrag in Ausführung. Nach Fertigstellung erfolgt die Abnahme durch den Bauherrn.
-                  </p>
-                </div>
-              )}
-              
-              {/* Gewährleistungshinweis bei abgeschlossenen Aufträgen */}
-              {order.status === 'completed' && (
-                <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded">
-                  <p className="text-green-300 text-sm">
-                    <strong>✅ Abgeschlossen:</strong> Leistung wurde am {order.accepted_at ? new Date(order.accepted_at).toLocaleDateString('de-DE') : 'N/A'} abgenommen.
-                  </p>
-                  <p className="text-green-200 text-xs mt-1">
-                    Gewährleistungsfrist: {order.warranty_period || 4} Jahre 
-                    {order.accepted_at && ` (bis ${new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 4))).toLocaleDateString('de-DE')})`}
-                  </p>
-                </div>
-              )}
-              
-              {/* Anmerkungen */}
-              {order.notes && (
-                <div className="mt-4 p-3 bg-white/5 rounded">
-                  <p className="text-gray-400 text-xs mb-1">Anmerkungen:</p>
-                  <p className="text-gray-300 text-sm">{order.notes}</p>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    )}
   </div>
 )}
 
