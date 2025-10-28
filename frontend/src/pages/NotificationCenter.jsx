@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { Bell, X, Check, Trash2, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 
-const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick }) => {
+const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onTabChange }) => {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
