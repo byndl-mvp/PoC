@@ -1144,19 +1144,19 @@ export default function HandwerkerDashboardPage() {
                 </div>
                 
                 {/* Kontaktdaten Bauherr */}
-                <div className="bg-white/10 rounded-lg p-4 mb-4">
-                  <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Auftraggeber</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="text-gray-300">
-                      <p><strong className="text-white">Name:</strong> {order.clientName}</p>
-                      <p className="mt-1"><strong className="text-white">Tel:</strong> {order.clientPhone || 'Nicht verfügbar'}</p>
-                    </div>
-                    <div className="text-gray-300">
-                      <p><strong className="text-white">E-Mail:</strong> {order.clientEmail || 'Nicht verfügbar'}</p>
-                      <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.project_street} {order.project_house_number}, {order.project_zip} {order.project_city}</p>
-                    </div>
-                  </div>
-                </div>
+<div className="bg-white/10 rounded-lg p-4 mb-4">
+  <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Auftraggeber</h4>
+  <div className="grid grid-cols-2 gap-4 text-sm">
+    <div className="text-gray-300">
+      <p><strong className="text-white">Name:</strong> {order.bauherr_name || order.clientName || 'Nicht verfügbar'}</p>
+      <p className="mt-1"><strong className="text-white">Tel:</strong> {order.bauherr_phone || order.clientPhone || 'Nicht verfügbar'}</p>
+    </div>
+    <div className="text-gray-300">
+      <p><strong className="text-white">E-Mail:</strong> {order.bauherr_email || order.clientEmail || 'Nicht verfügbar'}</p>
+      <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.project_street} {order.project_house_number}, {order.project_zip} {order.project_city}</p>
+    </div>
+  </div>
+</div>
                 
                 {/* Werkvertrag-Aktionen */}
                 <div className="border-t border-white/10 pt-4 mt-4">
