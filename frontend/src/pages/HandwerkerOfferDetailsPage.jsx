@@ -61,7 +61,7 @@ export default function HandwerkerOfferDetailsPage() {
   
   if (!offer) return null;
   
-  const positions = offer.lv_data?.positions || [];
+  const positions = offer.lv_data?.positions || offer.positions || [];
   const totalNetto = offer.amount || 0;
   const totalBrutto = totalNetto * 1.19;
   const mwst = totalBrutto - totalNetto;
