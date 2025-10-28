@@ -482,14 +482,7 @@ const getNotificationLink = (notification) => {
                       className={`p-4 hover:bg-white/5 transition-colors cursor-pointer ${
                         !notification.read ? 'bg-white/5' : ''
                       }`}
-                      onClick={() => {
-  if (notificationLink) {
-    handleNotificationClick(notification);
-    navigate(notificationLink);  // <-- HINZUGEFÜGT
-  } else {
-    handleNotificationClick(notification);
-  }
-}}
+                      onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex gap-3">
                         <div className="flex-shrink-0">
