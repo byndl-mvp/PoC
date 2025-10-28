@@ -892,6 +892,7 @@ const BudgetVisualization = ({ budget }) => {
   userType="bauherr"
   userId={userData?.id}
   apiUrl={apiUrl}
+  onTabChange={setActiveTab}        
 />
 <MessageCenter
   userType="bauherr"
