@@ -20888,6 +20888,27 @@ app.post('/api/orders/:orderId/accept-completion', async (req, res) => {
        WHERE o.id = $1`,
       [orderId]
     );
+
+    // Notification für Handwerker erstellen
+await query(
+  `INSERT INTO notifications 
+   (user_type, user_id, type, reference_id, message, metadata, created_at)
+   VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+  [
+    'handwerker',
+    orderData.rows[0].handwerker_id,  // Nutze die bereits geladenen Daten
+    'work_completed',
+    orderId,
+    'Leistung wurde abgenommen - Auftrag abgeschlossen',
+    JSON.stringify({
+      senderName: orderData.rows[0].bauherr_name,
+      orderId: orderId,
+      tradeName: orderData.rows[0].trade_name,
+      amount: orderData.rows[0].amount,
+      completedAt: new Date().toISOString()
+    })
+  ]
+);
     
     if (orderData.rows.length > 0 && transporter) {
       const order = orderData.rows[0];
