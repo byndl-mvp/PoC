@@ -236,40 +236,68 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
 
   const loadProjectDetails = async (projectId) => {
   try {
-    const timestamp = Date.now(); // Cache-Busting
+    const timestamp = new Date().getTime();
+    setLoading(true);
     
     const tendersRes = await fetch(apiUrl(`/api/projects/${projectId}/tenders?t=${timestamp}`));
     if (tendersRes.ok) {
       const tendersData = await tendersRes.json();
-      setTenders(tendersData);
+      setTenders(tendersData || []);
+    } else {
+      setTenders([]);
     }
     
     const offersRes = await fetch(apiUrl(`/api/projects/${projectId}/offers?t=${timestamp}`));
     if (offersRes.ok) {
       const offersData = await offersRes.json();
-      setOffers(offersData);
+      setOffers(offersData || []);
+    } else {
+      setOffers([]);
     }
     
+    // ═══ KRITISCHER FIX FÜR NaN ═══
     const ordersRes = await fetch(apiUrl(`/api/projects/${projectId}/orders?t=${timestamp}`));
     if (ordersRes.ok) {
       const ordersData = await ordersRes.json();
-      setOrders(ordersData);
+      // Validiere und konvertiere amounts zu Numbers
+      const validatedOrders = (ordersData || []).map(order => ({
+        ...order,
+        amount: parseFloat(order.amount) || 0  // Stelle sicher dass amount eine Zahl ist
+      }));
+      setOrders(validatedOrders);
+      console.log('✅ Validierte Orders geladen:', validatedOrders);
+    } else {
+      setOrders([]);  // Setze leeres Array wenn keine Orders
     }
     
     const supplementsRes = await fetch(apiUrl(`/api/projects/${projectId}/supplements?t=${timestamp}`));
     if (supplementsRes.ok) {
       const supplementsData = await supplementsRes.json();
-      setSupplements(supplementsData);
+      // Validiere auch Supplement amounts
+      const validatedSupplements = (supplementsData || []).map(supp => ({
+        ...supp,
+        amount: parseFloat(supp.amount) || 0
+      }));
+      setSupplements(validatedSupplements);
+    } else {
+      setSupplements([]);
     }
     
     // Lade ungelesene Angebote
     const unreadRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/unread-count?t=${timestamp}`));
     if (unreadRes.ok) {
       const unreadData = await unreadRes.json();
-      setUnreadOffers(unreadData.count);
+      setUnreadOffers(unreadData.count || 0);
     }
   } catch (err) {
     console.error('Fehler beim Laden der Projektdetails:', err);
+    // Bei Fehler setze leere Arrays um NaN zu vermeiden
+    setOrders([]);
+    setSupplements([]);
+    setOffers([]);
+    setTenders([]);
+  } finally {
+    setLoading(false);
   }
 };
 
