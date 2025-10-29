@@ -23844,7 +23844,7 @@ app.get('/api/project/:projectId/tender/:tenderId/lv-preview', async (req, res) 
     
     // 2. Hole LV-Daten für das Gewerk
     const lvData = await query(
-      'SELECT * FROM levs WHERE project_id = $1 AND trade_id = $2',
+      'SELECT * FROM lvs WHERE project_id = $1 AND trade_id = $2',
       [projectId, tender.trade_id]
     );
     
