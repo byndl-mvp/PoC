@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
@@ -186,37 +186,38 @@ export default function LVPreviewPage() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/10">
+                    <tbody>
                       {group.positions.map((position, index) => (
-                        <tr 
-                          key={index} 
-                          className="hover:bg-white/5 transition-colors cursor-pointer"
-                          onClick={() => handleOpenModal(position, position.originalIndex)}
-                        >
-                          <td className="px-4 py-4 text-white font-mono align-top">
-                            {String(position.originalIndex + 1).padStart(3, '0')}
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="space-y-2">
-                              {position.shortText && (
+                        <React.Fragment key={index}>
+                          {/* Überschrift-Zeile mit Kurzbeschreibung */}
+                          {position.shortText && (
+                            <tr className="bg-white/5 border-t-2 border-white/10">
+                              <td colSpan="4" className="px-4 py-3">
                                 <div className="font-bold text-white text-base">
-                                  {position.shortText}
+                                  {String(position.originalIndex + 1).padStart(3, '0')} {position.shortText}
                                 </div>
-                              )}
-                              {position.description && (
-                                <div className="text-gray-300 text-sm whitespace-pre-wrap">
-                                  {position.description}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 text-center text-white font-semibold align-top">
-                            {position.quantity?.toFixed(2) || '0.00'}
-                          </td>
-                          <td className="px-4 py-4 text-center text-gray-300 align-top">
-                            {position.unit || '-'}
-                          </td>
-                        </tr>
+                              </td>
+                            </tr>
+                          )}
+                          {/* Positions-Zeile mit Details */}
+                          <tr 
+                            className="hover:bg-white/5 transition-colors cursor-pointer border-b border-white/10"
+                            onClick={() => handleOpenModal(position, position.originalIndex)}
+                          >
+                            <td className="px-4 py-4 text-white font-mono align-top w-24">
+                              {!position.shortText && String(position.originalIndex + 1).padStart(3, '0')}
+                            </td>
+                            <td className="px-4 py-4 text-gray-300 text-sm whitespace-pre-wrap">
+                              {position.description || '-'}
+                            </td>
+                            <td className="px-4 py-4 text-center text-white font-semibold align-top w-32">
+                              {position.quantity?.toFixed(2) || '0.00'}
+                            </td>
+                            <td className="px-4 py-4 text-center text-gray-300 align-top w-32">
+                              {position.unit || '-'}
+                            </td>
+                          </tr>
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
