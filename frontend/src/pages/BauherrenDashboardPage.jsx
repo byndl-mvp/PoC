@@ -671,26 +671,32 @@ const handleFinalOrder = async (offer) => {
   const estimatedCost = parseFloat(selectedProject.totalCost) || 0;
   
   // ═══ FIX: Robuste Berechnung mit Array-Validierung ═══
-  const orderedAmount = Array.isArray(orders) 
+  // Netto-Beträge
+  const orderedAmountNetto = Array.isArray(orders) 
     ? orders.reduce((sum, order) => {
         const amount = parseFloat(order.amount) || 0;
         return sum + amount;
       }, 0)
     : 0;
   
-  const supplementsRequested = Array.isArray(supplements)
+  const supplementsRequestedNetto = Array.isArray(supplements)
     ? supplements.reduce((sum, s) => {
         const amount = parseFloat(s.amount) || 0;
         return sum + amount;
       }, 0)
     : 0;
   
-  const supplementsApproved = Array.isArray(supplements)
+  const supplementsApprovedNetto = Array.isArray(supplements)
     ? supplements.filter(s => s.approved).reduce((sum, s) => {
         const amount = parseFloat(s.amount) || 0;
         return sum + amount;
       }, 0)
     : 0;
+  
+  // Brutto-Beträge (mit 19% MwSt) für Vergleich mit Budget und Kostenschätzung
+  const orderedAmount = orderedAmountNetto * 1.19;
+  const supplementsRequested = supplementsRequestedNetto * 1.19;
+  const supplementsApproved = supplementsApprovedNetto * 1.19;
   
   const totalCurrent = orderedAmount + supplementsApproved;
   const variance = initialBudget > 0 
@@ -701,6 +707,7 @@ const handleFinalOrder = async (offer) => {
     initialBudget,
     estimatedCost,
     orderedAmount,
+    orderedAmountNetto,
     supplementsRequested,
     supplementsApproved,
     totalCurrent,
@@ -711,13 +718,14 @@ const handleFinalOrder = async (offer) => {
     initialBudget,
     estimatedCost,
     orderedAmount,
+    orderedAmountNetto,  // Für Netto-Anzeige
     supplementsRequested,
     supplementsApproved,
     totalCurrent,
     variance
   };
 };
-
+  
 const BudgetVisualization = ({ budget }) => {
   if (!budget) return null;
   
