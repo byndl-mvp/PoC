@@ -23822,152 +23822,77 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   }
 });
 
-// Ausschreibung zurückziehen
-app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
-  const { tenderId } = req.params;
-  const { projectId, reason } = req.body;
-  
-  try {
-    // 1. Prüfe ob Ausschreibung existiert und noch aktiv ist
-    const tender = await db.query(
-      'SELECT * FROM tenders WHERE id = ? AND project_id = ?',
-      [tenderId, projectId]
-    );
-    
-    if (!tender || tender.length === 0) {
-      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
-    }
-    
-    if (tender[0].status === 'cancelled') {
-      return res.status(400).json({ error: 'Ausschreibung wurde bereits zurückgezogen' });
-    }
-    
-    if (tender[0].status === 'awarded') {
-      return res.status(400).json({ error: 'Ausschreibung wurde bereits vergeben und kann nicht zurückgezogen werden' });
-    }
-    
-    // 2. Setze Status auf 'cancelled'
-    await db.query(
-      'UPDATE tenders SET status = ?, cancelled_at = NOW(), cancellation_reason = ? WHERE id = ?',
-      ['cancelled', reason || 'Vom Bauherrn zurückgezogen', tenderId]
-    );
-    
-    // 3. Benachrichtige alle Handwerker über die Stornierung
-    const handwerkers = await db.query(
-      `SELECT th.handwerker_id, h.email, h.company_name, th.offer_id
-       FROM tender_handwerkers th
-       JOIN handwerkers h ON th.handwerker_id = h.id
-       WHERE th.tender_id = ?`,
-      [tenderId]
-    );
-    
-    // 4. Erstelle Benachrichtigungen für alle Handwerker
-    for (const hw of handwerkers) {
-      await db.query(
-        `INSERT INTO notifications (user_type, user_id, type, title, message, related_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-        [
-          'handwerker',
-          hw.handwerker_id,
-          'tender_cancelled',
-          'Ausschreibung zurückgezogen',
-          `Die Ausschreibung für "${tender[0].trade_name}" wurde vom Bauherrn zurückgezogen.${hw.offer_id ? ' Ihr Angebot wird nicht weiter berücksichtigt.' : ''}`,
-          tenderId
-        ]
-      );
-      
-      // Optional: Email-Benachrichtigung versenden
-      // await sendEmail({
-      //   to: hw.email,
-      //   subject: 'Ausschreibung zurückgezogen',
-      //   html: `...`
-      // });
-    }
-    
-    // 5. Aktualisiere Status aller zugehörigen Angebote auf 'cancelled'
-    await db.query(
-      `UPDATE offers 
-       SET status = 'cancelled', updated_at = NOW()
-       WHERE tender_id = ? AND status NOT IN ('accepted', 'rejected')`,
-      [tenderId]
-    );
-    
-    res.json({
-      success: true,
-      message: 'Ausschreibung wurde erfolgreich zurückgezogen',
-      tenderId: tenderId,
-      notifiedHandwerkers: handwerkers.length
-    });
-    
-  } catch (error) {
-    console.error('Error cancelling tender:', error);
-    res.status(500).json({ 
-      error: 'Fehler beim Zurückziehen der Ausschreibung',
-      details: error.message 
-    });
-  }
-});
-
-// LV ohne Preise anzeigen
+// GET /api/project/:projectId/tender/:tenderId/lv-preview
 app.get('/api/project/:projectId/tender/:tenderId/lv-preview', async (req, res) => {
   const { projectId, tenderId } = req.params;
   
   try {
-    // 1. Hole Tender-Info
-    const tender = await db.query(
-      'SELECT * FROM tenders WHERE id = ? AND project_id = ?',
+    // 1. Hole Tender-Info mit Trade-Name
+    const tenderData = await query(
+      `SELECT t.*, tr.name as trade_name 
+       FROM tenders t 
+       LEFT JOIN trades tr ON t.trade_id = tr.id 
+       WHERE t.id = $1 AND t.project_id = $2`,
       [tenderId, projectId]
     );
     
-    if (!tender || tender.length === 0) {
+    if (!tenderData.rows || tenderData.rows.length === 0) {
       return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
     }
     
+    const tender = tenderData.rows[0];
+    
     // 2. Hole LV-Daten für das Gewerk
-    const lv = await db.query(
-      'SELECT * FROM levs WHERE project_id = ? AND trade_id = ?',
-      [projectId, tender[0].trade_id]
+    const lvData = await query(
+      'SELECT * FROM levs WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tender.trade_id]
     );
     
-    if (!lv || lv.length === 0) {
+    if (!lvData.rows || lvData.rows.length === 0) {
       return res.status(404).json({ error: 'LV nicht gefunden' });
     }
     
-    // 3. Parse LV-Content und entferne Preise
-    const lvContent = typeof lv[0].content === 'string' 
-      ? JSON.parse(lv[0].content) 
-      : lv[0].content;
+    const lv = lvData.rows[0];
+    
+    // 3. Hole Projektdaten
+    const projectData = await query(
+      'SELECT street, zip, city FROM projects WHERE id = $1',
+      [projectId]
+    );
+    const project = projectData.rows[0] || {};
+    
+    // 4. Parse LV-Content und entferne Preise
+    const lvContent = typeof lv.content === 'string' 
+      ? JSON.parse(lv.content) 
+      : lv.content;
     
     // Entferne alle Preisinformationen aus den Positionen
     const lvWithoutPrices = {
       ...lvContent,
       positions: lvContent.positions?.map(pos => ({
-        ...pos,
-        unitPrice: undefined,
-        totalPrice: undefined,
-        // Behalte nur Beschreibung, Einheit, Menge
         description: pos.description,
+        shortText: pos.shortText,
         unit: pos.unit,
-        quantity: pos.quantity,
-        shortText: pos.shortText
+        quantity: pos.quantity
+        // unitPrice, totalPrice werden weggelassen
       })),
-      totalSum: undefined, // Entferne Gesamtsumme
+      totalSum: undefined,
       subtotal: undefined,
       vat: undefined
     };
     
     res.json({
       tender: {
-        id: tender[0].id,
-        trade_name: tender[0].trade_name,
-        created_at: tender[0].created_at,
-        estimated_value: tender[0].estimated_value
+        id: tender.id,
+        trade_name: tender.trade_name,
+        created_at: tender.created_at,
+        estimated_value: tender.estimated_value
       },
       lv: lvWithoutPrices,
       project: {
-        street: tender[0].street,
-        zip: tender[0].zip,
-        city: tender[0].city
+        street: project.street || '',
+        zip: project.zip || '',
+        city: project.city || ''
       }
     });
     
@@ -23975,6 +23900,102 @@ app.get('/api/project/:projectId/tender/:tenderId/lv-preview', async (req, res) 
     console.error('Error fetching LV preview:', error);
     res.status(500).json({ 
       error: 'Fehler beim Laden der LV-Vorschau',
+      details: error.message 
+    });
+  }
+});
+
+// POST /api/tenders/:tenderId/cancel
+app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
+  const { tenderId } = req.params;
+  const { projectId, reason } = req.body;
+  
+  try {
+    await query('BEGIN');
+    
+    // 1. Prüfe ob Ausschreibung existiert und noch aktiv ist
+    const tenderData = await query(
+      'SELECT * FROM tenders WHERE id = $1 AND project_id = $2',
+      [tenderId, projectId]
+    );
+    
+    if (!tenderData.rows || tenderData.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
+    const tender = tenderData.rows[0];
+    
+    if (tender.status === 'cancelled') {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Ausschreibung wurde bereits zurückgezogen' });
+    }
+    
+    if (tender.status === 'awarded') {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Ausschreibung wurde bereits vergeben und kann nicht zurückgezogen werden' });
+    }
+    
+    // 2. Setze Status auf 'cancelled'
+    await query(
+      `UPDATE tenders 
+       SET status = $1, cancelled_at = NOW(), cancellation_reason = $2 
+       WHERE id = $3`,
+      ['cancelled', reason || 'Vom Bauherrn zurückgezogen', tenderId]
+    );
+    
+    // 3. Hole alle betroffenen Handwerker
+    const handwerkersData = await query(
+      `SELECT th.handwerker_id, h.email, h.company_name, th.offer_id
+       FROM tender_handwerkers th
+       JOIN handwerkers h ON th.handwerker_id = h.id
+       WHERE th.tender_id = $1`,
+      [tenderId]
+    );
+    
+    // 4. Erstelle Benachrichtigungen für alle Handwerker
+    for (const hw of handwerkersData.rows) {
+      await query(
+        `INSERT INTO notifications 
+         (user_type, user_id, type, reference_id, message, metadata, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [
+          'handwerker',
+          hw.handwerker_id,
+          'tender_cancelled',
+          tenderId,
+          `Die Ausschreibung für "${tender.trade_name}" wurde vom Bauherrn zurückgezogen.${hw.offer_id ? ' Ihr Angebot wird nicht weiter berücksichtigt.' : ''}`,
+          JSON.stringify({
+            tenderId: tenderId,
+            tradeName: tender.trade_name,
+            reason: reason
+          })
+        ]
+      );
+    }
+    
+    // 5. Aktualisiere Status aller zugehörigen Angebote auf 'cancelled'
+    await query(
+      `UPDATE offers 
+       SET status = $1, updated_at = NOW()
+       WHERE tender_id = $2 AND status NOT IN ('accepted', 'rejected')`,
+      ['cancelled', tenderId]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({
+      success: true,
+      message: 'Ausschreibung wurde erfolgreich zurückgezogen',
+      tenderId: tenderId,
+      notifiedHandwerkers: handwerkersData.rows.length
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error cancelling tender:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Zurückziehen der Ausschreibung',
       details: error.message 
     });
   }
