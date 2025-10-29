@@ -667,11 +667,45 @@ const handleFinalOrder = async (offer) => {
   const calculateBudgetOverview = () => {
   if (!selectedProject) return null;
   
-  const initialBudget = selectedProject.budget || 0;
-  const estimatedCost = selectedProject.totalCost || 0;
-  const orderedAmount = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
-  const supplementsRequested = supplements.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const supplementsApproved = supplements.filter(s => s.approved).reduce((sum, s) => sum + (s.amount || 0), 0);
+  const initialBudget = parseFloat(selectedProject.budget) || 0;
+  const estimatedCost = parseFloat(selectedProject.totalCost) || 0;
+  
+  // ═══ FIX: Robuste Berechnung mit Array-Validierung ═══
+  const orderedAmount = Array.isArray(orders) 
+    ? orders.reduce((sum, order) => {
+        const amount = parseFloat(order.amount) || 0;
+        return sum + amount;
+      }, 0)
+    : 0;
+  
+  const supplementsRequested = Array.isArray(supplements)
+    ? supplements.reduce((sum, s) => {
+        const amount = parseFloat(s.amount) || 0;
+        return sum + amount;
+      }, 0)
+    : 0;
+  
+  const supplementsApproved = Array.isArray(supplements)
+    ? supplements.filter(s => s.approved).reduce((sum, s) => {
+        const amount = parseFloat(s.amount) || 0;
+        return sum + amount;
+      }, 0)
+    : 0;
+  
+  const totalCurrent = orderedAmount + supplementsApproved;
+  const variance = initialBudget > 0 
+    ? ((totalCurrent - initialBudget) / initialBudget * 100) 
+    : 0;
+  
+  console.log('📊 Budget Overview:', {
+    initialBudget,
+    estimatedCost,
+    orderedAmount,
+    supplementsRequested,
+    supplementsApproved,
+    totalCurrent,
+    variance
+  });
   
   return {
     initialBudget,
@@ -679,8 +713,8 @@ const handleFinalOrder = async (offer) => {
     orderedAmount,
     supplementsRequested,
     supplementsApproved,
-    totalCurrent: orderedAmount + supplementsApproved,
-    variance: initialBudget ? ((orderedAmount + supplementsApproved - initialBudget) / initialBudget * 100) : 0
+    totalCurrent,
+    variance
   };
 };
 
