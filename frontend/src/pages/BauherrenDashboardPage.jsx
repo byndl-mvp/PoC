@@ -2204,7 +2204,24 @@ const BudgetVisualization = ({ budget }) => {
 {activeTab === 'orders' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Erteilte Aufträge / Werkverträge</h2>
-    
+
+    {orders.length > 0 && (
+      <div className="mb-8 p-6 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-lg">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-white font-semibold text-lg mb-1">Gesamtsumme aller Aufträge</h3>
+            <p className="text-gray-400 text-sm">{orders.length} Auftrag{orders.length !== 1 ? 'e' : ''} insgesamt</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-400 mb-1">Netto: {formatCurrency(orders.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0))}</p>
+            <p className="text-3xl font-bold text-purple-300">
+              {formatCurrency(orders.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0) * 1.19)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Brutto (inkl. 19% MwSt.)</p>
+          </div>
+        </div>
+      </div>
+    )}    
     {orders.length === 0 ? (
       <p className="text-gray-400">Noch keine Aufträge erteilt.</p>
     ) : (
