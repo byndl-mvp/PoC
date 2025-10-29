@@ -2208,6 +2208,18 @@ const BudgetVisualization = ({ budget }) => {
               <span className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
               Aktive Aufträge
             </h3>
+            {/* Gesamtsumme aktiver Aufträge */}
+            <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-blue-200 font-semibold">Gesamtsumme aller aktiven Aufträge:</span>
+                <div className="text-right">
+                  <p className="text-sm text-gray-400">Netto: {formatCurrency(orders.filter(o => o.status === 'active').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0))}</p>
+                  <p className="text-2xl font-bold text-blue-300">
+                    Brutto: {formatCurrency(orders.filter(o => o.status === 'active').reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0) * 1.19)}
+                  </p>
+                </div>
+              </div>
+            </div>            
             <div className="space-y-6">
               {orders.filter(o => o.status === 'active').map((order, idx) => (
           <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
