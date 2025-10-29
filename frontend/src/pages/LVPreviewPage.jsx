@@ -270,17 +270,14 @@ export default function LVPreviewPage() {
             <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 p-6 border-b border-white/10 sticky top-0 z-10 backdrop-blur-lg">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-white font-mono text-lg">
-                      Position {String(modalPosIndex + 1).padStart(3, '0')}
-                    </span>
-                    <span className="text-gray-400">|</span>
-                    <span className="text-gray-400 text-sm">{data.tender.trade_name}</span>
-                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">
+                    Position {String(modalPosIndex + 1).padStart(3, '0')}
+                  </h3>
+                  <p className="text-blue-300 text-sm mb-3">{data.tender.trade_name}</p>
                   {selectedPosition.shortText && (
-                    <h3 className="text-2xl font-bold text-white">
+                    <div className="text-xl font-bold text-white mt-3 pt-3 border-t border-white/20">
                       {selectedPosition.shortText}
-                    </h3>
+                    </div>
                   )}
                 </div>
                 <button
