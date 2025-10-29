@@ -10,8 +10,8 @@ export default function LVPreviewPage() {
 
   useEffect(() => {
     loadLVPreview();
-  }, [projectId, tenderId]);
-
+  }, [projectId, tenderId]); // eslint-disable-line react-hooks/exhaustive-deps
+  
   const loadLVPreview = async () => {
     try {
       setLoading(true);
