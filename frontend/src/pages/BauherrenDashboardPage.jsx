@@ -1604,88 +1604,253 @@ const BudgetVisualization = ({ budget }) => {
   </div>
 )}
 
-          {/* AKTUALISIERTES Ausschreibungen Tab */}
-          {activeTab === 'tenders' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Laufende Ausschreibungen</h2>
-              
-              {selectedProject?.tenders?.filter(t => t.status !== 'awarded').length === 0 ? (
-                <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
-                  <p className="text-gray-400 mb-4">Noch keine Ausschreibungen gestartet.</p>
-                  {selectedProject.completedLvs > 0 && (
-                    <button
-                      onClick={() => handleStartTender('all')}
-                      className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
-                    >
-                      Jetzt ausschreiben
-                    </button>
-                  )}
+         {/* VERBESSERTER Ausschreibungen Tab - ERSETZE Zeilen 1398-1479 */}
+{activeTab === 'tenders' && (
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Laufende Ausschreibungen</h2>
+    
+    {selectedProject?.tenders?.filter(t => t.status !== 'awarded' && t.status !== 'cancelled').length === 0 ? (
+      <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
+        <p className="text-gray-400 mb-4">Noch keine Ausschreibungen gestartet.</p>
+        {selectedProject.completedLvs > 0 && (
+          <button
+            onClick={() => handleStartTender('all')}
+            className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+          >
+            Jetzt ausschreiben
+          </button>
+        )}
+      </div>
+    ) : (
+      <div className="space-y-6">
+        {selectedProject?.tenders?.filter(tender => tender.status !== 'awarded' && tender.status !== 'cancelled').map((tender) => {
+          // Berechne Angebotsfrist (10 Werktage nach Erstellung)
+          const createdDate = new Date(tender.created_at);
+          const deadlineDate = new Date(createdDate);
+          let workdaysAdded = 0;
+          
+          while (workdaysAdded < 10) {
+            deadlineDate.setDate(deadlineDate.getDate() + 1);
+            const dayOfWeek = deadlineDate.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Nicht Sonntag (0) oder Samstag (6)
+              workdaysAdded++;
+            }
+          }
+          
+          const isExpired = new Date() > deadlineDate;
+          const daysRemaining = Math.ceil((deadlineDate - new Date()) / (1000 * 60 * 60 * 24));
+          
+          return (
+            <div key={tender.id} className="bg-white/5 rounded-lg p-6 border border-white/10">
+              {/* Header mit Status */}
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-semibold text-white">{tender.trade_name}</h3>
+                    {isExpired ? (
+                      <span className="px-3 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">
+                        Frist abgelaufen
+                      </span>
+                    ) : daysRemaining <= 3 ? (
+                      <span className="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full animate-pulse">
+                        Läuft bald ab
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+                        Aktiv
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Ausgeschrieben am {new Date(tender.created_at).toLocaleDateString('de-DE', { 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      year: 'numeric' 
+                    })}
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {selectedProject?.tenders?.filter(tender => tender.status !== 'awarded').map((tender) => (
-                    <div key={tender.id} className="bg-white/5 rounded-lg p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-xl font-semibold text-white">{tender.trade_name}</h3>
-                          <p className="text-sm text-gray-400 mt-1">
-                            Erstellt am {new Date(tender.created_at).toLocaleDateString('de-DE')}
-                          </p>
+                
+                <div className="text-right">
+                  <p className="text-sm text-gray-400 mb-1">Geschätzte Kosten</p>
+                  <p className="text-2xl font-bold text-teal-400">
+                    {formatCurrency(tender.estimated_value)}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Projektdetails */}
+              <div className="grid md:grid-cols-3 gap-4 mb-4 p-4 bg-white/5 rounded-lg">
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Angebotsfrist</p>
+                  <p className="text-white font-semibold">
+                    {deadlineDate.toLocaleDateString('de-DE', { 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      year: 'numeric' 
+                    })}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {isExpired ? 'Abgelaufen' : `Noch ${daysRemaining} Tag${daysRemaining !== 1 ? 'e' : ''}`}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Projektadresse</p>
+                  <p className="text-white text-sm">
+                    {selectedProject.street || 'N/A'}
+                  </p>
+                  <p className="text-white text-sm">
+                    {selectedProject.zip} {selectedProject.city}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Eingereichte Angebote</p>
+                  <p className="text-white font-semibold text-2xl">
+                    {tender.handwerkers?.filter(hw => hw.offer_id).length || 0}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    von {tender.handwerkers?.length || 0} angeschrieben
+                  </p>
+                </div>
+              </div>
+              
+              {/* Aktionsbuttons */}
+              <div className="flex flex-wrap gap-3 mb-4">
+                <button
+                  onClick={() => navigate(`/project/${selectedProject.id}/tender/${tender.id}/lv-preview`)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  LV-Details ansehen
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setActiveTab('offers');
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Angebote prüfen
+                </button>
+                
+                <button
+                  onClick={async () => {
+                    if (!window.confirm(`Möchten Sie diese Ausschreibung wirklich zurückziehen?\n\nGewerk: ${tender.trade_name}\n\nDie Ausschreibung wird für alle ${tender.handwerkers?.length || 0} Handwerker beendet und kann nicht wiederhergestellt werden.`)) {
+                      return;
+                    }
+                    
+                    try {
+                      setLoading(true);
+                      const res = await fetch(apiUrl(`/api/tenders/${tender.id}/cancel`), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          projectId: selectedProject.id,
+                          reason: 'Vom Bauherrn zurückgezogen'
+                        })
+                      });
+                      
+                      if (res.ok) {
+                        alert('✅ Ausschreibung wurde erfolgreich zurückgezogen.');
+                        loadProjectDetails(selectedProject.id);
+                        loadUserProjects(userData.email);
+                      } else {
+                        const error = await res.json();
+                        alert('❌ Fehler: ' + (error.error || 'Unbekannter Fehler'));
+                      }
+                    } catch (err) {
+                      console.error('Error cancelling tender:', err);
+                      alert('❌ Fehler beim Zurückziehen der Ausschreibung');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm flex items-center gap-2"
+                  disabled={loading}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {loading ? 'Wird zurückgezogen...' : 'Ausschreibung zurückziehen'}
+                </button>
+              </div>
+              
+              {/* Handwerker-Liste */}
+              <div className="border-t border-white/10 pt-4">
+                <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Angeschriebene Handwerker ({tender.handwerkers?.length || 0})
+                </h4>
+                
+                <div className="space-y-2">
+                  {tender.handwerkers?.map((hw, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                          {hw.company_name?.charAt(0) || '?'}
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-400">Geschätztes Volumen</p>
-                          <p className="text-xl font-bold text-teal-400">
-                            {formatCurrency(tender.estimated_value)}
-                          </p>
+                        <div>
+                          <span className="text-white font-medium block">{hw.company_name}</span>
+                          <span className="text-xs text-gray-400">{hw.email}</span>
                         </div>
                       </div>
                       
-                      <div className="border-t border-white/10 pt-4">
-                        <h4 className="text-sm font-semibold text-gray-300 mb-3">
-                          Angeschriebene Handwerker ({tender.handwerkers?.length || 0})
-                        </h4>
+                      <div className="flex items-center gap-2">
+                        {hw.offer_id && (
+                          <span className="text-xs bg-green-600 text-green-200 px-3 py-1 rounded-full font-semibold">
+                            ✔ Angebot abgegeben
+                          </span>
+                        )}
+                        {!hw.offer_id && hw.status === 'in_progress' && (
+                          <span className="text-xs bg-yellow-600 text-yellow-200 px-3 py-1 rounded-full">
+                            In Bearbeitung
+                          </span>
+                        )}
+                        {!hw.offer_id && hw.status === 'viewed' && (
+                          <span className="text-xs bg-blue-600 text-blue-200 px-3 py-1 rounded-full">
+                            Angesehen
+                          </span>
+                        )}
+                        {!hw.offer_id && hw.status === 'sent' && (
+                          <span className="text-xs bg-gray-600 text-gray-200 px-3 py-1 rounded-full">
+                            Versendet
+                          </span>
+                        )}
                         
-                        <div className="space-y-2">
-                          {tender.handwerkers?.map((hw, idx) => (
-                            <div key={idx} className="flex justify-between items-center bg-white/5 rounded p-3">
-                              <div className="flex items-center gap-3">
-                                <span className="text-white">{hw.company_name}</span>
-                                {hw.status === 'sent' && (
-                                  <span className="text-xs bg-gray-600 text-gray-200 px-2 py-1 rounded">
-                                    Versendet
-                                  </span>
-                                )}
-                                {hw.status === 'viewed' && (
-                                  <span className="text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
-                                    Angesehen
-                                  </span>
-                                )}
-                                {hw.status === 'in_progress' && (
-                                  <span className="text-xs bg-yellow-600 text-yellow-200 px-2 py-1 rounded">
-                                    In Bearbeitung
-                                  </span>
-                                )}
-                                {hw.offer_id && (
-                                  <span className="text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
-                                    ✔ Angebot abgegeben
-                                  </span>
-                                )}
-                              </div>
-                              {hw.viewed_at && (
-                                <span className="text-xs text-gray-400">
-                                  Gesehen: {new Date(hw.viewed_at).toLocaleDateString('de-DE')}
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                        {hw.viewed_at && (
+                          <span className="text-xs text-gray-400 ml-2">
+                            📅 {new Date(hw.viewed_at).toLocaleDateString('de-DE')}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+              
+              {/* Hinweis bei abgelaufener Frist */}
+              {isExpired && (
+                <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                  <p className="text-orange-300 text-sm">
+                    <strong>⚠️ Hinweis:</strong> Die Angebotsfrist ist abgelaufen. Sie können die Ausschreibung verlängern oder mit den vorliegenden Angeboten fortfahren.
+                  </p>
+                </div>
               )}
             </div>
-          )}
+          );
+        })}
+      </div>
+    )}
+  </div>
+)}
 
 {/* Angebote Tab - ERWEITERT */}
 {activeTab === 'offers' && (
