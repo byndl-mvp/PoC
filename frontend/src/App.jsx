@@ -21,6 +21,7 @@ import ResultPage from './pages/ResultPage';
 import AdditionalTradeSelectionPage from './pages/AdditionalTradeSelectionPage';
 import LVReviewPage from './pages/LVReviewPage';
 import BauherrenDashboardPage from './pages/BauherrenDashboardPage';
+import LVPreviewPage from './pages/LVPreviewPage';
 import BauherrenSettingsPage from './pages/BauherrenSettingsPage';
 import OfferDetailPage from './pages/OfferDetailPage';
 
@@ -119,6 +120,8 @@ function App() {
 
           {/* NEUE ROUTE HIER */}
           <Route path="/project/:projectId/offer/:offerId" element={<OfferDetailPage />} />
+
+          <Route path="/project/:projectId/tender/:tenderId/lv-preview" element={<LVPreviewPage />} />
           
           {/* Geschützte Bauherren-Routen */}
           <Route 
