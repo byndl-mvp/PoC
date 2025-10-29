@@ -2510,10 +2510,15 @@ const BudgetVisualization = ({ budget }) => {
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Beauftragte Summe</span>
-            <span className="text-xl text-green-400">
-              {formatCurrency(budgetOverview.orderedAmount)}
-            </span>
+            <span className="text-gray-400">Beauftragte Summe (Brutto)</span>
+            <div className="text-right">
+              <span className="text-xl text-green-400 block">
+                {formatCurrency(budgetOverview.orderedAmount)}
+              </span>
+              <span className="text-xs text-gray-500">
+                Netto: {formatCurrency(budgetOverview.orderedAmountNetto)}
+              </span>
+            </div>
           </div>
           
           {supplements.length > 0 && (
