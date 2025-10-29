@@ -23866,15 +23866,17 @@ app.get('/api/project/:projectId/tender/:tenderId/lv-preview', async (req, res) 
       ? JSON.parse(lv.content) 
       : lv.content;
     
-    // Entferne alle Preisinformationen aus den Positionen
+    // Entferne alle Preisinformationen aus den Positionen ABER behalte pos, title, description, shortText
     const lvWithoutPrices = {
       ...lvContent,
       positions: lvContent.positions?.map(pos => ({
+        pos: pos.pos,              // Positionsnummer WICHTIG!
+        title: pos.title,          // Titel/Überschrift
         description: pos.description,
         shortText: pos.shortText,
         unit: pos.unit,
         quantity: pos.quantity
-        // unitPrice, totalPrice werden weggelassen
+        // unitPrice, totalPrice, isNEP werden weggelassen
       })),
       totalSum: undefined,
       subtotal: undefined,
