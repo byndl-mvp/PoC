@@ -2200,8 +2200,16 @@ const BudgetVisualization = ({ budget }) => {
     {orders.length === 0 ? (
       <p className="text-gray-400">Noch keine Aufträge erteilt.</p>
     ) : (
-      <div className="space-y-6">
-        {orders.map((order, idx) => (
+      <div className="space-y-8">
+        {/* AKTIVE AUFTRÄGE */}
+        {orders.filter(o => o.status === 'active').length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <span className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
+              Aktive Aufträge
+            </h3>
+            <div className="space-y-6">
+              {orders.filter(o => o.status === 'active').map((order, idx) => (
           <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
