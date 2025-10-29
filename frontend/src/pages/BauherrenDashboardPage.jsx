@@ -2227,7 +2227,7 @@ const BudgetVisualization = ({ budget }) => {
                   </p>
                 </div>
               </div>
-            </div>            
+            </div>         
             <div className="space-y-6">
               {orders.filter(o => o.status === 'active').map((order, idx) => (
           <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
