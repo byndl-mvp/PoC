@@ -155,7 +155,7 @@ export default function LVPreviewPage() {
                       </td>
                       <td className="p-3">
                         <div>
-                          <div className="font-bold text-base">{pos.shortText}</div>
+                          <div className="font-bold text-base">{pos.title || pos.shortText}</div>
                           {pos.description && (
                             <div className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">
                               {pos.description}
@@ -226,7 +226,7 @@ export default function LVPreviewPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
                   <div className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 text-base font-semibold">
-                    {selectedPosition.shortText}
+                    {selectedPosition.title || selectedPosition.shortText}
                   </div>
                 </div>
                 
