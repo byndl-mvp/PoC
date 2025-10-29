@@ -23822,6 +23822,164 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   }
 });
 
+// Ausschreibung zurückziehen
+app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
+  const { tenderId } = req.params;
+  const { projectId, reason } = req.body;
+  
+  try {
+    // 1. Prüfe ob Ausschreibung existiert und noch aktiv ist
+    const tender = await db.query(
+      'SELECT * FROM tenders WHERE id = ? AND project_id = ?',
+      [tenderId, projectId]
+    );
+    
+    if (!tender || tender.length === 0) {
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
+    if (tender[0].status === 'cancelled') {
+      return res.status(400).json({ error: 'Ausschreibung wurde bereits zurückgezogen' });
+    }
+    
+    if (tender[0].status === 'awarded') {
+      return res.status(400).json({ error: 'Ausschreibung wurde bereits vergeben und kann nicht zurückgezogen werden' });
+    }
+    
+    // 2. Setze Status auf 'cancelled'
+    await db.query(
+      'UPDATE tenders SET status = ?, cancelled_at = NOW(), cancellation_reason = ? WHERE id = ?',
+      ['cancelled', reason || 'Vom Bauherrn zurückgezogen', tenderId]
+    );
+    
+    // 3. Benachrichtige alle Handwerker über die Stornierung
+    const handwerkers = await db.query(
+      `SELECT th.handwerker_id, h.email, h.company_name, th.offer_id
+       FROM tender_handwerkers th
+       JOIN handwerkers h ON th.handwerker_id = h.id
+       WHERE th.tender_id = ?`,
+      [tenderId]
+    );
+    
+    // 4. Erstelle Benachrichtigungen für alle Handwerker
+    for (const hw of handwerkers) {
+      await db.query(
+        `INSERT INTO notifications (user_type, user_id, type, title, message, related_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          'handwerker',
+          hw.handwerker_id,
+          'tender_cancelled',
+          'Ausschreibung zurückgezogen',
+          `Die Ausschreibung für "${tender[0].trade_name}" wurde vom Bauherrn zurückgezogen.${hw.offer_id ? ' Ihr Angebot wird nicht weiter berücksichtigt.' : ''}`,
+          tenderId
+        ]
+      );
+      
+      // Optional: Email-Benachrichtigung versenden
+      // await sendEmail({
+      //   to: hw.email,
+      //   subject: 'Ausschreibung zurückgezogen',
+      //   html: `...`
+      // });
+    }
+    
+    // 5. Aktualisiere Status aller zugehörigen Angebote auf 'cancelled'
+    await db.query(
+      `UPDATE offers 
+       SET status = 'cancelled', updated_at = NOW()
+       WHERE tender_id = ? AND status NOT IN ('accepted', 'rejected')`,
+      [tenderId]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Ausschreibung wurde erfolgreich zurückgezogen',
+      tenderId: tenderId,
+      notifiedHandwerkers: handwerkers.length
+    });
+    
+  } catch (error) {
+    console.error('Error cancelling tender:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Zurückziehen der Ausschreibung',
+      details: error.message 
+    });
+  }
+});
+
+// LV ohne Preise anzeigen
+app.get('/api/project/:projectId/tender/:tenderId/lv-preview', async (req, res) => {
+  const { projectId, tenderId } = req.params;
+  
+  try {
+    // 1. Hole Tender-Info
+    const tender = await db.query(
+      'SELECT * FROM tenders WHERE id = ? AND project_id = ?',
+      [tenderId, projectId]
+    );
+    
+    if (!tender || tender.length === 0) {
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
+    // 2. Hole LV-Daten für das Gewerk
+    const lv = await db.query(
+      'SELECT * FROM levs WHERE project_id = ? AND trade_id = ?',
+      [projectId, tender[0].trade_id]
+    );
+    
+    if (!lv || lv.length === 0) {
+      return res.status(404).json({ error: 'LV nicht gefunden' });
+    }
+    
+    // 3. Parse LV-Content und entferne Preise
+    const lvContent = typeof lv[0].content === 'string' 
+      ? JSON.parse(lv[0].content) 
+      : lv[0].content;
+    
+    // Entferne alle Preisinformationen aus den Positionen
+    const lvWithoutPrices = {
+      ...lvContent,
+      positions: lvContent.positions?.map(pos => ({
+        ...pos,
+        unitPrice: undefined,
+        totalPrice: undefined,
+        // Behalte nur Beschreibung, Einheit, Menge
+        description: pos.description,
+        unit: pos.unit,
+        quantity: pos.quantity,
+        shortText: pos.shortText
+      })),
+      totalSum: undefined, // Entferne Gesamtsumme
+      subtotal: undefined,
+      vat: undefined
+    };
+    
+    res.json({
+      tender: {
+        id: tender[0].id,
+        trade_name: tender[0].trade_name,
+        created_at: tender[0].created_at,
+        estimated_value: tender[0].estimated_value
+      },
+      lv: lvWithoutPrices,
+      project: {
+        street: tender[0].street,
+        zip: tender[0].zip,
+        city: tender[0].city
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching LV preview:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Laden der LV-Vorschau',
+      details: error.message 
+    });
+  }
+});
+
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
