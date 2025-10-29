@@ -117,7 +117,7 @@ export default function LVPreviewPage() {
           </div>
         </div>
 
-        {/* LV Positionen - EXAKT wie ResultPage */}
+        {/* LV Positionen */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/20 mb-6">
           <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 px-6 py-4">
             <h3 className="text-xl font-bold text-white">Leistungsverzeichnis</h3>
@@ -131,7 +131,7 @@ export default function LVPreviewPage() {
             </div>
           </div>
 
-          {/* Tabelle - EXAKT wie ResultPage */}
+          {/* Tabelle */}
           <div className="px-6 pb-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-white">
@@ -155,7 +155,7 @@ export default function LVPreviewPage() {
                       </td>
                       <td className="p-3">
                         <div>
-                          <div className="font-medium">{pos.title || pos.shortText}</div>
+                          <div className="font-bold text-base">{pos.title || pos.shortText || '-'}</div>
                           {pos.description && (
                             <div className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">
                               {pos.description}
@@ -198,11 +198,11 @@ export default function LVPreviewPage() {
         </div>
       </div>
 
-      {/* Position Modal - EXAKT wie ResultPage, nur ohne Preis-Felder */}
+      {/* Position Modal */}
       {selectedPosition && modalPosIndex !== null && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header - EXAKT wie ResultPage */}
+            {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
               <div className="flex justify-between items-start">
                 <div>
@@ -220,19 +220,19 @@ export default function LVPreviewPage() {
               </div>
             </div>
             
-            {/* Modal Content - NUR LESEMODUS */}
+            {/* Modal Content */}
             <div className="p-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung</label>
-                  <div className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-50">
-                    {selectedPosition.title || selectedPosition.shortText}
+                  <div className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 text-base font-semibold">
+                    {selectedPosition.title || selectedPosition.shortText || '-'}
                   </div>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
-                  <div className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-50 min-h-[100px] whitespace-pre-wrap">
+                  <div className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 min-h-[150px] whitespace-pre-wrap text-base leading-relaxed">
                     {selectedPosition.description || '-'}
                   </div>
                 </div>
@@ -240,14 +240,14 @@ export default function LVPreviewPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
-                    <div className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-50">
+                    <div className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 text-lg font-semibold">
                       {selectedPosition.quantity?.toFixed(2) || '0.00'}
                     </div>
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Einheit</label>
-                    <div className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-50">
+                    <div className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 text-lg font-semibold">
                       {selectedPosition.unit || '-'}
                     </div>
                   </div>
