@@ -23944,51 +23944,55 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
       ['cancelled', reason || 'Vom Bauherrn zurückgezogen', tenderId]
     );
     
-    // 3. Hole alle betroffenen Handwerker
-    const handwerkersData = await query(
-      `SELECT th.handwerker_id, h.email, h.company_name, th.offer_id
-       FROM tender_handwerkers th
-       JOIN handwerkers h ON th.handwerker_id = h.id
-       WHERE th.tender_id = $1`,
-      [tenderId]
+    // 3. Erstelle Benachrichtigungen für alle Handwerker (OHNE tender_handwerkers Tabelle)
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, reference_id, message, metadata, created_at)
+       SELECT 
+         'handwerker',
+         u.id,
+         'tender_cancelled',
+         $1,
+         $2,
+         $3,
+         NOW()
+       FROM users u
+       WHERE u.user_type = 'handwerker'`,
+      [
+        tenderId,
+        `Die Ausschreibung für "${tender.trade_name}" wurde vom Bauherrn zurückgezogen.`,
+        JSON.stringify({
+          tenderId: tenderId,
+          tradeName: tender.trade_name,
+          reason: reason
+        })
+      ]
     );
     
-    // 4. Erstelle Benachrichtigungen für alle Handwerker
-    for (const hw of handwerkersData.rows) {
+    // 4. Aktualisiere Status aller zugehörigen Angebote auf 'cancelled' (falls Tabelle existiert)
+    const offersCheck = await query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'offers'
+      )`
+    );
+    
+    if (offersCheck.rows[0].exists) {
       await query(
-        `INSERT INTO notifications 
-         (user_type, user_id, type, reference_id, message, metadata, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-        [
-          'handwerker',
-          hw.handwerker_id,
-          'tender_cancelled',
-          tenderId,
-          `Die Ausschreibung für "${tender.trade_name}" wurde vom Bauherrn zurückgezogen.${hw.offer_id ? ' Ihr Angebot wird nicht weiter berücksichtigt.' : ''}`,
-          JSON.stringify({
-            tenderId: tenderId,
-            tradeName: tender.trade_name,
-            reason: reason
-          })
-        ]
+        `UPDATE offers 
+         SET status = $1, updated_at = NOW()
+         WHERE tender_id = $2 AND status NOT IN ('accepted', 'rejected')`,
+        ['cancelled', tenderId]
       );
     }
-    
-    // 5. Aktualisiere Status aller zugehörigen Angebote auf 'cancelled'
-    await query(
-      `UPDATE offers 
-       SET status = $1, updated_at = NOW()
-       WHERE tender_id = $2 AND status NOT IN ('accepted', 'rejected')`,
-      ['cancelled', tenderId]
-    );
     
     await query('COMMIT');
     
     res.json({
       success: true,
       message: 'Ausschreibung wurde erfolgreich zurückgezogen',
-      tenderId: tenderId,
-      notifiedHandwerkers: handwerkersData.rows.length
+      tenderId: tenderId
     });
     
   } catch (error) {
