@@ -2234,19 +2234,25 @@ const BudgetVisualization = ({ budget }) => {
                 </div>
               </div>
               
-              <div className="text-right ml-6">
-                <p className="text-2xl font-bold text-green-400 mb-2">
-                  {formatCurrency(order.amount)}
-                </p>
-                <p className="text-xs text-gray-400 mb-2">Netto</p>
-                <span className={`text-xs px-3 py-1 rounded inline-block ${
-                  order.status === 'active' ? 'bg-blue-600 text-blue-200' :
-                  order.status === 'completed' ? 'bg-green-600 text-green-200' :
-                  'bg-gray-600 text-gray-300'
-                }`}>
-                  {order.status === 'active' ? 'In Ausführung' :
-                   order.status === 'completed' ? 'Abgeschlossen' :
-                   order.status}
+              <div className="text-right ml-6 min-w-[200px]">
+                {/* Netto */}
+                <div className="mb-3 p-3 bg-white/5 rounded-lg">
+                  <p className="text-xs text-gray-400 mb-1">Netto</p>
+                  <p className="text-2xl font-bold text-green-400">
+                    {formatCurrency(order.amount)}
+                  </p>
+                </div>
+                
+                {/* Brutto */}
+                <div className="mb-3 p-3 bg-white/5 rounded-lg">
+                  <p className="text-xs text-gray-400 mb-1">Brutto (inkl. 19% MwSt.)</p>
+                  <p className="text-lg font-semibold text-green-300">
+                    {formatCurrency(order.amount * 1.19)}
+                  </p>
+                </div>
+                
+                <span className="text-xs px-3 py-1 rounded inline-block bg-blue-600 text-blue-200">
+                  In Ausführung
                 </span>
               </div>
             </div>
