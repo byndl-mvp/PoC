@@ -23913,7 +23913,7 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
   try {
     await query('BEGIN');
     
-    // 1. Prüfe ob Ausschreibung existiert und noch aktiv ist
+    // 1. Prüfe ob Ausschreibung existiert
     const tenderData = await query(
       'SELECT * FROM tenders WHERE id = $1 AND project_id = $2',
       [tenderId, projectId]
@@ -23933,59 +23933,16 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
     
     if (tender.status === 'awarded') {
       await query('ROLLBACK');
-      return res.status(400).json({ error: 'Ausschreibung wurde bereits vergeben und kann nicht zurückgezogen werden' });
+      return res.status(400).json({ error: 'Ausschreibung wurde bereits vergeben' });
     }
     
-    // 2. Setze Status auf 'cancelled'
+    // 2. Setze Status auf 'cancelled' (OHNE cancelled_at und cancellation_reason)
     await query(
       `UPDATE tenders 
-       SET status = $1, cancelled_at = NOW(), cancellation_reason = $2 
-       WHERE id = $3`,
-      ['cancelled', reason || 'Vom Bauherrn zurückgezogen', tenderId]
+       SET status = $1
+       WHERE id = $2`,
+      ['cancelled', tenderId]
     );
-    
-    // 3. Erstelle Benachrichtigungen für alle Handwerker (OHNE tender_handwerkers Tabelle)
-    await query(
-      `INSERT INTO notifications 
-       (user_type, user_id, type, reference_id, message, metadata, created_at)
-       SELECT 
-         'handwerker',
-         u.id,
-         'tender_cancelled',
-         $1,
-         $2,
-         $3,
-         NOW()
-       FROM users u
-       WHERE u.user_type = 'handwerker'`,
-      [
-        tenderId,
-        `Die Ausschreibung für "${tender.trade_name}" wurde vom Bauherrn zurückgezogen.`,
-        JSON.stringify({
-          tenderId: tenderId,
-          tradeName: tender.trade_name,
-          reason: reason
-        })
-      ]
-    );
-    
-    // 4. Aktualisiere Status aller zugehörigen Angebote auf 'cancelled' (falls Tabelle existiert)
-    const offersCheck = await query(
-      `SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'offers'
-      )`
-    );
-    
-    if (offersCheck.rows[0].exists) {
-      await query(
-        `UPDATE offers 
-         SET status = $1, updated_at = NOW()
-         WHERE tender_id = $2 AND status NOT IN ('accepted', 'rejected')`,
-        ['cancelled', tenderId]
-      );
-    }
     
     await query('COMMIT');
     
