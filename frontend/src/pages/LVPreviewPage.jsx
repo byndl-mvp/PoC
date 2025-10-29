@@ -7,6 +7,8 @@ export default function LVPreviewPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [selectedPosition, setSelectedPosition] = useState(null);
+  const [modalPosIndex, setModalPosIndex] = useState(null);
 
   useEffect(() => {
     loadLVPreview();
@@ -33,6 +35,52 @@ export default function LVPreviewPage() {
     }
   };
 
+  // Gruppiere Positionen nach Überschriften
+  const groupPositionsByHeadings = (positions) => {
+    if (!positions || positions.length === 0) return [];
+    
+    const groups = [];
+    let currentGroup = {
+      heading: null,
+      positions: []
+    };
+    
+    positions.forEach((position, index) => {
+      // Prüfe ob es eine Überschrift ist (keine Menge/Einheit oder Kennzeichnung)
+      if (position.isHeading || (!position.quantity && !position.unit && position.shortText)) {
+        // Speichere vorherige Gruppe falls vorhanden
+        if (currentGroup.heading !== null || currentGroup.positions.length > 0) {
+          groups.push(currentGroup);
+        }
+        // Starte neue Gruppe
+        currentGroup = {
+          heading: position.shortText || position.description,
+          positions: []
+        };
+      } else {
+        // Füge Position zur aktuellen Gruppe hinzu
+        currentGroup.positions.push({ ...position, originalIndex: index });
+      }
+    });
+    
+    // Füge letzte Gruppe hinzu
+    if (currentGroup.heading !== null || currentGroup.positions.length > 0) {
+      groups.push(currentGroup);
+    }
+    
+    return groups.length > 0 ? groups : [{ heading: null, positions: positions.map((p, i) => ({ ...p, originalIndex: i })) }];
+  };
+
+  const handleOpenModal = (position, index) => {
+    setSelectedPosition(position);
+    setModalPosIndex(index);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedPosition(null);
+    setModalPosIndex(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
@@ -45,6 +93,8 @@ export default function LVPreviewPage() {
   }
 
   if (!data) return null;
+
+  const positionGroups = groupPositionsByHeadings(data.lv.positions);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -105,64 +155,85 @@ export default function LVPreviewPage() {
           </div>
         </div>
 
-        {/* LV Positionen */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 p-4 border-b border-white/10">
-            <h2 className="text-xl font-bold text-white">Leistungsverzeichnis</h2>
+        {/* LV Positionen mit Gruppierung */}
+        {positionGroups.map((group, groupIndex) => (
+          <div key={groupIndex} className="mb-6">
+            {/* Überschrift der Gruppe */}
+            {group.heading && (
+              <div className="bg-gradient-to-r from-blue-600/30 to-teal-600/30 backdrop-blur-lg rounded-lg p-4 mb-3 border border-white/20">
+                <h3 className="text-lg font-bold text-white">{group.heading}</h3>
+              </div>
+            )}
+            
+            {/* Positionen der Gruppe */}
+            {group.positions.length > 0 && (
+              <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-white/5">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                          Pos.
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                          Kurzbeschreibung
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                          Beschreibung
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                          Menge
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                          Einheit
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                          Aktion
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10">
+                      {group.positions.map((position, index) => (
+                        <tr key={index} className="hover:bg-white/5 transition-colors">
+                          <td className="px-4 py-4 text-white font-mono">
+                            {String(position.originalIndex + 1).padStart(3, '0')}
+                          </td>
+                          <td className="px-4 py-4 text-white">
+                            {position.shortText || '-'}
+                          </td>
+                          <td className="px-4 py-4 text-gray-300 text-sm max-w-md truncate">
+                            {position.description || '-'}
+                          </td>
+                          <td className="px-4 py-4 text-center text-white font-semibold">
+                            {position.quantity?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="px-4 py-4 text-center text-gray-300">
+                            {position.unit || '-'}
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <button
+                              onClick={() => handleOpenModal(position, position.originalIndex)}
+                              className="px-3 py-1 bg-blue-600/30 text-blue-300 rounded hover:bg-blue-600/50 transition-colors text-sm"
+                            >
+                              Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
+        ))}
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white/5">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Pos.
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Kurzbeschreibung
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Beschreibung
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Menge
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Einheit
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {data.lv.positions?.map((position, index) => (
-                  <tr key={index} className="hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-4 text-white font-mono">
-                      {String(index + 1).padStart(3, '0')}
-                    </td>
-                    <td className="px-4 py-4 text-white">
-                      {position.shortText || '-'}
-                    </td>
-                    <td className="px-4 py-4 text-gray-300 text-sm">
-                      {position.description || '-'}
-                    </td>
-                    <td className="px-4 py-4 text-center text-white font-semibold">
-                      {position.quantity?.toFixed(2) || '0.00'}
-                    </td>
-                    <td className="px-4 py-4 text-center text-gray-300">
-                      {position.unit || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Footer mit Hinweis */}
-          <div className="bg-white/5 p-4 border-t border-white/10">
-            <p className="text-gray-400 text-sm text-center">
-              Gesamt: {data.lv.positions?.length || 0} Positionen | 
-              Preise werden erst nach Angebotsabgabe durch die Handwerker sichtbar
-            </p>
-          </div>
+        {/* Footer Zusammenfassung */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 mt-6">
+          <p className="text-gray-400 text-sm text-center">
+            Gesamt: {data.lv.positions?.length || 0} Positionen | 
+            Preise werden erst nach Angebotsabgabe durch die Handwerker sichtbar
+          </p>
         </div>
 
         {/* Aktionsbuttons */}
@@ -185,6 +256,106 @@ export default function LVPreviewPage() {
           </button>
         </div>
       </div>
+
+      {/* Detail Modal */}
+      {selectedPosition && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={handleCloseModal}
+        >
+          <div 
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 p-6 border-b border-white/10 sticky top-0 z-10">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">
+                    Position {String(modalPosIndex + 1).padStart(3, '0')}
+                  </h3>
+                  <p className="text-teal-400 text-sm">Detailansicht (nur Lesemodus)</p>
+                </div>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Kurzbeschreibung */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-400 mb-2">
+                  Kurzbeschreibung
+                </label>
+                <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                  <p className="text-white">{selectedPosition.shortText || '-'}</p>
+                </div>
+              </div>
+
+              {/* Langbeschreibung */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-400 mb-2">
+                  Ausführliche Beschreibung
+                </label>
+                <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                  <p className="text-white whitespace-pre-wrap">
+                    {selectedPosition.description || '-'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Mengenangaben */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-400 mb-2">
+                    Menge
+                  </label>
+                  <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                    <p className="text-white text-xl font-bold">
+                      {selectedPosition.quantity?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-400 mb-2">
+                    Einheit
+                  </label>
+                  <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                    <p className="text-white text-xl font-bold">
+                      {selectedPosition.unit || '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hinweis */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                <p className="text-yellow-300 text-sm">
+                  <strong>💡 Hinweis:</strong> In der Vorschau-Ansicht sind keine Preise sichtbar. 
+                  Diese werden erst nach Angebotsabgabe durch die Handwerker angezeigt.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-white/5 p-4 border-t border-white/10 flex justify-end sticky bottom-0">
+              <button
+                onClick={handleCloseModal}
+                className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
