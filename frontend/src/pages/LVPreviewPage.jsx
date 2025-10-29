@@ -176,10 +176,7 @@ export default function LVPreviewPage() {
                           Pos.
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                          Kurzbeschreibung
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                          Beschreibung
+                          Leistungsbeschreibung
                         </th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider">
                           Menge
@@ -195,22 +192,30 @@ export default function LVPreviewPage() {
                     <tbody className="divide-y divide-white/10">
                       {group.positions.map((position, index) => (
                         <tr key={index} className="hover:bg-white/5 transition-colors">
-                          <td className="px-4 py-4 text-white font-mono">
+                          <td className="px-4 py-4 text-white font-mono align-top">
                             {String(position.originalIndex + 1).padStart(3, '0')}
                           </td>
                           <td className="px-4 py-4 text-white">
-                            {position.shortText || '-'}
+                            <div className="space-y-2">
+                              {position.shortText && (
+                                <div className="font-semibold text-teal-400">
+                                  {position.shortText}
+                                </div>
+                              )}
+                              {position.description && (
+                                <div className="text-gray-300 text-sm whitespace-pre-wrap">
+                                  {position.description}
+                                </div>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-4 py-4 text-gray-300 text-sm max-w-md truncate">
-                            {position.description || '-'}
-                          </td>
-                          <td className="px-4 py-4 text-center text-white font-semibold">
+                          <td className="px-4 py-4 text-center text-white font-semibold align-top">
                             {position.quantity?.toFixed(2) || '0.00'}
                           </td>
-                          <td className="px-4 py-4 text-center text-gray-300">
+                          <td className="px-4 py-4 text-center text-gray-300 align-top">
                             {position.unit || '-'}
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-4 py-4 text-center align-top">
                             <button
                               onClick={() => handleOpenModal(position, position.originalIndex)}
                               className="px-3 py-1 bg-blue-600/30 text-blue-300 rounded hover:bg-blue-600/50 transition-colors text-sm"
@@ -274,7 +279,12 @@ export default function LVPreviewPage() {
                   <h3 className="text-2xl font-bold text-white mb-2">
                     Position {String(modalPosIndex + 1).padStart(3, '0')}
                   </h3>
-                  <p className="text-teal-400 text-sm">Detailansicht (nur Lesemodus)</p>
+                  {selectedPosition.shortText && (
+                    <p className="text-teal-400 text-lg font-semibold mb-1">
+                      {selectedPosition.shortText}
+                    </p>
+                  )}
+                  <p className="text-gray-400 text-sm">Detailansicht (nur Lesemodus)</p>
                 </div>
                 <button
                   onClick={handleCloseModal}
@@ -289,16 +299,6 @@ export default function LVPreviewPage() {
 
             {/* Modal Content */}
             <div className="p-6 space-y-6">
-              {/* Kurzbeschreibung */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-400 mb-2">
-                  Kurzbeschreibung
-                </label>
-                <div className="bg-white/10 rounded-lg p-4 border border-white/20">
-                  <p className="text-white">{selectedPosition.shortText || '-'}</p>
-                </div>
-              </div>
-
               {/* Langbeschreibung */}
               <div>
                 <label className="block text-sm font-semibold text-gray-400 mb-2">
