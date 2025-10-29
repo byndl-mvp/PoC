@@ -2192,7 +2192,7 @@ const BudgetVisualization = ({ budget }) => {
   </div>
 )}
 
-          {/* Aufträge Tab - MIT WERKVERTRAG */}
+          {/* Aufträge Tab - MIT WERKVERTRAG & GRUPPIERUNG */}
 {activeTab === 'orders' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Erteilte Aufträge / Werkverträge</h2>
