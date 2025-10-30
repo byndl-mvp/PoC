@@ -23938,19 +23938,29 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
       return res.status(400).json({ error: 'Ausschreibung wurde bereits vergeben' });
     }
     
-    // 2. Setze Status auf 'cancelled' (OHNE cancelled_at und cancellation_reason)
+    // 2. Lösche alle verknüpften Angebote
     await query(
-      `UPDATE tenders 
-       SET status = $1
-       WHERE id = $2`,
-      ['cancelled', tenderId]
+      'DELETE FROM offers WHERE tender_id = $1',
+      [tenderId]
+    );
+    
+    // 3. Lösche alle Tender-Handwerker Zuordnungen
+    await query(
+      'DELETE FROM tender_handwerkers WHERE tender_id = $1',
+      [tenderId]
+    );
+    
+    // 4. Lösche die Ausschreibung selbst
+    await query(
+      'DELETE FROM tenders WHERE id = $1',
+      [tenderId]
     );
     
     await query('COMMIT');
     
     res.json({
       success: true,
-      message: 'Ausschreibung wurde erfolgreich zurückgezogen',
+      message: 'Ausschreibung wurde erfolgreich zurückgezogen und gelöscht',
       tenderId: tenderId
     });
     
