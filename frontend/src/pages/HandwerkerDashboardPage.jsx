@@ -629,6 +629,11 @@ export default function HandwerkerDashboardPage() {
                         <span className="text-sm bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full">
                           👁️ Eingesehen
                         </span>
+                        )}
+                        {offer.status === 'cancelled' && (
+                        <span className="text-sm bg-red-500/20 text-red-300 px-3 py-1 rounded-full">
+                          ❌ Ausschreibung zurückgezogen
+                        </span>
                       )}
                     </div>
                   </div>
@@ -774,6 +779,46 @@ export default function HandwerkerDashboardPage() {
                         Warte auf finale Beauftragung
                       </p>
                     </>
+                  )}
+                  {/* Button zum Entfernen stornierter Angebote */}
+                  {offer.status === 'cancelled' && (
+                    <div className="space-y-3">
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                        <p className="text-xs text-red-300">
+                          ⚠️ Der Bauherr hat diese Ausschreibung zurückgezogen. Ihr Angebot ist nicht mehr gültig.
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm('Möchten Sie dieses stornierte Angebot aus Ihrer Liste entfernen?')) {
+                            return;
+                          }
+                          
+                          try {
+                            const res = await fetch(apiUrl(`/api/offers/${offer.id}/remove-cancelled`), {
+                              method: 'DELETE'
+                            });
+                            
+                            if (res.ok) {
+                              alert('✅ Angebot wurde entfernt');
+                              loadDashboardData(handwerkerData);
+                            } else {
+                              const error = await res.json();
+                              alert('❌ Fehler: ' + (error.error || 'Unbekannter Fehler'));
+                            }
+                          } catch (err) {
+                            console.error('Error removing cancelled offer:', err);
+                            alert('❌ Fehler beim Entfernen des Angebots');
+                          }
+                        }}
+                        className="w-full px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Angebot entfernen
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
