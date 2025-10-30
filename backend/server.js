@@ -24212,6 +24212,82 @@ app.get('/api/bauherr/:bauherrId/expiring-tenders', async (req, res) => {
   }
 });
 
+// ============================================================================
+// WICHTIG: Diese Helper-Funktionen MÜSSEN VOR den Routen stehen!
+// ============================================================================
+
+// Helper: Lade LV-Daten für ein Gewerk
+async function loadLVForTrade(projectId, tradeId) {
+  const lvResult = await query(
+    `SELECT l.*, t.name as trade_name, t.code as trade_code
+     FROM lvs l
+     JOIN trades t ON t.id = l.trade_id
+     WHERE l.project_id = $1 AND l.trade_id = $2`,
+    [projectId, tradeId]
+  );
+  
+  if (!lvResult.rows[0]) {
+    throw new Error('LV nicht gefunden');
+  }
+  
+  const lv = lvResult.rows[0];
+  
+  // Parse LV content
+  let lvContent;
+  if (typeof lv.content === 'string') {
+    lvContent = JSON.parse(lv.content);
+  } else if (typeof lv.content === 'object' && lv.content !== null) {
+    lvContent = lv.content;
+  } else {
+    throw new Error('LV-Daten ungültig');
+  }
+  
+  if (!lvContent.positions || !Array.isArray(lvContent.positions)) {
+    throw new Error('Keine Positionen im LV gefunden');
+  }
+  
+  return { lv, lvContent };
+}
+
+// Helper: Lade Angebot mit Details
+async function loadOfferDetails(offerId) {
+  const offerResult = await query(
+    `SELECT o.*,
+            h.company_name,
+            h.email,
+            h.phone,
+            t.name as trade_name,
+            t.code as trade_code,
+            tn.project_id
+     FROM offers o
+     JOIN handwerker h ON o.handwerker_id = h.id
+     JOIN tenders tn ON o.tender_id = tn.id
+     JOIN trades t ON tn.trade_id = t.id
+     WHERE o.id = $1`,
+    [offerId]
+  );
+  
+  if (!offerResult.rows[0]) {
+    throw new Error('Angebot nicht gefunden');
+  }
+  
+  const offer = offerResult.rows[0];
+  
+  // Parse lv_data
+  let offerPositions;
+  if (offer.lv_data) {
+    if (typeof offer.lv_data === 'string') {
+      offerPositions = JSON.parse(offer.lv_data);
+    } else {
+      offerPositions = offer.lv_data;
+    }
+  } else {
+    throw new Error('Angebot enthält keine Positionen');
+  }
+  
+  return { offer, offerPositions };
+}
+
 // ----------------------------------------------------------------------------
 // 1. EINZELNE ANGEBOTSBEWERTUNG (Ein Angebot)
 // ----------------------------------------------------------------------------
