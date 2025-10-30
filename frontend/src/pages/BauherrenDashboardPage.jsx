@@ -34,6 +34,11 @@ export default function BauherrenDashboardPage() {
   const [rejectingOffer, setRejectingOffer] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectNotes, setRejectNotes] = useState('');
+  const [showExtensionModal, setShowExtensionModal] = useState(false);
+  const [selectedTenderForExtension, setSelectedTenderForExtension] = useState(null);
+  const [extensionDays, setExtensionDays] = useState(7);
+  const [customDeadline, setCustomDeadline] = useState('');
+  const [extensionType, setExtensionType] = useState('days'); // 'days' oder 'custom'
   const [lastViewedTabs, setLastViewedTabs] = useState({
   tenders: null,
   offers: null,
@@ -1738,6 +1743,19 @@ const BudgetVisualization = ({ budget }) => {
                   </svg>
                   Angebote prüfen
                 </button>
+
+                <button
+                  onClick={() => {
+                    setSelectedTenderForExtension(tender);
+                    setShowExtensionModal(true);
+                  }}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Frist verlängern
+                </button>
                 
                 <button
                   onClick={async () => {
@@ -2810,7 +2828,188 @@ const BudgetVisualization = ({ budget }) => {
       }}
     />
   )}
-    </div>  
+    </div>
+    {/* Fristverlängerungs-Modal */}
+{showExtensionModal && selectedTenderForExtension && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-white/20">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-white">Frist verlängern</h3>
+        <button
+          onClick={() => {
+            setShowExtensionModal(false);
+            setSelectedTenderForExtension(null);
+            setExtensionType('days');
+            setExtensionDays(7);
+            setCustomDeadline('');
+          }}
+          className="text-gray-400 hover:text-white text-2xl"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="mb-6">
+        <p className="text-gray-300 text-sm mb-2">
+          Gewerk: <span className="font-semibold text-white">{selectedTenderForExtension.trade_name}</span>
+        </p>
+        <p className="text-gray-400 text-xs">
+          Aktuelle Frist: {(() => {
+            const createdDate = new Date(selectedTenderForExtension.created_at);
+            const deadlineDate = new Date(createdDate);
+            let workdaysAdded = 0;
+            while (workdaysAdded < 10) {
+              deadlineDate.setDate(deadlineDate.getDate() + 1);
+              const dayOfWeek = deadlineDate.getDay();
+              if (dayOfWeek !== 0 && dayOfWeek !== 6) workdaysAdded++;
+            }
+            return deadlineDate.toLocaleDateString('de-DE');
+          })()}
+        </p>
+      </div>
+
+      {/* Auswahl: Tage oder Datum */}
+      <div className="mb-6">
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setExtensionType('days')}
+            className={`flex-1 py-2 px-4 rounded-lg transition-all ${
+              extensionType === 'days'
+                ? 'bg-teal-500 text-white'
+                : 'bg-white/10 text-gray-400 hover:bg-white/20'
+            }`}
+          >
+            Tage hinzufügen
+          </button>
+          <button
+            onClick={() => setExtensionType('custom')}
+            className={`flex-1 py-2 px-4 rounded-lg transition-all ${
+              extensionType === 'custom'
+                ? 'bg-teal-500 text-white'
+                : 'bg-white/10 text-gray-400 hover:bg-white/20'
+            }`}
+          >
+            Datum wählen
+          </button>
+        </div>
+
+        {extensionType === 'days' ? (
+          <div className="space-y-3">
+            <label className="block text-sm text-gray-400 mb-2">Verlängerung um:</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[7, 14, 21].map((days) => (
+                <button
+                  key={days}
+                  onClick={() => setExtensionDays(days)}
+                  className={`py-3 px-4 rounded-lg transition-all ${
+                    extensionDays === days
+                      ? 'bg-teal-500/20 border-2 border-teal-500 text-teal-300'
+                      : 'bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="font-semibold">{days}</div>
+                  <div className="text-xs">Tage</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Neues Fristende:</label>
+            <input
+              type="date"
+              value={customDeadline}
+              onChange={(e) => setCustomDeadline(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Aktionsbuttons */}
+      <div className="flex gap-3">
+        <button
+          onClick={() => {
+            setShowExtensionModal(false);
+            setSelectedTenderForExtension(null);
+            setExtensionType('days');
+            setExtensionDays(7);
+            setCustomDeadline('');
+          }}
+          className="flex-1 px-4 py-2 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-colors"
+        >
+          Abbrechen
+        </button>
+        <button
+          onClick={async () => {
+            try {
+              setLoading(true);
+              
+              let newDeadline;
+              if (extensionType === 'days') {
+                const currentDeadline = new Date(selectedTenderForExtension.created_at);
+                let workdaysAdded = 0;
+                while (workdaysAdded < 10) {
+                  currentDeadline.setDate(currentDeadline.getDate() + 1);
+                  const dayOfWeek = currentDeadline.getDay();
+                  if (dayOfWeek !== 0 && dayOfWeek !== 6) workdaysAdded++;
+                }
+                
+                let daysToAdd = extensionDays;
+                while (daysToAdd > 0) {
+                  currentDeadline.setDate(currentDeadline.getDate() + 1);
+                  const dayOfWeek = currentDeadline.getDay();
+                  if (dayOfWeek !== 0 && dayOfWeek !== 6) daysToAdd--;
+                }
+                newDeadline = currentDeadline.toISOString();
+              } else {
+                if (!customDeadline) {
+                  alert('❌ Bitte wählen Sie ein Datum');
+                  setLoading(false);
+                  return;
+                }
+                newDeadline = new Date(customDeadline).toISOString();
+              }
+
+              const res = await fetch(apiUrl(`/api/tenders/${selectedTenderForExtension.id}/extend-deadline`), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  newDeadline: newDeadline,
+                  projectId: selectedProject.id
+                })
+              });
+
+              if (res.ok) {
+                alert('✅ Frist wurde erfolgreich verlängert');
+                setShowExtensionModal(false);
+                setSelectedTenderForExtension(null);
+                setExtensionType('days');
+                setExtensionDays(7);
+                setCustomDeadline('');
+                loadProjectDetails(selectedProject.id);
+                loadUserProjects(userData.email);
+              } else {
+                const error = await res.json();
+                alert('❌ Fehler: ' + (error.error || 'Unbekannter Fehler'));
+              }
+            } catch (err) {
+              console.error('Error extending deadline:', err);
+              alert('❌ Fehler beim Verlängern der Frist');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+          disabled={loading}
+        >
+          {loading ? 'Wird verlängert...' : 'Frist verlängern'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}      
   </div>
   );
 }
