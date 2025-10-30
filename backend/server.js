@@ -24067,8 +24067,8 @@ app.post('/api/tenders/:tenderId/extend-deadline', async (req, res) => {
     await query('BEGIN');
     
     // 1. Prüfe ob Ausschreibung existiert
-    const tenderData = await query(
-  `SELECT t.*, tr.name as trade_name 
+   const tenderData = await query(
+  `SELECT t.*, COALESCE(tr.name, t.trade_code, 'Unbekanntes Gewerk') as trade_name 
    FROM tenders t
    LEFT JOIN trades tr ON t.trade_id = tr.id
    WHERE t.id = $1 AND t.project_id = $2`,
