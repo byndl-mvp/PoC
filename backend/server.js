@@ -24609,7 +24609,7 @@ Bewerte dieses Angebot umfassend und erstelle eine Empfehlung!`;
         projectId, 
         tradeId, 
         'single', 
-        [offerId],
+        [[offerId]],
         evaluation.rating,
         evaluation.recommendation?.reasoning || evaluation.summary,
         JSON.stringify(evaluation),
