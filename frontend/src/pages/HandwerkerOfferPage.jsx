@@ -479,15 +479,16 @@ if (!window.confirm(confirmMessage)) {
             Abbrechen
           </button>
           <button
-            onClick={submitOffer}
-            className={`px-8 py-4 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all ${
-              offerStage === 'preliminary'
-                ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
-                : 'bg-gradient-to-r from-teal-500 to-blue-600'
-            }`}
-          >
-            {offerStage === 'preliminary' ? 'Vorläufiges'} Angebot abgeben
-          </button>
+  onClick={handleSubmitOffer}
+  disabled={!isValid || isSubmitting}
+  className={`w-full py-4 rounded-lg font-semibold text-lg transition-all ${
+    isValid && !isSubmitting
+      ? 'bg-gradient-to-r from-teal-500 to-blue-500 text-white hover:from-teal-600 hover:to-blue-600 shadow-lg'
+      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+  }`}
+>
+  {isSubmitting ? 'Wird gesendet...' : 'Vorläufiges Angebot abgeben'}
+</button>
         </div>
       </div>
       
