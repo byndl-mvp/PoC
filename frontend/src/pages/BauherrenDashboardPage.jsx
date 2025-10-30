@@ -550,7 +550,7 @@ const handleCompareOffers = async (tradeName) => {
     setEvaluationModal({
       isOpen: true,
       type: 'comparison',
-      data: result.comparison,
+      data: result,
       companyName: null
     });
   } catch (error) {
