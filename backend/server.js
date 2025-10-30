@@ -24679,24 +24679,6 @@ const offerIds = offers.map(o => o.id);
       lvContent = lv.content;
     }
     
-    // 2. Lade alle Angebote
-    const offersData = await query(
-      `SELECT o.*, h.company_name, h.email, h.phone, t.name as trade_name
-       FROM offers o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN tenders tn ON o.tender_id = tn.id
-       JOIN trades t ON tn.trade_id = t.id
-       WHERE o.id = ANY($1) AND tn.project_id = $2 AND tn.trade_id = $3
-       ORDER BY o.amount ASC`,
-      [offerIds, projectId, tradeId]
-    );
-    
-    if (offersData.rows.length !== offerIds.length) {
-      return res.status(404).json({ error: 'Nicht alle Angebote gefunden' });
-    }
-    
-    const offers = offersData.rows;
-    
     // Parse alle Offer LV Data
     const parsedOffers = offers.map(offer => {
       let offerLvData;
