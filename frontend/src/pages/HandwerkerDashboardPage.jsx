@@ -371,23 +371,27 @@ export default function HandwerkerDashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistik-Cards */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-            <p className="text-gray-400 text-sm">Neue Ausschreibungen</p>
-            <p className="text-2xl font-bold text-teal-400">{tenders.filter(t => t.isNew).length}</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-            <p className="text-gray-400 text-sm">Verfügbare Bündel</p>
-            <p className="text-2xl font-bold text-blue-400">{bundles.length}</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-            <p className="text-gray-400 text-sm">In Vertragsanbahnung</p>
-            <p className="text-2xl font-bold text-yellow-400">{contracts.length}</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-            <p className="text-gray-400 text-sm">Aktive Aufträge</p>
-            <p className="text-2xl font-bold text-green-400">{orders.filter(o => o.status === 'aktiv').length}</p>
-          </div>
-        </div>
+  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+    <p className="text-gray-400 text-sm">Neue Ausschreibungen</p>
+    <p className="text-2xl font-bold text-teal-400">
+      {tenders.filter(t => !t.viewed_at).length}
+    </p>
+  </div>
+  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+    <p className="text-gray-400 text-sm">Verfügbare Bündel</p>
+    <p className="text-2xl font-bold text-blue-400">{bundles.length}</p>
+  </div>
+  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+    <p className="text-gray-400 text-sm">In Vertragsanbahnung</p>
+    <p className="text-2xl font-bold text-yellow-400">
+      {offers.filter(o => o.status === 'preliminary' || o.status === 'confirmed').length}
+    </p>
+  </div>
+  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+    <p className="text-gray-400 text-sm">Aktive Aufträge</p>
+    <p className="text-2xl font-bold text-green-400">{orders.length}</p>
+  </div>
+</div>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
