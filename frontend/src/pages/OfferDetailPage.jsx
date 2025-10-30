@@ -336,6 +336,8 @@ In der Kennenlernphase hat der ausgewählte Handwerker Exklusivität. Dies schü
           {activeTab === 'contact' && (
   <div>
     <h3 className="text-xl font-semibold text-white mb-4">Kontaktdaten</h3>
+
+    {console.log('🔍 OFFER DATA:', offer)} 
     
     {offer.status === 'preliminary' || offer.status === 'confirmed' || offer.status === 'accepted' ? (
       // Kontaktdaten nur bei vorläufiger oder finaler Beauftragung zeigen
