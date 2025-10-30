@@ -2108,24 +2108,28 @@ const deadlineDate = tender.deadline
                 ))}
                 
                 {/* Zusammenfassung pro Gewerk */}
-                {tradeOffers.length > 1 && (
-                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-600/10 to-teal-600/10 rounded-lg border border-white/20">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-gray-400">Preisrahmen für {tradeName}:</p>
-                        <p className="text-white">
-                          {formatCurrency(Math.min(...tradeOffers.map(o => o.amount)))} - 
-                          {formatCurrency(Math.max(...tradeOffers.map(o => o.amount)))}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-400">Durchschnittspreis:</p>
-                        <p className="text-xl font-bold text-teal-400">
-                          {formatCurrency(tradeOffers.reduce((sum, o) => sum + o.amount, 0) / tradeOffers.length)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+{tradeOffers.length > 1 && (
+  <div className="mt-4 p-4 bg-gradient-to-r from-blue-600/10 to-teal-600/10 rounded-lg border border-white/20">
+    <div className="flex justify-between items-center">
+      <div>
+        <p className="text-sm text-gray-400">Preisrahmen für {tradeName}:</p>
+        <p className="text-white">
+          {formatCurrency(Math.min(...tradeOffers.map(o => parseFloat(o.amount) || 0)))} - 
+          {formatCurrency(Math.max(...tradeOffers.map(o => parseFloat(o.amount) || 0)))}
+        </p>
+      </div>
+      <div className="text-right">
+        <p className="text-sm text-gray-400">Durchschnittspreis:</p>
+        <p className="text-xl font-bold text-teal-400">
+          {(() => {
+            const amounts = tradeOffers.map(o => parseFloat(o.amount) || 0);
+            const avg = amounts.reduce((sum, val) => sum + val, 0) / amounts.length;
+            return formatCurrency(avg);
+          })()}
+        </p>
+      </div>
+    </div>
+  </div>
                 )}
               </div>
             </div>
