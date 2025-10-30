@@ -1373,12 +1373,12 @@ const BudgetVisualization = ({ budget }) => {
     }
     
     if (tab === 'contracts') {
-      const lastViewed = lastViewedTabs.contracts;
-      newCount = offers.filter(o => 
-        o.status === 'preliminary' && 
-        (!lastViewed || new Date(o.preliminary_accepted_at || o.created_at) > new Date(lastViewed))
-      ).length;
-    }
+  const lastViewed = lastViewedTabs.contracts;
+  newCount = offers.filter(o => 
+    (o.status === 'preliminary' || o.status === 'confirmed') && 
+    (!lastViewed || new Date(o.updated_at || o.preliminary_accepted_at || o.created_at) > new Date(lastViewed))
+  ).length;
+}
     
     if (tab === 'orders') {
       const lastViewed = lastViewedTabs.orders;
