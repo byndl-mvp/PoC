@@ -152,6 +152,15 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
       setIsOpen(false);
       return;
     }
+
+    // Deadline-Warnung - zu Ausschreibungen Tab
+    if (notification.type === 'deadline_warning') {
+      const metadata = parseMetadata(notification.metadata);
+      if (metadata.action === 'view_tenders' && onTabChange) {
+        onTabChange('tenders');
+        setIsOpen(false);  
+      }
+    }
     
     // Andere Notifications - Tab wechseln wenn onTabChange vorhanden ist
     if (onTabChange) {
