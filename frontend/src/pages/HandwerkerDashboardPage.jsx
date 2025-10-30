@@ -415,19 +415,32 @@ export default function HandwerkerDashboardPage() {
 <div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
   {['ausschreibungen', 'bundles', 'angebote', 'vertragsanbahnung', 'auftraege', 'termine'].map((tab) => {
     // Berechne Badge-Zahlen
-    const badgeCounts = {
-      ausschreibungen: tenders.filter(t => !t.viewed_at).length,
-      angebote: offers.filter(o => o.status === 'submitted' && o.viewed_at && !o.offer_confirmed_at).length,
-      vertragsanbahnung: offers.filter(o => 
-        (o.status === 'preliminary' || o.status === 'confirmed') && 
-        (!o.appointment_confirmed && !o.appointment_skipped)
-      ).length,
-      auftraege: orders.filter(o => 
-        o.status !== 'completed' && 
-        o.status !== 'abgeschlossen' &&
-        o.has_unread_messages
-      ).length
-    };
+    // Berechne Badge-Zahlen
+const badgeCounts = {
+  ausschreibungen: tenders.filter(t => 
+    !lastViewedTabs.ausschreibungen || 
+    new Date(t.created_at) > new Date(lastViewedTabs.ausschreibungen)
+  ).length,
+  bundles: bundles.filter(b => 
+    !lastViewedTabs.bundles || 
+    new Date(b.created_at) > new Date(lastViewedTabs.bundles)
+  ).length,
+  angebote: offers.filter(o => 
+    o.status === 'submitted' && 
+    (!lastViewedTabs.angebote || 
+    new Date(o.created_at) > new Date(lastViewedTabs.angebote))
+  ).length,
+  vertragsanbahnung: offers.filter(o => 
+    (o.status === 'preliminary' || o.status === 'confirmed') &&
+    (!lastViewedTabs.vertragsanbahnung || 
+    new Date(o.updated_at || o.created_at) > new Date(lastViewedTabs.vertragsanbahnung))
+  ).length,
+  auftraege: orders.filter(o => 
+  o.status === 'accepted' &&
+  (!lastViewedTabs.auftraege || 
+  new Date(o.updated_at || o.created_at) > new Date(lastViewedTabs.auftraege))
+).length
+};
     
     const badgeCount = badgeCounts[tab] || 0;
     
