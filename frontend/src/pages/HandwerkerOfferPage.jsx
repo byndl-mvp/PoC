@@ -284,13 +284,11 @@ if (tenderData.lv && tenderData.lv.vorbemerkungen) {
       return;
     }
     
-    const confirmMessage = offerStage === 'preliminary' 
-      ? 'Möchten Sie dieses vorläufige Angebot abgeben? Sie können es später noch anpassen.'
-      : 'Möchten Sie dieses Angebot verbindlich abgeben?';
+   const confirmMessage = 'Möchten Sie dieses vorläufige Angebot abgeben? Sie können es nach einem Ortstermin noch anpassen.';
     
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
+if (!window.confirm(confirmMessage)) {
+  return;
+}
     
     try {
       const res = await fetch(apiUrl(`/api/tenders/${tenderId}/submit-offer`), {
@@ -367,32 +365,22 @@ if (tenderData.lv && tenderData.lv.vorbemerkungen) {
   </div>
 )}
         
-        {/* Angebots-Typ Auswahl */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20 mb-8">
-          <h3 className="text-xl font-bold text-white mb-4">Angebotsart wählen</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setOfferStage('preliminary')}
-              className={`p-4 rounded-lg border transition-all ${
-                offerStage === 'preliminary' 
-                  ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' 
-                  : 'bg-white/5 border-white/20 text-gray-400 hover:bg-white/10'
-              }`}
-            >
-              <h4 className="font-semibold mb-2">Vorläufiges Angebot</h4>
-              <p className="text-sm">Kann nach Ortstermin angepasst werden</p>
-            </button>
-            <button
-              onClick={() => setOfferStage('final')}
-              className={`p-4 rounded-lg border transition-all ${
-                offerStage === 'final' 
-                  ? 'bg-green-500/20 border-green-500 text-green-300' 
-                  : 'bg-white/5 border-white/20 text-gray-400 hover:bg-white/10'
-              }`}
-            >
-              <h4 className="font-semibold mb-2">Verbindliches Angebot</h4>
-              <p className="text-sm">Direktbeauftragung möglich</p>
-            </button>
+       {/* Zweistufige Vergabe Info-Box */}
+        <div className="bg-white/5 backdrop-blur-lg rounded-lg shadow-lg p-4 border border-teal-500/20 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 bg-teal-500/10 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-white mb-1">Zweistufige Vergabe</h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Sie geben zunächst ein <span className="text-teal-400 font-medium">vorläufiges Angebot</span> ab. 
+                Nach einem Ortstermin können Sie Ihr Angebot anpassen, bevor es verbindlich wird. 
+                So vermeiden Sie Fehlkalkulationen und können das Projekt vorher realistisch prüfen.
+              </p>
+            </div>
           </div>
         </div>
         
@@ -498,7 +486,7 @@ if (tenderData.lv && tenderData.lv.vorbemerkungen) {
                 : 'bg-gradient-to-r from-teal-500 to-blue-600'
             }`}
           >
-            {offerStage === 'preliminary' ? 'Vorläufiges' : 'Verbindliches'} Angebot abgeben
+            {offerStage === 'preliminary' ? 'Vorläufiges'} Angebot abgeben
           </button>
         </div>
       </div>
