@@ -504,6 +504,62 @@ const handleRejectConfirm = async () => {
     alert('Fehler beim Ablehnen');
   }
 };
+
+const handleEvaluateSingleOffer = async (offer, tradeName) => {
+  try {
+    setEvaluatingTrade(tradeName);
+    const tender = selectedProject.tenders?.find(t => t.trade_name === tradeName || t.name === tradeName);
+    if (!tender) { alert('Gewerk nicht gefunden'); return; }
+    
+    const response = await fetch(
+      apiUrl(`/api/projects/${selectedProject.id}/trades/${tender.trade_id}/offers/${offer.id}/evaluate`),
+      { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+    );
+    
+    if (!response.ok) throw new Error('Bewertung fehlgeschlagen');
+    const result = await response.json();
+    
+    setEvaluationModal({
+      isOpen: true,
+      type: 'single',
+      data: result.evaluation,
+      companyName: offer.company_name || offer.companyName
+    });
+  } catch (error) {
+    console.error('Error evaluating offer:', error);
+    alert('❌ Fehler bei der Angebotsbewertung: ' + error.message);
+  } finally {
+    setEvaluatingTrade(null);
+  }
+};
+
+const handleCompareOffers = async (tradeName) => {
+  try {
+    setEvaluatingTrade(tradeName);
+    const tender = selectedProject.tenders?.find(t => t.trade_name === tradeName || t.name === tradeName);
+    if (!tender) { alert('Gewerk nicht gefunden'); return; }
+    
+    const response = await fetch(
+      apiUrl(`/api/projects/${selectedProject.id}/trades/${tender.trade_id}/offers/compare`),
+      { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+    );
+    
+    if (!response.ok) throw new Error('Vergleich fehlgeschlagen');
+    const result = await response.json();
+    
+    setEvaluationModal({
+      isOpen: true,
+      type: 'comparison',
+      data: result.comparison,
+      companyName: null
+    });
+  } catch (error) {
+    console.error('Error comparing offers:', error);
+    alert('❌ Fehler beim Angebotsvergleich: ' + error.message);
+  } finally {
+    setEvaluatingTrade(null);
+  }
+};
   
   // NEUE FUNKTION: Vorläufige Beauftragung bestätigen
   const confirmPreliminaryOrder = async () => {
