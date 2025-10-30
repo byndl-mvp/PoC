@@ -1883,19 +1883,34 @@ const deadlineDate = tender.deadline
   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
     <p className="text-gray-400 text-sm">Neue Angebote</p>
     <p className="text-2xl font-bold text-teal-400">
-      {offers.filter(o => !o.viewed).length}
+      {offers.filter(o => 
+        o.status === 'submitted' && 
+        o.status !== 'preliminary' && 
+        o.status !== 'confirmed' && 
+        o.status !== 'accepted' &&
+        o.status !== 'rejected'
+      ).length}
     </p>
   </div>
   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
     <p className="text-gray-400 text-sm">In Prüfung</p>
     <p className="text-2xl font-bold text-yellow-400">
-      {offers.filter(o => o.status === 'reviewing').length}
+      {offers.filter(o => 
+        o.status === 'submitted' && 
+        o.viewed &&
+        o.status !== 'preliminary' && 
+        o.status !== 'confirmed' && 
+        o.status !== 'accepted' &&
+        o.status !== 'rejected'
+      ).length}
     </p>
   </div>
   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
     <p className="text-gray-400 text-sm">Vertragsanbahnung</p>
     <p className="text-2xl font-bold text-blue-400">
-      {offers.filter(o => o.status === 'preliminary').length}
+      {offers.filter(o => 
+        o.status === 'preliminary' || o.status === 'confirmed'
+      ).length}
     </p>
   </div>
   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
@@ -1905,7 +1920,7 @@ const deadlineDate = tender.deadline
     </p>
   </div>
 </div>
-
+    
 {/* Filtere vorläufig beauftragte Angebote raus */}
 {(() => {
   const filteredOffers = offers.filter(o => 
