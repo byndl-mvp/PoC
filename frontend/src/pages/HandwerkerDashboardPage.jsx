@@ -28,6 +28,13 @@ export default function HandwerkerDashboardPage() {
   const [showContractView, setShowContractView] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [lastViewedTabs, setLastViewedTabs] = useState({
+  ausschreibungen: null,
+  bundles: null,
+  angebote: null,
+  vertragsanbahnung: null,
+  auftraege: null
+});
   
   useEffect(() => {
     const storedData = sessionStorage.getItem('handwerkerData');
@@ -64,6 +71,15 @@ export default function HandwerkerDashboardPage() {
     const interval = setInterval(loadNotifications, 30000);
     return () => clearInterval(interval);
   }, [handwerkerData?.id]);
+
+  useEffect(() => {
+  if (activeTab && ['ausschreibungen', 'bundles', 'angebote', 'vertragsanbahnung', 'auftraege'].includes(activeTab)) {
+    setLastViewedTabs(prev => ({
+      ...prev,
+      [activeTab]: new Date().toISOString()
+    }));
+  }
+}, [activeTab]);
   
   const loadDashboardData = async (handwerker) => {
   try {
