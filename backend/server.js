@@ -23915,9 +23915,12 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
   try {
     await query('BEGIN');
     
-    // 1. Prüfe ob Ausschreibung existiert
+    // 1. Prüfe ob Ausschreibung existiert und hole Gewerk-Namen
     const tenderData = await query(
-      'SELECT * FROM tenders WHERE id = $1 AND project_id = $2',
+      `SELECT t.*, tr.name as trade_name 
+       FROM tenders t
+       LEFT JOIN trades tr ON t.trade_id = tr.id
+       WHERE t.id = $1 AND t.project_id = $2`,
       [tenderId, projectId]
     );
     
@@ -23958,7 +23961,7 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
           'handwerker',
           'tender_cancelled',
           tenderId,
-          `Der Bauherr hat die Ausschreibung für "${tender.trade_name}" zurückgezogen. Ihr Angebot ist nicht mehr gültig.`,
+          `Der Bauherr hat die Ausschreibung für "${tender.trade_name || 'das Gewerk'}" zurückgezogen. Ihr Angebot ist nicht mehr gültig.`,
           JSON.stringify({
             tenderId: tenderId,
             offerId: offer.id,
