@@ -81,7 +81,8 @@ export default function HandwerkerDashboardPage() {
         tender.offer_status !== 'final_accepted' &&
         tender.offer_status !== 'preliminary' &&
         tender.offer_status !== 'confirmed' &&
-        tender.status !== 'rejected'
+        tender.status !== 'rejected' &&
+        tender.status !== 'cancelled'
       );
       setTenders(uniqueTenders);
     }
