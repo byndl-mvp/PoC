@@ -23938,31 +23938,65 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
       return res.status(400).json({ error: 'Ausschreibung wurde bereits vergeben' });
     }
     
-    // 2. Lösche alle verknüpften Angebote
-    await query(
-      'DELETE FROM offers WHERE tender_id = $1',
+    // 2. Finde alle Handwerker mit Angeboten für diese Ausschreibung
+    const offersData = await query(
+      `SELECT o.id, o.handwerker_id, h.email, h.name 
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE o.tender_id = $1`,
       [tenderId]
     );
     
-    // 3. Lösche alle Tender-Handwerker Zuordnungen (SINGULAR!)
+    // 3. Erstelle Notifications für alle betroffenen Handwerker
+    for (const offer of offersData.rows) {
+      await query(
+        `INSERT INTO notifications (
+          user_id, user_type, type, title, message, metadata, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [
+          offer.handwerker_id,
+          'handwerker',
+          'tender_cancelled',
+          'Ausschreibung zurückgezogen',
+          `Der Bauherr hat die Ausschreibung für "${tender.trade_name}" zurückgezogen. Ihr Angebot ist nicht mehr gültig.`,
+          JSON.stringify({
+            tenderId: tenderId,
+            offerId: offer.id,
+            tradeName: tender.trade_name,
+            projectId: projectId
+          })
+        ]
+      );
+    }
+    
+    // 4. Setze Status der Angebote auf 'cancelled' (damit Handwerker sie noch sehen können)
+    await query(
+      `UPDATE offers 
+       SET status = 'cancelled', 
+           updated_at = NOW()
+       WHERE tender_id = $1`,
+      [tenderId]
+    );
+    
+    // 5. Lösche Tender-Handwerker Zuordnungen
     await query(
       'DELETE FROM tender_handwerker WHERE tender_id = $1',
       [tenderId]
     );
     
-    // 4. Lösche ggf. Tender-Tracking Einträge
+    // 6. Lösche Tender-Tracking Einträge
     await query(
       'DELETE FROM tender_tracking WHERE tender_id = $1',
       [tenderId]
     );
     
-    // 5. Lösche ggf. Tender-Handwerker Status Einträge
+    // 7. Lösche Tender-Handwerker Status Einträge
     await query(
       'DELETE FROM tender_handwerker_status WHERE tender_id = $1',
       [tenderId]
     );
     
-    // 6. Lösche die Ausschreibung selbst
+    // 8. Lösche die Ausschreibung selbst
     await query(
       'DELETE FROM tenders WHERE id = $1',
       [tenderId]
@@ -23973,7 +24007,8 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
     res.json({
       success: true,
       message: 'Ausschreibung wurde erfolgreich zurückgezogen und gelöscht',
-      tenderId: tenderId
+      tenderId: tenderId,
+      affectedHandwerkers: offersData.rows.length
     });
     
   } catch (error) {
@@ -23981,6 +24016,40 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
     console.error('Error cancelling tender:', error);
     res.status(500).json({ 
       error: 'Fehler beim Zurückziehen der Ausschreibung',
+      details: error.message 
+    });
+  }
+});
+
+// DELETE /api/offers/:offerId/remove-cancelled
+app.delete('/api/offers/:offerId/remove-cancelled', async (req, res) => {
+  const { offerId } = req.params;
+  
+  try {
+    // Prüfe ob Angebot existiert und status 'cancelled' hat
+    const offerData = await query(
+      'SELECT * FROM offers WHERE id = $1 AND status = $2',
+      [offerId, 'cancelled']
+    );
+    
+    if (!offerData.rows || offerData.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Storniertes Angebot nicht gefunden' 
+      });
+    }
+    
+    // Lösche das Angebot
+    await query('DELETE FROM offers WHERE id = $1', [offerId]);
+    
+    res.json({
+      success: true,
+      message: 'Storniertes Angebot wurde erfolgreich entfernt'
+    });
+    
+  } catch (error) {
+    console.error('Error removing cancelled offer:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Entfernen des Angebots',
       details: error.message 
     });
   }
