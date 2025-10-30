@@ -23944,13 +23944,25 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
       [tenderId]
     );
     
-    // 3. Lösche alle Tender-Handwerker Zuordnungen
+    // 3. Lösche alle Tender-Handwerker Zuordnungen (SINGULAR!)
     await query(
-      'DELETE FROM tender_handwerkers WHERE tender_id = $1',
+      'DELETE FROM tender_handwerker WHERE tender_id = $1',
       [tenderId]
     );
     
-    // 4. Lösche die Ausschreibung selbst
+    // 4. Lösche ggf. Tender-Tracking Einträge
+    await query(
+      'DELETE FROM tender_tracking WHERE tender_id = $1',
+      [tenderId]
+    );
+    
+    // 5. Lösche ggf. Tender-Handwerker Status Einträge
+    await query(
+      'DELETE FROM tender_handwerker_status WHERE tender_id = $1',
+      [tenderId]
+    );
+    
+    // 6. Lösche die Ausschreibung selbst
     await query(
       'DELETE FROM tenders WHERE id = $1',
       [tenderId]
