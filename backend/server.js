@@ -17531,15 +17531,15 @@ app.get('/api/projects/:projectId/offers/:offerId', async (req, res) => {
       return res.status(404).json({ error: 'Angebot nicht gefunden' });
     }
     
-    // Kontaktdaten-Schutz basierend auf Status
-    const offer = result.rows[0];
-    if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
-      // Kontaktdaten nur bei vorläufiger/finaler Beauftragung sichtbar
-      offer.email = 'Wird nach Beauftragung freigegeben';
-      offer.phone = 'Wird nach Beauftragung freigegeben';
-      offer.street = null;
-      offer.house_number = null;
-    }
+   // Kontaktdaten-Schutz basierend auf Status
+const offer = result.rows[0];
+if (!['preliminary', 'confirmed', 'accepted'].includes(offer.status)) {
+  // Kontaktdaten nur bei vorläufiger/finaler Beauftragung sichtbar
+  offer.email = 'Wird nach Beauftragung freigegeben';
+  offer.phone = 'Wird nach Beauftragung freigegeben';
+  offer.street = null;
+  offer.house_number = null;
+}
     
     res.json(offer);
     
