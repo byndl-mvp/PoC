@@ -17407,7 +17407,6 @@ app.get('/api/projects/:projectId/dashboard-details', async (req, res) => {
 app.get('/api/projects/:projectId/tenders', async (req, res) => {
   try {
     const { projectId } = req.params;
-
     const result = await query(
       `
       SELECT
@@ -17416,7 +17415,12 @@ app.get('/api/projects/:projectId/tenders', async (req, res) => {
         COALESCE(stats.total_handwerker, 0)       AS total_handwerker,
         COALESCE(stats.viewed_count, 0)           AS viewed_count,
         COALESCE(stats.offer_count, 0)            AS offer_count,
-        COALESCE(stats.handwerkers, '[]'::json)   AS handwerkers
+        COALESCE(stats.handwerkers, '[]'::json)   AS handwerkers,
+        EXISTS(
+          SELECT 1 FROM offers o 
+          WHERE o.tender_id = t.id 
+          AND o.status = 'accepted'
+        ) as has_accepted_offer
       FROM tenders t
       JOIN trades tr ON tr.id = t.trade_id
       LEFT JOIN LATERAL (
@@ -17449,7 +17453,6 @@ app.get('/api/projects/:projectId/tenders', async (req, res) => {
       `,
       [projectId]
     );
-
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching detailed tenders:', error);
