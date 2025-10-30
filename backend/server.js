@@ -24068,9 +24068,12 @@ app.post('/api/tenders/:tenderId/extend-deadline', async (req, res) => {
     
     // 1. Prüfe ob Ausschreibung existiert
     const tenderData = await query(
-      'SELECT * FROM tenders WHERE id = $1 AND project_id = $2',
-      [tenderId, projectId]
-    );
+  `SELECT t.*, tr.name as trade_name 
+   FROM tenders t
+   LEFT JOIN trades tr ON t.trade_id = tr.id
+   WHERE t.id = $1 AND t.project_id = $2`,
+  [tenderId, projectId]
+);
     
     if (!tenderData.rows || tenderData.rows.length === 0) {
       await query('ROLLBACK');
