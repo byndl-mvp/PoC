@@ -24637,11 +24637,24 @@ app.post('/api/projects/:projectId/trades/:tradeId/offers/compare', async (req, 
   
   try {
     const { projectId, tradeId } = req.params;
-    const { offerIds } = req.body; // Array von Offer-IDs
-    
-    if (!offerIds || offerIds.length < 2) {
-      return res.status(400).json({ error: 'Mindestens 2 Angebote erforderlich' });
-    }
+    const offersData = await query(
+  `SELECT o.*, h.company_name, h.email, h.phone, t.name as trade_name
+   FROM offers o
+   JOIN handwerker h ON o.handwerker_id = h.id
+   JOIN tenders tn ON o.tender_id = tn.id
+   JOIN trades t ON tn.trade_id = t.id
+   WHERE tn.project_id = $1 AND tn.trade_id = $2
+     AND o.status IN ('submitted', 'preliminary', 'confirmed')
+   ORDER BY o.amount ASC`,
+  [projectId, tradeId]
+);
+
+if (offersData.rows.length < 2) {
+  return res.status(400).json({ error: 'Mindestens 2 Angebote erforderlich' });
+}
+
+const offers = offersData.rows;
+const offerIds = offers.map(o => o.id);
     
     // 1. Lade Original-LV mit KI-Preisen
     const lvData = await query(
