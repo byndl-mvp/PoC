@@ -388,9 +388,11 @@ export default function HandwerkerDashboardPage() {
     </p>
   </div>
   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-    <p className="text-gray-400 text-sm">Aktive Aufträge</p>
-    <p className="text-2xl font-bold text-green-400">{orders.length}</p>
-  </div>
+  <p className="text-gray-400 text-sm">Aktive Aufträge</p>
+  <p className="text-2xl font-bold text-green-400">
+    {orders.filter(o => o.status !== 'completed' && o.status !== 'abgeschlossen').length}
+  </p>
+</div>
 </div>
 
         {/* Tabs */}
