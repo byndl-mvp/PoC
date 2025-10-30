@@ -479,15 +479,15 @@ if (!window.confirm(confirmMessage)) {
             Abbrechen
           </button>
           <button
-  onClick={handleSubmitOffer}
-  disabled={!isValid || isSubmitting}
+  onClick={submitOffer}
+  disabled={totalSum === 0 || loading}
   className={`w-full py-4 rounded-lg font-semibold text-lg transition-all ${
-    isValid && !isSubmitting
+    totalSum > 0 && !loading
       ? 'bg-gradient-to-r from-teal-500 to-blue-500 text-white hover:from-teal-600 hover:to-blue-600 shadow-lg'
       : 'bg-gray-600 text-gray-400 cursor-not-allowed'
   }`}
 >
-  {isSubmitting ? 'Wird gesendet...' : 'Vorläufiges Angebot abgeben'}
+  {loading ? 'Wird gesendet...' : 'Vorläufiges Angebot abgeben'}
 </button>
         </div>
       </div>
