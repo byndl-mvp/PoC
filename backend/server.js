@@ -23951,13 +23951,13 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
     for (const offer of offersData.rows) {
       await query(
         `INSERT INTO notifications (
-          user_id, user_type, type, title, message, metadata, created_at
+          user_id, user_type, type, reference_id, message, metadata, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
         [
           offer.handwerker_id,
           'handwerker',
           'tender_cancelled',
-          'Ausschreibung zurückgezogen',
+          tenderId,
           `Der Bauherr hat die Ausschreibung für "${tender.trade_name}" zurückgezogen. Ihr Angebot ist nicht mehr gültig.`,
           JSON.stringify({
             tenderId: tenderId,
