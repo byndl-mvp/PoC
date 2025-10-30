@@ -24212,6 +24212,727 @@ app.get('/api/bauherr/:bauherrId/expiring-tenders', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------------------------------
+// 1. EINZELNE ANGEBOTSBEWERTUNG (Ein Angebot)
+// ----------------------------------------------------------------------------
+app.post('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', async (req, res) => {
+  console.log('[OFFER-EVALUATE] Starting single offer evaluation');
+  
+  try {
+    const { projectId, tradeId, offerId } = req.params;
+    
+    // 1. Lade Original-LV mit KI-Preisen
+    const lvData = await query(
+      `SELECT l.*, t.name as trade_name, t.code as trade_code 
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id 
+       WHERE l.project_id = $1 AND l.trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (!lvData.rows[0]) {
+      return res.status(404).json({ error: 'Leistungsverzeichnis nicht gefunden' });
+    }
+    
+    const lv = lvData.rows[0];
+    
+    // Parse LV Content
+    let lvContent;
+    if (typeof lv.content === 'string') {
+      try {
+        lvContent = JSON.parse(lv.content);
+      } catch (parseError) {
+        console.error('[OFFER-EVALUATE] Failed to parse LV content:', parseError);
+        return res.status(500).json({ error: 'LV-Daten fehlerhaft' });
+      }
+    } else if (typeof lv.content === 'object' && lv.content !== null) {
+      lvContent = lv.content;
+    } else {
+      return res.status(500).json({ error: 'LV-Daten ungültig' });
+    }
+    
+    if (!lvContent.positions || !Array.isArray(lvContent.positions)) {
+      return res.status(400).json({ error: 'Keine Positionen im LV gefunden' });
+    }
+    
+    // 2. Lade Angebotsdaten
+    const offerData = await query(
+      `SELECT o.*, h.company_name, h.email, h.phone, t.name as trade_name
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = $1 AND tn.project_id = $2 AND tn.trade_id = $3`,
+      [offerId, projectId, tradeId]
+    );
+    
+    if (!offerData.rows[0]) {
+      return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    }
+    
+    const offer = offerData.rows[0];
+    
+    // Parse Offer LV Data
+    let offerLvData;
+    if (typeof offer.lv_data === 'string') {
+      try {
+        offerLvData = JSON.parse(offer.lv_data);
+      } catch (parseError) {
+        console.error('[OFFER-EVALUATE] Failed to parse offer lv_data:', parseError);
+        return res.status(500).json({ error: 'Angebotsdaten fehlerhaft' });
+      }
+    } else if (typeof offer.lv_data === 'object' && offer.lv_data !== null) {
+      offerLvData = offer.lv_data;
+    } else {
+      return res.status(500).json({ error: 'Angebotsdaten ungültig' });
+    }
+    
+    if (!offerLvData.positions || !Array.isArray(offerLvData.positions)) {
+      return res.status(400).json({ error: 'Keine Positionen im Angebot gefunden' });
+    }
+    
+    // 3. Lade Projekt-Kontext
+    const projectData = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    // 4. System-Prompt für Einzelbewertung
+    const systemPrompt = `Du bist ein erfahrener Baukalkulator und Sachverständiger für ${lv.trade_name}.
+
+AUFGABE: Bewerte dieses einzelne Angebot professionell und objektiv. Erstelle eine verständliche Empfehlung für einen Bauherren (Laien).
+
+WICHTIGE PRÜFPUNKTE:
+
+1. VOLLSTÄNDIGKEIT
+   - Sind ALLE Positionen aus dem LV ausgefüllt?
+   - Fehlen Positionen komplett?
+   - Sind Mengen korrekt übernommen?
+   - Sind alle Einheitspreise angegeben?
+
+2. PREISLICHE PLAUSIBILITÄT
+   - Vergleiche JEDEN Preis mit dem KI-Referenzpreis
+   - Identifiziere Ausreißer (>20% Abweichung)
+   - Bewerte ob Abweichungen nachvollziehbar sind
+   - Prüfe Gesamtsumme vs. KI-Schätzung
+
+3. ZUSÄTZLICHE POSITIONEN
+   - Gibt es Positionen die NICHT im Original-LV sind?
+   - Ist die Begründung plausibel und notwendig?
+   - Sind die Preise dafür angemessen?
+
+4. QUALITÄTSMERKMALE
+   - Materialqualität erkennbar?
+   - Ausführungsstandard klar beschrieben?
+   - Gewährleistung/Garantie angegeben?
+
+5. VERTRAGLICHE ASPEKTE
+   - Sind Ausführungszeiten realistisch?
+   - Zahlungsbedingungen fair?
+   - Gibt es versteckte Kosten?
+
+BEWERTUNGSSYSTEM (AMPEL):
+
+🟢 GRÜN = Gutes Angebot
+- Vollständig ausgefüllt
+- Preise im marktüblichen Rahmen (±15% vom KI-Preis)
+- Keine gravierenden Auffälligkeiten
+- Klare und nachvollziehbare Positionen
+→ Empfehlung: Kann beauftragt werden
+
+🟡 GELB = Angebot mit Auffälligkeiten
+- Kleinere Lücken oder Unklarheiten
+- Preise teilweise außerhalb Rahmen (±15-30%)
+- Einzelne Positionen erklärungsbedürftig
+- Zusatzpositionen sollten hinterfragt werden
+→ Empfehlung: Nachverhandlung empfohlen
+
+🔴 ROT = Problematisches Angebot
+- Wesentliche Positionen fehlen
+- Preise unrealistisch (>30% Abweichung)
+- Viele ungeklärte Zusatzpositionen
+- Unklare oder unfaire Vertragsbedingungen
+→ Empfehlung: Vergabe nicht empfohlen
+
+AUSGABE als JSON:
+{
+  "rating": "green|yellow|red",
+  "overallScore": 1-100,
+  "summary": "Kurze 2-3 Sätze Zusammenfassung",
+  
+  "completeness": {
+    "score": 1-100,
+    "missingPositions": ["Pos 1.2", "Pos 3.4"],
+    "incompletePositions": ["Pos 2.1: Fehlende Menge"],
+    "assessment": "Detaillierte Bewertung"
+  },
+  
+  "priceAnalysis": {
+    "totalOffer": Zahl,
+    "totalReference": Zahl,
+    "deviationPercent": Zahl,
+    "deviationAmount": Zahl,
+    "outliers": [
+      {
+        "position": "Pos-Nr",
+        "title": "Positionstitel",
+        "offerPrice": Zahl,
+        "referencePrice": Zahl,
+        "deviationPercent": Zahl,
+        "severity": "low|medium|high",
+        "explanation": "Warum ist das auffällig?"
+      }
+    ],
+    "assessment": "Gesamtbewertung der Preise"
+  },
+  
+  "additionalPositions": [
+    {
+      "position": "Neue Pos-Nr",
+      "title": "Titel",
+      "amount": Zahl,
+      "justification": "Ist die Begründung plausibel?",
+      "recommendation": "Sollte akzeptiert/verhandelt/abgelehnt werden"
+    }
+  ],
+  
+  "qualityAssessment": {
+    "materialsSpecified": true/false,
+    "executionStandardClear": true/false,
+    "warrantyIncluded": true/false,
+    "notes": "Qualitätsmerkmale"
+  },
+  
+  "negotiationPoints": [
+    {
+      "position": "Pos-Nr oder Thema",
+      "issue": "Was ist das Problem?",
+      "suggestion": "Konkrete Verhandlungsempfehlung",
+      "potentialSaving": Zahl
+    }
+  ],
+  
+  "risks": [
+    "Konkrete Risiken und Bedenken"
+  ],
+  
+  "recommendation": {
+    "action": "accept|negotiate|reject",
+    "reasoning": "Begründung der Empfehlung",
+    "nextSteps": [
+      "Konkreter nächster Schritt für den Bauherren"
+    ]
+  }
+}
+
+WICHTIG:
+- Sei objektiv und fair
+- Erkläre Fachbegriffe in einfacher Sprache
+- Gib konkrete, umsetzbare Empfehlungen
+- Bei Gelb/Rot: Klare Handlungsanweisungen
+
+KRITISCH: Antworte NUR mit validem JSON ohne Markdown-Codeblocks!`;
+
+    // 5. User-Prompt zusammenstellen
+    const userPrompt = `ORIGINAL-LEISTUNGSVERZEICHNIS (KI-REFERENZPREISE):
+Gewerk: ${lv.trade_name}
+Gesamtsumme (KI-Schätzung): ${lvContent.totalSum}€
+
+POSITIONEN MIT REFERENZPREISEN:
+${lvContent.positions.map(pos => 
+  `Position ${pos.pos}:
+   Titel: ${pos.title}
+   Beschreibung: ${pos.description || 'Keine Details'}
+   Menge: ${pos.quantity} ${pos.unit}
+   KI-Einzelpreis: ${pos.unitPrice}€
+   KI-Gesamtpreis: ${pos.totalPrice}€
+   ${pos.isNEP ? '(NEP - Eventualposition)' : ''}
+   ---`
+).join('\n')}
+
+═══════════════════════════════════════════════════════════════
+
+EINGEREICHTES ANGEBOT:
+Firma: ${offer.company_name}
+Angebotssumme: ${offer.amount}€
+Ausführungszeit: ${offer.execution_time || 'Nicht angegeben'}
+
+ANGEBOTSPOSITIONEN:
+${offerLvData.positions.map(pos => 
+  `Position ${pos.pos}:
+   Titel: ${pos.title}
+   Beschreibung: ${pos.description || 'Keine Details'}
+   Menge: ${pos.quantity} ${pos.unit}
+   ANGEBOTS-Einzelpreis: ${pos.unitPrice}€
+   ANGEBOTS-Gesamtpreis: ${pos.totalPrice}€
+   ---`
+).join('\n')}
+
+PROJEKT-KONTEXT:
+Kategorie: ${projectData.rows[0]?.category || 'Sanierung'}
+Beschreibung: ${projectData.rows[0]?.description || 'Keine Details'}
+
+Bewerte dieses Angebot umfassend und erstelle eine Empfehlung!`;
+
+    // 6. Claude API Call
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+
+    console.log('[OFFER-EVALUATE] Calling Claude API...');
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 16000,
+      temperature: 0.3,
+      system: systemPrompt,
+      messages: [
+        { 
+          role: 'user', 
+          content: userPrompt
+        }
+      ]
+    });
+
+    // 7. Parse Response
+    let evaluation;
+    try {
+      let responseText = response.content[0].text.trim();
+      
+      // Bereinigung
+      responseText = responseText
+        .replace(/^```json\s*\n?/, '')
+        .replace(/^```\s*\n?/, '')
+        .replace(/\n?```\s*$/, '')
+        .trim();
+      
+      console.log('[OFFER-EVALUATE] Response length:', responseText.length);
+      
+      evaluation = JSON.parse(responseText);
+      
+    } catch (parseError) {
+      console.error('[OFFER-EVALUATE] Parse error:', parseError.message);
+      console.error('[OFFER-EVALUATE] Response snippet:', response.content[0].text.substring(0, 500));
+      
+      return res.status(500).json({ 
+        error: 'Fehler bei der Analyse', 
+        details: parseError.message 
+      });
+    }
+    
+    // 8. Speichere Bewertung in DB
+    const bauherrResult = await query(
+      'SELECT bauherr_id FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    await query(
+      `INSERT INTO offer_evaluations 
+       (project_id, trade_id, evaluation_type, offer_ids, rating, recommendation, evaluation_data, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      [
+        projectId, 
+        tradeId, 
+        'single', 
+        [offerId],
+        evaluation.rating,
+        evaluation.recommendation?.reasoning || evaluation.summary,
+        JSON.stringify(evaluation),
+        bauherrResult.rows[0]?.bauherr_id
+      ]
+    );
+    
+    console.log(`[OFFER-EVALUATE] Evaluation completed with rating: ${evaluation.rating}`);
+    res.json(evaluation);
+    
+  } catch (err) {
+    console.error('[OFFER-EVALUATE] Evaluation failed:', err);
+    res.status(500).json({ 
+      error: 'Bewertung fehlgeschlagen',
+      details: err.message 
+    });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 2. VERGABEEMPFEHLUNG (Mehrere Angebote vergleichen)
+// ----------------------------------------------------------------------------
+app.post('/api/projects/:projectId/trades/:tradeId/offers/compare', async (req, res) => {
+  console.log('[OFFER-COMPARE] Starting offer comparison');
+  
+  try {
+    const { projectId, tradeId } = req.params;
+    const { offerIds } = req.body; // Array von Offer-IDs
+    
+    if (!offerIds || offerIds.length < 2) {
+      return res.status(400).json({ error: 'Mindestens 2 Angebote erforderlich' });
+    }
+    
+    // 1. Lade Original-LV mit KI-Preisen
+    const lvData = await query(
+      `SELECT l.*, t.name as trade_name, t.code as trade_code 
+       FROM lvs l 
+       JOIN trades t ON t.id = l.trade_id 
+       WHERE l.project_id = $1 AND l.trade_id = $2`,
+      [projectId, tradeId]
+    );
+    
+    if (!lvData.rows[0]) {
+      return res.status(404).json({ error: 'Leistungsverzeichnis nicht gefunden' });
+    }
+    
+    const lv = lvData.rows[0];
+    
+    // Parse LV Content
+    let lvContent;
+    if (typeof lv.content === 'string') {
+      lvContent = JSON.parse(lv.content);
+    } else {
+      lvContent = lv.content;
+    }
+    
+    // 2. Lade alle Angebote
+    const offersData = await query(
+      `SELECT o.*, h.company_name, h.email, h.phone, t.name as trade_name
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE o.id = ANY($1) AND tn.project_id = $2 AND tn.trade_id = $3
+       ORDER BY o.amount ASC`,
+      [offerIds, projectId, tradeId]
+    );
+    
+    if (offersData.rows.length !== offerIds.length) {
+      return res.status(404).json({ error: 'Nicht alle Angebote gefunden' });
+    }
+    
+    const offers = offersData.rows;
+    
+    // Parse alle Offer LV Data
+    const parsedOffers = offers.map(offer => {
+      let offerLvData;
+      if (typeof offer.lv_data === 'string') {
+        offerLvData = JSON.parse(offer.lv_data);
+      } else {
+        offerLvData = offer.lv_data;
+      }
+      return {
+        ...offer,
+        parsed_lv: offerLvData
+      };
+    });
+    
+    // 3. Lade Projekt-Kontext
+    const projectData = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    // 4. System-Prompt für Vergleich
+    const systemPrompt = `Du bist ein erfahrener Baukalkulator und Sachverständiger für ${lv.trade_name}.
+
+AUFGABE: Vergleiche diese ${offers.length} Angebote professionell und objektiv. Erstelle eine klare Vergabeempfehlung für einen Bauherren (Laien).
+
+WICHTIGE VERGLEICHSKRITERIEN:
+
+1. PREISVERGLEICH
+   - Gesamtpreise im Vergleich
+   - Positionsweise Vergleiche
+   - Identifiziere wo welches Angebot günstiger/teurer ist
+   - Bewerte Preis-Leistungs-Verhältnis vs. KI-Referenz
+
+2. VOLLSTÄNDIGKEIT & QUALITÄT
+   - Welches Angebot ist am vollständigsten?
+   - Welches hat die besten Materialbeschreibungen?
+   - Wo fehlen wichtige Informationen?
+
+3. AUFFÄLLIGKEITEN
+   - Gibt es bei einzelnen Angeboten Besonderheiten?
+   - Unrealistisch niedrige oder hohe Preise?
+   - Zusatzpositionen die nur bei einem vorkommen?
+
+4. RISIKOBEWERTUNG
+   - Welches Angebot birgt die wenigsten Risiken?
+   - Wo könnten Nachträge drohen?
+   - Qualitätsrisiken?
+
+RECHTLICHER HINWEIS:
+Die Bewertung erfolgt ohne Gewähr auf Basis der vorliegenden Informationen. Sie ersetzt keine fachliche Beratung durch einen Sachverständigen. Der Bauherr trägt die Verantwortung für die finale Vergabeentscheidung.
+
+AUSGABE als JSON:
+{
+  "summary": "Kurze 3-4 Sätze Executive Summary mit klarer Empfehlung",
+  
+  "legalDisclaimer": "Rechtlich saubere Formulierung des Haftungsausschlusses",
+  
+  "priceComparison": {
+    "cheapest": {
+      "offerId": Zahl,
+      "company": "Name",
+      "amount": Zahl
+    },
+    "mostExpensive": {
+      "offerId": Zahl,
+      "company": "Name",
+      "amount": Zahl
+    },
+    "referencePrice": Zahl,
+    "priceRange": {
+      "min": Zahl,
+      "max": Zahl,
+      "spread": Zahl,
+      "spreadPercent": Zahl
+    },
+    "assessment": "Bewertung der Preisunterschiede"
+  },
+  
+  "offerAnalysis": [
+    {
+      "offerId": Zahl,
+      "company": "Name",
+      "amount": Zahl,
+      "rank": Zahl (1 = beste Empfehlung),
+      "rating": "green|yellow|red",
+      "score": 1-100,
+      
+      "strengths": [
+        "Stärke 1",
+        "Stärke 2"
+      ],
+      
+      "weaknesses": [
+        "Schwäche 1",
+        "Schwäche 2"
+      ],
+      
+      "priceDeviation": {
+        "vsReference": Zahl (in Prozent),
+        "vsCheapest": Zahl (in Euro),
+        "assessment": "Bewertung"
+      },
+      
+      "completeness": 1-100,
+      "qualityIndicators": 1-100,
+      "riskLevel": "low|medium|high",
+      
+      "detailedFindings": [
+        {
+          "category": "Preis|Vollständigkeit|Qualität|Risiko",
+          "finding": "Konkrete Feststellung",
+          "impact": "Auswirkung",
+          "severity": "low|medium|high"
+        }
+      ]
+    }
+  ],
+  
+  "positionComparison": [
+    {
+      "position": "Pos-Nr",
+      "title": "Positionstitel",
+      "referencePrice": Zahl,
+      "offers": [
+        {
+          "offerId": Zahl,
+          "company": "Name",
+          "price": Zahl,
+          "deviation": Zahl (in Prozent)
+        }
+      ],
+      "assessment": "Bewertung dieser Position über alle Angebote",
+      "noteworthy": true/false,
+      "reason": "Warum ist das bemerkenswert?"
+    }
+  ],
+  
+  "recommendation": {
+    "recommendedOfferId": Zahl,
+    "recommendedCompany": "Name",
+    "confidence": "high|medium|low",
+    
+    "reasoning": "Ausführliche Begründung warum dieses Angebot empfohlen wird",
+    
+    "alternatives": [
+      {
+        "offerId": Zahl,
+        "company": "Name",
+        "condition": "Unter welcher Bedingung wäre das eine Alternative?"
+      }
+    ],
+    
+    "negotiationStrategy": [
+      {
+        "offerId": Zahl,
+        "company": "Name",
+        "points": [
+          "Konkreter Verhandlungspunkt mit der empfohlenen Firma"
+        ]
+      }
+    ],
+    
+    "redFlags": [
+      {
+        "offerId": Zahl,
+        "company": "Name",
+        "issue": "Warnung/Problem"
+      }
+    ]
+  },
+  
+  "nextSteps": [
+    "Konkreter nächster Schritt 1",
+    "Konkreter nächster Schritt 2"
+  ]
+}
+
+WICHTIG:
+- Sei objektiv aber klar in der Empfehlung
+- Das günstigste Angebot ist NICHT automatisch das beste
+- Berücksichtige Preis UND Qualität UND Vollständigkeit
+- Erkläre komplexe Sachverhalte verständlich
+- Gib umsetzbare Handlungsempfehlungen
+
+KRITISCH: Antworte NUR mit validem JSON ohne Markdown-Codeblocks!`;
+
+    // 5. User-Prompt zusammenstellen
+    const userPrompt = `ORIGINAL-LEISTUNGSVERZEICHNIS (KI-REFERENZPREISE):
+Gewerk: ${lv.trade_name}
+Gesamtsumme (KI-Schätzung): ${lvContent.totalSum}€
+
+REFERENZPOSITIONEN:
+${lvContent.positions.map(pos => 
+  `Pos ${pos.pos}: ${pos.title}
+   Menge: ${pos.quantity} ${pos.unit}
+   KI-Preis: ${pos.unitPrice}€/Einheit = ${pos.totalPrice}€ gesamt
+   ---`
+).join('\n')}
+
+═══════════════════════════════════════════════════════════════
+
+EINGEREICHTE ANGEBOTE (${offers.length} Stück):
+
+${parsedOffers.map((offer, idx) => `
+ANGEBOT ${idx + 1}:
+Firma: ${offer.company_name}
+Angebotssumme: ${offer.amount}€
+Ausführungszeit: ${offer.execution_time || 'Nicht angegeben'}
+Notizen: ${offer.notes || 'Keine'}
+
+POSITIONEN:
+${offer.parsed_lv.positions.map(pos => 
+  `Pos ${pos.pos}: ${pos.title}
+   Menge: ${pos.quantity} ${pos.unit}
+   Preis: ${pos.unitPrice}€/Einheit = ${pos.totalPrice}€ gesamt`
+).join('\n')}
+
+───────────────────────────────────────────────────────────────
+`).join('\n')}
+
+PROJEKT-KONTEXT:
+Kategorie: ${projectData.rows[0]?.category || 'Sanierung'}
+
+Vergleiche diese Angebote und erstelle eine fundierte Vergabeempfehlung!`;
+
+    // 6. Claude API Call
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+
+    console.log('[OFFER-COMPARE] Calling Claude API...');
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 16000,
+      temperature: 0.3,
+      system: systemPrompt,
+      messages: [
+        { 
+          role: 'user', 
+          content: userPrompt
+        }
+      ]
+    });
+
+    // 7. Parse Response
+    let comparison;
+    try {
+      let responseText = response.content[0].text.trim();
+      
+      responseText = responseText
+        .replace(/^```json\s*\n?/, '')
+        .replace(/^```\s*\n?/, '')
+        .replace(/\n?```\s*$/, '')
+        .trim();
+      
+      console.log('[OFFER-COMPARE] Response length:', responseText.length);
+      
+      comparison = JSON.parse(responseText);
+      
+    } catch (parseError) {
+      console.error('[OFFER-COMPARE] Parse error:', parseError.message);
+      console.error('[OFFER-COMPARE] Response snippet:', response.content[0].text.substring(0, 500));
+      
+      return res.status(500).json({ 
+        error: 'Fehler beim Vergleich', 
+        details: parseError.message 
+      });
+    }
+    
+    // 8. Speichere Vergleich in DB
+    const bauherrResult = await query(
+      'SELECT bauherr_id FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    await query(
+      `INSERT INTO offer_evaluations 
+       (project_id, trade_id, evaluation_type, offer_ids, rating, recommendation, evaluation_data, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      [
+        projectId, 
+        tradeId, 
+        'comparison', 
+        offerIds,
+        null, // Kein einzelnes Rating bei Vergleich
+        comparison.recommendation?.reasoning || comparison.summary,
+        JSON.stringify(comparison),
+        bauherrResult.rows[0]?.bauherr_id
+      ]
+    );
+    
+    console.log(`[OFFER-COMPARE] Comparison completed for ${offers.length} offers`);
+    res.json(comparison);
+    
+  } catch (err) {
+    console.error('[OFFER-COMPARE] Comparison failed:', err);
+    res.status(500).json({ 
+      error: 'Vergleich fehlgeschlagen',
+      details: err.message 
+    });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 3. GESPEICHERTE BEWERTUNGEN ABRUFEN
+// ----------------------------------------------------------------------------
+app.get('/api/projects/:projectId/trades/:tradeId/evaluations', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const result = await query(
+      `SELECT * FROM offer_evaluations 
+       WHERE project_id = $1 AND trade_id = $2
+       ORDER BY created_at DESC`,
+      [projectId, tradeId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching evaluations:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Bewertungen' });
+  }
+});
+
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
