@@ -503,3 +503,4 @@ if (!window.confirm(confirmMessage)) {
     </div>
   );
 }
+}
