@@ -1629,18 +1629,21 @@ const BudgetVisualization = ({ budget }) => {
     ) : (
       <div className="space-y-6">
         {selectedProject?.tenders?.filter(tender => tender.status !== 'awarded' && tender.status !== 'cancelled').map((tender) => {
-          // Berechne Angebotsfrist (10 Werktage nach Erstellung)
-          const createdDate = new Date(tender.created_at);
-          const deadlineDate = new Date(createdDate);
-          let workdaysAdded = 0;
-          
-          while (workdaysAdded < 10) {
-            deadlineDate.setDate(deadlineDate.getDate() + 1);
-            const dayOfWeek = deadlineDate.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Nicht Sonntag (0) oder Samstag (6)
-              workdaysAdded++;
-            }
-          }
+          // Verwende Deadline aus DB (falls vorhanden), sonst berechne
+const deadlineDate = tender.deadline 
+  ? new Date(tender.deadline)
+  : (() => {
+      const createdDate = new Date(tender.created_at);
+      const calculated = new Date(createdDate);
+      let workdaysAdded = 0;
+      
+      while (workdaysAdded < 10) {
+        calculated.setDate(calculated.getDate() + 1);
+        const dayOfWeek = calculated.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) workdaysAdded++;
+      }
+      return calculated;
+    })();
           
           const isExpired = new Date() > deadlineDate;
           const daysRemaining = Math.ceil((deadlineDate - new Date()) / (1000 * 60 * 60 * 24));
@@ -2854,17 +2857,9 @@ const BudgetVisualization = ({ budget }) => {
           Gewerk: <span className="font-semibold text-white">{selectedTenderForExtension.trade_name}</span>
         </p>
         <p className="text-gray-400 text-xs">
-          Aktuelle Frist: {(() => {
-            const createdDate = new Date(selectedTenderForExtension.created_at);
-            const deadlineDate = new Date(createdDate);
-            let workdaysAdded = 0;
-            while (workdaysAdded < 10) {
-              deadlineDate.setDate(deadlineDate.getDate() + 1);
-              const dayOfWeek = deadlineDate.getDay();
-              if (dayOfWeek !== 0 && dayOfWeek !== 6) workdaysAdded++;
-            }
-            return deadlineDate.toLocaleDateString('de-DE');
-          })()}
+          Aktuelle Frist: {selectedTenderForExtension.deadline 
+  ? new Date(selectedTenderForExtension.deadline).toLocaleDateString('de-DE')
+  : 'Nicht gesetzt'}
         </p>
       </div>
 
@@ -2947,30 +2942,21 @@ const BudgetVisualization = ({ budget }) => {
               setLoading(true);
               
               let newDeadline;
-              if (extensionType === 'days') {
-                const currentDeadline = new Date(selectedTenderForExtension.created_at);
-                let workdaysAdded = 0;
-                while (workdaysAdded < 10) {
-                  currentDeadline.setDate(currentDeadline.getDate() + 1);
-                  const dayOfWeek = currentDeadline.getDay();
-                  if (dayOfWeek !== 0 && dayOfWeek !== 6) workdaysAdded++;
-                }
-                
-                let daysToAdd = extensionDays;
-                while (daysToAdd > 0) {
-                  currentDeadline.setDate(currentDeadline.getDate() + 1);
-                  const dayOfWeek = currentDeadline.getDay();
-                  if (dayOfWeek !== 0 && dayOfWeek !== 6) daysToAdd--;
-                }
-                newDeadline = currentDeadline.toISOString();
-              } else {
-                if (!customDeadline) {
-                  alert('❌ Bitte wählen Sie ein Datum');
-                  setLoading(false);
-                  return;
-                }
-                newDeadline = new Date(customDeadline).toISOString();
-              }
+if (extensionType === 'days') {
+  const currentDeadline = selectedTenderForExtension.deadline 
+    ? new Date(selectedTenderForExtension.deadline)
+    : new Date();
+  
+  currentDeadline.setDate(currentDeadline.getDate() + extensionDays);
+  newDeadline = currentDeadline.toISOString().split('T')[0]; // Nur Datum
+} else {
+  if (!customDeadline) {
+    alert('❌ Bitte wählen Sie ein Datum');
+    setLoading(false);
+    return;
+  }
+  newDeadline = customDeadline; // Schon im richtigen Format
+}
 
               const res = await fetch(apiUrl(`/api/tenders/${selectedTenderForExtension.id}/extend-deadline`), {
                 method: 'POST',
