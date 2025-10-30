@@ -1614,7 +1614,11 @@ const BudgetVisualization = ({ budget }) => {
   <div>
     <h2 className="text-2xl font-bold text-white mb-6">Laufende Ausschreibungen</h2>
     
-    {selectedProject?.tenders?.filter(t => t.status !== 'awarded' && t.status !== 'cancelled').length === 0 ? (
+    {selectedProject?.tenders?.filter(t => 
+  t.status !== 'awarded' && 
+  t.status !== 'cancelled' &&
+  !t.has_accepted_offer
+).length === 0 ? (
       <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
         <p className="text-gray-400 mb-4">Noch keine Ausschreibungen gestartet.</p>
         {selectedProject.completedLvs > 0 && (
@@ -1628,7 +1632,11 @@ const BudgetVisualization = ({ budget }) => {
       </div>
     ) : (
       <div className="space-y-6">
-        {selectedProject?.tenders?.filter(tender => tender.status !== 'awarded' && tender.status !== 'cancelled').map((tender) => {
+        {selectedProject?.tenders?.filter(tender => 
+  tender.status !== 'awarded' && 
+  tender.status !== 'cancelled' &&
+  !tender.has_accepted_offer
+).map((tender) => {
           // Verwende Deadline aus DB (falls vorhanden), sonst berechne
 const deadlineDate = tender.deadline 
   ? new Date(tender.deadline)
