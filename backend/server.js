@@ -23940,7 +23940,7 @@ app.post('/api/tenders/:tenderId/cancel', async (req, res) => {
     
     // 2. Finde alle Handwerker mit Angeboten für diese Ausschreibung
     const offersData = await query(
-      `SELECT o.id, o.handwerker_id, h.email, h.name 
+      `SELECT o.id, o.handwerker_id, h.email, h.company_name 
        FROM offers o
        JOIN handwerker h ON o.handwerker_id = h.id
        WHERE o.tender_id = $1`,
