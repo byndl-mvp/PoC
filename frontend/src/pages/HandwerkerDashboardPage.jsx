@@ -396,26 +396,52 @@ export default function HandwerkerDashboardPage() {
 </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
-          {['ausschreibungen', 'bundles', 'angebote', 'vertragsanbahnung', 'auftraege', 'termine'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === tab
-                  ? 'text-teal-400 border-b-2 border-teal-400'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {tab === 'ausschreibungen' && 'Ausschreibungen'}
-              {tab === 'bundles' && 'Projektbündel'}
-              {tab === 'angebote' && 'Meine Angebote'}
-              {tab === 'vertragsanbahnung' && 'Vertragsanbahnung'}
-              {tab === 'auftraege' && 'Aufträge'}
-              {tab === 'termine' && 'Terminplan'}
-            </button>
-          ))}
-        </div>
+<div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
+  {['ausschreibungen', 'bundles', 'angebote', 'vertragsanbahnung', 'auftraege', 'termine'].map((tab) => {
+    // Berechne Badge-Zahlen
+    const badgeCounts = {
+      ausschreibungen: tenders.filter(t => !t.viewed_at).length,
+      angebote: offers.filter(o => o.status === 'submitted' && o.viewed_at && !o.offer_confirmed_at).length,
+      vertragsanbahnung: offers.filter(o => 
+        (o.status === 'preliminary' || o.status === 'confirmed') && 
+        (!o.appointment_confirmed && !o.appointment_skipped)
+      ).length,
+      auftraege: orders.filter(o => 
+        o.status !== 'completed' && 
+        o.status !== 'abgeschlossen' &&
+        o.has_unread_messages
+      ).length
+    };
+    
+    const badgeCount = badgeCounts[tab] || 0;
+    
+    return (
+      <button
+        key={tab}
+        onClick={() => setActiveTab(tab)}
+        className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+          activeTab === tab
+            ? 'text-teal-400 border-b-2 border-teal-400'
+            : 'text-gray-400 hover:text-white'
+        }`}
+      >
+        <span>
+          {tab === 'ausschreibungen' && 'Ausschreibungen'}
+          {tab === 'bundles' && 'Projektbündel'}
+          {tab === 'angebote' && 'Meine Angebote'}
+          {tab === 'vertragsanbahnung' && 'Vertragsanbahnung'}
+          {tab === 'auftraege' && 'Aufträge'}
+          {tab === 'termine' && 'Terminplan'}
+        </span>
+        {badgeCount > 0 && (
+          <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold min-w-[20px] text-center">
+            {badgeCount}
+          </span>
+        )}
+      </button>
+    );
+  })}
+</div>
 
         {/* Content */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
