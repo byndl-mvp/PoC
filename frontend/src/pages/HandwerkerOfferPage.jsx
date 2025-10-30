@@ -289,27 +289,26 @@ if (!window.confirm(confirmMessage)) {
   return;
 }
     
-    try {
-      const res = await fetch(apiUrl(`/api/tenders/${tenderId}/submit-offer`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          handwerkerId: handwerkerData.id,
-          positions,
-          notes,
-          totalSum,
-          isPreliminary: isPreliminary 
-        })
-      });
-      
-      if (!res.ok) throw new Error('Fehler beim Abgeben des Angebots');
-      
-      alert(`✅ ${offerStage === 'preliminary' ? 'Vorläufiges' : 'Verbindliches'} Angebot erfolgreich abgegeben!`);
-      navigate('/handwerker/dashboard');
-    } catch (error) {
-      alert('Fehler: ' + error.message);
-    }
-  };
+   try {
+  const res = await fetch(apiUrl(`/api/tenders/${tenderId}/submit-offer`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      handwerkerId: handwerkerData.id,
+      positions,
+      notes,
+      totalSum,
+      isPreliminary: isPreliminary 
+    })
+  });
+  
+  if (!res.ok) throw new Error('Fehler beim Abgeben des Angebots');
+  
+  alert('✅ Vorläufiges Angebot erfolgreich abgegeben!');
+  navigate('/handwerker/dashboard');
+} catch (error) {
+  alert('Fehler: ' + error.message);
+}
   
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
