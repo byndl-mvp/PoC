@@ -24058,6 +24058,154 @@ app.delete('/api/offers/:offerId/remove-cancelled', async (req, res) => {
   }
 });
 
+// POST /api/tenders/:tenderId/extend-deadline
+app.post('/api/tenders/:tenderId/extend-deadline', async (req, res) => {
+  const { tenderId } = req.params;
+  const { newDeadline, projectId } = req.body;
+  
+  try {
+    await query('BEGIN');
+    
+    // 1. Prüfe ob Ausschreibung existiert
+    const tenderData = await query(
+      'SELECT * FROM tenders WHERE id = $1 AND project_id = $2',
+      [tenderId, projectId]
+    );
+    
+    if (!tenderData.rows || tenderData.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
+    const tender = tenderData.rows[0];
+    
+    // 2. Aktualisiere Deadline
+    await query(
+      'UPDATE tenders SET deadline = $1 WHERE id = $2',
+      [newDeadline, tenderId]
+    );
+    
+    // 3. Finde alle Handwerker für diese Ausschreibung
+    const handwerkersData = await query(
+      `SELECT th.handwerker_id, h.email, h.company_name
+       FROM tender_handwerker th
+       JOIN handwerker h ON th.handwerker_id = h.id
+       WHERE th.tender_id = $1`,
+      [tenderId]
+    );
+    
+    // 4. Benachrichtige alle Handwerker über Fristverlängerung
+    for (const hw of handwerkersData.rows) {
+      await query(
+        `INSERT INTO notifications (
+          user_id, user_type, type, reference_id, message, metadata, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [
+          hw.handwerker_id,
+          'handwerker',
+          'deadline_extended',
+          tenderId,
+          `Die Angebotsfrist für "${tender.trade_name}" wurde bis zum ${new Date(newDeadline).toLocaleDateString('de-DE')} verlängert.`,
+          JSON.stringify({
+            tenderId: tenderId,
+            tradeName: tender.trade_name,
+            newDeadline: newDeadline,
+            projectId: projectId
+          })
+        ]
+      );
+    }
+    
+    await query('COMMIT');
+    
+    res.json({
+      success: true,
+      message: 'Frist wurde erfolgreich verlängert',
+      newDeadline: newDeadline,
+      notifiedHandwerkers: handwerkersData.rows.length
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error extending deadline:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Verlängern der Frist',
+      details: error.message 
+    });
+  }
+});
+
+// GET /api/bauherr/:bauherrId/expiring-tenders
+app.get('/api/bauherr/:bauherrId/expiring-tenders', async (req, res) => {
+  const { bauherrId } = req.params;
+  
+  try {
+    // Finde Ausschreibungen die in 1-2 Tagen ablaufen
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const dayAfterTomorrow = new Date();
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    
+    const expiringTenders = await query(
+      `SELECT t.id, t.trade_name, t.deadline, t.project_id, p.name as project_name
+       FROM tenders t
+       JOIN projects p ON t.project_id = p.id
+       WHERE p.bauherr_id = $1
+       AND t.status = 'active'
+       AND t.deadline >= $2
+       AND t.deadline <= $3
+       AND NOT EXISTS (
+         SELECT 1 FROM notifications 
+         WHERE user_id = $1 
+         AND user_type = 'bauherr'
+         AND type = 'deadline_warning'
+         AND reference_id = t.id
+         AND created_at > NOW() - INTERVAL '24 hours'
+       )`,
+      [bauherrId, tomorrow.toISOString().split('T')[0], dayAfterTomorrow.toISOString().split('T')[0]]
+    );
+    
+    // Erstelle Notifications für ablaufende Fristen
+    for (const tender of expiringTenders.rows) {
+      const daysRemaining = Math.ceil((new Date(tender.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+      
+      await query(
+        `INSERT INTO notifications (
+          user_id, user_type, type, reference_id, message, metadata, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [
+          bauherrId,
+          'bauherr',
+          'deadline_warning',
+          tender.id,
+          `⏰ Die Angebotsfrist für "${tender.trade_name}" läuft in ${daysRemaining} Tag${daysRemaining !== 1 ? 'en' : ''} ab!`,
+          JSON.stringify({
+            tenderId: tender.id,
+            tradeName: tender.trade_name,
+            deadline: tender.deadline,
+            projectId: tender.project_id,
+            projectName: tender.project_name,
+            action: 'view_tenders'
+          })
+        ]
+      );
+    }
+    
+    res.json({
+      success: true,
+      expiringTenders: expiringTenders.rows.length
+    });
+    
+  } catch (error) {
+    console.error('Error checking expiring tenders:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Prüfen ablaufender Fristen',
+      details: error.message 
+    });
+  }
+});
+
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
