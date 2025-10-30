@@ -522,7 +522,7 @@ const handleEvaluateSingleOffer = async (offer, tradeName) => {
     setEvaluationModal({
       isOpen: true,
       type: 'single',
-      data: result.evaluation,
+      data: result,
       companyName: offer.company_name || offer.companyName
     });
   } catch (error) {
