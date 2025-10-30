@@ -187,7 +187,6 @@ export default function HandwerkerOfferPage() {
   const [handwerkerData, setHandwerkerData] = useState(null);
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [offerStage, setOfferStage] = useState('preliminary'); // preliminary oder final
   const [vorbemerkungen, setVorbemerkungen] = useState([]);
   
   useEffect(() => {
