@@ -72,14 +72,31 @@ export default function HandwerkerDashboardPage() {
     return () => clearInterval(interval);
   }, [handwerkerData?.id]);
 
-  useEffect(() => {
+ // 1. DIESER useEffect wird ERSETZT (Tab-Wechsel tracken + speichern)
+useEffect(() => {
   if (activeTab && ['ausschreibungen', 'bundles', 'angebote', 'vertragsanbahnung', 'auftraege'].includes(activeTab)) {
+    const timestamp = new Date().toISOString();
     setLastViewedTabs(prev => ({
       ...prev,
-      [activeTab]: new Date().toISOString()
+      [activeTab]: timestamp
     }));
+    sessionStorage.setItem(`handwerker_lastViewed_${activeTab}`, timestamp);
   }
 }, [activeTab]);
+
+// 2. DIESER useEffect wird NEU HINZUGEFÜGT (beim Start laden)
+useEffect(() => {
+  const tabs = ['ausschreibungen', 'bundles', 'angebote', 'vertragsanbahnung', 'auftraege'];
+  const stored = {};
+  tabs.forEach(tab => {
+    const value = sessionStorage.getItem(`handwerker_lastViewed_${tab}`);
+    if (value) stored[tab] = value;
+  });
+  
+  if (Object.keys(stored).length > 0) {
+    setLastViewedTabs(prev => ({ ...prev, ...stored }));
+  }
+}, []);
   
   const loadDashboardData = async (handwerker) => {
   try {
