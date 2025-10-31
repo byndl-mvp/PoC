@@ -24366,6 +24366,11 @@ app.post('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', as
     } else {
       return res.status(500).json({ error: 'Angebotsdaten ungültig' });
     }
+
+    // FÜGE DIESE ZEILEN HIER EIN:
+if (Array.isArray(offerLvData)) {
+  offerLvData = { positions: offerLvData };
+}
     
     if (!offerLvData.positions || !Array.isArray(offerLvData.positions)) {
       return res.status(400).json({ error: 'Keine Positionen im Angebot gefunden' });
@@ -24692,6 +24697,12 @@ const offerIds = offers.map(o => o.id);
       } else {
         offerLvData = offer.lv_data;
       }
+
+      // HIER EINFÜGEN (nach Zeile 386):
+  if (Array.isArray(offerLvData)) {
+    offerLvData = { positions: offerLvData };
+  }
+      
       return {
         ...offer,
         parsed_lv: offerLvData
