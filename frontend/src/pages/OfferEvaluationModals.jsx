@@ -402,31 +402,31 @@ export function OfferComparisonModal({ isOpen, onClose, comparison }) {
     <div>
       <p className="text-sm text-gray-600">Günstigstes</p>
       <p className="text-xl font-bold text-green-600">
-        {evaluation.priceComparison?.cheapest?.amount?.toLocaleString('de-DE', {
+        {comparison.priceComparison?.cheapest?.amount?.toLocaleString('de-DE', {
           style: 'currency',
           currency: 'EUR'
         }) || '—'}
       </p>
       <p className="text-sm text-gray-500">
-        {evaluation.priceComparison?.cheapest?.company || '—'}
+        {comparison.priceComparison?.cheapest?.company || '—'}
       </p>
     </div>
     <div>
       <p className="text-sm text-gray-600">Teuerstes</p>
       <p className="text-xl font-bold text-red-600">
-        {evaluation.priceComparison?.mostExpensive?.amount?.toLocaleString('de-DE', {
+        {comparison.priceComparison?.mostExpensive?.amount?.toLocaleString('de-DE', {
           style: 'currency',
           currency: 'EUR'
         }) || '—'}
       </p>
       <p className="text-sm text-gray-500">
-        {evaluation.priceComparison?.mostExpensive?.company || '—'}
+        {comparison.priceComparison?.mostExpensive?.company || '—'}
       </p>
     </div>
     <div>
       <p className="text-sm text-gray-600">Referenz (KI)</p>
       <p className="text-xl font-bold">
-        {evaluation.priceComparison?.referencePrice?.toLocaleString('de-DE', {
+        {comparison.priceComparison?.referencePrice?.toLocaleString('de-DE', {
           style: 'currency',
           currency: 'EUR'
         }) || '—'}
@@ -435,15 +435,15 @@ export function OfferComparisonModal({ isOpen, onClose, comparison }) {
     <div>
       <p className="text-sm text-gray-600">Preisspanne</p>
       <p className="text-xl font-bold">
-        {evaluation.priceComparison?.priceRange?.spreadPercent !== undefined 
-          ? `${evaluation.priceComparison.priceRange.spreadPercent.toFixed(1)}%`
+        {comparison.priceComparison?.priceRange?.spreadPercent !== undefined 
+          ? `${comparison.priceComparison.priceRange.spreadPercent.toFixed(1)}%`
           : '—'}
       </p>
     </div>
   </div>
-  {evaluation.priceComparison?.assessment && (
+  {comparison.priceComparison?.assessment && (
     <p className="mt-4 text-sm text-gray-600">
-      {evaluation.priceComparison.assessment}
+      {comparison.priceComparison.assessment}
     </p>
   )}
 </div>
