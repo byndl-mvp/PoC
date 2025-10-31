@@ -334,7 +334,9 @@ export function OfferComparisonModal({ isOpen, onClose, comparison }) {
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">byndl-Vergabeempfehlung</h2>
-            <p className="text-sm text-gray-600 mt-1">Vergleich von {comparison.ranking?.length || 0} Angeboten</p>
+            <p className="text-sm text-gray-600 mt-1">
+  Vergleich von {comparison.offerAnalysis?.length || comparison.ranking?.length || 0} Angeboten
+</p>
           </div>
           <button
             onClick={onClose}
@@ -366,44 +368,60 @@ export function OfferComparisonModal({ isOpen, onClose, comparison }) {
           </div>
 
           {/* Preisvergleich */}
-          {comparison.priceComparison && (
-            <div className="bg-gray-50 rounded-lg p-6 mb-6">
-              <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <TrendingDown className="w-5 h-5" />
-                Preisvergleich
-              </h4>
-              <div className="grid grid-cols-4 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-gray-600">Günstigstes</p>
-                  <p className="text-lg font-bold text-green-700">
-                    {comparison.priceComparison.cheapest?.amount?.toLocaleString('de-DE')}€
-                  </p>
-                  <p className="text-xs text-gray-500">{comparison.priceComparison.cheapest?.company}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Teuerstes</p>
-                  <p className="text-lg font-bold text-red-700">
-                    {comparison.priceComparison.mostExpensive?.amount?.toLocaleString('de-DE')}€
-                  </p>
-                  <p className="text-xs text-gray-500">{comparison.priceComparison.mostExpensive?.company}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Referenz (KI)</p>
-                  <p className="text-lg font-bold text-gray-700">
-                    {comparison.priceComparison.reference?.toLocaleString('de-DE')}€
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Preisspanne</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {comparison.priceComparison.spread?.toFixed(1)}%
-                  </p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700 border-t border-gray-200 pt-4">
-                {comparison.priceComparison.assessment}
-              </p>
-            </div>
+<div className="mb-8">
+  <h3 className="text-lg font-semibold mb-4 flex items-center">
+    <TrendingUp className="w-5 h-5 mr-2" />
+    Preisvergleich
+  </h3>
+  <div className="grid grid-cols-4 gap-4">
+    <div>
+      <p className="text-sm text-gray-600">Günstigstes</p>
+      <p className="text-xl font-bold text-green-600">
+        {evaluation.priceComparison?.cheapest?.amount?.toLocaleString('de-DE', {
+          style: 'currency',
+          currency: 'EUR'
+        }) || '—'}
+      </p>
+      <p className="text-sm text-gray-500">
+        {evaluation.priceComparison?.cheapest?.company || '—'}
+      </p>
+    </div>
+    <div>
+      <p className="text-sm text-gray-600">Teuerstes</p>
+      <p className="text-xl font-bold text-red-600">
+        {evaluation.priceComparison?.mostExpensive?.amount?.toLocaleString('de-DE', {
+          style: 'currency',
+          currency: 'EUR'
+        }) || '—'}
+      </p>
+      <p className="text-sm text-gray-500">
+        {evaluation.priceComparison?.mostExpensive?.company || '—'}
+      </p>
+    </div>
+    <div>
+      <p className="text-sm text-gray-600">Referenz (KI)</p>
+      <p className="text-xl font-bold">
+        {evaluation.priceComparison?.referencePrice?.toLocaleString('de-DE', {
+          style: 'currency',
+          currency: 'EUR'
+        }) || '—'}
+      </p>
+    </div>
+    <div>
+      <p className="text-sm text-gray-600">Preisspanne</p>
+      <p className="text-xl font-bold">
+        {evaluation.priceComparison?.priceRange?.spreadPercent !== undefined 
+          ? `${evaluation.priceComparison.priceRange.spreadPercent.toFixed(1)}%`
+          : '—'}
+      </p>
+    </div>
+  </div>
+  {evaluation.priceComparison?.assessment && (
+    <p className="mt-4 text-sm text-gray-600">
+      {evaluation.priceComparison.assessment}
+    </p>
+  )}
+</div>
           )}
 
           {/* Ranking */}
