@@ -76,34 +76,44 @@ export function OfferEvaluationModal({ isOpen, onClose, evaluation, companyName 
           </div>
 
           {/* Preisübersicht */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Preisübersicht
-            </h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Angebotssumme</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {evaluation.totalOffered?.toLocaleString('de-DE')}€
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Referenzpreis (KI)</p>
-                <p className="text-xl font-bold text-gray-700">
-                  {evaluation.totalReference?.toLocaleString('de-DE')}€
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Abweichung</p>
-                <p className={`text-xl font-bold ${
-                  Math.abs(evaluation.deviation) > 30 ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {evaluation.deviation > 0 ? '+' : ''}{evaluation.deviation?.toFixed(1)}%
-                </p>
-              </div>
-            </div>
-          </div>
+<div className="bg-gray-50 rounded-lg p-6">
+  <h3 className="text-lg font-semibold mb-4 flex items-center">
+    <TrendingUp className="w-5 h-5 mr-2" />
+    Preisübersicht
+  </h3>
+  <div className="grid grid-cols-3 gap-4">
+    <div>
+      <p className="text-sm text-gray-600">Angebotssumme</p>
+      <p className="text-2xl font-bold">
+        {evaluation.priceAnalysis?.totalOffer?.toLocaleString('de-DE', {
+          style: 'currency',
+          currency: 'EUR'
+        }) || '—'}
+      </p>
+    </div>
+    <div>
+      <p className="text-sm text-gray-600">Referenzpreis (KI)</p>
+      <p className="text-2xl font-bold">
+        {evaluation.priceAnalysis?.totalReference?.toLocaleString('de-DE', {
+          style: 'currency',
+          currency: 'EUR'
+        }) || '—'}
+      </p>
+    </div>
+    <div>
+      <p className="text-sm text-gray-600">Abweichung</p>
+      <p className={`text-2xl font-bold ${
+        Math.abs(evaluation.priceAnalysis?.deviationPercent || 0) > 15 
+          ? 'text-red-600' 
+          : 'text-green-600'
+      }`}>
+        {evaluation.priceAnalysis?.deviationPercent !== undefined 
+          ? `${evaluation.priceAnalysis.deviationPercent > 0 ? '+' : ''}${evaluation.priceAnalysis.deviationPercent.toFixed(1)}%`
+          : '—'}
+      </p>
+    </div>
+  </div>
+</div>
 
           {/* Vollständigkeit */}
           {evaluation.completeness && (
