@@ -157,32 +157,57 @@ export function OfferEvaluationModal({ isOpen, onClose, evaluation, companyName 
           )}
 
           {/* Preisanalyse - Auffälligkeiten */}
-          {(evaluation.priceAnalysis?.outliers || evaluation.priceAnalysis?.significantDeviations)?.length > 0 && (
-            <div className="mb-6">
-              <h4 className="font-semibold text-gray-900 mb-3">Preisliche Auffälligkeiten</h4>
-              <div className="space-y-3">
-                {(evaluation.priceAnalysis.outliers || evaluation.priceAnalysis.significantDeviations).map((dev, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-medium text-gray-900">{dev.position}: {dev.title}</p>
-                        <p className="text-sm text-gray-600 mt-1">{dev.assessment}</p>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-sm font-medium ${
-                        Math.abs(dev.deviation) > 50 ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {(dev.deviation || dev.deviationPercent) > 0 ? '+' : ''}{(dev.deviation || dev.deviationPercent)}%
-                      </span>
-                    </div>
-                    <div className="flex gap-4 text-sm">
-                      <span className="text-gray-600">Angebot: <strong>{dev.offered}€</strong></span>
-                      <span className="text-gray-600">Referenz: <strong>{dev.reference}€</strong></span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+{(evaluation.priceAnalysis?.outliers || evaluation.priceAnalysis?.significantDeviations)?.length > 0 && (
+  <div className="mb-6">
+    <h4 className="font-semibold text-gray-900 mb-3">Preisliche Auffälligkeiten</h4>
+    <div className="space-y-3">
+      {(evaluation.priceAnalysis.outliers || evaluation.priceAnalysis.significantDeviations).map((dev, idx) => (
+        <div key={idx} className="border border-gray-200 rounded-lg p-4">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex-1">
+              <p className="font-medium text-gray-900">
+                {dev.position}: {dev.title}
+              </p>
+              {(dev.explanation || dev.assessment) && (
+                <p className="text-sm text-gray-600 mt-1">
+                  {dev.explanation || dev.assessment}
+                </p>
+              )}
             </div>
-          )}
+            <span className={`px-2 py-1 rounded text-sm font-medium ml-3 ${
+              dev.severity === 'high' || Math.abs(dev.deviationPercent || dev.deviation) > 50 
+                ? 'bg-red-100 text-red-800' : 
+              dev.severity === 'medium' || Math.abs(dev.deviationPercent || dev.deviation) > 20 
+                ? 'bg-yellow-100 text-yellow-800' :
+                'bg-blue-100 text-blue-800'
+            }`}>
+              {(dev.deviationPercent || dev.deviation) > 0 ? '+' : ''}
+              {(dev.deviationPercent || dev.deviation)?.toFixed(0)}%
+            </span>
+          </div>
+          <div className="flex gap-4 text-sm">
+            <span className="text-gray-600">
+              Angebot: <strong className="text-gray-900">
+                {(dev.offerPrice || dev.offered)?.toLocaleString('de-DE', {
+                  style: 'currency',
+                  currency: 'EUR'
+                })}
+              </strong>
+            </span>
+            <span className="text-gray-600">
+              Referenz: <strong className="text-gray-900">
+                {(dev.referencePrice || dev.reference)?.toLocaleString('de-DE', {
+                  style: 'currency',
+                  currency: 'EUR'
+                })}
+              </strong>
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
           {/* Zusätzliche Positionen */}
           {evaluation.additionalPositions?.length > 0 && (
