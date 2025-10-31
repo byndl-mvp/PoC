@@ -157,11 +157,11 @@ export function OfferEvaluationModal({ isOpen, onClose, evaluation, companyName 
           )}
 
           {/* Preisanalyse - Auffälligkeiten */}
-          {evaluation.priceAnalysis?.significantDeviations?.length > 0 && (
+          {(evaluation.priceAnalysis?.outliers || evaluation.priceAnalysis?.significantDeviations)?.length > 0 && (
             <div className="mb-6">
               <h4 className="font-semibold text-gray-900 mb-3">Preisliche Auffälligkeiten</h4>
               <div className="space-y-3">
-                {evaluation.priceAnalysis.significantDeviations.map((dev, idx) => (
+                {(evaluation.priceAnalysis.outliers || evaluation.priceAnalysis.significantDeviations).map((dev, idx) => (
                   <div key={idx} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -171,7 +171,7 @@ export function OfferEvaluationModal({ isOpen, onClose, evaluation, companyName 
                       <span className={`px-2 py-1 rounded text-sm font-medium ${
                         Math.abs(dev.deviation) > 50 ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {dev.deviation > 0 ? '+' : ''}{dev.deviation}%
+                        {(dev.deviation || dev.deviationPercent) > 0 ? '+' : ''}{(dev.deviation || dev.deviationPercent)}%
                       </span>
                     </div>
                     <div className="flex gap-4 text-sm">
