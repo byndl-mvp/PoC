@@ -256,11 +256,18 @@ export function OfferEvaluationModal({ isOpen, onClose, evaluation, companyName 
             </div>
           )}
 
-          {/* Finale Empfehlung */}
-          <div className="bg-gray-900 text-white rounded-lg p-6">
-            <h4 className="font-semibold mb-3 text-lg">Fazit</h4>
-            <p className="leading-relaxed">{evaluation.finalRecommendation}</p>
-          </div>
+          {/* Fazit */}
+<div className="bg-gray-900 text-white rounded-lg p-6">
+  <h3 className="text-lg font-semibold mb-3">Fazit</h3>
+  <p className="text-gray-300 mb-4">
+    {evaluation.summary || evaluation.recommendation?.reasoning || 'Keine Zusammenfassung verfügbar'}
+  </p>
+  {evaluation.legalDisclaimer && (
+    <p className="text-sm text-gray-400 italic mt-4 pt-4 border-t border-gray-700">
+      {evaluation.legalDisclaimer || 'Die Bewertung erfolgt ohne Gewähr auf Basis der vorliegenden Informationen. Die finale Vergabeentscheidung liegt beim Auftraggeber.'}
+    </p>
+  )}
+</div>
 
           {/* Disclaimer */}
           <div className="mt-4 text-xs text-gray-500 text-center">
