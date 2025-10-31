@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, AlertCircle, CheckCircle, AlertTriangle, TrendingUp, TrendingDown, FileText, Users } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, AlertTriangle, TrendingUp, FileText, Users } from 'lucide-react';
 
 // ============================================================================
 // MODAL: EINZELNE ANGEBOTSBEWERTUNG
