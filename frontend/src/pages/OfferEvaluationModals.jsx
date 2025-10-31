@@ -552,10 +552,36 @@ export function OfferComparisonModal({ isOpen, onClose, comparison }) {
           )}
 
           {/* Finale Empfehlung */}
-          <div className="bg-gray-900 text-white rounded-lg p-6 mb-4">
-            <h4 className="font-semibold mb-3 text-lg">Vergabeempfehlung</h4>
-            <p className="leading-relaxed">{comparison.finalRecommendation}</p>
-          </div>
+<div className="bg-gray-900 text-white rounded-lg p-6 mb-4">
+  <h4 className="font-semibold mb-3 text-lg">Vergabeempfehlung</h4>
+  
+  {/* Empfohlenes Angebot */}
+  {comparison.recommendation?.recommendedCompany && (
+    <div className="mb-4 p-4 bg-gray-800 rounded">
+      <p className="text-sm text-gray-400 mb-1">Empfohlenes Angebot:</p>
+      <p className="text-xl font-bold text-green-400">
+        {comparison.recommendation.recommendedCompany}
+      </p>
+    </div>
+  )}
+  
+  {/* Begründung */}
+  <p className="text-gray-300">
+    {comparison.summary || comparison.recommendation?.reasoning || 'Keine Empfehlung verfügbar'}
+  </p>
+  
+  {/* Nächste Schritte */}
+  {comparison.nextSteps && comparison.nextSteps.length > 0 && (
+    <div className="mt-4 pt-4 border-t border-gray-700">
+      <p className="text-sm font-semibold mb-2">Nächste Schritte:</p>
+      <ul className="text-sm text-gray-400 space-y-1">
+        {comparison.nextSteps.map((step, idx) => (
+          <li key={idx}>• {step}</li>
+        ))}
+      </ul>
+    </div>
+  )}
+</div>
 
           {/* Rechtlicher Disclaimer */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
