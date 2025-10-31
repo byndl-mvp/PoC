@@ -24296,8 +24296,10 @@ app.post('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', as
   
   try {
     const { projectId, tradeId, offerId } = req.params;
+    console.log('[OFFER-EVALUATE] Params:', { projectId, tradeId, offerId });
     
     // 1. Lade Original-LV mit KI-Preisen
+    console.log('[OFFER-EVALUATE] Step 1: Loading LV...');
     const lvData = await query(
       `SELECT l.*, t.name as trade_name, t.code as trade_code 
        FROM lvs l 
@@ -24305,11 +24307,13 @@ app.post('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', as
        WHERE l.project_id = $1 AND l.trade_id = $2`,
       [projectId, tradeId]
     );
+    console.log('[OFFER-EVALUATE] LV found:', !!lvData.rows[0]);
     
     if (!lvData.rows[0]) {
+      console.log('[OFFER-EVALUATE] ERROR: No LV found!');
       return res.status(404).json({ error: 'Leistungsverzeichnis nicht gefunden' });
     }
-    
+    console.log('[OFFER-EVALUATE] Step 2: Parsing LV...');
     const lv = lvData.rows[0];
     
     // Parse LV Content
@@ -24622,6 +24626,7 @@ Bewerte dieses Angebot umfassend und erstelle eine Empfehlung!`;
     
   } catch (err) {
     console.error('[OFFER-EVALUATE] Evaluation failed:', err);
+    console.error('[OFFER-EVALUATE] ERROR DETAILS:', err.message);
     res.status(500).json({ 
       error: 'Bewertung fehlgeschlagen',
       details: err.message 
