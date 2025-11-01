@@ -2267,7 +2267,7 @@ const deadlineDate = tender.deadline
                               <p className="text-yellow-200 text-sm flex items-start gap-2">
                                 <span className="text-lg">⚠️</span>
                                 <span>
-                                  <strong>Wichtig:</strong> Der angebotene Bündelrabatt von {offer.bundleDiscount}% gilt nur, 
+                                  <strong>Wichtig:</strong> Der angebotene Bündelrabatt von {offer.bundle_discount}% gilt nur, 
                                   wenn Sie <strong>alle Projekte im Bündel</strong> an {offer.companyName || offer.company_name} beauftragen. 
                                   Bei Einzelbeauftragung entfällt der Rabatt.
                                 </span>
