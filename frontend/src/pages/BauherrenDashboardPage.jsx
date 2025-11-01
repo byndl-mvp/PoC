@@ -2354,9 +2354,15 @@ const deadlineDate = tender.deadline
               </div>
               
               <div className="text-right ml-6">
-                <p className="text-2xl font-bold text-teal-400 mb-2">
-                  {formatCurrency(offer.amount)}
-                </p>
+  <p className="text-sm text-gray-400 mb-1">
+    Netto: {formatCurrency(offer.amount)}
+  </p>
+  <p className="text-2xl font-bold text-teal-400 mb-2">
+    {formatCurrency((offer.amount || 0) * 1.19)}
+  </p>
+  <p className="text-xs text-gray-400 mb-3">
+    Brutto (inkl. 19% MwSt.)
+  </p>
                 <p className="text-xs text-gray-400">
                   Vertragsanbahnung seit:<br />
                   {new Date(offer.preliminary_accepted_at || offer.created_at).toLocaleDateString('de-DE')}
