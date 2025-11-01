@@ -526,7 +526,7 @@ const res = await fetch(apiUrl(`/api/bundles/${bundleId}/submit-offer`), {
           
           <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
             <p className="text-green-300 text-sm">
-              <strong>💡 Empfehlung:</strong> Mit einem Bündelrabatt von 5-15% erhöhen Sie Ihre Chancen deutlich. 
+              <strong>💡 Empfehlung:</strong> Mit einem Bündelrabatt erhöhen Sie Ihre Chancen deutlich. 
               Bauherren sehen den Mehrwert und bevorzugen koordinierte Angebote.
             </p>
           </div>
