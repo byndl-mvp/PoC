@@ -153,10 +153,10 @@ const totalUnreadCount = conversations.reduce((sum, conv) => {
 >
   <MessageSquare className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
   {totalUnreadCount > 0 && (
-    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center animate-pulse">
-      {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
-    </span>
-  )}
+  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center animate-pulse">
+    {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+  </span>
+)}
 </button>
 
       {/* Message Center Panel - MIT PORTAL */}
