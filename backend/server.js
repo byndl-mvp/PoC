@@ -21800,24 +21800,34 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
 // ============================================
 
 async function checkAndAddToExistingBundle(tenderId) {
+  console.log(`🔍 [BUNDLE-EXPANSION] Starting check for tender ${tenderId}`);
+  
   try {
     // Hole Tender-Details
     const tenderResult = await query(
       `SELECT tn.*, p.zip_code, p.street, p.house_number, p.city,
               COALESCE(p.geocoded_lat, z.latitude) as lat,
-              COALESCE(p.geocoded_lng, z.longitude) as lng
+              COALESCE(p.geocoded_lng, z.longitude) as lng,
+              t.code as trade_code
        FROM tenders tn
        JOIN projects p ON tn.project_id = p.id
+       JOIN trades t ON tn.trade_id = t.id
        LEFT JOIN zip_codes z ON p.zip_code = z.zip
        WHERE tn.id = $1 AND tn.bundle_id IS NULL`,
       [tenderId]
     );
     
-    if (tenderResult.rows.length === 0) return;
+    console.log(`📊 [BUNDLE-EXPANSION] Tender result:`, tenderResult.rows);
+    
+    if (tenderResult.rows.length === 0) {
+      console.log(`⚠️ [BUNDLE-EXPANSION] Tender ${tenderId} not found or already in bundle`);
+      return;
+    }
     
     const tender = tenderResult.rows[0];
+    console.log(`✅ [BUNDLE-EXPANSION] Tender ${tenderId} - Trade: ${tender.trade_code}, Coords: ${tender.lat}, ${tender.lng}`);
     
-    // Finde passende offene Bundles (gleiches Gewerk, ähnliche Region)
+    // Finde passende offene Bundles
     const bundlesResult = await query(
       `SELECT b.id, b.region, b.trade_code, b.current_projects,
               array_agg(
@@ -21834,34 +21844,48 @@ async function checkAndAddToExistingBundle(tenderId) {
        AND b.status IN ('forming', 'open', 'offered')
        AND b.current_projects < b.max_projects
        GROUP BY b.id, b.region, b.trade_code, b.current_projects`,
-      [tender.trade_id]
+      [tender.trade_code]
     );
     
-    if (bundlesResult.rows.length === 0) return;
+    console.log(`📦 [BUNDLE-EXPANSION] Found ${bundlesResult.rows.length} potential bundles for trade ${tender.trade_code}`);
+    console.log(`📦 [BUNDLE-EXPANSION] Bundles:`, JSON.stringify(bundlesResult.rows, null, 2));
+    
+    if (bundlesResult.rows.length === 0) {
+      console.log(`⚠️ [BUNDLE-EXPANSION] No bundles found for trade ${tender.trade_code}`);
+      return;
+    }
     
     // Prüfe Distanz zu jedem Bundle
     for (const bundle of bundlesResult.rows) {
+      console.log(`🔍 [BUNDLE-EXPANSION] Checking bundle ${bundle.id}`);
+      
       let maxDistance = 0;
       let allWithinRange = true;
       
-      // Prüfe ob neues Projekt zu allen Projekten im Bundle passt
       for (const coord of bundle.project_coords) {
-        if (!coord.lat || !coord.lng || !tender.lat || !tender.lng) continue;
+        if (!coord.lat || !coord.lng || !tender.lat || !tender.lng) {
+          console.log(`⚠️ [BUNDLE-EXPANSION] Missing coordinates - skipping`);
+          continue;
+        }
         
         const distance = haversineDistance(
           { lat: parseFloat(tender.lat), lng: parseFloat(tender.lng) },
           { lat: parseFloat(coord.lat), lng: parseFloat(coord.lng) }
         );
         
+        console.log(`📏 [BUNDLE-EXPANSION] Distance: ${distance.toFixed(2)} km`);
+        
         if (distance > maxDistance) maxDistance = distance;
-        if (distance > 15) { // Max 15km zwischen Projekten
+        if (distance > 15) {
           allWithinRange = false;
+          console.log(`❌ [BUNDLE-EXPANSION] Distance ${distance.toFixed(2)} km exceeds 15km limit`);
           break;
         }
       }
       
-      // Wenn Projekt zu Bundle passt, füge hinzu
       if (allWithinRange) {
+        console.log(`✅ [BUNDLE-EXPANSION] Bundle ${bundle.id} matches! Adding tender ${tenderId}...`);
+        
         await query(
           `UPDATE tenders 
            SET bundle_id = $1 
@@ -21877,13 +21901,17 @@ async function checkAndAddToExistingBundle(tenderId) {
           [tender.estimated_value || 0, bundle.id]
         );
         
-        console.log(`✅ Tender ${tenderId} zu Bundle ${bundle.id} hinzugefügt (${bundle.current_projects + 1} Projekte)`);
-        return; // Nur zu einem Bundle hinzufügen
+        console.log(`🎉 [BUNDLE-EXPANSION] Tender ${tenderId} successfully added to Bundle ${bundle.id}`);
+        return;
+      } else {
+        console.log(`❌ [BUNDLE-EXPANSION] Bundle ${bundle.id} rejected - distance too far`);
       }
     }
     
+    console.log(`⚠️ [BUNDLE-EXPANSION] No suitable bundle found for tender ${tenderId}`);
+    
   } catch (error) {
-    console.error('Error checking bundle expansion:', error);
+    console.error(`❌ [BUNDLE-EXPANSION] Error:`, error);
   }
 }
 
