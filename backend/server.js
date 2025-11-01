@@ -21868,55 +21868,57 @@ const bundles = bundlesResult.rows.map(bundle => {
     }
     return p;
   });
-      
-      // Berechne maximale Distanz zwischen Projekten
-      let maxDistance = 0;
-      for (let i = 0; i < projects.length; i++) {
-        for (let j = i + 1; j < projects.length; j++) {
-          if (projects[i].lat && projects[i].lng && projects[j].lat && projects[j].lng) {
-            const dist = haversineDistance(
-              { lat: projects[i].lat, lng: projects[i].lng },
-              { lat: projects[j].lat, lng: projects[j].lng }
-            );
-            if (dist > maxDistance) maxDistance = dist;
-          }
-        }
+  
+  // Berechne maximale Distanz zwischen Projekten (MIT OFFSET)
+  let maxDistance = 0;
+  for (let i = 0; i < projectsWithOffset.length; i++) {
+    for (let j = i + 1; j < projectsWithOffset.length; j++) {
+      if (projectsWithOffset[i].lat && projectsWithOffset[i].lng && 
+          projectsWithOffset[j].lat && projectsWithOffset[j].lng) {
+        const dist = haversineDistance(
+          { lat: projectsWithOffset[i].lat, lng: projectsWithOffset[i].lng },
+          { lat: projectsWithOffset[j].lat, lng: projectsWithOffset[j].lng }
+        );
+        if (dist > maxDistance) maxDistance = dist;
       }
+    }
+  }
+  
+  // Berechne Gesamtfahrzeit zwischen allen Projekten (Projekt 1→2→3→...)
+  let totalTravelTime = 0;
+  if (projectsWithOffset.length > 1) {
+    for (let i = 0; i < projectsWithOffset.length - 1; i++) {
+      const p1 = projectsWithOffset[i];
+      const p2 = projectsWithOffset[i + 1];
       
-      // Berechne Fahrzeiten von Firmenadresse zu jedem Projekt (vereinfacht)
-      const travelTimes = projects.map(project => {
-        if (handwerker.latitude && handwerker.longitude && project.lat && project.lng) {
-          const distance = haversineDistance(
-            { lat: handwerker.latitude, lng: handwerker.longitude },
-            { lat: project.lat, lng: project.lng }
-          );
-          // Vereinfachte Fahrzeit: Durchschnitt 50 km/h in der Stadt
-          return Math.round(distance / 50 * 60); // in Minuten
-        }
-        return null;
-      }).filter(t => t !== null);
-      
-      const avgTravelTime = travelTimes.length > 0 
-        ? Math.round(travelTimes.reduce((a, b) => a + b, 0) / travelTimes.length)
-        : 0;
-      
-      return {
-        id: bundle.bundle_id,
-        trade: bundle.trade_name,
-        trade_code: bundle.trade_code,
-        region: bundle.region,
-        projectCount: parseInt(bundle.project_count),
-        totalVolume: parseFloat(bundle.total_volume || 0),
-        maxDistance: Math.round(maxDistance * 10) / 10,
-        avgTravelTime: avgTravelTime,
-        status: bundle.status,
-        created_at: bundle.created_at,
-        projects: projectsWithOffset.map(p => ({
-          ...p,
-          volume: parseFloat(p.volume || 0)
-        }))
-      };
-    });
+      if (p1.lat && p1.lng && p2.lat && p2.lng) {
+        const distance = haversineDistance(
+          { lat: p1.lat, lng: p1.lng },
+          { lat: p2.lat, lng: p2.lng }
+        );
+        // Faktor 1.4 für realistische Straßenstrecke, 40 km/h Stadt-Durchschnitt
+        totalTravelTime += Math.round((distance * 1.4) / 40 * 60);
+      }
+    }
+  }
+  
+  return {
+    id: bundle.bundle_id,
+    trade: bundle.trade_name,
+    trade_code: bundle.trade_code,
+    region: bundle.region,
+    projectCount: parseInt(bundle.project_count),
+    totalVolume: parseFloat(bundle.total_volume || 0),
+    maxDistance: Math.round(maxDistance * 10) / 10,
+    totalTravelTime: totalTravelTime,
+    status: bundle.status,
+    created_at: bundle.created_at,
+    projects: projectsWithOffset.map(p => ({
+      ...p,
+      volume: parseFloat(p.volume || 0)
+    }))
+  };
+});
     
     res.json(bundles);
   } catch (error) {
