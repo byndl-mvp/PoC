@@ -416,7 +416,7 @@ useEffect(() => {
   const totalNetto = calculateTotalAmount();
   const totalBrutto = totalNetto * 1.19;
   const savingsFromDiscount = Object.values(projectOffers).reduce((sum, offer) => sum + (offer.amount || 0), 0) * (bundleDiscount / 100);
-  const totalTravelTime = calculateTotalTravelTime();
+  // Wird bereits im useEffect berechnet und in travelTime State gespeichert
   
   // Runde geschätztes Volumen auf 500 Euro
   const estimatedVolume = Math.round(bundle.total_volume / 500) * 500;
