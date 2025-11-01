@@ -677,11 +677,11 @@ const badgeCounts = {
                   </div>
                   
                   <div className="bg-white/5 rounded-lg p-4">
-                    <p className="text-gray-400 text-sm mb-1">Ø Fahrzeit</p>
-                    <p className="text-2xl font-bold text-purple-400">
-                      {bundle.avgTravelTime} Min.
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">Von Ihrer Firma</p>
+                   <p className="text-gray-400 text-sm mb-1">Fahrzeit</p>
+<p className="text-2xl font-bold text-purple-400">
+  {bundle.totalTravelTime} Min.
+</p>
+<p className="text-xs text-gray-500 mt-1">Zwischen allen Projekten</p>
                   </div>
                 </div>
               </div>
