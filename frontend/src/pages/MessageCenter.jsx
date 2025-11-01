@@ -143,17 +143,18 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
   return (
     <>
      {/* Message Icon Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-white/10 backdrop-blur rounded-lg border border-white/20 hover:bg-white/20 transition-all"
-      >
-        <MessageSquare className="w-6 h-6 text-white" />
-        {totalUnread > 0 && (
-          <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-            {totalUnread > 9 ? '9+' : totalUnread}
-          </span>
-        )}
-      </button>
+<button
+  onClick={() => setIsOpen(!isOpen)}
+  className="relative p-3 bg-white/10 backdrop-blur rounded-lg border border-white/20 hover:bg-white/20 transition-all group"
+  aria-label="Nachrichten"
+>
+  <MessageSquare className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
+  {totalUnreadCount > 0 && (
+    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center animate-pulse">
+      {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+    </span>
+  )}
+</button>
 
       {/* Message Center Panel - MIT PORTAL */}
       {isOpen && ReactDOM.createPortal(
