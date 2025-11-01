@@ -21579,6 +21579,8 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
   try {
     const { projectId } = req.params;
     
+    console.log('🔍 Loading detailed offers for project:', projectId);
+    
     const offers = await query(
       `SELECT 
         o.*,
@@ -21605,26 +21607,30 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
       [projectId]
     );
     
-    // Kontaktdaten maskieren falls nicht beauftragt
-const processedOffers = offers.rows.map(offer => {
-  if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
-    return {
-      ...offer,
-      email: 'Nach Beauftragung sichtbar',
-      phone: 'Nach Beauftragung sichtbar'
-    };
-  }
-  return {
-    ...offer,
-    email: offer.handwerker_email,
-    phone: offer.handwerker_phone
-  };
-});
-
-res.json(processedOffers);  
+    console.log('📊 Found offers:', offers.rows.length);
+    console.log('📦 First offer:', offers.rows[0]);
+    
+    // Kontaktdaten maskieren
+    const processedOffers = offers.rows.map(offer => {
+      if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
+        return {
+          ...offer,
+          email: 'Nach Beauftragung sichtbar',
+          phone: 'Nach Beauftragung sichtbar'
+        };
+      }
+      return {
+        ...offer,
+        email: offer.handwerker_email,
+        phone: offer.handwerker_phone
+      };
+    });
+    
+    console.log('✅ Sending processed offers:', processedOffers.length);
+    res.json(processedOffers);
     
   } catch (error) {
-    console.error('Error fetching detailed offers:', error);
+    console.error('❌ Error fetching detailed offers:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
   }
 });
