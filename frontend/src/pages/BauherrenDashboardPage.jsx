@@ -2086,11 +2086,11 @@ const deadlineDate = tender.deadline
                             {!offer.viewed && (
                               <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
                             )}
-                            {offer.bundle_discount > 0 && (
-                              <span className="bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs px-3 py-1 rounded-full font-semibold shadow-lg">
-                                📦 Bündelangebot: {offer.bundle_discount}% Rabatt
-                              </span>
-                            )}
+                            {offer.bundle_id && (
+  <span className="bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs px-3 py-1 rounded-full font-semibold shadow-lg">
+    📦 Bündelangebot{offer.bundle_discount > 0 ? `: ${offer.bundle_discount}% Rabatt` : ''}
+  </span>
+)}
                           </div>
                           
                           <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
