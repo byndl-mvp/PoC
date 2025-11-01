@@ -21908,41 +21908,59 @@ app.get('/api/bundles/:bundleId/details', async (req, res) => {
     const { bundleId } = req.params;
     
     const bundleResult = await query(
-      `SELECT 
-        b.*,
-        t.name as trade_name,
-        array_agg(
-          json_build_object(
-            'tender_id', tn.id,
-            'project_id', p.id,
-            'title', p.category || ' - ' || p.sub_category,
-            'description', p.description,
-            'address', CONCAT(p.street, ' ', p.house_number),
-            'zip', p.zip_code,
-            'city', p.city,
-            'lat', z.latitude,
-            'lng', z.longitude,
-            'lv_data', tn.lv_data,
-            'estimated_value', tn.estimated_value,
-            'timeframe', tn.timeframe,
-            'deadline', tn.deadline
-          )
-        ) as projects
-       FROM bundles b
-       JOIN tenders tn ON tn.bundle_id = b.id
-       JOIN projects p ON tn.project_id = p.id
-       JOIN trades t ON b.trade_code = t.code
-       LEFT JOIN zip_codes z ON p.zip_code = z.zip
-       WHERE b.id = $1
-       GROUP BY b.id, t.name`,
-      [bundleId]
+  `SELECT 
+    b.*,
+    t.name as trade_name,
+    array_agg(
+      json_build_object(
+        'tender_id', tn.id,
+        'project_id', p.id,
+        'title', p.category || ' - ' || p.sub_category,
+        'description', p.description,
+        'zip', p.zip_code,
+        'city', p.city,
+        'lat', COALESCE(p.geocoded_lat, z.latitude),
+        'lng', COALESCE(p.geocoded_lng, z.longitude),
+        'has_exact_coords', CASE WHEN p.geocoded_lat IS NOT NULL THEN true ELSE false END,
+        'lv_data', tn.lv_data,
+        'estimated_value', tn.estimated_value,
+        'timeframe', tn.timeframe,
+        'deadline', tn.deadline
+      )
+    ) as projects
+   FROM bundles b
+   JOIN tenders tn ON tn.bundle_id = b.id
+   JOIN projects p ON tn.project_id = p.id
+   JOIN trades t ON b.trade_code = t.code
+   LEFT JOIN zip_codes z ON p.zip_code = z.zip
+   WHERE b.id = $1
+   GROUP BY b.id, t.name`,
+  [bundleId]
+);
+
+if (bundleResult.rows.length === 0) {
+  return res.status(404).json({ error: 'Bündel nicht gefunden' });
+}
+
+const bundle = bundleResult.rows[0];
+
+// Geocode fehlende Projekte im Hintergrund
+for (const project of bundle.projects) {
+  if (!project.has_exact_coords) {
+    ensureProjectGeocoded(project.project_id).catch(err => 
+      console.error('Background geocoding failed:', err)
     );
-    
-    if (bundleResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Bündel nicht gefunden' });
-    }
-    
-    const bundle = bundleResult.rows[0];
+  }
+}
+
+// Füge 100m Offset für Anonymisierung hinzu
+for (const project of bundle.projects) {
+  if (project.lat && project.lng) {
+    const offsetCoords = addRandomOffset(project.lat, project.lng, 100);
+    project.lat = offsetCoords.lat;
+    project.lng = offsetCoords.lng;
+  }
+}
     
     // Berechne Gesamt-LV für das Bündel
     let totalPositions = [];
