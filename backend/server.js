@@ -17424,8 +17424,6 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
         o.bundle_discount,  
         tn.bundle_id,       
         h.company_name,
-        h.rating,
-        h.verified,
         h.email as handwerker_email,
         h.phone as handwerker_phone,
         t.name as trade_name,
