@@ -21886,13 +21886,20 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
        JOIN projects p ON tn.project_id = p.id
        LEFT JOIN zip_codes z ON p.zip_code = z.zip
        WHERE b.trade_code = ANY($1::varchar[])
-       AND b.status IN ('forming', 'open', 'offered')
-       AND tn.status = 'open'
-       AND NOT EXISTS (
-         SELECT 1 FROM offers o 
-         WHERE o.tender_id = tn.id 
-         AND o.handwerker_id = $2
-       )
+AND b.status IN ('forming', 'open', 'offered')
+AND tn.status = 'open'
+AND NOT EXISTS (
+  SELECT 1 FROM offers o 
+  WHERE o.tender_id = tn.id 
+  AND o.handwerker_id = $2
+)
+AND NOT EXISTS (
+  -- Bundle nicht anzeigen wenn Handwerker bereits für dieses Bundle angeboten hat
+  SELECT 1 FROM offers o2
+  JOIN tenders tn2 ON o2.tender_id = tn2.id
+  WHERE tn2.bundle_id = b.id
+  AND o2.handwerker_id = $2
+)
        GROUP BY b.id, b.trade_code, b.region, b.status, t.name, b.created_at
        HAVING COUNT(DISTINCT tn.id) >= 2`,
       [tradeCodes, handwerkerId]
