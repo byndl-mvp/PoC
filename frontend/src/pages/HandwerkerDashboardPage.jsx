@@ -603,64 +603,149 @@ const badgeCounts = {
 
           {/* Projektbündel Tab */}
           {activeTab === 'bundles' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Verfügbare Projektbündel</h2>
+  <div>
+    <h2 className="text-2xl font-bold text-white mb-6">Verfügbare Projektbündel</h2>
+    
+    <div className="mb-6 bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 rounded-lg p-6">
+      <div className="flex items-start gap-3">
+        <span className="text-3xl">💡</span>
+        <div>
+          <h3 className="text-lg font-semibold text-green-300 mb-2">Vorteile von Projektbündeln:</h3>
+          <ul className="text-green-200 text-sm space-y-1">
+            <li>✓ Optimierte Fahrtrouten - weniger Fahrzeit zwischen Projekten</li>
+            <li>✓ Höhere Auslastung durch mehrere Projekte gleichzeitig</li>
+            <li>✓ Attraktive Bündelrabatte möglich - höhere Gewinnchancen</li>
+            <li>✓ Bessere Planbarkeit durch gebündelte Aufträge</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    {bundles.length === 0 ? (
+      <div className="text-center py-12">
+        <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-4xl">📦</span>
+        </div>
+        <p className="text-gray-400 text-lg mb-2">Aktuell keine Projektbündel verfügbar</p>
+        <p className="text-gray-500 text-sm">
+          Neue Bündel erscheinen automatisch, wenn mehrere Projekte in Ihrer Region ausgeschrieben werden
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-6">
+        {bundles.map((bundle) => (
+          <div 
+            key={bundle.id} 
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-white/20 overflow-hidden shadow-xl"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 p-6 border-b border-white/10">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">
+                    {bundle.trade} - Bündel
+                  </h3>
+                  <p className="text-gray-300">Region: {bundle.region}</p>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block px-4 py-2 bg-green-500/20 text-green-300 rounded-full font-semibold">
+                    {bundle.projectCount} Projekte
+                  </span>
+                </div>
+              </div>
               
-              <div className="mb-4 bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                <p className="text-green-300 text-sm">
-                  <strong>💡 Vorteil:</strong> Bei Bündeln können Sie effizientere Preise anbieten und Ihre Fahrtwege optimieren.
+              {/* Kennzahlen */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white/5 rounded-lg p-4">
+                  <p className="text-gray-400 text-sm mb-1">Gesamtvolumen</p>
+                  <p className="text-2xl font-bold text-teal-400">
+                    {formatCurrency(bundle.totalVolume)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Geschätzt (Netto)</p>
+                </div>
+                
+                <div className="bg-white/5 rounded-lg p-4">
+                  <p className="text-gray-400 text-sm mb-1">Max. Entfernung</p>
+                  <p className="text-2xl font-bold text-blue-400">
+                    {bundle.maxDistance} km
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Zwischen Projekten</p>
+                </div>
+                
+                <div className="bg-white/5 rounded-lg p-4">
+                  <p className="text-gray-400 text-sm mb-1">Ø Fahrzeit</p>
+                  <p className="text-2xl font-bold text-purple-400">
+                    {bundle.avgTravelTime} Min.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Von Ihrer Firma</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Projekte Liste */}
+            <div className="p-6">
+              <h4 className="text-lg font-semibold text-white mb-4">Enthaltene Projekte:</h4>
+              <div className="space-y-3 mb-6">
+                {bundle.projects?.map((project, idx) => (
+                  <div 
+                    key={idx} 
+                    className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-teal-500/50 transition-all"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="w-8 h-8 bg-teal-500/20 rounded-full flex items-center justify-center text-teal-300 font-bold text-sm">
+                            {idx + 1}
+                          </span>
+                          <h5 className="text-white font-semibold">{project.type}</h5>
+                        </div>
+                        <p className="text-gray-400 text-sm mb-2">
+                          📍 {project.address}
+                        </p>
+                        <div className="flex gap-4 text-sm">
+                          <span className="text-gray-500">
+                            💰 Volumen: <span className="text-teal-400 font-semibold">{formatCurrency(project.volume)}</span>
+                          </span>
+                          <span className="text-gray-500">
+                            ⏱️ Termin: <span className="text-white">{project.timeframe || 'Nach Absprache'}</span>
+                          </span>
+                        </div>
+                      </div>
+                      {project.deadline && (
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">Frist bis:</p>
+                          <p className="text-sm text-orange-400 font-semibold">
+                            {new Date(project.deadline).toLocaleDateString('de-DE')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Hinweis */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+                <p className="text-blue-300 text-sm">
+                  <strong>💡 Tipp:</strong> Mit einem Bündelrabatt erhöhen Sie Ihre Chancen, alle Projekte zu erhalten. 
+                  Die Bauherren sehen den Mehrwert der koordinierten Abwicklung.
                 </p>
               </div>
               
-              {bundles.length === 0 ? (
-                <p className="text-gray-400">Aktuell keine Bündel in Ihrer Region verfügbar.</p>
-              ) : (
-                <div className="space-y-4">
-                  {bundles.map((bundle) => (
-                    <div key={bundle.id} className="bg-gradient-to-r from-blue-600/10 to-teal-600/10 rounded-lg p-6 border border-white/20">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-xl font-bold text-white mb-2">
-                            {bundle.trade}-Bündel {bundle.region}
-                          </h3>
-                          <span className="bg-green-500/20 text-green-300 text-sm px-3 py-1 rounded-full">
-                            {bundle.projectCount} Projekte | Gesamtvolumen: {bundle.totalVolume?.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-400">Maximale Fahrtstrecke:</p>
-                          <p className="text-lg font-bold text-white">{bundle.maxDistance} km</p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2 mb-4">
-                        {bundle.projects?.map((project, idx) => (
-                          <div key={idx} className="bg-white/5 rounded p-3">
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <p className="text-white font-medium">Projekt {idx + 1}: {project.type}</p>
-                                <p className="text-sm text-gray-400">📍 {project.address} | 💰 {project.volume?.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
-                              </div>
-                              <input type="checkbox" className="w-5 h-5" defaultChecked />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <div className="flex gap-4">
-                        <button className="flex-1 px-4 py-2 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:from-teal-600 hover:to-blue-700 transition-all">
-                          Für alle Projekte anbieten
-                        </button>
-                        <button className="px-4 py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all">
-                          Individuell auswählen
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Action Button */}
+              <button
+                onClick={() => navigate(`/handwerker/bundle/${bundle.id}/offer`)}
+                className="w-full px-8 py-4 bg-gradient-to-r from-teal-500 to-blue-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+              >
+                🎯 Bündelangebot erstellen
+              </button>
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
          {/* Meine Angebote Tab */}
 {activeTab === 'angebote' && (
