@@ -374,17 +374,20 @@ useEffect(() => {
       setLoading(true);
       
       const handwerkerData = JSON.parse(sessionStorage.getItem('handwerkerData'));
-      
-      const res = await fetch(apiUrl(`/api/bundles/${bundleId}/submit-offer`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyId: handwerkerData.company_id || handwerkerData.id,
-          bundleDiscount: bundleDiscount,
-          individualOffers: projectOffers,
-          notes: notes
-        })
-      });
+
+// Sende die richtige ID
+const handwerkerId = handwerkerData.id || handwerkerData.handwerker_id;
+
+const res = await fetch(apiUrl(`/api/bundles/${bundleId}/submit-offer`), {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    companyId: handwerkerId, // Verwende direkt die Handwerker-ID
+    bundleDiscount: bundleDiscount,
+    individualOffers: projectOffers,
+    notes: notes
+  })
+});
 
       if (res.ok) {
         const data = await res.json();
