@@ -2095,7 +2095,11 @@ const deadlineDate = tender.deadline
                         <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
                           <div>
                             <p>📅 Eingegangen: {new Date(offer.created_at || offer.date).toLocaleDateString('de-DE')}</p>
-                            <p>⏱️ Ausführung: {offer.executionTime || 'Nach Absprache'}</p>
+                            <p>⏱️ Ausführung: {
+  offer.execution_start && offer.execution_end 
+    ? `${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}`
+    : offer.executionTime || 'Nach Absprache'
+}</p>
                           </div>
                           <div>
                             <p>📞 Tel: {offer.phone || 'Wird nach Beauftragung mitgeteilt'}</p>
