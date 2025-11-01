@@ -22182,14 +22182,6 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
       totalAmount += offerData.amount;
     }
     
-    // Bundle-Status aktualisieren (nur wenn Status-Spalte vorhanden ist)
-    await query(
-      `UPDATE bundles 
-       SET status = 'offered'
-       WHERE id = $1`,
-      [bundleId]
-    );
-    
     // tender_handwerker Status aktualisieren
     for (const tender of bundleTenders.rows) {
       await query(
