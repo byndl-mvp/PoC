@@ -2075,7 +2075,229 @@ const deadlineDate = tender.deadline
               
               <div className="space-y-3">
                 {tradeOffers.map((offer, idx) => (
-                  <div key={idx} className="bg-white/10 rounded-lg p-4 border border-white/20">
+  <div key={idx}>
+    <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <h4 className="font-semibold text-white">
+              {offer.companyName || offer.company_name}
+            </h4>
+            {!offer.viewed && (
+              <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
+            )}
+            {offer.bundleDiscount > 0 && (
+              <span className="bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs px-3 py-1 rounded-full font-semibold shadow-lg">
+                📦 Bündelangebot: {offer.bundleDiscount}% Rabatt
+              </span>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
+            <div>
+              <p>📅 Eingegangen: {new Date(offer.created_at || offer.date).toLocaleDateString('de-DE')}</p>
+              <p>⏱️ Ausführung: {
+                offer.execution_start && offer.execution_end 
+                  ? `${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}`
+                  : offer.executionTime || 'Nach Absprache'
+              }</p>
+            </div>
+            <div>
+              <p>📞 Tel: {offer.phone || 'Wird nach Beauftragung mitgeteilt'}</p>
+              <p>✉️ Email: {offer.email || 'Wird nach Beauftragung mitgeteilt'}</p>
+            </div>
+          </div>
+          
+          {offer.notes && (
+            <div className="mt-3 p-3 bg-white/5 rounded">
+              <p className="text-xs text-gray-500 mb-1">Anmerkungen:</p>
+              <p className="text-sm text-gray-300">{offer.notes}</p>
+            </div>
+          )}
+        </div>
+        
+        <div className="text-right ml-4">
+          <p className="text-2xl font-bold text-teal-400">
+            {formatCurrency(offer.amount)}
+          </p>
+          <p className="text-xs text-gray-400 mb-3">Netto</p>
+          
+          {/* Status-basierte Aktionen - REST BLEIBT GLEICH */}
+          {offer.status === 'submitted' && (
+            <div className="space-y-2">
+              <button
+                onClick={async () => {
+                  await fetch(apiUrl(`/api/offers/${offer.id}/mark-viewed`), {
+                    method: 'POST'
+                  });
+                  navigate(`/project/${selectedProject.id}/offer/${offer.id}`);
+                }}
+                className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                LV-Details ansehen
+              </button>
+              <button 
+                onClick={() => handlePreliminaryOrder(offer)}
+                className="w-full px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors text-sm"
+              >
+                Vorläufig beauftragen
+              </button>
+              <button
+                onClick={() => handleRejectClick(offer)}
+                className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+              >
+                Ablehnen
+              </button>
+            </div>
+          )}
+          
+          {(offer.status === 'preliminary' || offer.status === 'confirmed') && 
+           (offer.appointment_confirmed || offer.appointment_skipped) && 
+           offer.offer_confirmed_at && (
+            <div className="space-y-2">
+              <span className="block text-xs bg-blue-600 text-blue-200 px-2 py-1 rounded">
+                In Vertragsanbahnung
+              </span>
+              <button 
+                onClick={() => handleFinalOrder(offer)}
+                className="w-full px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+              >
+                Jetzt verbindlich beauftragen
+              </button>
+            </div>
+          )}
+
+          {(offer.status === 'preliminary' || offer.status === 'confirmed') && 
+           !(offer.appointment_confirmed || offer.appointment_skipped) && (
+            <div className="space-y-2">
+              <span className="block text-xs bg-yellow-600 text-yellow-200 px-2 py-1 rounded">
+                ⏳ Warte auf Ortstermin-Bestätigung oder Verzicht durch Handwerker
+              </span>
+            </div>
+          )}
+
+          {(offer.status === 'preliminary' || offer.status === 'confirmed') && 
+           (offer.appointment_confirmed || offer.appointment_skipped) && 
+           !offer.offer_confirmed_at && (
+            <div className="space-y-2">
+              <span className="block text-xs bg-yellow-600 text-yellow-200 px-2 py-1 rounded">
+                ⏳ Warte auf finale Angebotsbestätigung durch Handwerker
+              </span>
+            </div>
+          )}
+          
+          {offer.status === 'accepted' && (
+            <span className="block text-xs bg-green-600 text-green-200 px-2 py-1 rounded">
+              ✔ Beauftragt
+            </span>
+          )}
+          
+          {offer.status === 'rejected' && (
+            <span className="block text-xs bg-red-600 text-red-200 px-2 py-1 rounded">
+              Abgelehnt
+            </span>
+          )}
+        </div>
+      </div>
+      
+      {/* Vergleichszeile */}
+      {idx < tradeOffers.length - 1 && (
+        <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+          <span className="text-xs text-gray-500">
+            Preisunterschied zum nächsten Angebot:
+          </span>
+          <span className="text-sm font-semibold text-yellow-400">
+            {formatCurrency(Math.abs(offer.amount - tradeOffers[idx + 1].amount))}
+          </span>
+        </div>
+      )}
+    </div>
+    
+    {/* NEU: Bündelangebots-Hinweis */}
+    {offer.bundleDiscount > 0 && (
+      <div className="mt-3 bg-gradient-to-br from-green-600/20 via-teal-600/20 to-blue-600/20 border border-green-500/30 rounded-xl p-6 shadow-lg">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+            <span className="text-2xl">📦</span>
+          </div>
+          
+          <div className="flex-1">
+            <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+              <span>Vorteile der Projektbündelung</span>
+              <span className="text-sm bg-green-500/30 text-green-300 px-2 py-1 rounded">
+                {offer.bundleDiscount}% Rabatt
+              </span>
+            </h4>
+            
+            <div className="space-y-3 text-sm text-gray-200">
+              <div className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <p>
+                  <strong className="text-white">Attraktive Konditionen:</strong> Der Handwerker bietet {offer.bundleDiscount}% Bündelrabatt, 
+                  da er durch die Kombination mehrerer Projekte in Ihrer Region Zeit und Kosten spart.
+                </p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <p>
+                  <strong className="text-white">Optimierte Abwicklung:</strong> Durch koordinierte Ausführung mehrerer Projekte 
+                  profitieren Sie von kürzeren Wartezeiten und effizienteren Arbeitsabläufen.
+                </p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <p>
+                  <strong className="text-white">Lokale Synergie:</strong> byndl nutzt Netzwerkeffekte im regionalen Handwerkermarkt – 
+                  Sie erhalten qualitativ hochwertige Leistungen zu besseren Preisen.
+                </p>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <span className="text-green-400 font-bold">✓</span>
+                <p>
+                  <strong className="text-white">Materialrabatte:</strong> Bei gebündelten Projekten können Handwerker 
+                  Materialien in größeren Mengen einkaufen und die Einsparungen an Sie weitergeben.
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <p className="text-yellow-200 text-sm flex items-start gap-2">
+                <span className="text-lg">⚠️</span>
+                <span>
+                  <strong>Wichtig:</strong> Der angebotene Bündelrabatt von {offer.bundleDiscount}% gilt nur, 
+                  wenn Sie <strong>alle Projekte im Bündel</strong> an {offer.companyName || offer.company_name} beauftragen. 
+                  Bei Einzelbeauftragung entfällt der Rabatt.
+                </span>
+              </p>
+            </div>
+            
+            <div className="mt-4 flex items-center gap-3 text-xs text-gray-400">
+              <div className="flex items-center gap-1">
+                <span>🚗</span>
+                <span>Geringere Fahrtkosten</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>⚡</span>
+                <span>Schnellere Umsetzung</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>💰</span>
+                <span>Kosteneinsparung</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>🤝</span>
+                <span>Ein Ansprechpartner</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+))}
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
