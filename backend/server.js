@@ -22275,6 +22275,102 @@ function calculateZoomLevel(projects) {
 }
 
 // ============================================
+// GEOCODING FUNCTIONS
+// ============================================
+
+// Geocoding für genaue Adresse (Nominatim - kostenlos)
+async function geocodeAddress(street, houseNumber, zip, city) {
+  try {
+    const address = `${street} ${houseNumber}, ${zip} ${city}, Germany`;
+    const encodedAddress = encodeURIComponent(address);
+    
+    // Warte 1 Sekunde zwischen Requests (Nominatim Rate Limit)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1`,
+      {
+        headers: {
+          'User-Agent': 'byndl-platform/1.0'
+        }
+      }
+    );
+    
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+}
+
+// Füge zufälligen Offset von ~100m hinzu (für Anonymisierung)
+function addRandomOffset(lat, lng, radiusInMeters = 100) {
+  // 1 Grad Latitude ≈ 111km
+  // 1 Grad Longitude ≈ 111km * cos(latitude)
+  
+  const latOffset = (Math.random() - 0.5) * 2 * (radiusInMeters / 111000);
+  const lngOffset = (Math.random() - 0.5) * 2 * (radiusInMeters / (111000 * Math.cos(lat * Math.PI / 180)));
+  
+  return {
+    lat: lat + latOffset,
+    lng: lng + lngOffset
+  };
+}
+
+// Geocode Projekt falls noch nicht geschehen
+async function ensureProjectGeocoded(projectId) {
+  try {
+    // Prüfe ob schon geocoded
+    const checkResult = await query(
+      `SELECT id, geocoded_lat, geocoded_lng, street, house_number, zip_code, city
+       FROM projects 
+       WHERE id = $1`,
+      [projectId]
+    );
+    
+    if (checkResult.rows.length === 0) return;
+    
+    const project = checkResult.rows[0];
+    
+    // Wenn bereits geocoded, nichts tun
+    if (project.geocoded_lat && project.geocoded_lng) {
+      return;
+    }
+    
+    // Wenn Adresse vorhanden, geocode
+    if (project.street && project.house_number && project.zip_code && project.city) {
+      const coords = await geocodeAddress(
+        project.street,
+        project.house_number,
+        project.zip_code,
+        project.city
+      );
+      
+      if (coords) {
+        await query(
+          `UPDATE projects 
+           SET geocoded_lat = $1, geocoded_lng = $2, geocoded_at = NOW()
+           WHERE id = $3`,
+          [coords.lat, coords.lng, projectId]
+        );
+        console.log(`✓ Project ${projectId} geocoded: ${coords.lat}, ${coords.lng}`);
+      }
+    }
+  } catch (error) {
+    console.error(`Geocoding failed for project ${projectId}:`, error);
+  }
+}
+
+// ============================================
 // 9. NOTIFICATION & STATUS UPDATES
 // ============================================
 
