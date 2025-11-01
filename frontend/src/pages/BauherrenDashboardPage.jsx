@@ -2214,7 +2214,7 @@ const deadlineDate = tender.deadline
                     </div>
                     
                     {/* Bündelangebots-Hinweis */}
-                    {offer.bundleDiscount > 0 && (
+                    {offer.bundle_discount > 0 && (
                       <div className="mt-3 bg-gradient-to-br from-green-600/20 via-teal-600/20 to-blue-600/20 border border-green-500/30 rounded-xl p-6 shadow-lg">
                         <div className="flex items-start gap-4">
                           <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -2225,7 +2225,7 @@ const deadlineDate = tender.deadline
                             <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
                               <span>Vorteile der Projektbündelung</span>
                               <span className="text-sm bg-green-500/30 text-green-300 px-2 py-1 rounded">
-                                {offer.bundleDiscount}% Rabatt
+                                {offer.bundle_discount}% Rabatt
                               </span>
                             </h4>
                             
@@ -2233,7 +2233,7 @@ const deadlineDate = tender.deadline
                               <div className="flex items-start gap-2">
                                 <span className="text-green-400 font-bold">✓</span>
                                 <p>
-                                  <strong className="text-white">Attraktive Konditionen:</strong> Der Handwerker bietet {offer.bundleDiscount}% Bündelrabatt, 
+                                  <strong className="text-white">Attraktive Konditionen:</strong> Der Handwerker bietet {offer.bundle_discount}% Bündelrabatt, 
                                   da er durch die Kombination mehrerer Projekte in Ihrer Region Zeit und Kosten spart.
                                 </p>
                               </div>
