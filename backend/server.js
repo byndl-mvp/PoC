@@ -21759,40 +21759,69 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
     
     console.log(`Loading bundles for handwerker_id: ${handwerkerId}`);
     
+    // Handwerker-Daten laden (für Firmenadresse)
+    const handwerkerResult = await query(
+      `SELECT h.*, z.latitude, z.longitude 
+       FROM handwerker h
+       LEFT JOIN zip_codes z ON h.zip_code = z.zip
+       WHERE h.id = $1`,
+      [handwerkerId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerker = handwerkerResult.rows[0];
+    
     // Handwerker-Trades laden
     const tradesResult = await query(
-      `SELECT ht.trade_id, t.code as trade_code 
+      `SELECT ht.trade_id, t.code as trade_code, t.name as trade_name
        FROM handwerker_trades ht
        JOIN trades t ON ht.trade_id = t.id
        WHERE ht.handwerker_id = $1`,
       [handwerkerId]
     );
     
+    const tradeIds = tradesResult.rows.map(t => t.trade_id);
     const tradeCodes = tradesResult.rows.map(t => t.trade_code);
     
     if (tradeCodes.length === 0) {
       return res.json([]);
     }
     
-    // Aktive Bündel über tenders.bundle_id finden
-    const bundles = await query(
+    // Aktive Bündel finden
+    const bundlesResult = await query(
       `SELECT 
-        b.id,
+        b.id as bundle_id,
         b.trade_code,
         b.region,
         b.status,
-        b.max_projects,
-        b.current_projects,
-        b.total_volume,
-        b.created_at,
-        b.closes_at,
         t.name as trade_name,
         COUNT(DISTINCT tn.id) as tender_count,
         COUNT(DISTINCT tn.project_id) as project_count,
-        SUM(tn.estimated_value) as calculated_volume
+        SUM(tn.estimated_value) as total_volume,
+        b.created_at,
+        json_agg(
+          json_build_object(
+            'tender_id', tn.id,
+            'project_id', p.id,
+            'type', p.category || ' - ' || p.sub_category,
+            'address', CONCAT(p.street, ' ', p.house_number, ', ', p.zip_code, ' ', p.city),
+            'zip', p.zip_code,
+            'city', p.city,
+            'lat', z.latitude,
+            'lng', z.longitude,
+            'volume', tn.estimated_value,
+            'timeframe', tn.timeframe,
+            'deadline', tn.deadline
+          )
+        ) as projects
        FROM bundles b
        JOIN trades t ON b.trade_code = t.code
        JOIN tenders tn ON tn.bundle_id = b.id
+       JOIN projects p ON tn.project_id = p.id
+       LEFT JOIN zip_codes z ON p.zip_code = z.zip
        WHERE b.trade_code = ANY($1::varchar[])
        AND b.status IN ('forming', 'open')
        AND tn.status = 'open'
@@ -21801,15 +21830,68 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
          WHERE o.tender_id = tn.id 
          AND o.handwerker_id = $2
        )
-       GROUP BY b.id, t.name
+       GROUP BY b.id, b.trade_code, b.region, b.status, t.name, b.created_at
        HAVING COUNT(DISTINCT tn.id) >= 2`,
       [tradeCodes, handwerkerId]
     );
     
-    res.json(bundles.rows);
+    // Bundles mit berechneten Daten aufbereiten
+    const bundles = bundlesResult.rows.map(bundle => {
+      const projects = bundle.projects || [];
+      
+      // Berechne maximale Distanz zwischen Projekten
+      let maxDistance = 0;
+      for (let i = 0; i < projects.length; i++) {
+        for (let j = i + 1; j < projects.length; j++) {
+          if (projects[i].lat && projects[i].lng && projects[j].lat && projects[j].lng) {
+            const dist = haversineDistance(
+              { lat: projects[i].lat, lng: projects[i].lng },
+              { lat: projects[j].lat, lng: projects[j].lng }
+            );
+            if (dist > maxDistance) maxDistance = dist;
+          }
+        }
+      }
+      
+      // Berechne Fahrzeiten von Firmenadresse zu jedem Projekt (vereinfacht)
+      const travelTimes = projects.map(project => {
+        if (handwerker.latitude && handwerker.longitude && project.lat && project.lng) {
+          const distance = haversineDistance(
+            { lat: handwerker.latitude, lng: handwerker.longitude },
+            { lat: project.lat, lng: project.lng }
+          );
+          // Vereinfachte Fahrzeit: Durchschnitt 50 km/h in der Stadt
+          return Math.round(distance / 50 * 60); // in Minuten
+        }
+        return null;
+      }).filter(t => t !== null);
+      
+      const avgTravelTime = travelTimes.length > 0 
+        ? Math.round(travelTimes.reduce((a, b) => a + b, 0) / travelTimes.length)
+        : 0;
+      
+      return {
+        id: bundle.bundle_id,
+        trade: bundle.trade_name,
+        trade_code: bundle.trade_code,
+        region: bundle.region,
+        projectCount: parseInt(bundle.project_count),
+        totalVolume: parseFloat(bundle.total_volume || 0),
+        maxDistance: Math.round(maxDistance * 10) / 10,
+        avgTravelTime: avgTravelTime,
+        status: bundle.status,
+        created_at: bundle.created_at,
+        projects: projects.map(p => ({
+          ...p,
+          volume: parseFloat(p.volume || 0)
+        }))
+      };
+    });
+    
+    res.json(bundles);
   } catch (error) {
     console.error('Error fetching bundles:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Bündel' });
+    res.status(500).json({ error: 'Fehler beim Laden der Bündel', details: error.message });
   }
 });
 
