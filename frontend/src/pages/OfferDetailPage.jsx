@@ -363,7 +363,11 @@ In der Kennenlernphase hat der ausgewählte Handwerker Exklusivität. Dies schü
         </div>
         <div>
           <p className="text-sm text-gray-400">Ausführungszeitraum</p>
-          <p className="text-white">{offer.execution_time || 'Nach Absprache'}</p>
+          <p className="text-white">{
+  offer.execution_start && offer.execution_end 
+    ? `${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}`
+    : offer.execution_time || 'Nach Absprache'
+}</p>
         </div>
       </div>
     ) : (
