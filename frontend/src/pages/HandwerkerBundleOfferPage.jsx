@@ -21,6 +21,60 @@ function formatCurrency(value) {
   }).format(value);
 }
 
+// Berechne realistische Fahrzeit mit OSRM Routing API
+async function calculateRealTravelTime(projects) {
+  if (!projects || projects.length < 2) return 0;
+  
+  try {
+    // Baue Koordinaten-String für OSRM
+    const coords = projects
+      .filter(p => p.lng && p.lat)
+      .map(p => `${p.lng},${p.lat}`)
+      .join(';');
+    
+    if (!coords) return 0;
+    
+    // OSRM API für Auto-Routing
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+      // Duration ist in Sekunden, umrechnen in Minuten
+      return Math.round(data.routes[0].duration / 60);
+    }
+    
+    // Fallback: Haversine mit Faktor 1.4 (realistischer für Straßen)
+    return calculateFallbackTravelTime(projects);
+    
+  } catch (error) {
+    console.error('OSRM Routing Fehler:', error);
+    // Fallback bei Fehler
+    return calculateFallbackTravelTime(projects);
+  }
+}
+
+// Fallback: Haversine mit Straßenfaktor
+function calculateFallbackTravelTime(projects) {
+  let totalDistance = 0;
+  for (let i = 0; i < projects.length - 1; i++) {
+    const p1 = projects[i];
+    const p2 = projects[i + 1];
+    
+    if (p1.lat && p1.lng && p2.lat && p2.lng) {
+      totalDistance += haversineDistance(
+        { lat: parseFloat(p1.lat), lng: parseFloat(p1.lng) },
+        { lat: parseFloat(p2.lat), lng: parseFloat(p2.lng) }
+      );
+    }
+  }
+  
+  // Faktor 1.4 für realistische Straßenstrecke vs. Luftlinie
+  // Durchschnitt 40 km/h in der Stadt (Ampeln, Verkehr)
+  return Math.round((totalDistance * 1.4) / 40 * 60); // in Minuten
+}
+
 // Haversine Distanz-Berechnung für Fahrzeiten
 function haversineDistance(coord1, coord2) {
   const R = 6371; // Erdradius in km
