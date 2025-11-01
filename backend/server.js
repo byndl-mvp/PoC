@@ -21161,6 +21161,11 @@ async function createProjectTenders(req, res) {
       );
       const tenderId = tenderInsert.rows[0].id;
 
+// Im Hintergrund prüfen ob zu Bundle passt (nicht-blockierend)
+checkAndAddToExistingBundle(tenderId).catch(err => 
+  console.error('Bundle expansion check failed:', err)
+);
+      
       // 4d) Matching (PostGIS)
       await query(`SELECT zip, latitude, longitude FROM zip_codes WHERE zip = $1`, [targetZip]); // nur Check
 
