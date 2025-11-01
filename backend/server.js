@@ -19795,6 +19795,56 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
       [offerId]
     );
 
+    // NEU: Bundle-Logik - Projekt aus Bundle entfernen oder Bundle schließen
+const tenderBundleCheck = await query(
+  `SELECT tn.bundle_id, b.current_projects
+   FROM tenders tn
+   JOIN bundles b ON tn.bundle_id = b.id
+   WHERE tn.id = (SELECT tender_id FROM offers WHERE id = $1)
+   AND tn.bundle_id IS NOT NULL`,
+  [offerId]
+);
+
+if (tenderBundleCheck.rows.length > 0) {
+  const bundleId = tenderBundleCheck.rows[0].bundle_id;
+  const currentProjects = tenderBundleCheck.rows[0].current_projects;
+  
+  console.log(`📦 Bundle ${bundleId} - Projekt wurde beauftragt`);
+  
+  if (currentProjects <= 2) {
+    // Bundle hat nur noch 2 oder weniger Projekte → Bundle schließen
+    await query(
+      `UPDATE bundles 
+       SET status = 'closed', 
+           current_projects = current_projects - 1
+       WHERE id = $1`,
+      [bundleId]
+    );
+    console.log(`📦 Bundle ${bundleId} geschlossen (nur noch ${currentProjects} Projekte)`);
+  } else {
+    // Bundle hat mehr als 2 Projekte → Nur dieses Projekt entfernen
+    await query(
+      `UPDATE tenders 
+       SET bundle_id = NULL 
+       WHERE id = (SELECT tender_id FROM offers WHERE id = $1)`,
+      [offerId]
+    );
+    
+    await query(
+      `UPDATE bundles 
+       SET current_projects = current_projects - 1,
+           total_volume = (
+             SELECT SUM(estimated_value) 
+             FROM tenders 
+             WHERE bundle_id = $1
+           )
+       WHERE id = $1`,
+      [bundleId]
+    );
+    console.log(`📦 Bundle ${bundleId} - Projekt entfernt (${currentProjects - 1} Projekte verbleiben)`);
+  }
+}
+
     // NEUE ERGÄNZUNG: Update Status der anderen Angebote
     if (otherOffers.rows.length > 0) {
       await query(
