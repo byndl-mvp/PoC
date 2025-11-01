@@ -2088,7 +2088,7 @@ const deadlineDate = tender.deadline
                             )}
                             {offer.bundle_discount > 0 && (
                               <span className="bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs px-3 py-1 rounded-full font-semibold shadow-lg">
-                                📦 Bündelangebot: {offer.bundleDiscount}% Rabatt
+                                📦 Bündelangebot: {offer.bundle_discount}% Rabatt
                               </span>
                             )}
                           </div>
