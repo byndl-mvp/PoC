@@ -21911,7 +21911,7 @@ const bundles = bundlesResult.rows.map(bundle => {
         avgTravelTime: avgTravelTime,
         status: bundle.status,
         created_at: bundle.created_at,
-        projects: projects.map(p => ({
+        projects: projectsWithOffset.map(p => ({
           ...p,
           volume: parseFloat(p.volume || 0)
         }))
