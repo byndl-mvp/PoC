@@ -21796,6 +21796,98 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
 });
 
 // ============================================
+// BUNDLE EXPANSION - Neue Projekte zu Bundles hinzufügen
+// ============================================
+
+async function checkAndAddToExistingBundle(tenderId) {
+  try {
+    // Hole Tender-Details
+    const tenderResult = await query(
+      `SELECT tn.*, p.zip_code, p.street, p.house_number, p.city,
+              COALESCE(p.geocoded_lat, z.latitude) as lat,
+              COALESCE(p.geocoded_lng, z.longitude) as lng
+       FROM tenders tn
+       JOIN projects p ON tn.project_id = p.id
+       LEFT JOIN zip_codes z ON p.zip_code = z.zip
+       WHERE tn.id = $1 AND tn.bundle_id IS NULL`,
+      [tenderId]
+    );
+    
+    if (tenderResult.rows.length === 0) return;
+    
+    const tender = tenderResult.rows[0];
+    
+    // Finde passende offene Bundles (gleiches Gewerk, ähnliche Region)
+    const bundlesResult = await query(
+      `SELECT b.id, b.region, b.trade_code, b.current_projects,
+              array_agg(
+                json_build_object(
+                  'lat', COALESCE(p2.geocoded_lat, z2.latitude),
+                  'lng', COALESCE(p2.geocoded_lng, z2.longitude)
+                )
+              ) as project_coords
+       FROM bundles b
+       JOIN tenders tn2 ON tn2.bundle_id = b.id
+       JOIN projects p2 ON tn2.project_id = p2.id
+       LEFT JOIN zip_codes z2 ON p2.zip_code = z2.zip
+       WHERE b.trade_code = $1
+       AND b.status IN ('forming', 'open', 'offered')
+       AND b.current_projects < b.max_projects
+       GROUP BY b.id, b.region, b.trade_code, b.current_projects`,
+      [tender.trade_id]
+    );
+    
+    if (bundlesResult.rows.length === 0) return;
+    
+    // Prüfe Distanz zu jedem Bundle
+    for (const bundle of bundlesResult.rows) {
+      let maxDistance = 0;
+      let allWithinRange = true;
+      
+      // Prüfe ob neues Projekt zu allen Projekten im Bundle passt
+      for (const coord of bundle.project_coords) {
+        if (!coord.lat || !coord.lng || !tender.lat || !tender.lng) continue;
+        
+        const distance = haversineDistance(
+          { lat: parseFloat(tender.lat), lng: parseFloat(tender.lng) },
+          { lat: parseFloat(coord.lat), lng: parseFloat(coord.lng) }
+        );
+        
+        if (distance > maxDistance) maxDistance = distance;
+        if (distance > 15) { // Max 15km zwischen Projekten
+          allWithinRange = false;
+          break;
+        }
+      }
+      
+      // Wenn Projekt zu Bundle passt, füge hinzu
+      if (allWithinRange) {
+        await query(
+          `UPDATE tenders 
+           SET bundle_id = $1 
+           WHERE id = $2`,
+          [bundle.id, tenderId]
+        );
+        
+        await query(
+          `UPDATE bundles 
+           SET current_projects = current_projects + 1,
+               total_volume = total_volume + $1
+           WHERE id = $2`,
+          [tender.estimated_value || 0, bundle.id]
+        );
+        
+        console.log(`✅ Tender ${tenderId} zu Bundle ${bundle.id} hinzugefügt (${bundle.current_projects + 1} Projekte)`);
+        return; // Nur zu einem Bundle hinzufügen
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error checking bundle expansion:', error);
+  }
+}
+
+// ============================================
 // 5. BUNDLE MANAGEMENT (PROJEKTBÜNDEL)
 // ============================================
 
@@ -22306,98 +22398,6 @@ async function checkAndCreateBundles(project, tenders) {
         [bundleId]
       );
     }
-  }
-}
-
-// ============================================
-// BUNDLE EXPANSION - Neue Projekte zu Bundles hinzufügen
-// ============================================
-
-async function checkAndAddToExistingBundle(tenderId) {
-  try {
-    // Hole Tender-Details
-    const tenderResult = await query(
-      `SELECT tn.*, p.zip_code, p.street, p.house_number, p.city,
-              COALESCE(p.geocoded_lat, z.latitude) as lat,
-              COALESCE(p.geocoded_lng, z.longitude) as lng
-       FROM tenders tn
-       JOIN projects p ON tn.project_id = p.id
-       LEFT JOIN zip_codes z ON p.zip_code = z.zip
-       WHERE tn.id = $1 AND tn.bundle_id IS NULL`,
-      [tenderId]
-    );
-    
-    if (tenderResult.rows.length === 0) return;
-    
-    const tender = tenderResult.rows[0];
-    
-    // Finde passende offene Bundles (gleiches Gewerk, ähnliche Region)
-    const bundlesResult = await query(
-      `SELECT b.id, b.region, b.trade_code, b.current_projects,
-              array_agg(
-                json_build_object(
-                  'lat', COALESCE(p2.geocoded_lat, z2.latitude),
-                  'lng', COALESCE(p2.geocoded_lng, z2.longitude)
-                )
-              ) as project_coords
-       FROM bundles b
-       JOIN tenders tn2 ON tn2.bundle_id = b.id
-       JOIN projects p2 ON tn2.project_id = p2.id
-       LEFT JOIN zip_codes z2 ON p2.zip_code = z2.zip
-       WHERE b.trade_code = $1
-       AND b.status IN ('forming', 'open', 'offered')
-       AND b.current_projects < b.max_projects
-       GROUP BY b.id, b.region, b.trade_code, b.current_projects`,
-      [tender.trade_id]
-    );
-    
-    if (bundlesResult.rows.length === 0) return;
-    
-    // Prüfe Distanz zu jedem Bundle
-    for (const bundle of bundlesResult.rows) {
-      let maxDistance = 0;
-      let allWithinRange = true;
-      
-      // Prüfe ob neues Projekt zu allen Projekten im Bundle passt
-      for (const coord of bundle.project_coords) {
-        if (!coord.lat || !coord.lng || !tender.lat || !tender.lng) continue;
-        
-        const distance = haversineDistance(
-          { lat: parseFloat(tender.lat), lng: parseFloat(tender.lng) },
-          { lat: parseFloat(coord.lat), lng: parseFloat(coord.lng) }
-        );
-        
-        if (distance > maxDistance) maxDistance = distance;
-        if (distance > 15) { // Max 15km zwischen Projekten
-          allWithinRange = false;
-          break;
-        }
-      }
-      
-      // Wenn Projekt zu Bundle passt, füge hinzu
-      if (allWithinRange) {
-        await query(
-          `UPDATE tenders 
-           SET bundle_id = $1 
-           WHERE id = $2`,
-          [bundle.id, tenderId]
-        );
-        
-        await query(
-          `UPDATE bundles 
-           SET current_projects = current_projects + 1,
-               total_volume = total_volume + $1
-           WHERE id = $2`,
-          [tender.estimated_value || 0, bundle.id]
-        );
-        
-        console.log(`✅ Tender ${tenderId} zu Bundle ${bundle.id} hinzugefügt (${bundle.current_projects + 1} Projekte)`);
-        return; // Nur zu einem Bundle hinzufügen
-      }
-    }
-    
-  } catch (error) {
-    console.error('Error checking bundle expansion:', error);
   }
 }
 
