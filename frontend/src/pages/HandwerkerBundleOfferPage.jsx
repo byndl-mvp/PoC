@@ -517,26 +517,18 @@ export default function HandwerkerBundleOfferPage() {
               <div key={projectIdx} className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden">
                 {/* Projekt Header */}
                 <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-6 border-b border-white/10">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="w-10 h-10 bg-teal-500/20 rounded-full flex items-center justify-center text-teal-300 font-bold">
-                          {projectIdx + 1}
-                        </span>
-                        <h3 className="text-2xl font-bold text-white">{project.title}</h3>
-                      </div>
-                      <p className="text-gray-300">📍 PLZ: {project.zip}</p>
-                      <p className="text-gray-400 text-sm mt-1">
-                        ⏱️ Gewünschter Termin: {project.timeframe || 'Nach Absprache'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400 mb-1">Geschätztes Volumen</p>
-                      <p className="text-2xl font-bold text-teal-400">
-                        {formatCurrency(Math.round(project.volume / 500) * 500)}
-                      </p>
-                    </div>
-                  </div>
+                  <div className="flex items-center gap-3 mb-2">
+  <span className="w-10 h-10 bg-teal-500/20 rounded-full flex items-center justify-center text-teal-300 font-bold">
+    {projectIdx + 1}
+  </span>
+  <div>
+    <h3 className="text-2xl font-bold text-white">{project.title}</h3>
+    <p className="text-gray-300">📍 PLZ: {project.zip}</p>
+    <p className="text-gray-400 text-sm mt-1">
+      ⏱️ Gewünschter Termin: {project.timeframe || 'Nach Absprache'}
+    </p>
+  </div>
+</div>
                 </div>
 
                 {/* LV Positionen */}
