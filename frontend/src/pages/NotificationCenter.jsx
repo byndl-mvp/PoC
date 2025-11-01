@@ -191,7 +191,11 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
   }
 };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => 
+  !n.read && 
+  n.type !== 'message_from_bauherr' && 
+  n.type !== 'message_from_handwerker'
+).length;
   
   const getNotificationIcon = (type) => {
     const icons = {
