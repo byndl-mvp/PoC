@@ -577,12 +577,23 @@ export default function HandwerkerBundleOfferPage() {
                   </div>
                   
                   {/* Projekt-Summe */}
-                  <div className="mt-6 pt-4 border-t border-white/20 flex justify-between items-center">
-                    <span className="text-lg text-gray-300">Projektsumme:</span>
-                    <span className="text-2xl font-bold text-teal-400">
-                      {formatCurrency(offer.amount)}
-                    </span>
-                  </div>
+<div className="mt-6 pt-4 border-t border-white/20">
+  <div className="flex justify-between items-center">
+    <span className="text-lg text-gray-300">Projektsumme (Netto):</span>
+    <span className="text-2xl font-bold text-teal-400">
+      {formatCurrency(
+        offer.positions.reduce((sum, pos) => 
+          sum + (parseFloat(pos.totalPrice) || 0), 0
+        )
+      )}
+    </span>
+  </div>
+  {offer.positions.some(pos => !pos.unitPrice || pos.unitPrice === 0) && (
+    <p className="text-yellow-400 text-xs mt-2 text-right">
+      ⚠️ Bitte alle Positionen mit Preisen versehen
+    </p>
+  )}
+</div>
                 </div>
               </div>
             );
