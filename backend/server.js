@@ -22047,12 +22047,6 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
   handwerkerId = handwerkerResult.rows[0].id;
 }
     
-    if (handwerkerResult.rows.length === 0) {
-      throw new Error('Handwerker nicht gefunden');
-    }
-    
-    const handwerkerId = handwerkerResult.rows[0].id;
-    
     // Tenders für dieses Bundle laden
     const bundleTenders = await query(
       `SELECT id as tender_id, project_id 
