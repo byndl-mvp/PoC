@@ -17407,6 +17407,243 @@ app.get('/api/projects/:projectId/dashboard-details', async (req, res) => {
   }
 });
 
+// ============================================
+// 3. OFFER MANAGEMENT (ANGEBOTE)
+// ============================================
+
+// Angebote für Projekt laden (Bauherr)
+app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    console.log('🔍 Loading detailed offers for project:', projectId);
+    
+    const offers = await query(
+      `SELECT 
+        o.*,
+        o.bundle_discount,  
+        tn.bundle_id,       
+        h.company_name,
+        h.rating,
+        h.verified,
+        h.email as handwerker_email,
+        h.phone as handwerker_phone,
+        t.name as trade_name,
+        tn.estimated_value,
+        CASE 
+          WHEN o.viewed_at IS NULL THEN false 
+          ELSE true 
+        END as viewed
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE tn.project_id = $1
+        AND o.status != 'withdrawn'
+       ORDER BY o.status DESC, t.name, o.amount ASC`,
+      [projectId]
+    );
+    
+    console.log('📊 Found offers:', offers.rows.length);
+    console.log('📦 First offer:', offers.rows[0]);
+    
+    // Kontaktdaten maskieren
+    const processedOffers = offers.rows.map(offer => {
+      if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
+        return {
+          ...offer,
+          email: 'Nach Beauftragung sichtbar',
+          phone: 'Nach Beauftragung sichtbar'
+        };
+      }
+      return {
+        ...offer,
+        email: offer.handwerker_email,
+        phone: offer.handwerker_phone
+      };
+    });
+    
+    console.log('✅ Sending processed offers:', processedOffers.length);
+    res.json(processedOffers);
+    
+  } catch (error) {
+    console.error('❌ Error fetching detailed offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
+  }
+});
+
+// Handwerker: LV für Angebot abrufen
+app.get('/api/tenders/:tenderId/lv', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        t.lv_data,
+        t.project_id,
+        t.trade_id,
+        tr.name as trade_name,
+        p.description as project_description
+      FROM tenders t
+      JOIN trades tr ON t.trade_id = tr.id
+      JOIN projects p ON t.project_id = p.id
+      WHERE t.id = $1`,
+      [tenderId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
+    }
+    
+    const tender = result.rows[0];
+    const lv = typeof tender.lv_data === 'string' 
+      ? JSON.parse(tender.lv_data) 
+      : tender.lv_data;
+    
+    // Preise entfernen für Handwerker-Ansicht
+    const lvWithoutPrices = {
+      ...lv,
+      positions: lv.positions.map(pos => ({
+        ...pos,
+        unitPrice: 0,
+        totalPrice: 0
+      }))
+    };
+    
+    res.json({
+      tenderId,
+      projectId: tender.project_id,
+      tradeId: tender.trade_id,
+      tradeName: tender.trade_name,
+      projectDescription: tender.project_description,
+      lv: lvWithoutPrices
+    });
+    
+  } catch (error) {
+    console.error('Error fetching tender LV:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen des LV' });
+  }
+});
+
+// Angebot als gelesen markieren
+app.post('/api/offers/:offerId/mark-read', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    await query(
+      'UPDATE offers SET viewed_at = COALESCE(viewed_at, NOW()) WHERE id = $1',
+      [offerId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// 3. Erweiterte Angebots-Submission mit Status-Management
+app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
+  try {
+    const { tenderId } = req.params;
+    const { handwerkerId, positions, notes, totalSum, isPreliminary = true } = req.body;
+    
+    await query('BEGIN');
+    
+    // Prüfen ob bereits ein Angebot existiert
+    const existingOffer = await query(
+      'SELECT id, status FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
+      [tenderId, handwerkerId]
+    );
+    
+    let offerId;
+    let status = isPreliminary ? 'submitted' : 'confirmed';
+    
+    if (existingOffer.rows.length > 0) {
+      offerId = existingOffer.rows[0].id;
+      
+      // Update nur wenn Status-Übergang erlaubt
+      if (existingOffer.rows[0].status === 'preliminary' && !isPreliminary) {
+        status = 'confirmed';
+      }
+      
+      await query(
+        `UPDATE offers 
+         SET lv_data = $1, notes = $2, amount = $3, status = $4, updated_at = NOW()
+         WHERE id = $5`,
+        [JSON.stringify({ positions }), notes, totalSum, status, offerId]
+      );
+    } else {
+      const result = await query(
+        `INSERT INTO offers (
+          tender_id, handwerker_id, amount, 
+          lv_data, notes, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        RETURNING id`,
+       [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, status]
+      );
+      offerId = result.rows[0].id;
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      offerId,
+      message: isPreliminary ? 
+        'Vorläufiges Angebot abgegeben. Der Bauherr kann nun Kontakt aufnehmen.' :
+        'Verbindliches Angebot bestätigt.'
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Fehler beim Abgeben des Angebots' });
+  }
+});
+
+// Erweiterte Route für Angebote mit mehr Details
+app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        o.*,
+        o.bundle_discount,  
+        tn.bundle_id,       
+        h.company_name,
+        h.email,
+        h.phone,
+        h.street,
+        h.house_number,
+        h.zip_code,
+        h.city,
+        h.rating,
+        t.name as trade_name,
+        tn.estimated_value,
+        tn.timeframe,
+        o.lv_data,
+        o.notes,
+        CASE 
+          WHEN o.viewed_at IS NULL THEN false 
+          ELSE true 
+        END as viewed
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       WHERE tn.project_id = $1
+       ORDER BY t.name, o.amount ASC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching detailed offers:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
+  }
+});
+
 // 3. TENDER & OFFER ROUTES
 // ----------------------------------------------------------------------------
 
@@ -21567,243 +21804,6 @@ app.post('/api/admin/rematch-tenders', async (req, res) => {
     return res.status(500).json({ 
       error: error.message || 'Interner Fehler beim nachträglichen Matching'
     });
-  }
-});
-
-// ============================================
-// 3. OFFER MANAGEMENT (ANGEBOTE)
-// ============================================
-
-// Angebote für Projekt laden (Bauherr)
-app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    console.log('🔍 Loading detailed offers for project:', projectId);
-    
-    const offers = await query(
-      `SELECT 
-        o.*,
-        o.bundle_discount,  
-        tn.bundle_id,       
-        h.company_name,
-        h.rating,
-        h.verified,
-        h.email as handwerker_email,
-        h.phone as handwerker_phone,
-        t.name as trade_name,
-        tn.estimated_value,
-        CASE 
-          WHEN o.viewed_at IS NULL THEN false 
-          ELSE true 
-        END as viewed
-       FROM offers o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN tenders tn ON o.tender_id = tn.id
-       JOIN trades t ON tn.trade_id = t.id
-       WHERE tn.project_id = $1
-        AND o.status != 'withdrawn'
-       ORDER BY o.status DESC, t.name, o.amount ASC`,
-      [projectId]
-    );
-    
-    console.log('📊 Found offers:', offers.rows.length);
-    console.log('📦 First offer:', offers.rows[0]);
-    
-    // Kontaktdaten maskieren
-    const processedOffers = offers.rows.map(offer => {
-      if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
-        return {
-          ...offer,
-          email: 'Nach Beauftragung sichtbar',
-          phone: 'Nach Beauftragung sichtbar'
-        };
-      }
-      return {
-        ...offer,
-        email: offer.handwerker_email,
-        phone: offer.handwerker_phone
-      };
-    });
-    
-    console.log('✅ Sending processed offers:', processedOffers.length);
-    res.json(processedOffers);
-    
-  } catch (error) {
-    console.error('❌ Error fetching detailed offers:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
-  }
-});
-
-// Handwerker: LV für Angebot abrufen
-app.get('/api/tenders/:tenderId/lv', async (req, res) => {
-  try {
-    const { tenderId } = req.params;
-    
-    const result = await query(
-      `SELECT 
-        t.lv_data,
-        t.project_id,
-        t.trade_id,
-        tr.name as trade_name,
-        p.description as project_description
-      FROM tenders t
-      JOIN trades tr ON t.trade_id = tr.id
-      JOIN projects p ON t.project_id = p.id
-      WHERE t.id = $1`,
-      [tenderId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Ausschreibung nicht gefunden' });
-    }
-    
-    const tender = result.rows[0];
-    const lv = typeof tender.lv_data === 'string' 
-      ? JSON.parse(tender.lv_data) 
-      : tender.lv_data;
-    
-    // Preise entfernen für Handwerker-Ansicht
-    const lvWithoutPrices = {
-      ...lv,
-      positions: lv.positions.map(pos => ({
-        ...pos,
-        unitPrice: 0,
-        totalPrice: 0
-      }))
-    };
-    
-    res.json({
-      tenderId,
-      projectId: tender.project_id,
-      tradeId: tender.trade_id,
-      tradeName: tender.trade_name,
-      projectDescription: tender.project_description,
-      lv: lvWithoutPrices
-    });
-    
-  } catch (error) {
-    console.error('Error fetching tender LV:', error);
-    res.status(500).json({ error: 'Fehler beim Abrufen des LV' });
-  }
-});
-
-// Angebot als gelesen markieren
-app.post('/api/offers/:offerId/mark-read', async (req, res) => {
-  try {
-    const { offerId } = req.params;
-    
-    await query(
-      'UPDATE offers SET viewed_at = COALESCE(viewed_at, NOW()) WHERE id = $1',
-      [offerId]
-    );
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Fehler' });
-  }
-});
-
-// 3. Erweiterte Angebots-Submission mit Status-Management
-app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
-  try {
-    const { tenderId } = req.params;
-    const { handwerkerId, positions, notes, totalSum, isPreliminary = true } = req.body;
-    
-    await query('BEGIN');
-    
-    // Prüfen ob bereits ein Angebot existiert
-    const existingOffer = await query(
-      'SELECT id, status FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
-      [tenderId, handwerkerId]
-    );
-    
-    let offerId;
-    let status = isPreliminary ? 'submitted' : 'confirmed';
-    
-    if (existingOffer.rows.length > 0) {
-      offerId = existingOffer.rows[0].id;
-      
-      // Update nur wenn Status-Übergang erlaubt
-      if (existingOffer.rows[0].status === 'preliminary' && !isPreliminary) {
-        status = 'confirmed';
-      }
-      
-      await query(
-        `UPDATE offers 
-         SET lv_data = $1, notes = $2, amount = $3, status = $4, updated_at = NOW()
-         WHERE id = $5`,
-        [JSON.stringify({ positions }), notes, totalSum, status, offerId]
-      );
-    } else {
-      const result = await query(
-        `INSERT INTO offers (
-          tender_id, handwerker_id, amount, 
-          lv_data, notes, status, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-        RETURNING id`,
-       [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, status]
-      );
-      offerId = result.rows[0].id;
-    }
-    
-    await query('COMMIT');
-    
-    res.json({ 
-      success: true, 
-      offerId,
-      message: isPreliminary ? 
-        'Vorläufiges Angebot abgegeben. Der Bauherr kann nun Kontakt aufnehmen.' :
-        'Verbindliches Angebot bestätigt.'
-    });
-  } catch (error) {
-    await query('ROLLBACK');
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Fehler beim Abgeben des Angebots' });
-  }
-});
-
-// Erweiterte Route für Angebote mit mehr Details
-app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    const result = await query(
-      `SELECT 
-        o.*,
-        o.bundle_discount,  
-        tn.bundle_id,       
-        h.company_name,
-        h.email,
-        h.phone,
-        h.street,
-        h.house_number,
-        h.zip_code,
-        h.city,
-        h.rating,
-        t.name as trade_name,
-        tn.estimated_value,
-        tn.timeframe,
-        o.lv_data,
-        o.notes,
-        CASE 
-          WHEN o.viewed_at IS NULL THEN false 
-          ELSE true 
-        END as viewed
-       FROM offers o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN tenders tn ON o.tender_id = tn.id
-       JOIN trades t ON tn.trade_id = t.id
-       WHERE tn.project_id = $1
-       ORDER BY t.name, o.amount ASC`,
-      [projectId]
-    );
-    
-    res.json(result.rows);
-    
-  } catch (error) {
-    console.error('Error fetching detailed offers:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
   }
 });
 
