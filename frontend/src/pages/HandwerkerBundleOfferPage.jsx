@@ -317,26 +317,17 @@ export default function HandwerkerBundleOfferPage() {
     }
   };
 
-  // Berechne Gesamtfahrzeit zwischen allen Projekten
-  const calculateTotalTravelTime = () => {
-    if (!bundle || !bundle.projects || bundle.projects.length < 2) return 0;
-    
-    let totalDistance = 0;
-    for (let i = 0; i < bundle.projects.length - 1; i++) {
-      const p1 = bundle.projects[i];
-      const p2 = bundle.projects[i + 1];
-      
-      if (p1.lat && p1.lng && p2.lat && p2.lng) {
-        totalDistance += haversineDistance(
-          { lat: parseFloat(p1.lat), lng: parseFloat(p1.lng) },
-          { lat: parseFloat(p2.lat), lng: parseFloat(p2.lng) }
-        );
-      }
-    }
-    
-    // Durchschnitt 50 km/h in der Stadt
-    return Math.round(totalDistance / 50 * 60); // in Minuten
-  };
+  // State für Fahrzeit
+const [travelTime, setTravelTime] = useState(0);
+
+// Berechne realistische Fahrzeit beim Laden
+useEffect(() => {
+  if (bundle && bundle.projects) {
+    calculateRealTravelTime(bundle.projects).then(time => {
+      setTravelTime(time);
+    });
+  }
+}, [bundle]);
 
   const calculateTotalAmount = () => {
     const total = Object.values(projectOffers).reduce((sum, offer) => {
