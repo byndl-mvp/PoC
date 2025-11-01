@@ -22009,11 +22009,43 @@ app.post('/api/bundles/:bundleId/submit-offer', async (req, res) => {
     
     await query('BEGIN');
     
-    // CompanyId zu HandwerkerId konvertieren
-    const handwerkerResult = await query(
+    // CompanyId zu HandwerkerId konvertieren - flexibel
+let handwerkerId;
+
+// Prüfe ob companyId eine Zahl ist (dann ist es möglicherweise schon die handwerker_id)
+if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
+  // Versuche zuerst als handwerker_id
+  const directResult = await query(
+    'SELECT id FROM handwerker WHERE id = $1',
+    [parseInt(companyId)]
+  );
+  
+  if (directResult.rows.length > 0) {
+    handwerkerId = directResult.rows[0].id;
+  } else {
+    // Falls nicht gefunden, versuche als company_id
+    const companyResult = await query(
       'SELECT id FROM handwerker WHERE company_id = $1',
       [companyId]
     );
+    
+    if (companyResult.rows.length === 0) {
+      throw new Error('Handwerker nicht gefunden');
+    }
+    handwerkerId = companyResult.rows[0].id;
+  }
+} else {
+  // String company_id
+  const handwerkerResult = await query(
+    'SELECT id FROM handwerker WHERE company_id = $1',
+    [companyId]
+  );
+  
+  if (handwerkerResult.rows.length === 0) {
+    throw new Error('Handwerker nicht gefunden');
+  }
+  handwerkerId = handwerkerResult.rows[0].id;
+}
     
     if (handwerkerResult.rows.length === 0) {
       throw new Error('Handwerker nicht gefunden');
