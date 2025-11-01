@@ -31,7 +31,7 @@ import HandwerkerSettingsPage from './pages/HandwerkerSettingsPage';
 import HandwerkerOfferPage from './pages/HandwerkerOfferPage';
 import HandwerkerOfferDetailsPage from './pages/HandwerkerOfferDetailsPage';
 import HandwerkerOfferConfirmPage from './pages/HandwerkerOfferConfirmPage';
-
+import HandwerkerBundleOfferPage from './pages/HandwerkerBundleOfferPage';
 import HandwerkerLVDetailsPage from './pages/HandwerkerLVDetailsPage';
 import OrtsterminPage from './pages/OrtsterminPage';
 
@@ -191,6 +191,7 @@ function App() {
     </ProtectedRoute>
   }
 />
+          
 {/* Angebot bestätigen nach Ortstermin */}
 <Route 
   path="/handwerker/offer/:offerId/confirm" 
@@ -210,6 +211,8 @@ function App() {
   } 
 />
 
+<Route path="/handwerker/bundle/:bundleId/offer" element={<HandwerkerBundleOfferPage />} />
+          
 {/* LV-Details für Handwerker - geschützt */}
 <Route 
   path="/handwerker/order/:orderId/lv-details" 
