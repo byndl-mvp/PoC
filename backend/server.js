@@ -21206,14 +21206,14 @@ async function createProjectTenders(req, res) {
       });
     }
 
-    // 5) Optional Bundles
-    if (bundleSettings?.eligible && typeof checkAndCreateBundles === 'function' && createdTenders.length > 0) {
-      try {
-        await checkAndCreateBundles(project, createdTenders);
-      } catch (bundleErr) {
-        console.warn('Bundle-Erstellung übersprungen:', bundleErr?.message || bundleErr);
-      }
-    }
+    // 5) Bundles automatisch prüfen und erstellen
+if (typeof checkAndCreateBundles === 'function' && createdTenders.length > 0) {
+  try {
+    await checkAndCreateBundles(project, createdTenders);
+  } catch (bundleErr) {
+    console.warn('Bundle-Erstellung fehlgeschlagen:', bundleErr?.message || bundleErr);
+  }
+}
 
     // 6) E-Mail an Bauherr (Zusammenfassung)
     if (
