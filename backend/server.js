@@ -21881,7 +21881,7 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
        JOIN projects p ON tn.project_id = p.id
        LEFT JOIN zip_codes z ON p.zip_code = z.zip
        WHERE b.trade_code = ANY($1::varchar[])
-       AND b.status IN ('forming', 'open')
+       AND b.status IN ('forming', 'open', 'offered')
        AND tn.status = 'open'
        AND NOT EXISTS (
          SELECT 1 FROM offers o 
