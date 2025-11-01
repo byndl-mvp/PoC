@@ -48,6 +48,9 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
     }
   };
 
+  // Berechne Gesamtzahl ungelesener Nachrichten
+  const totalUnreadCount = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+  
   const loadMessages = async (conversationId) => {
     try {
       const res = await fetch(apiUrl(`/api/messages/${conversationId}`));
