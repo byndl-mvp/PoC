@@ -260,7 +260,7 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
       setTenders([]);
     }
     
-    const offersRes = await fetch(apiUrl(`/api/projects/${projectId}/offers?t=${timestamp}`));
+    const offersRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/detailed?t=${timestamp}`));
     if (offersRes.ok) {
       const offersData = await offersRes.json();
       console.log('🔍 LOADED OFFERS:', offersData);
