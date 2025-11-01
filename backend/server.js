@@ -21817,8 +21817,9 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
             'address', CONCAT(p.street, ' ', p.house_number, ', ', p.zip_code, ' ', p.city),
             'zip', p.zip_code,
             'city', p.city,
-            'lat', z.latitude,
-            'lng', z.longitude,
+            'lat', COALESCE(p.geocoded_lat, z.latitude),
+            'lng', COALESCE(p.geocoded_lng, z.longitude),
+            'has_exact_coords', CASE WHEN p.geocoded_lat IS NOT NULL THEN true ELSE false END,
             'volume', tn.estimated_value,
             'timeframe', tn.timeframe,
             'deadline', tn.deadline
@@ -21841,10 +21842,32 @@ app.get('/api/handwerker/:identifier/bundles', async (req, res) => {
        HAVING COUNT(DISTINCT tn.id) >= 2`,
       [tradeCodes, handwerkerId]
     );
-    
+
     // Bundles mit berechneten Daten aufbereiten
-    const bundles = bundlesResult.rows.map(bundle => {
-      const projects = bundle.projects || [];
+const bundles = bundlesResult.rows.map(bundle => {
+  const projects = bundle.projects || [];
+  
+  // Geocode fehlende Projekte im Hintergrund
+  projects.forEach(project => {
+    if (!project.has_exact_coords) {
+      ensureProjectGeocoded(project.project_id).catch(err => 
+        console.error('Background geocoding failed:', err)
+      );
+    }
+  });
+  
+  // Füge 100m Offset für alle Projekte hinzu
+  const projectsWithOffset = projects.map(p => {
+    if (p.lat && p.lng) {
+      const offsetCoords = addRandomOffset(p.lat, p.lng, 100);
+      return {
+        ...p,
+        lat: offsetCoords.lat,
+        lng: offsetCoords.lng
+      };
+    }
+    return p;
+  });
       
       // Berechne maximale Distanz zwischen Projekten
       let maxDistance = 0;
