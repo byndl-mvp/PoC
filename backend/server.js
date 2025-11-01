@@ -21963,6 +21963,18 @@ app.get('/api/bundles/:bundleId/details', async (req, res) => {
       totalSum: totalSum,
       projectCount: bundle.projects.length
     };
+
+    // Berechne maximale Distanz für UI
+const projectCoords = bundle.projects
+  .filter(p => p.lat && p.lng)
+  .map(p => ({ lat: parseFloat(p.lat), lng: parseFloat(p.lng) }));
+
+bundle.maxDistance = projectCoords.length > 1 
+  ? calculateMaxDistance(projectCoords) 
+  : 0;
+
+// Berechne Zentrum für Karte
+bundle.center = calculateCenter(bundle.projects);
     
     // Berechne optimale Route (nur wenn Funktionen existieren)
     if (typeof calculateOptimalRoute === 'function') {
