@@ -21580,6 +21580,8 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
     const offers = await query(
       `SELECT 
         o.*,
+        o.bundle_discount,  
+        tn.bundle_id,       
         h.company_name,
         h.rating,
         h.verified,
