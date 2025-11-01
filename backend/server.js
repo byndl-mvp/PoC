@@ -21605,23 +21605,23 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
       [projectId]
     );
     
-    // Gruppiere nach Trade für bessere Übersicht
-    const groupedOffers = {};
-    for (const offer of offers.rows) {
-      if (!groupedOffers[offer.trade_name]) {
-        groupedOffers[offer.trade_name] = [];
-      }
-      
-      // Kontaktdaten nur bei preliminary/accepted zeigen
-      if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
-        offer.handwerker_email = 'Nach Beauftragung sichtbar';
-        offer.handwerker_phone = 'Nach Beauftragung sichtbar';
-      }
-      
-      groupedOffers[offer.trade_name].push(offer);
-    }
-    
-    res.json(groupedOffers);
+    // Kontaktdaten maskieren falls nicht beauftragt
+const processedOffers = offers.rows.map(offer => {
+  if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
+    return {
+      ...offer,
+      email: 'Nach Beauftragung sichtbar',
+      phone: 'Nach Beauftragung sichtbar'
+    };
+  }
+  return {
+    ...offer,
+    email: offer.handwerker_email,
+    phone: offer.handwerker_phone
+  };
+});
+
+res.json(processedOffers);  
     
   } catch (error) {
     console.error('Error fetching detailed offers:', error);
