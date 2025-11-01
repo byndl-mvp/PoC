@@ -11118,6 +11118,13 @@ console.log('House number from DB:', projectResult.rows[0].house_number);
 console.log('Full project:', projectResult.rows[0]);
 
     const project = projectResult.rows[0];
+
+     // NEU: Geocoding im Hintergrund starten
+    if (street && houseNumber && zipCode && city) {
+      ensureProjectGeocoded(project.id).catch(err => 
+        console.error('Background geocoding failed:', err)
+      );
+    }
     
     // ERST Trades erkennen
     const detectedTrades = await detectTrades({
