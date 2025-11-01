@@ -22018,7 +22018,7 @@ async function checkAndCreateBundles(project, tenders) {
        AND ST_DWithin(
          ST_MakePoint(z1.longitude, z1.latitude)::geography,
          ST_MakePoint(z2.longitude, z2.latitude)::geography,
-         10000 -- 10km Radius für Bündel
+         5000 -- 5km Radius für Bündel
        )`,
       [project.zip_code, tender.tradeId, project.id]
     );
