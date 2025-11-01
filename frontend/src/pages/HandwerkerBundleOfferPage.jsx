@@ -505,7 +505,9 @@ useEffect(() => {
             </div>
             <div className="bg-white/5 rounded-lg p-3 text-center">
               <p className="text-gray-400 text-sm">Geschätzte Fahrzeit</p>
-              <p className="text-xl font-bold text-purple-400">{totalTravelTime} Min.</p>
+              <p className="text-xl font-bold text-purple-400">
+  {travelTime > 0 ? `${travelTime} Min.` : 'Wird berechnet...'}
+</p>
               <p className="text-xs text-gray-500">Zwischen allen Projekten</p>
             </div>
             <div className="bg-white/5 rounded-lg p-3 text-center">
