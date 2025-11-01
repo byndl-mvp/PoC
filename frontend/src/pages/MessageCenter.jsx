@@ -13,10 +13,19 @@ const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
   const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
 
-  useEffect(() => {
-  if (isOpen) {
+ // Initiales Laden und Polling für Badge (auch wenn geschlossen)
+useEffect(() => {
+  if (userId) {
     loadConversations();
-    const interval = setInterval(loadConversations, 10000);
+    const interval = setInterval(loadConversations, 30000); // Alle 30 Sekunden
+    return () => clearInterval(interval);
+  }
+}, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// Schnelleres Polling wenn MessageCenter offen ist
+useEffect(() => {
+  if (isOpen && userId) {
+    const interval = setInterval(loadConversations, 5000); // Alle 5 Sekunden
     return () => clearInterval(interval);
   }
 }, [isOpen, userId]); // eslint-disable-line react-hooks/exhaustive-deps
