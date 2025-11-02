@@ -23704,8 +23704,6 @@ app.get('/api/offers/:offerId/details-with-contacts', async (req, res) => {
     const result = await query(
       `SELECT 
         o.*,
-        o.bundle_discount,
-        t.bundle_id, 
         h.company_name,
         h.email as handwerker_email,
         h.phone as handwerker_phone,
