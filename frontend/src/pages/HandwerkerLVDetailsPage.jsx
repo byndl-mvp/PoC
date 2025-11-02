@@ -72,8 +72,11 @@ export default function HandwerkerLVDetailsPage() {
   );
 
   const total = calculateTotal();
-  const mwst = total * 0.19;
-  const brutto = total + mwst;
+  const bundleDiscount = orderData?.bundle_discount || 0;
+  const discountAmount = bundleDiscount > 0 ? (total * bundleDiscount / 100) : 0;
+  const nettoAfterDiscount = total - discountAmount;
+  const mwst = nettoAfterDiscount * 0.19;
+  const brutto = nettoAfterDiscount + mwst;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -166,24 +169,37 @@ export default function HandwerkerLVDetailsPage() {
 
           {/* Summen */}
           <div className="mt-8 pt-6 border-t border-white/20">
-            <div className="flex justify-end">
-              <div className="w-96 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Netto-Summe:</span>
-                  <span className="text-white font-bold text-xl">{formatCurrency(total)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">zzgl. 19% MwSt.:</span>
-                  <span className="text-gray-300">{formatCurrency(mwst)}</span>
-                </div>
-                <div className="flex justify-between pt-3 border-t border-white/20">
-                  <span className="text-white font-bold">Gesamt (Brutto):</span>
-                  <span className="text-teal-400 font-bold text-2xl">{formatCurrency(brutto)}</span>
-                </div>
-              </div>
-            </div>
+  <div className="flex justify-end">
+    <div className="w-96 space-y-2">
+      <div className="flex justify-between">
+        <span className="text-gray-400">Netto-Summe:</span>
+        <span className="text-white font-bold text-xl">{formatCurrency(total)}</span>
+      </div>
+      
+      {bundleDiscount > 0 && (
+        <>
+          <div className="flex justify-between">
+            <span className="text-green-400">📦 Bündelrabatt ({bundleDiscount}%):</span>
+            <span className="text-green-400 font-semibold">- {formatCurrency(discountAmount)}</span>
           </div>
-        </div>
+          <div className="flex justify-between border-t border-white/20 pt-2">
+            <span className="text-gray-400">Netto nach Rabatt:</span>
+            <span className="text-white font-bold">{formatCurrency(nettoAfterDiscount)}</span>
+          </div>
+        </>
+      )}
+      
+      <div className="flex justify-between">
+        <span className="text-gray-400">zzgl. 19% MwSt.:</span>
+        <span className="text-gray-300">{formatCurrency(mwst)}</span>
+      </div>
+      <div className="flex justify-between pt-3 border-t border-white/20">
+        <span className="text-white font-bold">Gesamt (Brutto):</span>
+        <span className="text-teal-400 font-bold text-2xl">{formatCurrency(brutto)}</span>
+      </div>
+    </div>
+  </div>
+</div>
 
         {/* Actions */}
         <div className="flex gap-4 mt-6">
