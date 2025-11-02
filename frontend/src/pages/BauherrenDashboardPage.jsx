@@ -2413,10 +2413,19 @@ const deadlineDate = tender.deadline
               
               <div className="text-right ml-6">
   <p className="text-sm text-gray-400 mb-1">
+    {offer.bundle_discount > 0 ? (
+  <>
     Netto: {formatCurrency(offer.amount)}
-  </p>
-  <p className="text-2xl font-bold text-teal-400 mb-2">
-    {formatCurrency((offer.amount || 0) * 1.19)}
+    Rabatt: -{offer.bundle_discount}%
+    Nach Rabatt: {formatCurrency(offer.amount - (offer.amount * offer.bundle_discount / 100))}
+    Brutto: {formatCurrency((offer.amount - (offer.amount * offer.bundle_discount / 100)) * 1.19)}
+  </>
+) : (
+  <>
+    Netto: {formatCurrency(offer.amount)}
+    Brutto: {formatCurrency((offer.amount || 0) * 1.19)}
+  </>
+)}
   </p>
   <p className="text-xs text-gray-400 mb-3">
     Brutto (inkl. 19% MwSt.)
