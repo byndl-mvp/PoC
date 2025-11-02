@@ -24187,7 +24187,14 @@ app.post('/api/tenders/:tenderId/reject', async (req, res) => {
 app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   try {
     const { tenderId } = req.params;
-    const { handwerkerId, positions, notes, totalSum, stage = 'preliminary' } = req.body;
+    const { 
+  handwerkerId, 
+  positions, 
+  notes, 
+  totalSum, 
+  stage = 'preliminary',
+  bundleDiscount = 0  
+} = req.body;
     
     await query('BEGIN');
     
@@ -24214,16 +24221,16 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
         `UPDATE offers 
          SET lv_data = $1, notes = $2, amount = $3, stage = $4, updated_at = NOW()
          WHERE id = $5`,
-        [JSON.stringify({ positions }), notes, totalSum, stage, offerId]
+        [JSON.stringify({ positions }), notes, totalSum, stage, bundleDiscount, offerId]
       );
     } else {
       const result = await query(
         `INSERT INTO offers (
           tender_id, handwerker_id, amount, 
-          lv_data, notes, status, stage, created_at
+          lv_data, notes, status, stage, bundle_discount, created_at
         ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, NOW())
         RETURNING id`,
-        [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, stage]
+        [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, stage, bundleDiscount]
       );
       offerId = result.rows[0].id;
     }
