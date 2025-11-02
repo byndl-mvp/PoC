@@ -20836,6 +20836,12 @@ if (order.lv_data) {
     
     doc.fontSize(11).font('Helvetica-Bold');
     doc.text(`Vertragssumme (Netto): ${formatCurrency(netto)}`);
+
+    if (bundleDiscount > 0) {
+      doc.text(`Bündelrabatt (${bundleDiscount}%): -${formatCurrency(discountAmount)}`);
+      doc.text(`Netto nach Rabatt: ${formatCurrency(nettoAfterDiscount)}`);
+    }
+
     doc.text(`zzgl. gesetzlicher MwSt. (19%): ${formatCurrency(mwst)}`);
     doc.text('-'.repeat(60));
     doc.text(`Gesamtsumme (Brutto): ${formatCurrency(brutto)}`);
