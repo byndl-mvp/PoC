@@ -21358,7 +21358,7 @@ async function createProjectTenders(req, res) {
            FROM tenders
           WHERE project_id = $1
             AND trade_id   = $2
-            AND status    != 'cancelled'`,
+            AND status    != 'open'`,
         [projectId, trade.id]
       );
       if (existingTender.rows.length > 0) {
