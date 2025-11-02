@@ -531,28 +531,41 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
             </div>
           )}
 
-          {/* Summen */}
-          {lvData.positions && lvData.positions.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-white/20">
-              <div className="flex justify-end">
-                <div className="w-80 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Netto-Summe:</span>
-                    <span className="text-white font-bold text-xl">{formatCurrency(total)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">zzgl. 19% MwSt.:</span>
-                    <span className="text-gray-300">{formatCurrency(mwst)}</span>
-                  </div>
-                  <div className="flex justify-between pt-3 border-t border-white/20">
-                    <span className="text-white font-bold">Gesamt (Brutto):</span>
-                    <span className="text-teal-400 font-bold text-2xl">{formatCurrency(brutto)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Summen mit Rabatt */}
+{lvData.positions && lvData.positions.length > 0 && (
+  <div className="mt-6 pt-6 border-t border-white/20">
+    <div className="flex justify-end">
+      <div className="w-80 space-y-2">
+        <div className="flex justify-between">
+          <span className="text-gray-400">Summe Netto:</span>
+          <span className="text-white font-bold text-xl">{formatCurrency(totalNetto)}</span>
         </div>
+        
+        {bundleDiscount > 0 && (
+          <>
+            <div className="flex justify-between">
+              <span className="text-green-400">📦 Bündelrabatt ({bundleDiscount}%):</span>
+              <span className="text-green-400 font-semibold">- {formatCurrency(discountAmount)}</span>
+            </div>
+            <div className="flex justify-between border-t border-white/20 pt-2">
+              <span className="text-gray-400">Netto nach Rabatt:</span>
+              <span className="text-white font-bold">{formatCurrency(nettoAfterDiscount)}</span>
+            </div>
+          </>
+        )}
+        
+        <div className="flex justify-between">
+          <span className="text-gray-400">zzgl. 19% MwSt.:</span>
+          <span className="text-gray-300">{formatCurrency(mwst)}</span>
+        </div>
+        <div className="flex justify-between pt-3 border-t border-white/20">
+          <span className="text-white font-bold">Gesamt (Brutto):</span>
+          <span className="text-teal-400 font-bold text-2xl">{formatCurrency(totalBrutto)}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* Ausführungstermine */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 mb-6">
@@ -593,6 +606,48 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
           />
         </div>
 
+        {/* ✅ NEU: Bündelrabatt */}
+{offer?.bundle_id && (
+  <div className="bg-gradient-to-r from-green-600/10 to-teal-600/10 backdrop-blur-md rounded-xl p-6 border border-green-500/30 mb-6">
+    <div className="flex items-center gap-3 mb-4">
+      <span className="text-3xl">📦</span>
+      <h3 className="text-xl font-bold text-white">Bündelrabatt</h3>
+    </div>
+    
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Rabatt in % (optional)
+        </label>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="0.5"
+          value={bundleDiscount}
+          onChange={(e) => setBundleDiscount(parseFloat(e.target.value) || 0)}
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          placeholder="0"
+        />
+        <p className="text-sm text-gray-400 mt-2">
+          Bei Beauftragung aller Projekte im Bündel können Sie dem Bauherren einen Rabatt gewähren.
+        </p>
+      </div>
+      
+      {bundleDiscount > 0 && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-green-300">Rabatt auf Netto-Summe:</span>
+            <span className="text-green-300 font-semibold">
+              - {formatCurrency(discountAmount)}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+        
         {/* Hinweis */}
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
           <p className="text-yellow-300 text-sm">
