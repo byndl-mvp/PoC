@@ -19753,7 +19753,7 @@ app.get('/api/projects/:projectId/withdrawn-offers', async (req, res) => {
 app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
   try {
     const { offerId } = req.params;
-    const { amount, execution_start, execution_end, notes, lv_data } = req.body; // lv_data hinzufügen!
+    const { amount, bundle_discount, execution_start, execution_end, notes, lv_data } = req.body;
 
     console.log('EMPFANGEN - Offer ID:', offerId);
     console.log('EMPFANGEN - Amount:', amount);
@@ -19763,18 +19763,19 @@ app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
     
     // Update Offer MIT lv_data
     await query(
-      `UPDATE offers 
-       SET status = 'confirmed',
-           amount = $2,
-           execution_start = $3,
-           execution_end = $4,
-           notes = $5,
-           lv_data = $6,  -- NEU!
-           offer_confirmed_at = NOW(),
-           updated_at = NOW()
-       WHERE id = $1`,
-      [offerId, amount, execution_start, execution_end, notes, JSON.stringify(lv_data)] // lv_data als JSON
-    );
+  `UPDATE offers 
+   SET status = 'confirmed',
+       amount = $2,
+       bundle_discount = $3,
+       execution_start = $4,
+       execution_end = $5,
+       notes = $6,
+       lv_data = $7,
+       offer_confirmed_at = NOW(),
+       updated_at = NOW()
+   WHERE id = $1`,
+  [offerId, amount, bundle_discount, execution_start, execution_end, notes, JSON.stringify(lv_data)]
+);
     
     // Benachrichtige Bauherr
     const offerData = await query(
