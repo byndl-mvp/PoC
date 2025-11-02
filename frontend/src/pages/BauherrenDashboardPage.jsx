@@ -2119,18 +2119,52 @@ const deadlineDate = tender.deadline
                           </div>
                           
                           {offer.notes && (
-                            <div className="mt-3 p-3 bg-white/5 rounded">
-                              <p className="text-xs text-gray-500 mb-1">Anmerkungen:</p>
-                              <p className="text-sm text-gray-300">{offer.notes}</p>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="text-right ml-4">
-                          <p className="text-2xl font-bold text-teal-400">
-                            {formatCurrency(offer.amount)}
-                          </p>
-                          <p className="text-xs text-gray-400 mb-3">Netto</p>
+  <div className="mt-3 p-3 bg-white/5 rounded">
+    <p className="text-xs text-gray-500 mb-1">Anmerkungen:</p>
+    <p className="text-sm text-gray-300">{offer.notes}</p>
+  </div>
+)}
+</div>
+
+<div className="text-right ml-4">
+  {(() => {
+    // Berechne Rabatt innerhalb einer IIFE
+    const bundleDiscount = offer.bundle_discount || 0;
+    const discountAmount = bundleDiscount > 0 ? (offer.amount * bundleDiscount / 100) : 0;
+    const nettoAfterDiscount = offer.amount - discountAmount;
+    const bruttoAmount = nettoAfterDiscount * 1.19;
+    
+    return (
+      <div className="space-y-2">
+        <div>
+          <p className="text-2xl font-bold text-white">
+            {formatCurrency(offer.amount)}
+          </p>
+          <p className="text-xs text-gray-400">Netto</p>
+        </div>
+        
+        {bundleDiscount > 0 && (
+          <div className="text-sm">
+            <p className="text-green-400 font-semibold">
+              📦 -{bundleDiscount}% Rabatt
+            </p>
+            <p className="text-green-300">
+              {formatCurrency(nettoAfterDiscount)}
+            </p>
+            <p className="text-xs text-gray-400">Netto nach Rabatt</p>
+          </div>
+        )}
+        
+        <div className="pt-2 border-t border-white/20">
+          <p className="text-lg font-bold text-teal-400">
+            {formatCurrency(bruttoAmount)}
+          </p>
+          <p className="text-xs text-gray-400">Brutto</p>
+        </div>
+      </div>
+    );
+  })()}
+</div>
                           
                           {/* Status-basierte Aktionen */}
                           {offer.status === 'submitted' && (
