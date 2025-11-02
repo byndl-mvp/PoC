@@ -24218,22 +24218,31 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       offerId = existingOffer.rows[0].id;
       
       await query(
-        `UPDATE offers 
-         SET lv_data = $1, notes = $2, amount = $3, stage = $4, updated_at = NOW()
-         WHERE id = $5`,
-        [JSON.stringify({ positions }), notes, totalSum, stage, bundleDiscount, offerId]
-      );
+  `UPDATE offers 
+   SET lv_data = $1, 
+       notes = $2, 
+       amount = $3, 
+       stage = $4, 
+       bundle_discount = $5,  -- ✅ NEU
+       status = CASE 
+         WHEN stage = 'preliminary' AND $4 != 'preliminary' THEN 'confirmed'
+         ELSE status 
+       END,  -- ✅ NEU: Status-Übergang
+       updated_at = NOW()
+   WHERE id = $6`,
+  [JSON.stringify({ positions }), notes, totalSum, stage, bundleDiscount, offerId]
+);
     } else {
-      const result = await query(
-        `INSERT INTO offers (
-          tender_id, handwerker_id, amount, 
-          lv_data, notes, status, stage, bundle_discount, created_at
-        ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, NOW())
-        RETURNING id`,
-        [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, stage, bundleDiscount]
-      );
-      offerId = result.rows[0].id;
-    }
+  const result = await query(
+    `INSERT INTO offers (
+      tender_id, handwerker_id, amount, 
+      lv_data, notes, status, stage, bundle_discount, created_at
+    ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, $7, NOW())
+    RETURNING id`,
+    [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, stage, bundleDiscount]  // ✅ bundleDiscount als $7
+  );
+  offerId = result.rows[0].id;
+}
     
     // Benachrichtigung für Bauherr
     const tenderInfo = await query(
