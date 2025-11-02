@@ -200,7 +200,7 @@ export default function HandwerkerLVDetailsPage() {
     </div>
   </div>
 </div>
-
+</div>
         {/* Actions */}
         <div className="flex gap-4 mt-6">
           <button
