@@ -22261,17 +22261,22 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
       
       // Prüfe ob bundle_id Spalte in offers existiert
       const offerResult = await query(
-        `INSERT INTO offers (
-          tender_id, handwerker_id, 
-          amount, lv_data, notes,
-          ${typeof bundle_discount !== 'undefined' ? 'bundle_discount,' : ''}
-          status, stage, created_at
-        ) VALUES ($1, $2, $3, $4, $5, ${typeof bundle_discount !== 'undefined' ? '$6,' : ''} 'submitted', 1, NOW())
-        RETURNING id`,
-        typeof bundle_discount !== 'undefined' 
-          ? [tender.tender_id, handwerkerId, offerData.amount, JSON.stringify(offerData.positions), offerData.notes, bundleDiscount]
-          : [tender.tender_id, handwerkerId, offerData.amount, JSON.stringify(offerData.positions), offerData.notes]
-      );
+  `INSERT INTO offers (
+    tender_id, handwerker_id, 
+    amount, lv_data, notes,
+    bundle_discount,  -- ✅ Immer einfügen
+    status, stage, created_at
+  ) VALUES ($1, $2, $3, $4, $5, $6, 'submitted', 1, NOW())
+  RETURNING id`,
+  [
+    tender.tender_id, 
+    handwerkerId, 
+    offerData.amount, 
+    JSON.stringify(offerData.positions), 
+    offerData.notes, 
+    bundleDiscount || 0  -- ✅ Richtige Variable, Default 0
+  ]
+);
       
       createdOffers.push(offerResult.rows[0].id);
       totalAmount += offerData.amount;
