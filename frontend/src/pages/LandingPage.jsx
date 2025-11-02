@@ -39,6 +39,7 @@ export default function LandingPage() {
       <header className="relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-white">byndl</h1>
             <div className="flex gap-3">
               <Link
                 to="/bauherr/login"
@@ -87,6 +88,21 @@ export default function LandingPage() {
               <span className="text-teal-400 font-semibold"> Ausschreibung</span> und der 
               <span className="text-teal-400 font-semibold"> Bündelung ähnlicher Projekte</span> in derselben Region.
             </p>
+
+            {/* Hero Image - Bauherr und Handwerker */}
+            <div className="mb-12 max-w-5xl mx-auto">
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white/20">
+                <img 
+                  src="/hero-image.png" 
+                  alt="Bauherr und Handwerker arbeiten erfolgreich zusammen" 
+                  className="w-full h-auto"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 to-transparent"></div>
+              </div>
+              <p className="text-center text-teal-300 mt-4 text-sm font-medium">
+                Bauherren und Handwerker – gemeinsam erfolgreich mit byndl
+              </p>
+            </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
@@ -153,7 +169,7 @@ export default function LandingPage() {
                       <svg className="w-5 h-5 text-teal-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Direkte und nachvollziehbare Kostenschätzung</span>
+                      <span>Direkte und nachvollziehbare Kostenschätzung mit Fördermittelprüfung (KfW, BAFA)</span>
                     </li>
                   </ul>
                 </div>
@@ -209,7 +225,7 @@ export default function LandingPage() {
 
               <div className="space-y-6">
                 <div>
-                  <h4 className="text-xl font-semibold text-blue-300 mb-3">Projektbündelung</h4>
+                  <h4 className="text-xl font-semibold text-blue-300 mb-3">Umsatzsteigerung</h4>
                   <ul className="space-y-2 text-gray-200">
                     <li className="flex items-start">
                       <svg className="w-5 h-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
