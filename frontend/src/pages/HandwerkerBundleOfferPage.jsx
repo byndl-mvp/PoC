@@ -383,7 +383,7 @@ const res = await fetch(apiUrl(`/api/bundles/${bundleId}/submit-offer`), {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     companyId: handwerkerId, // Verwende direkt die Handwerker-ID
-    bundleDiscount: bundleDiscount,
+    bundle_discount: bundleDiscount,
     individualOffers: projectOffers,
     notes: notes
   })
