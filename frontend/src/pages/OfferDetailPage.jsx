@@ -355,24 +355,51 @@ In der Kennenlernphase hat der ausgewählte Handwerker Exklusivität. Dies schü
                       ))}
                     </tbody>
                     <tfoot className="border-t-2 border-white/20">
-  <tr>
-    <td colSpan="5" className="text-right p-3 font-semibold text-gray-400">Gesamtsumme Netto:</td>
-    <td className="text-right p-3 font-semibold text-white">
-      {formatCurrency(offer.amount)}
-    </td>
-  </tr>
-  <tr>
-    <td colSpan="5" className="text-right p-3 text-sm text-gray-400">zzgl. 19% MwSt.:</td>
-    <td className="text-right p-3 text-sm text-gray-300">
-      {formatCurrency((offer.amount || 0) * 0.19)}
-    </td>
-  </tr>
-  <tr className="border-t border-white/20">
-    <td colSpan="5" className="text-right p-3 font-bold text-white">Gesamtsumme Brutto:</td>
-    <td className="text-right p-3 text-xl font-bold text-teal-400">
-      {formatCurrency((offer.amount || 0) * 1.19)}
-    </td>
-  </tr>
+  {(() => {
+    const prices = calculatePriceWithDiscount(offer);
+    return (
+      <>
+        <tr>
+          <td colSpan="5" className="text-right p-3 font-semibold text-gray-400">Gesamtsumme Netto:</td>
+          <td className="text-right p-3 font-semibold text-white">
+            {formatCurrency(prices.netto)}
+          </td>
+        </tr>
+        
+        {prices.bundleDiscount > 0 && (
+          <>
+            <tr>
+              <td colSpan="5" className="text-right p-3 text-sm text-green-400">
+                📦 Bündelrabatt ({prices.bundleDiscount}%):
+              </td>
+              <td className="text-right p-3 text-sm text-green-400 font-semibold">
+                - {formatCurrency(prices.discountAmount)}
+              </td>
+            </tr>
+            <tr className="border-t border-white/10">
+              <td colSpan="5" className="text-right p-3 font-semibold text-gray-400">Netto nach Rabatt:</td>
+              <td className="text-right p-3 font-semibold text-white">
+                {formatCurrency(prices.nettoAfterDiscount)}
+              </td>
+            </tr>
+          </>
+        )}
+        
+        <tr>
+          <td colSpan="5" className="text-right p-3 text-sm text-gray-400">zzgl. 19% MwSt.:</td>
+          <td className="text-right p-3 text-sm text-gray-300">
+            {formatCurrency(prices.mwst)}
+          </td>
+        </tr>
+        <tr className="border-t border-white/20">
+          <td colSpan="5" className="text-right p-3 font-bold text-white">Gesamtsumme Brutto:</td>
+          <td className="text-right p-3 text-xl font-bold text-teal-400">
+            {formatCurrency(prices.brutto)}
+          </td>
+        </tr>
+      </>
+    );
+  })()}
 </tfoot>
                   </table>
                 </div>
