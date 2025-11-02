@@ -603,6 +603,16 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
           />
         </div>
 
+ {/* DEBUG - LÖSCHE MICH SPÄTER */}
+        <div className="bg-red-500 text-white p-4 mb-4 rounded">
+          <p className="font-bold">DEBUG INFO:</p>
+          <p>offer existiert? {offer ? 'JA' : 'NEIN'}</p>
+          <p>bundle_discount Wert: {JSON.stringify(offer?.bundle_discount)}</p>
+          <p>typeof: {typeof offer?.bundle_discount}</p>
+          <p>bundleDiscount State: {bundleDiscount}</p>
+          <p>Bedingung erfüllt? {typeof offer?.bundle_discount === 'number' ? 'JA ✅' : 'NEIN ❌'}</p>
+        </div>
+        
         {/* ✅ NEU: Bündelrabatt */}
 {typeof offer?.bundle_discount === 'number' && (
   <div className="bg-gradient-to-r from-green-600/10 to-teal-600/10 backdrop-blur-md rounded-xl p-6 border border-green-500/30 mb-6">
