@@ -1529,7 +1529,10 @@ const badgeCounts = {
         <div className="space-y-4">
           {orders.filter(order => order.status === 'completed').map((order, idx) => {
             const netto = parseFloat(order.amount) || 0;
-            const brutto = netto * 1.19;
+            const bundleDiscount = order.bundle_discount || 0;
+            const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
+            const nettoAfterDiscount = netto - discountAmount;
+            const brutto = nettoAfterDiscount * 1.19;
             
             return (
               <div key={idx} className="bg-white/5 rounded-lg p-5 border border-white/10 opacity-60 cursor-not-allowed">
