@@ -19575,6 +19575,7 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
     b.address as bauherr_address,
     o.id as offer_id,
     o.amount as offer_amount,
+    o.bundle_discount, 
     o.status as offer_status,
     o.preliminary_accepted_at,
     o.offer_confirmed_at,
