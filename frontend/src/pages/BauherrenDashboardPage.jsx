@@ -2164,7 +2164,6 @@ const deadlineDate = tender.deadline
       </div>
     );
   })()}
-</div>
                           
                           {/* Status-basierte Aktionen */}
                           {offer.status === 'submitted' && (
@@ -2242,9 +2241,9 @@ const deadlineDate = tender.deadline
                             </span>
                           )}
                         </div>
-                      </div>
-                   </div>           
-              
+                      </div>         
+                    </div>   
+                    
                      {/* Vergleichszeile */}
 {idx < tradeOffers.length - 1 && (
   <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
