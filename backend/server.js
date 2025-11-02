@@ -20660,7 +20660,18 @@ if (order.lv_data) {
     xPos = 370;
     doc.text('Netto-Summe:', xPos, doc.y, { width: 100, align: 'left' });
     doc.text(formatCurrency(totalSum), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
-    
+
+    if (bundleDiscount > 0) {
+      doc.moveDown(0.5);
+      doc.fontSize(9).font('Helvetica');
+      doc.text(`Bündelrabatt (${bundleDiscount}%):`, xPos, doc.y, { width: 100, align: 'left' });
+      doc.text(`-${formatCurrency(discountAmount)}`, xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+  
+      doc.moveDown(0.5);
+      doc.text('Netto nach Rabatt:', xPos, doc.y, { width: 100, align: 'left' });
+      doc.text(formatCurrency(nettoAfterDiscount), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+    }
+
     doc.moveDown(0.5);
     doc.fontSize(9).font('Helvetica');
     doc.text('zzgl. 19% MwSt:', xPos, doc.y, { width: 100, align: 'left' });
