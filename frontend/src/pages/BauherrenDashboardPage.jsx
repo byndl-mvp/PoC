@@ -2628,7 +2628,15 @@ const deadlineDate = tender.deadline
               </div>
             </div>         
             <div className="space-y-6">
-              {orders.filter(o => o.status === 'active').map((order, idx) => (
+              {orders.filter(o => o.status === 'active').map((order, idx) => {
+  // Berechne mit Rabatt
+  const netto = parseFloat(order.amount) || 0;
+  const bundleDiscount = order.bundle_discount || 0;
+  const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
+  const nettoAfterDiscount = netto - discountAmount;
+  const brutto = nettoAfterDiscount * 1.19;
+  
+  return (
           <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
@@ -2751,7 +2759,8 @@ const deadlineDate = tender.deadline
 </div>
 </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           </div>
         )}
