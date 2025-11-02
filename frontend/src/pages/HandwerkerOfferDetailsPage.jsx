@@ -65,6 +65,12 @@ export default function HandwerkerOfferDetailsPage() {
   const totalNetto = offer.amount || 0;
   const totalBrutto = totalNetto * 1.19;
   const mwst = totalBrutto - totalNetto;
+  const totalNetto = offer.amount || 0;
+  const bundleDiscount = offer.bundle_discount || 0;
+  const discountAmount = bundleDiscount > 0 ? (totalNetto * bundleDiscount / 100) : 0;
+  const nettoAfterDiscount = totalNetto - discountAmount;
+  const totalBrutto = nettoAfterDiscount * 1.19;
+  const mwst = totalBrutto - nettoAfterDiscount;
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -208,7 +214,30 @@ export default function HandwerkerOfferDetailsPage() {
               <span className="text-gray-300">Summe Netto:</span>
               <span className="text-white font-semibold">{formatCurrency(totalNetto)}</span>
             </div>
-            <div className="flex justify-between items-center text-lg">
+            <div className="space-y-4">
+  <div className="flex justify-between items-center text-lg">
+    <span className="text-gray-300">Summe Netto:</span>
+    <span className="text-white font-semibold">{formatCurrency(totalNetto)}</span>
+  </div>
+  
+  {bundleDiscount > 0 && (
+    <>
+      <div className="flex justify-between items-center text-lg">
+        <span className="text-green-400">📦 Bündelrabatt ({bundleDiscount}%):</span>
+        <span className="text-green-400 font-semibold">- {formatCurrency(discountAmount)}</span>
+      </div>
+      <div className="flex justify-between items-center text-lg border-t border-white/20 pt-3">
+        <span className="text-gray-300">Netto nach Rabatt:</span>
+        <span className="text-white font-semibold">{formatCurrency(nettoAfterDiscount)}</span>
+      </div>
+    </>
+  )}
+  
+  <div className="flex justify-between items-center text-lg">
+    <span className="text-gray-300">MwSt. (19%):</span>
+    <span className="text-white font-semibold">{formatCurrency(mwst)}</span>
+  </div>
+              <div className="flex justify-between items-center text-lg">
               <span className="text-gray-300">MwSt. (19%):</span>
               <span className="text-white font-semibold">{formatCurrency(mwst)}</span>
             </div>
