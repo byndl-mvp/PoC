@@ -210,7 +210,7 @@ export default function LandingPage() {
 
               <div className="space-y-6">
                 <div>
-                  <h4 className="text-xl font-semibold text-blue-300 mb-3">Umsatzsteigerung</h4>
+                  <h4 className="text-xl font-semibold text-blue-300 mb-3">Projektbündelung</h4>
                   <ul className="space-y-2 text-gray-200">
                     <li className="flex items-start">
                       <svg className="w-5 h-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
