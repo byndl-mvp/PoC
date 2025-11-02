@@ -21056,26 +21056,41 @@ if (order.lv_data) {
       });
       
       // Summen
-      doc.moveDown(1);
-      doc.fontSize(10).font('Helvetica-Bold');
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke();
-      doc.moveDown(0.5);
-      
-      xPos = 370;
-      doc.text('Netto-Summe:', xPos, doc.y, { width: 100, align: 'left' });
-      doc.text(formatCurrency(netto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
-      
-      doc.moveDown(0.5);
-      doc.fontSize(9).font('Helvetica');
-      doc.text('zzgl. 19% MwSt:', xPos, doc.y, { width: 100, align: 'left' });
-      doc.text(formatCurrency(mwst), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
-      
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica-Bold');
-      doc.moveTo(xPos, doc.y).lineTo(xPos + 180, doc.y).stroke();
-      doc.moveDown(0.3);
-      doc.text('Gesamt (Brutto):', xPos, doc.y, { width: 100, align: 'left' });
-      doc.text(formatCurrency(brutto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+doc.moveDown(1);
+doc.fontSize(10).font('Helvetica-Bold');
+doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke();
+doc.moveDown(0.5);
+
+const bundleDiscountLV = order.bundle_discount || 0;
+const discountAmountLV = bundleDiscountLV > 0 ? (netto * bundleDiscountLV / 100) : 0;
+const nettoAfterDiscountLV = netto - discountAmountLV;
+
+xPos = 370;
+doc.text('Netto-Summe:', xPos, doc.y, { width: 100, align: 'left' });
+doc.text(formatCurrency(netto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+
+if (bundleDiscountLV > 0) {
+  doc.moveDown(0.5);
+  doc.fontSize(9).font('Helvetica');
+  doc.text(`Bündelrabatt (${bundleDiscountLV}%):`, xPos, doc.y, { width: 100, align: 'left' });
+  doc.text(`-${formatCurrency(discountAmountLV)}`, xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+  
+  doc.moveDown(0.5);
+  doc.text('Netto nach Rabatt:', xPos, doc.y, { width: 100, align: 'left' });
+  doc.text(formatCurrency(nettoAfterDiscountLV), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+}
+
+doc.moveDown(0.5);
+doc.fontSize(9).font('Helvetica');
+doc.text('zzgl. 19% MwSt:', xPos, doc.y, { width: 100, align: 'left' });
+doc.text(formatCurrency(mwst), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+
+doc.moveDown(0.5);
+doc.fontSize(11).font('Helvetica-Bold');
+doc.moveTo(xPos, doc.y).lineTo(xPos + 180, doc.y).stroke();
+doc.moveDown(0.3);
+doc.text('Gesamt (Brutto):', xPos, doc.y, { width: 100, align: 'left' });
+doc.text(formatCurrency(brutto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
     }
     
     // Footer auf allen Seiten - KORRIGIERT (verhindert leere Seiten)
