@@ -40,6 +40,8 @@ export default function BauherrenDashboardPage() {
   const [extensionDays, setExtensionDays] = useState(7);
   const [customDeadline, setCustomDeadline] = useState('');
   const [extensionType, setExtensionType] = useState('days'); // 'days' oder 'custom'
+  const [bundleModalOpen, setBundleModalOpen] = useState(false);
+  const [selectedBundleOffer, setSelectedBundleOffer] = useState(null);
   const [evaluationModal, setEvaluationModal] = useState({
   isOpen: false,
   type: null,
