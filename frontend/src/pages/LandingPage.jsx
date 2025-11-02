@@ -89,7 +89,7 @@ export default function LandingPage() {
               <span className="text-teal-400 font-semibold"> Bündelung ähnlicher Projekte</span> in derselben Region.
             </p>
 
-            {/* Hero Image - Bauherr und Handwerker */}
+            {/* Hero Image - Bauherr und Handwerker mit CTA Buttons als Overlay */}
             <div className="mb-12 max-w-5xl mx-auto">
               <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white/20">
                 <img 
@@ -97,15 +97,16 @@ export default function LandingPage() {
                   alt="Bauherr und Handwerker arbeiten erfolgreich zusammen" 
                   className="w-full h-auto"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 to-transparent"></div>
-              </div>
-              <p className="text-center text-teal-300 mt-4 text-sm font-medium">
-                Bauherren und Handwerker – gemeinsam erfolgreich mit byndl
-              </p>
-            </div>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent"></div>
+                
+                {/* Text Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-8">
+                  <p className="text-center text-teal-300 mb-6 text-base font-medium">
+                    Bauherren und Handwerker – gemeinsam erfolgreich mit byndl
+                  </p>
+                  
+                  {/* CTA Buttons im Bild */}
+                  <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link
                 to="/start"
                 className="group relative bg-gradient-to-r from-teal-500 to-teal-400 text-white font-bold px-10 py-5 rounded-xl shadow-2xl transform hover:scale-105 transition-all duration-200 text-lg"
@@ -135,6 +136,9 @@ export default function LandingPage() {
                   Jetzt registrieren & Aufträge erhalten
                 </span>
               </Link>
+            </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
