@@ -3336,43 +3336,42 @@ if (extensionType === 'days') {
         </div>
         
         <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg mb-6">
-          <div className="flex items-start gap-2">
-            <span className="text-2xl">⚠️</span>
-            <div className="flex-1">
-              <p className="text-yellow-200 text-sm">
-                <strong>Wichtig:</strong> 
-                {selectedBundleOffer.bundle_discount > 0 ? (
-                  <> Der angebotene Bündelrabatt von {selectedBundleOffer.bundle_discount}% gilt nur, 
-                  wenn Sie <strong>alle Projekte im Bündel</strong> an {selectedBundleOffer.company_name || selectedBundleOffer.companyName} beauftragen. 
-                  Bei Einzelbeauftragung entfällt der Rabatt.</>
-                ) : (
-                  <> Dieses Angebot ist Teil eines Projektbündels. 
-                  Bei Beauftragung aller Projekte im Bündel an {selectedBundleOffer.company_name || selectedBundleOffer.companyName} können Sie 
-                  möglicherweise noch bessere Konditionen verhandeln.</>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-center gap-6 text-sm text-gray-400 pb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🚗</span>
-            <span>Geringere Fahrtkosten</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">⚡</span>
-            <span>Schnellere Umsetzung</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">💰</span>
-            <span>Kosteneinsparung</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🤝</span>
-            <span>Ein Ansprechpartner</span>
-          </div>
-        </div>
+  <div className="flex items-start gap-2">
+    <span className="text-2xl">⚠️</span>
+    <div className="flex-1">
+      <p className="text-yellow-200 text-sm">
+        <strong>Wichtig:</strong> 
+        {selectedBundleOffer.bundle_discount > 0 ? (
+          <> Der angebotene Bündelrabatt von {selectedBundleOffer.bundle_discount}% gilt vorbehaltlich, 
+          dass <strong>alle Bauherren der Projekte im Bündel</strong> den Auftrag an {selectedBundleOffer.company_name || selectedBundleOffer.companyName} erteilen. 
+          Sofern nur Teile des Bündels beauftragt werden, kann der Auftragnehmer den angebotenen Rabatt 
+          im Rahmen der Vertragsanbahnung anpassen.</>
+        ) : (
+          <> Dieses Angebot ist Teil eines Projektbündels.</>
+        )}
+      </p>
+    </div>
+  </div>
+</div>
+
+<div className="flex items-center justify-center gap-6 text-sm text-gray-400 pb-2">
+  <div className="flex items-center gap-2">
+    <span className="text-lg">🚗</span>
+    <span>Geringere Fahrtkosten</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <span className="text-lg">⚡</span>
+    <span>Schnellere Umsetzung</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <span className="text-lg">💰</span>
+    <span>Kosteneinsparung</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <span className="text-lg">🔄</span>
+    <span>Koordinierte Abwicklung</span>
+  </div>
+</div>
       </div>
     </div>
   </div>
