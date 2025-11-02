@@ -20330,9 +20330,11 @@ den einschlägigen DIN-Normen auszuführen.
 § 4 VERGÜTUNG
 
 Vertragssumme (Netto): ${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
-zzgl. gesetzlicher MwSt. (${19}%): ${(offer.amount * 0.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+${offer.bundle_discount > 0 ? `Bündelrabatt (${offer.bundle_discount}%): -${(offer.amount * offer.bundle_discount / 100).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+Netto nach Rabatt: ${(offer.amount * (1 - offer.bundle_discount / 100)).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}` : ''}
+zzgl. gesetzlicher MwSt. (${19}%): ${(offer.amount * (1 - (offer.bundle_discount || 0) / 100) * 0.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
 ----------------------------------------------------------------
-Gesamtsumme (Brutto): ${(offer.amount * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+Gesamtsumme (Brutto): ${(offer.amount * (1 - (offer.bundle_discount || 0) / 100) * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
 
 Die Vergütung erfolgt nach tatsächlich erbrachter und abgenommener Leistung 
 gemäß den Mengen und Einheitspreisen des Leistungsverzeichnisses.
@@ -20826,8 +20828,11 @@ if (order.lv_data) {
     addSection(doc, '§ 4 VERGÜTUNG');
     
     const netto = parseFloat(order.amount);
-    const mwst = netto * 0.19;
-    const brutto = netto + mwst;
+    const bundleDiscount = order.bundle_discount || 0;
+    const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
+    const nettoAfterDiscount = netto - discountAmount;
+    const mwst = nettoAfterDiscount * 0.19;
+    const brutto = nettoAfterDiscount + mwst;
     
     doc.fontSize(11).font('Helvetica-Bold');
     doc.text(`Vertragssumme (Netto): ${formatCurrency(netto)}`);
