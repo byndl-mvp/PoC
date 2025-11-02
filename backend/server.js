@@ -24791,14 +24791,26 @@ app.post('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', as
     
     // 2. Lade Angebotsdaten
     const offerData = await query(
-      `SELECT o.*, h.company_name, h.email, h.phone, t.name as trade_name
-       FROM offers o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN tenders tn ON o.tender_id = tn.id
-       JOIN trades t ON tn.trade_id = t.id
-       WHERE o.id = $1 AND tn.project_id = $2 AND tn.trade_id = $3`,
-      [offerId, projectId, tradeId]
-    );
+  `SELECT 
+    o.*, 
+    o.bundle_discount,     
+    h.company_name, 
+    h.email, 
+    h.phone, 
+    t.name as trade_name,
+    tn.bundle_id,          
+    tn.project_id,
+    p.bauherr_id,          
+    b.name as bauherr_name 
+   FROM offers o
+   JOIN handwerker h ON o.handwerker_id = h.id
+   JOIN tenders tn ON o.tender_id = tn.id
+   JOIN trades t ON tn.trade_id = t.id
+   JOIN projects p ON tn.project_id = p.id       
+   JOIN bauherren b ON p.bauherr_id = b.id        
+   WHERE o.id = $1 AND tn.project_id = $2 AND tn.trade_id = $3`,
+  [offerId, projectId, tradeId]
+);
     
     if (!offerData.rows[0]) {
       return res.status(404).json({ error: 'Angebot nicht gefunden' });
@@ -25102,11 +25114,22 @@ app.post('/api/projects/:projectId/trades/:tradeId/offers/compare', async (req, 
   try {
     const { projectId, tradeId } = req.params;
     const offersData = await query(
-  `SELECT o.*, h.company_name, h.email, h.phone, t.name as trade_name
+  `SELECT 
+    o.*, 
+    o.bundle_discount,     
+    h.company_name, 
+    h.email, 
+    h.phone, 
+    t.name as trade_name,
+    tn.bundle_id,          
+    p.bauherr_id,          
+    b.name as bauherr_name 
    FROM offers o
    JOIN handwerker h ON o.handwerker_id = h.id
    JOIN tenders tn ON o.tender_id = tn.id
    JOIN trades t ON tn.trade_id = t.id
+   JOIN projects p ON tn.project_id = p.id        
+   JOIN bauherren b ON p.bauherr_id = b.id        
    WHERE tn.project_id = $1 AND tn.trade_id = $2
      AND o.status IN ('submitted', 'preliminary', 'confirmed')
    ORDER BY o.amount ASC`,
