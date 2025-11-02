@@ -2222,105 +2222,6 @@ const deadlineDate = tender.deadline
                         </div>
                       )}
                     </div>
-                    
-                    {/* Bündelangebots-Hinweis */}
-{offer.bundle_id && (
-  <div className="mt-3 bg-gradient-to-br from-green-600/20 via-teal-600/20 to-blue-600/20 border border-green-500/30 rounded-xl p-6 shadow-lg">
-    <div className="flex items-start gap-4">
-      <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
-        <span className="text-2xl">📦</span>
-      </div>
-      
-      <div className="flex-1">
-        <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-          <span>Vorteile der Projektbündelung</span>
-          {offer.bundle_discount > 0 && (
-            <span className="text-sm bg-green-500/30 text-green-300 px-2 py-1 rounded">
-              {offer.bundle_discount}% Rabatt
-            </span>
-          )}
-        </h4>
-        
-        <div className="space-y-3 text-sm text-gray-200">
-          <div className="flex items-start gap-2">
-            <span className="text-green-400 font-bold">✓</span>
-            <p>
-              <strong className="text-white">Attraktive Konditionen:</strong> 
-              {offer.bundle_discount > 0 ? (
-                <> Der Handwerker bietet {offer.bundle_discount}% Bündelrabatt, 
-                da er durch die Kombination mehrerer Projekte in Ihrer Region Zeit und Kosten spart.</>
-              ) : (
-                <> Der Handwerker kann durch die Kombination mehrerer Projekte in Ihrer Region Zeit und Kosten sparen 
-                und möglicherweise bessere Konditionen anbieten.</>
-              )}
-            </p>
-          </div>
-          
-          <div className="flex items-start gap-2">
-            <span className="text-green-400 font-bold">✓</span>
-            <p>
-              <strong className="text-white">Optimierte Abwicklung:</strong> Durch koordinierte Ausführung mehrerer Projekte 
-              profitieren Sie von kürzeren Wartezeiten und effizienteren Arbeitsabläufen.
-            </p>
-          </div>
-          
-          <div className="flex items-start gap-2">
-            <span className="text-green-400 font-bold">✓</span>
-            <p>
-              <strong className="text-white">Lokale Synergie:</strong> byndl nutzt Netzwerkeffekte im regionalen Handwerkermarkt – 
-              Sie erhalten qualitativ hochwertige Leistungen zu besseren Preisen.
-            </p>
-          </div>
-          
-          <div className="flex items-start gap-2">
-            <span className="text-green-400 font-bold">✓</span>
-            <p>
-              <strong className="text-white">Materialrabatte:</strong> Bei gebündelten Projekten können Handwerker 
-              Materialien in größeren Mengen einkaufen und die Einsparungen an Sie weitergeben.
-            </p>
-          </div>
-        </div>
-        
-        <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-          <p className="text-yellow-200 text-sm flex items-start gap-2">
-            <span className="text-lg">⚠️</span>
-            <span>
-              <strong>Wichtig:</strong> 
-              {offer.bundle_discount > 0 ? (
-                <> Der angebotene Bündelrabatt von {offer.bundle_discount}% gilt nur, 
-                wenn Sie <strong>alle Projekte im Bündel</strong> an {offer.companyName || offer.company_name} beauftragen. 
-                Bei Einzelbeauftragung entfällt der Rabatt.</>
-              ) : (
-                <> Dieses Angebot ist Teil eines Projektbündels. 
-                Bei Beauftragung aller Projekte im Bündel an {offer.companyName || offer.company_name} können Sie 
-                möglicherweise noch bessere Konditionen verhandeln.</>
-              )}
-            </span>
-          </p>
-        </div>
-        
-        <div className="mt-4 flex items-center gap-3 text-xs text-gray-400">
-          <div className="flex items-center gap-1">
-            <span>🚗</span>
-            <span>Geringere Fahrtkosten</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span>⚡</span>
-            <span>Schnellere Umsetzung</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span>💰</span>
-            <span>Kosteneinsparung</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span>🤝</span>
-            <span>Ein Ansprechpartner</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
- )}
 </React.Fragment>
 ))}
                 
@@ -3254,6 +3155,131 @@ if (extensionType === 'days') {
     comparison={evaluationModal.data}
   />
 )}
+{/* Bundle-Info Modal */}
+{bundleModalOpen && selectedBundleOffer && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-white/20">
+      <div className="sticky top-0 bg-gradient-to-r from-green-600/20 to-teal-600/20 p-6 border-b border-white/10 backdrop-blur">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-500 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-3xl">📦</span>
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-1">Vorteile der Projektbündelung</h3>
+              {selectedBundleOffer.bundle_discount > 0 && (
+                <span className="inline-block px-3 py-1 bg-green-500/30 text-green-300 rounded-full text-sm font-semibold">
+                  {selectedBundleOffer.bundle_discount}% Bündelrabatt
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setBundleModalOpen(false);
+              setSelectedBundleOffer(null);
+            }}
+            className="text-gray-400 hover:text-white text-3xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+      
+      <div className="p-6">
+        <div className="space-y-4 text-gray-200 mb-6">
+          <div className="flex items-start gap-3">
+            <span className="text-green-400 font-bold text-xl">✓</span>
+            <div>
+              <p className="font-semibold text-white mb-1">Attraktive Konditionen</p>
+              <p className="text-sm">
+                {selectedBundleOffer.bundle_discount > 0 ? (
+                  <>Der Handwerker bietet {selectedBundleOffer.bundle_discount}% Bündelrabatt, 
+                  da er durch die Kombination mehrerer Projekte in Ihrer Region Zeit und Kosten spart.</>
+                ) : (
+                  <>Der Handwerker kann durch die Kombination mehrerer Projekte in Ihrer Region Zeit und Kosten sparen 
+                  und möglicherweise bessere Konditionen anbieten.</>
+                )}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <span className="text-green-400 font-bold text-xl">✓</span>
+            <div>
+              <p className="font-semibold text-white mb-1">Optimierte Abwicklung</p>
+              <p className="text-sm">
+                Durch koordinierte Ausführung mehrerer Projekte profitieren Sie von kürzeren Wartezeiten 
+                und effizienteren Arbeitsabläufen.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <span className="text-green-400 font-bold text-xl">✓</span>
+            <div>
+              <p className="font-semibold text-white mb-1">Lokale Synergie</p>
+              <p className="text-sm">
+                byndl nutzt Netzwerkeffekte im regionalen Handwerkermarkt – 
+                Sie erhalten qualitativ hochwertige Leistungen zu besseren Preisen.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <span className="text-green-400 font-bold text-xl">✓</span>
+            <div>
+              <p className="font-semibold text-white mb-1">Materialrabatte</p>
+              <p className="text-sm">
+                Bei gebündelten Projekten können Handwerker Materialien in größeren Mengen einkaufen 
+                und die Einsparungen an Sie weitergeben.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg mb-6">
+          <div className="flex items-start gap-2">
+            <span className="text-2xl">⚠️</span>
+            <div className="flex-1">
+              <p className="text-yellow-200 text-sm">
+                <strong>Wichtig:</strong> 
+                {selectedBundleOffer.bundle_discount > 0 ? (
+                  <> Der angebotene Bündelrabatt von {selectedBundleOffer.bundle_discount}% gilt nur, 
+                  wenn Sie <strong>alle Projekte im Bündel</strong> an {selectedBundleOffer.company_name || selectedBundleOffer.companyName} beauftragen. 
+                  Bei Einzelbeauftragung entfällt der Rabatt.</>
+                ) : (
+                  <> Dieses Angebot ist Teil eines Projektbündels. 
+                  Bei Beauftragung aller Projekte im Bündel an {selectedBundleOffer.company_name || selectedBundleOffer.companyName} können Sie 
+                  möglicherweise noch bessere Konditionen verhandeln.</>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-center gap-6 text-sm text-gray-400 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🚗</span>
+            <span>Geringere Fahrtkosten</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚡</span>
+            <span>Schnellere Umsetzung</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">💰</span>
+            <span>Kosteneinsparung</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🤝</span>
+            <span>Ein Ansprechpartner</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}      
   </div>
   );
 }
