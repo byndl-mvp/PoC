@@ -21402,10 +21402,18 @@ async function createProjectTenders(req, res) {
       );
       const tenderId = tenderInsert.rows[0].id;
 
-// Im Hintergrund prüfen ob zu Bundle passt (nicht-blockierend)
-checkAndAddToExistingBundle(tenderId).catch(err => 
-  console.error('Bundle expansion check failed:', err)
-);
+      console.log(`✅ [TENDER] Created tender ${tenderId}`);
+      
+try {
+  console.log(`🔍 [TENDER] Starting bundle check for ${tenderId}`);
+  await checkAndAddToExistingBundle(tenderId);
+  console.log(`✅ [TENDER] Bundle check completed`);
+} catch (bundleErr) {
+  console.error(`❌ [TENDER] Bundle check failed:`, bundleErr);
+  // Fehler loggen aber nicht werfen - weiter machen
+}
+
+console.log(`🔍 [TENDER] Starting handwerker matching...`);
       
       // 4d) Matching (PostGIS)
       await query(`SELECT zip, latitude, longitude FROM zip_codes WHERE zip = $1`, [targetZip]); // nur Check
