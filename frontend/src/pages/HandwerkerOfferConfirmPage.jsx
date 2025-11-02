@@ -22,7 +22,8 @@ export default function HandwerkerOfferConfirmPage() {
     execution_end: '',
     notes: ''
   });
-  
+
+  const [bundleDiscount, setBundleDiscount] = useState(0);
   // Modal States
   const [showPositionModal, setShowPositionModal] = useState(false);
   const [editingPosition, setEditingPosition] = useState(null);
