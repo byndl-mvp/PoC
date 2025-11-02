@@ -2259,9 +2259,8 @@ const deadlineDate = tender.deadline
   </div>
 )}
                     </div>
-                  </div>
-              </React.Fragment>
-            ))}
+                  </React.Fragment>
+                ))}
                 
                 {/* Zusammenfassung pro Gewerk */}
                 {tradeOffers.length > 1 && (
