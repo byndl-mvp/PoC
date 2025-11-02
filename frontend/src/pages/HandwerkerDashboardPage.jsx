@@ -819,66 +819,94 @@ const badgeCounts = {
                     </div>
                   </div>
                   
-                  {/* Projekt-Details Grid */}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-xs text-gray-400">Standort</p>
-                        <p className="text-sm text-gray-300">📍 {offer.location}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400">Abgabedatum</p>
-                        <p className="text-sm text-gray-300">
-                          📅 {offer.submittedDate 
-                            ? new Date(offer.submittedDate).toLocaleDateString('de-DE', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit'
-                              })
-                            : new Date(offer.created_at).toLocaleDateString('de-DE', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit'
-                              })
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-xs text-gray-400">Ausführungszeit</p>
-                        <p className="text-sm text-gray-300">
-                          ⏱️ {offer.execution_time || offer.timeframe || 'Nach Absprache'}
-                        </p>
-                      </div>
-                      {offer.viewed_at && (
-                        <div>
-                          <p className="text-xs text-gray-400">Eingesehen am</p>
-                          <p className="text-sm text-gray-300">
-                            {new Date(offer.viewed_at).toLocaleDateString('de-DE')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Angebotssumme */}
-                  <div className="bg-white/10 rounded-lg p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-400 mb-1">Netto</p>
-                        <p className="text-xl font-bold text-teal-400">
-                          {formatCurrency(offer.amount)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400 mb-1">Brutto (inkl. 19% MwSt)</p>
-                        <p className="text-xl font-bold text-white">
-                          {formatCurrency(bruttoAmount)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+          {/* Projekt-Details Grid */}
+<div className="grid grid-cols-2 gap-4 mb-4">
+  <div className="space-y-2">
+    <div>
+      <p className="text-xs text-gray-400">Standort</p>
+      <p className="text-sm text-gray-300">📍 {offer.location}</p>
+    </div>
+    <div>
+      <p className="text-xs text-gray-400">Abgabedatum</p>
+      <p className="text-sm text-gray-300">
+        📅 {offer.submittedDate 
+          ? new Date(offer.submittedDate).toLocaleDateString('de-DE', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            })
+          : new Date(offer.created_at).toLocaleDateString('de-DE', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            })
+        }
+      </p>
+    </div>
+  </div>
+  <div className="space-y-2">
+    <div>
+      <p className="text-xs text-gray-400">Ausführungszeit</p>
+      <p className="text-sm text-gray-300">
+        ⏱️ {offer.execution_time || offer.timeframe || 'Nach Absprache'}
+      </p>
+    </div>
+    {offer.viewed_at && (
+      <div>
+        <p className="text-xs text-gray-400">Eingesehen am</p>
+        <p className="text-sm text-gray-300">
+          {new Date(offer.viewed_at).toLocaleDateString('de-DE')}
+        </p>
+      </div>
+    )}
+  </div>
+</div>
+
+{/* Angebotssumme */}
+{(() => {
+  // Berechne mit Rabatt
+  const bundleDiscount = offer.bundle_discount || 0;
+  const discountAmount = bundleDiscount > 0 ? (offer.amount * bundleDiscount / 100) : 0;
+  const nettoAfterDiscount = offer.amount - discountAmount;
+  const bruttoAmount = nettoAfterDiscount * 1.19;
+  
+  return (
+    <div className="bg-white/10 rounded-lg p-4">
+      <div className="space-y-3">
+        <div>
+          <p className="text-xs text-gray-400 mb-1">Netto</p>
+          <p className="text-xl font-bold text-white">
+            {formatCurrency(offer.amount)}
+          </p>
+        </div>
+        
+        {bundleDiscount > 0 && (
+          <>
+            <div className="border-t border-white/10 pt-2">
+              <p className="text-xs text-green-400 mb-1">📦 Bündelrabatt ({bundleDiscount}%)</p>
+              <p className="text-lg font-semibold text-green-400">
+                - {formatCurrency(discountAmount)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Netto nach Rabatt</p>
+              <p className="text-lg font-bold text-white">
+                {formatCurrency(nettoAfterDiscount)}
+              </p>
+            </div>
+          </>
+        )}
+        
+        <div className="border-t border-white/10 pt-2">
+          <p className="text-xs text-gray-400 mb-1">Brutto (inkl. 19% MwSt)</p>
+          <p className="text-xl font-bold text-teal-400">
+            {formatCurrency(bruttoAmount)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+})()}
                   
                   {/* Anmerkungen falls vorhanden */}
                   {offer.notes && (
