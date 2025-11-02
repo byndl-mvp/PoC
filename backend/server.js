@@ -17539,65 +17539,6 @@ app.post('/api/offers/:offerId/mark-read', async (req, res) => {
   }
 });
 
-// 3. Erweiterte Angebots-Submission mit Status-Management
-app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
-  try {
-    const { tenderId } = req.params;
-    const { handwerkerId, positions, notes, totalSum, isPreliminary = true } = req.body;
-    
-    await query('BEGIN');
-    
-    // Prüfen ob bereits ein Angebot existiert
-    const existingOffer = await query(
-      'SELECT id, status FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
-      [tenderId, handwerkerId]
-    );
-    
-    let offerId;
-    let status = isPreliminary ? 'submitted' : 'confirmed';
-    
-    if (existingOffer.rows.length > 0) {
-      offerId = existingOffer.rows[0].id;
-      
-      // Update nur wenn Status-Übergang erlaubt
-      if (existingOffer.rows[0].status === 'preliminary' && !isPreliminary) {
-        status = 'confirmed';
-      }
-      
-      await query(
-        `UPDATE offers 
-         SET lv_data = $1, notes = $2, amount = $3, status = $4, updated_at = NOW()
-         WHERE id = $5`,
-        [JSON.stringify({ positions }), notes, totalSum, status, offerId]
-      );
-    } else {
-      const result = await query(
-        `INSERT INTO offers (
-          tender_id, handwerker_id, amount, 
-          lv_data, notes, status, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-        RETURNING id`,
-       [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, status]
-      );
-      offerId = result.rows[0].id;
-    }
-    
-    await query('COMMIT');
-    
-    res.json({ 
-      success: true, 
-      offerId,
-      message: isPreliminary ? 
-        'Vorläufiges Angebot abgegeben. Der Bauherr kann nun Kontakt aufnehmen.' :
-        'Verbindliches Angebot bestätigt.'
-    });
-  } catch (error) {
-    await query('ROLLBACK');
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Fehler beim Abgeben des Angebots' });
-  }
-});
-
 // Erweiterte Route für Angebote mit mehr Details
 app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
   try {
