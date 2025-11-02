@@ -775,11 +775,6 @@ const badgeCounts = {
     ) : (
       <div className="space-y-4">
         {offers.map((offer) => {
-          // Berechne Brutto (19% MwSt)
-          const bundleDiscount = offer.bundle_discount || 0;
-          const discountAmount = bundleDiscount > 0 ? (offer.amount * bundleDiscount / 100) : 0;
-          const nettoAfterDiscount = offer.amount - discountAmount;
-          const bruttoAmount = nettoAfterDiscount * 1.19;
           
           return (
             <div key={offer.id} className="bg-white/5 rounded-lg p-6 hover:bg-white/10 transition-colors">
