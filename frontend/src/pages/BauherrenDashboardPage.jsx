@@ -1570,7 +1570,7 @@ const BudgetVisualization = ({ budget }) => {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold mb-2">💰 Kostenübersicht</h3>
+            <h3 className="text-lg font-bold mb-2">💰 Kostenübersicht und Ausschreibung</h3>
             <p className="text-sm opacity-90">
               {selectedProject.completedLvs > 0 
                 ? `Aktuelle Kalkulation: ${formatCurrency(selectedProject.totalCost)}`
