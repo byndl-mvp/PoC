@@ -22264,7 +22264,7 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
   `INSERT INTO offers (
     tender_id, handwerker_id, 
     amount, lv_data, notes,
-    bundle_discount,  -- ✅ Immer einfügen
+    bundle_discount,
     status, stage, created_at
   ) VALUES ($1, $2, $3, $4, $5, $6, 'submitted', 1, NOW())
   RETURNING id`,
@@ -22274,7 +22274,7 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
     offerData.amount, 
     JSON.stringify(offerData.positions), 
     offerData.notes, 
-    bundleDiscount || 0  -- ✅ Richtige Variable, Default 0
+    bundleDiscount || 0
   ]
 );
       
