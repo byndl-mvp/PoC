@@ -39,7 +39,6 @@ export default function LandingPage() {
       <header className="relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-white">byndl</h1>
             <div className="flex gap-3">
               <Link
                 to="/bauherr/login"
