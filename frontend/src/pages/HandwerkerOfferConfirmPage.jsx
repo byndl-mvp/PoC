@@ -214,6 +214,7 @@ console.log('Positionen mit Preis:', positionenMitPreis.length);
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: totalAmount,
+          bundle_discount: bundleDiscount, 
           execution_start: formData.execution_start,
           execution_end: formData.execution_end,
           notes: formData.notes,
