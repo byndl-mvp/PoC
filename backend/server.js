@@ -19934,7 +19934,7 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     
     // 4. Erstelle Order/Werkvertrag
     const orderResult = await query(
-      INSERT INTO orders 
+      `INSERT INTO orders  
 (project_id, offer_id, handwerker_id, bauherr_id, trade_id, 
  amount, bundle_discount, execution_start, execution_end, 
  contract_text, status, created_at)
