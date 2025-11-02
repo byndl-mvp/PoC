@@ -1154,7 +1154,10 @@ const badgeCounts = {
       <div className="space-y-6">
         {contracts.map((contract, idx) => {
           const netto = parseFloat(contract.offer_amount) || 0;
-          const brutto = netto * 1.19;
+          const bundleDiscount = contract.bundle_discount || 0;
+          const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
+          const nettoAfterDiscount = netto - discountAmount;
+          const brutto = nettoAfterDiscount * 1.19;
           
           return (
             <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
@@ -1190,25 +1193,45 @@ const badgeCounts = {
                 </div>
                 
                 <div className="text-right ml-6">
-                  <p className="text-sm text-gray-400 mb-1">Angebotssumme</p>
-                  <p className="text-xl font-bold text-teal-400">
-                    {formatCurrency(netto)}
-                  </p>
-                  <p className="text-sm text-gray-400">Netto</p>
-                  <p className="text-lg font-semibold text-white mt-1">
-                    {formatCurrency(brutto)}
-                  </p>
-                  <p className="text-xs text-gray-400">Brutto (inkl. 19% MwSt.)</p>
-                  
-                  <p className="text-xs text-gray-400 mt-3">
-                    Vertragsanbahnung seit:<br />
-                    <span className="text-white">
-                      {contract.preliminary_accepted_at 
-                        ? new Date(contract.preliminary_accepted_at).toLocaleDateString('de-DE')
-                        : 'N/A'}
-                    </span>
-                  </p>
-                </div>
+  <p className="text-sm text-gray-400 mb-1">Angebotssumme</p>
+  <p className="text-xl font-bold text-white">
+    {formatCurrency(netto)}
+  </p>
+  <p className="text-sm text-gray-400">Netto</p>
+  
+  {bundleDiscount > 0 && (
+    <>
+      <div className="mt-2 pt-2 border-t border-white/20">
+        <p className="text-xs text-green-400">📦 Bündelrabatt ({bundleDiscount}%)</p>
+        <p className="text-sm font-semibold text-green-400">
+          - {formatCurrency(discountAmount)}
+        </p>
+      </div>
+      <div className="mt-1">
+        <p className="text-sm text-gray-400">Netto nach Rabatt</p>
+        <p className="text-lg font-bold text-white">
+          {formatCurrency(nettoAfterDiscount)}
+        </p>
+      </div>
+    </>
+  )}
+  
+  <div className="mt-2 pt-2 border-t border-white/20">
+    <p className="text-lg font-semibold text-teal-400">
+      {formatCurrency(brutto)}
+    </p>
+    <p className="text-xs text-gray-400">Brutto (inkl. 19% MwSt.)</p>
+  </div>
+  
+  <p className="text-xs text-gray-400 mt-3">
+    Vertragsanbahnung seit:<br />
+    <span className="text-white">
+      {contract.preliminary_accepted_at 
+        ? new Date(contract.preliminary_accepted_at).toLocaleDateString('de-DE')
+        : 'N/A'}
+    </span>
+  </p>
+</div>
               </div>
               
               {/* Kontaktdaten Bauherr */}
