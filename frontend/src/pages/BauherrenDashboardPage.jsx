@@ -2244,17 +2244,20 @@ const deadlineDate = tender.deadline
                         </div>
                       </div>
                       
-                      {/* Vergleichszeile */}
-                      {idx < tradeOffers.length - 1 && (
-                        <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-                          <span className="text-xs text-gray-500">
-                            Preisunterschied zum nächsten Angebot:
-                          </span>
-                          <span className="text-sm font-semibold text-yellow-400">
-                            {formatCurrency(Math.abs(offer.amount - tradeOffers[idx + 1].amount))}
-                          </span>
-                        </div>
-                      )}
+                     {/* Vergleichszeile */}
+{idx < tradeOffers.length - 1 && (
+  <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+    <span className="text-sm text-gray-300">
+      Preisunterschied zum nächsten Angebot:
+    </span>
+    <span className="text-sm font-semibold text-yellow-400">
+      {formatCurrency(Math.abs(
+        (offer.amount - (offer.amount * (offer.bundle_discount || 0) / 100)) - 
+        (tradeOffers[idx + 1].amount - (tradeOffers[idx + 1].amount * (tradeOffers[idx + 1].bundle_discount || 0) / 100))
+      ))}
+    </span>
+  </div>
+)}
                     </div>
 </React.Fragment>
 ))}
