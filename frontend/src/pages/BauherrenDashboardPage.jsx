@@ -2662,26 +2662,39 @@ const deadlineDate = tender.deadline
               </div>
               
               <div className="text-right ml-6 min-w-[200px]">
-                {/* Netto */}
-                <div className="mb-3 p-3 bg-white/5 rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Netto</p>
-                  <p className="text-2xl font-bold text-green-400">
-                    {formatCurrency(order.amount)}
-                  </p>
-                </div>
-                
-                {/* Brutto */}
-                <div className="mb-3 p-3 bg-white/5 rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Brutto (inkl. 19% MwSt.)</p>
-                  <p className="text-lg font-semibold text-green-300">
-                    {formatCurrency(order.amount * 1.19)}
-                  </p>
-                </div>
-                
-                <span className="text-xs px-3 py-1 rounded inline-block bg-blue-600 text-blue-200">
-                  In Ausführung
-                </span>
-              </div>
+  {/* Netto */}
+  <div className="mb-3 p-3 bg-white/5 rounded-lg">
+    <p className="text-xs text-gray-400 mb-1">Netto</p>
+    <p className="text-2xl font-bold text-white">
+      {formatCurrency(netto)}
+    </p>
+  </div>
+  
+  {bundleDiscount > 0 && (
+    <div className="mb-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+      <p className="text-xs text-green-400 mb-1">📦 Bündelrabatt ({bundleDiscount}%)</p>
+      <p className="text-sm font-semibold text-green-400">
+        - {formatCurrency(discountAmount)}
+      </p>
+      <p className="text-xs text-gray-400 mt-1">Netto nach Rabatt</p>
+      <p className="text-lg font-bold text-white">
+        {formatCurrency(nettoAfterDiscount)}
+      </p>
+    </div>
+  )}
+  
+  {/* Brutto */}
+  <div className="mb-3 p-3 bg-white/5 rounded-lg">
+    <p className="text-xs text-gray-400 mb-1">Brutto (inkl. 19% MwSt.)</p>
+    <p className="text-lg font-semibold text-green-300">
+      {formatCurrency(brutto)}
+    </p>
+  </div>
+  
+  <span className="text-xs px-3 py-1 rounded inline-block bg-blue-600 text-blue-200">
+    In Ausführung
+  </span>
+</div>
             </div>
             
             {/* Werkvertrag-Aktionen */}
