@@ -18172,9 +18172,11 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
         h.id as handwerker_id,
         t.name as trade_name,
         b.name as bauherr_name,
+        p.id as project_id,
         p.category as project_category,
-        p.description as project_description 
-         FROM offers o
+        p.description as project_description,
+        tn.bundle_id  
+       FROM offers o
        JOIN handwerker h ON o.handwerker_id = h.id
        JOIN tenders tn ON o.tender_id = tn.id
        JOIN trades t ON tn.trade_id = t.id
@@ -18214,11 +18216,13 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
     JSON.stringify({
       reason: reasonTexts[reason] || 'Nicht angegeben',
       notes: notes,
-      trade_name: offer.trade_name,  // KORREKTUR: offer.trade_name statt offer.tradeName
+      trade_name: offer.trade_name, 
+      project_id: offer.project_id,
       project_name: offer.project_description || `Projekt in ${offer.project_category}`, // HINZUFÜGEN: project_description ist nicht in der Query
       bauherr_name: offer.bauherr_name, // KORREKTUR: offer.bauherr_name statt offer.bauherrName
       project_category: offer.project_category,
-      amount: offer.amount
+      amount: offer.amount,
+      bundle_id: offer.bundle_id
     })
   ]
 );
