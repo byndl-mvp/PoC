@@ -1345,8 +1345,11 @@ const badgeCounts = {
         <div className="space-y-6">
           {orders.filter(order => order.status !== 'completed').map((order, idx) => {
             const netto = parseFloat(order.amount) || 0;
-            const mwst = netto * 0.19;
-            const brutto = netto + mwst;
+            const bundleDiscount = order.bundle_discount || 0;
+            const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
+            const nettoAfterDiscount = netto - discountAmount;
+            const mwst = nettoAfterDiscount * 0.19;
+            const brutto = nettoAfterDiscount + mwst;
             
             return (
               <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
@@ -1389,34 +1392,51 @@ const badgeCounts = {
                   </div>
                   
                   {/* Vergütung */}
-                  <div className="text-right ml-6">
-                    <p className="text-sm text-gray-400 mb-1">Auftragssumme</p>
-                    <p className="text-2xl font-bold text-green-400">
-                      {formatCurrency(netto)}
-                    </p>
-                    <p className="text-xs text-gray-400">Netto</p>
-                    
-                    <div className="mt-2 pt-2 border-t border-white/20">
-                      <p className="text-sm text-gray-400">zzgl. 19% MwSt.</p>
-                      <p className="text-lg font-semibold text-white">
-                        {formatCurrency(brutto)}
-                      </p>
-                      <p className="text-xs text-gray-400">Brutto</p>
-                    </div>
-                    
-                    {/* Status Badge */}
-                    <span className={`mt-3 text-xs px-3 py-1 rounded inline-block ${
-                      order.status === 'active' ? 'bg-blue-600 text-blue-200' :
-                      order.status === 'completed' ? 'bg-green-600 text-green-200' :
-                      order.status === 'in_progress' ? 'bg-yellow-600 text-yellow-200' :
-                      'bg-gray-600 text-gray-300'
-                    }`}>
-                      {order.status === 'active' ? '🔧 In Ausführung' :
-                       order.status === 'completed' ? '✅ Abgeschlossen' :
-                       order.status === 'in_progress' ? '⚙️ In Bearbeitung' :
-                       order.status}
-                    </span>
-                  </div>
+<div className="text-right ml-6">
+  <p className="text-sm text-gray-400 mb-1">Auftragssumme</p>
+  <p className="text-2xl font-bold text-white">
+    {formatCurrency(netto)}
+  </p>
+  <p className="text-xs text-gray-400">Netto</p>
+  
+  {bundleDiscount > 0 && (
+    <>
+      <div className="mt-2 pt-2 border-t border-white/20">
+        <p className="text-xs text-green-400">📦 Bündelrabatt ({bundleDiscount}%)</p>
+        <p className="text-sm font-semibold text-green-400">
+          - {formatCurrency(discountAmount)}
+        </p>
+      </div>
+      <div className="mt-1">
+        <p className="text-xs text-gray-400">Netto nach Rabatt</p>
+        <p className="text-lg font-bold text-white">
+          {formatCurrency(nettoAfterDiscount)}
+        </p>
+      </div>
+    </>
+  )}
+  
+  <div className="mt-2 pt-2 border-t border-white/20">
+    <p className="text-sm text-gray-400">zzgl. 19% MwSt.</p>
+    <p className="text-lg font-semibold text-teal-400">
+      {formatCurrency(brutto)}
+    </p>
+    <p className="text-xs text-gray-400">Brutto</p>
+  </div>
+  
+  {/* Status Badge */}
+  <span className={`mt-3 text-xs px-3 py-1 rounded inline-block ${
+    order.status === 'active' ? 'bg-blue-600 text-blue-200' :
+    order.status === 'completed' ? 'bg-green-600 text-green-200' :
+    order.status === 'in_progress' ? 'bg-yellow-600 text-yellow-200' :
+    'bg-gray-600 text-gray-300'
+  }`}>
+    {order.status === 'active' ? '🔧 In Ausführung' :
+     order.status === 'completed' ? '✅ Abgeschlossen' :
+     order.status === 'in_progress' ? '⚙️ In Bearbeitung' :
+     order.status}
+  </span>
+</div>
                 </div>
                 
                 {/* Kontaktdaten Bauherr */}
