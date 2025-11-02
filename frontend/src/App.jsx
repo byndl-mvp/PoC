@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 
 // Landing & Auth Pages
 import LandingPage from './pages/LandingPage';
+import AGB from './pages/AGB';
+import Impressum from './pages/Impressum';
+import Datenschutz from './pages/Datenschutz';
+import Disclaimer from './pages/Disclaimer';
 import BauherrLoginPage from './pages/BauherrenLoginPage';
 import BauherrRegisterPage from './pages/BauherrRegisterPage';
 import BauherrEmailVerification from './pages/BauherrEmailVerification';
@@ -110,6 +114,12 @@ function App() {
           {/* ============= Öffentliche Routen ============= */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/start" element={<ProjectFormPage />} />
+
+          {/* Rechtliche Seiten */}
+          <Route path="/agb" element={<AGB />} />
+          <Route path="/impressum" element={<Impressum />} />
+          <Route path="/datenschutz" element={<Datenschutz />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
           
           {/* ============= Bauherren Routen ============= */}
           {/* Auth-Routen */}
