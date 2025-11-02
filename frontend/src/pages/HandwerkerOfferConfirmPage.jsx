@@ -66,6 +66,7 @@ setLvData(parsedLV);
           execution_end: data.execution_end || '',
           notes: data.notes || ''
         });
+        setBundleDiscount(data.bundle_discount || 0);
       }
     } catch (err) {
       console.error('Error:', err);
@@ -85,6 +86,13 @@ setLvData(parsedLV);
     }, 0);
   };
 
+  // ✅ NEU: Berechnungen mit Rabatt
+  const totalNetto = calculateTotal();
+  const discountAmount = bundleDiscount > 0 ? (totalNetto * bundleDiscount / 100) : 0;
+  const nettoAfterDiscount = totalNetto - discountAmount;
+  const totalBrutto = nettoAfterDiscount * 1.19;
+  const mwst = totalBrutto - nettoAfterDiscount;
+  
   // Position bearbeiten öffnen
   const openEditPosition = (position, index) => {
     setEditingPosition({...position});
