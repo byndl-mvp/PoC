@@ -237,8 +237,25 @@ In der Kennenlernphase hat der ausgewählte Handwerker Exklusivität. Dies schü
             </div>
             <div>
   <h3 className="text-sm text-gray-400 mb-1">Angebotssumme</h3>
-  <p className="text-sm text-gray-400">Netto: {formatCurrency(offer.amount)}</p>
-  <p className="text-2xl font-bold text-teal-400">{formatCurrency((offer.amount || 0) * 1.19)}</p>
+  {(() => {
+  const prices = calculatePriceWithDiscount(offer);
+  return (
+    <>
+      <p className="text-sm text-gray-400">Netto: {formatCurrency(prices.netto)}</p>
+      {prices.bundleDiscount > 0 && (
+        <>
+          <p className="text-sm text-green-400">
+            📦 Rabatt ({prices.bundleDiscount}%): -{formatCurrency(prices.discountAmount)}
+          </p>
+          <p className="text-sm text-gray-400">
+            Nach Rabatt: {formatCurrency(prices.nettoAfterDiscount)}
+          </p>
+        </>
+      )}
+      <p className="text-2xl font-bold text-teal-400">{formatCurrency(prices.brutto)}</p>
+    </>
+  );
+})()}
   <p className="text-xs text-gray-400 mt-1">Brutto (inkl. 19% MwSt.)</p>
 </div>
             <div>
