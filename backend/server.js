@@ -19891,6 +19891,7 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     const offerData = await query(
       `SELECT 
         o.*,
+        o.bundle_discount,
         h.company_name,
         h.address as handwerker_address,
         h.contact_person,
@@ -19933,11 +19934,11 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     
     // 4. Erstelle Order/Werkvertrag
     const orderResult = await query(
-      `INSERT INTO orders 
-       (project_id, offer_id, handwerker_id, bauherr_id, trade_id, 
-        amount, execution_start, execution_end, 
-        contract_text, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active', NOW())
+      INSERT INTO orders 
+(project_id, offer_id, handwerker_id, bauherr_id, trade_id, 
+ amount, bundle_discount, execution_start, execution_end, 
+ contract_text, status, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', NOW())
        RETURNING id`,
       [
         offer.project_id,
@@ -19946,6 +19947,7 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
         offer.bauherr_id,
         offer.trade_id,
         offer.amount,
+        offer.bundle_discount || 0,
         offer.execution_start || new Date(),
         offer.execution_end || new Date(Date.now() + 30*24*60*60*1000),
         contractText
