@@ -20650,9 +20650,12 @@ if (order.lv_data) {
     doc.fontSize(10).font('Helvetica-Bold');
     doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke();
     doc.moveDown(0.5);
-    
-    const mwst = totalSum * 0.19;
-    const brutto = totalSum + mwst;
+
+    const bundleDiscount = order.bundle_discount || 0;
+    const discountAmount = bundleDiscount > 0 ? (totalSum * bundleDiscount / 100) : 0;
+    const nettoAfterDiscount = totalSum - discountAmount;
+    const mwst = nettoAfterDiscount * 0.19;
+    const brutto = nettoAfterDiscount + mwst;
     
     xPos = 370;
     doc.text('Netto-Summe:', xPos, doc.y, { width: 100, align: 'left' });
