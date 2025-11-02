@@ -63,9 +63,6 @@ export default function HandwerkerOfferDetailsPage() {
   
   const positions = Array.isArray(offer.lv_data) ? offer.lv_data : (offer.lv_data?.positions || []);
   const totalNetto = offer.amount || 0;
-  const totalBrutto = totalNetto * 1.19;
-  const mwst = totalBrutto - totalNetto;
-  const totalNetto = offer.amount || 0;
   const bundleDiscount = offer.bundle_discount || 0;
   const discountAmount = bundleDiscount > 0 ? (totalNetto * bundleDiscount / 100) : 0;
   const nettoAfterDiscount = totalNetto - discountAmount;
