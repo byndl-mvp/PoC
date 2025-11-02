@@ -89,6 +89,25 @@ export default function OfferDetailPage() {
     }).format(value || 0);
   };
 
+// Berechne Rabatt
+const calculatePriceWithDiscount = (offer) => {
+  const netto = offer?.amount || 0;
+  const bundleDiscount = offer?.bundle_discount || 0;
+  const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
+  const nettoAfterDiscount = netto - discountAmount;
+  const mwst = nettoAfterDiscount * 0.19;
+  const brutto = nettoAfterDiscount + mwst;
+  
+  return {
+    netto,
+    bundleDiscount,
+    discountAmount,
+    nettoAfterDiscount,
+    mwst,
+    brutto
+  };
+};
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
