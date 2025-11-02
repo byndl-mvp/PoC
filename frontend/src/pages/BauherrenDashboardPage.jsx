@@ -2269,8 +2269,16 @@ const deadlineDate = tender.deadline
                       <div>
                         <p className="text-sm text-gray-400">Preisrahmen für {tradeName}:</p>
                         <p className="text-white">
-                          {formatCurrency(Math.min(...tradeOffers.map(o => parseFloat(o.amount) || 0)))} - 
-                          {formatCurrency(Math.max(...tradeOffers.map(o => parseFloat(o.amount) || 0)))}
+                          {formatCurrency(Math.min(...tradeOffers.map(o => {
+  const netto = parseFloat(o.amount) || 0;
+  const discount = (o.bundle_discount || 0) / 100;
+  return netto - (netto * discount);
+})))} - 
+{formatCurrency(Math.max(...tradeOffers.map(o => {
+  const netto = parseFloat(o.amount) || 0;
+  const discount = (o.bundle_discount || 0) / 100;
+  return netto - (netto * discount);
+})))}
                         </p>
                       </div>
                       <div className="text-right">
