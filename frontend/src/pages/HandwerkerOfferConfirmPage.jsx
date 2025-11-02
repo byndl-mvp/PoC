@@ -562,7 +562,7 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
     </div>
   </div>
 )}
-
+</div> 
         {/* Ausführungstermine */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 mb-6">
           <h3 className="text-xl font-bold text-white mb-4">Ausführungstermine *</h3>
@@ -659,7 +659,7 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
     disabled={loading || !lvData.positions || lvData.positions.length === 0}
     className="w-full px-8 py-4 bg-gradient-to-r from-green-500 to-teal-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
   >
-    ✓ Angebot verbindlich bestätigen ({formatCurrency(total)})
+    ✓ Angebot verbindlich bestätigen ({formatCurrency(totalBrutto)})
   </button>
 ) : (
   <div className="w-full px-8 py-4 bg-green-500/20 border-2 border-green-500 text-green-300 text-lg font-bold rounded-lg text-center">
