@@ -154,7 +154,7 @@ export default function LandingPage() {
                       <svg className="w-5 h-5 text-teal-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Direkte und nachvollziehbare Kostenschätzung mit Fördermittelprüfung (KfW, BAFA)</span>
+                      <span>Direkte und nachvollziehbare Kostenschätzung</span>
                     </li>
                   </ul>
                 </div>
