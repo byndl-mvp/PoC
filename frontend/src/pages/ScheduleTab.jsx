@@ -984,10 +984,10 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
         <EditEntryModal
           entry={entry}
           onClose={() => setShowEditModal(false)}
-          onSave={(newStart, newEnd) => {
-            onUpdate(entry.id, newStart, newEnd);
-            setShowEditModal(false);
-          }}
+          onSave={(newStart, newEnd, cascade) => {
+  onUpdate(entry.id, newStart, newEnd, cascade);
+  setShowEditModal(false);
+}}
         />
       )}
     </>
