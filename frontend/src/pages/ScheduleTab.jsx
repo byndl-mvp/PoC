@@ -865,13 +865,13 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
             style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
           >
             <div className="text-center">
-              <div className="text-sm font-bold text-white mb-1">
-                KW {getWeekNumber(date)}
-              </div>
-              <div className="text-xs text-gray-300">
-                {date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
-              </div>
-            </div>
+  <div className="text-sm font-bold text-white whitespace-nowrap">
+    KW {getWeekNumber(date)}
+  </div>
+  <div className="text-xs text-gray-300 whitespace-nowrap">
+    {date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+  </div>
+</div>
             <div className="w-px h-4 bg-white/20 mx-auto mt-1"></div>
           </div>
         );
