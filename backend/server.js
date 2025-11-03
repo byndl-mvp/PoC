@@ -26562,61 +26562,64 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       );
       
       // Cascade: Verschiebe alle Folge-Termine
-      let affectedEntries = [];
-      if (cascadeChanges) {
-        const daysDiff = calculateWorkdays(oldEnd, new Date(newEnd));
-        
-        if (daysDiff !== 0) {
-          const followingEntries = await query(
-            `SELECT * FROM schedule_entries 
-             WHERE schedule_id = (SELECT schedule_id FROM schedule_entries WHERE id = $1)
-               AND sequence_order > (SELECT sequence_order FROM schedule_entries WHERE id = $1)
-             ORDER BY sequence_order`,
-            [entryId]
-          );
-          
-          for (const followEntry of followingEntries.rows) {
-            const newFollowStart = addWorkdays(new Date(followEntry.planned_start), daysDiff);
-            const newFollowEnd = addWorkdays(new Date(followEntry.planned_end), daysDiff);
-            
-            await query(
-              `UPDATE schedule_entries 
-               SET planned_start = $2,
-                   planned_end = $3,
-                   updated_at = NOW()
-               WHERE id = $1`,
-              [
-                followEntry.id,
-                newFollowStart.toISOString().split('T')[0],
-                newFollowEnd.toISOString().split('T')[0]
-              ]
-            );
-            
-            await query(
-              `INSERT INTO schedule_history 
-               (schedule_entry_id, changed_by_type, changed_by_id, change_type,
-                old_start, old_end, new_start, new_end, reason)
-               VALUES ($1, 'system', $2, 'cascade_change', $3, $4, $5, $6, $7)`,
-              [
-                followEntry.id,
-                bauherrId,
-                followEntry.planned_start,
-                followEntry.planned_end,
-                newFollowStart.toISOString().split('T')[0],
-                newFollowEnd.toISOString().split('T')[0],
-                `Automatisch verschoben wegen Änderung bei ${entry.trade_name}`
-              ]
-            );
-            
-            affectedEntries.push({
-              id: followEntry.id,
-              trade_code: followEntry.trade_code,
-              old_start: followEntry.planned_start,
-              new_start: newFollowStart.toISOString().split('T')[0]
-            });
-          }
-        }
-      }
+let affectedEntries = [];
+if (cascadeChanges) {
+  const daysDiff = calculateWorkdays(oldEnd, new Date(newEnd));
+  
+  if (daysDiff !== 0) {
+    const followingEntries = await query(
+      `SELECT se.*, t.code as trade_code, t.id as trade_id_fk
+       FROM schedule_entries se
+       JOIN trades t ON se.trade_id = t.id
+       WHERE se.schedule_id = (SELECT schedule_id FROM schedule_entries WHERE id = $1)
+         AND se.planned_start > $2
+       ORDER BY se.planned_start`,
+      [entryId, oldEnd]
+    );
+    
+    for (const followEntry of followingEntries.rows) {
+      const newFollowStart = addWorkdays(new Date(followEntry.planned_start), daysDiff);
+      const newFollowEnd = addWorkdays(new Date(followEntry.planned_end), daysDiff);
+      
+      await query(
+        `UPDATE schedule_entries 
+         SET planned_start = $2,
+             planned_end = $3,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [
+          followEntry.id,
+          newFollowStart.toISOString().split('T')[0],
+          newFollowEnd.toISOString().split('T')[0]
+        ]
+      );
+      
+      await query(
+        `INSERT INTO schedule_history 
+         (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+          old_start, old_end, new_start, new_end, reason, created_at)
+         VALUES ($1, 'system', $2, 'cascade_change', $3, $4, $5, $6, $7, NOW())`,
+        [
+          followEntry.id,
+          bauherrId,
+          followEntry.planned_start,
+          followEntry.planned_end,
+          newFollowStart.toISOString().split('T')[0],
+          newFollowEnd.toISOString().split('T')[0],
+          `Automatisch verschoben wegen Änderung bei ${entry.trade_name}`
+        ]
+      );
+      
+      affectedEntries.push({
+        id: followEntry.id,
+        trade_id: followEntry.trade_id_fk,
+        trade_code: followEntry.trade_code,
+        old_start: followEntry.planned_start,
+        new_start: newFollowStart.toISOString().split('T')[0]
+      });
+    }
+  }
+}
       
       // Benachrichtige betroffene Handwerker
       const affectedTradeIds = [entry.trade_id, ...affectedEntries.map(e => e.trade_id)];
