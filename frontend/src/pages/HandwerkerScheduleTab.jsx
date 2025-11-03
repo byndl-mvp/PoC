@@ -429,8 +429,3 @@ function calculateWorkdays(start, end) {
   return count;
 }
 
-// ============================================================================
-// EXPORT
-// ============================================================================
-
-export default HandwerkerScheduleTab;
