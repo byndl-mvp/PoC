@@ -319,6 +319,19 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
   }
 };
 
+// Badge-Count für Terminplan laden
+  const loadScheduleBadgeCount = async (projectId) => {
+    try {
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/schedule/badge-count`));
+      if (res.ok) {
+        const data = await res.json();
+        setScheduleBadgeCount(data.total);
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden des Badge-Counts:', err);
+    }
+  };
+  
 // Lade letzte View-Timestamps aus SessionStorage
 useEffect(() => {
   if (selectedProject) {
