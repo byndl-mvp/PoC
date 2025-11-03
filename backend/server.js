@@ -26044,6 +26044,12 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
         details: parseError.message 
       });
     }
+
+    console.log('[DEBUG] Schedule data:', {
+  input_type: schedule.input_type,
+  target_start_date: schedule.target_start_date,
+  target_completion_date: schedule.target_completion_date
+});
     
     // Berechne tatsächliche Start- und Enddaten
     let currentDate;
