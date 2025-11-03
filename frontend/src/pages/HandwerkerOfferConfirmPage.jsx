@@ -193,6 +193,12 @@ const checkAppointmentBeforeConfirm = async () => {
       return;
     }
 
+    // Prüfe ob Terminplan-Änderungen eine Begründung benötigen
+  if (hasScheduleChanges && !scheduleChangeReason.trim()) {
+    alert('Bitte geben Sie eine Begründung für die Terminänderung an.');
+    return;
+  }
+    
     if (!window.confirm('Möchten Sie dieses Angebot verbindlich bestätigen?')) return;
 
     try {
