@@ -25511,6 +25511,1487 @@ app.get('/api/projects/:projectId/trades/:tradeId/evaluations', async (req, res)
   }
 });
 
+// ============================================================================
+// TERMINPLANUNGS-SYSTEM - BACKEND ROUTES
+// ============================================================================
+// Zweck: KI-gestützte Bauablaufplanung mit Handwerker-Koordination
+// ============================================================================
+
+const Anthropic = require('@anthropic-ai/sdk');
+
+// ============================================================================
+// HILFSFUNKTIONEN
+// ============================================================================
+
+// Berechne Arbeitstage (Mo-Fr) zwischen zwei Daten
+function calculateWorkdays(startDate, endDate) {
+  let count = 0;
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+  
+  while (current <= end) {
+    const dayOfWeek = current.getDay();
+    // 0 = Sonntag, 6 = Samstag
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+}
+
+// Addiere Arbeitstage zu einem Datum (überspringt Wochenenden)
+function addWorkdays(startDate, days) {
+  const result = new Date(startDate);
+  let addedDays = 0;
+  
+  while (addedDays < days) {
+    result.setDate(result.getDate() + 1);
+    const dayOfWeek = result.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      addedDays++;
+    }
+  }
+  
+  return result;
+}
+
+// Prüfe ob genug Gewerke für Terminplan vorhanden sind
+async function checkScheduleEligibility(projectId) {
+  const result = await query(
+    `SELECT COUNT(DISTINCT pt.trade_id) as trade_count
+     FROM project_trades pt
+     JOIN trades t ON pt.trade_id = t.id
+     WHERE pt.project_id = $1 AND t.code != 'INT'`,
+    [projectId]
+  );
+  
+  return result.rows[0].trade_count >= 2;
+}
+
+// Lade Gewerkeabgrenzungs-Dokument für KI-Kontext
+function getTradeInterfacesPrompt() {
+  return `GEWERKEABGRENZUNG & SCHNITTSTELLENKLARHEIT:
+   - KEINE Doppelungen zwischen Gewerken
+   - Hierarchie: Spezialgewerk > Hauptgewerk > Nebengewerk
+   
+   KRITISCHE ZUORDNUNGEN (IMMER EINHALTEN):
+   * Fliesenarbeiten: AUSSCHLIESSLICH Gewerk FLI (Fliesenarbeiten), NIEMALS BOD (Bodenbelagsarbeiten)
+   * Innentüren/Zargen: AUSSCHLIESSLICH Gewerk TIS (Tischlerarbeiten), NIEMALS TRO (Trockenbau) oder FEN (Fenster/Türen)
+   * Rigips/Gipskartonwände: AUSSCHLIESSLICH Gewerk TRO (Trockenbau), NIEMALS ROH (Rohbau)
+   * Elektroschlitze: NUR bei ELEKT, nicht bei ROH oder ABBR
+   * Sanitärschlitze: NUR bei SAN, nicht bei ROH oder ABBR
+   * Elektrische Fußbodenheizung: NUR bei ELEKT oder FLI, NIEMALS bei SAN
+   * Warmwasser-Fußbodenheizung: NUR bei HEI (Heizung), nicht bei SAN
+   * Vorwandinstallation: NUR bei TRO (Trockenbau), nicht bei SAN
+   * Abdichtungen Bad: NUR bei FLI (unter Fliesen), nicht bei SAN
+   
+   WICHTIGE SCHNITTSTELLEN-MATRIX:
+   
+   - Bad-Sanierung: 
+     SAN/ELEKT/HEI (Rohinstallation) → TRO (Vorwand) → FLI (Abdichtung + Fliesen) → MAL (Anstrich) → SAN/ELEKT/HEI (Endmontage)
+     
+   - Dachausbau: 
+     ZIMM/DACH (Konstruktion) → ELEKT/SAN/HEI (Leitungen) → TRO (Verkleidung) → MAL/BOD/FLI (Finish) → SAN/ELEKT/HEI (Endmontage)
+     
+   - Fassade mit WDVS: 
+     GER (Gerüst) → FASS (WDVS + Dämmung) → FASS (Putz + Anstrich)
+   
+   - Heizungstausch: 
+     HEI (Heizung) → ELEKT (Stromanschluss) → MAL (Anstrich Heizungsraum)
+   
+   - Kernsanierung Wohnung:
+     ABBR (Entkernung) → ELEKT/SAN (Grundleitungen) → ROH (Wanddurchbrüche) → TRO (neue Raumaufteilung) → ESTR (Estrich) → FLI/BOD (Bodenbeläge) → TIS (Türen) → MAL (Komplettanstrich)
+   
+   REIHENFOLGE-PRINZIPIEN:
+   1. Abbruch/Rückbau immer zuerst
+   2. Rohbau/Statik vor Ausbau
+   3. Installationen (ELEKT/SAN/HEI) Rohinstallation vor Verkleidung
+   4. Trockenbau vor Nassarbeiten wo möglich
+   5. Bodenbeläge nach Wänden
+   6. Malerarbeiten als Finish
+   7. Endmontage Sanitär/Elektro ganz zum Schluss`;
+}
+
+// ============================================================================
+// 1. TERMINPLAN INITIIEREN (von Bauherrn)
+// ============================================================================
+
+app.post('/api/projects/:projectId/schedule/initiate', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { targetDate, dateType } = req.body; // dateType: 'start' oder 'end'
+    
+    console.log('[SCHEDULE] Initiating schedule for project:', projectId);
+    
+    // Prüfe ob Projekt existiert
+    const projectResult = await query(
+      'SELECT * FROM projects WHERE id = $1',
+      [projectId]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    }
+    
+    const project = projectResult.rows[0];
+    
+    // Prüfe ob genug Gewerke vorhanden sind (mind. 2)
+    const isEligible = await checkScheduleEligibility(projectId);
+    if (!isEligible) {
+      return res.status(400).json({ 
+        error: 'Mindestens 2 Gewerke erforderlich für Terminplanung' 
+      });
+    }
+    
+    // Prüfe ob bereits ein Terminplan existiert
+    const existingSchedule = await query(
+      'SELECT id, status FROM project_schedules WHERE project_id = $1',
+      [projectId]
+    );
+    
+    if (existingSchedule.rows.length > 0) {
+      return res.status(400).json({ 
+        error: 'Terminplan existiert bereits für dieses Projekt',
+        scheduleId: existingSchedule.rows[0].id,
+        status: existingSchedule.rows[0].status
+      });
+    }
+    
+    // Erstelle Draft-Schedule
+    const scheduleResult = await query(
+      `INSERT INTO project_schedules 
+       (project_id, status, ${dateType === 'start' ? 'target_start_date' : 'target_completion_date'}, input_type)
+       VALUES ($1, 'draft', $2, $3)
+       RETURNING id`,
+      [projectId, targetDate, dateType]
+    );
+    
+    const scheduleId = scheduleResult.rows[0].id;
+    
+    console.log('[SCHEDULE] Created draft schedule:', scheduleId);
+    
+    res.json({ 
+      success: true, 
+      scheduleId,
+      message: 'Terminplan initiiert, KI-Generierung kann gestartet werden'
+    });
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Initiation failed:', err);
+    res.status(500).json({ error: 'Fehler beim Initiieren des Terminplans' });
+  }
+});
+
+// ============================================================================
+// 2. TERMINPLAN GENERIEREN (KI-basiert)
+// ============================================================================
+
+app.post('/api/projects/:projectId/schedule/generate', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    console.log('[SCHEDULE-GEN] Starting generation for project:', projectId);
+    
+    // Lade Schedule
+    const scheduleResult = await query(
+      'SELECT * FROM project_schedules WHERE project_id = $1',
+      [projectId]
+    );
+    
+    if (scheduleResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Terminplan nicht gefunden. Bitte zuerst initiieren.' });
+    }
+    
+    const schedule = scheduleResult.rows[0];
+    
+    if (schedule.status !== 'draft') {
+      return res.status(400).json({ error: 'Terminplan kann nicht mehr generiert werden' });
+    }
+    
+    // Lade Projektdaten
+    const projectResult = await query(
+      `SELECT p.*, 
+        ARRAY_AGG(
+          json_build_object(
+            'id', t.id,
+            'code', t.code,
+            'name', t.name
+          )
+        ) as trades
+       FROM projects p
+       JOIN project_trades pt ON p.id = pt.project_id
+       JOIN trades t ON pt.trade_id = t.id
+       WHERE p.id = $1 AND t.code != 'INT'
+       GROUP BY p.id`,
+      [projectId]
+    );
+    
+    const project = projectResult.rows[0];
+    
+    // Lade Standard-Phasen für alle Gewerke
+    const phasesResult = await query(
+      `SELECT * FROM trade_standard_phases 
+       WHERE trade_code = ANY($1::text[])
+       ORDER BY trade_code, phase_number`,
+      [project.trades.map(t => t.code)]
+    );
+    
+    const tradePhases = {};
+    phasesResult.rows.forEach(phase => {
+      if (!tradePhases[phase.trade_code]) {
+        tradePhases[phase.trade_code] = [];
+      }
+      tradePhases[phase.trade_code].push(phase);
+    });
+    
+    // Lade Intake-Antworten für Kontext
+    const intTradeResult = await query("SELECT id FROM trades WHERE code='INT'");
+    const intTradeId = intTradeResult.rows[0]?.id;
+    
+    let intakeAnswers = [];
+    if (intTradeId) {
+      const answersResult = await query(
+        `SELECT q.text as question, a.answer_text as answer
+         FROM answers a
+         JOIN questions q ON q.project_id = a.project_id 
+           AND q.trade_id = a.trade_id 
+           AND q.question_id = a.question_id
+         WHERE a.project_id=$1 AND a.trade_id=$2
+         ORDER BY q.question_id
+         LIMIT 10`,
+        [projectId, intTradeId]
+      );
+      intakeAnswers = answersResult.rows;
+    }
+    
+    // System-Prompt für KI
+    const systemPrompt = `Du bist ein erfahrener Bauleiter und Experte für Terminplanung im Baugewerbe. 
+Deine Aufgabe ist es, einen professionellen Bauablaufplan zu erstellen.
+
+${getTradeInterfacesPrompt()}
+
+PROJEKTTYP-SPEZIFISCHE PUFFER:
+- Sanierung: 20-30% höhere Puffer (unvorhergesehene Probleme häufig)
+- Neubau: Standard-Puffer ausreichend
+- Kernsanierung: Besonders hohe Puffer bei Abbruch und Rohbau
+
+GEWERK-SPEZIFISCHE KOMPLEXITÄT & PUFFER:
+- SEHR KOMPLEX (3-5 Tage Puffer): DACH, ZIMM, ROH, FASS (mit WDVS)
+- KOMPLEX (2-3 Tage Puffer): ELEKT, SAN, HEI, TRO
+- MITTEL (1-2 Tage Puffer): FLI, TIS, ESTR
+- EINFACH (0-1 Tage Puffer): MAL, BOD
+
+MEHRFACH-EINSÄTZE:
+Bei folgenden Gewerken MÜSSEN mehrere Phasen eingeplant werden:
+- ELEKT: Rohinstallation → [andere Gewerke] → Feininstallation
+- SAN: Rohinstallation → [TRO, FLI] → Feininstallation  
+- HEI: Rohinstallation → [andere Gewerke] → Feininstallation
+- TRO: Ständerwerk → Beplankung → Spachtelung (bei größeren Projekten)
+- FLI: Abdichtung → Verlegung → Verfugung
+
+WICHTIGE REGELN:
+1. IMMER die Schnittstellen beachten
+2. Realistische Arbeitstage (nur Mo-Fr zählen)
+3. Klare, verständliche Erklärungen für Laien
+4. Puffer NACH kritischen Gewerken
+5. Risiken transparent kommunizieren
+
+OUTPUT (NUR valides JSON):
+{
+  "complexity_level": "EINFACH|MITTEL|HOCH|SEHR_HOCH",
+  "total_duration_days": 45,
+  "critical_path": ["ROH", "ELEKT", "MAL"],
+  
+  "general_explanation": "2-3 Sätze die dem Bauherrn erklären: Warum dauert das Projekt so lange? Was sind die kritischen Punkte?",
+  
+  "schedule": [
+    {
+      "trade_code": "ELEKT",
+      "trade_name": "Elektroinstallationen",
+      "phases": [
+        {
+          "phase_name": "Rohinstallation",
+          "phase_number": 1,
+          "duration_days": 3,
+          "buffer_days": 2,
+          "sequence_order": 1,
+          "dependencies": [],
+          "scheduling_reason": "Elektroleitungen müssen vor dem Verputzen verlegt werden",
+          "buffer_reason": "2 Tage Puffer für mögliche Koordination mit Sanitär",
+          "risks": "Verzögerungen wirken sich auf alle Folgetermine aus"
+        },
+        {
+          "phase_name": "Feininstallation",
+          "phase_number": 2,
+          "duration_days": 2,
+          "buffer_days": 1,
+          "sequence_order": 8,
+          "dependencies": ["MAL"],
+          "scheduling_reason": "Schalter und Steckdosen erst nach Malerarbeiten",
+          "buffer_reason": "1 Tag Puffer als letztes Gewerk",
+          "risks": "Keine größeren Risiken"
+        }
+      ]
+    }
+  ],
+  
+  "warnings": [
+    "Bei Verzögerung im Rohbau verschieben sich alle Folgetermine",
+    "Malerarbeiten benötigen trockene Wände - Trocknungszeiten beachten"
+  ],
+  
+  "recommendations": [
+    "Frühzeitige Materialbestellung für Fliesen und Türen empfohlen",
+    "Bauherr sollte Farbauswahl vor Malerbeginn treffen"
+  ]
+}`;
+
+    // User-Prompt
+    const userPrompt = `Erstelle einen Bauablaufplan für folgendes Projekt:
+
+PROJEKT:
+Kategorie: ${project.category || 'Sanierung'}
+Unterkategorie: ${project.sub_category || ''}
+Beschreibung: ${project.description || 'Keine detaillierte Beschreibung'}
+Ort: ${project.zip_code} ${project.city}
+
+VORGABE:
+${schedule.input_type === 'start_date' 
+  ? `Gewünschter START: ${schedule.target_start_date}`
+  : `Gewünschte FERTIGSTELLUNG: ${schedule.target_completion_date}`
+}
+
+BETEILIGTE GEWERKE:
+${project.trades.map(t => `- ${t.code}: ${t.name}`).join('\n')}
+
+VERFÜGBARE STANDARD-PHASEN:
+${Object.entries(tradePhases).map(([code, phases]) => 
+  `${code}: ${phases.map(p => p.phase_name).join(', ')}`
+).join('\n')}
+
+${intakeAnswers.length > 0 ? `
+PROJEKT-KONTEXT AUS INTAKE:
+${intakeAnswers.slice(0, 5).map(a => `- ${a.question}: ${a.answer}`).join('\n')}
+` : ''}
+
+Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärungen für den Bauherrn.`;
+
+    // KI-Call
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+    
+    console.log('[SCHEDULE-GEN] Calling Claude API...');
+    
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 16000,
+      temperature: 0.3,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }]
+    });
+    
+    // Parse Response
+    let scheduleData;
+    try {
+      let responseText = response.content[0].text.trim();
+      responseText = responseText
+        .replace(/^```json\s*\n?/, '')
+        .replace(/^```\s*\n?/, '')
+        .replace(/\n?```\s*$/, '')
+        .trim();
+      
+      scheduleData = JSON.parse(responseText);
+      
+    } catch (parseError) {
+      console.error('[SCHEDULE-GEN] Parse error:', parseError);
+      return res.status(500).json({ 
+        error: 'Fehler beim Parsen der KI-Antwort',
+        details: parseError.message 
+      });
+    }
+    
+    // Berechne tatsächliche Start- und Enddaten
+    let currentDate;
+    if (schedule.input_type === 'start_date') {
+      currentDate = new Date(schedule.target_start_date);
+    } else {
+      // Rückwärts rechnen vom Enddatum
+      currentDate = addWorkdays(
+        new Date(schedule.target_completion_date),
+        -scheduleData.total_duration_days
+      );
+    }
+    
+    // Speichere Schedule Entries
+    await query('BEGIN');
+    
+    try {
+      let sequenceCounter = 1;
+      
+      for (const trade of scheduleData.schedule) {
+        const tradeInfo = project.trades.find(t => t.code === trade.trade_code);
+        if (!tradeInfo) continue;
+        
+        for (const phase of trade.phases) {
+          const startDate = new Date(currentDate);
+          const endDate = addWorkdays(startDate, phase.duration_days - 1);
+          
+          await query(
+            `INSERT INTO schedule_entries 
+             (schedule_id, trade_id, phase_name, phase_number, is_multi_phase,
+              planned_start, planned_end, duration_days, buffer_days,
+              status, sequence_order, dependencies,
+              scheduling_reason, buffer_reason, risks,
+              original_start, original_end)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+            [
+              schedule.id,
+              tradeInfo.id,
+              phase.phase_name,
+              phase.phase_number,
+              trade.phases.length > 1,
+              startDate.toISOString().split('T')[0],
+              endDate.toISOString().split('T')[0],
+              phase.duration_days,
+              phase.buffer_days || 0,
+              'pending',
+              phase.sequence_order || sequenceCounter,
+              JSON.stringify(phase.dependencies || []),
+              phase.scheduling_reason,
+              phase.buffer_reason,
+              phase.risks,
+              startDate.toISOString().split('T')[0],
+              endDate.toISOString().split('T')[0]
+            ]
+          );
+          
+          // Nächstes Gewerk: Startdatum = Enddatum + 1 + Puffer
+          currentDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
+          sequenceCounter++;
+        }
+      }
+      
+      // Update Schedule mit KI-Daten
+      await query(
+        `UPDATE project_schedules 
+         SET status = 'pending_approval',
+             complexity_level = $2,
+             total_duration_days = $3,
+             critical_path = $4,
+             ai_response = $5,
+             ai_model_version = $6,
+             ai_prompt_used = $7,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [
+          schedule.id,
+          scheduleData.complexity_level,
+          scheduleData.total_duration_days,
+          JSON.stringify(scheduleData.critical_path),
+          JSON.stringify(scheduleData),
+          'claude-sonnet-4-5-20250929',
+          systemPrompt
+        ]
+      );
+      
+      await query('COMMIT');
+      
+      // Erstelle Benachrichtigung für Bauherrn
+      await query(
+        `INSERT INTO notifications (user_type, user_id, type, message, reference_type, reference_id, created_at)
+         VALUES ('bauherr', $1, 'schedule_generated', $2, 'schedule', $3, NOW())`,
+        [
+          project.bauherr_id,
+          `Terminplan für Ihr Projekt wurde erstellt und wartet auf Ihre Freigabe`,
+          schedule.id
+        ]
+      );
+      
+      console.log('[SCHEDULE-GEN] Generation completed successfully');
+      
+      res.json({ 
+        success: true, 
+        scheduleId: schedule.id,
+        scheduleData,
+        message: 'Terminplan erfolgreich generiert'
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (err) {
+    console.error('[SCHEDULE-GEN] Generation failed:', err);
+    res.status(500).json({ 
+      error: 'Fehler bei der Terminplan-Generierung',
+      details: err.message 
+    });
+  }
+});
+
+// ============================================================================
+// 3. TERMINPLAN ABRUFEN (für Bauherr zur Freigabe)
+// ============================================================================
+
+app.get('/api/projects/:projectId/schedule', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const scheduleResult = await query(
+      `SELECT ps.*,
+        json_agg(
+          json_build_object(
+            'id', se.id,
+            'trade_id', se.trade_id,
+            'trade_code', t.code,
+            'trade_name', t.name,
+            'phase_name', se.phase_name,
+            'phase_number', se.phase_number,
+            'is_multi_phase', se.is_multi_phase,
+            'planned_start', se.planned_start,
+            'planned_end', se.planned_end,
+            'duration_days', se.duration_days,
+            'buffer_days', se.buffer_days,
+            'confirmed', se.confirmed,
+            'confirmed_by', se.confirmed_by,
+            'status', se.status,
+            'sequence_order', se.sequence_order,
+            'dependencies', se.dependencies,
+            'scheduling_reason', se.scheduling_reason,
+            'buffer_reason', se.buffer_reason,
+            'risks', se.risks,
+            'original_start', se.original_start,
+            'original_end', se.original_end
+          ) ORDER BY se.sequence_order
+        ) as entries
+       FROM project_schedules ps
+       LEFT JOIN schedule_entries se ON ps.id = se.schedule_id
+       LEFT JOIN trades t ON se.trade_id = t.id
+       WHERE ps.project_id = $1
+       GROUP BY ps.id`,
+      [projectId]
+    );
+    
+    if (scheduleResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Kein Terminplan gefunden' });
+    }
+    
+    res.json(scheduleResult.rows[0]);
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Fetch failed:', err);
+    res.status(500).json({ error: 'Fehler beim Laden des Terminplans' });
+  }
+});
+
+// ============================================================================
+// 4. TERMINPLAN FREIGEBEN (Bauherr)
+// ============================================================================
+
+app.post('/api/schedules/:scheduleId/approve', async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+    const { bauherrId, notes, adjustedEntries } = req.body;
+    
+    await query('BEGIN');
+    
+    try {
+      // Falls Bauherr Termine angepasst hat
+      if (adjustedEntries && adjustedEntries.length > 0) {
+        for (const entry of adjustedEntries) {
+          await query(
+            `UPDATE schedule_entries 
+             SET planned_start = $2,
+                 planned_end = $3,
+                 duration_days = $4,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [
+              entry.id,
+              entry.planned_start,
+              entry.planned_end,
+              calculateWorkdays(entry.planned_start, entry.planned_end)
+            ]
+          );
+          
+          // History-Eintrag
+          await query(
+            `INSERT INTO schedule_history 
+             (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+              old_start, old_end, new_start, new_end, reason)
+             VALUES ($1, 'bauherr', $2, 'date_change', $3, $4, $5, $6, $7)`,
+            [
+              entry.id,
+              bauherrId,
+              entry.original_start,
+              entry.original_end,
+              entry.planned_start,
+              entry.planned_end,
+              'Anpassung durch Bauherr bei Freigabe'
+            ]
+          );
+        }
+      }
+      
+      // Schedule auf 'active' setzen
+      await query(
+        `UPDATE project_schedules 
+         SET status = 'active',
+             approved_by = $2,
+             approved_at = NOW(),
+             approval_notes = $3,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [scheduleId, bauherrId, notes]
+      );
+      
+      // Lade alle betroffenen Handwerker für Benachrichtigungen
+      const handwerkerResult = await query(
+        `SELECT DISTINCT h.id, h.email, h.company_name, t.code, t.name as trade_name
+         FROM schedule_entries se
+         JOIN trades t ON se.trade_id = t.id
+         JOIN tenders tn ON tn.trade_id = t.id
+         JOIN offers o ON o.tender_id = tn.id AND o.status = 'preliminary'
+         JOIN handwerker h ON o.handwerker_id = h.id
+         WHERE se.schedule_id = $1`,
+        [scheduleId]
+      );
+      
+      // Erstelle Benachrichtigungen für alle Handwerker in Vertragsanbahnung
+      for (const handwerker of handwerkerResult.rows) {
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+           VALUES ('handwerker', $1, 'schedule_active', $2, 'schedule', $3, $4, NOW())`,
+          [
+            handwerker.id,
+            `Terminplan freigegeben - Bitte bestätigen Sie Ihre Einsatzzeiten für ${handwerker.trade_name}`,
+            scheduleId,
+            JSON.stringify({ trade_code: handwerker.code })
+          ]
+        );
+      }
+      
+      await query('COMMIT');
+      
+      res.json({ 
+        success: true, 
+        message: 'Terminplan freigegeben',
+        notifiedHandwerker: handwerkerResult.rows.length
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Approval failed:', err);
+    res.status(500).json({ error: 'Fehler bei der Freigabe' });
+  }
+});
+
+// ============================================================================
+// 5. TERMINE FÜR HANDWERKER ABRUFEN (für HandwerkerOfferConfirmPage)
+// ============================================================================
+
+app.get('/api/offers/:offerId/schedule-dates', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    // Hole Trade des Offers
+    const offerResult = await query(
+      `SELECT o.*, tn.trade_id, tn.project_id
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       WHERE o.id = $1`,
+      [offerId]
+    );
+    
+    if (offerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    }
+    
+    const offer = offerResult.rows[0];
+    
+    // Prüfe ob Terminplan existiert und freigegeben ist
+    const scheduleResult = await query(
+      `SELECT ps.id, ps.status, ps.approved_at,
+        json_agg(
+          json_build_object(
+            'id', se.id,
+            'phase_name', se.phase_name,
+            'phase_number', se.phase_number,
+            'planned_start', se.planned_start,
+            'planned_end', se.planned_end,
+            'duration_days', se.duration_days,
+            'buffer_days', se.buffer_days,
+            'scheduling_reason', se.scheduling_reason,
+            'buffer_reason', se.buffer_reason,
+            'is_multi_phase', se.is_multi_phase
+          ) ORDER BY se.phase_number
+        ) as phases
+       FROM project_schedules ps
+       JOIN schedule_entries se ON ps.id = se.schedule_id
+       WHERE ps.project_id = $1 
+         AND se.trade_id = $2
+         AND ps.status IN ('active', 'locked')
+       GROUP BY ps.id`,
+      [offer.project_id, offer.trade_id]
+    );
+    
+    if (scheduleResult.rows.length === 0) {
+      return res.json({ 
+        hasSchedule: false,
+        message: 'Kein Terminplan verfügbar oder noch nicht freigegeben'
+      });
+    }
+    
+    res.json({
+      hasSchedule: true,
+      schedule: scheduleResult.rows[0]
+    });
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Fetch dates failed:', err);
+    res.status(500).json({ error: 'Fehler beim Laden der Termine' });
+  }
+});
+
+// ============================================================================
+// 6. TERMINE BESTÄTIGEN/ANPASSEN (Handwerker auf OfferConfirmPage)
+// ============================================================================
+
+app.post('/api/schedule-entries/confirm', async (req, res) => {
+  try {
+    const { entryIds, handwerkerId, adjustments } = req.body;
+    
+    await query('BEGIN');
+    
+    try {
+      for (const entryId of entryIds) {
+        const adjustment = adjustments?.find(a => a.entryId === entryId);
+        
+        if (adjustment && adjustment.changed) {
+          // Handwerker hat Termine angepasst
+          await query(
+            `UPDATE schedule_entries 
+             SET planned_start = $2,
+                 planned_end = $3,
+                 duration_days = $4,
+                 confirmed = false,
+                 status = 'change_requested',
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [
+              entryId,
+              adjustment.new_start,
+              adjustment.new_end,
+              calculateWorkdays(adjustment.new_start, adjustment.new_end)
+            ]
+          );
+          
+          // History
+          await query(
+            `INSERT INTO schedule_history 
+             (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+              old_start, old_end, new_start, new_end, reason)
+             VALUES ($1, 'handwerker', $2, 'date_change', $3, $4, $5, $6, $7)`,
+            [
+              entryId,
+              handwerkerId,
+              adjustment.old_start,
+              adjustment.old_end,
+              adjustment.new_start,
+              adjustment.new_end,
+              adjustment.reason || 'Anpassung durch Handwerker'
+            ]
+          );
+          
+        } else {
+          // Handwerker hat bestätigt ohne Änderung
+          await query(
+            `UPDATE schedule_entries 
+             SET confirmed = true,
+                 confirmed_by = $2,
+                 confirmed_at = NOW(),
+                 status = 'confirmed',
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [entryId, handwerkerId]
+          );
+        }
+      }
+      
+      // Benachrichtigung an Bauherr wenn Änderungen vorgenommen wurden
+      const hasChanges = adjustments?.some(a => a.changed);
+      if (hasChanges) {
+        const entryInfo = await query(
+          `SELECT se.*, t.name as trade_name, ps.project_id, p.bauherr_id
+           FROM schedule_entries se
+           JOIN trades t ON se.trade_id = t.id
+           JOIN project_schedules ps ON se.schedule_id = ps.id
+           JOIN projects p ON ps.project_id = p.id
+           WHERE se.id = $1`,
+          [entryIds[0]]
+        );
+        
+        if (entryInfo.rows.length > 0) {
+          const info = entryInfo.rows[0];
+          await query(
+            `INSERT INTO notifications 
+             (user_type, user_id, type, message, reference_type, reference_id, created_at)
+             VALUES ('bauherr', $1, 'schedule_change_request', $2, 'schedule_entry', $3, NOW())`,
+            [
+              info.bauherr_id,
+              `Handwerker hat Terminänderung für ${info.trade_name} vorgeschlagen`,
+              entryIds[0]
+            ]
+          );
+        }
+      }
+      
+      await query('COMMIT');
+      
+      res.json({ 
+        success: true,
+        hasChanges,
+        message: hasChanges 
+          ? 'Terminänderung gespeichert - wartet auf Bauherr-Freigabe'
+          : 'Termine bestätigt'
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Confirmation failed:', err);
+    res.status(500).json({ error: 'Fehler bei der Terminbestätigung' });
+  }
+});
+
+// ============================================================================
+// 7. TERMINÄNDERUNG DURCH BAUHERR (nach Lock-Status)
+// ============================================================================
+
+app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
+  try {
+    const { entryId } = req.params;
+    const { newStart, newEnd, reason, bauherrId, cascadeChanges } = req.body;
+    
+    await query('BEGIN');
+    
+    try {
+      // Lade Entry mit Schedule-Info
+      const entryResult = await query(
+        `SELECT se.*, ps.status, ps.project_id, t.code, t.name as trade_name
+         FROM schedule_entries se
+         JOIN project_schedules ps ON se.schedule_id = ps.id
+         JOIN trades t ON se.trade_id = t.id
+         WHERE se.id = $1`,
+        [entryId]
+      );
+      
+      if (entryResult.rows.length === 0) {
+        await query('ROLLBACK');
+        return res.status(404).json({ error: 'Termin nicht gefunden' });
+      }
+      
+      const entry = entryResult.rows[0];
+      const oldStart = entry.planned_start;
+      const oldEnd = entry.planned_end;
+      
+      // Update Entry
+      await query(
+        `UPDATE schedule_entries 
+         SET planned_start = $2,
+             planned_end = $3,
+             duration_days = $4,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [
+          entryId,
+          newStart,
+          newEnd,
+          calculateWorkdays(newStart, newEnd)
+        ]
+      );
+      
+      // History
+      await query(
+        `INSERT INTO schedule_history 
+         (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+          old_start, old_end, new_start, new_end, reason)
+         VALUES ($1, 'bauherr', $2, 'date_change', $3, $4, $5, $6, $7)`,
+        [entryId, bauherrId, oldStart, oldEnd, newStart, newEnd, reason]
+      );
+      
+      // Cascade: Verschiebe alle Folge-Termine
+      let affectedEntries = [];
+      if (cascadeChanges) {
+        const daysDiff = calculateWorkdays(oldEnd, new Date(newEnd));
+        
+        if (daysDiff !== 0) {
+          const followingEntries = await query(
+            `SELECT * FROM schedule_entries 
+             WHERE schedule_id = (SELECT schedule_id FROM schedule_entries WHERE id = $1)
+               AND sequence_order > (SELECT sequence_order FROM schedule_entries WHERE id = $1)
+             ORDER BY sequence_order`,
+            [entryId]
+          );
+          
+          for (const followEntry of followingEntries.rows) {
+            const newFollowStart = addWorkdays(new Date(followEntry.planned_start), daysDiff);
+            const newFollowEnd = addWorkdays(new Date(followEntry.planned_end), daysDiff);
+            
+            await query(
+              `UPDATE schedule_entries 
+               SET planned_start = $2,
+                   planned_end = $3,
+                   updated_at = NOW()
+               WHERE id = $1`,
+              [
+                followEntry.id,
+                newFollowStart.toISOString().split('T')[0],
+                newFollowEnd.toISOString().split('T')[0]
+              ]
+            );
+            
+            await query(
+              `INSERT INTO schedule_history 
+               (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+                old_start, old_end, new_start, new_end, reason)
+               VALUES ($1, 'system', $2, 'cascade_change', $3, $4, $5, $6, $7)`,
+              [
+                followEntry.id,
+                bauherrId,
+                followEntry.planned_start,
+                followEntry.planned_end,
+                newFollowStart.toISOString().split('T')[0],
+                newFollowEnd.toISOString().split('T')[0],
+                `Automatisch verschoben wegen Änderung bei ${entry.trade_name}`
+              ]
+            );
+            
+            affectedEntries.push({
+              id: followEntry.id,
+              trade_code: followEntry.trade_code,
+              old_start: followEntry.planned_start,
+              new_start: newFollowStart.toISOString().split('T')[0]
+            });
+          }
+        }
+      }
+      
+      // Benachrichtige betroffene Handwerker
+      const affectedTradeIds = [entry.trade_id, ...affectedEntries.map(e => e.trade_id)];
+      
+      const handwerkerResult = await query(
+        `SELECT DISTINCT h.id, t.code, t.name as trade_name
+         FROM handwerker h
+         JOIN offers o ON h.id = o.handwerker_id
+         JOIN tenders tn ON o.tender_id = tn.id
+         WHERE tn.project_id = $1 
+           AND tn.trade_id = ANY($2::int[])
+           AND o.status IN ('preliminary', 'confirmed')`,
+        [entry.project_id, affectedTradeIds]
+      );
+      
+      for (const handwerker of handwerkerResult.rows) {
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, message, reference_type, reference_id, created_at)
+           VALUES ('handwerker', $1, 'schedule_changed', $2, 'schedule_entry', $3, NOW())`,
+          [
+            handwerker.id,
+            `Terminänderung für ${handwerker.trade_name} - Bitte prüfen Sie die neuen Termine`,
+            entryId
+          ]
+        );
+      }
+      
+      await query('COMMIT');
+      
+      res.json({ 
+        success: true,
+        affectedEntries: affectedEntries.length,
+        message: 'Termine aktualisiert'
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Update failed:', err);
+    res.status(500).json({ error: 'Fehler bei der Terminänderung' });
+  }
+});
+
+// ============================================================================
+// 8. TERMINÄNDERUNGS-ANFRAGE ERSTELLEN (Handwerker nach Beauftragung)
+// ============================================================================
+
+app.post('/api/schedule-entries/:entryId/request-change', async (req, res) => {
+  try {
+    const { entryId } = req.params;
+    const { handwerkerId, requestedStart, requestedEnd, reason, urgency } = req.body;
+    
+    if (!reason || reason.trim().length < 10) {
+      return res.status(400).json({ error: 'Bitte geben Sie eine aussagekräftige Begründung an' });
+    }
+    
+    await query('BEGIN');
+    
+    try {
+      // Berechne Auswirkungen
+      const entryResult = await query(
+        `SELECT se.*, ps.project_id, p.bauherr_id, t.name as trade_name
+         FROM schedule_entries se
+         JOIN project_schedules ps ON se.schedule_id = ps.id
+         JOIN projects p ON ps.project_id = p.id
+         JOIN trades t ON se.trade_id = t.id
+         WHERE se.id = $1`,
+        [entryId]
+      );
+      
+      if (entryResult.rows.length === 0) {
+        await query('ROLLBACK');
+        return res.status(404).json({ error: 'Termin nicht gefunden' });
+      }
+      
+      const entry = entryResult.rows[0];
+      
+      // Prüfe ob Folgetermine betroffen sind
+      const followingResult = await query(
+        `SELECT id, trade_id FROM schedule_entries 
+         WHERE schedule_id = $1 
+           AND sequence_order > $2`,
+        [entry.schedule_id, entry.sequence_order]
+      );
+      
+      const affectsFollowing = followingResult.rows.length > 0;
+      const delayDays = calculateWorkdays(entry.planned_end, new Date(requestedEnd));
+      
+      // Erstelle Change Request
+      const requestResult = await query(
+        `INSERT INTO schedule_change_requests 
+         (schedule_entry_id, handwerker_id, requested_start, requested_end, 
+          reason, urgency, affects_following_trades, affected_trade_ids, estimated_delay_days)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id`,
+        [
+          entryId,
+          handwerkerId,
+          requestedStart,
+          requestedEnd,
+          reason,
+          urgency || 'normal',
+          affectsFollowing,
+          JSON.stringify(followingResult.rows.map(r => r.trade_id)),
+          Math.max(0, delayDays)
+        ]
+      );
+      
+      // Update Entry Status
+      await query(
+        `UPDATE schedule_entries 
+         SET status = 'change_requested'
+         WHERE id = $1`,
+        [entryId]
+      );
+      
+      // Benachrichtige Bauherr
+      await query(
+        `INSERT INTO notifications 
+         (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+         VALUES ('bauherr', $1, 'schedule_change_request', $2, 'change_request', $3, $4, NOW())`,
+        [
+          entry.bauherr_id,
+          `Terminänderung für ${entry.trade_name} beantragt - ${affectsFollowing ? 'Betrifft Folgetermine' : 'Keine Auswirkungen auf andere Gewerke'}`,
+          requestResult.rows[0].id,
+          JSON.stringify({ 
+            urgency,
+            affects_following: affectsFollowing,
+            delay_days: delayDays
+          })
+        ]
+      );
+      
+      await query('COMMIT');
+      
+      res.json({ 
+        success: true,
+        requestId: requestResult.rows[0].id,
+        affectsFollowing,
+        estimatedDelay: delayDays,
+        message: 'Änderungsanfrage gesendet'
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Change request failed:', err);
+    res.status(500).json({ error: 'Fehler beim Erstellen der Anfrage' });
+  }
+});
+
+// ============================================================================
+// 9. TERMINÄNDERUNGS-ANFRAGE BEARBEITEN (Bauherr)
+// ============================================================================
+
+app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { bauherrId, decision, rejectionReason, cascadeChanges } = req.body;
+    
+    if (!['approved', 'rejected'].includes(decision)) {
+      return res.status(400).json({ error: 'Ungültige Entscheidung' });
+    }
+    
+    await query('BEGIN');
+    
+    try {
+      // Lade Change Request
+      const requestResult = await query(
+        `SELECT cr.*, se.schedule_id, se.planned_start, se.planned_end, 
+                se.trade_id, t.name as trade_name, h.company_name
+         FROM schedule_change_requests cr
+         JOIN schedule_entries se ON cr.schedule_entry_id = se.id
+         JOIN trades t ON se.trade_id = t.id
+         JOIN handwerker h ON cr.handwerker_id = h.id
+         WHERE cr.id = $1`,
+        [requestId]
+      );
+      
+      if (requestResult.rows.length === 0) {
+        await query('ROLLBACK');
+        return res.status(404).json({ error: 'Anfrage nicht gefunden' });
+      }
+      
+      const request = requestResult.rows[0];
+      
+      if (decision === 'approved') {
+        // Genehmigt: Termine anpassen
+        await query(
+          `UPDATE schedule_entries 
+           SET planned_start = $2,
+               planned_end = $3,
+               duration_days = $4,
+               status = 'confirmed',
+               updated_at = NOW()
+           WHERE id = $1`,
+          [
+            request.schedule_entry_id,
+            request.requested_start,
+            request.requested_end,
+            calculateWorkdays(request.requested_start, request.requested_end)
+          ]
+        );
+        
+        // History
+        await query(
+          `INSERT INTO schedule_history 
+           (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+            old_start, old_end, new_start, new_end, reason, change_request_id)
+           VALUES ($1, 'bauherr', $2, 'approved_change', $3, $4, $5, $6, $7, $8)`,
+          [
+            request.schedule_entry_id,
+            bauherrId,
+            request.planned_start,
+            request.planned_end,
+            request.requested_start,
+            request.requested_end,
+            `Änderungsanfrage von ${request.company_name} genehmigt`,
+            requestId
+          ]
+        );
+        
+        // Cascade wenn gewünscht und nötig
+        if (cascadeChanges && request.affects_following_trades) {
+          const daysDiff = request.estimated_delay_days;
+          
+          if (daysDiff > 0) {
+            const followingEntries = await query(
+              `SELECT * FROM schedule_entries 
+               WHERE schedule_id = $1
+                 AND sequence_order > (SELECT sequence_order FROM schedule_entries WHERE id = $2)
+               ORDER BY sequence_order`,
+              [request.schedule_id, request.schedule_entry_id]
+            );
+            
+            for (const entry of followingEntries.rows) {
+              const newStart = addWorkdays(new Date(entry.planned_start), daysDiff);
+              const newEnd = addWorkdays(new Date(entry.planned_end), daysDiff);
+              
+              await query(
+                `UPDATE schedule_entries 
+                 SET planned_start = $2,
+                     planned_end = $3,
+                     updated_at = NOW()
+                 WHERE id = $1`,
+                [
+                  entry.id,
+                  newStart.toISOString().split('T')[0],
+                  newEnd.toISOString().split('T')[0]
+                ]
+              );
+            }
+          }
+        }
+        
+        // Benachrichtige Handwerker
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, message, reference_type, reference_id, created_at)
+           VALUES ('handwerker', $1, 'change_request_approved', $2, 'schedule_entry', $3, NOW())`,
+          [
+            request.handwerker_id,
+            `Ihre Terminänderung für ${request.trade_name} wurde genehmigt`,
+            request.schedule_entry_id
+          ]
+        );
+        
+      } else {
+        // Abgelehnt: Status zurücksetzen
+        await query(
+          `UPDATE schedule_entries 
+           SET status = 'confirmed'
+           WHERE id = $1`,
+          [request.schedule_entry_id]
+        );
+        
+        // Benachrichtige Handwerker
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+           VALUES ('handwerker', $1, 'change_request_rejected', $2, 'schedule_entry', $3, $4, NOW())`,
+          [
+            request.handwerker_id,
+            `Ihre Terminänderung für ${request.trade_name} wurde abgelehnt`,
+            request.schedule_entry_id,
+            JSON.stringify({ reason: rejectionReason })
+          ]
+        );
+      }
+      
+      // Update Change Request Status
+      await query(
+        `UPDATE schedule_change_requests 
+         SET status = $2,
+             resolved_at = NOW(),
+             resolved_by = $3,
+             rejection_reason = $4
+         WHERE id = $1`,
+        [requestId, decision, bauherrId, rejectionReason]
+      );
+      
+      await query('COMMIT');
+      
+      res.json({ 
+        success: true,
+        decision,
+        message: decision === 'approved' 
+          ? 'Terminänderung genehmigt'
+          : 'Terminänderung abgelehnt'
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      throw innerErr;
+    }
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Resolve failed:', err);
+    res.status(500).json({ error: 'Fehler bei der Bearbeitung' });
+  }
+});
+
+// ============================================================================
+// 10. TERMINPLAN SPERREN (alle Gewerke vergeben)
+// ============================================================================
+
+app.post('/api/schedules/:scheduleId/lock', async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+    
+    // Prüfe ob alle Einträge bestätigt sind
+    const unconfirmedResult = await query(
+      `SELECT COUNT(*) as count 
+       FROM schedule_entries 
+       WHERE schedule_id = $1 AND confirmed = false`,
+      [scheduleId]
+    );
+    
+    if (unconfirmedResult.rows[0].count > 0) {
+      return res.status(400).json({ 
+        error: 'Nicht alle Termine sind bestätigt',
+        unconfirmed: unconfirmedResult.rows[0].count
+      });
+    }
+    
+    // Sperre Schedule
+    await query(
+      `UPDATE project_schedules 
+       SET status = 'locked',
+           updated_at = NOW()
+       WHERE id = $1`,
+      [scheduleId]
+    );
+    
+    res.json({ 
+      success: true,
+      message: 'Terminplan gesperrt - Änderungen nur noch durch Bauherr möglich'
+    });
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Lock failed:', err);
+    res.status(500).json({ error: 'Fehler beim Sperren' });
+  }
+});
+
+// ============================================================================
+// 11. TERMINPLAN-ÜBERSICHT FÜR HANDWERKER
+// ============================================================================
+
+app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    // Lade alle Projekte mit Terminen wo Handwerker beauftragt ist
+    const scheduleResult = await query(
+      `SELECT 
+        p.id as project_id,
+        p.description as project_description,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        t.code as trade_code,
+        t.name as trade_name,
+        se.id as entry_id,
+        se.phase_name,
+        se.phase_number,
+        se.planned_start,
+        se.planned_end,
+        se.duration_days,
+        se.status,
+        se.confirmed,
+        o.id as order_id,
+        CASE 
+          WHEN o.id IS NOT NULL THEN true 
+          ELSE false 
+        END as is_contracted
+       FROM schedule_entries se
+       JOIN project_schedules ps ON se.schedule_id = ps.id
+       JOIN projects p ON ps.project_id = p.id
+       JOIN trades t ON se.trade_id = t.id
+       JOIN offers of ON of.tender_id IN (
+         SELECT id FROM tenders WHERE project_id = p.id AND trade_id = t.id
+       )
+       LEFT JOIN orders o ON o.offer_id = of.id
+       WHERE of.handwerker_id = $1
+         AND of.status IN ('preliminary', 'confirmed', 'accepted')
+         AND ps.status IN ('active', 'locked')
+       ORDER BY se.planned_start, p.id, se.phase_number`,
+      [handwerkerId]
+    );
+    
+    // Gruppiere nach Projekt
+    const projects = {};
+    scheduleResult.rows.forEach(row => {
+      if (!projects[row.project_id]) {
+        projects[row.project_id] = {
+          project_id: row.project_id,
+          project_description: row.project_description,
+          address: `${row.street} ${row.house_number}, ${row.zip_code} ${row.city}`,
+          entries: []
+        };
+      }
+      
+      projects[row.project_id].entries.push({
+        entry_id: row.entry_id,
+        trade_code: row.trade_code,
+        trade_name: row.trade_name,
+        phase_name: row.phase_name,
+        phase_number: row.phase_number,
+        planned_start: row.planned_start,
+        planned_end: row.planned_end,
+        duration_days: row.duration_days,
+        status: row.status,
+        confirmed: row.confirmed,
+        is_contracted: row.is_contracted
+      });
+    });
+    
+    res.json(Object.values(projects));
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Handwerker schedule failed:', err);
+    res.status(500).json({ error: 'Fehler beim Laden der Terminübersicht' });
+  }
+});
+
+// ============================================================================
+// 12. BADGE-COUNT FÜR TERMINPLAN-TAB
+// ============================================================================
+
+app.get('/api/projects/:projectId/schedule/badge-count', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        COUNT(*) FILTER (WHERE se.status = 'change_requested') as pending_changes,
+        COUNT(*) FILTER (WHERE se.confirmed = false AND ps.status = 'active') as pending_confirmations,
+        COUNT(*) FILTER (WHERE ps.status = 'pending_approval') as needs_approval
+       FROM project_schedules ps
+       LEFT JOIN schedule_entries se ON ps.id = se.schedule_id
+       WHERE ps.project_id = $1`,
+      [projectId]
+    );
+    
+    const counts = result.rows[0];
+    const totalBadge = 
+      parseInt(counts.pending_changes || 0) + 
+      parseInt(counts.pending_confirmations || 0) + 
+      parseInt(counts.needs_approval || 0);
+    
+    res.json({
+      total: totalBadge,
+      details: {
+        pendingChanges: parseInt(counts.pending_changes || 0),
+        pendingConfirmations: parseInt(counts.pending_confirmations || 0),
+        needsApproval: parseInt(counts.needs_approval || 0)
+      }
+    });
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Badge count failed:', err);
+    res.status(500).json({ error: 'Fehler beim Laden' });
+  }
+});
+
+// ============================================================================
+// HELPER-FUNKTION EXPORT (falls benötigt)
+// ============================================================================
+
+module.exports = {
+  calculateWorkdays,
+  addWorkdays,
+  checkScheduleEligibility
+};
+
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
