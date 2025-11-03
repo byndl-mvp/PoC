@@ -568,31 +568,18 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
 )}
 </div> 
         {/* Ausführungstermine */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 mb-6">
-          <h3 className="text-xl font-bold text-white mb-4">Ausführungstermine *</h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-white font-semibold mb-2">Ausführung von</label>
-              <input
-                type="date"
-                className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
-                value={formData.execution_start}
-                onChange={(e) => setFormData({...formData, execution_start: e.target.value})}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-white font-semibold mb-2">Ausführung bis</label>
-              <input
-                type="date"
-                className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
-                value={formData.execution_end}
-                onChange={(e) => setFormData({...formData, execution_end: e.target.value})}
-                required
-              />
-            </div>
-          </div>
-        </div>
+<ExecutionTimesSection
+  offerId={offerId}
+  formData={formData}
+  setFormData={setFormData}
+  apiUrl={apiUrl}
+  offerStatus={offer?.status}
+  onPhasesChange={(phases, reason, hasChanges) => {
+    setSchedulePhases(phases);
+    setScheduleChangeReason(reason);
+    setHasScheduleChanges(hasChanges);
+  }}
+/>
 
         {/* Anmerkungen */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 mb-6">
