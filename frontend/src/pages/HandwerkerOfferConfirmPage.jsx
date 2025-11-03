@@ -222,14 +222,16 @@ console.log('Positionen mit Preis:', positionenMitPreis.length);
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: totalAmount,
-          bundle_discount: bundleDiscount, 
-          execution_start: formData.execution_start,
-          execution_end: formData.execution_end,
-          notes: formData.notes,
-          lv_data: lvData
-        })
-      });
+        amount: totalAmount,
+        bundle_discount: bundleDiscount, 
+        execution_start: formData.execution_start,
+        execution_end: formData.execution_end,
+        notes: formData.notes,
+        lv_data: lvData,
+        schedule_phases: schedulePhases,
+        schedule_change_reason: hasScheduleChanges ? scheduleChangeReason : null,
+        has_schedule_changes: hasScheduleChanges
+      })
 
       if (res.ok) {
   console.log('=== ERFOLGREICH GESENDET ===');
