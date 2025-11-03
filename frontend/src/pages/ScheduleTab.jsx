@@ -21,6 +21,19 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
     loadSchedule();
   }, [project.id]); // eslint-disable-line
 
+  // NEU: Auto-expand für Multi-Phase Gewerke
+useEffect(() => {
+  if (schedule?.entries) {
+    const grouped = groupEntriesByTrade(schedule.entries);
+    const expanded = {};
+    grouped.forEach(trade => {
+      // Automatisch ausklappen wenn > 1 Einsatz
+      expanded[trade.trade_code] = trade.entries.length > 1;
+    });
+    setExpandedTrades(expanded);
+  }
+}, [schedule]); // eslint-disable-line
+  
   const loadSchedule = async () => {
     try {
       setLoading(true);
