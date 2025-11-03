@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
+import ExecutionTimesSection from './ExecutionTimesSection';
 
 function formatCurrency(value) {
   if (!value && value !== 0) return '0 €';
