@@ -166,13 +166,19 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
     if (onTabChange) {
       const tabMapping = {
         'new_tender': 'ausschreibungen',
-        'preliminary_accepted': 'angebote',
+        'preliminary_accepted': 'contracts',
         'offer_rejected': 'angebote', 
         'offer_withdrawn': 'angebote',
         'awarded': 'auftraege',
         'work_completed': 'auftraege',
         'message_from_bauherr': 'messages',
-        'message_from_handwerker': 'messages'
+        'message_from_handwerker': 'messages',
+        'schedule_generated': 'schedule',
+        'schedule_active': 'schedule',
+        'schedule_change_request': 'schedule',
+        'schedule_changed': 'schedule',
+        'change_request_approved': 'schedule',
+        'change_request_rejected': 'schedule'
       };
       
       if (tabMapping[notification.type]) {
@@ -215,7 +221,13 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
       'contract_created': '📄',
       'not_selected': '📭',
       'info': 'ℹ️',
-      'work_completed': '✔️' 
+      'work_completed': '✔️',
+      'schedule_generated': '📅',
+      'schedule_active': '📅',
+      'schedule_change_request': '⏰',
+      'schedule_changed': '🔄',
+      'change_request_approved': '✅',
+      'change_request_rejected': '❌'
     };
     return icons[type] || '🔔';
   };
@@ -235,7 +247,13 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
       'contract_created': 'from-emerald-500/20 to-green-500/20 border-emerald-500/30',
       'not_selected': 'from-gray-500/20 to-gray-600/20 border-gray-500/30',
       'appointment_confirmed': 'from-blue-500/20 to-indigo-500/20 border-blue-500/30',
-      'work_completed': 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30'
+      'work_completed': 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30',
+      'schedule_generated': 'from-blue-600/20 to-teal-600/20 border-blue-500/30',
+      'schedule_active': 'from-blue-600/20 to-teal-600/20 border-blue-500/30',
+      'schedule_change_request': 'from-orange-600/20 to-red-600/20 border-orange-500/30',
+      'schedule_changed': 'from-purple-600/20 to-blue-600/20 border-purple-500/30',
+      'change_request_approved': 'from-green-600/20 to-teal-600/20 border-green-500/30',
+      'change_request_rejected': 'from-red-600/20 to-orange-600/20 border-red-500/30'
     };
     return colors[type] || 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
   };
@@ -309,7 +327,25 @@ case 'appointment_request':
 
     case 'work_completed':
       return `${getValue(['sender_name', 'senderName'], 'Bauherr')} hat die Leistung für ${getValue(['trade_name', 'tradeName'], 'Auftrag')} abgenommen`;
-      
+
+    case 'schedule_generated':
+      return `Terminplan wurde erstellt - Bitte prüfen und freigeben${projectInfo}`;
+    
+    case 'schedule_active':
+      return `Terminplan freigegeben - Bitte bestätigen Sie Ihre Einsatzzeiten${projectInfo}`;
+    
+    case 'schedule_change_request':
+      return `${getValue(['company_name', 'companyName'], 'Handwerker')} hat Terminänderung für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} vorgeschlagen${projectInfo}`;
+    
+    case 'schedule_changed':
+      return `Terminplan wurde angepasst - Bitte prüfen Sie Ihre Termine${projectInfo}`;
+    
+    case 'change_request_approved':
+      return `Ihre Terminänderung für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} wurde genehmigt${projectInfo}`;
+    
+    case 'change_request_rejected':
+      return `Ihre Terminänderung für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} wurde abgelehnt${details.rejection_reason ? `: ${details.rejection_reason}` : ''}${projectInfo}`;      
+    
     default:
       return notification.message || `Neue Benachrichtigung${projectInfo}`;
   }
