@@ -838,31 +838,36 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
         </div>
       </div>
 
-      {/* Timeline Header */}
-      <div className="mb-4 overflow-x-auto pb-2">
-        <div className="flex gap-1 min-w-max relative">
-          <div className="w-64 flex-shrink-0"></div>
-          {dateMarkers.map((date, idx) => {
-            const position = ((date - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-            return (
-              <div 
-                key={idx} 
-                className="absolute text-center"
-                style={{ left: `calc(16rem + ${position}%)`, transform: 'translateX(-50%)' }}
-              >
-                <div className="text-xs font-semibold text-white mb-1">
-                  KW {getWeekNumber(date)}
-                </div>
-                <div className="text-xs text-gray-400">
-                  {date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
-                </div>
-                <div className="w-px h-2 bg-white/30 mx-auto mt-1"></div>
+      {/* Timeline Header - FIXIERT */}
+<div className="mb-2 pb-4 border-b border-white/10">
+  <div className="flex min-w-max">
+    <div className="w-64 flex-shrink-0"></div>
+    <div className="flex-1 relative" style={{ height: '50px' }}>
+      {dateMarkers.map((date, idx) => {
+        const position = ((date - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+        return (
+          <div 
+            key={idx} 
+            className="absolute"
+            style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
+          >
+            <div className="text-center">
+              <div className="text-sm font-bold text-white mb-1">
+                KW {getWeekNumber(date)}
               </div>
-            );
-          })}
-        </div>
-      </div>
-
+              <div className="text-xs text-gray-300">
+                {date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+              </div>
+            </div>
+            <div className="w-px h-4 bg-white/20 mx-auto mt-1"></div>
+          </div>
+        );
+      })}
+    </div>
+    <div className="w-32 flex-shrink-0"></div>
+  </div>
+</div>
+      
       {/* Balken */}
       <div className="space-y-3 overflow-x-auto">
         {groupedTrades.map((trade, tradeIdx) => (
