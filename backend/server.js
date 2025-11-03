@@ -26625,15 +26625,16 @@ if (cascadeChanges) {
       const affectedTradeIds = [entry.trade_id, ...affectedEntries.map(e => e.trade_id)];
       
       const handwerkerResult = await query(
-        `SELECT DISTINCT h.id, t.code, t.name as trade_name
-         FROM handwerker h
-         JOIN offers o ON h.id = o.handwerker_id
-         JOIN tenders tn ON o.tender_id = tn.id
-         WHERE tn.project_id = $1 
-           AND tn.trade_id = ANY($2::int[])
-           AND o.status IN ('preliminary', 'confirmed')`,
-        [entry.project_id, affectedTradeIds]
-      );
+  `SELECT DISTINCT h.id, t.code, t.name as trade_name
+   FROM handwerker h
+   JOIN offers o ON h.id = o.handwerker_id
+   JOIN tenders tn ON o.tender_id = tn.id
+   JOIN trades t ON tn.trade_id = t.id
+   WHERE tn.project_id = $1 
+     AND tn.trade_id = ANY($2::int[])
+     AND o.status IN ('preliminary', 'confirmed')`,
+  [entry.project_id, affectedTradeIds]
+);
       
       for (const handwerker of handwerkerResult.rows) {
         await query(
