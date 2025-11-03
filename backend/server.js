@@ -26183,7 +26183,6 @@ app.get('/api/projects/:projectId/schedule', async (req, res) => {
             'trade_name', t.name,
             'phase_name', se.phase_name,
             'phase_number', se.phase_number,
-            'is_multi_phase', se.is_multi_phase,
             'planned_start', se.planned_start,
             'planned_end', se.planned_end,
             'duration_days', se.duration_days,
@@ -26191,15 +26190,12 @@ app.get('/api/projects/:projectId/schedule', async (req, res) => {
             'confirmed', se.confirmed,
             'confirmed_by', se.confirmed_by,
             'status', se.status,
-            'sequence_order', se.sequence_order,
             'dependencies', se.dependencies,
             'scheduling_reason', se.scheduling_reason,
             'buffer_reason', se.buffer_reason,
-            'risks', se.risks,
-            'original_start', se.original_start,
-            'original_end', se.original_end
-          ) ORDER BY se.sequence_order
-        ) as entries
+            'risks', se.risks
+          ) ORDER BY se.planned_start
+        ) FILTER (WHERE se.id IS NOT NULL) as entries
        FROM project_schedules ps
        LEFT JOIN schedule_entries se ON ps.id = se.schedule_id
        LEFT JOIN trades t ON se.trade_id = t.id
