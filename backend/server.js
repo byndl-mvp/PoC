@@ -25794,7 +25794,7 @@ app.post('/api/projects/:projectId/schedule/initiate', async (req, res) => {
     // Erstelle Draft-Schedule
     const scheduleResult = await query(
       `INSERT INTO project_schedules 
-       (project_id, status, ${dateType === 'start' ? 'target_start_date' : 'target_completion_date'}, input_type)
+       (project_id, status, ${dateType === 'start_date' ? 'target_start_date' : 'target_completion_date'}, input_type)
        VALUES ($1, 'draft', $2, $3)
        RETURNING id`,
       [projectId, targetDate, dateType]
