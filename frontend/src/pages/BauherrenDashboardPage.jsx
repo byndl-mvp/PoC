@@ -21,6 +21,7 @@ export default function BauherrenDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [scheduleBadgeCount, setScheduleBadgeCount] = useState(0);
   const [tenders, setTenders] = useState([]); // eslint-disable-line no-unused-vars
   const [offers, setOffers] = useState([]);
   const [orders, setOrders] = useState([]);
