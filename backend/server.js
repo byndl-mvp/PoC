@@ -19753,7 +19753,17 @@ app.get('/api/projects/:projectId/withdrawn-offers', async (req, res) => {
 app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
   try {
     const { offerId } = req.params;
-    const { amount, bundle_discount, execution_start, execution_end, notes, lv_data } = req.body;
+    const { 
+      amount, 
+      bundle_discount, 
+      execution_start, 
+      execution_end, 
+      notes, 
+      lv_data,
+      schedule_phases,
+      schedule_change_reason,
+      has_schedule_changes
+    } = req.body;
 
     console.log('EMPFANGEN - Offer ID:', offerId);
     console.log('EMPFANGEN - Amount:', amount);
@@ -19776,6 +19786,85 @@ app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
    WHERE id = $1`,
   [offerId, amount, bundle_discount, execution_start, execution_end, notes, JSON.stringify(lv_data)]
 );
+
+// NEU: Terminplan-Änderungen verarbeiten
+if (schedule_phases && schedule_phases.length > 0) {
+  const offerInfo = await query(
+    'SELECT handwerker_id FROM offers WHERE id = $1',
+    [offerId]
+  );
+  
+  if (offerInfo.rows.length > 0) {
+    const handwerkerId = offerInfo.rows[0].handwerker_id;
+    
+    for (const phase of schedule_phases) {
+      if (has_schedule_changes && phase.changed) {
+        await query(
+          `UPDATE schedule_entries 
+           SET planned_start = $2,
+               planned_end = $3,
+               status = 'change_requested',
+               updated_at = NOW()
+           WHERE id = $1`,
+          [phase.id, phase.start, phase.end]
+        );
+        
+        await query(
+          `INSERT INTO schedule_change_requests 
+           (schedule_entry_id, handwerker_id, requested_start, requested_end, 
+            reason, urgency, status, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'normal', 'pending', NOW())`,
+          [phase.id, handwerkerId, phase.start, phase.end, schedule_change_reason]
+        );
+        
+        await query(
+          `INSERT INTO schedule_history 
+           (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+            old_start, old_end, new_start, new_end, reason, created_at)
+           VALUES ($1, 'handwerker', $2, 'date_change', $3, $4, $5, $6, $7, NOW())`,
+          [phase.id, handwerkerId, phase.planned_start, phase.planned_end, 
+           phase.start, phase.end, schedule_change_reason]
+        );
+      } else {
+        await query(
+          `UPDATE schedule_entries 
+           SET confirmed = true,
+               confirmed_by = $2,
+               confirmed_at = NOW(),
+               status = 'confirmed',
+               updated_at = NOW()
+           WHERE id = $1`,
+          [phase.id, handwerkerId]
+        );
+      }
+    }
+    
+    if (has_schedule_changes) {
+      const projectInfo = await query(
+        `SELECT p.bauherr_id, t.name as trade_name
+         FROM offers o
+         JOIN tenders tn ON o.tender_id = tn.id
+         JOIN projects p ON tn.project_id = p.id
+         JOIN trades t ON tn.trade_id = t.id
+         WHERE o.id = $1`,
+        [offerId]
+      );
+      
+      if (projectInfo.rows.length > 0) {
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, message, reference_type, reference_id, created_at)
+           VALUES ('bauherr', $1, 'schedule_change_request', $2, 'offer', $3, NOW())`,
+          [
+            projectInfo.rows[0].bauherr_id,
+            `Handwerker hat Terminänderung für ${projectInfo.rows[0].trade_name} vorgeschlagen`,
+            offerId
+          ]
+        );
+      }
+    }
+  }
+}
     
     // Benachrichtige Bauherr
     const offerData = await query(
