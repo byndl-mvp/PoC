@@ -25655,6 +25655,34 @@ app.get('/api/projects/:projectId/trades/:tradeId/evaluations', async (req, res)
 // HILFSFUNKTIONEN
 // ============================================================================
 
+// Lade Feiertage beim Start
+let publicHolidays = new Set();
+
+async function loadPublicHolidays() {
+  try {
+    const result = await query('SELECT day, month FROM public_holidays');
+    publicHolidays = new Set(result.rows.map(row => `${row.month}-${row.day}`));
+    console.log('[SCHEDULE] Loaded', publicHolidays.size, 'public holidays');
+  } catch (err) {
+    console.error('[SCHEDULE] Failed to load holidays:', err);
+  }
+}
+
+loadPublicHolidays();
+
+function isWorkday(date) {
+  const dayOfWeek = date.getDay();
+  
+  // Wochenende?
+  if (dayOfWeek === 0 || dayOfWeek === 6) return false;
+  
+  // Feiertag?
+  const dateKey = `${date.getMonth() + 1}-${date.getDate()}`;
+  if (publicHolidays.has(dateKey)) return false;
+  
+  return true;
+}
+
 // Berechne Arbeitstage (Mo-Fr) zwischen zwei Daten
 function calculateWorkdays(startDate, endDate) {
   let count = 0;
