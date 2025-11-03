@@ -26073,30 +26073,25 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
           
           await query(
             `INSERT INTO schedule_entries 
-             (schedule_id, trade_id, phase_name, phase_number, is_multi_phase,
+             (schedule_id, trade_id, phase_name, phase_number,
               planned_start, planned_end, duration_days, buffer_days,
-              status, sequence_order, dependencies,
-              scheduling_reason, buffer_reason, risks,
-              original_start, original_end)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+              status, dependencies,
+              scheduling_reason, buffer_reason, risks)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
             [
               schedule.id,
               tradeInfo.id,
               phase.phase_name,
               phase.phase_number,
-              trade.phases.length > 1,
               startDate.toISOString().split('T')[0],
               endDate.toISOString().split('T')[0],
               phase.duration_days,
               phase.buffer_days || 0,
               'pending',
-              phase.sequence_order || sequenceCounter,
               JSON.stringify(phase.dependencies || []),
               phase.scheduling_reason,
               phase.buffer_reason,
-              phase.risks,
-              startDate.toISOString().split('T')[0],
-              endDate.toISOString().split('T')[0]
+              phase.risks
             ]
           );
           
