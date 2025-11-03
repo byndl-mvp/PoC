@@ -959,74 +959,74 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
   const bufferDays = entry.buffer_days || 0;
 
   return (
-    <>
-      <div className="flex items-center py-2 relative group">
-        <div className="w-64 flex-shrink-0 pl-14">
-          {entry.phase_name && (
-            <span className="text-gray-300 text-sm font-medium">{entry.phase_name}</span>
-          )}
-        </div>
-        
-        <div className="flex-1 relative h-12">
-          <button
-            onClick={() => editMode && setShowEditModal(true)}
-            className={`absolute h-full rounded-lg shadow-lg ${editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'} transition-all overflow-hidden`}
-            style={position}
-            disabled={!editMode}
-            title={editMode ? 'Klicken zum Bearbeiten' : ''}
-          >
-            <div className={`h-full rounded-lg bg-gradient-to-r ${color} flex flex-col items-center justify-center px-3 relative`}>
-              {/* Haupt-Info */}
-              <div className="text-white font-bold text-sm text-center leading-tight">
-                {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
-                {bufferDays > 0 && <span className="text-white/80 ml-1">+ {bufferDays}d Puffer</span>}
-              </div>
-              
-              {/* Datum */}
-              <div className="text-white/90 text-xs mt-1 text-center leading-tight">
-                {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
-              </div>
-              
-              {/* Status-Indicator */}
-              {entry.confirmed && (
-                <div className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></div>
-              )}
+  <>
+    <div className="flex items-start py-3 relative group">
+      <div className="w-64 flex-shrink-0 pl-14">
+        {entry.phase_name && (
+          <div className="pt-2">
+            <span className="text-white text-sm font-semibold block">{entry.phase_name}</span>
+            <span className="text-gray-400 text-xs">
+              {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
+              {bufferDays > 0 && ` + ${bufferDays}d Puffer`}
+            </span>
+          </div>
+        )}
+      </div>
+      
+      <div className="flex-1 relative" style={{ height: '60px' }}>
+        <button
+          onClick={() => editMode && setShowEditModal(true)}
+          className={`absolute rounded-lg shadow-lg ${editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'} transition-all`}
+          style={{ ...position, height: '48px', top: '6px' }}
+          disabled={!editMode}
+          title={editMode ? 'Klicken zum Bearbeiten' : ''}
+        >
+          <div className={`h-full rounded-lg bg-gradient-to-r ${color} flex items-center justify-center px-3 relative`}>
+            {/* Datum im Balken */}
+            <div className="text-white font-semibold text-sm text-center">
+              {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
             </div>
-          </button>
-        </div>
-
-        {/* Status Badge */}
-        <div className="w-32 flex-shrink-0 flex justify-end">
-          {entry.confirmed ? (
-            <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" />
-              Bestätigt
-            </span>
-          ) : entry.status === 'change_requested' ? (
-            <span className="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-semibold flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              Änderung
-            </span>
-          ) : (
-            <span className="px-2 py-1 bg-gray-500/20 text-gray-300 rounded-full text-xs">
-              Ausstehend
-            </span>
-          )}
-        </div>
+            
+            {/* Status-Indicator */}
+            {entry.confirmed && (
+              <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+            )}
+          </div>
+        </button>
       </div>
 
-      {showEditModal && (
-        <EditEntryModal
-          entry={entry}
-          onClose={() => setShowEditModal(false)}
-          onSave={(newStart, newEnd, cascade) => {
-            onUpdate(entry.id, newStart, newEnd, cascade);
-            setShowEditModal(false);
-          }}
-        />
-      )}
-    </>
-  );
+      {/* Status Badge */}
+      <div className="w-32 flex-shrink-0 flex justify-end pt-2">
+        {entry.confirmed ? (
+          <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            Bestätigt
+          </span>
+        ) : entry.status === 'change_requested' ? (
+          <span className="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-semibold flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            Änderung
+          </span>
+        ) : (
+          <span className="px-2 py-1 bg-gray-500/20 text-gray-300 rounded-full text-xs">
+            Ausstehend
+          </span>
+        )}
+      </div>
+    </div>
+
+    {showEditModal && (
+      <EditEntryModal
+        entry={entry}
+        onClose={() => setShowEditModal(false)}
+        onSave={(newStart, newEnd, cascade) => {
+          onUpdate(entry.id, newStart, newEnd, cascade);
+          setShowEditModal(false);
+        }}
+      />
+    )}
+  </>
+);
 }
 
 // ============================================================================
