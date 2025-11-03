@@ -1583,58 +1583,12 @@ const badgeCounts = {
 )}
 
           {/* Terminplan Tab */}
-          {activeTab === 'termine' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Terminübersicht</h2>
-              
-              <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <p className="text-blue-300 text-sm">
-                  <strong>ℹ️ Info:</strong> Die KI optimiert Ihre Termine automatisch bei gebündelten Projekten.
-                </p>
-              </div>
-              
-              <div className="grid gap-4">
-                {[...Array(4)].map((_, weekOffset) => {
-                  const weekNumber = getWeek(new Date()) + weekOffset;
-                  const weekOrders = orders.filter(o => o.executionWeek === weekNumber);
-                  
-                  return (
-                    <div key={weekOffset} className="bg-white/5 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-white font-semibold">KW {weekNumber}/2025</h3>
-                        <span className="text-sm text-gray-400">
-                          {weekOrders.length} Aufträge
-                        </span>
-                      </div>
-                      {weekOrders.length > 0 ? (
-                        <div className="space-y-2">
-                          {weekOrders.map((order, idx) => (
-                            <div key={idx} className="bg-white/10 rounded p-2">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <p className="text-white text-sm">{order.trade}</p>
-                                  <p className="text-gray-400 text-xs">{order.projectAddress}</p>
-                                </div>
-                                <span className={`text-xs px-2 py-1 rounded ${
-                                  order.isBundle ? 'bg-blue-600 text-blue-200' : 'bg-gray-600 text-gray-300'
-                                }`}>
-                                  {order.isBundle ? 'Bündel' : 'Einzel'}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-gray-500 text-sm">Keine Termine</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+{activeTab === 'termine' && (
+  <HandwerkerScheduleTab
+    handwerkerId={handwerkerData.id}
+    apiUrl={apiUrl}
+  />
+)}
       
       {/* Modal für Vertragsansicht */}
 {showContractView && (
