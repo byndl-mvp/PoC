@@ -1471,7 +1471,11 @@ const BudgetVisualization = ({ budget }) => {
         !lastViewed || new Date(order.created_at) > new Date(lastViewed)
       ).length;
     }
-    
+
+    if (tab === 'schedule') {
+      newCount = scheduleBadgeCount;
+    }
+  
     return (
       <button
         key={tab}
