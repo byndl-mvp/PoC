@@ -974,12 +974,22 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
   return (
   <>
     <div className="flex items-start py-3 relative group">
-      {/* Linke Spalte - Leer, Text kommt unter Balken */}
-      <div className="w-64 flex-shrink-0"></div>
+      {/* Linke Spalte - Phase Name und Dauer */}
+      <div className="w-64 flex-shrink-0 pl-14">
+        {entry.phase_name && (
+          <div className="pt-2">
+            <span className="text-white text-sm font-semibold block">{entry.phase_name}</span>
+            <span className="text-gray-400 text-xs">
+              {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
+              {bufferDays > 0 && ` + ${bufferDays} ${bufferDays === 1 ? 'Tag' : 'Tage'} Puffer`}
+            </span>
+          </div>
+        )}
+      </div>
       
       {/* Balken-Bereich */}
       <div className="flex-1 relative">
-        {/* Der Balken */}
+        {/* Der Balken - OHNE Text */}
         <button
           onClick={() => editMode && setShowEditModal(true)}
           className={`absolute rounded-lg shadow-lg ${editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'} transition-all`}
@@ -987,12 +997,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
           disabled={!editMode}
           title={editMode ? 'Klicken zum Bearbeiten' : ''}
         >
-          <div className={`h-full rounded-lg bg-gradient-to-r ${color} flex items-center justify-center px-3 relative`}>
-            {/* Datum im Balken */}
-            <div className="text-white font-semibold text-sm">
-              {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
-            </div>
-            
+          <div className={`h-full rounded-lg bg-gradient-to-r ${color} relative`}>
             {/* Status-Indicator */}
             {entry.confirmed && (
               <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
@@ -1000,18 +1005,14 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
           </div>
         </button>
         
-        {/* Text UNTER dem Balken */}
-        <div className="mt-12 text-center">
-          <span className="text-white text-sm font-semibold">{entry.phase_name}</span>
-          <div className="text-gray-400 text-xs mt-1">
-            {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
-            {bufferDays > 0 && ` + ${bufferDays} ${bufferDays === 1 ? 'Tag' : 'Tage'} Puffer`}
-          </div>
+        {/* Datum UNTER dem Balken */}
+        <div className="absolute text-center text-white text-xs font-semibold whitespace-nowrap" style={{ ...position, top: '45px' }}>
+          {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
         </div>
       </div>
 
       {/* Status Badge */}
-      <div className="w-32 flex-shrink-0 flex justify-end">
+      <div className="w-32 flex-shrink-0 flex justify-end pt-2">
         {entry.confirmed ? (
           <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
