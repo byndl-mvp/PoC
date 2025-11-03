@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertTriangle, CheckCircle, Edit2, RefreshCw, Users, Info, ChevronRight, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, CheckCircle, Edit2, RefreshCw, Users, Info, ChevronRight, ChevronDown, X, Save } from 'lucide-react';
 
 // ============================================================================
 // HAUPT-KOMPONENTE: TERMINPLAN-TAB FÜR BAUHERREN
