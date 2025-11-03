@@ -1441,7 +1441,7 @@ const BudgetVisualization = ({ budget }) => {
     {selectedProject.trades?.filter(t => t.code !== 'INT').length >= 2 && 
      activeTab !== 'schedule' && 
      scheduleBadgeCount === 0 && (
-      <div className="mb-6 bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-md rounded-xl p-6 border border-teal-500/30 animate-pulse">
+      <div className="mb-6 bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-md rounded-xl p-6 border border-teal-500/30">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
