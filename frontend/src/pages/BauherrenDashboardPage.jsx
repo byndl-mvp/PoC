@@ -22,6 +22,7 @@ export default function BauherrenDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState(null);
   const [scheduleBadgeCount, setScheduleBadgeCount] = useState(0);
+  const [schedule, setSchedule] = useState(null);
   const [tenders, setTenders] = useState([]); // eslint-disable-line no-unused-vars
   const [offers, setOffers] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -300,6 +301,15 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
     } else {
       setSupplements([]);
     }
+
+    // Check ob Schedule existiert
+const schedRes = await fetch(apiUrl(`/api/projects/${projectId}/schedule?t=${timestamp}`));
+if (schedRes.ok) {
+  const schedData = await schedRes.json();
+  setSchedule(schedData);
+} else {
+  setSchedule(null);
+}
     
     // Lade ungelesene Angebote
     const unreadRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/unread-count?t=${timestamp}`));
@@ -1439,8 +1449,8 @@ const BudgetVisualization = ({ budget }) => {
 
       {/* Terminplan-Empfehlung */}
     {selectedProject.trades?.filter(t => t.code !== 'INT').length >= 2 && 
-     activeTab !== 'schedule' && 
-     scheduleBadgeCount === 0 && (
+ activeTab !== 'schedule' && 
+ !schedule && (
       <div className="mb-6 bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-md rounded-xl p-6 border border-teal-500/30">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
