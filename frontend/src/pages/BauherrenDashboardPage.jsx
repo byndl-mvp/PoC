@@ -334,16 +334,26 @@ if (schedRes.ok) {
 
 // Badge-Count für Terminplan laden
   const loadScheduleBadgeCount = async (projectId) => {
-    try {
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/schedule/badge-count`));
-      if (res.ok) {
-        const data = await res.json();
-        setScheduleBadgeCount(data.total);
+  try {
+    const timestamp = Date.now();
+    const res = await fetch(apiUrl(`/api/projects/${projectId}/schedule?t=${timestamp}`));
+    if (res.ok) {
+      const data = await res.json();
+      setSchedule(data);
+      
+      const badgeRes = await fetch(apiUrl(`/api/projects/${projectId}/schedule/badge-count?t=${timestamp}`));
+      if (badgeRes.ok) {
+        const badgeData = await badgeRes.json();
+        setScheduleBadgeCount(badgeData.total);
       }
-    } catch (err) {
-      console.error('Fehler beim Laden des Badge-Counts:', err);
+    } else {
+      setSchedule(null);
+      setScheduleBadgeCount(0);
     }
-  };
+  } catch (err) {
+    console.error('Fehler:', err);
+  }
+};
   
 // Lade letzte View-Timestamps aus SessionStorage
 useEffect(() => {
