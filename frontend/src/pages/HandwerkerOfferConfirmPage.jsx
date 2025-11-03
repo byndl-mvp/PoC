@@ -232,7 +232,8 @@ console.log('Positionen mit Preis:', positionenMitPreis.length);
         schedule_change_reason: hasScheduleChanges ? scheduleChangeReason : null,
         has_schedule_changes: hasScheduleChanges
       })
-
+    });
+      
       if (res.ok) {
   console.log('=== ERFOLGREICH GESENDET ===');
   alert('Angebot wurde verbindlich bestätigt! Der Bauherr wird benachrichtigt.');
