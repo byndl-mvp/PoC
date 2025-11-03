@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertTriangle, CheckCircle, Edit2, RefreshCw, Users, Info, ChevronRight, ChevronDown, X, Save } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, CheckCircle, Edit2, Info, ChevronRight, ChevronDown, X } from 'lucide-react';
 
 // ============================================================================
 // HAUPT-KOMPONENTE: TERMINPLAN-TAB FÜR BAUHERREN
@@ -81,8 +81,6 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
         return;
       }
       
-      const initData = await initRes.json();
-      
       // Schritt 2: Generieren (kann 10-30 Sekunden dauern)
       const genRes = await fetch(apiUrl(`/api/projects/${project.id}/schedule/generate`), {
         method: 'POST',
@@ -95,8 +93,6 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
         setGenerating(false);
         return;
       }
-      
-      const genData = await genRes.json();
       
       setShowInitModal(false);
       setGenerating(false);
