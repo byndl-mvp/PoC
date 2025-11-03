@@ -6,7 +6,7 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Info, AlertTriangle, CheckCircle, Edit2, Save, X } from 'lucide-react';
+import { Calendar, Clock, Info, AlertTriangle, CheckCircle, Edit2, Save, X, ChevronDown, ChevronRight } from 'lucide-react';
 
 // ============================================================================
 // HAUPT-KOMPONENTE: AUSFÜHRUNGSTERMINE
@@ -611,9 +611,6 @@ function calculateWorkdays(start, end) {
   }
   return count;
 }
-
-// Import für fehlende Icons
-import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ============================================================================
 // EXPORT
