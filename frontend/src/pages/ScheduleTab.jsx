@@ -803,64 +803,87 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
   // Berechne Gesamtspanne in Tagen
   const totalDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
   
-  // Erstelle Wochen-Header
-  const weeks = [];
-  let currentWeek = new Date(minDate);
-  while (currentWeek <= maxDate) {
-    weeks.push(new Date(currentWeek));
-    currentWeek.setDate(currentWeek.getDate() + 7);
+  // Erstelle Tages-Grid (jeden 5. Tag anzeigen)
+  const dateMarkers = [];
+  let currentMarker = new Date(minDate);
+  while (currentMarker <= maxDate) {
+    dateMarkers.push(new Date(currentMarker));
+    currentMarker.setDate(currentMarker.getDate() + 5);
   }
+
+  // Gewerke-Farben
+  const tradeColors = [
+    'from-blue-500 to-blue-600',
+    'from-green-500 to-green-600',
+    'from-purple-500 to-purple-600',
+    'from-orange-500 to-orange-600',
+    'from-pink-500 to-pink-600',
+    'from-teal-500 to-teal-600',
+    'from-indigo-500 to-indigo-600',
+    'from-red-500 to-red-600',
+    'from-yellow-500 to-yellow-600',
+    'from-cyan-500 to-cyan-600'
+  ];
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-white">Bauablauf</h3>
-        <div className="flex items-center gap-4 text-sm text-gray-400">
-          <span>{new Date(minDate).toLocaleDateString('de-DE')} - {new Date(maxDate).toLocaleDateString('de-DE')}</span>
-          <span>•</span>
-          <span>{totalDays} Tage</span>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-2xl font-bold text-white">Bauablauf-Zeitplan</h3>
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-gray-300">
+            <strong className="text-white">{new Date(minDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}</strong> bis <strong className="text-white">{new Date(maxDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+          </span>
+          <span className="text-gray-400">•</span>
+          <span className="text-teal-300 font-semibold">{totalDays} Tage</span>
         </div>
       </div>
 
-      {/* Wochen-Header */}
-      <div className="mb-4 overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
-          <div className="w-48 flex-shrink-0"></div>
-          {weeks.map((week, idx) => (
-            <div key={idx} className="flex-1 min-w-[80px] text-center">
-              <div className="text-xs text-gray-400">
-                KW {getWeekNumber(week)}
+      {/* Timeline Header */}
+      <div className="mb-4 overflow-x-auto pb-2">
+        <div className="flex gap-1 min-w-max relative">
+          <div className="w-64 flex-shrink-0"></div>
+          {dateMarkers.map((date, idx) => {
+            const position = ((date - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+            return (
+              <div 
+                key={idx} 
+                className="absolute text-center"
+                style={{ left: `calc(16rem + ${position}%)`, transform: 'translateX(-50%)' }}
+              >
+                <div className="text-xs font-semibold text-white mb-1">
+                  KW {getWeekNumber(date)}
+                </div>
+                <div className="text-xs text-gray-400">
+                  {date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+                </div>
+                <div className="w-px h-2 bg-white/30 mx-auto mt-1"></div>
               </div>
-              <div className="text-xs text-gray-500">
-                {week.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Balken */}
-      <div className="space-y-2 overflow-x-auto">
-        {groupedTrades.map(trade => (
+      <div className="space-y-3 overflow-x-auto">
+        {groupedTrades.map((trade, tradeIdx) => (
           <div key={trade.trade_code} className="min-w-max">
             {/* Trade Header */}
             <button
               onClick={() => onToggleTrade(trade.trade_code)}
-              className="w-full flex items-center gap-2 py-2 hover:bg-white/5 transition-colors"
+              className="w-full flex items-center gap-3 py-3 px-4 hover:bg-white/5 rounded-lg transition-colors"
             >
-              <div className="w-48 flex-shrink-0 flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-blue-600 rounded flex items-center justify-center text-white text-xs font-bold">
-                  {trade.trade_code.substring(0, 2)}
-                </div>
-                <span className="text-white font-semibold text-sm">{trade.trade_name}</span>
+              <div className={`w-10 h-10 bg-gradient-to-br ${tradeColors[tradeIdx % tradeColors.length]} rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-lg`}>
+                {trade.trade_code.substring(0, 2)}
               </div>
+              <span className="text-white font-bold text-lg">{trade.trade_name}</span>
+              <span className="text-gray-400 text-sm ml-2">({trade.entries.length} {trade.entries.length === 1 ? 'Einsatz' : 'Einsätze'})</span>
               {expandedTrades[trade.trade_code] ? 
-                <ChevronDown className="w-4 h-4 text-gray-400" /> : 
-                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-5 h-5 text-gray-400 ml-auto" /> : 
+                <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
               }
             </button>
 
-            {/* Phasen (wenn expanded) */}
+            {/* Phasen */}
             {expandedTrades[trade.trade_code] && trade.entries.map(entry => (
               <GanttBar
                 key={entry.id}
@@ -869,10 +892,11 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                 totalDays={totalDays}
                 editMode={editMode}
                 onUpdate={onUpdateEntry}
+                color={tradeColors[tradeIdx % tradeColors.length]}
               />
             ))}
 
-            {/* Gesamtbalken (wenn collapsed) */}
+            {/* Gesamtbalken (collapsed) */}
             {!expandedTrades[trade.trade_code] && (
               <GanttBar
                 entry={trade.entries[0]}
@@ -881,6 +905,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                 editMode={false}
                 isSummary={true}
                 allEntries={trade.entries}
+                color={tradeColors[tradeIdx % tradeColors.length]}
               />
             )}
           </div>
@@ -888,10 +913,10 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
       </div>
 
       {editMode && (
-        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+        <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
           <p className="text-blue-300 text-sm flex items-center gap-2">
             <Info className="w-4 h-4" />
-            Klicken Sie auf einen Balken, um die Termine anzupassen
+            Klicken Sie auf einen Balken, um die Termine anzupassen. Aktivieren Sie "Folgetermine automatisch verschieben" um alle nachfolgenden Gewerke mitzuverschieben.
           </p>
         </div>
       )}
@@ -903,10 +928,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 // SUB-KOMPONENTE: EINZELNER GANTT-BALKEN
 // ============================================================================
 
-function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, allEntries }) {
+function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, allEntries, color }) {
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Berechne Position und Breite des Balkens
   const calculatePosition = (start, end) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
@@ -926,68 +950,74 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
       )
     : calculatePosition(entry.planned_start, entry.planned_end);
 
-  const getStatusColor = () => {
-    if (entry.status === 'completed') return 'from-green-500 to-emerald-600';
-    if (entry.status === 'in_progress') return 'from-blue-500 to-cyan-600';
-    if (entry.status === 'change_requested') return 'from-orange-500 to-red-600';
-    if (entry.confirmed) return 'from-teal-500 to-blue-600';
-    return 'from-gray-500 to-gray-600';
-  };
+  const workdays = calculateWorkdays(entry.planned_start, entry.planned_end);
+  const bufferDays = entry.buffer_days || 0;
 
   return (
     <>
-      <div className="flex items-center py-2 relative">
-        <div className="w-48 flex-shrink-0">
+      <div className="flex items-center py-2 relative group">
+        <div className="w-64 flex-shrink-0 pl-14">
           {entry.phase_name && (
-            <span className="text-gray-400 text-xs ml-11">{entry.phase_name}</span>
+            <span className="text-gray-300 text-sm font-medium">{entry.phase_name}</span>
           )}
         </div>
         
-        <div className="flex-1 relative h-8">
+        <div className="flex-1 relative h-12">
           <button
             onClick={() => editMode && setShowEditModal(true)}
-            className={`absolute h-full rounded ${editMode ? 'cursor-pointer hover:shadow-lg' : 'cursor-default'} transition-all`}
+            className={`absolute h-full rounded-lg shadow-lg ${editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'} transition-all overflow-hidden`}
             style={position}
             disabled={!editMode}
+            title={editMode ? 'Klicken zum Bearbeiten' : ''}
           >
-            <div className={`h-full rounded bg-gradient-to-r ${getStatusColor()} flex items-center justify-center px-2`}>
-              <span className="text-white text-xs font-semibold truncate">
-                {entry.duration_days}d
-                {entry.buffer_days > 0 && ` +${entry.buffer_days}d`}
-              </span>
+            <div className={`h-full rounded-lg bg-gradient-to-r ${color} flex flex-col items-center justify-center px-3 relative`}>
+              {/* Haupt-Info */}
+              <div className="text-white font-bold text-sm text-center leading-tight">
+                {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
+                {bufferDays > 0 && <span className="text-white/80 ml-1">+ {bufferDays}d Puffer</span>}
+              </div>
+              
+              {/* Datum */}
+              <div className="text-white/90 text-xs mt-1 text-center leading-tight">
+                {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+              </div>
+              
+              {/* Status-Indicator */}
+              {entry.confirmed && (
+                <div className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></div>
+              )}
             </div>
           </button>
         </div>
 
-        {/* Status-Badge */}
+        {/* Status Badge */}
         <div className="w-32 flex-shrink-0 flex justify-end">
           {entry.confirmed ? (
-            <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs flex items-center gap-1">
+            <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
               <CheckCircle className="w-3 h-3" />
               Bestätigt
             </span>
           ) : entry.status === 'change_requested' ? (
-            <span className="px-2 py-1 bg-orange-500/20 text-orange-300 rounded text-xs flex items-center gap-1">
+            <span className="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-semibold flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />
               Änderung
             </span>
           ) : (
-            <span className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded text-xs">
+            <span className="px-2 py-1 bg-gray-500/20 text-gray-300 rounded-full text-xs">
               Ausstehend
             </span>
           )}
         </div>
       </div>
 
-      {/* Edit Modal */}
       {showEditModal && (
         <EditEntryModal
           entry={entry}
           onClose={() => setShowEditModal(false)}
           onSave={(newStart, newEnd, cascade) => {
-  onUpdate(entry.id, newStart, newEnd, cascade);
-  setShowEditModal(false);
-}}
+            onUpdate(entry.id, newStart, newEnd, cascade);
+            setShowEditModal(false);
+          }}
         />
       )}
     </>
