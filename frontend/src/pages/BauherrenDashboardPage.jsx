@@ -314,6 +314,9 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
     setSupplements([]);
     setOffers([]);
     setTenders([]);
+
+    await loadScheduleBadgeCount(projectId);
+    
   } finally {
     setLoading(false);
   }
