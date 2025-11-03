@@ -23,7 +23,9 @@ export default function HandwerkerOfferConfirmPage() {
     execution_end: '',
     notes: ''
   });
-
+  const [schedulePhases, setSchedulePhases] = useState([]);
+  const [scheduleChangeReason, setScheduleChangeReason] = useState('');
+  const [hasScheduleChanges, setHasScheduleChanges] = useState(false);
   const [bundleDiscount, setBundleDiscount] = useState(0);
   // Modal States
   const [showPositionModal, setShowPositionModal] = useState(false);
