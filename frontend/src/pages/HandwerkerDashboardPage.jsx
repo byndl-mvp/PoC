@@ -1589,6 +1589,8 @@ const badgeCounts = {
     apiUrl={apiUrl}
   />
 )}
+  </div>  
+</div>
       
       {/* Modal für Vertragsansicht */}
 {showContractView && (
