@@ -1436,6 +1436,35 @@ const BudgetVisualization = ({ budget }) => {
     </div>
   </div>
 </div>
+
+      {/* Terminplan-Empfehlung */}
+    {selectedProject.trades?.filter(t => t.code !== 'INT').length >= 2 && 
+     activeTab !== 'schedule' && 
+     scheduleBadgeCount === 0 && (
+      <div className="mb-6 bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-md rounded-xl p-6 border border-teal-500/30 animate-pulse">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              📅
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white mb-1">
+                Ihr Projekt besteht aus mehreren Gewerken
+              </h3>
+              <p className="text-gray-300 text-sm">
+                Wir empfehlen einen professionellen Terminplan durch unsere KI erstellen zu lassen
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveTab('schedule')}
+            className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            📅 Zur KI-Terminplanung
+          </button>
+        </div>
+      </div>
+    )}
       
       {/* Project Wizard */}
       <ProjectWizard project={selectedProject} />
