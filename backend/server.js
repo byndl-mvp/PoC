@@ -2840,159 +2840,204 @@ function createCalculationContext(knownData, tradeCode) {
 // KOMPLETTE GEWERKE-ZUORDNUNGSREGELN für alle 20 vorhandenen Gewerke
 const TRADE_DETECTION_RULES = {
   // EXKLUSIVE Keywords - NUR dieses Gewerk darf diese Begriffe beanspruchen
+  // WICHTIG: Keywords müssen AKTION/BEDARF signalisieren, nicht nur Objekte nennen
   exclusive: {
     'DACH': [
-      'dach', 'dacheindeckung', 'eindecken', 'Eindeckung', 'dachziegel', 'dachpfanne', 'dachstein',
-      'dachrinne', 'fallrohr', 'dachfenster', 'schneefang', 'kehle', 'first', 'abdichten',
-      'gauben', 'gaube abdichten', 'eindeckung', 'dampfbremse', 'unterspannbahn',
+      'dach sanieren', 'dach erneuern', 'dach neu eindecken', 'dacheindeckung', 
+      'neues dach', 'dach reparieren', 'dachziegel erneuern', 'dachziegel austauschen',
+      'dachrinne erneuern', 'neue dachrinne', 'fallrohr erneuern', 'dachrinne montieren',
+      'dachfenster einbauen', 'neue dachfenster', 'dachfenster austauschen',
+      'dachsanierung', 'dacherneuerung', 'dach abdichten', 'dachabdichtung erneuern',
+      'gauben bauen', 'gaube errichten', 'neue gaube', 'gaube sanieren',
       'dachsparren ersetzen', 'sparren aufdoppeln', 'sparren reparieren',
-      'dachstuhl sanieren', 'dachabdichtung', 'klempnerarbeiten dach',
-      'dachentlüftung', 'dachhaube', 'attika', 'flachdach', 'bitumenbahn'
+      'dachstuhl sanieren', 'klempnerarbeiten dach', 'schneefang montieren',
+      'flachdach sanieren', 'bitumenbahn erneuern', 'dach komplett neu'
     ],
     
     'FASS': [
-      'fassade', 'wdvs', 'wärmedämmverbundsystem', 'fassadendämmung', 
-      'außenputz', 'verblendung', 'klinker', 'fassadenfarbe', 'außendämmung',
-      'vorgehängte fassade', 'reibeputz außen', 'fassadenanstrich',
-      'fassadensanierung', 'fassadenverkleidung', 'hinterlüftete fassade',
-      'putzfassade', 'wärmedämmung außen', 'sockelputz', 'außenwand dämmen'
+      'fassade sanieren', 'neues wdvs', 'fassade dämmen', 'fassadensanierung', 'fassadendämmung',
+      'wdvs anbringen', 'wärmedämmverbundsystem', 'neue fassade', 'fassade erneuern',
+      'außenputz erneuern', 'außenputz sanieren', 'fassade verputzen',
+      'klinker verfugen', 'fassade streichen', 'fassadenanstrich', 
+      'außendämmung anbringen', 'fassadenverkleidung montieren',
+      'hinterlüftete fassade bauen', 'sockelputz erneuern', 'außenwand dämmen',
+      'vorgehängte fassade', 'fassade komplett neu'
     ],
     
     'ZIMM': [
-      'holzbau', 'dachstuhl', 'gaube', 'gauben', 'gaube bauen', 'neue gaube', 'gaube konstruktion',
-      'carport', 'holzkonstruktion', 'fachwerk', 'holzrahmenbau', 'blockhaus',
-      'dachstuhl errichten', 'aufstockung holz', 'holzbalken', 'sparren neu',
-      'pfetten', 'kehlbalken', 'schwelle', 'holzständerbau', 'pergola',
-      'holzterrasse überdacht', 'zimmererarbeiten', 'holzbauweise'
+      'dachstuhl errichten', 'dachstuhl erneuern', 'neuer dachstuhl', 'dachstuhl bauen',
+      'gaube bauen', 'neue gaube', 'gaube konstruieren', 'neue gaube errichten', 'gaube zimmern',
+      'carport bauen', 'carport errichten', 'holzkonstruktion bauen',
+      'holzrahmenbau errichten', 'aufstockung holz', 'holzaufbau',
+      'sparren erneuern', 'neue sparren', 'holzbalken ersetzen',
+      'pfetten montieren', 'holzständerbau errichten', 'pergola bauen',
+      'holzterrasse überdachen', 'zimmererarbeiten', 'holzbau errichten'
     ],
     
     'ROH': [
-      'mauerwerk', 'ziegelmauerwerk', 'durchbruch', 'wanddurchbruch',
-      'beton', 'maurerarbeiten', 'sturz', 'kalksandstein', 'neue wand mauern',
-      'wand mauern', 'betonieren', 'tragende wand', 'decke durchbrechen', 'fundament',
-      'sturz einbauen', 'ziegelwand', 'porenbeton', 'ytong', 'betondecke',
-      'stahlbeton', 'bewehrung', 'schalung', 'kernbohrung groß', 'statik',
-      'unterfangen', 'ringanker', 'betontreppe', 'mauern', 'betonieren'
+      'wand mauern', 'neue wand mauern', 'mauerwerk errichten', 'mauern',
+      'wanddurchbruch machen', 'durchbruch schaffen', 'wand durchbrechen',
+      'betonieren', 'beton gießen', 'betonarbeiten', 'betondecke gießen',
+      'fundament erstellen', 'fundament gießen', 'sturz einbauen', 'sturz setzen',
+      'tragende wand errichten', 'decke durchbrechen', 'kernbohrung',
+      'stahlbeton gießen', 'bewehrung einbauen', 'schalung bauen',
+      'unterfangen', 'ringanker gießen', 'betontreppe bauen', 'maurerarbeiten'
     ],
     
     'TRO': [
-      'rigips', 'trockenbau', 'ständerwerk', 'vorwand', 'gipskarton',
-      'ständerwand', 'vorwandinstallation', 'abgehängte decke', 'vorsatzschale',
-      'metallständer', 'trockenbauwand', 'cw-profil', 'uw-profil',
-      'gipskartonwand', 'installationswand', 'schallschutzwand',
-      'brandschutzwand f90', 'revisionsöffnung', 'trockenbauwände'
+      'rigipswand bauen', 'trockenbauwand errichten', 'rigips ziehen',
+      'ständerwerk bauen', 'vorwand bauen', 'vorwandinstallation',
+      'gipskartonwand errichten', 'ständerwand ziehen',
+      'abgehängte decke bauen', 'decke abhängen', 'vorsatzschale bauen',
+      'trockenbauwände ziehen', 'installationswand errichten',
+      'schallschutzwand bauen', 'brandschutzwand errichten',
+      'trockenbau komplett', 'rigips komplett'
     ],
     
     'TIS': [
-      'innentür', 'zarge', 'möbel', 'einbauschrank', 'küche einbauen',
-      'wohnungseingangstür', 'arbeitsplatte', 'zimmertür', 'wohnungstür',
-      'küchenmöbel', 'holzverkleidung innen', 'schiebetür innen', 'falttür',
-      'raumteiler holz', 'einbauküche', 'schranksystem', 'holztreppe innen',
-      'treppengeländer holz', 'handlauf holz', 'tischlerarbeiten', 'wohnungstür'
+      'innentüren einbauen', 'neue innentüren', 'türen austauschen', 'türen montieren',
+      'zargen einbauen', 'neue zargen', 'zimmertüren erneuern',
+      'wohnungseingangstür einbauen', 'wohnungstür montieren', 'neue wohnungstür',
+      'einbauschrank bauen', 'schrank einbauen', 'einbauschränke',
+      'küche einbauen', 'einbauküche montieren', 'küchenmöbel einbauen',
+      'holzverkleidung innen', 'schiebetür einbauen', 'holztreppe bauen',
+      'treppengeländer holz montieren', 'tischlerarbeiten'
     ],
     
     'FEN': [
-      'fenster', 'verglasung', 'haustür', 'rolladen', 'jalousie', 'außentür',
-      'terrassentür', 'isolierglas', 'neue fenster', 'fenster austauschen',
-      'kunststofffenster', 'holzfenster', 'alufenster', 'eingangstür',
-      'balkontür', 'fensterbank außen', 'fensterbank innen',
-      'dreifachverglasung', 'schallschutzfenster', 'einbruchschutz fenster'
+      'fenster austauschen', 'neue fenster', 'fenster erneuern', 'fenster einbauen',
+      'haustür einbauen', 'neue haustür', 'haustür austauschen',
+      'balkontür einbauen', 'terrassentür montieren', 'neue balkontür',
+      'rolladen montieren', 'rolläden einbauen', 'neue rolladen',
+      'dreifachverglasung einbauen', 'isolierglas erneuern',
+      'kunststofffenster einbauen', 'holzfenster montieren', 'alufenster einbauen',
+      'fensterbank montieren', 'schallschutzfenster', 'einbruchschutzfenster',
+      'fenster komplett neu', 'fenstertausch'
     ],
     
     'SAN': [
-      'bad', 'wc', 'waschbecken', 'dusche', 'badewanne', 'abfluss', 'wasserhahn',
-      'armatur', 'sanitär', 'bad komplett', 'toilette', 'waschtisch', 
-      'wasserleitung', 'abwasser', 'fallleitung', 'hebeanlage', 'rückstauklappe',
-      'wasseranschluss bad', 'wasseranschluss küche', 'sanitärobjekte', 'urinal', 'bidet', 
-      'sanitärinstallation', 'bad sanieren', 'badezimmer'
+      'bad sanieren', 'badsanierung', 'bad erneuern', 'badezimmer sanieren',
+      'neues bad', 'bad komplett neu', 'sanitär erneuern', 'sanitärinstallation',
+      'wc austauschen', 'neue toilette', 'waschbecken austauschen', 'neues waschbecken',
+      'dusche einbauen', 'neue dusche', 'badewanne einbauen', 'neue badewanne',
+      'wasserleitung erneuern', 'wasserleitungen verlegen', 'neue wasserleitungen',
+      'abwasserleitungen erneuern', 'abwasser sanieren', 'fallleitung erneuern',
+      'armaturen austauschen', 'neue armaturen', 'sanitärobjekte austauschen',
+      'hebeanlage einbauen', 'rückstauklappe montieren'
     ],
     
     'ELEKT': [
-      'schalter', 'steckdose', 'leuchte', 'lampe', 'sicherung', 'verteiler',
-      'fi-schalter', 'elektro', 'kabel', 'leitung elektro', 'stromleitung',
-      'unterverteiler', 'zählerschrank', 'hausanschluss strom', 'sat-anlage',
-      'netzwerk', 'lan-kabel', 'smart home', 'bus-system', 'knx', 'dimmer',
-      'bewegungsmelder', 'elektroinstallation', 'elektriker', 'wallbox'
+      'elektroinstallation erneuern', 'elektrik erneuern', 'neue elektroinstallation',
+      'stromleitung verlegen', 'kabel verlegen', 'neue leitungen',
+      'steckdosen setzen', 'neue steckdosen', 'steckdosen installieren',
+      'schalter setzen', 'neue schalter', 'schalter installieren',
+      'leuchten installieren', 'lampen anschließen', 'neue leuchten',
+      'verteiler erneuern', 'neuer verteiler', 'unterverteiler einbauen',
+      'zählerschrank erneuern', 'fi-schalter einbauen', 'neue sicherungen',
+      'smart home installieren', 'knx installieren', 'bus-system verlegen',
+      'sat-anlage installieren', 'netzwerk verkabeln', 'lan-kabel verlegen',
+      'wallbox installieren', 'wallbox montieren', 'elektro komplett neu'
     ],
     
     'HEI': [
-      'thermostat', 'warmwasser', 'kessel', 'brenner', 'radiator', 'heizung',
-      'heizkörper', 'fußbodenheizung', 'heizungsrohr', 'wärmepumpe',
-      'gasheizung', 'ölheizung', 'pelletheizung', 'brennwertkessel',
-      'pufferspeicher', 'solaranlage heizung', 'heizkreisverteiler',
-      'heizungspumpe', 'heizungsinstallation'
+      'heizung erneuern', 'neue heizung', 'heizung austauschen', 'heizungsinstallation',
+      'wärmepumpe einbauen', 'neue wärmepumpe', 'wärmepumpe installieren',
+      'gasheizung einbauen', 'brennwertkessel installieren', 'neuer kessel',
+      'heizkörper austauschen', 'neue heizkörper', 'heizkörper montieren',
+      'fußbodenheizung verlegen', 'neue fußbodenheizung', 'fußbodenheizung einbauen',
+      'heizungsrohre erneuern', 'heizungsrohre verlegen',
+      'pelletheizung installieren', 'pufferspeicher einbauen',
+      'heizkreisverteiler montieren', 'heizungspumpe austauschen',
+      'heizung komplett neu', 'heizungssanierung'
     ],
     
     'KLIMA': [
-      'klima', 'luftwechsel', 'abluft', 'zuluft', 'klimaanlage',
-      'wärmerückgewinnung', 'lüftung', 'lüftungsanlage',
-      'kontrollierte wohnraumlüftung', 'kwl', 'luftkanal', 'luftauslass',
-      'luftfilter', 'enthalpietauscher', 'dezentrale lüftung', 'badlüfter',
-      'dunstabzug', 'klimatechnik'
+      'lüftungsanlage einbauen', 'lüftung installieren', 'neue lüftungsanlage',
+      'klimaanlage installieren', 'klimaanlage einbauen', 'neue klimaanlage',
+      'kontrollierte wohnraumlüftung', 'kwl einbauen', 'kwl-anlage installieren',
+      'wärmerückgewinnung installieren', 'luftkanäle verlegen',
+      'dezentrale lüftung einbauen', 'badlüfter montieren',
+      'dunstabzug installieren', 'klimatechnik installieren',
+      'lüftung komplett neu'
     ],
     
     'FLI': [
-      'bad', 'badezimmer', 'küche', 'verfugen', 'mosaik', 'naturstein bad', 'feinsteinzeug', 'bodenfliesen',
-      'wandfliesen', 'fliesen', 'badfliesen', 'kacheln', 'fliesenspiegel', 'bordüre',
-      'großformat fliesen', 'terracotta', 'zementfliesen', 'metro fliesen',
-      'hexagon fliesen', 'fugenlos bad', 'fliesenarbeiten', 'fliesenleger'
+      'bad fliesen', 'badezimmer fliesen', 'fliesen verlegen',
+      'küche fliesen', 'fliesenspiegel legen', 'wandfliesen verlegen',
+      'bodenfliesen verlegen', 'neue fliesen', 'fliesen erneuern',
+      'naturstein verlegen', 'mosaik verlegen', 'fliesenarbeiten',
+      'verfugen', 'fliesen komplett neu', 'großformatfliesen verlegen',
+      'badfliesen neu', 'fliesenleger'
     ],
     
     'BOD': [
-      'parkett', 'laminat', 'vinyl', 'teppich', 'linoleum', 'kork',
-      'designboden', 'bodenbelag', 'klick-vinyl', 'massivholzdielen',
-      'landhausdielen', 'industrieparkett', 'bambusparkett', 'pvc-boden',
-      'kautschuk', 'nadelvlies', 'bodenbelagsarbeiten'
+      'parkett verlegen', 'neues parkett', 'parkett erneuern',
+      'laminat verlegen', 'neues laminat', 'laminat austauschen',
+      'vinyl verlegen', 'designboden verlegen', 'neuer vinylboden',
+      'teppich verlegen', 'neuer teppich', 'teppichboden verlegen',
+      'linoleum verlegen', 'kork verlegen', 'pvc-boden verlegen',
+      'massivholzdielen verlegen', 'landhausdielen verlegen',
+      'bodenbelag erneuern', 'neuer bodenbelag', 'boden komplett neu'
     ],
     
     'MAL': [
-      'streichen', 'anstreichen', 'innenputz', 'tapezieren', 'verputzen', 'spachteln',
-      'lackieren', 'grundierung', 'malerarbeiten', 'wandfarbe', 'deckenfarbe',
-      'lasieren', 'raufaser', 'vliestapete', 'strukturputz innen',
-      'streichputz', 'silikatfarbe', 'dispersionsfarbe', 'kalkputz innen',
+      'streichen', 'wände streichen', 'decken streichen', 'anstreichen',
+      'neu streichen', 'malerarbeiten', 'innenputz erneuern', 'verputzen',
+      'tapezieren', 'tapeten kleben', 'neue tapeten', 'spachteln',
+      'lackieren', 'grundierung auftragen', 'wandfarbe auftragen',
+      'raufaser tapezieren', 'vliestapete kleben', 'strukturputz auftragen',
+      'streichputz auftragen', 'maler beauftragen', 'komplett streichen',
       'malerarbeiten innen'
     ],
     
     'ESTR': [
-      'fließestrich', 'zementestrich', 'anhydritestrich', 'trockenestrich',
-      'ausgleichsmasse', 'estrich', 'heizestrich', 'calciumsulfatestrich',
-      'schnellestrich', 'verbundestrich', 'schwimmender estrich',
-      'dämmung unter estrich', 'trittschalldämmung', 'randdämmstreifen',
-      'estricharbeiten'
+      'estrich verlegen', 'neuer estrich', 'estrich erneuern',
+      'fließestrich verlegen', 'zementestrich verlegen', 'anhydritestrich verlegen',
+      'heizestrich verlegen', 'estrich mit dämmung', 'verbundestrich',
+      'schwimmender estrich', 'ausgleichsmasse gießen',
+      'trittschalldämmung verlegen', 'estrich komplett neu', 'estricharbeiten'
     ],
     
     'GER': [
-      'gerüst', 'baugerüst', 'arbeitsgerüst', 'fassadengerüst', 'rollgerüst',
-      'dachgerüst', 'schutzgerüst', 'fanggerüst', 'hängegerüst', 'modulgerüst',
-      'gerüstbau', 'einrüstung', 'gerüststellung', 'gerüstmiete'
+      'gerüst stellen', 'gerüst aufbauen', 'gerüst mieten',
+      'baugerüst aufstellen', 'fassadengerüst stellen', 'arbeitsgerüst',
+      'dachgerüst aufbauen', 'einrüsten', 'gerüstbau', 'gerüststellung',
+      'schutzgerüst montieren', 'rollgerüst aufstellen'
     ],
     
     'SCHL': [
-      'geländer', 'zaun', 'tor', 'metallbau', 'stahltreppe',
-      'schlosserarbeiten', 'balkongeländer', 'treppengeländer metall',
-      'französischer balkon', 'einbruchschutz gitter', 'kellerschacht',
-      'metalltür', 'brandschutztür', 'fluchttreppe', 'gitter'
+      'geländer montieren', 'neues geländer', 'geländer erneuern',
+      'balkongeländer montieren', 'treppengeländer einbauen',
+      'zaun bauen', 'neuer zaun', 'tor montieren', 'neues tor',
+      'stahltreppe bauen', 'metalltreppe einbauen', 'schlosserarbeiten',
+      'französischer balkon montieren', 'gitter montieren',
+      'brandschutztür einbauen', 'metalltür montieren', 'fluchttreppe bauen'
     ],
     
     'AUSS': [
-      'pflaster', 'garten', 'einfahrt', 'außenanlage', 'randstein', 'rasen',
-      'terrasse pflaster', 'hofeinfahrt', 'garagenzufahrt', 'gehweg',
-      'stellplatz', 'gartenmauer', 'stützmauer', 'gabionen', 'sickermulde',
-      'regenwasserversickerung', 'gartengestaltung'
+      'pflaster verlegen', 'einfahrt pflastern', 'hofeinfahrt pflastern',
+      'terrasse pflastern', 'neue terrasse', 'gehweg pflastern',
+      'garten gestalten', 'gartengestaltung', 'außenanlage gestalten',
+      'stellplatz pflastern', 'gartenmauer bauen', 'stützmauer errichten',
+      'zaun bauen', 'rasen anlegen', 'gabionen setzen',
+      'regenwasserversickerung bauen', 'außenanlagen neu'
     ],
     
     'PV': [
-      'solar', 'photovoltaik', 'solaranlage', 'wechselrichter', 'batterie',
-      'einspeisung', 'pv-anlage', 'solarmodule', 'solarpanel',
-      'balkonkraftwerk', 'energiespeicher', 'wallbox', 'notstrom',
-      'inselanlage', 'pv-installation'
+      'photovoltaik installieren', 'photovoltaikanlage', 'pv-anlage installieren',
+      'solaranlage installieren', 'solar montieren', 'solarmodule montieren',
+      'pv montieren', 'solarpanel montieren', 'neue solaranlage',
+      'balkonkraftwerk installieren', 'energiespeicher einbauen',
+      'wechselrichter installieren', 'wallbox installieren', 'notstrom installieren',
+      'pv komplett neu', 'pv-installation'
     ],
     
     'ABBR': [
-      'abriss', 'abbruch', 'entkernung', 'rückbau', 'teilabbruch',
-      'komplettabriss', 'entkernen', 'schadstoffsanierung', 'asbestsanierung',
-      'entsorgung bauschutt', 'containerstellung', 'bauschuttcontainer',
-      'entrümpelung', 'rückbau komplett', 'abbrucharbeiten'
+      'abriss', 'abbruch', 'abbrechen', 'abreißen', 'entkernen', 'entkernung',
+      'rückbau', 'teilabbruch', 'komplettabriss', 'gebäude abreißen',
+      'schadstoffsanierung', 'asbest entsorgen', 'asbestsanierung',
+      'bauschutt entsorgen', 'container bestellen', 'entrümpelung',
+      'abbrucharbeiten', 'rückbau komplett'
     ]
   },
   
