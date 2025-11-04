@@ -25957,8 +25957,8 @@ app.post('/api/projects/:projectId/schedule/generate', async (req, res) => {
       const totalSum = lv.content?.totalSum || 0;
       totalProjectValue += totalSum;
       
-      // Analysiere Umfang pro Gewerk
-      const positionSummary = positions.slice(0, 15).map(pos => ({
+      // Analysiere Umfang pro Gewerk - ALLE Positionen
+      const positionSummary = positions.map(pos => ({
         title: pos.title,
         quantity: pos.quantity,
         unit: pos.unit,
