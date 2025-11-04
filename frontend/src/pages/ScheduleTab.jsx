@@ -521,7 +521,7 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
                 />
                 <div>
                   <p className="text-white font-semibold">Gewünschter Starttermin</p>
-                  <p className="text-gray-400 text-sm">Die KI plant rückwärts vom Startdatum</p>
+                  <p className="text-gray-400 text-sm">Die KI plant vorwärts vom Startdatum</p>
                 </div>
               </label>
 
@@ -536,7 +536,7 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
                 />
                 <div>
                   <p className="text-white font-semibold">Gewünschter Fertigstellungstermin</p>
-                  <p className="text-gray-400 text-sm">Die KI plant vorwärts zur Fertigstellung</p>
+                  <p className="text-gray-400 text-sm">Die KI plant rückwärts zur Fertigstellung</p>
                 </div>
               </label>
             </div>
