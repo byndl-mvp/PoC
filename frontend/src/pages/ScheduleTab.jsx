@@ -828,7 +828,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
   let currentMarker = new Date(minDate);
   while (currentMarker <= maxDate) {
     dateMarkers.push(new Date(currentMarker));
-    currentMarker.setDate(currentMarker.getDate() + 7);
+    currentMarker.setDate(currentMarker.getDate() + 14);
   }
 
   // Gewerke-Farben
