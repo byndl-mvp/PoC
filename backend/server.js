@@ -26663,9 +26663,9 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
     }
     
     // Speichere Schedule Entries
-    await query('BEGIN');
-    
-   try {
+await query('BEGIN');
+
+try {
   // 1. SAMMLE ALLE EINTRÄGE
   const allEntries = [];
   
@@ -26688,8 +26688,6 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
   // 2. BERECHNE TERMINE MIT INTELLIGENTER PARALLELITÄTS-LOGIK
   const scheduledEntries = [];
   let currentSequenceDate = new Date(currentDate);
-  
-  // Gruppiere Einträge die parallel laufen können
   const processedIndices = new Set();
   
   for (let i = 0; i < allEntries.length; i++) {
@@ -26707,11 +26705,12 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
     });
     
     if (!allDependenciesMet && entry.dependencies.length > 0) {
-      // Warte auf Dependencies - später nochmal verarbeiten
       continue;
     }
     
-    // FALL 1: Phase hat explizite can_parallel_with
+    // ================================================================
+    // FALL 1: EXPLIZITE can_parallel_with (aus LLM)
+    // ================================================================
     if (entry.can_parallel_with.length > 0) {
       const parallelTrades = entry.can_parallel_with;
       const parallelEntries = scheduledEntries.filter(s => 
@@ -26719,7 +26718,6 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
       );
       
       if (parallelEntries.length > 0) {
-        // Starte parallel zum ersten gefundenen Gewerk
         const referenceEntry = parallelEntries[0];
         scheduledEntries.push({
           ...entry,
@@ -26729,27 +26727,27 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
           parallelTo: parallelTrades
         });
         processedIndices.add(i);
-        
         console.log(`[PARALLEL-EXPLICIT] ${entry.trade_code} Phase ${phase.phase_number} läuft parallel zu ${parallelTrades.join(', ')}`);
         continue;
       }
     }
     
-    // FALL 2: Erkenne implizite Parallelitäten durch Phase-Namen
+    // ================================================================
+    // FALL 2: IMPLIZITE PARALLELITÄTEN (nach Prompt-Regeln)
+    // ================================================================
+    
     const isRohinstallation = phase.phase_name?.toLowerCase().includes('rohinstallation');
     const isFeininstallation = phase.phase_name?.toLowerCase().includes('feininstallation');
     
-    // ROHINSTALLATIONEN PARALLEL (ELEKT + SAN + HEI)
+    // 2A. ROHINSTALLATIONEN PARALLEL (ELEKT + SAN + HEI)
     if (isRohinstallation && ['ELEKT', 'SAN', 'HEI'].includes(entry.trade_code)) {
-      // Suche nach anderen Rohinstallationen die bereits geplant sind
       const otherRohinstallations = scheduledEntries.filter(s => 
         s.phase.phase_name?.toLowerCase().includes('rohinstallation') &&
         ['ELEKT', 'SAN', 'HEI'].includes(s.trade_code) &&
-        !s.isParallel // Nur die erste als Referenz
+        !s.isParallel
       );
       
       if (otherRohinstallations.length > 0) {
-        // Laufe parallel zur ersten Rohinstallation
         const refEntry = otherRohinstallations[0];
         scheduledEntries.push({
           ...entry,
@@ -26759,22 +26757,19 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
           parallelTo: ['Rohinstallationen']
         });
         processedIndices.add(i);
-        
-        console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Rohinstallation läuft parallel zu anderen Rohinstallationen`);
+        console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Rohinstallation läuft parallel`);
         continue;
       }
     }
     
-    // FEININSTALLATIONEN PARALLEL (teilweise)
+    // 2B. FEININSTALLATIONEN PARALLEL (ELEKT + SAN + HEI)
     if (isFeininstallation && ['ELEKT', 'SAN', 'HEI'].includes(entry.trade_code)) {
-      // Feininstallationen können teilweise überlappen
       const otherFeininstallations = scheduledEntries.filter(s => 
         s.phase.phase_name?.toLowerCase().includes('feininstallation') &&
         ['ELEKT', 'SAN', 'HEI'].includes(s.trade_code)
       );
       
       if (otherFeininstallations.length > 0) {
-        // Starte zur gleichen Zeit wie andere Feininstallationen
         const refEntry = otherFeininstallations[0];
         scheduledEntries.push({
           ...entry,
@@ -26784,13 +26779,90 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
           parallelTo: ['Feininstallationen']
         });
         processedIndices.add(i);
-        
-        console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Feininstallation läuft parallel zu anderen Feininstallationen`);
+        console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Feininstallation läuft parallel`);
         continue;
       }
     }
     
+    // 2C. DACH UND FEN TEILWEISE ÜBERSCHNEIDEND
+    // FEN kann starten während DACH noch läuft (letztes Drittel)
+    if (entry.trade_code === 'FEN') {
+      const dachEntries = scheduledEntries.filter(s => s.trade_code === 'DACH');
+      
+      if (dachEntries.length > 0) {
+        const dachEntry = dachEntries[dachEntries.length - 1]; // Letzte DACH-Phase
+        const dachDuration = phase.duration_days;
+        const dachTwoThirds = Math.floor(dachDuration * 0.66);
+        
+        // FEN startet nach 2/3 der Dach-Arbeiten
+        const fenStart = addWorkdays(new Date(dachEntry.startDate), dachTwoThirds);
+        
+        scheduledEntries.push({
+          ...entry,
+          startDate: fenStart.toISOString().split('T')[0],
+          endDate: addWorkdays(fenStart, phase.duration_days - 1).toISOString().split('T')[0],
+          isParallel: true,
+          parallelTo: ['DACH']
+        });
+        processedIndices.add(i);
+        console.log(`[PARALLEL-IMPLICIT] FEN läuft teilweise parallel zu DACH (ab 2/3)`);
+        continue;
+      }
+    }
+    
+    // 2D. BODEN + FLIESEN IN VERSCHIEDENEN RÄUMEN PARALLEL
+    // FLI (Bäder) und BOD (Wohnräume) können parallel laufen
+    if (entry.trade_code === 'BOD') {
+      const fliEntries = scheduledEntries.filter(s => 
+        s.trade_code === 'FLI' && 
+        !s.isParallel
+      );
+      
+      if (fliEntries.length > 0) {
+        const fliEntry = fliEntries[fliEntries.length - 1];
+        
+        // BOD kann parallel zu FLI laufen (räumliche Trennung)
+        scheduledEntries.push({
+          ...entry,
+          startDate: fliEntry.startDate,
+          endDate: addWorkdays(new Date(fliEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+          isParallel: true,
+          parallelTo: ['FLI']
+        });
+        processedIndices.add(i);
+        console.log(`[PARALLEL-IMPLICIT] BOD läuft parallel zu FLI (verschiedene Räume)`);
+        continue;
+      }
+    }
+    
+    // 2E. AUSSENANLAGEN PARALLEL ZU INNENAUSBAU
+    // AUSS kann parallel zu MAL, BOD, TIS, FLI laufen
+    if (entry.trade_code === 'AUSS') {
+      const innenarbeiten = scheduledEntries.filter(s => 
+        ['MAL', 'BOD', 'TIS', 'FLI', 'ELEKT', 'SAN', 'HEI'].includes(s.trade_code) &&
+        !s.isParallel
+      );
+      
+      if (innenarbeiten.length > 0) {
+        // Finde früheste Innenarbeit die noch läuft
+        const refEntry = innenarbeiten[0];
+        
+        scheduledEntries.push({
+          ...entry,
+          startDate: refEntry.startDate,
+          endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+          isParallel: true,
+          parallelTo: ['Innenausbau']
+        });
+        processedIndices.add(i);
+        console.log(`[PARALLEL-IMPLICIT] AUSS läuft parallel zu Innenausbau`);
+        continue;
+      }
+    }
+    
+    // ================================================================
     // FALL 3: SEQUENTIELL - Keine Parallelität möglich
+    // ================================================================
     const startDate = new Date(currentSequenceDate);
     const endDate = addWorkdays(startDate, phase.duration_days - 1);
     
@@ -26801,14 +26873,14 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
       isParallel: false
     });
     processedIndices.add(i);
-    
-    // Aktualisiere currentSequenceDate für nächstes sequentielles Gewerk
     currentSequenceDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
     
-    console.log(`[SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]} bis ${endDate.toISOString().split('T')[0]}`);
+    console.log(`[SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]}`);
   }
   
-  // 3. ZWEITER DURCHLAUF: Verarbeite Einträge die Dependencies hatten
+  // ================================================================
+  // 3. ZWEITER DURCHLAUF: Dependencies
+  // ================================================================
   let maxIterations = 10;
   let iteration = 0;
   
@@ -26821,11 +26893,9 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
       const entry = allEntries[i];
       const phase = entry.phase;
       
-      // Prüfe Dependencies nochmal
       const allDependenciesMet = entry.dependencies.every(dep => {
         return scheduledEntries.some(s => {
           if (typeof dep === 'string' && dep.includes('-')) {
-            // Format: "TRADE-PhaseX"
             const [tradeDep, phaseDep] = dep.split('-');
             return s.trade_code === tradeDep && s.phase.phase_name?.includes(phaseDep);
           }
@@ -26835,7 +26905,6 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
       
       if (!allDependenciesMet) continue;
       
-      // Finde spätestes Ende der Dependencies
       let latestDepEnd = currentSequenceDate;
       
       entry.dependencies.forEach(dep => {
@@ -26870,22 +26939,22 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
       });
       processedIndices.add(i);
       
-      // Update currentSequenceDate falls dieses Gewerk später endet
       const thisEndWithBuffer = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
       if (thisEndWithBuffer > currentSequenceDate) {
         currentSequenceDate = thisEndWithBuffer;
       }
       
-      console.log(`[DEPENDENCY-MET] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]}`);
+      console.log(`[DEPENDENCY-MET] ${entry.trade_code} Phase ${phase.phase_number}`);
     }
   }
   
-  // WARNUNG: Falls nicht alle Einträge verarbeitet wurden
   if (processedIndices.size < allEntries.length) {
-    console.warn(`[SCHEDULE-WARNING] ${allEntries.length - processedIndices.size} Einträge konnten nicht geplant werden (zirkuläre Dependencies?)`);
+    console.warn(`[SCHEDULE-WARNING] ${allEntries.length - processedIndices.size} Einträge nicht geplant`);
   }
   
+  // ================================================================
   // 4. SPEICHERE IN DATENBANK
+  // ================================================================
   for (const entry of scheduledEntries) {
     await query(
       `INSERT INTO schedule_entries 
@@ -26914,58 +26983,57 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
   
   console.log(`[SCHEDULE-SUCCESS] ${scheduledEntries.length} Einträge gespeichert`);
   console.log(`[PARALLEL-COUNT] ${scheduledEntries.filter(e => e.isParallel).length} parallele Phasen erkannt`);
-      
-      // Update Schedule mit KI-Daten
-      await query(
-        `UPDATE project_schedules 
-         SET status = 'pending_approval',
-             complexity_level = $2,
-             total_duration_days = $3,
-             critical_path = $4,
-             ai_response = $5,
-             ai_model_version = $6,
-             ai_prompt_used = $7,
-             updated_at = NOW()
-         WHERE id = $1`,
-        [
-          schedule.id,
-          scheduleData.complexity_level,
-          scheduleData.total_duration_days,
-          JSON.stringify(scheduleData.critical_path),
-          JSON.stringify(scheduleData),
-          'claude-sonnet-4-5-20250929',
-          systemPrompt
-        ]
-      );
-      
-      await query('COMMIT');
-      
-      // Erstelle Benachrichtigung für Bauherrn
-      await query(
-        `INSERT INTO notifications (user_type, user_id, type, message, reference_type, reference_id, created_at)
-         VALUES ('bauherr', $1, 'schedule_generated', $2, 'schedule', $3, NOW())`,
-        [
-          project.bauherr_id,
-          `Terminplan für Ihr Projekt wurde erstellt und wartet auf Ihre Freigabe`,
-          schedule.id
-        ]
-      );
-      
-      console.log('[SCHEDULE-GEN] Generation completed successfully');
-
-      runningGenerations.delete(projectId); 
-      
-      res.json({ 
-        success: true, 
-        scheduleId: schedule.id,
-        scheduleData,
-        message: 'Terminplan erfolgreich generiert'
-      });
-      
-    } catch (innerErr) {
-      await query('ROLLBACK');
-      throw innerErr;
-    }
+  
+  // Update Schedule mit KI-Daten
+  await query(
+    `UPDATE project_schedules 
+     SET status = 'pending_approval',
+         complexity_level = $2,
+         total_duration_days = $3,
+         critical_path = $4,
+         ai_response = $5,
+         ai_model_version = $6,
+         ai_prompt_used = $7,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [
+      schedule.id,
+      scheduleData.complexity_level,
+      scheduleData.total_duration_days,
+      JSON.stringify(scheduleData.critical_path),
+      JSON.stringify(scheduleData),
+      'claude-sonnet-4-5-20250929',
+      systemPrompt
+    ]
+  );
+  
+  await query('COMMIT');
+  
+  // Erstelle Benachrichtigung für Bauherrn
+  await query(
+    `INSERT INTO notifications (user_type, user_id, type, message, reference_type, reference_id, created_at)
+     VALUES ('bauherr', $1, 'schedule_generated', $2, 'schedule', $3, NOW())`,
+    [
+      project.bauherr_id,
+      `Terminplan für Ihr Projekt wurde erstellt und wartet auf Ihre Freigabe`,
+      schedule.id
+    ]
+  );
+  
+  console.log('[SCHEDULE-GEN] Generation completed successfully');
+  runningGenerations.delete(projectId); 
+  
+  res.json({ 
+    success: true, 
+    scheduleId: schedule.id,
+    scheduleData,
+    message: 'Terminplan erfolgreich generiert'
+  });
+  
+} catch (innerErr) {
+  await query('ROLLBACK');
+  throw innerErr;
+}
     
   } catch (err) {
     runningGenerations.delete(projectId);
