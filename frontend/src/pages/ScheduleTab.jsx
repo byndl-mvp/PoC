@@ -1210,82 +1210,73 @@ const isMinorWork = entry.is_minor_work === true;
       {/* Balken-Bereich */}
       <div className="flex-1 relative">
         {/* Der Balken - MIT Standzeit-Styling */}
-        <button
-  onClick={() => editMode && !isStandzeit && setShowEditModal(true)}
-  className={`absolute rounded-lg ${
-    isStandzeit ? 'shadow-sm' : 'shadow-lg'
-  } ${
-    editMode && !isStandzeit ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
-  } transition-all`}
-  style={{ 
-    ...position, 
-    height: isStandzeit ? '20px' : '40px',  // Standzeit nur halb so hoch
-    top: isStandzeit ? '10px' : '0',        // Standzeit zentriert
-    opacity: isMinorWork ? 0.75 : 1         // Minor Work etwas transparenter
-  }}
-  disabled={!editMode || isStandzeit}
-  title={
-    isStandzeit 
-      ? `Gerüst-Standzeit: ${calculateWorkdays(entry.planned_start, entry.planned_end)} Tage × 75€ = ca. ${calculateWorkdays(entry.planned_start, entry.planned_end) * 75}€ (nur Bereitstellung, keine Arbeiten)` 
-      : (isMinorWork
-          ? 'Kleine Arbeit - läuft parallel zu anderen Gewerken'
-          : (editMode ? 'Klicken zum Bearbeiten' : ''))
-  }
->
-  <div className={`h-full rounded-lg relative overflow-hidden ${
-    isStandzeit 
-      ? `border-2 border-dashed border-teal-400/60 bg-teal-500/15` 
-      : `bg-gradient-to-r ${color}`
-  }`}>
-            {/* Status-Indicator */}
-            {entry.confirmed && (
-              <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-            )}
-            
-            {/* Standzeit-Icon */}
-            {isStandzeit && (
-  <div className="absolute inset-0 flex items-center justify-center">
-    <span className="text-teal-300 text-xs font-semibold tracking-wider">
-      STANDZEIT {calculateWorkdays(entry.planned_start, entry.planned_end)} TAGE
-    </span>
-  </div>
-)}
-
-{isMinorWork && !isStandzeit && (
-  <div className="absolute top-1 left-2">
-    <span className="text-xs bg-white/20 backdrop-blur px-1.5 py-0.5 rounded text-white font-medium">
-      parallel
-    </span>
-  </div>
-    )}
-          </div>
-        </button>
-
-        {/* Puffer-Tage Verlängerung */}
-        {bufferDays > 0 && !isStandzeit && (
+        {!isStandzeit ? (
+          // NORMALER BALKEN
+          <button
+            onClick={() => editMode && setShowEditModal(true)}
+            className={`absolute rounded-lg shadow-lg ${
+              editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
+            } transition-all`}
+            style={{ 
+              ...position, 
+              height: '40px',
+              top: '0',
+              opacity: isMinorWork ? 0.75 : 1
+            }}
+            disabled={!editMode}
+            title={
+              isMinorWork
+                ? 'Kleine Arbeit - läuft parallel zu anderen Gewerken'
+                : (editMode ? 'Klicken zum Bearbeiten' : '')
+            }
+          >
+            <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
+              {/* Status-Indicator */}
+              {entry.confirmed && (
+                <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+              )}
+              
+              {/* Minor Work Badge */}
+              {isMinorWork && (
+                <div className="absolute top-1 left-2">
+                  <span className="text-xs bg-white/20 backdrop-blur px-1.5 py-0.5 rounded text-white font-medium">
+                    parallel
+                  </span>
+                </div>
+              )}
+            </div>
+          </button>
+        ) : (
+          // STANDZEIT-LINIE (statt Balken)
           <div
-            className="absolute"
-            style={{
-              left: `calc(${position.left} + ${position.width})`,
-              width: `${(bufferDays / totalDays) * 100}%`,
-              height: isStandzeit ? '20px' : '40px',
-              top: isStandzeit ? '10px' : '0',
-              opacity: 0.3,
-              pointerEvents: 'none'
+            className="absolute pointer-events-none"
+            style={{ 
+              ...position, 
+              height: '2px',
+              top: '19px', // Zentriert auf 40px Höhe
             }}
           >
+            {/* Gestrichelte Linien oben und unten */}
             <div 
-              className={`h-full rounded-r-lg bg-gradient-to-r ${color}`}
+              className="absolute inset-0"
               style={{
-                backgroundImage: `repeating-linear-gradient(
-                  45deg,
-                  transparent,
-                  transparent 5px,
-                  rgba(255, 255, 255, 0.1) 5px,
-                  rgba(255, 255, 255, 0.1) 10px
-                )`
+                borderTop: '2px dashed rgba(94, 234, 212, 0.4)',
+                borderBottom: '2px dashed rgba(94, 234, 212, 0.4)',
               }}
             />
+            
+            {/* Standzeit-Label über der Linie */}
+            <div className="absolute left-1/2 -translate-x-1/2 -top-6 whitespace-nowrap">
+              <span className="text-teal-300 text-[10px] font-semibold tracking-wider px-2 py-0.5 bg-slate-800/80 rounded">
+                STANDZEIT {calculateWorkdays(entry.planned_start, entry.planned_end)}d
+              </span>
+            </div>
+            
+            {/* Start-Marker (kleiner Punkt) */}
+            <div className="absolute left-0 -top-1 w-1.5 h-1.5 bg-teal-400 rounded-full"></div>
+            
+            {/* End-Marker (kleiner Punkt) */}
+            <div className="absolute right-0 -top-1 w-1.5 h-1.5 bg-teal-400 rounded-full"></div>
           </div>
         )}
         
