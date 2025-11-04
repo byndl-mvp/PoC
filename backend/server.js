@@ -26138,42 +26138,51 @@ Feininstallation:
    - Keine parallelen Gewerke
 
 2. **ROHBAUPHASE:**
-   - ROH abgeschlossen → ZIMM/DACH möglich
-   - DACH muss dicht sein → Innenausbau
+   - ROH immer zuerst oder nach ABBR (falls nötig)
+   - ROH abgeschlossen → ZIMM/DACH/FEN möglich
+   - ROH Wanddurchbrüche/kleinere Rohbauarbeiten im Bestand → direkt nach oder während ABBR
 
-3. **ROHINSTALLATIONEN (PARALLEL MÖGLICH):**
+3. **DACH/FASSADE (Gebäudehülle):**
+   - ZIMM (falls neuer Dachstuhl oder Gauben nötig) immer nach oder bereits während ROH
+   - DACH immer nach ROH und ZIMM
+   - FEN nach oder während DACH
+   - FASS nach FEN
+   - Abschluss dichte Gebäudehülle → Start Innenausbau
+   
+4. **ROHINSTALLATIONEN (PARALLEL MÖGLICH):**
    - ELEKT Rohinstallation
    - SAN Rohinstallation  
    - HEI Rohinstallation
    - Alle BEVOR Trockenbau/Putz!
 
-4. **ESTRICH & TROCKNUNG:**
+5. **ESTRICH & TROCKNUNG:**
    - Nach allen Rohinstallationen
    - VOR Feininstallationen
    - KRITISCHER PFAD: Trocknungszeit!
 
-5. **PUTZ/TROCKENBAU:**
+6. **PUTZ/TROCKENBAU:**
    - TRO nach Rohinstallationen
    - Spachtelung braucht Trocknungszeit
    - Dann erst MAL möglich
 
-6. **FEININSTALLATIONEN:**
+7. **FEININSTALLATIONEN:**
    - ELEKT Feininstallation (Schalter, Steckdosen)
    - SAN Feininstallation (Armaturen, WCs)
    - HEI Feininstallation (Heizkörper)
    - FEN (falls nicht schon früher)
 
-7. **BODEN & FLIESEN:**
+8. **BODEN & FLIESEN:**
    - FLI (Bäder/Küche)
    - BOD (Wohnräume)
    - Nach Malerarbeiten!
 
-8. **ABSCHLUSSPHASE:**
+9. **ABSCHLUSSPHASE:**
    - TIS (Küche, Türen)
    - Restarbeiten aller Gewerke
    - Endreinigung
 
 ### PARALLELISIERUNG (wo möglich):
+- Gebäudehülle DACH und FEN (teilweise überschneidend möglich) 
 - Rohinstallationen ELEKT + SAN + HEI
 - Feininstallationen teilweise parallel
 - Boden + Fliesen in verschiedenen Räumen
