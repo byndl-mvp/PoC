@@ -218,8 +218,14 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
                 relevantTrades, 
                 completedLvs,
                 tendersData
-              )
-            };
+              ),
+            // NEU: lvStatus direkt hier berechnen
+  lvStatus: {
+    total: relevantTrades.length,
+    completed: completedLvs,
+    allCompleted: relevantTrades.length > 0 && relevantTrades.length === completedLvs
+  }
+};
           })
         );
         
@@ -309,20 +315,6 @@ if (schedRes.ok) {
   setSchedule(schedData);
 } else {
   setSchedule(null);
-}
-
-    // NEU: LV-Status laden
-const lvStatusRes = await fetch(apiUrl(`/api/projects/${projectId}/lv-status?t=${timestamp}`));
-if (lvStatusRes.ok) {
-  const lvStatus = await lvStatusRes.json();
-  setSelectedProject(prev => ({
-    ...prev,
-    lvStatus: {
-      total: lvStatus.total_trades,
-      completed: lvStatus.completed_lvs,
-      allCompleted: lvStatus.total_trades > 0 && lvStatus.total_trades === lvStatus.completed_lvs
-    }
-  }));
 }
     
     // Lade ungelesene Angebote
