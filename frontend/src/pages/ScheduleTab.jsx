@@ -865,19 +865,11 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
     <div className="flex-1 relative" style={{ height: '50px' }}>
       {dateMarkers.map((date, idx) => {
         const position = ((date - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-        const minSpacing = 8; // Minimaler Abstand in %
-        
-        // Überspringe Marker wenn zu nah am vorherigen
-        if (idx > 0) {
-          const prevPosition = ((dateMarkers[idx-1] - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-          if (position - prevPosition < minSpacing) return null;
-        }
-        
         return (
           <div 
             key={idx} 
             className="absolute"
-            style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
+            style={{ left: `${position}%`, transform: 'translateX(-50%)', minWidth: '60px' }}
           >
             <div className="text-center">
               <div className="text-sm font-bold text-white whitespace-nowrap">
