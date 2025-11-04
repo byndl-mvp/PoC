@@ -318,7 +318,7 @@ useEffect(() => {
       {project.lvStatus?.allCompleted ? 'Zur KI-Terminplanung' : 'LVs müssen erst fertiggestellt werden'}
     </button>
     {project.lvStatus?.allCompleted && (
-      <p className="text-gray-400 text-sm mt-3">Dauert ca. 30-60 Sekunden</p>
+      <p className="text-gray-400 text-sm mt-3">Dauert je nach Komplexität Ihres Projekts 3-5 Minuten</p>
     )}
   </div>
 )}
