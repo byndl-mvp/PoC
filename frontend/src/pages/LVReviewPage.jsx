@@ -712,6 +712,15 @@ const handleGenerateAllQuestions = async () => {
         setSelectedPosition(updatedPosition);
         setEditingPosition(null);
         setEditedValues({});
+        
+        // NEU: Prüfe ob alle LVs fertig
+        const allCompleted = selectedTrades.every(t => t.lv?.content?.positions?.length > 0);
+        if (allCompleted) {
+          await fetch(apiUrl(`/api/projects/${projectId}/mark-lvs-complete`), {
+            method: 'POST'
+          });
+          console.log('✅ Alle LVs komplett');
+        }
       }
     };
     
