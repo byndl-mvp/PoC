@@ -1096,25 +1096,44 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
       {/* Legende */}
       <div className="mt-6 bg-white/5 rounded-lg p-4 border border-white/10">
         <h4 className="text-white font-semibold mb-3">Legende</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
           {/* Normale Arbeit */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded shadow"></div>
             <span className="text-gray-300">Reguläre Bauleistung</span>
           </div>
           
-          {/* Standzeit */}
+          {/* Puffer */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-3 border-2 border-dashed border-teal-400 bg-teal-500/15 rounded"></div>
-            <span className="text-gray-300">Standzeit (nur Bereitstellung)</span>
+            <div className="w-12 h-6 flex">
+              <div className="w-8 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-l shadow"></div>
+              <div className="w-4 h-6 bg-blue-500/30 rounded-r" style={{
+                backgroundImage: `repeating-linear-gradient(
+                  45deg,
+                  transparent,
+                  transparent 2px,
+                  rgba(255, 255, 255, 0.1) 2px,
+                  rgba(255, 255, 255, 0.1) 4px
+                )`
+              }}></div>
+            </div>
+            <span className="text-gray-300">+ Puffer-Tage</span>
           </div>
           
-          {/* Minor Work */}
+          {/* Standzeit */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded shadow opacity-75 relative">
-              <span className="absolute top-0 left-1 text-[8px] bg-white/30 px-1 rounded text-white">parallel</span>
-            </div>
-            <span className="text-gray-300">Kleine Arbeit (parallel)</span>
+            <div className="w-12 h-1 border-t-2 border-b-2 border-dashed border-teal-400"></div>
+            <span className="text-gray-300">Standzeit</span>
+          </div>
+          
+          {/* Dependencies */}
+          <div className="flex items-center gap-3">
+            <svg className="w-12 h-6" viewBox="0 0 48 24">
+              <line x1="8" y1="8" x2="8" y2="16" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" />
+              <line x1="8" y1="16" x2="40" y2="16" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" />
+              <polygon points="40,16 37,13 37,19" fill="#94a3b8" />
+            </svg>
+            <span className="text-gray-300">Abhängigkeit</span>
           </div>
         </div>
         
@@ -1123,11 +1142,12 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-teal-400" />
             <span>
               <strong className="text-teal-300">Standzeit</strong> verursacht tägliche Kosten (ca. 75€/Tag), 
-              aber keine aktiven Arbeiten. Koordinieren Sie Außenarbeiten effizient, um Standzeit-Kosten zu minimieren!
+              aber keine aktiven Arbeiten. <strong className="text-white">Puffer-Tage</strong> sind Zeitreserven 
+              für unvorhergesehene Verzögerungen.
             </span>
           </p>
         </div>
-      </div>     
+      </div>   
     </div>
   );
 }
