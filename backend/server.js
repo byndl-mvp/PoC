@@ -25867,6 +25867,8 @@ app.post('/api/projects/:projectId/schedule/initiate', async (req, res) => {
 app.post('/api/projects/:projectId/schedule/generate', async (req, res) => {
   try {
     const { projectId } = req.params;
+
+    runningGenerations.add(projectId);
     
     console.log('[SCHEDULE-GEN] Starting generation for project:', projectId);
     
@@ -26741,6 +26743,8 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
       );
       
       console.log('[SCHEDULE-GEN] Generation completed successfully');
+
+      runningGenerations.delete(projectId); 
       
       res.json({ 
         success: true, 
@@ -26755,11 +26759,24 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
     }
     
   } catch (err) {
+    runningGenerations.delete(projectId);
     console.error('[SCHEDULE-GEN] Generation failed:', err);
     res.status(500).json({ 
       error: 'Fehler bei der Terminplan-Generierung',
       details: err.message 
     });
+  }
+});
+
+// In-Memory Store für laufende Generierungen
+const runningGenerations = new Set();
+
+app.get('/api/projects/:projectId/schedule/generation-status', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    res.json({ isGenerating: runningGenerations.has(projectId) });
+  } catch (err) {
+    res.status(500).json({ error: 'Fehler' });
   }
 });
 
