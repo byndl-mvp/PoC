@@ -977,8 +977,12 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, allEntries, color }) {
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const isStandzeit = (entry.trade_code === 'GER' && entry.phase_number === 2) || 
+ // WICHTIG: Nutze das is_standzeit Flag aus der Datenbank!
+const isStandzeit = entry.is_standzeit === true || 
+                    (entry.trade_code === 'GER' && entry.phase_number === 2) || 
                     entry.phase_name?.toLowerCase().includes('standzeit');
+
+const isMinorWork = entry.is_minor_work === true;
   
   const calculatePosition = (start, end) => {
     const startDate = new Date(start);
@@ -1025,20 +1029,32 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
       <div className="flex-1 relative">
         {/* Der Balken - MIT Standzeit-Styling */}
         <button
-          onClick={() => editMode && setShowEditModal(true)}
-          className={`absolute rounded-lg shadow-lg ${editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'} transition-all`}
-          style={{ ...position, height: '40px', top: '0' }}
-          disabled={!editMode}
-          title={isStandzeit 
-            ? 'Gerüst-Standzeit: Keine Arbeiten, nur Bereitstellung für Außengewerke' 
-            : (editMode ? 'Klicken zum Bearbeiten' : '')
-          }
-        >
-          <div className={`h-full rounded-lg relative ${
-  isStandzeit 
-    ? `border-2 border-dashed bg-opacity-10 bg-gradient-to-r ${color}` 
-    : `bg-gradient-to-r ${color}`
-}`}>
+  onClick={() => editMode && !isStandzeit && setShowEditModal(true)}
+  className={`absolute rounded-lg ${
+    isStandzeit ? 'shadow-sm' : 'shadow-lg'
+  } ${
+    editMode && !isStandzeit ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
+  } transition-all`}
+  style={{ 
+    ...position, 
+    height: isStandzeit ? '20px' : '40px',  // Standzeit nur halb so hoch
+    top: isStandzeit ? '10px' : '0',        // Standzeit zentriert
+    opacity: isMinorWork ? 0.75 : 1         // Minor Work etwas transparenter
+  }}
+  disabled={!editMode || isStandzeit}
+  title={
+    isStandzeit 
+      ? `Gerüst-Standzeit: ${calculateWorkdays(entry.planned_start, entry.planned_end)} Tage × 75€ = ca. ${calculateWorkdays(entry.planned_start, entry.planned_end) * 75}€ (nur Bereitstellung, keine Arbeiten)` 
+      : (isMinorWork
+          ? 'Kleine Arbeit - läuft parallel zu anderen Gewerken'
+          : (editMode ? 'Klicken zum Bearbeiten' : ''))
+  }
+>
+  <div className={`h-full rounded-lg relative overflow-hidden ${
+    isStandzeit 
+      ? `border-2 border-dashed border-teal-400/60 bg-teal-500/15` 
+      : `bg-gradient-to-r ${color}`
+  }`}>
             {/* Status-Indicator */}
             {entry.confirmed && (
               <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
@@ -1047,7 +1063,19 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
             {/* Standzeit-Icon */}
             {isStandzeit && (
   <div className="absolute inset-0 flex items-center justify-center">
-    <svg className="w-5 h-5 text-white opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <span className="text-teal-300 text-xs font-semibold tracking-wider">
+      STANDZEIT {calculateWorkdays(entry.planned_start, entry.planned_end)} TAGE
+    </span>
+  </div>
+)}
+
+{isMinorWork && !isStandzeit && (
+  <div className="absolute top-1 left-2">
+    <span className="text-xs bg-white/20 backdrop-blur px-1.5 py-0.5 rounded text-white font-medium">
+      parallel
+    </span>
+  </div>
+)}
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   </div>
