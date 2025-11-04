@@ -282,18 +282,25 @@ useEffect(() => {
         </div>
 
         {/* CTA Button */}
-        {isEligibleForSchedule() && (
-          <div className="text-center">
-            <button
-              onClick={() => setShowInitModal(true)}
-              className="px-8 py-4 bg-gradient-to-r from-teal-500 to-blue-600 text-white text-lg font-bold rounded-lg hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-3 mx-auto"
-            >
-              <Calendar className="w-6 h-6" />
-              Zur KI-Terminplanung
-            </button>
-            <p className="text-gray-400 text-sm mt-3">Dauert ca. 30-60 Sekunden</p>
-          </div>
-        )}
+{isEligibleForSchedule() && (
+  <div className="text-center">
+    <button
+      onClick={() => setShowInitModal(true)}
+      disabled={!project.lvStatus?.allCompleted}
+      className={`px-8 py-4 text-lg font-bold rounded-lg transition-all flex items-center gap-3 mx-auto ${
+        project.lvStatus?.allCompleted
+          ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white hover:shadow-2xl transform hover:scale-105 cursor-pointer'
+          : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
+      }`}
+    >
+      <Calendar className="w-6 h-6" />
+      {project.lvStatus?.allCompleted ? 'Zur KI-Terminplanung' : 'LVs müssen erst fertiggestellt werden'}
+    </button>
+    {project.lvStatus?.allCompleted && (
+      <p className="text-gray-400 text-sm mt-3">Dauert ca. 30-60 Sekunden</p>
+    )}
+  </div>
+)}
 
         {/* Initiierungs-Modal */}
         {showInitModal && (
