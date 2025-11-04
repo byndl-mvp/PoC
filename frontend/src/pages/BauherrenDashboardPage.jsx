@@ -310,6 +310,20 @@ if (schedRes.ok) {
 } else {
   setSchedule(null);
 }
+
+    // NEU: LV-Status laden
+const lvStatusRes = await fetch(apiUrl(`/api/projects/${projectId}/lv-status?t=${timestamp}`));
+if (lvStatusRes.ok) {
+  const lvStatus = await lvStatusRes.json();
+  setSelectedProject(prev => ({
+    ...prev,
+    lvStatus: {
+      total: lvStatus.total_trades,
+      completed: lvStatus.completed_lvs,
+      allCompleted: lvStatus.total_trades > 0 && lvStatus.total_trades === lvStatus.completed_lvs
+    }
+  }));
+}
     
     // Lade ungelesene Angebote
     const unreadRes = await fetch(apiUrl(`/api/projects/${projectId}/offers/unread-count?t=${timestamp}`));
