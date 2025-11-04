@@ -988,7 +988,10 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
       <div className="w-64 flex-shrink-0 pl-14">
         {entry.phase_name && (
           <div className="pt-2">
-            <span className="text-white text-sm font-semibold block">{entry.phase_name}</span>
+            <span className="text-white text-sm font-semibold block">
+              {entry.phase_name}
+              {isStandzeit && <span className="ml-2 text-xs text-teal-400">(nur Bereitstellung)</span>}
+            </span>
             <span className="text-gray-400 text-xs">
               {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
               {bufferDays > 0 && ` + ${bufferDays} ${bufferDays === 1 ? 'Tag' : 'Tage'} Puffer`}
@@ -999,18 +1002,34 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
       
       {/* Balken-Bereich */}
       <div className="flex-1 relative">
-        {/* Der Balken - OHNE Text */}
+        {/* Der Balken - MIT Standzeit-Styling */}
         <button
           onClick={() => editMode && setShowEditModal(true)}
           className={`absolute rounded-lg shadow-lg ${editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'} transition-all`}
           style={{ ...position, height: '40px', top: '0' }}
           disabled={!editMode}
-          title={editMode ? 'Klicken zum Bearbeiten' : ''}
+          title={isStandzeit 
+            ? 'Gerüst-Standzeit: Keine Arbeiten, nur Bereitstellung für Außengewerke' 
+            : (editMode ? 'Klicken zum Bearbeiten' : '')
+          }
         >
-          <div className={`h-full rounded-lg bg-gradient-to-r ${color} relative`}>
+          <div className={`h-full rounded-lg relative ${
+            isStandzeit 
+              ? `border-4 border-dashed bg-opacity-20 bg-gradient-to-r ${color}` 
+              : `bg-gradient-to-r ${color}`
+          }`}>
             {/* Status-Indicator */}
             {entry.confirmed && (
               <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+            )}
+            
+            {/* Standzeit-Icon */}
+            {isStandzeit && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg className="w-6 h-6 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
             )}
           </div>
         </button>
