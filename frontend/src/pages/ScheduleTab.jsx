@@ -1111,8 +1111,6 @@ const isMinorWork = entry.is_minor_work === true;
     </span>
   </div>
     )}
-  </div>
-)}
           </div>
         </button>
         
