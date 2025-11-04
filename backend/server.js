@@ -26668,37 +26668,100 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
     try {
       let sequenceCounter = 1;
       
-      for (const trade of scheduleData.schedule) {
-        const tradeInfo = project.trades.find(t => t.code === trade.trade_code);
-        if (!tradeInfo) continue;
-        
-        for (const phase of trade.phases) {
-          const startDate = new Date(currentDate);
-          const endDate = addWorkdays(startDate, phase.duration_days - 1);
-          
-          await query(
-            `INSERT INTO schedule_entries 
-             (schedule_id, trade_id, phase_name, phase_number,
-              planned_start, planned_end, duration_days, buffer_days,
-              status, dependencies,
-              scheduling_reason, buffer_reason, risks)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-            [
-              schedule.id,
-              tradeInfo.id,
-              phase.phase_name,
-              phase.phase_number,
-              startDate.toISOString().split('T')[0],
-              endDate.toISOString().split('T')[0],
-              phase.duration_days,
-              phase.buffer_days || 0,
-              'pending',
-              JSON.stringify(phase.dependencies || []),
-              phase.scheduling_reason,
-              phase.buffer_reason,
-              phase.risks
-            ]
-          );
+      // Sammle zuerst alle Einträge mit Metadaten
+const entriesToInsert = [];
+let globalStartDate = new Date(currentDate);
+
+for (const trade of scheduleData.schedule) {
+  const tradeInfo = project.trades.find(t => t.code === trade.trade_code);
+  if (!tradeInfo) continue;
+  
+  for (const phase of trade.phases) {
+    entriesToInsert.push({
+      trade_code: trade.trade_code,
+      trade_id: tradeInfo.id,
+      phase,
+      can_parallel_with: phase.can_parallel_with || []
+    });
+  }
+}
+
+// Berechne Start/End-Daten mit Parallelitäts-Logik
+const entryDates = [];
+let sequenceDate = new Date(globalStartDate);
+
+for (let i = 0; i < entriesToInsert.length; i++) {
+  const entry = entriesToInsert[i];
+  const phase = entry.phase;
+  
+  // Prüfe ob diese Phase parallel zu vorherigen laufen kann
+  const canRunParallel = phase.can_parallel_with && phase.can_parallel_with.length > 0;
+  
+  let startDate;
+  
+  if (canRunParallel) {
+    // Finde die früheste Phase, mit der parallel gelaufen werden kann
+    const parallelTrades = phase.can_parallel_with;
+    const parallelEntries = entryDates.filter(e => 
+      parallelTrades.includes(e.trade_code)
+    );
+    
+    if (parallelEntries.length > 0) {
+      // Starte parallel zum ersten parallelen Gewerk
+      startDate = new Date(parallelEntries[0].startDate);
+      console.log(`[PARALLEL] ${entry.trade_code} Phase ${phase.phase_number} läuft parallel zu ${parallelEntries[0].trade_code}`);
+    } else {
+      // Kein paralleles Gewerk gefunden, sequentiell
+      startDate = new Date(sequenceDate);
+    }
+  } else {
+    // Sequentiell
+    startDate = new Date(sequenceDate);
+  }
+  
+  const endDate = addWorkdays(startDate, phase.duration_days - 1);
+  
+  entryDates.push({
+    trade_code: entry.trade_code,
+    trade_id: entry.trade_id,
+    phase,
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
+    duration_days: phase.duration_days
+  });
+  
+  // Aktualisiere sequenceDate NUR wenn NICHT parallel
+  if (!canRunParallel) {
+    sequenceDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
+  }
+}
+
+// Jetzt einfügen in Datenbank
+for (const entry of entryDates) {
+  await query(
+    `INSERT INTO schedule_entries 
+     (schedule_id, trade_id, phase_name, phase_number,
+      planned_start, planned_end, duration_days, buffer_days,
+      status, dependencies,
+      scheduling_reason, buffer_reason, risks)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    [
+      schedule.id,
+      entry.trade_id,
+      entry.phase.phase_name,
+      entry.phase.phase_number,
+      entry.startDate,
+      entry.endDate,
+      entry.duration_days,
+      entry.phase.buffer_days || 0,
+      'pending',
+      JSON.stringify(entry.phase.dependencies || []),
+      entry.phase.scheduling_reason,
+      entry.phase.buffer_reason,
+      entry.phase.risks
+    ]
+  );
+}
           
           // Nächstes Gewerk: Startdatum = Enddatum + 1 + Puffer
           currentDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
