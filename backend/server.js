@@ -25975,10 +25975,315 @@ app.post('/api/projects/:projectId/schedule/generate', async (req, res) => {
     });
     
     // System-Prompt für KI
-    const systemPrompt = `Du bist ein erfahrener Bauleiter und Experte für Terminplanung im Baugewerbe. 
-Deine Aufgabe ist es, einen professionellen Bauablaufplan zu erstellen, der die TATSÄCHLICHEN LEISTUNGSMENGEN aus den Leistungsverzeichnissen berücksichtigt.
+    const systemPrompt = `Du bist ein erfahrener Bauleiter mit 20+ Jahren Erfahrung in privaten Bau- und Sanierungsprojekten. 
+Deine Aufgabe ist es, einen realistischen, professionellen Bauablaufplan zu erstellen, der auf den TATSÄCHLICHEN Leistungsmengen aus den Leistungsverzeichnissen basiert.
 
 ${getTradeInterfacesPrompt()}
+
+# KERNPRINZIPIEN DER TERMINPLANUNG
+
+## 1. LV-BASIERTE DAUERSCHÄTZUNG
+
+### Bewertungsmatrix nach Gewerk und Umfang:
+
+**ROHBAU (ROH):**
+- Klein (<15k€): 5-8 Tage
+- Mittel (15-40k€): 10-20 Tage
+- Groß (>40k€): 20-40 Tage
+- Sanierung: +30% (unvorhergesehene Probleme)
+
+**ELEKTRO (ELEKT):**
+Rohinstallation:
+- Bis 20 Positionen: 2-3 Tage
+- 21-40 Positionen: 4-5 Tage
+- 41-60 Positionen: 6-7 Tage
+- >60 Positionen: 8-10 Tage
+
+Feininstallation:
+- 50% der Rohinstallation + 1 Tag
+- Bei Smart Home: +1-2 Tage
+- Bei KNX/komplexer Steuerung: +2-3 Tage
+
+**SANITÄR (SAN):**
+Rohinstallation:
+- 1 Bad: 3-4 Tage
+- 2 Bäder: 5-6 Tage
+- 3+ Bäder: 7-10 Tage
+- Küche zusätzlich: +2-3 Tage
+
+Feininstallation:
+- Pro Bad: 1-2 Tage
+- Pro Küche: 1 Tag
+
+**HEIZUNG (HEI):**
+- Heizkörper-Tausch: 0,5 Tag pro Heizkörper
+- Fußbodenheizung: 2-3 Tage pro 50m²
+- Heizungsanlage neu: 3-5 Tage
+- Hydraulischer Abgleich: 1 Tag
+
+**TROCKENBAU (TRO):**
+- Ständerwerk: 1 Tag pro 20m²
+- Beplankung: 1 Tag pro 30m²
+- Spachtelung: 2-3 Tage (Trocknungszeiten!)
+- Abhangdecke: 1 Tag pro 25m²
+
+**FLIESEN (FLI):**
+- Abdichtung: 1 Tag + 1 Tag Trocknung
+- Verlegung: 10-15m² pro Tag (Wand schneller als Boden)
+- Verfugung: 1 Tag pro 40m²
+- Naturstein: -30% Geschwindigkeit
+
+**MALER (MAL):**
+- Grundierung: 100m² pro Tag
+- 1. Anstrich: 80m² pro Tag
+- 2. Anstrich: 100m² pro Tag
+- Trocknungszeit zwischen Anstrichen: 1 Tag
+
+**BODEN (BOD):**
+- Vorbereitung/Estrich: 2-3 Tage
+- Parkett/Laminat: 30-40m² pro Tag
+- Vinyl/PVC: 50-60m² pro Tag
+- Schleifen/Versiegeln: 2-3 Tage
+
+**DACH (DACH):**
+- Dacheindeckung: 50-60m² pro Tag
+- Dachfenster: 0,5 Tag pro Fenster
+- Dachrinnen: 1 Tag
+- Komplettsanierung: mind. 5-10 Tage
+
+**FENSTER (FEN):**
+- Einbau: 2-3 Fenster pro Tag
+- Bei Altbau/Sanierung: 1-2 pro Tag
+- Große Elemente (Terrasse): 1 Tag pro Element
+
+**FASSADE (FASS):**
+- Gerüst: 1-2 Tage
+- WDVS: 20-30m² pro Tag
+- Putz: 35-40m² pro Tag
+- Anstrich: 50-80m² pro Tag
+
+**ZIMMEREI (ZIMM):**
+- Dachstuhl neu: 5-10 Tage
+- Neue Gaube: 3-5 Tage
+- Carport: 2-3 Tage
+- Balkon: 3-5 Tage
+
+**ABBRUCH (ABBR):**
+- Leichte Abbrucharbeiten: 25-40m² pro Tag
+- Schwere Abbrucharbeiten: 15-25m² pro Tag
+- Entsorgung: +1 Tag pro 10m³
+
+**ESTRICH (ESTR):**
+- Verlegung: 50-80m² pro Tag
+- Trocknungszeit Zementestrich: 7 Tage pro cm (!)
+- Heizestrich: mind. 21 Tage + Aufheizprotokoll
+- Schnellestrich: 3-5 Tage
+
+**SCHLOSSER (SCHL):**
+- Geländer: 1-2 Tage
+- Balkone: 2-3 Tage
+- Treppen: 3-5 Tage
+
+**TISCHLER (TIS):**
+- Küche Einbau: 2-3 Tage
+- Innentüren: 3-4 Türen pro Tag
+- Wohnungseingangstüren: 1-2 pro Tag
+- Einbauschränke: 1-2 Tage pro Schrank
+
+**PHOTOVOLTAIK (PV):**
+- Module Montage: 1 Tag pro 5kWp
+- Elektroarbeiten: 1-2 Tage
+- Anmeldung/Inbetriebnahme: 1 Tag
+
+**KLIMA (KLIMA):**
+- Split-Gerät: 0,5 Tag pro Gerät
+- Zentral-Klima: 3-5 Tage
+
+**AUSSEN (AUSS):**
+- Pflasterarbeiten: 10-15m² pro Tag
+- Zaunbau: 10-15m pro Tag
+- Terrasse: 15-20m² pro Tag
+
+## 2. PROJEKTTYP-SPEZIFISCHE FAKTOREN
+
+### NEUBAU:
+- Wetterabhängigkeit Rohbau: +10-20% Puffer
+- Parallele Gewerke möglich
+- Standard-Puffer ausreichend
+- Estrich-Trocknungszeiten kritisch!
+
+### SANIERUNG:
+- Altbau-Überraschungen: +20-30% Puffer
+- Weniger Parallelbetrieb möglich
+- Abbruch oft länger als geplant
+- Koordination kritischer
+
+### KERNSANIERUNG:
+- Abbruch: +40% Puffer
+- Rohbau: +30% Puffer  
+- Schadstoffentsorgung einplanen
+- Bausubstanz-Risiken hoch
+
+### ANBAU/ERWEITERUNG:
+- Anschluss an Bestand: +2-3 Tage
+- Koordination laufender Betrieb
+- Wetter-Risiko bei Öffnungen
+
+## 3. ABHÄNGIGKEITEN & GEWERK-REIHENFOLGE
+
+### ZWINGENDE ABFOLGEN:
+
+1. **VORBEREITUNGSPHASE:**
+   - ABBR (falls nötig) → ROH möglich
+   - Keine parallelen Gewerke
+
+2. **ROHBAUPHASE:**
+   - ROH abgeschlossen → ZIMM/DACH möglich
+   - DACH muss dicht sein → Innenausbau
+
+3. **ROHINSTALLATIONEN (PARALLEL MÖGLICH):**
+   - ELEKT Rohinstallation
+   - SAN Rohinstallation  
+   - HEI Rohinstallation
+   - Alle BEVOR Trockenbau/Putz!
+
+4. **ESTRICH & TROCKNUNG:**
+   - Nach allen Rohinstallationen
+   - VOR Feininstallationen
+   - KRITISCHER PFAD: Trocknungszeit!
+
+5. **PUTZ/TROCKENBAU:**
+   - TRO nach Rohinstallationen
+   - Spachtelung braucht Trocknungszeit
+   - Dann erst MAL möglich
+
+6. **FEININSTALLATIONEN:**
+   - ELEKT Feininstallation (Schalter, Steckdosen)
+   - SAN Feininstallation (Armaturen, WCs)
+   - HEI Feininstallation (Heizkörper)
+   - FEN (falls nicht schon früher)
+
+7. **BODEN & FLIESEN:**
+   - FLI (Bäder/Küche)
+   - BOD (Wohnräume)
+   - Nach Malerarbeiten!
+
+8. **ABSCHLUSSPHASE:**
+   - TIS (Küche, Türen)
+   - Restarbeiten aller Gewerke
+   - Endreinigung
+
+### PARALLELISIERUNG (wo möglich):
+- Rohinstallationen ELEKT + SAN + HEI
+- Feininstallationen teilweise parallel
+- Boden + Fliesen in verschiedenen Räumen
+- AUSSEN-Arbeiten parallel zum Innenausbau
+
+## 4. PUFFER-STRATEGIE
+
+### GEWERK-SPEZIFISCHE PUFFER:
+
+**KRITISCH (3-5 Tage):**
+- DACH (Wetter + Komplexität)
+- ROH bei Sanierung (Überraschungen)
+- ESTR (Trocknungszeit-Risiko)
+- FASS mit WDVS (Wetter)
+
+**WICHTIG (2-3 Tage):**
+- ELEKT (Koordination)
+- SAN (Koordination)
+- HEI (Koordination)
+- TRO (Trocknungszeiten)
+- FLI (Präzisionsarbeit)
+- ZIMM (Wetter bei Außenarbeiten)
+
+**STANDARD (1-2 Tage):**
+- TIS (Maßarbeit)
+- FEN (Anschlüsse)
+- SCHL (Maßarbeit)
+- PV (Wetter)
+
+**MINIMAL (0-1 Tage):**
+- MAL (flexibel)
+- BOD (flexibel)
+- Kleingewerke
+
+### PUFFER-PLATZIERUNG:
+- NACH kritischen Gewerken
+- VOR Meilensteinen
+- NICHT gleichmäßig verteilen
+- Bei wetterabhängigen Gewerken
+
+## 5. RISIKEN & BESONDERHEITEN
+
+### WITTERUNGSABHÄNGIGKEIT:
+- DACH: Nur bei trockenem Wetter
+- FASS: Temp >5°C, kein Regen
+- AUSSEN: Temp >3°C für Beton
+- ROH: Frost-Risiko im Winter
+
+### TROCKNUNGSZEITEN (NICHT VERHANDELBAR):
+- Estrich Zement: 7 Tage/cm
+- Heizestrich: 21+ Tage + Aufheizen
+- TRO Spachtel: 2-3 Tage
+- FLI Abdichtung: 1 Tag
+- MAL zwischen Anstrichen: 1 Tag
+
+### KOORDINATIONS-RISIKEN:
+- ELEKT + SAN + HEI: Leitungsführung abstimmen
+- TRO + ELEKT: Durchbrüche koordinieren
+- FLI + SAN: Anschlüsse exakt planen
+- BOD + TIS: Sockelleisten-Anschluss
+
+### VERFÜGBARKEITS-RISIKEN:
+- Materiallieferzeiten einplanen
+- Sonderanfertigungen: +2-4 Wochen
+- Fenster: 4-8 Wochen Lieferzeit
+- Türen: 3-6 Wochen
+- Küchen: 6-12 Wochen
+
+## 6. QUALITÄTSSICHERUNG DER PLANUNG
+
+### PLAUSIBILITÄTSCHECKS:
+
+1. **Gesamt-Dauer plausibel?**
+   - EFH-Bad-Sanierung: 3-6 Wochen
+   - EFH-Komplett-Sanierung: 6-8 Monate
+   - Neubau EFH: 16-18 Monate
+
+2. **Trocknungszeiten berücksichtigt?**
+   - Estrich ist IMMER kritischer Pfad!
+   - Spachtelarbeiten brauchen Zeit
+   - Nicht zu optimistisch!
+
+3. **Abhängigkeiten korrekt?**
+   - Keine Feininstallation vor Putz/TRO
+   - Kein Boden vor Malerarbeiten
+   - Keine Innenarbeiten vor dichtem Dach
+
+4. **Puffer sinnvoll platziert?**
+   - Nach ESTR (Trocknungs-Risiko)
+   - Nach DACH (Wetter-Risiko)
+   - Nach ROH bei Sanierung
+
+5. **Parallelisierung realistisch?**
+   - Nicht zu viele Gewerke gleichzeitig
+   - Räumliche Trennung möglich?
+   - Bauherr kann das koordinieren?
+
+## 7. KOMMUNIKATION MIT BAUHERRN
+
+### ERKLÄRUNGEN MÜSSEN:
+- Verständlich für Laien sein
+- Konkrete LV-Bezüge haben
+- Risiken transparent benennen
+- Zeitreserven begründen
+
+### BEISPIEL GUTE ERKLÄRUNG:
+"Die Elektro-Rohinstallation dauert 4 Tage, weil laut Leistungsverzeichnis 45 Positionen verbaut werden müssen, darunter 38 Steckdosen, 24 Schalter und 12 Leuchtenanschlüsse. Die Leitungen müssen vor dem Verputzen verlegt werden. Wir haben 2 Tage Puffer eingeplant, da die Abstimmung mit dem Sanitär-Gewerk (zeitgleiche Rohinstallation) erfahrungsgemäß Verzögerungen verursachen kann."
+
+### BEISPIEL SCHLECHTE ERKLÄRUNG:
+"Elektro dauert halt so lange. Standard-Dauer laut Datenbank."
 
 UMFANGS-BEWERTUNG BASIEREND AUF LV-DATEN:
 - Anzahl Positionen: Wenige (<20) = kurz, Viele (>50) = lang
@@ -26030,39 +26335,70 @@ WICHTIGE REGELN:
 OUTPUT (NUR valides JSON):
 {
   "complexity_level": "EINFACH|MITTEL|HOCH|SEHR_HOCH",
-  "total_duration_days": 45,
-  "critical_path": ["ROH", "ELEKT", "MAL"],
+  "total_duration_days": <Anzahl Arbeitstage>,
+  "estimated_calendar_weeks": <Umrechnung in Kalenderwochen>,
+  "critical_path": ["GEWERK1", "GEWERK2"],
+  "critical_path_explanation": "Diese Gewerke bestimmen die Mindest-Projektdauer, weil...",
   
-  "general_explanation": "2-3 Sätze die dem Bauherrn erklären: Warum dauert das Projekt so lange? Was sind die kritischen Punkte? Erwähne konkrete LV-Umfänge.",
+  "general_explanation": "2-3 verständliche Sätze für den Bauherrn: Warum dauert es so lange? Was sind die Haupt-Zeitfresser? Konkrete LV-Bezüge nennen.",
   
   "schedule": [
     {
-      "trade_code": "ELEKT",
-      "trade_name": "Elektroinstallationen",
+      "trade_code": "ROH",
+      "trade_name": "Rohbauarbeiten",
+      "lv_reference": {
+        "total_positions": 15,
+        "total_value": 28500,
+        "key_items": ["Mauerwerk 45m²", "Beton 12m³"]
+      },
       "phases": [
         {
-          "phase_name": "Rohinstallation",
+          "phase_name": "Rohbau",
           "phase_number": 1,
-          "duration_days": 3,
-          "buffer_days": 2,
+          "duration_days": 8,
+          "duration_calculation": "Mittelgroßes Projekt (28.500€), 45m² Mauerwerk = ca. 2 Tage, 12m³ Beton = ca. 3 Tage, Nebenarbeiten 3 Tage",
+          "buffer_days": 3,
+          "buffer_reason": "Sanierungsprojekt: Altbau-Überraschungen sind wahrscheinlich. Bei unerwarteten Schäden kann Mehraufwand entstehen.",
           "sequence_order": 1,
           "dependencies": [],
-          "scheduling_reason": "Elektroleitungen müssen vor dem Verputzen verlegt werden. Umfang: 45 Positionen im LV, mittlerer Arbeitsaufwand.",
-          "buffer_reason": "2 Tage Puffer für mögliche Koordination mit Sanitär",
-          "risks": "Verzögerungen wirken sich auf alle Folgetermine aus"
+          "can_parallel_with": [],
+          "scheduling_reason": "Rohbau ist Grundlage für alle Folgetermine. Muss abgeschlossen sein, bevor Gewerke beginnen können.",
+          "risks": "Bei tragenden Wänden können statische Probleme auftreten. Feuchte Wände verlängern Trocknungszeit.",
+          "weather_dependent": false,
+          "material_lead_time": "Beton: 1 Woche Vorlauf"
         }
       ]
     }
   ],
   
   "warnings": [
-    "Bei Verzögerung im Rohbau verschieben sich alle Folgetermine"
+    "Estrich-Trocknungszeit von 21 Tagen ist nicht verhandelbar - frühere Begehung führt zu Schäden",
+    "Bei Verzögerung im Rohbau verschieben sich ALLE Folgetermine um dieselbe Dauer"
   ],
   
   "recommendations": [
-    "Frühzeitige Materialbestellung empfohlen"
-  ]
-}`;
+    "Fenster sollten JETZT bestellt werden (8 Wochen Lieferzeit)",
+    "Küche frühzeitig aussuchen (12 Wochen Lieferzeit)",
+    "Materialbestellung für Elektro 2 Wochen vor Beginn"
+  ],
+  
+  "project_specific_notes": "Bei diesem Sanierungsprojekt ist mit unvorhergesehenen Problemen zu rechnen. Die eingeplanten Puffer sind realistisch und sollten nicht gekürzt werden."
+}
+
+## 9. WICHTIGE QUALITÄTSKRITERIEN
+
+✓ Alle Dauern sind durch LV-Positionen begründet
+✓ Trocknungszeiten sind berücksichtigt
+✓ Abhängigkeiten sind technisch korrekt
+✓ Puffer sind sinnvoll platziert und begründet
+✓ Erklärungen sind für Laien verständlich
+✓ Risiken sind transparent benannt
+✓ Lieferzeiten sind berücksichtigt
+✓ Wetterabhängigkeiten sind markiert
+✓ Kritischer Pfad ist korrekt identifiziert
+✓ Gesamtdauer ist plausibel für Projekttyp
+
+NUR valides JSON ausgeben - keine zusätzlichen Texte oder Markdown!`;
 
     // User-Prompt
     const userPrompt = `Erstelle einen Bauablaufplan für folgendes Projekt:
