@@ -23869,6 +23869,22 @@ async function getHandwerkerIdFromCompanyId(companyId) {
   return result.rows.length > 0 ? result.rows[0].id : null;
 }
 
+app.post('/api/projects/:projectId/mark-lvs-complete', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    await query(
+      `UPDATE projects SET lvs_completed = true, lvs_completed_at = NOW() WHERE id = $1`,
+      [projectId]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
 // ============= TERMINVEREINBARUNGS-ROUTES =============
 
 // Angebotsdaten mit Kontaktinfos für Ortstermin
