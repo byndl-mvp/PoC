@@ -54,6 +54,34 @@ useEffect(() => {
   
   checkGenerationStatus();
 }, [schedule, project.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// Polling während Generierung
+useEffect(() => {
+  if (!generating) return;
+  
+  const pollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule`));
+      
+      if (res.ok) {
+        const data = await res.json();
+        
+        // Wenn Status sich geändert hat (nicht mehr 'draft'), ist Generierung fertig
+        if (data.status !== 'draft') {
+          setGenerating(false);
+          setShowInitModal(false);
+          await loadSchedule();
+          setShowApprovalModal(true);
+          clearInterval(pollInterval);
+        }
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, 3000); // Alle 3 Sekunden prüfen
+  
+  return () => clearInterval(pollInterval);
+}, [generating, project.id]); // eslint-disable-line
   
   const loadSchedule = async () => {
     try {
@@ -324,13 +352,13 @@ useEffect(() => {
 )}
 
         {/* Initiierungs-Modal */}
-        {showInitModal && (
-          <InitiateScheduleModal
-            onClose={() => setShowInitModal(false)}
-            onSubmit={handleInitiate}
-            generating={generating}
-          />
-        )}
+{(showInitModal || generating) && (
+  <InitiateScheduleModal
+    onClose={() => !generating && setShowInitModal(false)}
+    onSubmit={handleInitiate}
+    generating={generating}
+  />
+)}
       </div>
     );
   }
