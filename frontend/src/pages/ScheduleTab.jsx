@@ -966,6 +966,41 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
           </p>
         </div>
       )}
+      {/* Legende */}
+      <div className="mt-6 bg-white/5 rounded-lg p-4 border border-white/10">
+        <h4 className="text-white font-semibold mb-3">Legende</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          {/* Normale Arbeit */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded shadow"></div>
+            <span className="text-gray-300">Reguläre Bauleistung</span>
+          </div>
+          
+          {/* Standzeit */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-3 border-2 border-dashed border-teal-400 bg-teal-500/15 rounded"></div>
+            <span className="text-gray-300">Standzeit (nur Bereitstellung)</span>
+          </div>
+          
+          {/* Minor Work */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded shadow opacity-75 relative">
+              <span className="absolute top-0 left-1 text-[8px] bg-white/30 px-1 rounded text-white">parallel</span>
+            </div>
+            <span className="text-gray-300">Kleine Arbeit (parallel)</span>
+          </div>
+        </div>
+        
+        <div className="mt-3 pt-3 border-t border-white/10">
+          <p className="text-xs text-gray-400 flex items-start gap-2">
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-teal-400" />
+            <span>
+              <strong className="text-teal-300">Standzeit</strong> verursacht tägliche Kosten (ca. 75€/Tag), 
+              aber keine aktiven Arbeiten. Koordinieren Sie Außenarbeiten effizient, um Standzeit-Kosten zu minimieren!
+            </span>
+          </p>
+        </div>
+      </div>     
     </div>
   );
 }
