@@ -25986,6 +25986,14 @@ ${getTradeInterfacesPrompt()}
 
 ### Bewertungsmatrix nach Gewerk und Umfang:
 
+**GERÜST (GER):**
+- Aufbau: 1-2 Tage (je nach Gebäudehöhe)
+- Standzeit richtet sich nach Dauer FASS/DACH/ZIMM/FEN
+- Abbau: 0,5-1 Tag
+- Abhängigkeiten: 
+  * Gerüst → DACH/FASS/ZIMM/FEN (ggf. SCHL bei Balkongeländern) → Gerüst-Abbau
+  * Bei mehreren Außengewerken: Parallel abarbeiten
+  
 **ROHBAU (ROH):**
 - Klein (<15k€): 5-8 Tage
 - Mittel (15-40k€): 10-20 Tage
@@ -26143,10 +26151,12 @@ Feininstallation:
    - ROH Wanddurchbrüche/kleinere Rohbauarbeiten im Bestand → direkt nach oder während ABBR
 
 3. **DACH/FASSADE (Gebäudehülle):**
+   - Gerüstaufbau (GER) immer zuerst
    - ZIMM (falls neuer Dachstuhl oder Gauben nötig) immer nach oder bereits während ROH
    - DACH immer nach ROH und ZIMM
    - FEN nach oder während DACH
    - FASS nach FEN
+   - Gerüstabbau immer erst nach Abschluss FASS und DACH
    - Abschluss dichte Gebäudehülle → Start Innenausbau
    
 4. **ROHINSTALLATIONEN (PARALLEL MÖGLICH):**
@@ -26180,6 +26190,11 @@ Feininstallation:
    - TIS (Küche, Türen)
    - Restarbeiten aller Gewerke
    - Endreinigung
+
+KRITISCHE LOGIK-REGELN:
+1. Gerüst MUSS während der gesamten Dach-und Fassadenarbeiten stehen bleiben
+2. Gerüstabbau ERST NACH allen Arbeiten die Gerüst benötigen (DACH, FASS mit Gerüst)
+3. NIEMALS Gerüst abbauen bevor DACH und FASS fertig ist
 
 ### PARALLELISIERUNG (wo möglich):
 - Gebäudehülle DACH und FEN (teilweise überschneidend möglich) 
