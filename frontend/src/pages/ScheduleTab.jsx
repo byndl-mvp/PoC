@@ -33,6 +33,27 @@ useEffect(() => {
     setExpandedTrades(expanded);
   }
 }, [schedule]); // eslint-disable-line
+
+useEffect(() => {
+  const checkGenerationStatus = async () => {
+    if (schedule?.status === 'draft') {
+      // Prüfe ob Generierung läuft
+      try {
+        const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule/generation-status`));
+        if (res.ok) {
+          const data = await res.json();
+          if (data.isGenerating) {
+            setGenerating(true);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+  
+  checkGenerationStatus();
+}, [schedule, project.id]);
   
   const loadSchedule = async () => {
     try {
