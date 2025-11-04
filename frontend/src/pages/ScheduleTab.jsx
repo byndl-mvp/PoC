@@ -53,7 +53,7 @@ useEffect(() => {
   };
   
   checkGenerationStatus();
-}, [schedule, project.id]);
+}, [schedule, project.id]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const loadSchedule = async () => {
     try {
