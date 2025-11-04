@@ -274,6 +274,35 @@ useEffect(() => {
     return Object.values(grouped);
   };
 
+  // Helper: Finde Dependencies zwischen Gewerken
+const findDependencies = (entries) => {
+  const deps = [];
+  
+  entries?.forEach(entry => {
+    if (!entry.dependencies || entry.dependencies.length === 0) return;
+    
+    // Parse Dependencies (können sein: "DACH" oder "DACH-Phase1")
+    entry.dependencies.forEach(dep => {
+      const depTradeCode = dep.includes('-') ? dep.split('-')[0] : dep;
+      
+      // Finde das abhängige Gewerk
+      const depEntry = entries.find(e => 
+        e.trade_code === depTradeCode &&
+        new Date(e.planned_end) <= new Date(entry.planned_start)
+      );
+      
+      if (depEntry) {
+        deps.push({
+          from: depEntry,
+          to: entry
+        });
+      }
+    });
+  });
+  
+  return deps;
+};
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
