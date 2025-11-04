@@ -968,6 +968,75 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
       
       {/* Balken */}
       <div className="space-y-3 overflow-x-auto">
+       {/* Dependencies Layer - UNTER den Balken */}
+        <svg 
+          className="absolute inset-0 pointer-events-none" 
+          style={{ zIndex: 0 }}
+        >
+          {findDependencies(entries).map((dep, idx) => {
+            const fromIndex = entries.findIndex(e => e.id === dep.from.id);
+            const toIndex = entries.findIndex(e => e.id === dep.to.id);
+            
+            if (fromIndex === -1 || toIndex === -1) return null;
+            
+            // Berechne Positionen
+            const fromY = (fromIndex * 60) + 40; // Mitte des Balkens
+            const toY = (toIndex * 60) + 20; // Top des nächsten Balkens
+            
+            const fromDate = new Date(dep.from.planned_end);
+            const toDate = new Date(dep.to.planned_start);
+            const fromX = ((fromDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+            const toX = ((toDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+            
+            return (
+              <g key={idx}>
+                {/* Vertikale Linie nach unten */}
+                <line
+                  x1={`${fromX}%`}
+                  y1={fromY}
+                  x2={`${fromX}%`}
+                  y2={(fromY + toY) / 2}
+                  stroke="#94a3b8"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                  opacity="0.5"
+                />
+                
+                {/* Horizontale Linie */}
+                <line
+                  x1={`${fromX}%`}
+                  y1={(fromY + toY) / 2}
+                  x2={`${toX}%`}
+                  y2={(fromY + toY) / 2}
+                  stroke="#94a3b8"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                  opacity="0.5"
+                />
+                
+                {/* Vertikale Linie nach oben */}
+                <line
+                  x1={`${toX}%`}
+                  y1={(fromY + toY) / 2}
+                  x2={`${toX}%`}
+                  y2={toY}
+                  stroke="#94a3b8"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                  opacity="0.5"
+                />
+                
+                {/* Pfeil */}
+                <polygon
+                  points={`${toX},${toY} ${toX - 0.5},${toY - 8} ${toX + 0.5},${toY - 8}`}
+                  fill="#94a3b8"
+                  opacity="0.5"
+                  transform={`translate(0, 0)`}
+                />
+              </g>
+            );
+          })}
+        </svg>        
         {groupedTrades.map((trade, tradeIdx) => (
           <div key={trade.trade_code} className="min-w-max">
             {/* Trade Header */}
