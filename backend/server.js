@@ -26665,103 +26665,255 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
     // Speichere Schedule Entries
     await query('BEGIN');
     
-    try {
-      let sequenceCounter = 1;
-      
-      // Sammle zuerst alle Einträge mit Metadaten
-const entriesToInsert = [];
-let globalStartDate = new Date(currentDate);
-
-for (const trade of scheduleData.schedule) {
-  const tradeInfo = project.trades.find(t => t.code === trade.trade_code);
-  if (!tradeInfo) continue;
+   try {
+  // 1. SAMMLE ALLE EINTRÄGE
+  const allEntries = [];
   
-  for (const phase of trade.phases) {
-    entriesToInsert.push({
-      trade_code: trade.trade_code,
-      trade_id: tradeInfo.id,
-      phase,
-      can_parallel_with: phase.can_parallel_with || []
-    });
-  }
-}
-
-// Berechne Start/End-Daten mit Parallelitäts-Logik
-const entryDates = [];
-let sequenceDate = new Date(globalStartDate);
-
-for (let i = 0; i < entriesToInsert.length; i++) {
-  const entry = entriesToInsert[i];
-  const phase = entry.phase;
-  
-  // Prüfe ob diese Phase parallel zu vorherigen laufen kann
-  const canRunParallel = phase.can_parallel_with && phase.can_parallel_with.length > 0;
-  
-  let startDate;
-  
-  if (canRunParallel) {
-    // Finde die früheste Phase, mit der parallel gelaufen werden kann
-    const parallelTrades = phase.can_parallel_with;
-    const parallelEntries = entryDates.filter(e => 
-      parallelTrades.includes(e.trade_code)
-    );
+  for (const trade of scheduleData.schedule) {
+    const tradeInfo = project.trades.find(t => t.code === trade.trade_code);
+    if (!tradeInfo) continue;
     
-    if (parallelEntries.length > 0) {
-      // Starte parallel zum ersten parallelen Gewerk
-      startDate = new Date(parallelEntries[0].startDate);
-      console.log(`[PARALLEL] ${entry.trade_code} Phase ${phase.phase_number} läuft parallel zu ${parallelEntries[0].trade_code}`);
-    } else {
-      // Kein paralleles Gewerk gefunden, sequentiell
-      startDate = new Date(sequenceDate);
+    for (const phase of trade.phases) {
+      allEntries.push({
+        trade_code: trade.trade_code,
+        trade_id: tradeInfo.id,
+        trade_name: tradeInfo.name,
+        phase: phase,
+        dependencies: phase.dependencies || [],
+        can_parallel_with: phase.can_parallel_with || []
+      });
     }
-  } else {
-    // Sequentiell
-    startDate = new Date(sequenceDate);
   }
   
-  const endDate = addWorkdays(startDate, phase.duration_days - 1);
+  // 2. BERECHNE TERMINE MIT INTELLIGENTER PARALLELITÄTS-LOGIK
+  const scheduledEntries = [];
+  let currentSequenceDate = new Date(currentDate);
   
-  entryDates.push({
-    trade_code: entry.trade_code,
-    trade_id: entry.trade_id,
-    phase,
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0],
-    duration_days: phase.duration_days
-  });
+  // Gruppiere Einträge die parallel laufen können
+  const processedIndices = new Set();
   
-  // Aktualisiere sequenceDate NUR wenn NICHT parallel
-  if (!canRunParallel) {
-    sequenceDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
+  for (let i = 0; i < allEntries.length; i++) {
+    if (processedIndices.has(i)) continue;
+    
+    const entry = allEntries[i];
+    const phase = entry.phase;
+    
+    // Prüfe Dependencies
+    const allDependenciesMet = entry.dependencies.every(dep => {
+      return scheduledEntries.some(s => 
+        s.trade_code === dep || 
+        (typeof dep === 'string' && dep.includes('-') && s.trade_code === dep.split('-')[0])
+      );
+    });
+    
+    if (!allDependenciesMet && entry.dependencies.length > 0) {
+      // Warte auf Dependencies - später nochmal verarbeiten
+      continue;
+    }
+    
+    // FALL 1: Phase hat explizite can_parallel_with
+    if (entry.can_parallel_with.length > 0) {
+      const parallelTrades = entry.can_parallel_with;
+      const parallelEntries = scheduledEntries.filter(s => 
+        parallelTrades.includes(s.trade_code)
+      );
+      
+      if (parallelEntries.length > 0) {
+        // Starte parallel zum ersten gefundenen Gewerk
+        const referenceEntry = parallelEntries[0];
+        scheduledEntries.push({
+          ...entry,
+          startDate: referenceEntry.startDate,
+          endDate: addWorkdays(new Date(referenceEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+          isParallel: true,
+          parallelTo: parallelTrades
+        });
+        processedIndices.add(i);
+        
+        console.log(`[PARALLEL-EXPLICIT] ${entry.trade_code} Phase ${phase.phase_number} läuft parallel zu ${parallelTrades.join(', ')}`);
+        continue;
+      }
+    }
+    
+    // FALL 2: Erkenne implizite Parallelitäten durch Phase-Namen
+    const isRohinstallation = phase.phase_name?.toLowerCase().includes('rohinstallation');
+    const isFeininstallation = phase.phase_name?.toLowerCase().includes('feininstallation');
+    
+    // ROHINSTALLATIONEN PARALLEL (ELEKT + SAN + HEI)
+    if (isRohinstallation && ['ELEKT', 'SAN', 'HEI'].includes(entry.trade_code)) {
+      // Suche nach anderen Rohinstallationen die bereits geplant sind
+      const otherRohinstallations = scheduledEntries.filter(s => 
+        s.phase.phase_name?.toLowerCase().includes('rohinstallation') &&
+        ['ELEKT', 'SAN', 'HEI'].includes(s.trade_code) &&
+        !s.isParallel // Nur die erste als Referenz
+      );
+      
+      if (otherRohinstallations.length > 0) {
+        // Laufe parallel zur ersten Rohinstallation
+        const refEntry = otherRohinstallations[0];
+        scheduledEntries.push({
+          ...entry,
+          startDate: refEntry.startDate,
+          endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+          isParallel: true,
+          parallelTo: ['Rohinstallationen']
+        });
+        processedIndices.add(i);
+        
+        console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Rohinstallation läuft parallel zu anderen Rohinstallationen`);
+        continue;
+      }
+    }
+    
+    // FEININSTALLATIONEN PARALLEL (teilweise)
+    if (isFeininstallation && ['ELEKT', 'SAN', 'HEI'].includes(entry.trade_code)) {
+      // Feininstallationen können teilweise überlappen
+      const otherFeininstallations = scheduledEntries.filter(s => 
+        s.phase.phase_name?.toLowerCase().includes('feininstallation') &&
+        ['ELEKT', 'SAN', 'HEI'].includes(s.trade_code)
+      );
+      
+      if (otherFeininstallations.length > 0) {
+        // Starte zur gleichen Zeit wie andere Feininstallationen
+        const refEntry = otherFeininstallations[0];
+        scheduledEntries.push({
+          ...entry,
+          startDate: refEntry.startDate,
+          endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+          isParallel: true,
+          parallelTo: ['Feininstallationen']
+        });
+        processedIndices.add(i);
+        
+        console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Feininstallation läuft parallel zu anderen Feininstallationen`);
+        continue;
+      }
+    }
+    
+    // FALL 3: SEQUENTIELL - Keine Parallelität möglich
+    const startDate = new Date(currentSequenceDate);
+    const endDate = addWorkdays(startDate, phase.duration_days - 1);
+    
+    scheduledEntries.push({
+      ...entry,
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      isParallel: false
+    });
+    processedIndices.add(i);
+    
+    // Aktualisiere currentSequenceDate für nächstes sequentielles Gewerk
+    currentSequenceDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
+    
+    console.log(`[SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]} bis ${endDate.toISOString().split('T')[0]}`);
   }
-}
-
-// Jetzt einfügen in Datenbank
-for (const entry of entryDates) {
-  await query(
-    `INSERT INTO schedule_entries 
-     (schedule_id, trade_id, phase_name, phase_number,
-      planned_start, planned_end, duration_days, buffer_days,
-      status, dependencies,
-      scheduling_reason, buffer_reason, risks)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-    [
-      schedule.id,
-      entry.trade_id,
-      entry.phase.phase_name,
-      entry.phase.phase_number,
-      entry.startDate,
-      entry.endDate,
-      entry.duration_days,
-      entry.phase.buffer_days || 0,
-      'pending',
-      JSON.stringify(entry.phase.dependencies || []),
-      entry.phase.scheduling_reason,
-      entry.phase.buffer_reason,
-      entry.phase.risks
-    ]
-  );
-}
+  
+  // 3. ZWEITER DURCHLAUF: Verarbeite Einträge die Dependencies hatten
+  let maxIterations = 10;
+  let iteration = 0;
+  
+  while (processedIndices.size < allEntries.length && iteration < maxIterations) {
+    iteration++;
+    
+    for (let i = 0; i < allEntries.length; i++) {
+      if (processedIndices.has(i)) continue;
+      
+      const entry = allEntries[i];
+      const phase = entry.phase;
+      
+      // Prüfe Dependencies nochmal
+      const allDependenciesMet = entry.dependencies.every(dep => {
+        return scheduledEntries.some(s => {
+          if (typeof dep === 'string' && dep.includes('-')) {
+            // Format: "TRADE-PhaseX"
+            const [tradeDep, phaseDep] = dep.split('-');
+            return s.trade_code === tradeDep && s.phase.phase_name?.includes(phaseDep);
+          }
+          return s.trade_code === dep;
+        });
+      });
+      
+      if (!allDependenciesMet) continue;
+      
+      // Finde spätestes Ende der Dependencies
+      let latestDepEnd = currentSequenceDate;
+      
+      entry.dependencies.forEach(dep => {
+        const depEntries = scheduledEntries.filter(s => {
+          if (typeof dep === 'string' && dep.includes('-')) {
+            const [tradeDep, phaseDep] = dep.split('-');
+            return s.trade_code === tradeDep && s.phase.phase_name?.includes(phaseDep);
+          }
+          return s.trade_code === dep;
+        });
+        
+        if (depEntries.length > 0) {
+          const latestDep = depEntries.reduce((latest, curr) => {
+            return new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest;
+          });
+          
+          const depEndDate = addWorkdays(new Date(latestDep.endDate), 1 + (latestDep.phase.buffer_days || 0));
+          if (depEndDate > latestDepEnd) {
+            latestDepEnd = depEndDate;
+          }
+        }
+      });
+      
+      const startDate = new Date(latestDepEnd);
+      const endDate = addWorkdays(startDate, phase.duration_days - 1);
+      
+      scheduledEntries.push({
+        ...entry,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        isParallel: false
+      });
+      processedIndices.add(i);
+      
+      // Update currentSequenceDate falls dieses Gewerk später endet
+      const thisEndWithBuffer = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
+      if (thisEndWithBuffer > currentSequenceDate) {
+        currentSequenceDate = thisEndWithBuffer;
+      }
+      
+      console.log(`[DEPENDENCY-MET] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]}`);
+    }
+  }
+  
+  // WARNUNG: Falls nicht alle Einträge verarbeitet wurden
+  if (processedIndices.size < allEntries.length) {
+    console.warn(`[SCHEDULE-WARNING] ${allEntries.length - processedIndices.size} Einträge konnten nicht geplant werden (zirkuläre Dependencies?)`);
+  }
+  
+  // 4. SPEICHERE IN DATENBANK
+  for (const entry of scheduledEntries) {
+    await query(
+      `INSERT INTO schedule_entries 
+       (schedule_id, trade_id, phase_name, phase_number,
+        planned_start, planned_end, duration_days, buffer_days,
+        status, dependencies,
+        scheduling_reason, buffer_reason, risks)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [
+        schedule.id,
+        entry.trade_id,
+        entry.phase.phase_name,
+        entry.phase.phase_number,
+        entry.startDate,
+        entry.endDate,
+        entry.phase.duration_days,
+        entry.phase.buffer_days || 0,
+        'pending',
+        JSON.stringify(entry.dependencies),
+        entry.phase.scheduling_reason,
+        entry.phase.buffer_reason,
+        entry.phase.risks
+      ]
+    );
+  }
+  
+  console.log(`[SCHEDULE-SUCCESS] ${scheduledEntries.length} Einträge gespeichert`);
+  console.log(`[PARALLEL-COUNT] ${scheduledEntries.filter(e => e.isParallel).length} parallele Phasen erkannt`);
           
           // Nächstes Gewerk: Startdatum = Enddatum + 1 + Puffer
           currentDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
