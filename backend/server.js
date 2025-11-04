@@ -25861,7 +25861,7 @@ app.post('/api/projects/:projectId/schedule/initiate', async (req, res) => {
 });
 
 // ============================================================================
-// 2. TERMINPLAN GENERIEREN (KI-basiert)
+// 2. TERMINPLAN GENERIEREN (KI-basiert) - FIXED VERSION
 // ============================================================================
 
 app.post('/api/projects/:projectId/schedule/generate', async (req, res) => {
@@ -25993,6 +25993,9 @@ ${getTradeInterfacesPrompt()}
 - Mittel (15-40k€): 10-20 Tage
 - Groß (>40k€): 20-40 Tage
 - Sanierung: +30% (unvorhergesehene Probleme)
+- **WICHTIG: Kleinere Rohbauarbeiten (Wanddurchbrüche, Ausstemmen) mit <5k€ können parallel zu anderen Gewerken laufen!**
+  - Setze bei solchen Arbeiten: is_minor_work: true
+  - Setze can_parallel_with: ["DACH", "FEN", "FASS", "MAL", "TRO"] (je nach Kontext)
 
 **GERÜSTBAU (GER) - SPEZIAL-BEHANDLUNG MIT 3 PFLICHT-PHASEN:**
 
@@ -26005,6 +26008,9 @@ KRITISCH: Gerüst ist KEIN normales Gewerk! Es besteht IMMER aus genau 3 aufeina
 - Muss VOR allen Außenarbeiten erfolgen
 - Dependencies: Keine (kann direkt nach ROH starten)
 - Startdatum: Frühestmöglich nach Rohbau
+- **FLAGS:**
+  - is_standzeit: false
+  - is_minor_work: false
 
 **Phase 2 - Gerüst-Standzeit (PARALLEL ZU AUSSENARBEITEN!):**
 - Dauer: SUMME aller Außenarbeiten-Dauern (DACH + ZIMM + FEN + FASS + deren Puffer)
@@ -26013,8 +26019,10 @@ KRITISCH: Gerüst ist KEIN normales Gewerk! Es besteht IMMER aus genau 3 aufeina
 - Enddatum = Ende der letzten Außenarbeit (meist FASS-Anstrich)
 - KEINE eigene Arbeit - nur Standzeit-Bereitstellung!
 - Verursacht tägliche Kosten (50-100€/Tag)
-- can_parallel_with: ["DACH", "ZIMM", "FEN", "FASS"]
-- is_standzeit: true (Flag für Frontend)
+- **CRITICAL FLAGS - MÜSSEN GESETZT WERDEN:**
+  - is_standzeit: true (zeigt an: nur Info, keine echte Arbeit)
+  - can_parallel_with: ["DACH", "ZIMM", "FEN", "FASS", "SCHL"]
+  - dependencies: ["GER-Aufbau"] (startet nach Phase 1)
 
 **Phase 3 - Gerüstabbau:**
 - Dauer: 0,5-1 Tag
@@ -26022,6 +26030,10 @@ KRITISCH: Gerüst ist KEIN normales Gewerk! Es besteht IMMER aus genau 3 aufeina
 - Frühester Start = 1 Tag nach Ende der letzten Außenarbeit
 - Dependencies: ["DACH", "ZIMM", "FEN", "FASS"] (ALLE müssen fertig sein!)
 - Kann parallel zu Innenarbeiten laufen
+- **FLAGS:**
+  - is_standzeit: false
+  - is_minor_work: false
+  - can_parallel_with: ["MAL", "BOD", "TIS", "ELEKT", "SAN", "HEI"]
 
 **BERECHNUNGS-BEISPIEL:**
 Projekt hat: DACH (12 Tage + 3 Tage Puffer), FEN (3 Tage + 1 Tag Puffer), FASS (18 Tage + 2 Tage Puffer)
@@ -26185,7 +26197,9 @@ Feininstallation:
 2. **ROHBAUPHASE:**
    - ROH immer zuerst oder nach ABBR (falls nötig)
    - ROH abgeschlossen → ZIMM/DACH/FEN möglich
-   - ROH Wanddurchbrüche/kleinere Rohbauarbeiten im Bestand → direkt nach oder während ABBR
+   - **WICHTIG: ROH Wanddurchbrüche/kleinere Rohbauarbeiten im Bestand (<5k€) → können parallel laufen!**
+     - Setze: is_minor_work: true
+     - Setze: can_parallel_with: ["DACH", "FEN", "FASS", "MAL", "TRO"]
 
 3. **GERÜST/DACH/FENSTER/FASSADE (Gebäudehülle):**
    - Gerüstaufbau GER Phase 1 immer zuerst
@@ -26251,6 +26265,7 @@ KRITISCHE LOGIK-REGELN:
   3. Abbau (0,5-1 Tag) - nach letzter Außenarbeit
 - Phase 2 ist KEINE Arbeit, sondern nur Standzeit!
 - Phase 2: can_parallel_with: ["DACH", "ZIMM", "FEN", "FASS"]
+- Phase 2: is_standzeit: true (MUSS gesetzt sein!)
 - Phase 3 darf ERST starten wenn ALLE Außenarbeiten fertig sind
 - Phase 3: dependencies: ["DACH", "FASS", "FEN", "ZIMM"]
 - Standzeit verursacht tägliche Kosten (50-100€/Tag) - dem Bauherrn kommunizieren!
@@ -26412,6 +26427,7 @@ KRITISCHE LOGIK-REGELN:
    - Genau 3 Phasen (Aufbau, Standzeit, Abbau)?
    - Standzeit = Summe aller Außenarbeiten?
    - Abbau erst nach letzter Außenarbeit?
+   - **is_standzeit: true bei Phase 2 gesetzt?**
    
 5. **Puffer sinnvoll platziert?**
    - Nach ESTR (Trocknungs-Risiko)
@@ -26520,6 +26536,8 @@ OUTPUT (NUR valides JSON):
           "sequence_order": 1,
           "dependencies": [],
           "can_parallel_with": [],
+          "is_standzeit": false,
+          "is_minor_work": false,
           "scheduling_reason": "Rohbau ist Grundlage für alle Folgetermine. Muss abgeschlossen sein, bevor Gewerke beginnen können.",
           "risks": "Bei tragenden Wänden können statische Probleme auftreten. Feuchte Wände verlängern Trocknungszeit.",
           "weather_dependent": false,
@@ -26555,6 +26573,8 @@ OUTPUT (NUR valides JSON):
 ✓ Wetterabhängigkeiten sind markiert
 ✓ Kritischer Pfad ist korrekt identifiziert
 ✓ Gesamtdauer ist plausibel für Projekttyp
+✓ **is_standzeit: true ist bei Gerüst Phase 2 gesetzt**
+✓ **is_minor_work: true ist bei kleinen Rohbauarbeiten (<5k€) gesetzt**
 
 NUR valides JSON ausgeben - keine zusätzlichen Texte oder Markdown!`;
 
@@ -26606,6 +26626,8 @@ WICHTIG:
 - Passe die Standard-Dauern an den tatsächlichen Umfang an
 - Erkläre dem Bauherrn transparent, warum welches Gewerk wie lange dauert
 - Berücksichtige die Auftragssummen: Höhere Summe = mehr Arbeitsaufwand
+- **KRITISCH: Setze bei Gerüst Phase 2 (Standzeit) IMMER is_standzeit: true**
+- **KRITISCH: Setze bei kleinen Rohbauarbeiten (<5k€) is_minor_work: true und can_parallel_with**
 
 Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärungen basierend auf den tatsächlichen Leistungsmengen.`;
 
@@ -26666,7 +26688,7 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
 await query('BEGIN');
 
 try {
-  // 1. SAMMLE ALLE EINTRÄGE
+  // 1. SAMMLE ALLE EINTRÄGE MIT METADATEN
   const allEntries = [];
   
   for (const trade of scheduleData.schedule) {
@@ -26680,7 +26702,9 @@ try {
         trade_name: tradeInfo.name,
         phase: phase,
         dependencies: phase.dependencies || [],
-        can_parallel_with: phase.can_parallel_with || []
+        can_parallel_with: phase.can_parallel_with || [],
+        is_standzeit: phase.is_standzeit || false,  // NEU
+        is_minor_work: phase.is_minor_work || false // NEU
       });
     }
   }
@@ -26690,11 +26714,20 @@ try {
   let currentSequenceDate = new Date(currentDate);
   const processedIndices = new Set();
   
+  // ================================================================
+  // PHASE 1: Gerüst-Standzeit & Minor Works MÜSSEN PARALLEL laufen
+  // ================================================================
   for (let i = 0; i < allEntries.length; i++) {
     if (processedIndices.has(i)) continue;
     
     const entry = allEntries[i];
     const phase = entry.phase;
+    
+    // SKIP: Standzeit-Phasen & Minor Works werden später parallel eingeplant
+    if (entry.is_standzeit || entry.is_minor_work) {
+      console.log(`[SKIP-FOR-LATER] ${entry.trade_code} Phase ${phase.phase_number} (${entry.is_standzeit ? 'Standzeit' : 'Minor Work'})`);
+      continue;
+    }
     
     // Prüfe Dependencies
     const allDependenciesMet = entry.dependencies.every(dep => {
@@ -26711,10 +26744,10 @@ try {
     // ================================================================
     // FALL 1: EXPLIZITE can_parallel_with (aus LLM)
     // ================================================================
-    if (entry.can_parallel_with.length > 0) {
+    if (entry.can_parallel_with.length > 0 && !entry.is_standzeit) {
       const parallelTrades = entry.can_parallel_with;
       const parallelEntries = scheduledEntries.filter(s => 
-        parallelTrades.includes(s.trade_code)
+        parallelTrades.includes(s.trade_code) && !s.is_standzeit
       );
       
       if (parallelEntries.length > 0) {
@@ -26785,16 +26818,14 @@ try {
     }
     
     // 2C. DACH UND FEN TEILWEISE ÜBERSCHNEIDEND
-    // FEN kann starten während DACH noch läuft (letztes Drittel)
     if (entry.trade_code === 'FEN') {
       const dachEntries = scheduledEntries.filter(s => s.trade_code === 'DACH');
       
       if (dachEntries.length > 0) {
-        const dachEntry = dachEntries[dachEntries.length - 1]; // Letzte DACH-Phase
-        const dachDuration = phase.duration_days;
+        const dachEntry = dachEntries[dachEntries.length - 1];
+        const dachDuration = dachEntry.phase.duration_days;
         const dachTwoThirds = Math.floor(dachDuration * 0.66);
         
-        // FEN startet nach 2/3 der Dach-Arbeiten
         const fenStart = addWorkdays(new Date(dachEntry.startDate), dachTwoThirds);
         
         scheduledEntries.push({
@@ -26805,23 +26836,20 @@ try {
           parallelTo: ['DACH']
         });
         processedIndices.add(i);
-        console.log(`[PARALLEL-IMPLICIT] FEN läuft teilweise parallel zu DACH (ab 2/3)`);
+        console.log(`[PARALLEL-IMPLICIT] FEN läuft teilweise parallel zu DACH`);
         continue;
       }
     }
     
-    // 2D. BODEN + FLIESEN IN VERSCHIEDENEN RÄUMEN PARALLEL
-    // FLI (Bäder) und BOD (Wohnräume) können parallel laufen
+    // 2D. BODEN + FLIESEN PARALLEL
     if (entry.trade_code === 'BOD') {
       const fliEntries = scheduledEntries.filter(s => 
-        s.trade_code === 'FLI' && 
-        !s.isParallel
+        s.trade_code === 'FLI' && !s.isParallel
       );
       
       if (fliEntries.length > 0) {
         const fliEntry = fliEntries[fliEntries.length - 1];
         
-        // BOD kann parallel zu FLI laufen (räumliche Trennung)
         scheduledEntries.push({
           ...entry,
           startDate: fliEntry.startDate,
@@ -26830,13 +26858,12 @@ try {
           parallelTo: ['FLI']
         });
         processedIndices.add(i);
-        console.log(`[PARALLEL-IMPLICIT] BOD läuft parallel zu FLI (verschiedene Räume)`);
+        console.log(`[PARALLEL-IMPLICIT] BOD läuft parallel zu FLI`);
         continue;
       }
     }
     
     // 2E. AUSSENANLAGEN PARALLEL ZU INNENAUSBAU
-    // AUSS kann parallel zu MAL, BOD, TIS, FLI laufen
     if (entry.trade_code === 'AUSS') {
       const innenarbeiten = scheduledEntries.filter(s => 
         ['MAL', 'BOD', 'TIS', 'FLI', 'ELEKT', 'SAN', 'HEI'].includes(s.trade_code) &&
@@ -26844,7 +26871,6 @@ try {
       );
       
       if (innenarbeiten.length > 0) {
-        // Finde früheste Innenarbeit die noch läuft
         const refEntry = innenarbeiten[0];
         
         scheduledEntries.push({
@@ -26861,7 +26887,7 @@ try {
     }
     
     // ================================================================
-    // FALL 3: SEQUENTIELL - Keine Parallelität möglich
+    // FALL 3: SEQUENTIELL
     // ================================================================
     const startDate = new Date(currentSequenceDate);
     const endDate = addWorkdays(startDate, phase.duration_days - 1);
@@ -26879,7 +26905,71 @@ try {
   }
   
   // ================================================================
-  // 3. ZWEITER DURCHLAUF: Dependencies
+  // PHASE 2: GERÜST-STANDZEIT & MINOR WORKS PARALLEL EINPLANEN
+  // ================================================================
+  for (let i = 0; i < allEntries.length; i++) {
+    if (processedIndices.has(i)) continue;
+    
+    const entry = allEntries[i];
+    const phase = entry.phase;
+    
+    // 🔴 GERÜST-STANDZEIT: Läuft parallel zu ALLEN Außenarbeiten
+    if (entry.is_standzeit && entry.trade_code === 'GER') {
+      const aussenarbeiten = scheduledEntries.filter(s => 
+        ['DACH', 'ZIMM', 'FEN', 'FASS', 'SCHL'].includes(s.trade_code)
+      );
+      
+      if (aussenarbeiten.length > 0) {
+        // Finde frühesten Start und spätestes Ende der Außenarbeiten
+        const startDates = aussenarbeiten.map(s => new Date(s.startDate));
+        const endDates = aussenarbeiten.map(s => new Date(s.endDate));
+        
+        const earliestStart = new Date(Math.min(...startDates));
+        const latestEnd = new Date(Math.max(...endDates));
+        
+        scheduledEntries.push({
+          ...entry,
+          startDate: earliestStart.toISOString().split('T')[0],
+          endDate: latestEnd.toISOString().split('T')[0],
+          isParallel: true,
+          parallelTo: ['DACH', 'ZIMM', 'FEN', 'FASS'],
+          is_standzeit: true // FLAG für Frontend
+        });
+        processedIndices.add(i);
+        
+        const standzeit_days = Math.ceil((latestEnd - earliestStart) / (1000 * 60 * 60 * 24));
+        const standzeit_cost = standzeit_days * 75; // 75€/Tag
+        console.log(`[GERÜST-STANDZEIT] ${standzeit_days} Tage parallel zu Außenarbeiten (ca. ${standzeit_cost}€)`);
+        continue;
+      }
+    }
+    
+    // 🟡 MINOR WORKS: Kleine Rohbauarbeiten parallel zu anderem
+    if (entry.is_minor_work && entry.can_parallel_with.length > 0) {
+      const parallelTrades = entry.can_parallel_with;
+      const parallelEntries = scheduledEntries.filter(s => 
+        parallelTrades.includes(s.trade_code)
+      );
+      
+      if (parallelEntries.length > 0) {
+        const referenceEntry = parallelEntries[0];
+        scheduledEntries.push({
+          ...entry,
+          startDate: referenceEntry.startDate,
+          endDate: addWorkdays(new Date(referenceEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+          isParallel: true,
+          parallelTo: parallelTrades,
+          is_minor_work: true
+        });
+        processedIndices.add(i);
+        console.log(`[MINOR-WORK-PARALLEL] ${entry.trade_code} läuft parallel zu ${parallelTrades.join(', ')}`);
+        continue;
+      }
+    }
+  }
+  
+  // ================================================================
+  // PHASE 3: Dependencies noch nicht erfüllt
   // ================================================================
   let maxIterations = 10;
   let iteration = 0;
@@ -26961,8 +27051,8 @@ try {
        (schedule_id, trade_id, phase_name, phase_number,
         planned_start, planned_end, duration_days, buffer_days,
         status, dependencies,
-        scheduling_reason, buffer_reason, risks)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        scheduling_reason, buffer_reason, risks, is_standzeit, is_minor_work)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         schedule.id,
         entry.trade_id,
@@ -26976,13 +27066,17 @@ try {
         JSON.stringify(entry.dependencies),
         entry.phase.scheduling_reason,
         entry.phase.buffer_reason,
-        entry.phase.risks
+        entry.phase.risks,
+        entry.is_standzeit || false,  // NEU: Speichere Flag
+        entry.is_minor_work || false  // NEU: Speichere Flag
       ]
     );
   }
   
   console.log(`[SCHEDULE-SUCCESS] ${scheduledEntries.length} Einträge gespeichert`);
-  console.log(`[PARALLEL-COUNT] ${scheduledEntries.filter(e => e.isParallel).length} parallele Phasen erkannt`);
+  console.log(`[PARALLEL-COUNT] ${scheduledEntries.filter(e => e.isParallel).length} parallele Phasen`);
+  console.log(`[STANDZEIT-COUNT] ${scheduledEntries.filter(e => e.is_standzeit).length} Standzeit-Phasen`);
+  console.log(`[MINOR-WORK-COUNT] ${scheduledEntries.filter(e => e.is_minor_work).length} Minor Work Phasen`);
   
   // Update Schedule mit KI-Daten
   await query(
