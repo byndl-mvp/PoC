@@ -25771,8 +25771,8 @@ function getTradeInterfacesPrompt() {
    - Dachausbau: 
      ZIMM/DACH (Konstruktion) → ELEKT/SAN/HEI (Leitungen) → TRO (Verkleidung) → MAL/BOD/FLI (Finish) → SAN/ELEKT/HEI (Endmontage)
      
-   - Fassade mit WDVS: 
-     GER (Gerüst) → FASS (WDVS + Dämmung) → FASS (Putz + Anstrich)
+   - Fassade mit WDVS und Fenstern: 
+     GER (Gerüst) → FEN (Einbau Fenster) → FASS (WDVS + Dämmung) → FASS (Putz + Anstrich)
    
    - Heizungstausch: 
      HEI (Heizung) → ELEKT (Stromanschluss) → MAL (Anstrich Heizungsraum)
@@ -26178,6 +26178,79 @@ Feininstallation:
 - Feininstallationen teilweise parallel
 - Boden + Fliesen in verschiedenen Räumen
 - AUSSEN-Arbeiten parallel zum Innenausbau
+
+## 3A. KRITISCHE GEWERKESCHNITTSTELLEN (ABSOLUT ZWINGEND!)
+
+**🔴 FASSADE & FENSTER (EXTREM WICHTIG!):**
+- FEN muss IMMER VOR FASS kommen!
+- Bei WDVS-Fassade: Fenster MÜSSEN bereits eingebaut sein
+- WDVS-Platten werden an eingebauten Fenstern angeschlossen
+- Fensterbank muss unter WDVS verlaufen
+- Anputzleisten werden am Fensterrahmen befestigt
+- Dependencies: FEN → FASS (niemals umgekehrt!)
+
+**ROHINSTALLATIONEN VOR WANDSCHLIESSUNG:**
+- ELEKT-Roh, SAN-Roh, HEI-Roh müssen ALLE komplett fertig sein
+- Erst dann TRO/Putz möglich
+- Erst dann ESTR möglich
+- Nach Wandschließung sind Nacharbeiten extrem teuer
+- Dependencies: ELEKT-Roh, SAN-Roh, HEI-Roh → TRO/ESTR
+
+**FEININSTALLATIONEN NACH MALERARBEITEN:**
+- MAL muss komplett fertig sein (beide Anstriche)
+- Dann erst ELEKT-Fein (Schalter/Steckdosen)
+- Dann erst SAN-Fein (Armaturen/WC)
+- Dann erst HEI-Fein (Heizkörper)
+- Grund: Farbspritzer auf neuen Armaturen = Katastrophe
+- Dependencies: MAL → ELEKT-Fein, SAN-Fein, HEI-Fein
+
+**FLIESEN VOR SANITÄROBJEKTEN:**
+- FLI muss komplett fertig sein (Verlegung + Verfugung)
+- Dann erst SAN-Fein (WC, Waschbecken, Duschen montieren)
+- Sanitärobjekte werden AUF Fliesen montiert
+- Dependencies: FLI → SAN-Fein
+
+**BODENBELAG NACH MALERARBEITEN:**
+- MAL muss komplett fertig sein (beide Anstriche)
+- Dann erst BOD verlegen
+- Dann erst TIS Sockelleisten
+- Grund: Farbspritzer auf neuem Boden = sehr teuer
+- Dependencies: MAL → BOD → TIS-Sockelleisten
+
+**ESTRICH-TROCKNUNG NICHT VERHANDELBAR:**
+- Heizestrich: Mind. 21 Tage + 10-14 Tage Aufheizprotokoll
+- Zementestrich: 7 Tage pro cm Dicke (bei 5cm = 35 Tage!)
+- Dann erst BOD möglich
+- KEINE Abkürzungen möglich - sonst Schäden!
+- Dependencies: ESTR → WARTEN (21-35 Tage) → BOD
+
+**FUSSBODENHEIZUNG SPEZIAL:**
+- HEI Rohre verlegen und unter Druck setzen
+- HEI Drucktest (Rohre bleiben unter Druck!)
+- ESTR Heizestrich verlegen (Rohre unter Druck)
+- Trocknungszeit 21 Tage
+- Aufheizprotokoll 10-14 Tage
+- Erst dann BOD verlegen
+- Dependencies: HEI-Roh → ESTR → Trocknung → Aufheizen → BOD
+
+**KÜCHE GANZ AM SCHLUSS:**
+- ELEKT-Fein, SAN-Fein, FLI alle fertig
+- Dann erst TIS Küche einbauen
+- Dann erst Geräteanschlüsse (Herd, Geschirrspüler)
+- Dependencies: ELEKT-Fein, SAN-Fein, FLI → TIS-Küche → Anschlüsse
+
+**TISCHLER MEHRFACH-EINSÄTZE:**
+- TIS Zargen einbauen (für Türhöhen)
+- Dann MAL + BOD
+- Dann TIS Türen einhängen
+- Dann TIS Sockelleisten montieren
+- Dependencies: TIS-Zargen → MAL/BOD → TIS-Türen → TIS-Sockelleisten
+
+**MEHRFACH-EINSÄTZE IMMER BEACHTEN:**
+- ELEKT: Roh → [TRO/MAL] → Fein (2 Phasen zwingend!)
+- SAN: Roh → [FLI] → Fein (2 Phasen zwingend!)
+- HEI: Roh → [ESTR/MAL] → Fein (2 Phasen zwingend!)
+- TIS: Zargen → [MAL/BOD] → Türen → Sockelleisten (4 Phasen!)
 
 ## 4. PUFFER-STRATEGIE
 
