@@ -26101,7 +26101,7 @@ ${code} - ${lv.trade_name}:
   • Anzahl Positionen: ${lv.total_positions}
   • Komplexität: ${lv.has_complex_positions ? 'HOCH (große Mengen/teure Positionen)' : 'NORMAL'}
   
-  Beispiel-Positionen (erste 15):
+Alle Positionen:
 ${lv.position_summary.map(pos => 
   `    - ${pos.title}: ${pos.quantity} ${pos.unit}${pos.description ? ` (${pos.description})` : ''}`
 ).join('\n')}
