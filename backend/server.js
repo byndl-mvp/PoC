@@ -25985,20 +25985,55 @@ ${getTradeInterfacesPrompt()}
 ## 1. LV-BASIERTE DAUERSCHÄTZUNG
 
 ### Bewertungsmatrix nach Gewerk und Umfang:
-
-**GERÜST (GER):**
-- Aufbau: 1-2 Tage (je nach Gebäudehöhe)
-- Standzeit richtet sich nach Dauer FASS/DACH/ZIMM/FEN
-- Abbau: 0,5-1 Tag
-- Abhängigkeiten: 
-  * Gerüst → DACH/FASS/ZIMM/FEN (ggf. SCHL bei Balkongeländern) → Gerüst-Abbau
-  * Bei mehreren Außengewerken: Parallel abarbeiten
   
 **ROHBAU (ROH):**
 - Klein (<15k€): 5-8 Tage
 - Mittel (15-40k€): 10-20 Tage
 - Groß (>40k€): 20-40 Tage
 - Sanierung: +30% (unvorhergesehene Probleme)
+
+**GERÜSTBAU (GER) - SPEZIAL-BEHANDLUNG MIT 3 PFLICHT-PHASEN:**
+
+KRITISCH: Gerüst ist KEIN normales Gewerk! Es besteht IMMER aus genau 3 aufeinanderfolgenden Phasen:
+
+**Phase 1 - Gerüstaufbau:**
+- Dauer: 1-2 Tage (abhängig von Gebäudehöhe und Fläche)
+- <50m² Fassade: 1 Tag
+- >50m² Fassade oder >2 Geschosse: 2 Tage
+- Muss VOR allen Außenarbeiten erfolgen
+- Dependencies: Keine (kann direkt nach ROH starten)
+- Startdatum: Frühestmöglich nach Rohbau
+
+**Phase 2 - Gerüst-Standzeit (PARALLEL ZU AUSSENARBEITEN!):**
+- Dauer: SUMME aller Außenarbeiten-Dauern (DACH + ZIMM + FEN + FASS + deren Puffer)
+- Diese Phase läuft PARALLEL zu den Außengewerken
+- Startdatum = Ende Gerüstaufbau (Phase 1)
+- Enddatum = Ende der letzten Außenarbeit (meist FASS-Anstrich)
+- KEINE eigene Arbeit - nur Standzeit-Bereitstellung!
+- Verursacht tägliche Kosten (50-100€/Tag)
+- can_parallel_with: ["DACH", "ZIMM", "FEN", "FASS"]
+- is_standzeit: true (Flag für Frontend)
+
+**Phase 3 - Gerüstabbau:**
+- Dauer: 0,5-1 Tag
+- Muss NACH allen Außenarbeiten erfolgen
+- Frühester Start = 1 Tag nach Ende der letzten Außenarbeit
+- Dependencies: ["DACH", "ZIMM", "FEN", "FASS"] (ALLE müssen fertig sein!)
+- Kann parallel zu Innenarbeiten laufen
+
+**BERECHNUNGS-BEISPIEL:**
+Projekt hat: DACH (12 Tage + 3 Tage Puffer), FEN (3 Tage + 1 Tag Puffer), FASS (18 Tage + 2 Tage Puffer)
+Gesamt-Außenarbeiten: 15 + 4 + 20 = 39 Tage
+
+Gerüst Phase 1: Aufbau 2 Tage (Tag 1-2)
+Gerüst Phase 2: Standzeit 39 Tage (Tag 3-41) - während DACH, FEN, FASS laufen
+Gerüst Phase 3: Abbau 1 Tag (Tag 42)
+
+Gesamt Gerüst-Kosten: 39 Tage × 75€ = ca. 2.925€ Standzeit
+
+**WICHTIG IM OUTPUT:**
+In general_explanation oder recommendations MUSS Gerüst-Standzeit erwähnt werden:
+"Gerüst-Standzeit: X Tage = ca. X.XXX€ (wichtig: Koordination der Außenarbeiten spart Kosten)"
 
 **ELEKTRO (ELEKT):**
 Rohinstallation:
@@ -26150,16 +26185,17 @@ Feininstallation:
    - ROH abgeschlossen → ZIMM/DACH/FEN möglich
    - ROH Wanddurchbrüche/kleinere Rohbauarbeiten im Bestand → direkt nach oder während ABBR
 
-3. **DACH/FASSADE (Gebäudehülle):**
-   - Gerüstaufbau (GER) immer zuerst
+3. **GERÜST/DACH/FENSTER/FASSADE (Gebäudehülle):**
+   - Gerüstaufbau GER Phase 1 immer zuerst
+   - Dann PARALLEL: GER Phase 2 (Standzeit) MIT DACH + ZIMM + FEN + FASS
    - ZIMM (falls neuer Dachstuhl oder Gauben nötig) immer nach oder bereits während ROH
    - DACH immer nach ROH und ZIMM
    - FEN nach oder während DACH
    - FASS nach FEN
-   - Gerüstabbau immer erst nach Abschluss FASS und DACH
-   - Abschluss dichte Gebäudehülle → Start Innenausbau
+   - Gerüstabbau GER Phase 3 immer erst nach Abschluss DACH + ZIMM + FEN + FASS
    
 4. **ROHINSTALLATIONEN (PARALLEL MÖGLICH):**
+   - Abschluss dichte Gebäudehülle → Start Innenausbau, zuerst Rohinstallationen
    - ELEKT Rohinstallation
    - SAN Rohinstallation  
    - HEI Rohinstallation
@@ -26204,6 +26240,18 @@ KRITISCHE LOGIK-REGELN:
 - AUSSEN-Arbeiten parallel zum Innenausbau
 
 ## 3A. KRITISCHE GEWERKESCHNITTSTELLEN (ABSOLUT ZWINGEND!)
+
+**🔴 GERÜST SPEZIAL-STRUKTUR (3 PFLICHT-PHASEN):**
+- Gerüst ist KEIN normales Gewerk!
+- IMMER genau 3 Phasen erstellen:
+  1. Aufbau (1-2 Tage) - vor Außenarbeiten
+  2. Standzeit (= Dauer aller Außenarbeiten inkl. Puffer) - parallel zu DACH/ZIMM/FEN/FASS 
+  3. Abbau (0,5-1 Tag) - nach letzter Außenarbeit
+- Phase 2 ist KEINE Arbeit, sondern nur Standzeit!
+- Phase 2: can_parallel_with: ["DACH", "ZIMM", "FEN", "FASS"]
+- Phase 3 darf ERST starten wenn ALLE Außenarbeiten fertig sind
+- Phase 3: dependencies: ["DACH", "FASS", "FEN", "ZIMM"]
+- Standzeit verursacht tägliche Kosten (50-100€/Tag) - dem Bauherrn kommunizieren!
 
 **🔴 FASSADE & FENSTER (EXTREM WICHTIG!):**
 - FEN muss IMMER VOR FASS kommen!
@@ -26358,12 +26406,17 @@ KRITISCHE LOGIK-REGELN:
    - Kein Boden vor Malerarbeiten
    - Keine Innenarbeiten vor dichtem Dach
 
-4. **Puffer sinnvoll platziert?**
+4. **Gerüst korrekt strukturiert?**
+   - Genau 3 Phasen (Aufbau, Standzeit, Abbau)?
+   - Standzeit = Summe aller Außenarbeiten?
+   - Abbau erst nach letzter Außenarbeit?
+   
+5. **Puffer sinnvoll platziert?**
    - Nach ESTR (Trocknungs-Risiko)
    - Nach DACH (Wetter-Risiko)
    - Nach ROH bei Sanierung
 
-5. **Parallelisierung realistisch?**
+6. **Parallelisierung realistisch?**
    - Nicht zu viele Gewerke gleichzeitig
    - Räumliche Trennung möglich?
    - Bauherr kann das koordinieren?
@@ -26401,6 +26454,12 @@ BEISPIEL ELEKTRO (LV: 35 Positionen, 18.000€):
 - Rohinstallation: 3 Tage Basis × 1.1 (mittlerer Umfang) = 3 Tage
 - Feininstallation: 2 Tage Basis × 1.1 = 2 Tage
 - Puffer: 2 Tage (kritisches Gewerk)
+
+BEISPIEL GERÜST (bei Fassadensanierung):
+- Fassadenfläche: 120m² WDVS, Putz, Anstrich
+- Phase 1 Aufbau: 2 Tage (>50m²)
+- Phase 2 Standzeit: DACH (15d) + FEN (4d) + FASS (25d) = 44 Tage
+- Phase 3 Abbau: 1 Tag
 
 PROJEKTTYP-SPEZIFISCHE PUFFER:
 - Sanierung: 20-30% höhere Puffer (unvorhergesehene Probleme häufig)
