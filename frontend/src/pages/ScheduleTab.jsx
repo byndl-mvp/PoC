@@ -1035,10 +1035,10 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
           }
         >
           <div className={`h-full rounded-lg relative ${
-            isStandzeit 
-              ? `border-4 border-dashed bg-opacity-20 bg-gradient-to-r ${color}` 
-              : `bg-gradient-to-r ${color}`
-          }`}>
+  isStandzeit 
+    ? `border-2 border-dashed bg-opacity-10 bg-gradient-to-r ${color}` 
+    : `bg-gradient-to-r ${color}`
+}`}>
             {/* Status-Indicator */}
             {entry.confirmed && (
               <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
