@@ -1141,6 +1141,34 @@ const isMinorWork = entry.is_minor_work === true;
     )}
           </div>
         </button>
+
+        {/* Puffer-Tage Verlängerung */}
+        {bufferDays > 0 && !isStandzeit && (
+          <div
+            className="absolute"
+            style={{
+              left: `calc(${position.left} + ${position.width})`,
+              width: `${(bufferDays / totalDays) * 100}%`,
+              height: isStandzeit ? '20px' : '40px',
+              top: isStandzeit ? '10px' : '0',
+              opacity: 0.3,
+              pointerEvents: 'none'
+            }}
+          >
+            <div 
+              className={`h-full rounded-r-lg bg-gradient-to-r ${color}`}
+              style={{
+                backgroundImage: `repeating-linear-gradient(
+                  45deg,
+                  transparent,
+                  transparent 5px,
+                  rgba(255, 255, 255, 0.1) 5px,
+                  rgba(255, 255, 255, 0.1) 10px
+                )`
+              }}
+            />
+          </div>
+        )}
         
         {/* Datum UNTER dem Balken */}
         <div className="absolute text-center text-white text-xs font-semibold whitespace-nowrap" style={{ ...position, top: '45px' }}>
