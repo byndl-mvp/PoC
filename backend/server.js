@@ -26914,12 +26914,6 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
   
   console.log(`[SCHEDULE-SUCCESS] ${scheduledEntries.length} Einträge gespeichert`);
   console.log(`[PARALLEL-COUNT] ${scheduledEntries.filter(e => e.isParallel).length} parallele Phasen erkannt`);
-          
-          // Nächstes Gewerk: Startdatum = Enddatum + 1 + Puffer
-          currentDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
-          sequenceCounter++;
-        }
-      }
       
       // Update Schedule mit KI-Daten
       await query(
