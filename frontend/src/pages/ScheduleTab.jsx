@@ -564,7 +564,7 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
               <li>✓ Optimale Reihenfolge</li>
               <li>✓ Puffer-Berechnung</li>
             </ul>
-            <p className="text-gray-500 text-xs mt-4">Dies kann 30-60 Sekunden dauern</p>
+            <p className="text-gray-500 text-xs mt-4">Dies kann je nach Komplexität 3-5 Minuten dauern</p>
           </div>
         )}
       </div>
