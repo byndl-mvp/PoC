@@ -956,6 +956,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, allEntries, color }) {
   const [showEditModal, setShowEditModal] = useState(false);
 
+  const isStandzeit = (entry.trade_code === 'GER' && entry.phase_number === 2) || 
+                    entry.phase_name?.toLowerCase().includes('standzeit');
+  
   const calculatePosition = (start, end) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
