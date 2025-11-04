@@ -25929,24 +25929,76 @@ app.post('/api/projects/:projectId/schedule/generate', async (req, res) => {
     let intakeAnswers = [];
     if (intTradeId) {
       const answersResult = await query(
-        `SELECT q.text as question, a.answer_text as answer
-         FROM answers a
-         JOIN questions q ON q.project_id = a.project_id 
-           AND q.trade_id = a.trade_id 
-           AND q.question_id = a.question_id
-         WHERE a.project_id=$1 AND a.trade_id=$2
-         ORDER BY q.question_id
-         LIMIT 10`,
-        [projectId, intTradeId]
-      );
+  `SELECT q.text as question, a.answer_text as answer
+   FROM answers a
+   JOIN questions q ON q.project_id = a.project_id 
+     AND q.trade_id = a.trade_id 
+     AND q.question_id = a.question_id
+   WHERE a.project_id=$1 AND a.trade_id=$2
+   ORDER BY q.question_id`,
+  [projectId, intTradeId]
+);
       intakeAnswers = answersResult.rows;
     }
+    // NEU: Lade fertige LVs für jeden Trade
+    const lvsResult = await query(
+      `SELECT l.trade_id, t.code, t.name, l.content
+       FROM lvs l
+       JOIN trades t ON l.trade_id = t.id
+       WHERE l.project_id = $1 AND t.code = ANY($2::text[])`,
+      [projectId, project.trades.map(t => t.code)]
+    );
+    
+    const lvsByTrade = {};
+    let totalProjectValue = 0;
+    
+    lvsResult.rows.forEach(lv => {
+      const positions = lv.content?.positions || [];
+      const totalSum = lv.content?.totalSum || 0;
+      totalProjectValue += totalSum;
+      
+      // Analysiere Umfang pro Gewerk
+      const positionSummary = positions.slice(0, 15).map(pos => ({
+        title: pos.title,
+        quantity: pos.quantity,
+        unit: pos.unit,
+        description: pos.description?.substring(0, 100)
+      }));
+      
+      lvsByTrade[lv.code] = {
+        trade_name: lv.name,
+        total_positions: positions.length,
+        total_sum: totalSum,
+        position_summary: positionSummary,
+        has_complex_positions: positions.some(p => p.quantity > 100 || p.totalPrice > 5000)
+      };
+    });
     
     // System-Prompt für KI
     const systemPrompt = `Du bist ein erfahrener Bauleiter und Experte für Terminplanung im Baugewerbe. 
-Deine Aufgabe ist es, einen professionellen Bauablaufplan zu erstellen.
+Deine Aufgabe ist es, einen professionellen Bauablaufplan zu erstellen, der die TATSÄCHLICHEN LEISTUNGSMENGEN aus den Leistungsverzeichnissen berücksichtigt.
 
 ${getTradeInterfacesPrompt()}
+
+UMFANGS-BEWERTUNG BASIEREND AUF LV-DATEN:
+- Anzahl Positionen: Wenige (<20) = kurz, Viele (>50) = lang
+- Gesamtsumme: <10.000€ = 1-2 Tage, 10-30k€ = 3-5 Tage, >30k€ = 5-10+ Tage
+- Komplexe Positionen (hohe Menge/Preis): +20-50% Zeit
+- Beispiel: 80 Steckdosen = 2 Tage, 15 Steckdosen = 1 Tag
+
+DAUER-BERECHNUNG PRO GEWERK:
+1. Basis: typical_duration_days aus Standard-Phasen
+2. Skalierung nach LV-Umfang:
+   - Kleine Projekte (<10k€): Basis × 0.6-0.8
+   - Mittlere Projekte (10-30k€): Basis × 0.8-1.2
+   - Große Projekte (>30k€): Basis × 1.2-2.0
+3. Komplexitäts-Faktor: +10-30% bei vielen komplexen Positionen
+4. Mehrfach-Einsätze: Aufteilen nach Phasen
+
+BEISPIEL ELEKTRO (LV: 35 Positionen, 18.000€):
+- Rohinstallation: 3 Tage Basis × 1.1 (mittlerer Umfang) = 3 Tage
+- Feininstallation: 2 Tage Basis × 1.1 = 2 Tage
+- Puffer: 2 Tage (kritisches Gewerk)
 
 PROJEKTTYP-SPEZIFISCHE PUFFER:
 - Sanierung: 20-30% höhere Puffer (unvorhergesehene Probleme häufig)
@@ -25955,8 +26007,8 @@ PROJEKTTYP-SPEZIFISCHE PUFFER:
 
 GEWERK-SPEZIFISCHE KOMPLEXITÄT & PUFFER:
 - SEHR KOMPLEX (3-5 Tage Puffer): DACH, ZIMM, ROH, FASS (mit WDVS)
-- KOMPLEX (2-3 Tage Puffer): ELEKT, SAN, HEI, TRO
-- MITTEL (1-2 Tage Puffer): FLI, TIS, ESTR
+- KOMPLEX (2-3 Tage Puffer): ELEKT, SAN, HEI, TRO, FEN, TIS, PV, KLIMA
+- MITTEL (1-2 Tage Puffer): FLI, TIS, ESTR, AUSS, ABBR, SCHL
 - EINFACH (0-1 Tage Puffer): MAL, BOD
 
 MEHRFACH-EINSÄTZE:
@@ -25968,11 +26020,12 @@ Bei folgenden Gewerken MÜSSEN mehrere Phasen eingeplant werden:
 - FLI: Abdichtung → Verlegung → Verfugung
 
 WICHTIGE REGELN:
-1. IMMER die Schnittstellen beachten
-2. Realistische Arbeitstage (nur Mo-Fr zählen)
-3. Klare, verständliche Erklärungen für Laien
-4. Puffer NACH kritischen Gewerken
-5. Risiken transparent kommunizieren
+1. IMMER die LV-Mengen für realistische Zeitschätzung nutzen
+2. Schnittstellen beachten
+3. Realistische Arbeitstage (nur Mo-Fr, keine Feiertage)
+4. Klare, verständliche Erklärungen für Laien
+5. Puffer NACH kritischen Gewerken
+6. Risiken transparent kommunizieren
 
 OUTPUT (NUR valides JSON):
 {
@@ -25980,7 +26033,7 @@ OUTPUT (NUR valides JSON):
   "total_duration_days": 45,
   "critical_path": ["ROH", "ELEKT", "MAL"],
   
-  "general_explanation": "2-3 Sätze die dem Bauherrn erklären: Warum dauert das Projekt so lange? Was sind die kritischen Punkte?",
+  "general_explanation": "2-3 Sätze die dem Bauherrn erklären: Warum dauert das Projekt so lange? Was sind die kritischen Punkte? Erwähne konkrete LV-Umfänge.",
   
   "schedule": [
     {
@@ -25994,33 +26047,20 @@ OUTPUT (NUR valides JSON):
           "buffer_days": 2,
           "sequence_order": 1,
           "dependencies": [],
-          "scheduling_reason": "Elektroleitungen müssen vor dem Verputzen verlegt werden",
+          "scheduling_reason": "Elektroleitungen müssen vor dem Verputzen verlegt werden. Umfang: 45 Positionen im LV, mittlerer Arbeitsaufwand.",
           "buffer_reason": "2 Tage Puffer für mögliche Koordination mit Sanitär",
           "risks": "Verzögerungen wirken sich auf alle Folgetermine aus"
-        },
-        {
-          "phase_name": "Feininstallation",
-          "phase_number": 2,
-          "duration_days": 2,
-          "buffer_days": 1,
-          "sequence_order": 8,
-          "dependencies": ["MAL"],
-          "scheduling_reason": "Schalter und Steckdosen erst nach Malerarbeiten",
-          "buffer_reason": "1 Tag Puffer als letztes Gewerk",
-          "risks": "Keine größeren Risiken"
         }
       ]
     }
   ],
   
   "warnings": [
-    "Bei Verzögerung im Rohbau verschieben sich alle Folgetermine",
-    "Malerarbeiten benötigen trockene Wände - Trocknungszeiten beachten"
+    "Bei Verzögerung im Rohbau verschieben sich alle Folgetermine"
   ],
   
   "recommendations": [
-    "Frühzeitige Materialbestellung für Fliesen und Türen empfohlen",
-    "Bauherr sollte Farbauswahl vor Malerbeginn treffen"
+    "Frühzeitige Materialbestellung empfohlen"
   ]
 }`;
 
@@ -26044,15 +26084,36 @@ ${project.trades.map(t => `- ${t.code}: ${t.name}`).join('\n')}
 
 VERFÜGBARE STANDARD-PHASEN:
 ${Object.entries(tradePhases).map(([code, phases]) => 
-  `${code}: ${phases.map(p => p.phase_name).join(', ')}`
+  `${code}: ${phases.map(p => `${p.phase_name} (Basis: ${p.typical_duration_days}d)`).join(', ')}`
 ).join('\n')}
 
 ${intakeAnswers.length > 0 ? `
 PROJEKT-KONTEXT AUS INTAKE:
-${intakeAnswers.slice(0, 5).map(a => `- ${a.question}: ${a.answer}`).join('\n')}
+${intakeAnswers.map(a => `- ${a.question}: ${a.answer}`).join('\n')}
 ` : ''}
 
-Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärungen für den Bauherrn.`;
+LEISTUNGSVERZEICHNISSE (DETAILLIERTE ANALYSE):
+Gesamtprojektwert: ${totalProjectValue.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+
+${Object.entries(lvsByTrade).map(([code, lv]) => `
+${code} - ${lv.trade_name}:
+  • Auftragssumme: ${lv.total_sum.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+  • Anzahl Positionen: ${lv.total_positions}
+  • Komplexität: ${lv.has_complex_positions ? 'HOCH (große Mengen/teure Positionen)' : 'NORMAL'}
+  
+  Beispiel-Positionen (erste 15):
+${lv.position_summary.map(pos => 
+  `    - ${pos.title}: ${pos.quantity} ${pos.unit}${pos.description ? ` (${pos.description})` : ''}`
+).join('\n')}
+`).join('\n')}
+
+WICHTIG: 
+- Nutze die LV-Daten für REALISTISCHE Zeitschätzungen
+- Passe die Standard-Dauern an den tatsächlichen Umfang an
+- Erkläre dem Bauherrn transparent, warum welches Gewerk wie lange dauert
+- Berücksichtige die Auftragssummen: Höhere Summe = mehr Arbeitsaufwand
+
+Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärungen basierend auf den tatsächlichen Leistungsmengen.`;
 
     // KI-Call
     const anthropic = new Anthropic({
