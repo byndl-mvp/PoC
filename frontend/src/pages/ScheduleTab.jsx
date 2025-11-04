@@ -884,7 +884,7 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 // SUB-KOMPONENTE: GANTT-CHART BALKENPLAN
 // ============================================================================
 
-function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade }) {
+function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade, findDependencies }) {
   if (!entries || entries.length === 0) {
     return (
       <div className="bg-white/5 rounded-lg p-8 text-center">
