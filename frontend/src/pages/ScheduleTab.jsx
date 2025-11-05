@@ -1585,39 +1585,51 @@ function ChangeRequestCard({ request, onResolve }) {
 function StatusBadge({ status }) {
   const statusConfig = {
     draft: {
-      label: 'Entwurf',
-      color: 'bg-gray-500/20 text-gray-300',
-      icon: '📝'
+      label: (
+        <div className="flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+          <div>
+            <div className="font-bold">Terminplan wird generiert...</div>
+            <div className="text-xs text-gray-300 mt-0.5">KI erstellt Ihren Bauablaufplan</div>
+          </div>
+        </div>
+      ),
+      color: 'bg-gradient-to-r from-teal-500/20 to-blue-500/20 text-white border-teal-500/30',
+      icon: '⏳'
     },
     pending_approval: {
       label: 'Wartet auf Freigabe',
-      color: 'bg-yellow-500/20 text-yellow-300',
-      icon: '⏳'
-    },
-    active: {
-      label: 'Aktiv - Handwerker bestätigen',
-      color: 'bg-blue-500/20 text-blue-300',
-      icon: '🔄'
+      color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+      icon: '⏱️'
     },
     locked: {
-      label: 'Gesperrt - Alle Gewerke vergeben',
-      color: 'bg-green-500/20 text-green-300',
-      icon: '🔒'
+      label: 'Freigegeben',
+      color: 'bg-green-500/20 text-green-300 border-green-500/30',
+      icon: '✅'
+    },
+    active: {
+      label: 'Aktiv',
+      color: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+      icon: '🚀'
     },
     completed: {
       label: 'Abgeschlossen',
-      color: 'bg-teal-500/20 text-teal-300',
-      icon: '✅'
+      color: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
+      icon: '✓'
     }
   };
-
+  
   const config = statusConfig[status] || statusConfig.draft;
-
+  
   return (
-    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${config.color} flex items-center gap-2 inline-flex`}>
-      <span>{config.icon}</span>
-      <span>{config.label}</span>
-    </span>
+    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border ${config.color} ${status === 'draft' ? 'animate-pulse' : ''}`}>
+      <span className="text-lg">{config.icon}</span>
+      {typeof config.label === 'string' ? (
+        <span className="font-semibold">{config.label}</span>
+      ) : (
+        config.label
+      )}
+    </div>
   );
 }
 
