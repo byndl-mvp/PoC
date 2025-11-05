@@ -967,123 +967,149 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
   </div>
 </div>
       
-      {/* Balken */}
+           {/* Balken */}
       <div className="space-y-3 overflow-x-auto">
-       {/* Dependencies Layer - UNTER den Balken */}
-        <svg 
-          className="absolute inset-0 pointer-events-none" 
-          style={{ zIndex: 0 }}
-        >
-          {findDependencies(entries).map((dep, idx) => {
-            const fromIndex = entries.findIndex(e => e.id === dep.from.id);
-            const toIndex = entries.findIndex(e => e.id === dep.to.id);
-            
-            if (fromIndex === -1 || toIndex === -1) return null;
-            
-            // Berechne Positionen
-            const fromY = (fromIndex * 60) + 40; // Mitte des Balkens
-            const toY = (toIndex * 60) + 20; // Top des nächsten Balkens
-            
-            const fromDate = new Date(dep.from.planned_end);
-            const toDate = new Date(dep.to.planned_start);
-            const fromX = ((fromDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-            const toX = ((toDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-            
-            return (
-              <g key={idx}>
-                {/* Vertikale Linie nach unten */}
-                <line
-                  x1={`${fromX}%`}
-                  y1={fromY}
-                  x2={`${fromX}%`}
-                  y2={(fromY + toY) / 2}
-                  stroke="#94a3b8"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                  opacity="0.5"
-                />
-                
-                {/* Horizontale Linie */}
-                <line
-                  x1={`${fromX}%`}
-                  y1={(fromY + toY) / 2}
-                  x2={`${toX}%`}
-                  y2={(fromY + toY) / 2}
-                  stroke="#94a3b8"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                  opacity="0.5"
-                />
-                
-                {/* Vertikale Linie nach oben */}
-                <line
-                  x1={`${toX}%`}
-                  y1={(fromY + toY) / 2}
-                  x2={`${toX}%`}
-                  y2={toY}
-                  stroke="#94a3b8"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                  opacity="0.5"
-                />
-                
-                {/* Pfeil */}
-                <polygon
-                  points={`${toX},${toY} ${toX - 0.5},${toY - 8} ${toX + 0.5},${toY - 8}`}
-                  fill="#94a3b8"
-                  opacity="0.5"
-                  transform={`translate(0, 0)`}
-                />
-              </g>
-            );
-          })}
-        </svg>        
-        {groupedTrades.map((trade, tradeIdx) => (
-          <div key={trade.trade_code} className="min-w-max">
-            {/* Trade Header */}
-            <button
-              onClick={() => onToggleTrade(trade.trade_code)}
-              className="w-full flex items-center gap-3 py-3 px-4 hover:bg-white/5 rounded-lg transition-colors"
+        {/* Wrapper mit position: relative für SVG */}
+        <div className="relative min-w-max" style={{ minHeight: `${groupedTrades.length * 100}px` }}>
+          
+          {/* Dependencies SVG Layer */}
+          {findDependencies && (
+            <svg 
+              className="absolute top-0 left-0 pointer-events-none" 
+              style={{ 
+                width: '100%', 
+                height: '100%',
+                zIndex: 1
+              }}
             >
-              <div className={`w-10 h-10 bg-gradient-to-br ${tradeColors[tradeIdx % tradeColors.length]} rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-lg`}>
-                {trade.trade_code.substring(0, 2)}
-              </div>
-              <span className="text-white font-bold text-lg">{trade.trade_name}</span>
-              <span className="text-gray-400 text-sm ml-2">({trade.entries.length} {trade.entries.length === 1 ? 'Einsatz' : 'Einsätze'})</span>
-              {expandedTrades[trade.trade_code] ? 
-                <ChevronDown className="w-5 h-5 text-gray-400 ml-auto" /> : 
-                <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
-              }
-            </button>
+              {findDependencies(entries).map((dep, idx) => {
+                // Baue flache Liste aller sichtbaren Entries
+                const flatEntries = [];
+                groupedTrades.forEach(trade => {
+                  if (expandedTrades[trade.trade_code]) {
+                    flatEntries.push(...trade.entries);
+                  } else {
+                    flatEntries.push(trade.entries[0]);
+                  }
+                });
+                
+                const fromIndex = flatEntries.findIndex(e => e.id === dep.from.id);
+                const toIndex = flatEntries.findIndex(e => e.id === dep.to.id);
+                
+                if (fromIndex === -1 || toIndex === -1) return null;
+                
+                // Berechne Y-Positionen (80px pro Zeile inkl. Header)
+                const rowHeight = 80;
+                const fromY = fromIndex * rowHeight + 50; // Mitte des Balkens
+                const toY = toIndex * rowHeight + 30; // Anfang des nächsten Balkens
+                
+                // Berechne X-Positionen basierend auf Datum
+                const fromDate = new Date(dep.from.planned_end);
+                const toDate = new Date(dep.to.planned_start);
+                const fromX = 264 + ((fromDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * (window.innerWidth - 400);
+                const toX = 264 + ((toDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * (window.innerWidth - 400);
+                
+                const midY = (fromY + toY) / 2;
+                
+                return (
+                  <g key={idx}>
+                    {/* Vertikale Linie nach unten */}
+                    <line
+                      x1={fromX}
+                      y1={fromY}
+                      x2={fromX}
+                      y2={midY}
+                      stroke="#94a3b8"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                      opacity="0.6"
+                    />
+                    
+                    {/* Horizontale Linie */}
+                    <line
+                      x1={fromX}
+                      y1={midY}
+                      x2={toX}
+                      y2={midY}
+                      stroke="#94a3b8"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                      opacity="0.6"
+                    />
+                    
+                    {/* Vertikale Linie nach oben */}
+                    <line
+                      x1={toX}
+                      y1={midY}
+                      x2={toX}
+                      y2={toY}
+                      stroke="#94a3b8"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                      opacity="0.6"
+                    />
+                    
+                    {/* Pfeil */}
+                    <polygon
+                      points={`${toX},${toY} ${toX - 5},${toY - 8} ${toX + 5},${toY - 8}`}
+                      fill="#94a3b8"
+                      opacity="0.6"
+                    />
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+          
+          {/* Balken-Liste */}
+          {groupedTrades.map((trade, tradeIdx) => (
+            <div key={trade.trade_code} className="min-w-max relative" style={{ zIndex: 10 }}>
+              {/* Trade Header */}
+              <button
+                onClick={() => onToggleTrade(trade.trade_code)}
+                className="w-full flex items-center gap-3 py-3 px-4 hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <div className={`w-10 h-10 bg-gradient-to-br ${tradeColors[tradeIdx % tradeColors.length]} rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-lg`}>
+                  {trade.trade_code.substring(0, 2)}
+                </div>
+                <span className="text-white font-bold text-lg">{trade.trade_name}</span>
+                <span className="text-gray-400 text-sm ml-2">({trade.entries.length} {trade.entries.length === 1 ? 'Einsatz' : 'Einsätze'})</span>
+                {expandedTrades[trade.trade_code] ? 
+                  <ChevronDown className="w-5 h-5 text-gray-400 ml-auto" /> : 
+                  <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
+                }
+              </button>
 
-            {/* Phasen */}
-            {expandedTrades[trade.trade_code] && trade.entries.map(entry => (
-              <GanttBar
-                key={entry.id}
-                entry={entry}
-                minDate={minDate}
-                totalDays={totalDays}
-                editMode={editMode}
-                onUpdate={onUpdateEntry}
-                color={tradeColors[tradeIdx % tradeColors.length]}
-              />
-            ))}
+              {/* Phasen */}
+              {expandedTrades[trade.trade_code] && trade.entries.map(entry => (
+                <GanttBar
+                  key={entry.id}
+                  entry={entry}
+                  minDate={minDate}
+                  totalDays={totalDays}
+                  editMode={editMode}
+                  onUpdate={onUpdateEntry}
+                  color={tradeColors[tradeIdx % tradeColors.length]}
+                />
+              ))}
 
-            {/* Gesamtbalken (collapsed) */}
-            {!expandedTrades[trade.trade_code] && (
-              <GanttBar
-                entry={trade.entries[0]}
-                minDate={minDate}
-                totalDays={totalDays}
-                editMode={false}
-                isSummary={true}
-                allEntries={trade.entries}
-                color={tradeColors[tradeIdx % tradeColors.length]}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+              {/* Gesamtbalken (collapsed) */}
+              {!expandedTrades[trade.trade_code] && (
+                <GanttBar
+                  entry={trade.entries[0]}
+                  minDate={minDate}
+                  totalDays={totalDays}
+                  editMode={false}
+                  isSummary={true}
+                  allEntries={trade.entries}
+                  color={tradeColors[tradeIdx % tradeColors.length]}
+                />
+              )}
+            </div>
+          ))}
+          
+        </div> {/* Ende Wrapper */}
+      </div> {/* Ende overflow-x-auto */}
 
       {editMode && (
         <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
@@ -1093,6 +1119,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
           </p>
         </div>
       )}
+      
       {/* Legende */}
       <div className="mt-6 bg-white/5 rounded-lg p-4 border border-white/10">
         <h4 className="text-white font-semibold mb-3">Legende</h4>
@@ -1147,7 +1174,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
             </span>
           </p>
         </div>
-      </div>   
+      </div>
     </div>
   );
 }
