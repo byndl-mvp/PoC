@@ -889,31 +889,53 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 
 // useEffect der NACH dem Render die Positionen berechnet
 useEffect(() => {
-  if (!findDependencies) return;
+  if (!findDependencies) {
+    console.log('[ARROWS] ❌ findDependencies ist undefined');
+    return;
+  }
   
-  // Warte kurz, damit DOM vollständig gerendert ist
   const timer = setTimeout(() => {
-    const deps = findDependencies(entries);
+    console.log('[ARROWS] 🔍 Entries:', entries?.length);
+    console.log('[ARROWS] 🔍 Sample entry:', entries?.[0]);
     
-    const positions = deps.map((dep, idx) => {
-      // Finde die Balken im DOM
+    const deps = findDependencies(entries);
+    console.log('[ARROWS] 🔍 Dependencies gefunden:', deps.length);
+    console.log('[ARROWS] 🔍 Dependencies:', deps);
+    
+    if (deps.length === 0) {
+      console.log('[ARROWS] ⚠️ Keine Dependencies gefunden!');
+      // Prüfe ob entries dependencies haben
+      entries?.forEach(e => {
+        if (e.dependencies && e.dependencies.length > 0) {
+          console.log('[ARROWS] Entry hat deps:', e.trade_code, e.phase_name, e.dependencies);
+        }
+      });
+      return;
+    }
+    
+    const positions = deps.map((dep) => {
+      console.log('[ARROWS] 🎯 Processing:', dep.from.id, '→', dep.to.id);
+      
       const fromBalken = document.querySelector(`[data-entry-id="${dep.from.id}"]`);
       const toBalken = document.querySelector(`[data-entry-id="${dep.to.id}"]`);
       
+      console.log('[ARROWS] 🔍 DOM Elements:', !!fromBalken, !!toBalken);
+      
       if (!fromBalken || !toBalken) {
-        console.warn(`[ARROWS] Balken nicht gefunden: from=${dep.from.id}, to=${dep.to.id}`);
+        console.warn(`[ARROWS] ❌ Balken nicht gefunden: from=${dep.from.id}, to=${dep.to.id}`);
         return null;
       }
       
-      // Hole Container-Position für relative Berechnung
       const container = fromBalken.closest('.relative.min-w-max');
-      if (!container) return null;
+      if (!container) {
+        console.warn('[ARROWS] ❌ Container nicht gefunden');
+        return null;
+      }
       
       const containerRect = container.getBoundingClientRect();
       const fromRect = fromBalken.getBoundingClientRect();
       const toRect = toBalken.getBoundingClientRect();
       
-      // Berechne relative Positionen zum Container
       return {
         id: `${dep.from.id}-${dep.to.id}`,
         fromX: fromRect.right - containerRect.left,
@@ -924,11 +946,11 @@ useEffect(() => {
     }).filter(Boolean);
     
     setArrowData(positions);
-    console.log(`[ARROWS] Calculated ${positions.length} arrow positions`);
-  }, 100); // 100ms delay damit DOM sicher gerendert ist
+    console.log(`[ARROWS] ✅ Calculated ${positions.length} arrow positions`);
+  }, 100);
   
   return () => clearTimeout(timer);
-}, [entries, expandedTrades, findDependencies]); 
+}, [entries, expandedTrades, findDependencies]);
   
   if (!entries || entries.length === 0) {
     return (
