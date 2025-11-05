@@ -26217,18 +26217,17 @@ KRITISCHE LOGIK-REGELN:
 
 ## 3A. KRITISCHE GEWERKESCHNITTSTELLEN (ABSOLUT ZWINGEND!)
 
-**🔴 GERÜST SPEZIAL-STRUKTUR (3 PFLICHT-PHASEN):**
-- Gerüst ist KEIN normales Gewerk!
-- IMMER genau 3 Phasen erstellen:
-  1. Aufbau (1-2 Tage) - vor Außenarbeiten
-  2. Standzeit (= Dauer aller Außenarbeiten inkl. Puffer) - parallel zu DACH/ZIMM/FEN/FASS 
-  3. Abbau (0,5-1 Tag) - nach letzter Außenarbeit
-- Phase 2 ist KEINE Arbeit, sondern nur Standzeit!
-- Phase 2: can_parallel_with: ["DACH", "ZIMM", "FEN", "FASS"]
-- Phase 2: is_standzeit: true (MUSS gesetzt sein!)
-- Phase 3 darf ERST starten wenn ALLE Außenarbeiten fertig sind
-- Phase 3: dependencies: ["DACH", "FASS", "FEN", "ZIMM"]
-- Standzeit verursacht tägliche Kosten (50-100€/Tag) - dem Bauherrn kommunizieren!
+**GERÜSTBAU (GER) - NUR 2 PHASEN:**
+- **Aufbau:** 1-2 Tage
+  - <250m² Fassade: 1 Tag
+  - >250m² Fassade: 2 Tage
+  - Muss VOR allen Außenarbeiten erfolgen
+  - Dependencies: [] (kann nach ROH starten)
+
+- **Abbau:** 0,5-1 Tag  
+  - Muss NACH allen Außenarbeiten erfolgen
+  - Dependencies: ["DACH", "FEN", "FASS", "ZIMM"]
+  - Frühester Start: 1 Tag nach letzter Außenarbeit
 
 **🔴 FASSADE & FENSTER (EXTREM WICHTIG!):**
 - FEN muss IMMER VOR FASS kommen!
