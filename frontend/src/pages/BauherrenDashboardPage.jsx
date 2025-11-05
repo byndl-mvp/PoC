@@ -125,6 +125,22 @@ useEffect(() => {
     window.removeEventListener('focus', handleFocus);
   };
 }, [userData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// Lade gespeicherte lastViewedTabs beim Projekt-Wechsel
+useEffect(() => {
+  if (selectedProject?.id) {
+    const tabs = ['tenders', 'offers', 'contracts', 'orders'];
+    const stored = {};
+    tabs.forEach(tab => {
+      const value = sessionStorage.getItem(`lastViewed_${selectedProject.id}_${tab}`);
+      if (value) stored[tab] = value;
+    });
+    
+    if (Object.keys(stored).length > 0) {
+      setLastViewedTabs(prev => ({ ...prev, ...stored }));
+    }
+  }
+}, [selectedProject?.id]);
   
   // AKTUALISIERTE loadUserProjects Funktion
   const loadUserProjects = async (email) => {
