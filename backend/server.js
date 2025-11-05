@@ -26432,8 +26432,7 @@ BEISPIEL ELEKTRO (LV: 35 Positionen, 18.000€):
 
 BEISPIEL GERÜST (bei Fassadensanierung):
 - Fassadenfläche: 120m² WDVS, Putz, Anstrich
-- Phase 1 Aufbau: 2 Tage (>50m²)
-- Phase 2 Standzeit: DACH (15d) + FEN (4d) + FASS (25d) = 44 Tage
+- Phase 1 Aufbau: 1 Tag (<250m²)
 - Phase 3 Abbau: 1 Tag
 
 PROJEKTTYP-SPEZIFISCHE PUFFER:
