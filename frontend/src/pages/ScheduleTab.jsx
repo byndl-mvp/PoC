@@ -896,72 +896,92 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 // ============================================================================
 
 function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade, findDependencies }) {
-  const [arrowData, setArrowData] = useState([]);
-
-// useEffect der NACH dem Render die Positionen berechnet
-useEffect(() => {
-  if (!findDependencies) {
-    console.log('[ARROWS] ❌ findDependencies ist undefined');
-    return;
-  }
+  // Berechne Pfeil-Positionen
+const calculateArrowPositions = () => {
+  if (!findDependencies || !entries || entries.length === 0) return [];
   
-  const timer = setTimeout(() => {
-    console.log('[ARROWS] 🔍 Entries:', entries?.length);
-    console.log('[ARROWS] 🔍 Sample entry:', entries?.[0]);
+  const deps = findDependencies(entries);
+  if (deps.length === 0) return [];
+  
+  const arrows = [];
+  
+  deps.forEach(dep => {
+    // Finde Trade und Entry Indizes
+    let fromTradeIdx = -1;
+    let fromEntryIdx = -1;
+    let toTradeIdx = -1;
+    let toEntryIdx = -1;
     
-    const deps = findDependencies(entries);
-    console.log('[ARROWS] 🔍 Dependencies gefunden:', deps.length);
-    console.log('[ARROWS] 🔍 Dependencies:', deps);
-    
-    if (deps.length === 0) {
-      console.log('[ARROWS] ⚠️ Keine Dependencies gefunden!');
-      // Prüfe ob entries dependencies haben
-      entries?.forEach(e => {
-        if (e.dependencies && e.dependencies.length > 0) {
-          console.log('[ARROWS] Entry hat deps:', e.trade_code, e.phase_name, e.dependencies);
+    groupedTrades.forEach((trade, tIdx) => {
+      // Nur wenn expanded
+      if (!expandedTrades[trade.trade_code]) return;
+      
+      trade.entries.forEach((entry, eIdx) => {
+        if (entry.id === dep.from.id) {
+          fromTradeIdx = tIdx;
+          fromEntryIdx = eIdx;
+        }
+        if (entry.id === dep.to.id) {
+          toTradeIdx = tIdx;
+          toEntryIdx = eIdx;
         }
       });
+    });
+    
+    // Wenn nicht beide gefunden oder nicht beide expanded, skip
+    if (fromTradeIdx === -1 || toTradeIdx === -1) return;
+    
+    const fromTrade = groupedTrades[fromTradeIdx];
+    const toTrade = groupedTrades[toTradeIdx];
+    
+    if (!expandedTrades[fromTrade.trade_code] || !expandedTrades[toTrade.trade_code]) {
       return;
     }
     
-    const positions = deps.map((dep) => {
-      console.log('[ARROWS] 🎯 Processing:', dep.from.id, '→', dep.to.id);
-      
-      const fromBalken = document.querySelector(`[data-entry-id="${dep.from.id}"]`);
-      const toBalken = document.querySelector(`[data-entry-id="${dep.to.id}"]`);
-      
-      console.log('[ARROWS] 🔍 DOM Elements:', !!fromBalken, !!toBalken);
-      
-      if (!fromBalken || !toBalken) {
-        console.warn(`[ARROWS] ❌ Balken nicht gefunden: from=${dep.from.id}, to=${dep.to.id}`);
-        return null;
-      }
-      
-      const container = fromBalken.closest('.relative.min-w-max');
-      if (!container) {
-        console.warn('[ARROWS] ❌ Container nicht gefunden');
-        return null;
-      }
-      
-      const containerRect = container.getBoundingClientRect();
-      const fromRect = fromBalken.getBoundingClientRect();
-      const toRect = toBalken.getBoundingClientRect();
-      
-      return {
-        id: `${dep.from.id}-${dep.to.id}`,
-        fromX: fromRect.right - containerRect.left,
-        fromY: fromRect.top + (fromRect.height / 2) - containerRect.top,
-        toX: toRect.left - containerRect.left,
-        toY: toRect.top + (toRect.height / 2) - containerRect.top,
-      };
-    }).filter(Boolean);
+    // Berechne Y (60px pro Zeile)
+    let fromY = 0;
+    let toY = 0;
     
-    setArrowData(positions);
-    console.log(`[ARROWS] ✅ Calculated ${positions.length} arrow positions`);
-  }, 100);
+    // Zähle Zeilen bis fromEntry
+    for (let i = 0; i < fromTradeIdx; i++) {
+      fromY += 60; // Trade Header
+      if (expandedTrades[groupedTrades[i].trade_code]) {
+        fromY += groupedTrades[i].entries.length * 60;
+      }
+    }
+    fromY += 60; // Eigener Trade Header
+    fromY += fromEntryIdx * 60 + 30; // Entries + Mitte
+    
+    // Zähle Zeilen bis toEntry
+    for (let i = 0; i < toTradeIdx; i++) {
+      toY += 60;
+      if (expandedTrades[groupedTrades[i].trade_code]) {
+        toY += groupedTrades[i].entries.length * 60;
+      }
+    }
+    toY += 60;
+    toY += toEntryIdx * 60 + 30;
+    
+    // Berechne X basierend auf Datum
+    const fromEndDate = new Date(dep.from.planned_end);
+    const toStartDate = new Date(dep.to.planned_start);
+    
+    const fromPercent = ((fromEndDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+    const toPercent = ((toStartDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+    
+    arrows.push({
+      id: `${dep.from.id}-${dep.to.id}`,
+      fromPercent,
+      fromY,
+      toPercent,
+      toY
+    });
+  });
   
-  return () => clearTimeout(timer);
-}, [entries, expandedTrades, findDependencies]);
+  return arrows;
+};
+
+const arrowPositions = calculateArrowPositions();
   
   if (!entries || entries.length === 0) {
     return (
@@ -1049,65 +1069,59 @@ useEffect(() => {
         {/* Wrapper mit position: relative für SVG */}
         <div className="relative min-w-max" style={{ minHeight: `${groupedTrades.length * 100}px` }}>
           
-          {/* Dependencies SVG Layer - MIT DOM-POSITIONEN */}
-          {findDependencies && (
-          <svg 
-  className="absolute top-0 left-0 pointer-events-none w-full h-full"
-  style={{ zIndex: 5 }}
->
-  {arrowData.map((arrow) => {
-    const midY = (arrow.fromY + arrow.toY) / 2;
-    
-    return (
-      <g key={arrow.id}>
-        {/* Vertikale Linie vom Balkenende nach unten/oben */}
-        <line
-          x1={arrow.fromX}
-          y1={arrow.fromY}
-          x2={arrow.fromX}
-          y2={midY}
-          stroke="#94a3b8"
-          strokeWidth="2"
-          strokeDasharray="4 4"
-          opacity="0.6"
-        />
+         {/* Dependencies SVG */}
+{findDependencies && arrowPositions.length > 0 && (
+  <div className="absolute top-0 left-64 right-32 pointer-events-none" style={{ zIndex: 1 }}>
+    <svg className="w-full h-full">
+      {arrowPositions.map((arrow) => {
+        const midY = (arrow.fromY + arrow.toY) / 2;
+        const fromX = `${arrow.fromPercent}%`;
+        const toX = `${arrow.toPercent}%`;
         
-        {/* Horizontale Verbindungslinie */}
-        <line
-          x1={arrow.fromX}
-          y1={midY}
-          x2={arrow.toX}
-          y2={midY}
-          stroke="#94a3b8"
-          strokeWidth="2"
-          strokeDasharray="4 4"
-          opacity="0.6"
-        />
-        
-        {/* Vertikale Linie zum Balkenanfang */}
-        <line
-          x1={arrow.toX}
-          y1={midY}
-          x2={arrow.toX}
-          y2={arrow.toY}
-          stroke="#94a3b8"
-          strokeWidth="2"
-          strokeDasharray="4 4"
-          opacity="0.6"
-        />
-        
-        {/* Pfeil am Ende */}
-        <polygon
-          points="0,-5 -8,5 8,5"
-          fill="#94a3b8"
-          opacity="0.6"
-          transform={`translate(${arrow.toX}, ${arrow.toY}) rotate(90)`}
-        />
-      </g>
-    );
-  })}
-</svg>
-)}          
+        return (
+          <g key={arrow.id}>
+            <line
+              x1={fromX}
+              y1={arrow.fromY}
+              x2={fromX}
+              y2={midY}
+              stroke="#94a3b8"
+              strokeWidth="2"
+              strokeDasharray="4 4"
+              opacity="0.6"
+            />
+            <line
+              x1={fromX}
+              y1={midY}
+              x2={toX}
+              y2={midY}
+              stroke="#94a3b8"
+              strokeWidth="2"
+              strokeDasharray="4 4"
+              opacity="0.6"
+            />
+            <line
+              x1={toX}
+              y1={midY}
+              x2={toX}
+              y2={arrow.toY}
+              stroke="#94a3b8"
+              strokeWidth="2"
+              strokeDasharray="4 4"
+              opacity="0.6"
+            />
+            <polygon
+              points="0,-5 -8,5 8,5"
+              fill="#94a3b8"
+              opacity="0.6"
+              transform={`translate(${toX}, ${arrow.toY}) rotate(90)`}
+            />
+          </g>
+        );
+      })}
+    </svg>
+  </div>
+)}         
           
           {/* Balken-Liste */}
           {groupedTrades.map((trade, tradeIdx) => (
