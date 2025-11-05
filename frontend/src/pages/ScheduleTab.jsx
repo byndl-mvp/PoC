@@ -888,22 +888,48 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 
 // useEffect der NACH dem Render die Positionen berechnet
 useEffect(() => {
-  if (!findDependencies) return;
+  if (!findDependencies) {
+    console.log('[ARROWS] ❌ findDependencies ist undefined');
+    return;
+  }
   
   const timer = setTimeout(() => {
+    console.log('[ARROWS] 🔍 Entries:', entries?.length);
+    console.log('[ARROWS] 🔍 Sample entry:', entries?.[0]);
+    
     const deps = findDependencies(entries);
+    console.log('[ARROWS] 🔍 Dependencies gefunden:', deps.length);
+    console.log('[ARROWS] 🔍 Dependencies:', deps);
+    
+    if (deps.length === 0) {
+      console.log('[ARROWS] ⚠️ Keine Dependencies gefunden!');
+      // Prüfe ob entries dependencies haben
+      entries?.forEach(e => {
+        if (e.dependencies && e.dependencies.length > 0) {
+          console.log('[ARROWS] Entry hat deps:', e.trade_code, e.phase_name, e.dependencies);
+        }
+      });
+      return;
+    }
     
     const positions = deps.map((dep) => {
+      console.log('[ARROWS] 🎯 Processing:', dep.from.id, '→', dep.to.id);
+      
       const fromBalken = document.querySelector(`[data-entry-id="${dep.from.id}"]`);
       const toBalken = document.querySelector(`[data-entry-id="${dep.to.id}"]`);
       
+      console.log('[ARROWS] 🔍 DOM Elements:', !!fromBalken, !!toBalken);
+      
       if (!fromBalken || !toBalken) {
         console.warn(`[ARROWS] ❌ Balken nicht gefunden: from=${dep.from.id}, to=${dep.to.id}`);
-        return null;  // ← NEU: Gibt null zurück
+        return null;
       }
       
       const container = fromBalken.closest('.relative.min-w-max');
-      if (!container) return null;
+      if (!container) {
+        console.warn('[ARROWS] ❌ Container nicht gefunden');
+        return null;
+      }
       
       const containerRect = container.getBoundingClientRect();
       const fromRect = fromBalken.getBoundingClientRect();
@@ -916,10 +942,10 @@ useEffect(() => {
         toX: toRect.left - containerRect.left,
         toY: toRect.top + (toRect.height / 2) - containerRect.top,
       };
-    }).filter(Boolean);  // ← Filtert die nulls raus
+    }).filter(Boolean);
     
     setArrowData(positions);
-    console.log(`[ARROWS] Calculated ${positions.length} arrow positions`);
+    console.log(`[ARROWS] ✅ Calculated ${positions.length} arrow positions`);
   }, 100);
   
   return () => clearTimeout(timer);
