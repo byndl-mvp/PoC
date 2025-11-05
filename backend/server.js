@@ -27022,8 +27022,7 @@ try {
         entry.phase.scheduling_reason,
         entry.phase.buffer_reason,
         entry.phase.risks,
-        entry.is_standzeit || false,  // NEU: Speichere Flag
-        entry.is_minor_work || false  // NEU: Speichere Flag
+        entry.is_minor_work || false 
       ]
     );
   }
