@@ -143,8 +143,6 @@ return () => clearInterval(pollInterval);
       return;
     }
     
-    const initData = await initRes.json();
-    
     console.log('✅ Initiierung erfolgreich, starte Generate...');
     
     // Schritt 2: Generieren STARTEN (warten NICHT auf Response!)
