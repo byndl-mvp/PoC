@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, AlertTriangle, CheckCircle, Edit2, Info, ChevronRight, ChevronDown, X } from 'lucide-react';
 
+console.log('🔍 RENDER ScheduleTab:', {
+  hasSchedule: !!schedule,
+  scheduleStatus: schedule?.status,
+  showInitModal,
+  generating
+});
 // ============================================================================
 // HAUPT-KOMPONENTE: TERMINPLAN-TAB FÜR BAUHERREN
 // ============================================================================
@@ -360,6 +366,12 @@ const findDependencies = (entries) => {
   </div>
 )}
 
+console.log('🔍 MODAL CHECK:', {
+  condition: schedule?.status === 'draft',
+  schedule: schedule,
+  status: schedule?.status
+});
+        
        {/* Generierungs-Modal - BASIERT NUR AUF schedule.status */}
 {schedule?.status === 'draft' && (
   <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
