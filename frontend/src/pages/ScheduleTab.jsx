@@ -373,8 +373,8 @@ const findDependencies = (entries) => {
   </div>
 )}
 
-       {/* Initiierungs-Modal */}
-{generating && (
+       {/* Generierungs-Modal - BASIERT NUR AUF schedule.status */}
+{schedule?.status === 'draft' && (
   <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
     <div className="bg-slate-800 rounded-xl p-8 max-w-md w-full mx-4 border border-white/20">
       <div className="text-center">
@@ -384,14 +384,15 @@ const findDependencies = (entries) => {
           Die KI erstellt gerade Ihren individuellen Bauablaufplan. Dies kann einige Minuten dauern.
         </p>
         <p className="text-sm text-gray-400">
-          Bitte schließen Sie dieses Fenster nicht.
+          Bitte warten Sie - die Generierung läuft im Hintergrund.
         </p>
       </div>
     </div>
   </div>
 )}
 
-{showInitModal && !generating && (
+{/* Initiierungs-Modal - NUR wenn schedule nicht existiert */}
+{!schedule && showInitModal && (
   <InitiateScheduleModal
     onClose={() => setShowInitModal(false)}
     onSubmit={handleInitiate}
