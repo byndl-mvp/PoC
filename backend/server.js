@@ -26530,7 +26530,6 @@ OUTPUT (NUR valides JSON):
 ✓ Wetterabhängigkeiten sind markiert
 ✓ Kritischer Pfad ist korrekt identifiziert
 ✓ Gesamtdauer ist plausibel für Projekttyp
-✓ **is_standzeit: true ist bei Gerüst Phase 2 gesetzt**
 ✓ **is_minor_work: true ist bei kleinen Rohbauarbeiten (<5k€) gesetzt**
 
 NUR valides JSON ausgeben - keine zusätzlichen Texte oder Markdown!`;
