@@ -883,14 +883,6 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 // ============================================================================
 
 function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade, findDependencies }) {
-  if (!entries || entries.length === 0) {
-    return (
-      <div className="bg-white/5 rounded-lg p-8 text-center">
-        <p className="text-gray-400">Keine Termine vorhanden</p>
-      </div>
-    );
-  }
-
   const [arrowData, setArrowData] = useState([]);
 
 // useEffect der NACH dem Render die Positionen berechnet
@@ -934,7 +926,15 @@ useEffect(() => {
   }, 100); // 100ms delay damit DOM sicher gerendert ist
   
   return () => clearTimeout(timer);
-}, [entries, expandedTrades, findDependencies]); // Re-calculate bei Änderungen
+}, [entries, expandedTrades, findDependencies]); 
+  
+  if (!entries || entries.length === 0) {
+    return (
+      <div className="bg-white/5 rounded-lg p-8 text-center">
+        <p className="text-gray-400">Keine Termine vorhanden</p>
+      </div>
+    );
+  }
   
   // Finde frühestes Start- und spätestes Enddatum
   const allDates = entries.map(e => [new Date(e.planned_start), new Date(e.planned_end)]).flat();
