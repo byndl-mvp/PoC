@@ -26684,13 +26684,18 @@ try {
       continue;
     }
     
-    // Prüfe Dependencies
     const allDependenciesMet = entry.dependencies.every(dep => {
-      return scheduledEntries.some(s => 
-        s.trade_code === dep || 
-        (typeof dep === 'string' && dep.includes('-') && s.trade_code === dep.split('-')[0])
-      );
-    });
+  // Erlaube Phase-spezifische Dependencies (z.B. "DACH-Eindeckung")
+  if (typeof dep === 'string' && dep.includes('-')) {
+    const [tradeDep, phaseDep] = dep.split('-');
+    return scheduledEntries.some(s => 
+      s.trade_code === tradeDep && 
+      s.phase.phase_name?.toLowerCase().includes(phaseDep.toLowerCase())
+    );
+  }
+  // Trade-level Dependencies (z.B. "DACH" - alle Phasen fertig)
+  return scheduledEntries.some(s => s.trade_code === dep);
+});
     
     if (!allDependenciesMet && entry.dependencies.length > 0) {
       continue;
