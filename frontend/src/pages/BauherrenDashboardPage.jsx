@@ -1519,11 +1519,12 @@ const BudgetVisualization = ({ budget }) => {
     let newCount = 0;
     
     if (tab === 'tenders' && selectedProject?.tenders) {
-      const lastViewed = lastViewedTabs.tenders;
-      newCount = selectedProject.tenders.filter(t => 
-        !lastViewed || new Date(t.created_at) > new Date(lastViewed)
-      ).length;
-    }
+  const lastViewed = lastViewedTabs.tenders;
+  newCount = selectedProject.tenders.filter(t => 
+    (t.status === 'active' || t.status === 'pending') &&
+    (!lastViewed || new Date(t.created_at) > new Date(lastViewed))
+  ).length;
+}
     
     if (tab === 'offers') {
       newCount = unreadOffers; // Bereits vorhanden
@@ -1538,11 +1539,12 @@ const BudgetVisualization = ({ budget }) => {
 }
     
     if (tab === 'orders') {
-      const lastViewed = lastViewedTabs.orders;
-      newCount = orders.filter(order => 
-        !lastViewed || new Date(order.created_at) > new Date(lastViewed)
-      ).length;
-    }
+  const lastViewed = lastViewedTabs.orders;
+  newCount = orders.filter(order => 
+    (order.status === 'active' || order.status === 'accepted') &&
+    (!lastViewed || new Date(order.updated_at || order.created_at) > new Date(lastViewed))
+  ).length;
+}
 
     if (tab === 'schedule') {
       newCount = scheduleBadgeCount;
