@@ -26657,7 +26657,6 @@ try {
         phase: phase,
         dependencies: phase.dependencies || [],
         can_parallel_with: phase.can_parallel_with || [],
-        is_standzeit: phase.is_standzeit || false,  // NEU
         is_minor_work: phase.is_minor_work || false // NEU
       });
     }
@@ -26701,29 +26700,29 @@ for (let i = 0; i < allEntries.length; i++) {
     continue;
   }
     
-    // ================================================================
-    // FALL 1: EXPLIZITE can_parallel_with (aus LLM)
-    // ================================================================
-    if (entry.can_parallel_with.length > 0 && !entry.is_standzeit) {
-      const parallelTrades = entry.can_parallel_with;
-      const parallelEntries = scheduledEntries.filter(s => 
-        parallelTrades.includes(s.trade_code) && !s.is_standzeit
-      );
-      
-      if (parallelEntries.length > 0) {
-        const referenceEntry = parallelEntries[0];
-        scheduledEntries.push({
-          ...entry,
-          startDate: referenceEntry.startDate,
-          endDate: addWorkdays(new Date(referenceEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
-          isParallel: true,
-          parallelTo: parallelTrades
-        });
-        processedIndices.add(i);
-        console.log(`[PARALLEL-EXPLICIT] ${entry.trade_code} Phase ${phase.phase_number} läuft parallel zu ${parallelTrades.join(', ')}`);
-        continue;
-      }
-    }
+   // ================================================================
+// FALL 1: EXPLIZITE can_parallel_with (aus LLM)
+// ================================================================
+if (entry.can_parallel_with.length > 0) {
+  const parallelTrades = entry.can_parallel_with;
+  const parallelEntries = scheduledEntries.filter(s => 
+    parallelTrades.includes(s.trade_code)
+  );
+  
+  if (parallelEntries.length > 0) {
+    const referenceEntry = parallelEntries[0];
+    scheduledEntries.push({
+      ...entry,
+      startDate: referenceEntry.startDate,
+      endDate: addWorkdays(new Date(referenceEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+      isParallel: true,
+      parallelTo: parallelTrades
+    });
+    processedIndices.add(i);
+    console.log(`[PARALLEL-EXPLICIT] ${entry.trade_code} Phase ${phase.phase_number} läuft parallel zu ${parallelTrades.join(', ')}`);
+    continue;
+  }
+}
     
     // ================================================================
     // FALL 2: IMPLIZITE PARALLELITÄTEN (nach Prompt-Regeln)
