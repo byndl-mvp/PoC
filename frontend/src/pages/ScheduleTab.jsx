@@ -1178,7 +1178,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 }
 
 // ============================================================================
-// SUB-KOMPONENTE: EINZELNER GANTT-BALKEN - STANDZEIT VEREINFACHT
+// SUB-KOMPONENTE: EINZELNER GANTT-BALKEN 
 // ============================================================================
 
 function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, allEntries, color }) {
