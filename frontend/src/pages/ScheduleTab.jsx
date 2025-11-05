@@ -452,15 +452,15 @@ const findDependencies = (entries) => {
             </button>
           )}
           
-          {(schedule.status === 'pending_approval' || schedule.status === 'active' || schedule.status === 'locked') && (
-  <button
-    onClick={() => setEditMode(!editMode)}
-    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-  >
-    <Edit2 className="w-4 h-4" />
-    {editMode ? 'Ansichtsmodus' : 'Bearbeitungsmodus'}
-  </button>
-)}
+          {(schedule.status === 'active' || schedule.status === 'locked') && (
+            <button
+              onClick={() => setEditMode(!editMode)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Edit2 className="w-4 h-4" />
+              {editMode ? 'Ansichtsmodus' : 'Bearbeitungsmodus'}
+            </button>
+          )}
         </div>
 
         {/* KI-Erklärung (nur bei pending_approval prominent) */}
