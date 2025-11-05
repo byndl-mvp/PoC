@@ -27029,7 +27029,6 @@ try {
   
   console.log(`[SCHEDULE-SUCCESS] ${scheduledEntries.length} Einträge gespeichert`);
   console.log(`[PARALLEL-COUNT] ${scheduledEntries.filter(e => e.isParallel).length} parallele Phasen`);
-  console.log(`[STANDZEIT-COUNT] ${scheduledEntries.filter(e => e.is_standzeit).length} Standzeit-Phasen`);
   console.log(`[MINOR-WORK-COUNT] ${scheduledEntries.filter(e => e.is_minor_work).length} Minor Work Phasen`);
   
   // Update Schedule mit KI-Daten
