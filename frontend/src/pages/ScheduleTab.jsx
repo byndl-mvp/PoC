@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, AlertTriangle, CheckCircle, Edit2, Info, ChevronRight, ChevronDown, X } from 'lucide-react';
 
-console.log('🔍 RENDER ScheduleTab:', {
-  hasSchedule: !!schedule,
-  scheduleStatus: schedule?.status,
-  showInitModal,
-  generating
-});
 // ============================================================================
 // HAUPT-KOMPONENTE: TERMINPLAN-TAB FÜR BAUHERREN
 // ============================================================================
@@ -1046,59 +1040,65 @@ useEffect(() => {
         {/* Wrapper mit position: relative für SVG */}
         <div className="relative min-w-max" style={{ minHeight: `${groupedTrades.length * 100}px` }}>
           
-         {/* Dependencies SVG */}
-{findDependencies && arrowPositions.length > 0 && (
-  <div className="absolute top-0 left-64 right-32 pointer-events-none" style={{ zIndex: 1 }}>
-    <svg className="w-full h-full">
-      {arrowPositions.map((arrow) => {
-        const midY = (arrow.fromY + arrow.toY) / 2;
-        const fromX = `${arrow.fromPercent}%`;
-        const toX = `${arrow.toPercent}%`;
+         {/* Dependencies SVG Layer - MIT DOM-POSITIONEN */}
+          {findDependencies && (
+          <svg 
+  className="absolute top-0 left-0 pointer-events-none w-full h-full"
+  style={{ zIndex: 5 }}
+>
+  {arrowData.map((arrow) => {
+    const midY = (arrow.fromY + arrow.toY) / 2;
+    
+    return (
+      <g key={arrow.id}>
+        {/* Vertikale Linie vom Balkenende nach unten/oben */}
+        <line
+          x1={arrow.fromX}
+          y1={arrow.fromY}
+          x2={arrow.fromX}
+          y2={midY}
+          stroke="#94a3b8"
+          strokeWidth="2"
+          strokeDasharray="4 4"
+          opacity="0.6"
+        />
         
-        return (
-          <g key={arrow.id}>
-            <line
-              x1={fromX}
-              y1={arrow.fromY}
-              x2={fromX}
-              y2={midY}
-              stroke="#94a3b8"
-              strokeWidth="2"
-              strokeDasharray="4 4"
-              opacity="0.6"
-            />
-            <line
-              x1={fromX}
-              y1={midY}
-              x2={toX}
-              y2={midY}
-              stroke="#94a3b8"
-              strokeWidth="2"
-              strokeDasharray="4 4"
-              opacity="0.6"
-            />
-            <line
-              x1={toX}
-              y1={midY}
-              x2={toX}
-              y2={arrow.toY}
-              stroke="#94a3b8"
-              strokeWidth="2"
-              strokeDasharray="4 4"
-              opacity="0.6"
-            />
-            <polygon
-              points="0,-5 -8,5 8,5"
-              fill="#94a3b8"
-              opacity="0.6"
-              transform={`translate(${toX}, ${arrow.toY}) rotate(90)`}
-            />
-          </g>
-        );
-      })}
-    </svg>
-  </div>
-)}         
+        {/* Horizontale Verbindungslinie */}
+        <line
+          x1={arrow.fromX}
+          y1={midY}
+          x2={arrow.toX}
+          y2={midY}
+          stroke="#94a3b8"
+          strokeWidth="2"
+          strokeDasharray="4 4"
+          opacity="0.6"
+        />
+        
+        {/* Vertikale Linie zum Balkenanfang */}
+        <line
+          x1={arrow.toX}
+          y1={midY}
+          x2={arrow.toX}
+          y2={arrow.toY}
+          stroke="#94a3b8"
+          strokeWidth="2"
+          strokeDasharray="4 4"
+          opacity="0.6"
+        />
+        
+        {/* Pfeil am Ende */}
+        <polygon
+          points="0,-5 -8,5 8,5"
+          fill="#94a3b8"
+          opacity="0.6"
+          transform={`translate(${arrow.toX}, ${arrow.toY}) rotate(90)`}
+        />
+      </g>
+    );
+  })}
+</svg>
+)}                 
           
           {/* Balken-Liste */}
           {groupedTrades.map((trade, tradeIdx) => (
