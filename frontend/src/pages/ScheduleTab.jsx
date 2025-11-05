@@ -45,7 +45,7 @@ useEffect(() => {
     setGenerating(false);
     setShowInitModal(false);
   }
-}, [schedule]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [schedule]); 
 
 // Polling während Generierung
 useEffect(() => {
