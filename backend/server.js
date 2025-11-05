@@ -26383,10 +26383,8 @@ KRITISCHE LOGIK-REGELN:
    - Keine Innenarbeiten vor dichtem Dach
 
 4. **Gerüst korrekt strukturiert?**
-   - Genau 3 Phasen (Aufbau, Standzeit, Abbau)?
-   - Standzeit = Summe aller Außenarbeiten?
-   - Abbau erst nach letzter Außenarbeit?
-   - **is_standzeit: true bei Phase 2 gesetzt?**
+   - Genau 2 Phasen (Aufbau, Abbau)?
+   - Abbau erst nach letzter Außenarbeit (DACH, ZIMM, FEN, FASS) ?
    
 5. **Puffer sinnvoll platziert?**
    - Nach ESTR (Trocknungs-Risiko)
