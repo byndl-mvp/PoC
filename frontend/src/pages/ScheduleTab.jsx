@@ -270,23 +270,24 @@ useEffect(() => {
 const findDependencies = (entries) => {
   const deps = [];
   
-  entries?.forEach(entry => {
-    if (!entry.dependencies || entry.dependencies.length === 0) return;
+  if (!entries || entries.length === 0) return deps;
+  
+  entries.forEach(targetEntry => {
+    if (!targetEntry.dependencies || targetEntry.dependencies.length === 0) return;
     
-    // Parse Dependencies (können sein: "DACH" oder "DACH-Phase1")
-    entry.dependencies.forEach(dep => {
-      const depTradeCode = dep.includes('-') ? dep.split('-')[0] : dep;
+    targetEntry.dependencies.forEach(depTradeCode => {
+      // Finde alle Entries des abhängigen Trades
+      const sourceEntries = entries.filter(e => e.trade_code === depTradeCode);
       
-      // Finde das abhängige Gewerk
-      const depEntry = entries.find(e => 
-        e.trade_code === depTradeCode &&
-        new Date(e.planned_end) <= new Date(entry.planned_start)
-      );
-      
-      if (depEntry) {
+      if (sourceEntries.length > 0) {
+        // Nimm die LETZTE Phase (höchste phase_number)
+        const lastPhase = sourceEntries.reduce((latest, current) => {
+          return (current.phase_number > latest.phase_number) ? current : latest;
+        });
+        
         deps.push({
-          from: depEntry,
-          to: entry
+          from: lastPhase,
+          to: targetEntry
         });
       }
     });
