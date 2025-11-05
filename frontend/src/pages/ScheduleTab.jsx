@@ -39,10 +39,12 @@ useEffect(() => {
   if (schedule?.status === 'draft') {
     console.log('📋 Schedule ist Draft → Aktiviere Polling');
     setGenerating(true);
+    setShowInitModal(true); 
   } else if (schedule && schedule.status !== 'draft') {
     // Schedule ist fertig, deaktiviere Polling
     console.log('✅ Schedule ist fertig → Stoppe Polling');
     setGenerating(false);
+    setShowInitModal(false);
   }
 }, [schedule]);
 
