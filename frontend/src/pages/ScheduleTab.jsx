@@ -35,39 +35,35 @@ useEffect(() => {
 }, [schedule]); // eslint-disable-line
 
 useEffect(() => {
-  const checkGenerationStatus = async () => {
-    if (schedule?.status === 'draft') {
-      // Prüfe ob Generierung läuft
-      try {
-        const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule/generation-status`));
-        if (res.ok) {
-          const data = await res.json();
-          if (data.isGenerating) {
-            setGenerating(true);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  };
-  
-  checkGenerationStatus();
-}, [schedule, project.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Wenn Schedule im Draft-Status ist, aktiviere Polling
+  if (schedule?.status === 'draft') {
+    console.log('📋 Schedule ist Draft → Aktiviere Polling');
+    setGenerating(true);
+  } else if (schedule && schedule.status !== 'draft') {
+    // Schedule ist fertig, deaktiviere Polling
+    console.log('✅ Schedule ist fertig → Stoppe Polling');
+    setGenerating(false);
+  }
+}, [schedule]);
 
 // Polling während Generierung
 useEffect(() => {
   if (!generating) return;
   
+  console.log('🟡 Starting poll interval...');
+  
   const pollInterval = setInterval(async () => {
+    console.log('📡 Polling...'); // ← FÜGE AUCH DAS HINZU für Debug!
     try {
       const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule`));
       
       if (res.ok) {
         const data = await res.json();
+        console.log('📊 Status:', data.status); // ← UND DAS!
         
         // Wenn Status sich geändert hat (nicht mehr 'draft'), ist Generierung fertig
         if (data.status !== 'draft') {
+          console.log('✅ Generierung fertig!');
           setGenerating(false);
           setShowInitModal(false);
           await loadSchedule();
@@ -81,7 +77,7 @@ useEffect(() => {
   }, 3000); // Alle 3 Sekunden prüfen
   
   return () => clearInterval(pollInterval);
-}, [generating, project.id]); // eslint-disable-line
+}, [generating, project.id]);
   
   const loadSchedule = async () => {
     try {
