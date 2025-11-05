@@ -383,7 +383,6 @@ const findDependencies = (entries) => {
     }}
     onSubmit={handleInitiate}
     generating={generating}
-    readOnly={generating}
   />
 )}
       </div>
