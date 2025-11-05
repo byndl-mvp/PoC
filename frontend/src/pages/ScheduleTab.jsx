@@ -40,31 +40,36 @@ useEffect(() => {
   
   console.log('🟡 Starting poll interval...');
   
-  const pollInterval = setInterval(async () => {
-    console.log('📡 Polling...'); // ← FÜGE AUCH DAS HINZU für Debug!
-    try {
-      const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule`));
+const pollInterval = setInterval(async () => {
+  console.log('📡 Polling...');
+  try {
+    const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule`));
+    
+    if (res.ok) {
+      const data = await res.json();
+      console.log('📊 Status:', data.status);
       
-      if (res.ok) {
-        const data = await res.json();
-        console.log('📊 Status:', data.status); // ← UND DAS!
+      // Wenn Status sich geändert hat (nicht mehr 'draft'), ist Generierung fertig
+      if (data.status !== 'draft') {
+        console.log('✅ Generierung fertig!');
+        setGenerating(false);
+        clearInterval(pollInterval);
         
-        // Wenn Status sich geändert hat (nicht mehr 'draft'), ist Generierung fertig
-        if (data.status !== 'draft') {
-          console.log('✅ Generierung fertig!');
-          setGenerating(false);
-          setShowInitModal(false);
-          await loadSchedule();
+        // Force reload
+        await loadSchedule();
+        
+        // Kurz warten, dann Approval Modal
+        setTimeout(() => {
           setShowApprovalModal(true);
-          clearInterval(pollInterval);
-        }
+        }, 500);
       }
-    } catch (err) {
-      console.error('Polling error:', err);
     }
-  }, 3000); // Alle 3 Sekunden prüfen
-  
-  return () => clearInterval(pollInterval);
+  } catch (err) {
+    console.error('Polling error:', err);
+  }
+}, 3000);
+
+return () => clearInterval(pollInterval);
 }, [generating, project.id]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const loadSchedule = async () => {
