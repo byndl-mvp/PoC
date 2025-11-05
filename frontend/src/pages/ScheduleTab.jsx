@@ -973,53 +973,71 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
         {/* Wrapper mit position: relative für SVG */}
         <div className="relative min-w-max" style={{ minHeight: `${groupedTrades.length * 100}px` }}>
           
-          {/* Dependencies SVG Layer - KORRIGIERT */}
+          {/* Dependencies SVG Layer */}
           {findDependencies && (
             <svg 
-              className="absolute top-0 pointer-events-none" 
+              className="absolute top-0 left-0 pointer-events-none" 
               style={{ 
-                left: '264px', // Offset für linke Spalte
-                width: 'calc(100% - 396px)', // 264px links + 132px rechts
+                width: '100%',
                 height: '100%',
                 zIndex: 1
               }}
             >
               {findDependencies(entries).map((dep, idx) => {
-                // Baue flache Liste aller sichtbaren Entries
-                const flatEntries = [];
-                groupedTrades.forEach(trade => {
+                // Zähle visuelle Zeilen (inkl. Trade-Header)
+                let fromVisualRow = -1;
+                let toVisualRow = -1;
+                let currentRow = 0;
+                
+                groupedTrades.forEach((trade) => {
+                  // Trade Header = 1 Zeile
+                  currentRow++;
+                  
                   if (expandedTrades[trade.trade_code]) {
-                    flatEntries.push(...trade.entries);
+                    // Alle Entries sichtbar
+                    trade.entries.forEach(entry => {
+                      if (entry.id === dep.from.id) fromVisualRow = currentRow;
+                      if (entry.id === dep.to.id) toVisualRow = currentRow;
+                      currentRow++;
+                    });
                   } else {
-                    flatEntries.push(trade.entries[0]);
+                    // Nur erstes Entry sichtbar
+                    if (trade.entries[0].id === dep.from.id) fromVisualRow = currentRow;
+                    if (trade.entries[0].id === dep.to.id) toVisualRow = currentRow;
+                    currentRow++;
                   }
                 });
                 
-                const fromIndex = flatEntries.findIndex(e => e.id === dep.from.id);
-                const toIndex = flatEntries.findIndex(e => e.id === dep.to.id);
+                if (fromVisualRow === -1 || toVisualRow === -1) return null;
                 
-                if (fromIndex === -1 || toIndex === -1) return null;
+                // Berechne Y-Positionen (60px pro Zeile)
+                const rowHeight = 60;
+                const fromY = fromVisualRow * rowHeight + 20; // Mitte des Balkens
+                const toY = toVisualRow * rowHeight + 10; // Anfang des nächsten Balkens
+                const midY = (fromY + toY) / 2;
                 
-                // Berechne Y-Positionen (80px pro Zeile)
-                const rowHeight = 80;
-                const fromY = fromIndex * rowHeight + 50;
-                const toY = toIndex * rowHeight + 30;
-                
-                // Berechne X-Positionen als PROZENT (nicht Pixel!)
+                // Berechne X-Positionen (in Pixel, mit Offset für linke Spalte)
                 const fromDate = new Date(dep.from.planned_end);
                 const toDate = new Date(dep.to.planned_start);
                 const fromPercent = ((fromDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
                 const toPercent = ((toDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
                 
-                const midY = (fromY + toY) / 2;
+                // SVG viewBox basiert auf Container-Breite
+                // Linke Spalte = 264px, Rechte Spalte = 132px
+                const svgWidth = 1000; // Relative Einheit
+                const leftOffset = 264;
+                const chartWidth = svgWidth - leftOffset - 132;
+                
+                const fromX = leftOffset + (fromPercent / 100) * chartWidth;
+                const toX = leftOffset + (toPercent / 100) * chartWidth;
                 
                 return (
                   <g key={idx}>
                     {/* Vertikale Linie nach unten */}
                     <line
-                      x1={`${fromPercent}%`}
+                      x1={fromX}
                       y1={fromY}
-                      x2={`${fromPercent}%`}
+                      x2={fromX}
                       y2={midY}
                       stroke="#94a3b8"
                       strokeWidth="2"
@@ -1029,9 +1047,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                     
                     {/* Horizontale Linie */}
                     <line
-                      x1={`${fromPercent}%`}
+                      x1={fromX}
                       y1={midY}
-                      x2={`${toPercent}%`}
+                      x2={toX}
                       y2={midY}
                       stroke="#94a3b8"
                       strokeWidth="2"
@@ -1041,9 +1059,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                     
                     {/* Vertikale Linie nach oben */}
                     <line
-                      x1={`${toPercent}%`}
+                      x1={toX}
                       y1={midY}
-                      x2={`${toPercent}%`}
+                      x2={toX}
                       y2={toY}
                       stroke="#94a3b8"
                       strokeWidth="2"
@@ -1051,12 +1069,12 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                       opacity="0.6"
                     />
                     
-                    {/* Pfeil - KORRIGIERT */}
+                    {/* Pfeil */}
                     <polygon
                       points={`0,0 -5,-8 5,-8`}
                       fill="#94a3b8"
                       opacity="0.6"
-                      transform={`translate(${toPercent}%, ${toY})`}
+                      transform={`translate(${toX}, ${toY})`}
                     />
                   </g>
                 );
