@@ -894,59 +894,58 @@ useEffect(() => {
   }
   
   const timer = setTimeout(() => {
-    console.log('[ARROWS] 🔍 Entries:', entries?.length);
-    console.log('[ARROWS] 🔍 Sample entry:', entries?.[0]);
-    
     const deps = findDependencies(entries);
     console.log('[ARROWS] 🔍 Dependencies gefunden:', deps.length);
-    console.log('[ARROWS] 🔍 Dependencies:', deps);
     
     if (deps.length === 0) {
       console.log('[ARROWS] ⚠️ Keine Dependencies gefunden!');
-      // Prüfe ob entries dependencies haben
-      entries?.forEach(e => {
-        if (e.dependencies && e.dependencies.length > 0) {
-          console.log('[ARROWS] Entry hat deps:', e.trade_code, e.phase_name, e.dependencies);
-        }
-      });
       return;
     }
     
     const positions = deps.map((dep) => {
-      console.log('[ARROWS] 🎯 Processing:', dep.from.id, '→', dep.to.id);
-      
       const fromBalken = document.querySelector(`[data-entry-id="${dep.from.id}"]`);
       const toBalken = document.querySelector(`[data-entry-id="${dep.to.id}"]`);
-      
-      console.log('[ARROWS] 🔍 DOM Elements:', !!fromBalken, !!toBalken);
       
       if (!fromBalken || !toBalken) {
         console.warn(`[ARROWS] ❌ Balken nicht gefunden: from=${dep.from.id}, to=${dep.to.id}`);
         return null;
       }
       
-      const container = fromBalken.closest('.relative.min-w-max');
-      if (!container) {
-        console.warn('[ARROWS] ❌ Container nicht gefunden');
+      // Finde den Gantt-Chart Container (nicht den parent, sondern den Haupt-Container)
+      const ganttContainer = document.querySelector('.space-y-3.overflow-x-auto');
+      if (!ganttContainer) {
+        console.warn('[ARROWS] ❌ Gantt Container nicht gefunden');
         return null;
       }
       
-      const containerRect = container.getBoundingClientRect();
+      const containerRect = ganttContainer.getBoundingClientRect();
       const fromRect = fromBalken.getBoundingClientRect();
       const toRect = toBalken.getBoundingClientRect();
       
+      // Berechne Positionen relativ zum Gantt-Container
+      const fromX = fromRect.right - containerRect.left;
+      const fromY = fromRect.top + (fromRect.height / 2) - containerRect.top;
+      const toX = toRect.left - containerRect.left;
+      const toY = toRect.top + (toRect.height / 2) - containerRect.top;
+      
+      console.log('[ARROWS] Position:', {
+        from: dep.from.trade_code,
+        to: dep.to.trade_code,
+        fromX, fromY, toX, toY
+      });
+      
       return {
         id: `${dep.from.id}-${dep.to.id}`,
-        fromX: fromRect.right - containerRect.left,
-        fromY: fromRect.top + (fromRect.height / 2) - containerRect.top,
-        toX: toRect.left - containerRect.left,
-        toY: toRect.top + (toRect.height / 2) - containerRect.top,
+        fromX,
+        fromY,
+        toX,
+        toY
       };
     }).filter(Boolean);
     
     setArrowData(positions);
     console.log(`[ARROWS] ✅ Calculated ${positions.length} arrow positions`);
-  }, 100);
+  }, 200); // Erhöhe Delay auf 200ms
   
   return () => clearTimeout(timer);
 }, [entries, expandedTrades, findDependencies]);
