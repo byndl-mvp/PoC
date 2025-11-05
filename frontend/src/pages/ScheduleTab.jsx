@@ -374,17 +374,28 @@ const findDependencies = (entries) => {
 )}
 
        {/* Initiierungs-Modal */}
-{(showInitModal || generating) && (
+{generating && (
+  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="bg-slate-800 rounded-xl p-8 max-w-md w-full mx-4 border border-white/20">
+      <div className="text-center">
+        <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+        <h3 className="text-2xl font-bold text-white mb-4">Terminplan wird generiert...</h3>
+        <p className="text-gray-300 mb-6">
+          Die KI erstellt gerade Ihren individuellen Bauablaufplan. Dies kann einige Minuten dauern.
+        </p>
+        <p className="text-sm text-gray-400">
+          Bitte schließen Sie dieses Fenster nicht.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+
+{showInitModal && !generating && (
   <InitiateScheduleModal
-    onClose={() => {
-      if (!generating) {
-        setShowInitModal(false);
-      } else {
-        alert('⏳ Bitte warten Sie - der Terminplan wird gerade generiert...');
-      }
-    }}
+    onClose={() => setShowInitModal(false)}
     onSubmit={handleInitiate}
-    generating={generating}
+    generating={false}
   />
 )}
       </div>
