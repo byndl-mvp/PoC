@@ -26957,10 +26957,10 @@ for (let i = 0; i < allEntries.length; i++) {
       });
       processedIndices.add(i);
       
-      const thisEndWithBuffer = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
-      if (thisEndWithBuffer > currentSequenceDate) {
-        currentSequenceDate = thisEndWithBuffer;
-      }
+      const thisEnd = addWorkdays(endDate, 1);
+if (thisEnd > currentSequenceDate) {
+  currentSequenceDate = thisEnd;
+}
       
       console.log(`[DEPENDENCY-MET] ${entry.trade_code} Phase ${phase.phase_number}`);
     }
