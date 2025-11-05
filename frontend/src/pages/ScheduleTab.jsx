@@ -113,8 +113,15 @@ useEffect(() => {
   try {
     console.log('🚀 Starte Generierung...');
     setGenerating(true);
+
+  // ERST löschen falls existiert
+    if (schedule) {
+      await fetch(apiUrl(`/api/projects/${project.id}/schedule`), {
+        method: 'DELETE'
+      });
+    }
     
-    // Schritt 1: Initiieren
+    // Dann Initiieren
     const initRes = await fetch(apiUrl(`/api/projects/${project.id}/schedule/initiate`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
