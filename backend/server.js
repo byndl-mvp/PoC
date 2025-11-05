@@ -26582,8 +26582,7 @@ WICHTIG:
 - Passe die Standard-Dauern an den tatsächlichen Umfang an
 - Erkläre dem Bauherrn transparent, warum welches Gewerk wie lange dauert
 - Berücksichtige die Auftragssummen: Höhere Summe = mehr Arbeitsaufwand
-- **KRITISCH: Setze bei Gerüst Phase 2 (Standzeit) IMMER is_standzeit: true**
-- **KRITISCH: Setze bei kleinen Rohbauarbeiten (<5k€) is_minor_work: true und can_parallel_with**
+- Setze bei kleinen Rohbauarbeiten (<5k€) is_minor_work: true und can_parallel_with**
 
 Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärungen basierend auf den tatsächlichen Leistungsmengen.`;
 
