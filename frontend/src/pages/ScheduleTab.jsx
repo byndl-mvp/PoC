@@ -372,16 +372,12 @@ const findDependencies = (entries) => {
 )}
 
        {/* Initiierungs-Modal */}
-{(showInitModal || generating) && (
+{generating && (
   <InitiateScheduleModal
     onClose={() => {
-      if (!generating) {
-        setShowInitModal(false);
-      } else {
-        alert('Bitte warten Sie bis die Generierung abgeschlossen ist.');
-      }
+      alert('Bitte warten Sie bis die Generierung abgeschlossen ist.');
     }}
-    onSubmit={handleInitiate}
+    onSubmit={() => {}} // Leer, weil schon gestartet
     generating={generating}
   />
 )}
