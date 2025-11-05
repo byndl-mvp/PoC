@@ -126,49 +126,44 @@ useEffect(() => {
   };
 
   const handleInitiate = async (targetDate, dateType) => {
-    try {
-      setGenerating(true);
-      
-      // Schritt 1: Initiieren
-      const initRes = await fetch(apiUrl(`/api/projects/${project.id}/schedule/initiate`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetDate, dateType })
-      });
-      
-      if (!initRes.ok) {
-        const error = await initRes.json();
-        alert('Fehler: ' + error.error);
-        setGenerating(false);
-        return;
-      }
-      
-      // Schritt 2: Generieren (kann 10-30 Sekunden dauern)
-      const genRes = await fetch(apiUrl(`/api/projects/${project.id}/schedule/generate`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (!genRes.ok) {
-        const error = await genRes.json();
-        alert('Fehler bei der Generierung: ' + error.error);
-        setGenerating(false);
-        return;
-      }
-      
-      setShowInitModal(false);
+  try {
+    console.log('🚀 Starte Generierung...');
+    setGenerating(true);
+    
+    // Schritt 1: Initiieren
+    const initRes = await fetch(apiUrl(`/api/projects/${project.id}/schedule/initiate`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetDate, dateType })
+    });
+    
+    if (!initRes.ok) {
+      const error = await initRes.json();
+      alert('Fehler: ' + error.error);
       setGenerating(false);
-      
-      // Reload und zeige Approval-Modal
-      await loadSchedule();
-      setShowApprovalModal(true);
-      
-    } catch (err) {
-      console.error('Fehler:', err);
-      alert('Ein Fehler ist aufgetreten');
-      setGenerating(false);
+      return;
     }
-  };
+    
+    console.log('✅ Initiierung erfolgreich, starte Generate...');
+    
+    // Schritt 2: Generieren STARTEN (warten NICHT auf Response!)
+    fetch(apiUrl(`/api/projects/${project.id}/schedule/generate`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }).catch(err => {
+      console.error('❌ Generate error:', err);
+      alert('Fehler bei der Generierung');
+      setGenerating(false);
+    });
+    
+    console.log('⏳ Polling überwacht jetzt die Generierung...');
+    
+  } catch (err) {
+    console.error('❌ Fehler:', err);
+    alert('Ein Fehler ist aufgetreten');
+    setGenerating(false);
+  }
+};
 
   const handleApprove = async (notes) => {
     try {
