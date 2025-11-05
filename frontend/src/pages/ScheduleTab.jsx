@@ -389,6 +389,14 @@ const findDependencies = (entries) => {
   }
   return null;
 })()}
+
+{/* Initiierungs-Modal */}
+{!schedule && showInitModal && (
+  <InitiateScheduleModal
+    onClose={() => setShowInitModal(false)}
+    onSubmit={handleInitiate}
+  />
+)}
     </div>
     );
   }
