@@ -16,6 +16,7 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
   const [showExplanations, setShowExplanations] = useState(true);
   const [changeRequests, setChangeRequests] = useState([]);
   const [expandedTrades, setExpandedTrades] = useState({});
+  const [arrowData, setArrowData] = useState([]);
 
   useEffect(() => {
     loadSchedule();
