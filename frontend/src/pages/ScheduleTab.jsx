@@ -395,8 +395,10 @@ const findDependencies = (entries) => {
   }
   return null;
 })()}
-
-
+    </div>
+    );
+  }
+  
   // Terminplan vorhanden - verschiedene Ansichten je nach Status
   const aiData = schedule.ai_response || {};
   const groupedTrades = groupEntriesByTrade(schedule.entries);
