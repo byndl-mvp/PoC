@@ -26939,7 +26939,7 @@ for (let i = 0; i < allEntries.length; i++) {
             return new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest;
           });
           
-          const depEndDate = addWorkdays(new Date(latestDep.endDate), 1 + (latestDep.phase.buffer_days || 0));
+          const depEndDate = addWorkdays(new Date(latestDep.endDate), 1);
           if (depEndDate > latestDepEnd) {
             latestDepEnd = depEndDate;
           }
