@@ -25668,7 +25668,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/evaluations', async (req, res)
 // ============================================================================
 
 // ============================================================================
-// HILFSFUNKTIONEN
+// HILFSFUNKTIONEN - KORRIGIERT MIT FEIERTAGEN
 // ============================================================================
 
 // Lade Feiertage beim Start
@@ -25699,16 +25699,14 @@ function isWorkday(date) {
   return true;
 }
 
-// Berechne Arbeitstage (Mo-Fr) zwischen zwei Daten
+// Berechne Arbeitstage (Mo-Fr, OHNE Feiertage) zwischen zwei Daten
 function calculateWorkdays(startDate, endDate) {
   let count = 0;
   const current = new Date(startDate);
   const end = new Date(endDate);
   
   while (current <= end) {
-    const dayOfWeek = current.getDay();
-    // 0 = Sonntag, 6 = Samstag
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+    if (isWorkday(current)) {  // ← JETZT mit Feiertags-Check!
       count++;
     }
     current.setDate(current.getDate() + 1);
@@ -25717,15 +25715,15 @@ function calculateWorkdays(startDate, endDate) {
   return count;
 }
 
-// Addiere Arbeitstage zu einem Datum (überspringt Wochenenden)
+// Addiere Arbeitstage zu einem Datum (überspringt Wochenenden UND Feiertage)
 function addWorkdays(startDate, days) {
   const result = new Date(startDate);
   let addedDays = 0;
   
   while (addedDays < days) {
     result.setDate(result.getDate() + 1);
-    const dayOfWeek = result.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+    
+    if (isWorkday(result)) {  // ← JETZT mit Feiertags-Check!
       addedDays++;
     }
   }
