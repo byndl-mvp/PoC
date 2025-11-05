@@ -454,9 +454,9 @@ const badgeCounts = {
     new Date(o.updated_at || o.created_at) > new Date(lastViewedTabs.vertragsanbahnung))
   ).length,
   auftraege: orders.filter(o => 
-  o.status === 'accepted' &&
+  o.status !== 'completed' &&
   (!lastViewedTabs.auftraege || 
-  new Date(o.updated_at || o.created_at) > new Date(lastViewedTabs.auftraege))
+  new Date(o.created_at) > new Date(lastViewedTabs.auftraege))
 ).length
 };
     
