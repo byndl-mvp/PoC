@@ -26980,7 +26980,7 @@ for (let i = 0; i < allEntries.length; i++) {
        (schedule_id, trade_id, phase_name, phase_number,
         planned_start, planned_end, duration_days, buffer_days,
         status, dependencies,
-        scheduling_reason, buffer_reason, risks, is_standzeit, is_minor_work)
+        scheduling_reason, buffer_reason, risks, is_minor_work)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         schedule.id,
