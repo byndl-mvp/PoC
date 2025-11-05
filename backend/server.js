@@ -26849,16 +26849,16 @@ if (entry.can_parallel_with.length > 0) {
     // FALL 3: SEQUENTIELL
     // ================================================================
     const startDate = new Date(currentSequenceDate);
-    const endDate = addWorkdays(startDate, phase.duration_days - 1);
-    
-    scheduledEntries.push({
-      ...entry,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-      isParallel: false
-    });
-    processedIndices.add(i);
-    currentSequenceDate = addWorkdays(endDate, 1 + (phase.buffer_days || 0));
+const endDate = addWorkdays(startDate, phase.duration_days - 1);
+
+scheduledEntries.push({
+  ...entry,
+  startDate: startDate.toISOString().split('T')[0],
+  endDate: endDate.toISOString().split('T')[0],
+  isParallel: false
+});
+processedIndices.add(i);
+currentSequenceDate = addWorkdays(endDate, 1); // ← NUR 1 Tag = nahtlos
     
     console.log(`[SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]}`);
   }
