@@ -26980,7 +26980,7 @@ if (thisEnd > currentSequenceDate) {
         planned_start, planned_end, duration_days, buffer_days,
         status, dependencies,
         scheduling_reason, buffer_reason, risks, is_minor_work)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
         schedule.id,
         entry.trade_id,
