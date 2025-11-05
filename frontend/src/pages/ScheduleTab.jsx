@@ -117,28 +117,33 @@ return () => clearInterval(pollInterval);
   const handleInitiate = async (targetDate, dateType) => {
   try {
     console.log('🚀 Starte Generierung...');
-    setGenerating(true);
-
-  // ERST löschen falls existiert
-    if (schedule) {
-      await fetch(apiUrl(`/api/projects/${project.id}/schedule`), {
-        method: 'DELETE'
-      });
-    }
+    console.log('📊 Aktueller Schedule State:', schedule);
+    console.log('📊 Project ID:', project.id);
+    console.log('📊 Target Date:', targetDate, 'Type:', dateType);
     
-    // Dann Initiieren
+    setGenerating(true);
+    
+    // SCHRITT 1: Initiieren (OHNE DELETE)
+    console.log('📝 Sende Initiate Request...');
     const initRes = await fetch(apiUrl(`/api/projects/${project.id}/schedule/initiate`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetDate, dateType })
     });
     
+    console.log('📥 Initiate Response Status:', initRes.status);
+    
     if (!initRes.ok) {
       const error = await initRes.json();
-      alert('Fehler: ' + error.error);
+      console.error('❌ Initiate error:', error);
+      console.error('📋 Full error object:', JSON.stringify(error, null, 2));
+      alert('Fehler beim Erstellen: ' + JSON.stringify(error));
       setGenerating(false);
+      setShowInitModal(false);
       return;
     }
+    
+    const initData = await initRes.json();
     
     console.log('✅ Initiierung erfolgreich, starte Generate...');
     
