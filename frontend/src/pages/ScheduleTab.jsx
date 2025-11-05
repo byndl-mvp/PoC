@@ -1188,6 +1188,9 @@ const isMinorWork = entry.is_minor_work === true;
   const workdays = calculateWorkdays(entry.planned_start, entry.planned_end);
   const bufferDays = entry.buffer_days || 0;
 
+  // DEBUG: Prüfe Werte
+  console.log('Entry:', entry.trade_code, 'Buffer:', bufferDays, 'Position:', position);
+  
   return (
   <>
     <div className="flex items-start py-3 relative group">
