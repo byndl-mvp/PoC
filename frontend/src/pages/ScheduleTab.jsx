@@ -891,92 +891,72 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 // ============================================================================
 
 function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade, findDependencies }) {
-  // Berechne Pfeil-Positionen
-const calculateArrowPositions = () => {
-  if (!findDependencies || !entries || entries.length === 0) return [];
+  const [arrowData, setArrowData] = useState([]);
+
+// useEffect der NACH dem Render die Positionen berechnet
+useEffect(() => {
+  if (!findDependencies) {
+    console.log('[ARROWS] ❌ findDependencies ist undefined');
+    return;
+  }
   
-  const deps = findDependencies(entries);
-  if (deps.length === 0) return [];
-  
-  const arrows = [];
-  
-  deps.forEach(dep => {
-    // Finde Trade und Entry Indizes
-    let fromTradeIdx = -1;
-    let fromEntryIdx = -1;
-    let toTradeIdx = -1;
-    let toEntryIdx = -1;
+  const timer = setTimeout(() => {
+    console.log('[ARROWS] 🔍 Entries:', entries?.length);
+    console.log('[ARROWS] 🔍 Sample entry:', entries?.[0]);
     
-    groupedTrades.forEach((trade, tIdx) => {
-      // Nur wenn expanded
-      if (!expandedTrades[trade.trade_code]) return;
-      
-      trade.entries.forEach((entry, eIdx) => {
-        if (entry.id === dep.from.id) {
-          fromTradeIdx = tIdx;
-          fromEntryIdx = eIdx;
-        }
-        if (entry.id === dep.to.id) {
-          toTradeIdx = tIdx;
-          toEntryIdx = eIdx;
+    const deps = findDependencies(entries);
+    console.log('[ARROWS] 🔍 Dependencies gefunden:', deps.length);
+    console.log('[ARROWS] 🔍 Dependencies:', deps);
+    
+    if (deps.length === 0) {
+      console.log('[ARROWS] ⚠️ Keine Dependencies gefunden!');
+      // Prüfe ob entries dependencies haben
+      entries?.forEach(e => {
+        if (e.dependencies && e.dependencies.length > 0) {
+          console.log('[ARROWS] Entry hat deps:', e.trade_code, e.phase_name, e.dependencies);
         }
       });
-    });
-    
-    // Wenn nicht beide gefunden oder nicht beide expanded, skip
-    if (fromTradeIdx === -1 || toTradeIdx === -1) return;
-    
-    const fromTrade = groupedTrades[fromTradeIdx];
-    const toTrade = groupedTrades[toTradeIdx];
-    
-    if (!expandedTrades[fromTrade.trade_code] || !expandedTrades[toTrade.trade_code]) {
       return;
     }
     
-    // Berechne Y (60px pro Zeile)
-    let fromY = 0;
-    let toY = 0;
-    
-    // Zähle Zeilen bis fromEntry
-    for (let i = 0; i < fromTradeIdx; i++) {
-      fromY += 60; // Trade Header
-      if (expandedTrades[groupedTrades[i].trade_code]) {
-        fromY += groupedTrades[i].entries.length * 60;
+    const positions = deps.map((dep) => {
+      console.log('[ARROWS] 🎯 Processing:', dep.from.id, '→', dep.to.id);
+      
+      const fromBalken = document.querySelector(`[data-entry-id="${dep.from.id}"]`);
+      const toBalken = document.querySelector(`[data-entry-id="${dep.to.id}"]`);
+      
+      console.log('[ARROWS] 🔍 DOM Elements:', !!fromBalken, !!toBalken);
+      
+      if (!fromBalken || !toBalken) {
+        console.warn(`[ARROWS] ❌ Balken nicht gefunden: from=${dep.from.id}, to=${dep.to.id}`);
+        return null;
       }
-    }
-    fromY += 60; // Eigener Trade Header
-    fromY += fromEntryIdx * 60 + 30; // Entries + Mitte
-    
-    // Zähle Zeilen bis toEntry
-    for (let i = 0; i < toTradeIdx; i++) {
-      toY += 60;
-      if (expandedTrades[groupedTrades[i].trade_code]) {
-        toY += groupedTrades[i].entries.length * 60;
+      
+      const container = fromBalken.closest('.relative.min-w-max');
+      if (!container) {
+        console.warn('[ARROWS] ❌ Container nicht gefunden');
+        return null;
       }
-    }
-    toY += 60;
-    toY += toEntryIdx * 60 + 30;
+      
+      const containerRect = container.getBoundingClientRect();
+      const fromRect = fromBalken.getBoundingClientRect();
+      const toRect = toBalken.getBoundingClientRect();
+      
+      return {
+        id: `${dep.from.id}-${dep.to.id}`,
+        fromX: fromRect.right - containerRect.left,
+        fromY: fromRect.top + (fromRect.height / 2) - containerRect.top,
+        toX: toRect.left - containerRect.left,
+        toY: toRect.top + (toRect.height / 2) - containerRect.top,
+      };
+    }).filter(Boolean);
     
-    // Berechne X basierend auf Datum
-    const fromEndDate = new Date(dep.from.planned_end);
-    const toStartDate = new Date(dep.to.planned_start);
-    
-    const fromPercent = ((fromEndDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-    const toPercent = ((toStartDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-    
-    arrows.push({
-      id: `${dep.from.id}-${dep.to.id}`,
-      fromPercent,
-      fromY,
-      toPercent,
-      toY
-    });
-  });
+    setArrowData(positions);
+    console.log(`[ARROWS] ✅ Calculated ${positions.length} arrow positions`);
+  }, 100);
   
-  return arrows;
-};
-
-const arrowPositions = calculateArrowPositions();
+  return () => clearTimeout(timer);
+}, [entries, expandedTrades, findDependencies]);
   
   if (!entries || entries.length === 0) {
     return (
