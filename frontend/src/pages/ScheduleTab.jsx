@@ -34,19 +34,6 @@ useEffect(() => {
   }
 }, [schedule]); // eslint-disable-line
 
-useEffect(() => {
-  if (schedule?.status === 'draft') {
-    console.log('📋 Schedule ist Draft → Aktiviere Polling + Modal');
-    setGenerating(true);
-    setShowInitModal(true);
-  } else {
-    // Alle anderen Stati → Polling aus, Modal zu
-    console.log('✅ Schedule nicht Draft → Stoppe Polling');
-    setGenerating(false);
-    setShowInitModal(false);
-  }
-}, [schedule]); 
-
 // Polling während Generierung
 useEffect(() => {
   if (!generating) return;
