@@ -513,8 +513,8 @@ const findDependencies = (entries) => {
         editMode={editMode && schedule.status !== 'pending_approval'}
         onUpdateEntry={handleUpdateEntry}
         expandedTrades={expandedTrades}
-        findDependencies={findDependencies}
         onToggleTrade={(code) => setExpandedTrades(prev => ({ ...prev, [code]: !prev[code] }))}
+        findDependencies={findDependencies}
       />
 
       {/* Approval Modal */}
