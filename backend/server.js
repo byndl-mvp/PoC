@@ -26670,36 +26670,37 @@ try {
   const processedIndices = new Set();
   
   // ================================================================
-  // PHASE 1: Gerüst-Standzeit & Minor Works MÜSSEN PARALLEL laufen
-  // ================================================================
-  for (let i = 0; i < allEntries.length; i++) {
-    if (processedIndices.has(i)) continue;
-    
-    const entry = allEntries[i];
-    const phase = entry.phase;
-    
-    // SKIP: Standzeit-Phasen & Minor Works werden später parallel eingeplant
-    if (entry.is_standzeit || entry.is_minor_work) {
-      console.log(`[SKIP-FOR-LATER] ${entry.trade_code} Phase ${phase.phase_number} (${entry.is_standzeit ? 'Standzeit' : 'Minor Work'})`);
-      continue;
-    }
-    
-    const allDependenciesMet = entry.dependencies.every(dep => {
-  // Erlaube Phase-spezifische Dependencies (z.B. "DACH-Eindeckung")
-  if (typeof dep === 'string' && dep.includes('-')) {
-    const [tradeDep, phaseDep] = dep.split('-');
-    return scheduledEntries.some(s => 
-      s.trade_code === tradeDep && 
-      s.phase.phase_name?.toLowerCase().includes(phaseDep.toLowerCase())
-    );
+// PHASE 1: Minor Works werden später parallel eingeplant
+// ================================================================
+for (let i = 0; i < allEntries.length; i++) {
+  if (processedIndices.has(i)) continue;
+  
+  const entry = allEntries[i];
+  const phase = entry.phase;
+  
+  // SKIP: Minor Works werden später parallel eingeplant
+  if (entry.is_minor_work) {
+    console.log(`[SKIP-FOR-LATER] ${entry.trade_code} Phase ${phase.phase_number} (Minor Work)`);
+    continue;
   }
-  // Trade-level Dependencies (z.B. "DACH" - alle Phasen fertig)
-  return scheduledEntries.some(s => s.trade_code === dep);
-});
-    
-    if (!allDependenciesMet && entry.dependencies.length > 0) {
-      continue;
+  
+  // Prüfe Dependencies
+  const allDependenciesMet = entry.dependencies.every(dep => {
+    // Erlaube Phase-spezifische Dependencies (z.B. "DACH-Eindeckung")
+    if (typeof dep === 'string' && dep.includes('-')) {
+      const [tradeDep, phaseDep] = dep.split('-');
+      return scheduledEntries.some(s => 
+        s.trade_code === tradeDep && 
+        s.phase.phase_name?.toLowerCase().includes(phaseDep.toLowerCase())
+      );
     }
+    // Trade-level Dependencies (z.B. "DACH" - alle Phasen fertig)
+    return scheduledEntries.some(s => s.trade_code === dep);
+  });
+  
+  if (!allDependenciesMet && entry.dependencies.length > 0) {
+    continue;
+  }
     
     // ================================================================
     // FALL 1: EXPLIZITE can_parallel_with (aus LLM)
@@ -26864,69 +26865,38 @@ try {
     console.log(`[SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]}`);
   }
   
-  // ================================================================
-  // PHASE 2: GERÜST-STANDZEIT & MINOR WORKS PARALLEL EINPLANEN
-  // ================================================================
-  for (let i = 0; i < allEntries.length; i++) {
-    if (processedIndices.has(i)) continue;
+// ================================================================
+// MINOR WORKS PARALLEL EINPLANEN
+// ================================================================
+for (let i = 0; i < allEntries.length; i++) {
+  if (processedIndices.has(i)) continue;
+  
+  const entry = allEntries[i];
+  const phase = entry.phase;
+  
+  // 🟡 MINOR WORKS: Kleine Rohbauarbeiten parallel zu anderem
+  if (entry.is_minor_work && entry.can_parallel_with.length > 0) {
+    const parallelTrades = entry.can_parallel_with;
+    const parallelEntries = scheduledEntries.filter(s => 
+      parallelTrades.includes(s.trade_code)
+    );
     
-    const entry = allEntries[i];
-    const phase = entry.phase;
-    
-    // 🔴 GERÜST-STANDZEIT: Läuft parallel zu ALLEN Außenarbeiten
-    if (entry.is_standzeit && entry.trade_code === 'GER') {
-      const aussenarbeiten = scheduledEntries.filter(s => 
-        ['DACH', 'ZIMM', 'FEN', 'FASS', 'SCHL'].includes(s.trade_code)
-      );
-      
-      if (aussenarbeiten.length > 0) {
-        // Finde frühesten Start und spätestes Ende der Außenarbeiten
-        const startDates = aussenarbeiten.map(s => new Date(s.startDate));
-        const endDates = aussenarbeiten.map(s => new Date(s.endDate));
-        
-        const earliestStart = new Date(Math.min(...startDates));
-        const latestEnd = new Date(Math.max(...endDates));
-        
-        scheduledEntries.push({
-          ...entry,
-          startDate: earliestStart.toISOString().split('T')[0],
-          endDate: latestEnd.toISOString().split('T')[0],
-          isParallel: true,
-          parallelTo: ['DACH', 'ZIMM', 'FEN', 'FASS'],
-          is_standzeit: true // FLAG für Frontend
-        });
-        processedIndices.add(i);
-        
-        const standzeit_days = Math.ceil((latestEnd - earliestStart) / (1000 * 60 * 60 * 24));
-        const standzeit_cost = standzeit_days * 75; // 75€/Tag
-        console.log(`[GERÜST-STANDZEIT] ${standzeit_days} Tage parallel zu Außenarbeiten (ca. ${standzeit_cost}€)`);
-        continue;
-      }
-    }
-    
-    // 🟡 MINOR WORKS: Kleine Rohbauarbeiten parallel zu anderem
-    if (entry.is_minor_work && entry.can_parallel_with.length > 0) {
-      const parallelTrades = entry.can_parallel_with;
-      const parallelEntries = scheduledEntries.filter(s => 
-        parallelTrades.includes(s.trade_code)
-      );
-      
-      if (parallelEntries.length > 0) {
-        const referenceEntry = parallelEntries[0];
-        scheduledEntries.push({
-          ...entry,
-          startDate: referenceEntry.startDate,
-          endDate: addWorkdays(new Date(referenceEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
-          isParallel: true,
-          parallelTo: parallelTrades,
-          is_minor_work: true
-        });
-        processedIndices.add(i);
-        console.log(`[MINOR-WORK-PARALLEL] ${entry.trade_code} läuft parallel zu ${parallelTrades.join(', ')}`);
-        continue;
-      }
+    if (parallelEntries.length > 0) {
+      const referenceEntry = parallelEntries[0];
+      scheduledEntries.push({
+        ...entry,
+        startDate: referenceEntry.startDate,
+        endDate: addWorkdays(new Date(referenceEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+        isParallel: true,
+        parallelTo: parallelTrades,
+        is_minor_work: true
+      });
+      processedIndices.add(i);
+      console.log(`[MINOR-WORK-PARALLEL] ${entry.trade_code} läuft parallel zu ${parallelTrades.join(', ')}`);
+      continue;
     }
   }
+}
   
   // ================================================================
   // PHASE 3: Dependencies noch nicht erfüllt
