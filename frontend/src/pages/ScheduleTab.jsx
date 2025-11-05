@@ -1184,7 +1184,6 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, allEntries, color }) {
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Standzeit wird NICHT mehr speziell behandelt - nur normale Balken
   const isMinorWork = entry.is_minor_work === true;
   
   const calculatePosition = (start, end) => {
