@@ -1245,6 +1245,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
         {/* Balken-Bereich - IMMER normaler Balken */}
         <div className="flex-1 relative">
           <button
+            data-entry-id={entry.id} 
             onClick={() => editMode && setShowEditModal(true)}
             className={`absolute rounded-lg shadow-lg ${
               editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
