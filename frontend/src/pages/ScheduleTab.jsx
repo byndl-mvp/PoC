@@ -1362,23 +1362,6 @@ function EditEntryModal({ entry, onClose, onSave }) {
           </label>
         </div>
 
-        {entry.is_standzeit && (
-  <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-    <h5 className="text-amber-300 font-semibold mb-2 flex items-center gap-2">
-      <AlertTriangle className="w-4 h-4" />
-      Achtung: Gerüst-Standzeit
-    </h5>
-    <p className="text-amber-200 text-sm">
-      Diese Phase verursacht nur Standzeit-Kosten, aber keine aktiven Arbeiten. 
-      Die Gerüst-Standzeit läuft parallel zu allen Außenarbeiten (Dach, Fassade, Fenster).
-    </p>
-    <p className="text-amber-200 text-sm mt-2">
-      <strong>Kosten:</strong> {calculateWorkdays(entry.planned_start, entry.planned_end)} Tage × 75€ = 
-      <strong className="text-amber-100"> ca. {calculateWorkdays(entry.planned_start, entry.planned_end) * 75}€</strong>
-    </p>
-  </div>
-)}
-
 {entry.is_minor_work && (
   <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
     <h5 className="text-blue-300 font-semibold mb-2 flex items-center gap-2">
