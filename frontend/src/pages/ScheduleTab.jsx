@@ -372,13 +372,18 @@ const findDependencies = (entries) => {
 )}
 
        {/* Initiierungs-Modal */}
-{generating && (
+{(showInitModal || generating) && (
   <InitiateScheduleModal
     onClose={() => {
-      alert('Bitte warten Sie bis die Generierung abgeschlossen ist.');
+      if (!generating) {
+        setShowInitModal(false);
+      } else {
+        alert('⏳ Bitte warten Sie - der Terminplan wird gerade generiert...');
+      }
     }}
-    onSubmit={() => {}} // Leer, weil schon gestartet
+    onSubmit={handleInitiate}
     generating={generating}
+    readOnly={generating}
   />
 )}
       </div>
