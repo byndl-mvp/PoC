@@ -380,10 +380,16 @@ const findDependencies = (entries) => {
   </div>
 )}
 
-        {/* Initiierungs-Modal */}
+       {/* Initiierungs-Modal */}
 {(showInitModal || generating) && (
   <InitiateScheduleModal
-    onClose={() => !generating && setShowInitModal(false)}
+    onClose={() => {
+      if (!generating) {
+        setShowInitModal(false);
+      } else {
+        alert('Bitte warten Sie bis die Generierung abgeschlossen ist.');
+      }
+    }}
     onSubmit={handleInitiate}
     generating={generating}
   />
