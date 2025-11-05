@@ -883,7 +883,7 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 }
 
 // ============================================================================
-// SUB-KOMPONENTE: GANTT-CHART BALKENPLAN
+// SUB-KOMPONENTE: GANTT-CHART BALKENPLAN - KORRIGIERT
 // ============================================================================
 
 function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade, findDependencies }) {
@@ -903,7 +903,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
   // Berechne Gesamtspanne in Tagen
   const totalDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
   
-  // Erstelle Tages-Grid (jeden 5. Tag anzeigen)
+  // Erstelle Tages-Grid
   const dateMarkers = [];
   let currentMarker = new Date(minDate);
   while (currentMarker <= maxDate) {
@@ -938,47 +938,48 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
         </div>
       </div>
 
-      {/* Timeline Header - FIXIERT */}
-<div className="mb-2 pb-4 border-b border-white/10">
-  <div className="flex min-w-max">
-    <div className="w-64 flex-shrink-0"></div>
-    <div className="flex-1 relative" style={{ height: '50px' }}>
-      {dateMarkers.map((date, idx) => {
-        const position = ((date - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-        return (
-          <div 
-            key={idx} 
-            className="absolute"
-            style={{ left: `${position}%`, transform: 'translateX(-50%)', minWidth: '60px' }}
-          >
-            <div className="text-center">
-              <div className="text-sm font-bold text-white whitespace-nowrap">
-                KW {getWeekNumber(date)}
-              </div>
-              <div className="text-xs text-gray-300 whitespace-nowrap">
-                {date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
-              </div>
-            </div>
-            <div className="w-px h-4 bg-white/20 mx-auto mt-1"></div>
+      {/* Timeline Header */}
+      <div className="mb-2 pb-4 border-b border-white/10">
+        <div className="flex min-w-max">
+          <div className="w-64 flex-shrink-0"></div>
+          <div className="flex-1 relative" style={{ height: '50px' }}>
+            {dateMarkers.map((date, idx) => {
+              const position = ((date - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+              return (
+                <div 
+                  key={idx} 
+                  className="absolute"
+                  style={{ left: `${position}%`, transform: 'translateX(-50%)', minWidth: '60px' }}
+                >
+                  <div className="text-center">
+                    <div className="text-sm font-bold text-white whitespace-nowrap">
+                      KW {getWeekNumber(date)}
+                    </div>
+                    <div className="text-xs text-gray-300 whitespace-nowrap">
+                      {date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+                    </div>
+                  </div>
+                  <div className="w-px h-4 bg-white/20 mx-auto mt-1"></div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
-    </div>
-    <div className="w-32 flex-shrink-0"></div>
-  </div>
-</div>
+          <div className="w-32 flex-shrink-0"></div>
+        </div>
+      </div>
       
-           {/* Balken */}
+      {/* Balken */}
       <div className="space-y-3 overflow-x-auto">
         {/* Wrapper mit position: relative für SVG */}
         <div className="relative min-w-max" style={{ minHeight: `${groupedTrades.length * 100}px` }}>
           
-          {/* Dependencies SVG Layer */}
+          {/* Dependencies SVG Layer - KORRIGIERT */}
           {findDependencies && (
             <svg 
-              className="absolute top-0 left-0 pointer-events-none" 
+              className="absolute top-0 pointer-events-none" 
               style={{ 
-                width: '100%', 
+                left: '264px', // Offset für linke Spalte
+                width: 'calc(100% - 396px)', // 264px links + 132px rechts
                 height: '100%',
                 zIndex: 1
               }}
@@ -999,16 +1000,16 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                 
                 if (fromIndex === -1 || toIndex === -1) return null;
                 
-                // Berechne Y-Positionen (80px pro Zeile inkl. Header)
+                // Berechne Y-Positionen (80px pro Zeile)
                 const rowHeight = 80;
-                const fromY = fromIndex * rowHeight + 50; // Mitte des Balkens
-                const toY = toIndex * rowHeight + 30; // Anfang des nächsten Balkens
+                const fromY = fromIndex * rowHeight + 50;
+                const toY = toIndex * rowHeight + 30;
                 
-                // Berechne X-Positionen basierend auf Datum
+                // Berechne X-Positionen als PROZENT (nicht Pixel!)
                 const fromDate = new Date(dep.from.planned_end);
                 const toDate = new Date(dep.to.planned_start);
-                const fromX = 264 + ((fromDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * (window.innerWidth - 400);
-                const toX = 264 + ((toDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * (window.innerWidth - 400);
+                const fromPercent = ((fromDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+                const toPercent = ((toDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
                 
                 const midY = (fromY + toY) / 2;
                 
@@ -1016,9 +1017,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                   <g key={idx}>
                     {/* Vertikale Linie nach unten */}
                     <line
-                      x1={fromX}
+                      x1={`${fromPercent}%`}
                       y1={fromY}
-                      x2={fromX}
+                      x2={`${fromPercent}%`}
                       y2={midY}
                       stroke="#94a3b8"
                       strokeWidth="2"
@@ -1028,9 +1029,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                     
                     {/* Horizontale Linie */}
                     <line
-                      x1={fromX}
+                      x1={`${fromPercent}%`}
                       y1={midY}
-                      x2={toX}
+                      x2={`${toPercent}%`}
                       y2={midY}
                       stroke="#94a3b8"
                       strokeWidth="2"
@@ -1040,9 +1041,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                     
                     {/* Vertikale Linie nach oben */}
                     <line
-                      x1={toX}
+                      x1={`${toPercent}%`}
                       y1={midY}
-                      x2={toX}
+                      x2={`${toPercent}%`}
                       y2={toY}
                       stroke="#94a3b8"
                       strokeWidth="2"
@@ -1050,11 +1051,12 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                       opacity="0.6"
                     />
                     
-                    {/* Pfeil */}
+                    {/* Pfeil - KORRIGIERT */}
                     <polygon
-                      points={`${toX},${toY} ${toX - 5},${toY - 8} ${toX + 5},${toY - 8}`}
+                      points={`0,0 -5,-8 5,-8`}
                       fill="#94a3b8"
                       opacity="0.6"
+                      transform={`translate(${toPercent}%, ${toY})`}
                     />
                   </g>
                 );
@@ -1109,14 +1111,14 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
             </div>
           ))}
           
-        </div> {/* Ende Wrapper */}
-      </div> {/* Ende overflow-x-auto */}
+        </div>
+      </div>
 
       {editMode && (
         <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
           <p className="text-blue-300 text-sm flex items-center gap-2">
             <Info className="w-4 h-4" />
-            Klicken Sie auf einen Balken, um die Termine anzupassen. Aktivieren Sie "Folgetermine automatisch verschieben" um alle nachfolgenden Gewerke mitzuverschieben.
+            Klicken Sie auf einen Balken, um die Termine anzupassen.
           </p>
         </div>
       )}
@@ -1124,7 +1126,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
       {/* Legende */}
       <div className="mt-6 bg-white/5 rounded-lg p-4 border border-white/10">
         <h4 className="text-white font-semibold mb-3">Legende</h4>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
           {/* Normale Arbeit */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded shadow"></div>
@@ -1136,22 +1138,10 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
             <div className="w-12 h-6 flex">
               <div className="w-8 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-l shadow"></div>
               <div className="w-4 h-6 bg-blue-500/30 rounded-r" style={{
-                backgroundImage: `repeating-linear-gradient(
-                  45deg,
-                  transparent,
-                  transparent 2px,
-                  rgba(255, 255, 255, 0.1) 2px,
-                  rgba(255, 255, 255, 0.1) 4px
-                )`
+                backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255, 255, 255, 0.1) 2px, rgba(255, 255, 255, 0.1) 4px)`
               }}></div>
             </div>
             <span className="text-gray-300">+ Puffer-Tage</span>
-          </div>
-          
-          {/* Standzeit */}
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-1 border-t-2 border-b-2 border-dashed border-teal-400"></div>
-            <span className="text-gray-300">Standzeit</span>
           </div>
           
           {/* Dependencies */}
@@ -1164,35 +1154,20 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
             <span className="text-gray-300">Abhängigkeit</span>
           </div>
         </div>
-        
-        <div className="mt-3 pt-3 border-t border-white/10">
-          <p className="text-xs text-gray-400 flex items-start gap-2">
-            <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-teal-400" />
-            <span>
-              <strong className="text-teal-300">Standzeit</strong> verursacht tägliche Kosten (ca. 75€/Tag), 
-              aber keine aktiven Arbeiten. <strong className="text-white">Puffer-Tage</strong> sind Zeitreserven 
-              für unvorhergesehene Verzögerungen.
-            </span>
-          </p>
-        </div>
       </div>
     </div>
   );
 }
 
 // ============================================================================
-// SUB-KOMPONENTE: EINZELNER GANTT-BALKEN
+// SUB-KOMPONENTE: EINZELNER GANTT-BALKEN - STANDZEIT VEREINFACHT
 // ============================================================================
 
 function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, allEntries, color }) {
   const [showEditModal, setShowEditModal] = useState(false);
 
- // WICHTIG: Nutze das is_standzeit Flag aus der Datenbank!
-const isStandzeit = entry.is_standzeit === true || 
-                    (entry.trade_code === 'GER' && entry.phase_number === 2) || 
-                    entry.phase_name?.toLowerCase().includes('standzeit');
-
-const isMinorWork = entry.is_minor_work === true;
+  // Standzeit wird NICHT mehr speziell behandelt - nur normale Balken
+  const isMinorWork = entry.is_minor_work === true;
   
   const calculatePosition = (start, end) => {
     const startDate = new Date(start);
@@ -1215,152 +1190,113 @@ const isMinorWork = entry.is_minor_work === true;
 
   const workdays = calculateWorkdays(entry.planned_start, entry.planned_end);
   const bufferDays = entry.buffer_days || 0;
-
-  // DEBUG: Prüfe Werte
-  console.log('Entry:', entry.trade_code, 'Buffer:', bufferDays, 'Position:', position);
   
   return (
-  <>
-    <div className="flex items-start py-3 relative group">
-      {/* Linke Spalte - Phase Name und Dauer */}
-      <div className="w-64 flex-shrink-0 pl-14">
-        {entry.phase_name && (
-          <div className="pt-2">
-            <span className="text-white text-sm font-semibold block">
-              {entry.phase_name}
-              {isStandzeit && <span className="ml-2 text-xs text-teal-400">(nur Bereitstellung)</span>}
-            </span>
-            <span className="text-gray-400 text-xs">
-              {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
-              {bufferDays > 0 && ` + ${bufferDays} ${bufferDays === 1 ? 'Tag' : 'Tage'} Puffer`}
-            </span>
-          </div>
-        )}
-      </div>
-      
-      {/* Balken-Bereich */}
-<div className="flex-1 relative">
-  {/* Der Balken - MIT Standzeit-Styling */}
-  {!isStandzeit ? (
-    // NORMALER BALKEN
-    <button
-      onClick={() => editMode && setShowEditModal(true)}
-      className={`absolute rounded-lg shadow-lg ${
-        editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
-      } transition-all`}
-      style={{ 
-        ...position, 
-        height: '40px',
-        top: '0',
-        opacity: isMinorWork ? 0.75 : 1
-      }}
-      disabled={!editMode}
-      title={
-        isMinorWork
-          ? 'Kleine Arbeit - läuft parallel zu anderen Gewerken'
-          : (editMode ? 'Klicken zum Bearbeiten' : '')
-      }
-    >
-      <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
-        {/* Status-Indicator */}
-        {entry.confirmed && (
-          <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-        )}
+    <>
+      <div className="flex items-start py-3 relative group">
+        {/* Linke Spalte */}
+        <div className="w-64 flex-shrink-0 pl-14">
+          {entry.phase_name && (
+            <div className="pt-2">
+              <span className="text-white text-sm font-semibold block">
+                {entry.phase_name}
+              </span>
+              <span className="text-gray-400 text-xs">
+                {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
+                {bufferDays > 0 && ` + ${bufferDays} ${bufferDays === 1 ? 'Tag' : 'Tage'} Puffer`}
+              </span>
+            </div>
+          )}
+        </div>
         
-        {/* Puffer INNERHALB des Balkens - rechte Seite */}
-        {bufferDays > 0 && (
-          <div 
-            className="absolute right-0 top-0 bottom-0 flex items-center justify-center rounded-r-lg"
-            style={{
-              width: `${(bufferDays / (workdays + bufferDays)) * 100}%`,
-              background: 'rgba(255, 255, 255, 0.2)',
-              backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.1) 4px, rgba(255,255,255,0.1) 8px)',
-              borderLeft: '2px dashed rgba(255, 255, 255, 0.3)'
+        {/* Balken-Bereich - IMMER normaler Balken */}
+        <div className="flex-1 relative">
+          <button
+            onClick={() => editMode && setShowEditModal(true)}
+            className={`absolute rounded-lg shadow-lg ${
+              editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
+            } transition-all`}
+            style={{ 
+              ...position, 
+              height: '40px',
+              top: '0',
+              opacity: isMinorWork ? 0.75 : 1
             }}
+            disabled={!editMode}
+            title={isMinorWork ? 'Kleine Arbeit - läuft parallel' : (editMode ? 'Klicken zum Bearbeiten' : '')}
           >
-            <span className="text-white text-[10px] font-bold opacity-80">
-              +{bufferDays}d
-            </span>
+            <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
+              {/* Status-Indicator */}
+              {entry.confirmed && (
+                <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+              )}
+              
+              {/* Puffer */}
+              {bufferDays > 0 && (
+                <div 
+                  className="absolute right-0 top-0 bottom-0 flex items-center justify-center rounded-r-lg"
+                  style={{
+                    width: `${(bufferDays / (workdays + bufferDays)) * 100}%`,
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.1) 4px, rgba(255,255,255,0.1) 8px)',
+                    borderLeft: '2px dashed rgba(255, 255, 255, 0.3)'
+                  }}
+                >
+                  <span className="text-white text-[10px] font-bold opacity-80">
+                    +{bufferDays}d
+                  </span>
+                </div>
+              )}
+              
+              {/* Minor Work Badge */}
+              {isMinorWork && (
+                <div className="absolute top-1 left-2">
+                  <span className="text-xs bg-white/20 backdrop-blur px-1.5 py-0.5 rounded text-white font-medium">
+                    parallel
+                  </span>
+                </div>
+              )}
+            </div>
+          </button>
+          
+          {/* Datum */}
+          <div className="absolute text-center text-white text-xs font-semibold whitespace-nowrap" style={{ ...position, top: '45px' }}>
+            {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
           </div>
-        )}
-        
-        {/* Minor Work Badge */}
-        {isMinorWork && (
-          <div className="absolute top-1 left-2">
-            <span className="text-xs bg-white/20 backdrop-blur px-1.5 py-0.5 rounded text-white font-medium">
-              parallel
+        </div>
+
+        {/* Status Badge */}
+        <div className="w-32 flex-shrink-0 flex justify-end pt-2">
+          {entry.confirmed ? (
+            <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" />
+              Bestätigt
             </span>
-          </div>
-        )}
-      </div>
-    </button>
-  ) : (
-    // STANDZEIT-LINIE (statt Balken)
-    <div
-      className="absolute pointer-events-none"
-      style={{ 
-        ...position, 
-        height: '2px',
-        top: '19px',
-      }}
-    >
-      <div 
-        className="absolute inset-0"
-        style={{
-          borderTop: '2px dashed rgba(94, 234, 212, 0.4)',
-          borderBottom: '2px dashed rgba(94, 234, 212, 0.4)',
-        }}
-      />
-      
-      <div className="absolute left-1/2 -translate-x-1/2 -top-6 whitespace-nowrap">
-        <span className="text-teal-300 text-[10px] font-semibold tracking-wider px-2 py-0.5 bg-slate-800/80 rounded">
-          STANDZEIT {calculateWorkdays(entry.planned_start, entry.planned_end)}d
-        </span>
-      </div>
-      
-      <div className="absolute left-0 -top-1 w-1.5 h-1.5 bg-teal-400 rounded-full"></div>
-      <div className="absolute right-0 -top-1 w-1.5 h-1.5 bg-teal-400 rounded-full"></div>
-    </div>
-  )}
-        
-        {/* Datum UNTER dem Balken */}
-        <div className="absolute text-center text-white text-xs font-semibold whitespace-nowrap" style={{ ...position, top: '45px' }}>
-          {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+          ) : entry.status === 'change_requested' ? (
+            <span className="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-semibold flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              Änderung
+            </span>
+          ) : (
+            <span className="px-2 py-1 bg-gray-500/20 text-gray-300 rounded-full text-xs">
+              Ausstehend
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Status Badge */}
-      <div className="w-32 flex-shrink-0 flex justify-end pt-2">
-        {entry.confirmed ? (
-          <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
-            <CheckCircle className="w-3 h-3" />
-            Bestätigt
-          </span>
-        ) : entry.status === 'change_requested' ? (
-          <span className="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-semibold flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            Änderung
-          </span>
-        ) : (
-          <span className="px-2 py-1 bg-gray-500/20 text-gray-300 rounded-full text-xs">
-            Ausstehend
-          </span>
-        )}
-      </div>
-    </div>
-
-    {showEditModal && (
-      <EditEntryModal
-        entry={entry}
-        onClose={() => setShowEditModal(false)}
-        onSave={(newStart, newEnd, cascade) => {
-          onUpdate(entry.id, newStart, newEnd, cascade);
-          setShowEditModal(false);
-        }}
-      />
-    )}
-  </>
-);
+      {showEditModal && (
+        <EditEntryModal
+          entry={entry}
+          onClose={() => setShowEditModal(false)}
+          onSave={(newStart, newEnd, cascade) => {
+            onUpdate(entry.id, newStart, newEnd, cascade);
+            setShowEditModal(false);
+          }}
+        />
+      )}
+    </>
+  );
 }
 
 // ============================================================================
