@@ -16,7 +16,6 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
   const [showExplanations, setShowExplanations] = useState(true);
   const [changeRequests, setChangeRequests] = useState([]);
   const [expandedTrades, setExpandedTrades] = useState({});
-  const [arrowData, setArrowData] = useState([]);
 
   useEffect(() => {
     loadSchedule();
@@ -896,6 +895,51 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
     );
   }
 
+  const [arrowData, setArrowData] = useState([]);
+
+// useEffect der NACH dem Render die Positionen berechnet
+useEffect(() => {
+  if (!findDependencies) return;
+  
+  // Warte kurz, damit DOM vollständig gerendert ist
+  const timer = setTimeout(() => {
+    const deps = findDependencies(entries);
+    
+    const positions = deps.map((dep, idx) => {
+      // Finde die Balken im DOM
+      const fromBalken = document.querySelector(`[data-entry-id="${dep.from.id}"]`);
+      const toBalken = document.querySelector(`[data-entry-id="${dep.to.id}"]`);
+      
+      if (!fromBalken || !toBalken) {
+        console.warn(`[ARROWS] Balken nicht gefunden: from=${dep.from.id}, to=${dep.to.id}`);
+        return null;
+      }
+      
+      // Hole Container-Position für relative Berechnung
+      const container = fromBalken.closest('.relative.min-w-max');
+      if (!container) return null;
+      
+      const containerRect = container.getBoundingClientRect();
+      const fromRect = fromBalken.getBoundingClientRect();
+      const toRect = toBalken.getBoundingClientRect();
+      
+      // Berechne relative Positionen zum Container
+      return {
+        id: `${dep.from.id}-${dep.to.id}`,
+        fromX: fromRect.right - containerRect.left,
+        fromY: fromRect.top + (fromRect.height / 2) - containerRect.top,
+        toX: toRect.left - containerRect.left,
+        toY: toRect.top + (toRect.height / 2) - containerRect.top,
+      };
+    }).filter(Boolean);
+    
+    setArrowData(positions);
+    console.log(`[ARROWS] Calculated ${positions.length} arrow positions`);
+  }, 100); // 100ms delay damit DOM sicher gerendert ist
+  
+  return () => clearTimeout(timer);
+}, [entries, expandedTrades, findDependencies]); // Re-calculate bei Änderungen
+  
   // Finde frühestes Start- und spätestes Enddatum
   const allDates = entries.map(e => [new Date(e.planned_start), new Date(e.planned_end)]).flat();
   const minDate = new Date(Math.min(...allDates));
@@ -974,114 +1018,65 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
         {/* Wrapper mit position: relative für SVG */}
         <div className="relative min-w-max" style={{ minHeight: `${groupedTrades.length * 100}px` }}>
           
-          {/* Dependencies SVG Layer */}
+          {/* Dependencies SVG Layer - MIT DOM-POSITIONEN */}
           {findDependencies && (
-            <svg 
-              className="absolute top-0 left-0 pointer-events-none" 
-              style={{ 
-                width: '100%',
-                height: '100%',
-                zIndex: 1
-              }}
-            >
-              {findDependencies(entries).map((dep, idx) => {
-                // Zähle visuelle Zeilen (inkl. Trade-Header)
-                let fromVisualRow = -1;
-                let toVisualRow = -1;
-                let currentRow = 0;
-                
-                groupedTrades.forEach((trade) => {
-                  // Trade Header = 1 Zeile
-                  currentRow++;
-                  
-                  if (expandedTrades[trade.trade_code]) {
-                    // Alle Entries sichtbar
-                    trade.entries.forEach(entry => {
-                      if (entry.id === dep.from.id) fromVisualRow = currentRow;
-                      if (entry.id === dep.to.id) toVisualRow = currentRow;
-                      currentRow++;
-                    });
-                  } else {
-                    // Nur erstes Entry sichtbar
-                    if (trade.entries[0].id === dep.from.id) fromVisualRow = currentRow;
-                    if (trade.entries[0].id === dep.to.id) toVisualRow = currentRow;
-                    currentRow++;
-                  }
-                });
-                
-                if (fromVisualRow === -1 || toVisualRow === -1) return null;
-                
-                // Berechne Y-Positionen (60px pro Zeile)
-                const rowHeight = 60;
-                const fromY = fromVisualRow * rowHeight + 20; // Mitte des Balkens
-                const toY = toVisualRow * rowHeight + 10; // Anfang des nächsten Balkens
-                const midY = (fromY + toY) / 2;
-                
-                // Berechne X-Positionen (in Pixel, mit Offset für linke Spalte)
-                const fromDate = new Date(dep.from.planned_end);
-                const toDate = new Date(dep.to.planned_start);
-                const fromPercent = ((fromDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-                const toPercent = ((toDate - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
-                
-                // SVG viewBox basiert auf Container-Breite
-                // Linke Spalte = 264px, Rechte Spalte = 132px
-                const svgWidth = 1000; // Relative Einheit
-                const leftOffset = 264;
-                const chartWidth = svgWidth - leftOffset - 132;
-                
-                const fromX = leftOffset + (fromPercent / 100) * chartWidth;
-                const toX = leftOffset + (toPercent / 100) * chartWidth;
-                
-                return (
-                  <g key={idx}>
-                    {/* Vertikale Linie nach unten */}
-                    <line
-                      x1={fromX}
-                      y1={fromY}
-                      x2={fromX}
-                      y2={midY}
-                      stroke="#94a3b8"
-                      strokeWidth="2"
-                      strokeDasharray="4 4"
-                      opacity="0.6"
-                    />
-                    
-                    {/* Horizontale Linie */}
-                    <line
-                      x1={fromX}
-                      y1={midY}
-                      x2={toX}
-                      y2={midY}
-                      stroke="#94a3b8"
-                      strokeWidth="2"
-                      strokeDasharray="4 4"
-                      opacity="0.6"
-                    />
-                    
-                    {/* Vertikale Linie nach oben */}
-                    <line
-                      x1={toX}
-                      y1={midY}
-                      x2={toX}
-                      y2={toY}
-                      stroke="#94a3b8"
-                      strokeWidth="2"
-                      strokeDasharray="4 4"
-                      opacity="0.6"
-                    />
-                    
-                    {/* Pfeil */}
-                    <polygon
-                      points={`0,0 -5,-8 5,-8`}
-                      fill="#94a3b8"
-                      opacity="0.6"
-                      transform={`translate(${toX}, ${toY})`}
-                    />
-                  </g>
-                );
-              })}
-            </svg>
-          )}
+          <svg 
+  className="absolute top-0 left-0 pointer-events-none w-full h-full"
+  style={{ zIndex: 1 }}
+>
+  {arrowData.map((arrow) => {
+    const midY = (arrow.fromY + arrow.toY) / 2;
+    
+    return (
+      <g key={arrow.id}>
+        {/* Vertikale Linie vom Balkenende nach unten/oben */}
+        <line
+          x1={arrow.fromX}
+          y1={arrow.fromY}
+          x2={arrow.fromX}
+          y2={midY}
+          stroke="#94a3b8"
+          strokeWidth="2"
+          strokeDasharray="4 4"
+          opacity="0.6"
+        />
+        
+        {/* Horizontale Verbindungslinie */}
+        <line
+          x1={arrow.fromX}
+          y1={midY}
+          x2={arrow.toX}
+          y2={midY}
+          stroke="#94a3b8"
+          strokeWidth="2"
+          strokeDasharray="4 4"
+          opacity="0.6"
+        />
+        
+        {/* Vertikale Linie zum Balkenanfang */}
+        <line
+          x1={arrow.toX}
+          y1={midY}
+          x2={arrow.toX}
+          y2={arrow.toY}
+          stroke="#94a3b8"
+          strokeWidth="2"
+          strokeDasharray="4 4"
+          opacity="0.6"
+        />
+        
+        {/* Pfeil am Ende */}
+        <polygon
+          points="0,-5 -8,5 8,5"
+          fill="#94a3b8"
+          opacity="0.6"
+          transform={`translate(${arrow.toX}, ${arrow.toY}) rotate(90)`}
+        />
+      </g>
+    );
+  })}
+</svg>
+)}          
           
           {/* Balken-Liste */}
           {groupedTrades.map((trade, tradeIdx) => (
