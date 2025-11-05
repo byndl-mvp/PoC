@@ -1040,7 +1040,7 @@ useEffect(() => {
           {findDependencies && (
           <svg 
   className="absolute top-0 left-0 pointer-events-none w-full h-full"
-  style={{ zIndex: 1 }}
+  style={{ zIndex: 5 }}
 >
   {arrowData.map((arrow) => {
     const midY = (arrow.fromY + arrow.toY) / 2;
