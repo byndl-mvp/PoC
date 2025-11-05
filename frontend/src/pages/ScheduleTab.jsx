@@ -77,7 +77,7 @@ useEffect(() => {
   }, 3000); // Alle 3 Sekunden prüfen
   
   return () => clearInterval(pollInterval);
-}, [generating, project.id]);
+}, [generating, project.id]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const loadSchedule = async () => {
     try {
