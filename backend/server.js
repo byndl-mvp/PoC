@@ -25997,57 +25997,17 @@ ${getTradeInterfacesPrompt()}
   - Setze bei solchen Arbeiten: is_minor_work: true
   - Setze can_parallel_with: ["DACH", "FEN", "FASS", "MAL", "TRO"] (je nach Kontext)
 
-**GERÜSTBAU (GER) - SPEZIAL-BEHANDLUNG MIT 3 PFLICHT-PHASEN:**
-
-KRITISCH: Gerüst ist KEIN normales Gewerk! Es besteht IMMER aus genau 3 aufeinanderfolgenden Phasen:
-
-**Phase 1 - Gerüstaufbau:**
-- Dauer: 1-2 Tage (abhängig von Gebäudehöhe und Fläche)
-- <50m² Fassade: 1 Tag
-- >50m² Fassade oder >2 Geschosse: 2 Tage
-- Muss VOR allen Außenarbeiten erfolgen
-- Dependencies: Keine (kann direkt nach ROH starten)
-- Startdatum: Frühestmöglich nach Rohbau
-- **FLAGS:**
-  - is_standzeit: false
-  - is_minor_work: false
-
-**Phase 2 - Gerüst-Standzeit (PARALLEL ZU AUSSENARBEITEN!):**
-- Dauer: SUMME aller Außenarbeiten-Dauern (DACH + ZIMM + FEN + FASS + deren Puffer)
-- Diese Phase läuft PARALLEL zu den Außengewerken
-- Startdatum = Ende Gerüstaufbau (Phase 1)
-- Enddatum = Ende der letzten Außenarbeit (meist FASS-Anstrich)
-- KEINE eigene Arbeit - nur Standzeit-Bereitstellung!
-- Verursacht tägliche Kosten (50-100€/Tag)
-- **CRITICAL FLAGS - MÜSSEN GESETZT WERDEN:**
-  - is_standzeit: true (zeigt an: nur Info, keine echte Arbeit)
-  - can_parallel_with: ["DACH", "ZIMM", "FEN", "FASS", "SCHL"]
-  - dependencies: ["GER-Aufbau"] (startet nach Phase 1)
-
-**Phase 3 - Gerüstabbau:**
-- Dauer: 0,5-1 Tag
-- Muss NACH allen Außenarbeiten erfolgen
-- Frühester Start = 1 Tag nach Ende der letzten Außenarbeit
-- Dependencies: ["DACH", "ZIMM", "FEN", "FASS"] (ALLE müssen fertig sein!)
-- Kann parallel zu Innenarbeiten laufen
-- **FLAGS:**
-  - is_standzeit: false
-  - is_minor_work: false
-  - can_parallel_with: ["MAL", "BOD", "TIS", "ELEKT", "SAN", "HEI"]
-
-**BERECHNUNGS-BEISPIEL:**
-Projekt hat: DACH (12 Tage + 3 Tage Puffer), FEN (3 Tage + 1 Tag Puffer), FASS (18 Tage + 2 Tage Puffer)
-Gesamt-Außenarbeiten: 15 + 4 + 20 = 39 Tage
-
-Gerüst Phase 1: Aufbau 2 Tage (Tag 1-2)
-Gerüst Phase 2: Standzeit 39 Tage (Tag 3-41) - während DACH, FEN, FASS laufen
-Gerüst Phase 3: Abbau 1 Tag (Tag 42)
-
-Gesamt Gerüst-Kosten: 39 Tage × 75€ = ca. 2.925€ Standzeit
-
-**WICHTIG IM OUTPUT:**
-In general_explanation oder recommendations MUSS Gerüst-Standzeit erwähnt werden:
-"Gerüst-Standzeit: X Tage = ca. X.XXX€ (wichtig: Koordination der Außenarbeiten spart Kosten)"
+**GERÜSTBAU (GER):**
+- Aufbau: 1-2 Tage (abhängig von Gebäudehöhe)
+  - <250m² Fassade: 1 Tag
+  - >250m² Fassade oder >3 Geschosse: 2 Tage
+- Abbau: 0,5-1 Tag
+- WICHTIG: NUR Auf- und Abbau als separate Phasen
+- Standzeit wird NICHT als Phase eingeplant (nur Info für Bauherrn in general_explanation)
+- Aufbau muss VOR allen Außenarbeiten (DACH, ZIMM, FEN, FASS)
+- Abbau muss NACH allen Außenarbeiten
+- Dependencies Aufbau: Keine (kann nach ROH starten)
+- Dependencies Abbau: ["DACH", "ZIMM", "FEN", "FASS"]
 
 **ELEKTRO (ELEKT):**
 Rohinstallation:
