@@ -35,18 +35,17 @@ useEffect(() => {
 }, [schedule]); // eslint-disable-line
 
 useEffect(() => {
-  // Wenn Schedule im Draft-Status ist, aktiviere Polling
   if (schedule?.status === 'draft') {
-    console.log('📋 Schedule ist Draft → Aktiviere Polling');
+    console.log('📋 Schedule ist Draft → Aktiviere Polling + Modal');
     setGenerating(true);
-    setShowInitModal(true); 
-  } else if (schedule && schedule.status !== 'draft') {
-    // Schedule ist fertig, deaktiviere Polling
-    console.log('✅ Schedule ist fertig → Stoppe Polling');
+    setShowInitModal(true);
+  } else {
+    // Alle anderen Stati → Polling aus, Modal zu
+    console.log('✅ Schedule nicht Draft → Stoppe Polling');
     setGenerating(false);
     setShowInitModal(false);
   }
-}, [schedule]);
+}, [schedule]); 
 
 // Polling während Generierung
 useEffect(() => {
