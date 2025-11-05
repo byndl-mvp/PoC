@@ -11,7 +11,7 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
   const [showInitModal, setShowInitModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [editMode, setEditMode] = useState(true);
+  const [editMode, setEditMode] = useState(false);
   const [adjustedEntries, setAdjustedEntries] = useState({});
   const [showExplanations, setShowExplanations] = useState(true);
   const [changeRequests, setChangeRequests] = useState([]);
