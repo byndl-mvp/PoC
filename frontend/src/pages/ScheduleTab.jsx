@@ -1008,8 +1008,8 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
     entry={trade.entries[0]}
     minDate={minDate}
     totalDays={totalDays}
-    editMode={editMode}  // ← RICHTIGER WERT!
-    onEdit={() => setExpandedTrades(prev => ({ ...prev, [trade.trade_code]: true }))}  // ← ÖFFNET BEI KLICK!
+    editMode={false}  
+    onEdit={() => {}}  
     isSummary={true}
     allEntries={trade.entries}
     color={tradeColors[tradeIdx % tradeColors.length]}
