@@ -26462,6 +26462,76 @@ WICHTIGE REGELN:
 5. Puffer NACH kritischen Gewerken
 6. Risiken transparent kommunizieren
 
+# WICHTIG: DETAILLIERTE PHASEN-AUFTEILUNG
+
+Jedes Gewerk MUSS in seine HAUPTLEISTUNGEN aufgeteilt werden, nicht als Pauschal-Phase!
+
+**BEISPIELE FÜR RICHTIGE AUFTEILUNG:**
+
+MAL (Malerarbeiten):
+❌ FALSCH: "Malerarbeiten komplett" (1 Phase)
+✅ RICHTIG: 
+  - Phase 1: Grundierung (2 Tage)
+  - Phase 2: 1. Ausbesserung Innenputz (2 Tage)
+  - Phase 3: 2. Anstrich Wände und Decken (3 Tage)
+
+FLI (Fliesenarbeiten):
+❌ FALSCH: "Fliesenarbeiten" (1 Phase)
+✅ RICHTIG:
+  - Phase 1: Abdichtung (1 Tag)
+  - Phase 2: Verlegung Bodenfliesen (3 Tage)
+  - Phase 3: Verlegung Wandfliesen (2 Tage)
+  - Phase 4: Verfugung (1 Tag)
+
+TRO (Trockenbau):
+❌ FALSCH: "Trockenbauarbeiten" (1 Phase)
+✅ RICHTIG:
+  - Phase 1: Ständerwerk (2 Tage)
+  - Phase 2: Beplankung (2 Tage)
+  - Phase 3: Spachtelung (3 Tage inkl. Trocknung)
+
+DACH (Dacharbeiten):
+❌ FALSCH: "Dachsanierung komplett" (1 Phase)
+✅ RICHTIG:
+  - Phase 1: Abriss alte Eindeckung & Entsorgung (3-4 Tage)
+  - Phase 2: Dachstuhl prüfen & ausbessern (2-3 Tage)
+  - Phase 3: Lattung & Konterlattung (2-3 Tage)
+  - Phase 4: Dampfsperre & Dämmung (3-4 Tage)
+  - Phase 5: Dacheindeckung (5-8 Tage)
+  - Phase 6: Dachfenster einbauen (2-3 Tage)
+  - Phase 7: Dachrinnen & Fallrohre (2 Tage)
+
+FASS (Fassadenarbeiten):
+❌ FALSCH: "Fassadendämmung" (1 Phase)
+✅ RICHTIG:
+  - Phase 1: Untergrund prüfen & vorbereiten (2-3 Tage)
+  - Phase 2: WDVS-Platten montieren (5-7 Tage)
+  - Phase 3: Armierungsschicht mit Gewebe (3-4 Tage)
+  - Phase 4: Trocknung & Grundierung (2-3 Tage)
+  - Phase 5: Oberputz auftragen (4-5 Tage)
+  - Phase 6: Trocknung (2-3 Tage)
+  - Phase 7: Fassadenanstrich 2x (3-4 Tage)
+
+FEN (Fensterarbeiten):
+❌ FALSCH: "Fenster einbauen" (1 Phase)
+✅ RICHTIG:
+  - Phase 1: Alte Fenster ausbauen (1-2 Tage)
+  - Phase 2: Laibungen vorbereiten (1-2 Tage)
+  - Phase 3: Neue Fenster einbauen (3-5 Tage)
+  - Phase 4: Abdichtung & Anschlussarbeiten (1-2 Tage)
+  - Phase 5: Fensterbänke innen & außen (2 Tage)
+
+ELEKT (Elektroarbeiten):
+❌ FALSCH: "Elektroarbeiten komplett" (1 Phase)
+✅ RICHTIG:
+  - Phase 1: Rohinstallation Leitungen & Dosen (4-6 Tage)
+  - Phase 2: Zählerschrank & Unterverteilung (2-3 Tage)
+  - Phase 3: Feininstallation Schalter & Steckdosen (3-4 Tage)
+  - Phase 4: Leuchtenmontage (2-3 Tage)
+  - Phase 5: Prüfung, Protokoll & Inbetriebnahme (1-2 Tage)
+  
+**REGEL:** Minimum 2-3 Phasen pro Gewerk je nach Komplexität, außer bei sehr kleinen Arbeiten (<2 Tage)
+
 OUTPUT (NUR valides JSON):
 {
   "complexity_level": "EINFACH|MITTEL|HOCH|SEHR_HOCH",
