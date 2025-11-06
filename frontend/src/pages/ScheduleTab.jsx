@@ -900,7 +900,7 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 // SUB-KOMPONENTE: GANTT-CHART BALKENPLAN - KORRIGIERT
 // ============================================================================
 
-function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade, findDependencies }) {
+function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade, findDependencies, scheduleStatus }) {
   // ✅ ZENTRALISIERTER MODAL-STATE (nur EINE Instanz für alle Balken)
   const [editingEntry, setEditingEntry] = useState(null);
   
@@ -1049,7 +1049,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
       <div className="mt-6 bg-white/5 rounded-lg p-4 border border-white/10">
         <div className="flex justify-between items-center mb-3">
           <h4 className="text-white font-semibold">Legende</h4>
-          {schedule.status === 'pending_approval' ? (
+          {scheduleStatus === 'pending_approval' ? (
   <p className="text-blue-300 text-sm flex items-center gap-2">
     <Info className="w-4 h-4" />
     Nach Freigabe können Sie Termine jederzeit anpassen
