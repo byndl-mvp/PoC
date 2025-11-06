@@ -11,7 +11,7 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
   const [showInitModal, setShowInitModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const editMode = true;
   const [adjustedEntries, setAdjustedEntries] = useState({});
   const [showExplanations, setShowExplanations] = useState(true);
   const [changeRequests, setChangeRequests] = useState([]);
@@ -1101,7 +1101,6 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 // ============================================================================
 
 function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, allEntries, color }) {
-  const [showEditModal, setShowEditModal] = useState(false);
 
   const isMinorWork = entry.is_minor_work === true;
   
@@ -1149,7 +1148,12 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
         <div className="flex-1 relative">
           <button
             data-entry-id={entry.id} 
-            onClick={() => editMode && setShowEditModal(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (editMode && onEdit) {
+                onEdit();
+              }
+            }}
             className={`absolute rounded-lg shadow-lg ${
               editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
             } transition-all`}
@@ -1221,17 +1225,6 @@ function GanttBar({ entry, minDate, totalDays, editMode, onUpdate, isSummary, al
           )}
         </div>
       </div>
-
-      {showEditModal && (
-        <EditEntryModal
-          entry={entry}
-          onClose={() => setShowEditModal(false)}
-          onSave={(newStart, newEnd, cascade) => {
-            onUpdate(entry.id, newStart, newEnd, cascade);
-            setShowEditModal(false);
-          }}
-        />
-      )}
     </>
   );
 }
@@ -1246,9 +1239,29 @@ function EditEntryModal({ entry, onClose, onSave }) {
   const [cascade, setCascade] = useState(true);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl max-w-md w-full p-6 border border-white/20">
-        <h4 className="text-xl font-bold text-white mb-4">Termin anpassen</h4>
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{ zIndex: 9999 }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div 
+        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl max-w-md w-full p-6 border border-white/20"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h4 className="text-xl font-bold text-white">Termin anpassen</h4>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+            title="Schließen"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
         
         <div className="space-y-4 mb-6">
           <div>
