@@ -1169,6 +1169,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
                     background: 'rgba(255, 255, 255, 0.2)',
                     backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.1) 4px, rgba(255,255,255,0.1) 8px)',
                     borderLeft: '2px dashed rgba(255, 255, 255, 0.3)'
+                    pointerEvents: 'none'
                   }}
                 >
                   <span className="text-white text-[10px] font-bold opacity-80">
