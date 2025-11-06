@@ -1009,7 +1009,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
               </button>
 
               {/* Phasen */}
-              {expandedTrades[trade.trade_code] && trade.entries.map(entry => (
+             {expandedTrades[trade.trade_code] && trade.entries.map(entry => (
                 <GanttBar
                   key={entry.id}
                   entry={entry}
@@ -1017,6 +1017,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                   totalDays={totalDays}
                   editMode={editMode}
                   onEdit={() => setEditingEntry(entry)}
+                  isSummary={false}
                   color={tradeColors[tradeIdx % tradeColors.length]}
                 />
               ))}
