@@ -1004,17 +1004,17 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
               
               {/* Gesamtbalken (collapsed) */}
              {!expandedTrades[trade.trade_code] && (
-                <GanttBar
-                  entry={trade.entries[0]}
-                  minDate={minDate}
-                  totalDays={totalDays}
-                  editMode={false}
-                  onEdit={() => {}}
-                  isSummary={true}
-                  allEntries={trade.entries}
-                  color={tradeColors[tradeIdx % tradeColors.length]}
-                />
-              )}
+  <GanttBar
+    entry={trade.entries[0]}
+    minDate={minDate}
+    totalDays={totalDays}
+    editMode={editMode}  // ← RICHTIGER WERT!
+    onEdit={() => setExpandedTrades(prev => ({ ...prev, [trade.trade_code]: true }))}  // ← ÖFFNET BEI KLICK!
+    isSummary={true}
+    allEntries={trade.entries}
+    color={tradeColors[tradeIdx % tradeColors.length]}
+  />
+)}
             </div>
           ))}
           
