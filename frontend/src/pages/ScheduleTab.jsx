@@ -1278,7 +1278,7 @@ function EditEntryModal({ entry, onClose, onSave }) {
             <input
               type="date"
               value={newStart}
-              onChange={(e) => setNewStart(e.target.value)}
+              onChange={(e) => handleStartChange(e.target.value)}
               className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
             />
           </div>
@@ -1288,7 +1288,8 @@ function EditEntryModal({ entry, onClose, onSave }) {
             <input
               type="date"
               value={newEnd}
-              onChange={(e) => setNewEnd(e.target.value)}
+              onChange={(e) => handleEndChange(e.target.value)}
+              min={newStart}
               className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
             />
           </div>
@@ -1324,9 +1325,14 @@ function EditEntryModal({ entry, onClose, onSave }) {
           >
             Abbrechen
           </button>
-          <button
+         <button
             onClick={() => onSave(newStart, newEnd, cascade)}
-            className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+            disabled={!isValid}
+            className={`flex-1 px-4 py-2 rounded-lg ${
+              isValid 
+                ? 'bg-teal-600 text-white hover:bg-teal-700 cursor-pointer' 
+                : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
+            }`}
           >
             Speichern
           </button>
