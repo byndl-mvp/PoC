@@ -675,18 +675,35 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
   const [notes, setNotes] = useState('');
   const [showDetails, setShowDetails] = useState({});
 
-  const handleAdjustEntry = (entryId, field, value) => {
-    setAdjustedEntries(prev => ({
-      ...prev,
-      [entryId]: {
-        ...prev[entryId],
-        id: entryId,
-        [field]: value,
-        changed: true
-      }
-    }));
-  };
-
+  const handleAdjustEntry = (entry, field, value) => {
+  const entryId = entry.id;
+  const currentAdjusted = adjustedEntries[entryId] || {};
+  
+  let newStart = field === 'planned_start' ? value : (currentAdjusted.planned_start || entry.planned_start);
+  let newEnd = field === 'planned_end' ? value : (currentAdjusted.planned_end || entry.planned_end);
+  
+  // Wenn Start geändert wird → Ende automatisch verschieben
+  if (field === 'planned_start') {
+    const originalDuration = calculateWorkdays(entry.planned_start, entry.planned_end);
+    const newEndDate = addWorkdays(new Date(value), originalDuration - 1);
+    newEnd = newEndDate.toISOString().split('T')[0];
+  }
+  
+  setAdjustedEntries(prev => ({
+    ...prev,
+    [entryId]: {
+      ...prev[entryId],
+      id: entryId,
+      original_start: entry.planned_start,
+      original_end: entry.planned_end,
+      duration_days: entry.duration_days,
+      planned_start: newStart,
+      planned_end: newEnd,
+      changed: true
+    }
+  }));
+};
+  
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-5xl w-full my-8 border border-white/20">
