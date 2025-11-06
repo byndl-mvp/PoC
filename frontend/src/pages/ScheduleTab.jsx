@@ -1158,18 +1158,16 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
       <div className="flex items-start py-3 relative group pointer-events-auto">
         {/* Linke Spalte */}
         <div className="w-64 flex-shrink-0 pl-14">
-          {entry.phase_name && (
-            <div className="pt-2">
-              <span className="text-white text-sm font-semibold block">
-                {entry.phase_name}
-              </span>
-              <span className="text-gray-400 text-xs">
-                {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
-                {bufferDays > 0 && ` + ${bufferDays} ${bufferDays === 1 ? 'Tag' : 'Tage'} Puffer`}
-              </span>
-            </div>
-          )}
-        </div>
+  <div className="pt-2">
+    <span className="text-white text-sm font-semibold block">
+      {isSummary ? 'Gesamtdauer aller Arbeiten' : entry.phase_name}
+    </span>
+    <span className="text-gray-400 text-xs">
+      {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
+      {bufferDays > 0 && ` + ${bufferDays} ${bufferDays === 1 ? 'Tag' : 'Tage'} Puffer`}
+    </span>
+  </div>
+</div>
         
         {/* Balken-Bereich - IMMER normaler Balken */}
         <div className="flex-1 pointer-events-auto" style={{ position: 'relative' }}>
