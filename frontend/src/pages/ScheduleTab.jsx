@@ -1038,19 +1038,16 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
           
         </div>
       </div>
-
-      {editMode && (
-        <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-          <p className="text-blue-300 text-sm flex items-center gap-2">
-            <Info className="w-4 h-4" />
-            Klicken Sie auf einen Balken, um die Termine anzupassen.
-          </p>
-        </div>
-      )}
       
       {/* Legende */}
       <div className="mt-6 bg-white/5 rounded-lg p-4 border border-white/10">
-        <h4 className="text-white font-semibold mb-3">Legende</h4>
+        <div className="flex justify-between items-center mb-3">
+          <h4 className="text-white font-semibold">Legende</h4>
+          <p className="text-teal-300 text-sm flex items-center gap-2">
+            <Info className="w-4 h-4" />
+            Klicken Sie auf Balken zum Bearbeiten
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
           {/* Normale Arbeit */}
           <div className="flex items-center gap-3">
