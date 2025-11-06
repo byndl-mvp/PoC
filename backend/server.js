@@ -26757,27 +26757,46 @@ if (entry.is_minor_work && tradePhaseCount === 1) {
   const allDependenciesMet = entry.dependencies.every(dep => {
   if (typeof dep === 'string' && dep.includes('-')) {
     const [tradeDep, phaseDep] = dep.split('-');
-    const depEntries = scheduledEntries.filter(s => 
+    return scheduledEntries.some(s => 
       s.trade_code === tradeDep && 
       s.phase.phase_name?.toLowerCase().includes(phaseDep.toLowerCase())
     );
-    // ALLE Phasen dieses Gewerks müssen FERTIG sein
-    return depEntries.length > 0;
   }
-  
-  // Trade-level Dependency: ALLE Phasen müssen fertig sein!
-  const depEntries = scheduledEntries.filter(s => s.trade_code === dep);
-  if (depEntries.length === 0) return false;
-  
-  // Prüfe ob ALLE Phasen dieses Trades eingeplant sind
-  const allTradePhases = allEntries.filter(e => e.trade_code === dep);
-  return depEntries.length === allTradePhases.length;
+  return scheduledEntries.some(s => s.trade_code === dep);
 });
   
   if (!allDependenciesMet && entry.dependencies.length > 0) {
     continue;
   }
 
+// SPEZIAL-REGEL: FASS muss warten bis FEN 100% FERTIG ist!
+if (entry.trade_code === 'FASS' && entry.dependencies.includes('FEN')) {
+  const fenEntries = scheduledEntries.filter(s => s.trade_code === 'FEN');
+  const allFenPhases = allEntries.filter(e => e.trade_code === 'FEN');
+  
+  // FASS wartet bis ALLE FEN-Phasen eingeplant sind
+  if (fenEntries.length < allFenPhases.length) {
+    console.log(`[WAITING] FASS wartet auf alle FEN-Phasen (${fenEntries.length}/${allFenPhases.length})`);
+    continue;
+  }
+  
+  // FASS startet 1 Tag NACH letzter FEN-Phase
+  const lastFenEntry = fenEntries.reduce((latest, curr) => 
+    new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+  );
+  const fassStart = addWorkdays(new Date(lastFenEntry.endDate), 1);
+  
+  scheduledEntries.push({
+    ...entry,
+    startDate: fassStart.toISOString().split('T')[0],
+    endDate: addWorkdays(fassStart, phase.duration_days - 1).toISOString().split('T')[0],
+    isParallel: false
+  });
+  processedIndices.add(i);
+  console.log(`[SEQUENTIAL] FASS startet NACH allen FEN-Phasen`);
+  continue;
+}
+  
   // WICHTIG: Phasen des gleichen Gewerks NIEMALS parallel!
 const sameTradeEntries = scheduledEntries.filter(s => 
   s.trade_code === entry.trade_code && 
