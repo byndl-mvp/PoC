@@ -451,6 +451,21 @@ const findDependencies = (entries) => {
         )}
       </div>
 
+      {/* Info-Box für pending_approval */}
+{schedule.status === 'pending_approval' && (
+  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
+    <div className="flex items-start gap-3">
+      <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+      <div>
+        <p className="text-blue-300 font-semibold mb-1">💡 Terminplan prüfen & freigeben</p>
+        <p className="text-gray-300 text-sm">
+          Die KI hat einen Terminplan erstellt. Prüfen Sie die Abfolge und geben Sie ihn dann frei. Nach der Freigabe können Sie Termine weiterhin jederzeit anpassen und mit Ihren Handwerkern abstimmen.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+      
       {/* Offene Terminänderungs-Anfragen */}
       {changeRequests.length > 0 && (
         <div className="bg-gradient-to-r from-orange-600/20 to-red-600/20 backdrop-blur-md rounded-xl p-6 border border-orange-500/30">
