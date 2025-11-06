@@ -26754,7 +26754,7 @@ if (entry.is_minor_work && tradePhaseCount === 1) {
 // Multi-Phasen-Gewerke sind immer sequentiell (auch wenn Minor Work dabei ist)
   
   // Prüfe Dependencies
-  const allDependenciesMet = entry.dependencies.every(dep => {
+const allDependenciesMet = entry.dependencies.every(dep => {
   if (typeof dep === 'string' && dep.includes('-')) {
     const [tradeDep, phaseDep] = dep.split('-');
     return scheduledEntries.some(s => 
@@ -26764,13 +26764,36 @@ if (entry.is_minor_work && tradePhaseCount === 1) {
   }
   return scheduledEntries.some(s => s.trade_code === dep);
 });
-  
-  if (!allDependenciesMet && entry.dependencies.length > 0) {
-    continue;
-  }
 
-// SPEZIAL-REGEL: FASS muss warten bis DACH UND FEN 100% FERTIG sind!
-if (entry.trade_code === 'FASS') {
+if (!allDependenciesMet && entry.dependencies.length > 0) {
+  continue;
+}
+
+// WICHTIG: Phasen des gleichen Gewerks NIEMALS parallel!
+const sameTradeEntries = scheduledEntries.filter(s => 
+  s.trade_code === entry.trade_code && 
+  s.phase.phase_number < phase.phase_number
+);
+
+if (sameTradeEntries.length > 0) {
+  // Vorherige Phase des gleichen Gewerks muss fertig sein
+  const previousPhase = sameTradeEntries[sameTradeEntries.length - 1];
+  const nextStart = addWorkdays(new Date(previousPhase.endDate), 1);
+  
+  scheduledEntries.push({
+    ...entry,
+    startDate: nextStart.toISOString().split('T')[0],
+    endDate: addWorkdays(nextStart, phase.duration_days - 1).toISOString().split('T')[0],
+    isParallel: false
+  });
+  processedIndices.add(i);
+  console.log(`[SAME-TRADE-SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number} nach Phase ${previousPhase.phase.phase_number}`);
+  continue;
+}
+
+// SPEZIAL-REGEL: FASS Phase 1 muss warten bis DACH UND FEN 100% FERTIG sind!
+// (Andere FASS-Phasen werden oben durch same-trade-check behandelt)
+if (entry.trade_code === 'FASS' && phase.phase_number === 1) {
   const fenEntries = scheduledEntries.filter(s => s.trade_code === 'FEN');
   const allFenPhases = allEntries.filter(e => e.trade_code === 'FEN');
   
@@ -26779,13 +26802,13 @@ if (entry.trade_code === 'FASS') {
   
   // FASS wartet bis ALLE FEN-Phasen eingeplant sind
   if (fenEntries.length < allFenPhases.length) {
-    console.log(`[WAITING] FASS wartet auf alle FEN-Phasen (${fenEntries.length}/${allFenPhases.length})`);
+    console.log(`[WAITING] FASS Phase 1 wartet auf alle FEN-Phasen (${fenEntries.length}/${allFenPhases.length})`);
     continue;
   }
   
   // FASS wartet bis ALLE DACH-Phasen eingeplant sind
   if (dachEntries.length < allDachPhases.length) {
-    console.log(`[WAITING] FASS wartet auf alle DACH-Phasen (${dachEntries.length}/${allDachPhases.length})`);
+    console.log(`[WAITING] FASS Phase 1 wartet auf alle DACH-Phasen (${dachEntries.length}/${allDachPhases.length})`);
     continue;
   }
   
@@ -26810,29 +26833,7 @@ if (entry.trade_code === 'FASS') {
     isParallel: false
   });
   processedIndices.add(i);
-  console.log(`[SEQUENTIAL] FASS startet NACH allen FEN-Phasen`);
-  continue;
-}
-  
-  // WICHTIG: Phasen des gleichen Gewerks NIEMALS parallel!
-const sameTradeEntries = scheduledEntries.filter(s => 
-  s.trade_code === entry.trade_code && 
-  s.phase.phase_number < phase.phase_number
-);
-
-if (sameTradeEntries.length > 0) {
-  // Vorherige Phase des gleichen Gewerks muss fertig sein
-  const previousPhase = sameTradeEntries[sameTradeEntries.length - 1];
-  const nextStart = addWorkdays(new Date(previousPhase.endDate), 1);
-  
-  scheduledEntries.push({
-    ...entry,
-    startDate: nextStart.toISOString().split('T')[0],
-    endDate: addWorkdays(nextStart, phase.duration_days - 1).toISOString().split('T')[0],
-    isParallel: false
-  });
-  processedIndices.add(i);
-  console.log(`[SAME-TRADE-SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number} nach Phase ${previousPhase.phase.phase_number}`);
+  console.log(`[SEQUENTIAL] FASS Phase 1 startet NACH DACH und FEN`);
   continue;
 }
   
