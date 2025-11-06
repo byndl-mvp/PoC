@@ -569,7 +569,7 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
   const minDateStr = minDate.toISOString().split('T')[0];
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-y-auto">
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-lg w-full p-8 border border-white/20 my-auto">
         <h3 className="text-2xl font-bold text-white mb-6">Terminplanung starten</h3>
         
