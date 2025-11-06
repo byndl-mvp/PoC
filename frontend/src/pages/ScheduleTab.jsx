@@ -1034,10 +1034,17 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
       <div className="mt-6 bg-white/5 rounded-lg p-4 border border-white/10">
         <div className="flex justify-between items-center mb-3">
           <h4 className="text-white font-semibold">Legende</h4>
-          <p className="text-teal-300 text-sm flex items-center gap-2">
-            <Info className="w-4 h-4" />
-            Klicken Sie auf Balken zum Bearbeiten
-          </p>
+          {schedule.status === 'pending_approval' ? (
+  <p className="text-blue-300 text-sm flex items-center gap-2">
+    <Info className="w-4 h-4" />
+    Nach Freigabe können Sie Termine jederzeit anpassen
+  </p>
+) : (
+  <p className="text-teal-300 text-sm flex items-center gap-2">
+    <Info className="w-4 h-4" />
+    Klicken Sie auf Balken zum Bearbeiten
+  </p>
+)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
           {/* Normale Arbeit */}
