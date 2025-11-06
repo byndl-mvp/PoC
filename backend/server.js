@@ -26755,17 +26755,24 @@ if (entry.is_minor_work && tradePhaseCount === 1) {
   
   // Prüfe Dependencies
   const allDependenciesMet = entry.dependencies.every(dep => {
-    // Erlaube Phase-spezifische Dependencies (z.B. "DACH-Eindeckung")
-    if (typeof dep === 'string' && dep.includes('-')) {
-      const [tradeDep, phaseDep] = dep.split('-');
-      return scheduledEntries.some(s => 
-        s.trade_code === tradeDep && 
-        s.phase.phase_name?.toLowerCase().includes(phaseDep.toLowerCase())
-      );
-    }
-    // Trade-level Dependencies (z.B. "DACH" - alle Phasen fertig)
-    return scheduledEntries.some(s => s.trade_code === dep);
-  });
+  if (typeof dep === 'string' && dep.includes('-')) {
+    const [tradeDep, phaseDep] = dep.split('-');
+    const depEntries = scheduledEntries.filter(s => 
+      s.trade_code === tradeDep && 
+      s.phase.phase_name?.toLowerCase().includes(phaseDep.toLowerCase())
+    );
+    // ALLE Phasen dieses Gewerks müssen FERTIG sein
+    return depEntries.length > 0;
+  }
+  
+  // Trade-level Dependency: ALLE Phasen müssen fertig sein!
+  const depEntries = scheduledEntries.filter(s => s.trade_code === dep);
+  if (depEntries.length === 0) return false;
+  
+  // Prüfe ob ALLE Phasen dieses Trades eingeplant sind
+  const allTradePhases = allEntries.filter(e => e.trade_code === dep);
+  return depEntries.length === allTradePhases.length;
+});
   
   if (!allDependenciesMet && entry.dependencies.length > 0) {
     continue;
