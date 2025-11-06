@@ -1116,7 +1116,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
   
   return (
     <>
-      <div className="flex items-start py-3 relative group">
+      <div className="flex items-start py-3 relative group pointer-events-auto">
         {/* Linke Spalte */}
         <div className="w-64 flex-shrink-0 pl-14">
           {entry.phase_name && (
