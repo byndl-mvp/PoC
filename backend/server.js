@@ -26709,29 +26709,6 @@ if (schedule.input_type === 'start_date') {
   currentDate = new Date(schedule.target_completion_date);
   planningDirection = 'backward';
 }
-
-// Wenn rückwärts → Sortiere Entries in umgekehrter Reihenfolge
-if (planningDirection === 'backward') {
-  scheduledEntries.reverse();
-  
-  // Berechne Start-Daten rückwärts
-  let currentBackwardDate = new Date(currentDate);
-  
-  for (let i = 0; i < scheduledEntries.length; i++) {
-    const entry = scheduledEntries[i];
-    const endDate = new Date(currentBackwardDate);
-    const startDate = addWorkdays(endDate, -(entry.phase.duration_days - 1));
-    
-    entry.endDate = endDate.toISOString().split('T')[0];
-    entry.startDate = startDate.toISOString().split('T')[0];
-    
-    // Nächster Entry endet 1 Tag vor diesem Start
-    currentBackwardDate = addWorkdays(startDate, -1);
-  }
-  
-  // Wieder vorwärts sortieren für DB
-  scheduledEntries.reverse();
-}
     
     // Speichere Schedule Entries
 await query('BEGIN');
@@ -27064,7 +27041,53 @@ if (thisEnd > currentSequenceDate) {
   if (processedIndices.size < allEntries.length) {
     console.warn(`[SCHEDULE-WARNING] ${allEntries.length - processedIndices.size} Einträge nicht geplant`);
   }
+
+if (processedIndices.size < allEntries.length) {
+  console.warn(`[SCHEDULE-WARNING] ${allEntries.length - processedIndices.size} Einträge nicht geplant`);
+}
+
+// ================================================================
+// RÜCKWÄRTS-PLANUNG: Wenn Fertigstellungstermin vorgegeben
+// ================================================================
+if (planningDirection === 'backward') {
+  console.log('[BACKWARD-PLANNING] Berechne Termine rückwärts vom Fertigstellungstermin');
   
+  // Sortiere nach geplantem Start (vorwärts)
+  scheduledEntries.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+  
+  // Berechne Gesamt-Dauer
+  const firstStart = new Date(scheduledEntries[0].startDate);
+  const lastEnd = new Date(scheduledEntries[scheduledEntries.length - 1].endDate);
+  const totalDays = Math.ceil((lastEnd - firstStart) / (1000 * 60 * 60 * 24));
+  
+  console.log(`[BACKWARD-PLANNING] Gesamt-Dauer: ${totalDays} Tage`);
+  console.log(`[BACKWARD-PLANNING] Ziel-Fertigstellung: ${currentDate.toISOString().split('T')[0]}`);
+  
+  // Berechne neuen Start: Fertigstellungstermin - Gesamt-Dauer
+  const newStartDate = addWorkdays(currentDate, -totalDays);
+  
+  console.log(`[BACKWARD-PLANNING] Neuer Start: ${newStartDate.toISOString().split('T')[0]}`);
+  
+  // Verschiebe alle Termine entsprechend
+  const shiftDays = Math.ceil((newStartDate - firstStart) / (1000 * 60 * 60 * 24));
+  
+  scheduledEntries.forEach(entry => {
+    const oldStart = new Date(entry.startDate);
+    const oldEnd = new Date(entry.endDate);
+    
+    const newStart = new Date(oldStart);
+    newStart.setDate(newStart.getDate() + shiftDays);
+    
+    const newEnd = new Date(oldEnd);
+    newEnd.setDate(newEnd.getDate() + shiftDays);
+    
+    entry.startDate = newStart.toISOString().split('T')[0];
+    entry.endDate = newEnd.toISOString().split('T')[0];
+  });
+  
+  console.log('[BACKWARD-PLANNING] Alle Termine verschoben');
+}
+
   // ================================================================
   // 4. SPEICHERE IN DATENBANK
   // ================================================================
