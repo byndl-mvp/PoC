@@ -581,7 +581,6 @@ const findDependencies = (entries) => {
 // ============================================================================
 
 function InitiateScheduleModal({ onClose, onSubmit, generating }) {
-  const [dateType, setDateType] = useState('start'); // 'start' oder 'end'
   const [selectedDate, setSelectedDate] = useState('');
 
   const handleSubmit = () => {
