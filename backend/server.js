@@ -26684,17 +26684,8 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
   target_completion_date: schedule.target_completion_date
 });
     
-    let currentDate;
-let planningDirection = 'forward'; // NEU
-
-if (schedule.input_type === 'start_date') {
-  currentDate = new Date(schedule.target_start_date);
-  planningDirection = 'forward';
-} else {
-  // Bei Fertigstellungstermin: Starte von hinten und plane rückwärts
-  currentDate = new Date(schedule.target_completion_date);
-  planningDirection = 'backward';
-}
+    // Start-Datum für Terminplanung
+const currentDate = new Date(schedule.target_start_date);
     
     // Speichere Schedule Entries
 await query('BEGIN');
@@ -27026,48 +27017,6 @@ if (thisEnd > currentSequenceDate) {
 
 if (processedIndices.size < allEntries.length) {
   console.warn(`[SCHEDULE-WARNING] ${allEntries.length - processedIndices.size} Einträge nicht geplant`);
-}
-
-// ================================================================
-// RÜCKWÄRTS-PLANUNG: Wenn Fertigstellungstermin vorgegeben
-// ================================================================
-if (planningDirection === 'backward') {
-  console.log('[BACKWARD-PLANNING] Berechne Termine rückwärts vom Fertigstellungstermin');
-  
-  // Sortiere nach geplantem Start (vorwärts)
-  scheduledEntries.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-  
-  // Berechne Gesamt-Dauer
-  const firstStart = new Date(scheduledEntries[0].startDate);
-  const lastEnd = new Date(scheduledEntries[scheduledEntries.length - 1].endDate);
-  const totalDays = Math.ceil((lastEnd - firstStart) / (1000 * 60 * 60 * 24));
-  
-  console.log(`[BACKWARD-PLANNING] Gesamt-Dauer: ${totalDays} Tage`);
-  console.log(`[BACKWARD-PLANNING] Ziel-Fertigstellung: ${currentDate.toISOString().split('T')[0]}`);
-  
-  // Berechne neuen Start: Fertigstellungstermin - Gesamt-Dauer
-  const newStartDate = addWorkdays(currentDate, -totalDays);
-  
-  console.log(`[BACKWARD-PLANNING] Neuer Start: ${newStartDate.toISOString().split('T')[0]}`);
-  
-  // Verschiebe alle Termine entsprechend
-  const shiftDays = Math.ceil((newStartDate - firstStart) / (1000 * 60 * 60 * 24));
-  
-  scheduledEntries.forEach(entry => {
-    const oldStart = new Date(entry.startDate);
-    const oldEnd = new Date(entry.endDate);
-    
-    const newStart = new Date(oldStart);
-    newStart.setDate(newStart.getDate() + shiftDays);
-    
-    const newEnd = new Date(oldEnd);
-    newEnd.setDate(newEnd.getDate() + shiftDays);
-    
-    entry.startDate = newStart.toISOString().split('T')[0];
-    entry.endDate = newEnd.toISOString().split('T')[0];
-  });
-  
-  console.log('[BACKWARD-PLANNING] Alle Termine verschoben');
 }
 
   // ================================================================
