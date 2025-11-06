@@ -1080,6 +1080,18 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
           </div>
         </div>
       </div>
+
+      {/* ZENTRALISIERTES MODAL - nur EINES für alle Balken */}
+      {editingEntry && (
+        <EditEntryModal
+          entry={editingEntry}
+          onClose={() => setEditingEntry(null)}
+          onSave={(newStart, newEnd, cascade) => {
+            onUpdateEntry(editingEntry.id, newStart, newEnd, cascade);
+            setEditingEntry(null);
+          }}
+        />
+      )}
     </div>
   );
 }
