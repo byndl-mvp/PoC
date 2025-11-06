@@ -585,13 +585,13 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
   const [selectedDate, setSelectedDate] = useState('');
 
   const handleSubmit = () => {
-    if (!selectedDate) {
-      alert('Bitte wählen Sie ein Datum');
-      return;
-    }
-    onSubmit(selectedDate, dateType === 'start' ? 'start_date' : 'end_date');
-    onClose(); 
-  };
+  if (!selectedDate) {
+    alert('Bitte wählen Sie ein Datum');
+    return;
+  }
+  onSubmit(selectedDate, 'start_date'); // ← IMMER start_date!
+  onClose();
+};
 
   // Mindestdatum: heute + 7 Tage
   const minDate = new Date();
