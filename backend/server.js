@@ -27478,7 +27478,7 @@ if (cascadeChanges) {
   const daysDiff = calculateWorkdays(oldEnd, new Date(newEnd));
   
   if (daysDiff !== 0) {
-    // 1. Finde alle Entries die direkt oder indirekt von diesem Entry abhängen
+    // 1. Lade alle Entries des Schedules
     const allEntries = await query(
       `SELECT se.*, t.code as trade_code, t.name as trade_name
        FROM schedule_entries se
@@ -27488,37 +27488,36 @@ if (cascadeChanges) {
       [entryId]
     );
     
-    // 2. Baue Dependency-Graph
     const entries = allEntries.rows;
     const toUpdate = new Set();
     const processed = new Set([entryId]);
+    
+    // Helper: Parse Dependencies sicher
+    const parseDeps = (depsField) => {
+      if (!depsField) return [];
+      try {
+        const parsed = typeof depsField === 'string' ? JSON.parse(depsField) : depsField;
+        return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+      } catch {
+        return [];
+      }
+    };
     
     // Finde alle Entries die von diesem Entry abhängen (rekursiv)
     const findDependents = (tradeCode, phaseNumber) => {
       entries.forEach(e => {
         if (processed.has(e.id)) return;
         
-        let deps = [];
-if (e.dependencies) {
-  try {
-    const parsed = typeof e.dependencies === 'string' 
-      ? JSON.parse(e.dependencies) 
-      : e.dependencies;
-    deps = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
-  } catch {
-    deps = [];
-  }
-}
+        const deps = parseDeps(e.dependencies);
         
-        // Prüfe ob Entry von geändertem Trade abhängt
+        // Fall 1: Entry e hängt direkt von unserem Trade ab
         if (deps.includes(tradeCode)) {
           toUpdate.add(e.id);
           processed.add(e.id);
-          // Rekursiv: Finde auch Abhängigkeiten von diesem Entry
           findDependents(e.trade_code, e.phase_number);
         }
         
-        // Prüfe auch nachfolgende Phasen des gleichen Gewerks
+        // Fall 2: Nachfolgende Phasen des gleichen Gewerks
         if (e.trade_code === tradeCode && e.phase_number > phaseNumber) {
           toUpdate.add(e.id);
           processed.add(e.id);
@@ -27527,8 +27526,29 @@ if (e.dependencies) {
       });
     };
     
-    // Starte Suche
+    // Starte rekursive Suche
     findDependents(entry.code, entry.phase_number);
+    
+    // ZUSÄTZLICH: Wenn nach HINTEN verschoben (daysDiff > 0)
+    // Prüfe ob Entry jetzt mit abhängigen Entries kollidiert
+    if (daysDiff > 0) {
+      const newEndDate = new Date(newEnd);
+      
+      entries.forEach(e => {
+        if (processed.has(e.id)) return;
+        
+        const deps = parseDeps(e.dependencies);
+        const eStartDate = new Date(e.planned_start);
+        
+        // Wenn Entry e von unserem Trade abhängt UND
+        // unser neues Ende NACH oder AM Start von e liegt
+        if (deps.includes(entry.code) && newEndDate >= eStartDate) {
+          toUpdate.add(e.id);
+          processed.add(e.id);
+          findDependents(e.trade_code, e.phase_number);
+        }
+      });
+    }
     
     // 3. Verschiebe alle betroffenen Entries
     for (const followEntryId of toUpdate) {
