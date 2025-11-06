@@ -1160,7 +1160,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
         <div className="w-64 flex-shrink-0 pl-14">
   <div className="pt-2">
     <span className="text-white text-sm font-semibold block">
-      {isSummary ? 'Gesamtdauer aller Arbeiten' : entry.phase_name}
+      {isSummary ? 'Gesamtdauer' : entry.phase_name}
     </span>
     <span className="text-gray-400 text-xs">
       {workdays} {workdays === 1 ? 'Tag' : 'Tage'}
