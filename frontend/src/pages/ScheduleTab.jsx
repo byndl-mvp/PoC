@@ -1294,6 +1294,16 @@ function EditEntryModal({ entry, onClose, onSave }) {
             />
           </div>
 
+          {/* VALIDIERUNGS-HINWEIS */}
+          {!isValid && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p className="text-red-300 text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Endtermin muss nach dem Starttermin liegen
+              </p>
+            </div>
+          )}
+          
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
