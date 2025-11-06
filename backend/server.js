@@ -26163,12 +26163,16 @@ Feininstallation:
 
 3. **GERÜST/DACH/FENSTER/FASSADE (Gebäudehülle):**
    - Gerüstaufbau GER Phase 1 immer zuerst
-   - Dann PARALLEL: GER Phase 2 (Standzeit) MIT DACH + ZIMM + FEN + FASS
    - ZIMM (falls neuer Dachstuhl oder Gauben nötig) immer nach oder bereits während ROH
-   - DACH immer nach ROH und ZIMM
-   - FEN nach oder während DACH
-   - FASS nach FEN
-   - Gerüstabbau GER Phase 3 immer erst nach Abschluss DACH + ZIMM + FEN + FASS
+   - DACH immer nach ROH und ZIMM 
+   - FEN startet wenn DACH zu 2/3 fertig ist (kann teilweise parallel laufen)
+   - FASS MUSS warten bis FEN 100% fertig! (WDVS braucht fertige Fenster!)
+   - Gerüstabbau GER Phase 2 immer erst nach Abschluss DACH + ZIMM + FEN + FASS
+
+  **NIEMALS:**
+   - FASS vor FEN ❌
+   - FASS parallel zu FEN ❌
+   - FASS ohne FEN in dependencies ❌
    
 4. **ROHINSTALLATIONEN (PARALLEL MÖGLICH):**
    - Abschluss dichte Gebäudehülle → Start Innenausbau, zuerst Rohinstallationen
