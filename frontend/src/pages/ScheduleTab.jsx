@@ -786,20 +786,20 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
                           <div>
                             <label className="block text-gray-400 text-xs mb-1">Start</label>
                             <input
-                              type="date"
-                              defaultValue={entry.planned_start}
-                              onChange={(e) => handleAdjustEntry(entry.id, 'planned_start', e.target.value)}
-                              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm"
-                            />
+  type="date"
+  value={adjustedEntries[entry.id]?.planned_start || entry.planned_start}
+  onChange={(e) => handleAdjustEntry(entry, 'planned_start', e.target.value)}
+  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm"
+/>
                           </div>
                           <div>
                             <label className="block text-gray-400 text-xs mb-1">Ende</label>
                             <input
-                              type="date"
-                              defaultValue={entry.planned_end}
-                              onChange={(e) => handleAdjustEntry(entry.id, 'planned_end', e.target.value)}
-                              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm"
-                            />
+  type="date"
+  value={adjustedEntries[entry.id]?.planned_end || entry.planned_end}
+  onChange={(e) => handleAdjustEntry(entry, 'planned_end', e.target.value)}
+  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm"
+/>
                           </div>
                         </div>
 
