@@ -910,6 +910,8 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 // ============================================================================
 
 function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedTrades, onToggleTrade, findDependencies }) {
+  // ✅ ZENTRALISIERTER MODAL-STATE (nur EINE Instanz für alle Balken)
+  const [editingEntry, setEditingEntry] = useState(null);
   
   if (!entries || entries.length === 0) {
     return (
