@@ -26727,8 +26727,8 @@ try {
   const scheduledEntries = [];
   let currentSequenceDate = new Date(currentDate);
   const processedIndices = new Set();
-  
-  // ================================================================
+
+// ================================================================
 // PHASE 1: Minor Works werden später parallel eingeplant
 // ================================================================
 for (let i = 0; i < allEntries.length; i++) {
@@ -26738,10 +26738,16 @@ for (let i = 0; i < allEntries.length; i++) {
   const phase = entry.phase;
   
   // SKIP: Minor Works werden später parallel eingeplant
-  if (entry.is_minor_work) {
-    console.log(`[SKIP-FOR-LATER] ${entry.trade_code} Phase ${phase.phase_number} (Minor Work)`);
-    continue;
-  }
+// AUSNAHME: Wenn Gewerk mehrere Phasen hat, dann sequentiell!
+const tradePhaseCount = allEntries.filter(e => e.trade_code === entry.trade_code).length;
+
+if (entry.is_minor_work && tradePhaseCount === 1) {
+  // Nur einzelne Minor Works werden parallel eingeplant
+  console.log(`[SKIP-FOR-LATER] ${entry.trade_code} (Single-Phase Minor Work)`);
+  continue;
+}
+
+// Multi-Phasen-Gewerke sind immer sequentiell (auch wenn Minor Work dabei ist)
   
   // Prüfe Dependencies
   const allDependenciesMet = entry.dependencies.every(dep => {
