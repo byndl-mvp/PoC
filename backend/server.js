@@ -27143,41 +27143,47 @@ app.post('/api/schedules/:scheduleId/approve', async (req, res) => {
     
     try {
       // Falls Bauherr Termine angepasst hat
-      if (adjustedEntries && adjustedEntries.length > 0) {
-        for (const entry of adjustedEntries) {
-          await query(
-            `UPDATE schedule_entries 
-             SET planned_start = $2,
-                 planned_end = $3,
-                 duration_days = $4,
-                 updated_at = NOW()
-             WHERE id = $1`,
-            [
-              entry.id,
-              entry.planned_start,
-              entry.planned_end,
-              calculateWorkdays(entry.planned_start, entry.planned_end)
-            ]
-          );
-          
-          // History-Eintrag
-          await query(
-            `INSERT INTO schedule_history 
-             (schedule_entry_id, changed_by_type, changed_by_id, change_type,
-              old_start, old_end, new_start, new_end, reason)
-             VALUES ($1, 'bauherr', $2, 'date_change', $3, $4, $5, $6, $7)`,
-            [
-              entry.id,
-              bauherrId,
-              entry.original_start,
-              entry.original_end,
-              entry.planned_start,
-              entry.planned_end,
-              'Anpassung durch Bauherr bei Freigabe'
-            ]
-          );
-        }
-      }
+if (adjustedEntries && adjustedEntries.length > 0) {
+  for (const entry of adjustedEntries) {
+    // Berechne planned_end falls nicht vorhanden
+    const plannedEnd = entry.planned_end || addWorkdays(
+      new Date(entry.planned_start), 
+      entry.duration_days - 1
+    ).toISOString().split('T')[0];
+    
+    await query(
+      `UPDATE schedule_entries 
+       SET planned_start = $2,
+           planned_end = $3,
+           duration_days = $4,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [
+        entry.id,
+        entry.planned_start,
+        plannedEnd,
+        calculateWorkdays(entry.planned_start, plannedEnd)
+      ]
+    );
+    
+    // History-Eintrag
+    await query(
+      `INSERT INTO schedule_history 
+       (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+        old_start, old_end, new_start, new_end, reason)
+       VALUES ($1, 'bauherr', $2, 'date_change', $3, $4, $5, $6, $7)`,
+      [
+        entry.id,
+        bauherrId,
+        entry.original_start,
+        entry.original_end,
+        entry.planned_start,
+        plannedEnd,
+        'Anpassung durch Bauherr bei Freigabe'
+      ]
+    );
+  }
+}
       
       // Schedule auf 'active' setzen
       await query(
