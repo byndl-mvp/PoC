@@ -1017,7 +1017,6 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                   totalDays={totalDays}
                   editMode={editMode}
                   onEdit={() => setEditingEntry(entry)}
-                  isSummary={false}
                   color={tradeColors[tradeIdx % tradeColors.length]}
                 />
               ))}
@@ -1146,15 +1145,13 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
             className={`absolute rounded-lg shadow-lg ${
               editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
             } transition-all`}
-            disabled={!editMode || isSummary}
+            disabled={!editMode}
             title={isMinorWork ? 'Kleine Arbeit - läuft parallel' : (editMode ? 'Klicken zum Bearbeiten' : '')}
             style={{ 
               ...position, 
               height: '40px',
               top: '0',
-              opacity: isSummary ? 0.4 : (isMinorWork ? 0.75 : 1),
-              zIndex: isSummary ? 1 : 10,
-              pointerEvents: isSummary ? 'none' : 'auto'
+              opacity: isMinorWork ? 0.75 : 1
             }}
           >
             <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
