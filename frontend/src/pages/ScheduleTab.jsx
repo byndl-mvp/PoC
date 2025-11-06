@@ -11,7 +11,11 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
   const [showInitModal, setShowInitModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const editMode = true;
+  const editMode = schedule && (
+  schedule.status === 'pending_approval' || 
+  schedule.status === 'active' || 
+  schedule.status === 'locked'
+);
   console.log('🔍 DEBUG:', { status: schedule?.status, editMode: editMode });
   const [adjustedEntries, setAdjustedEntries] = useState({});
   const [showExplanations, setShowExplanations] = useState(true);
