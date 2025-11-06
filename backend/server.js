@@ -26544,8 +26544,10 @@ Ort: ${project.zip_code} ${project.city}
 
 VORGABE:
 ${schedule.input_type === 'start_date' 
-  ? `Gewünschter START: ${schedule.target_start_date}`
-  : `Gewünschte FERTIGSTELLUNG: ${schedule.target_completion_date}`
+  ? `Gewünschter STARTTERMIN: ${schedule.target_start_date}
+     WICHTIG: Plane VORWÄRTS ab diesem Datum. Erstes Gewerk startet an diesem Termin.`
+  : `Gewünschter FERTIGSTELLUNGSTERMIN: ${schedule.target_completion_date}
+     WICHTIG: Plane RÜCKWÄRTS! Letztes Gewerk muss an diesem Datum fertig sein. Berechne wie viele Tage vorher der Start sein muss.`
 }
 
 BETEILIGTE GEWERKE:
