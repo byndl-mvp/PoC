@@ -189,31 +189,60 @@ return () => clearInterval(pollInterval);
   };
 
   const handleUpdateEntry = async (entryId, newStart, newEnd, cascadeChanges = true) => {
-    try {
-      const res = await fetch(apiUrl(`/api/schedule-entries/${entryId}/update`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          newStart,
-          newEnd,
-          reason: 'Anpassung durch Bauherr',
-          bauherrId: project.bauherr_id,
-          cascadeChanges
-        })
+  try {
+    setLoading(true);
+    
+    // Berechne welche Entries betroffen sind
+    const entry = schedule.entries.find(e => e.id === entryId);
+    if (!entry) return;
+    
+    const oldEnd = new Date(entry.planned_end);
+    const newEndDate = new Date(newEnd);
+    const daysDiff = Math.ceil((newEndDate - oldEnd) / (1000 * 60 * 60 * 24));
+    
+    if (cascadeChanges && daysDiff !== 0) {
+      // Finde alle Entries die nahtlos danach starten (max 3 Tage Abstand)
+      const affectedEntries = schedule.entries.filter(e => {
+        const eStart = new Date(e.planned_start);
+        const gapDays = Math.ceil((eStart - oldEnd) / (1000 * 60 * 60 * 24));
+        return gapDays >= 0 && gapDays <= 3; // Nahtlos = max 3 Tage Abstand
       });
       
-      if (res.ok) {
-        await loadSchedule();
-        alert('✅ Termine aktualisiert');
-      } else {
-        const error = await res.json();
-        alert('Fehler: ' + error.error);
-      }
-    } catch (err) {
-      console.error('Fehler:', err);
-      alert('Ein Fehler ist aufgetreten');
+      console.log('🔗 Nahtlose Termine gefunden:', affectedEntries.length);
     }
-  };
+    
+    const res = await fetch(apiUrl(`/api/schedule-entries/${entryId}/update`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        newStart,
+        newEnd,
+        reason: 'Anpassung durch Bauherr',
+        bauherrId: project.bauherr_id,
+        cascadeChanges
+      })
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      await loadSchedule();
+      
+      if (data.affectedEntries > 0) {
+        alert(`✅ Termine aktualisiert\n⚠️ ${data.affectedEntries} abhängige Termine wurden automatisch angepasst`);
+      } else {
+        alert('✅ Termine aktualisiert');
+      }
+    } else {
+      const error = await res.json();
+      alert('Fehler: ' + error.error);
+    }
+  } catch (err) {
+    console.error('Fehler:', err);
+    alert('Ein Fehler ist aufgetreten');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleResolveChangeRequest = async (requestId, decision, rejectionReason) => {
     try {
