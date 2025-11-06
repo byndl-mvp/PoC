@@ -1191,7 +1191,10 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
           </div>
           
           {/* Datum */}
-          <div className="absolute text-center text-white text-xs font-semibold whitespace-nowrap" style={{ ...position, top: '45px' }}>
+          <div 
+  className="absolute text-center text-white text-xs font-semibold whitespace-nowrap pointer-events-none" 
+  style={{ ...position, top: '45px', zIndex: 5 }}
+>
             {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
           </div>
         </div>
