@@ -1139,22 +1139,24 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
         {/* Balken-Bereich - IMMER normaler Balken */}
         <div className="flex-1" style={{ position: 'relative' }}>
           <div
-            data-entry-id={entry.id} 
-            onClick={() => {
-              if (editMode && onEdit) {
-                onEdit();
-              }
-            }}
-            className={`absolute rounded-lg shadow-lg ${
-              editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
-            } transition-all`}
-            title={isMinorWork ? 'Kleine Arbeit - läuft parallel' : (editMode ? 'Klicken zum Bearbeiten' : '')}
-            style={{ 
-  ...position, 
-  height: '40px',
-  opacity: isMinorWork ? 0.75 : 1
-}}
-          >
+  data-entry-id={entry.id} 
+  onClick={() => {
+    if (editMode && onEdit) {
+      console.log('🖱️ Balken geklickt:', entry.id);
+      onEdit();
+    }
+  }}
+  className={`absolute rounded-lg shadow-lg transition-all ${
+    editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105 z-10' : 'cursor-default'
+  }`}
+  style={{ 
+    ...position, 
+    height: '40px',
+    top: '0',
+    opacity: isMinorWork ? 0.75 : 1,
+    zIndex: 10
+  }}
+>
           <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
               {/* Status-Indicator */}
               {entry.confirmed && (
