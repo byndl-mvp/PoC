@@ -27037,10 +27037,6 @@ if (thisEnd > currentSequenceDate) {
       console.log(`[DEPENDENCY-MET] ${entry.trade_code} Phase ${phase.phase_number}`);
     }
   }
-  
-  if (processedIndices.size < allEntries.length) {
-    console.warn(`[SCHEDULE-WARNING] ${allEntries.length - processedIndices.size} Einträge nicht geplant`);
-  }
 
 if (processedIndices.size < allEntries.length) {
   console.warn(`[SCHEDULE-WARNING] ${allEntries.length - processedIndices.size} Einträge nicht geplant`);
