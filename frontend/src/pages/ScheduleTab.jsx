@@ -1145,13 +1145,6 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
             className={`absolute rounded-lg shadow-lg ${
               editMode ? 'cursor-pointer hover:shadow-2xl hover:scale-105' : 'cursor-default'
             } transition-all`}
-           style={{ 
-              ...position, 
-              height: '40px',
-              top: '0',
-              opacity: isSummary ? 0.4 : (isMinorWork ? 0.75 : 1),
-              zIndex: isSummary ? 1 : 10
-            }}
             disabled={!editMode || isSummary}
             title={isMinorWork ? 'Kleine Arbeit - läuft parallel' : (editMode ? 'Klicken zum Bearbeiten' : '')}
             style={{ 
