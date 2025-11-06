@@ -605,78 +605,45 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
         
         {!generating ? (
           <>
-            <p className="text-gray-300 mb-6">
-              Wählen Sie, ob Sie einen gewünschten <strong>Starttermin</strong> oder 
-              einen gewünschten <strong>Fertigstellungstermin</strong> vorgeben möchten.
-            </p>
+  <p className="text-gray-300 mb-6">
+    Geben Sie den gewünschten <strong>Starttermin</strong> für Ihr Projekt ein. 
+    Die KI berechnet automatisch alle Folgearbeiten und den voraussichtlichen Fertigstellungstermin.
+  </p>
 
-            {/* Auswahl: Start oder Ende */}
-            <div className="space-y-3 mb-6">
-              <label className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/20 cursor-pointer hover:bg-white/10 transition-colors">
-                <input
-                  type="radio"
-                  name="dateType"
-                  value="start"
-                  checked={dateType === 'start'}
-                  onChange={(e) => setDateType(e.target.value)}
-                  className="w-5 h-5"
-                />
-                <div>
-                  <p className="text-white font-semibold">Gewünschter Starttermin</p>
-                  <p className="text-gray-400 text-sm">Die KI plant vorwärts vom Startdatum</p>
-                </div>
-              </label>
+  {/* Datumsauswahl */}
+  <div className="mb-6">
+    <label className="block text-white font-semibold mb-2">
+      Gewünschter Starttermin
+    </label>
+    <input
+      type="date"
+      value={selectedDate}
+      onChange={(e) => setSelectedDate(e.target.value)}
+      min={minDateStr}
+      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+    />
+    <p className="text-gray-400 text-xs mt-2">
+      Mindestens 7 Tage in der Zukunft
+    </p>
+  </div>
 
-              <label className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/20 cursor-pointer hover:bg-white/10 transition-colors">
-                <input
-                  type="radio"
-                  name="dateType"
-                  value="end"
-                  checked={dateType === 'end'}
-                  onChange={(e) => setDateType(e.target.value)}
-                  className="w-5 h-5"
-                />
-                <div>
-                  <p className="text-white font-semibold">Gewünschter Fertigstellungstermin</p>
-                  <p className="text-gray-400 text-sm">Die KI plant rückwärts zur Fertigstellung</p>
-                </div>
-              </label>
-            </div>
-
-            {/* Datumsauswahl */}
-            <div className="mb-6">
-              <label className="block text-white font-semibold mb-2">
-                {dateType === 'start' ? 'Startdatum wählen' : 'Fertigstellungsdatum wählen'}
-              </label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                min={minDateStr}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-              <p className="text-gray-400 text-xs mt-2">
-                Mindestens 7 Tage in der Zukunft
-              </p>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={!selectedDate || generating} 
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold rounded-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                KI-Terminplan erstellen
-              </button>
-            </div>
-          </>
+  {/* Buttons */}
+  <div className="flex gap-3">
+    <button
+      onClick={onClose}
+      className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+    >
+      Abbrechen
+    </button>
+    <button
+      onClick={handleSubmit}
+      disabled={!selectedDate || generating} 
+      className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold rounded-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      KI-Terminplan erstellen
+    </button>
+  </div>
+</>
         ) : (
           <div className="text-center py-8">
             <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
