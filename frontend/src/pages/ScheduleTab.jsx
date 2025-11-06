@@ -1226,6 +1226,27 @@ function EditEntryModal({ entry, onClose, onSave }) {
   const [newEnd, setNewEnd] = useState(entry.planned_end);
   const [cascade, setCascade] = useState(true);
 
+  // VALIDIERUNG: Endtermin automatisch anpassen wenn Start > Ende
+  const handleStartChange = (value) => {
+    setNewStart(value);
+    // Wenn neuer Start nach aktuellem Ende liegt, Ende auch anpassen
+    if (value > newEnd) {
+      setNewEnd(value);
+    }
+  };
+
+  const handleEndChange = (value) => {
+    // Wenn neues Ende vor Start liegt, auf Start setzen
+    if (value < newStart) {
+      setNewEnd(newStart);
+    } else {
+      setNewEnd(value);
+    }
+  };
+
+  // VALIDIERUNG: Speichern nur wenn Start <= Ende
+  const isValid = newStart <= newEnd;
+
   return (
     <div 
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
