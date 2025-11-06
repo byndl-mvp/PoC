@@ -25819,19 +25819,21 @@ app.post('/api/projects/:projectId/schedule/initiate', async (req, res) => {
       });
     }
     
-    // Prüfe ob bereits ein Terminplan existiert
-    const existingSchedule = await query(
-      'SELECT id, status FROM project_schedules WHERE project_id = $1',
-      [projectId]
-    );
-    
-    if (existingSchedule.rows.length > 0) {
-      return res.status(400).json({ 
-        error: 'Terminplan existiert bereits für dieses Projekt',
-        scheduleId: existingSchedule.rows[0].id,
-        status: existingSchedule.rows[0].status
-      });
-    }
+   // Prüfe ob bereits ein AKTIVER Terminplan existiert (ignoriere drafts)
+const existingSchedule = await query(
+  `SELECT id, status FROM project_schedules 
+   WHERE project_id = $1 
+   AND status IN ('pending_approval', 'locked', 'active', 'completed')`,
+  [projectId]
+);
+
+if (existingSchedule.rows.length > 0) {
+  return res.status(400).json({ 
+    error: 'Terminplan existiert bereits für dieses Projekt',
+    scheduleId: existingSchedule.rows[0].id,
+    status: existingSchedule.rows[0].status
+  });
+}
     
     // Erstelle Draft-Schedule
     const scheduleResult = await query(
