@@ -991,7 +991,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
 
           {/* Balken-Liste */}
           {groupedTrades.map((trade, tradeIdx) => (
-            <div key={trade.trade_code} className="min-w-max relative" style={{ zIndex: 10 }}>
+            <div key={trade.trade_code} className="min-w-max relative" style={{ zIndex: groupedTrades.length - tradeIdx }}
               {/* Trade Header */}
               <button
                 onClick={() => onToggleTrade(trade.trade_code)}
