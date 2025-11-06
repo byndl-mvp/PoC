@@ -27498,7 +27498,17 @@ if (cascadeChanges) {
       entries.forEach(e => {
         if (processed.has(e.id)) return;
         
-        const deps = e.dependencies ? JSON.parse(e.dependencies) : [];
+        let deps = [];
+if (e.dependencies) {
+  try {
+    const parsed = typeof e.dependencies === 'string' 
+      ? JSON.parse(e.dependencies) 
+      : e.dependencies;
+    deps = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+  } catch {
+    deps = [];
+  }
+}
         
         // Prüfe ob Entry von geändertem Trade abhängt
         if (deps.includes(tradeCode)) {
