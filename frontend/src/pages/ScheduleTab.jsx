@@ -1022,12 +1022,13 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
               ))}
               
               {/* Gesamtbalken (collapsed) */}
-              {!expandedTrades[trade.trade_code] && (
+             {!expandedTrades[trade.trade_code] && (
                 <GanttBar
                   entry={trade.entries[0]}
                   minDate={minDate}
                   totalDays={totalDays}
                   editMode={false}
+                  onEdit={() => {}}
                   isSummary={true}
                   allEntries={trade.entries}
                   color={tradeColors[tradeIdx % tradeColors.length]}
