@@ -1113,7 +1113,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
         </div>
         
         {/* Balken-Bereich - IMMER normaler Balken */}
-        <div className="flex-1" style={{ position: 'relative' }}>
+        <div className="flex-1 pointer-events-auto" style={{ position: 'relative' }}>
           <div
   data-entry-id={entry.id} 
   onClick={() => {
