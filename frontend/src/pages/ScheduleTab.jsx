@@ -452,14 +452,14 @@ const findDependencies = (entries) => {
           </div>
           
           {schedule.status === 'pending_approval' && (
-  <div>
+  <div className="flex flex-col items-end">
     <button
       onClick={() => setShowApprovalModal(true)}
       className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold rounded-lg hover:shadow-xl transition-all"
     >
       Terminplan bearbeiten & freigeben
     </button>
-    <p className="text-gray-400 text-sm mt-2 max-w-md">
+    <p className="text-gray-400 text-sm mt-2 max-w-md text-right">
       Nach der Freigabe können Sie und Ihre Handwerker die Termine sehen. Sie können den Plan auch später jederzeit anpassen.
     </p>
   </div>
