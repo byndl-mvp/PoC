@@ -987,7 +987,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
       {/* Balken */}
       <div className="space-y-3 overflow-x-auto">
         {/* Wrapper mit position: relative für SVG */}
-        <div className="relative min-w-max" style={{ minHeight: `${groupedTrades.length * 100}px` }}>
+        <div className="relative min-w-max">
 
           {/* Balken-Liste */}
           {groupedTrades.map((trade, tradeIdx) => (
