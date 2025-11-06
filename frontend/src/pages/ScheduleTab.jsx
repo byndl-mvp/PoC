@@ -1141,7 +1141,6 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
           <button
             data-entry-id={entry.id} 
             onClick={(e) => {
-              e.stopPropagation();
               if (editMode && onEdit) {
                 onEdit();
               }
@@ -1155,7 +1154,8 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
               ...position, 
               height: '40px',
               top: '0',
-              opacity: isMinorWork ? 0.75 : 1
+              opacity: isMinorWork ? 0.75 : 1,
+              cursor: editMode ? 'pointer' : 'default'
             }}
           >
            <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`} style={{ pointerEvents: 'none' }}>
