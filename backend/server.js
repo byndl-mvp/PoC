@@ -26769,10 +26769,13 @@ if (entry.is_minor_work && tradePhaseCount === 1) {
     continue;
   }
 
-// SPEZIAL-REGEL: FASS muss warten bis FEN 100% FERTIG ist!
-if (entry.trade_code === 'FASS' && entry.dependencies.includes('FEN')) {
+// SPEZIAL-REGEL: FASS muss warten bis DACH UND FEN 100% FERTIG sind!
+if (entry.trade_code === 'FASS') {
   const fenEntries = scheduledEntries.filter(s => s.trade_code === 'FEN');
   const allFenPhases = allEntries.filter(e => e.trade_code === 'FEN');
+  
+  const dachEntries = scheduledEntries.filter(s => s.trade_code === 'DACH');
+  const allDachPhases = allEntries.filter(e => e.trade_code === 'DACH');
   
   // FASS wartet bis ALLE FEN-Phasen eingeplant sind
   if (fenEntries.length < allFenPhases.length) {
@@ -26780,11 +26783,25 @@ if (entry.trade_code === 'FASS' && entry.dependencies.includes('FEN')) {
     continue;
   }
   
-  // FASS startet 1 Tag NACH letzter FEN-Phase
+  // FASS wartet bis ALLE DACH-Phasen eingeplant sind
+  if (dachEntries.length < allDachPhases.length) {
+    console.log(`[WAITING] FASS wartet auf alle DACH-Phasen (${dachEntries.length}/${allDachPhases.length})`);
+    continue;
+  }
+  
+  // FASS startet 1 Tag NACH der SPÄTEREN von DACH/FEN
   const lastFenEntry = fenEntries.reduce((latest, curr) => 
     new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
   );
-  const fassStart = addWorkdays(new Date(lastFenEntry.endDate), 1);
+  const lastDachEntry = dachEntries.reduce((latest, curr) => 
+    new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+  );
+  
+  const lastEndDate = new Date(lastFenEntry.endDate) > new Date(lastDachEntry.endDate) 
+    ? lastFenEntry.endDate 
+    : lastDachEntry.endDate;
+  
+  const fassStart = addWorkdays(new Date(lastEndDate), 1);
   
   scheduledEntries.push({
     ...entry,
