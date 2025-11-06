@@ -1210,21 +1210,24 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
 // ============================================================================
 
 function EditEntryModal({ entry, onClose, onSave }) {
+  const originalDuration = calculateWorkdays(entry.planned_start, entry.planned_end);
+  
   const [newStart, setNewStart] = useState(entry.planned_start);
   const [newEnd, setNewEnd] = useState(entry.planned_end);
   const [cascade, setCascade] = useState(true);
 
-  // VALIDIERUNG: Endtermin automatisch anpassen wenn Start > Ende
+  // WENN START GEÄNDERT WIRD → Ende automatisch verschieben (gleiche Dauer)
   const handleStartChange = (value) => {
     setNewStart(value);
-    // Wenn neuer Start nach aktuellem Ende liegt, Ende auch anpassen
-    if (value > newEnd) {
-      setNewEnd(value);
-    }
+    
+    // Berechne neues Ende mit ursprünglicher Dauer
+    const newEndDate = addWorkdays(new Date(value), originalDuration - 1);
+    setNewEnd(newEndDate.toISOString().split('T')[0]);
   };
 
+  // WENN ENDE GEÄNDERT WIRD → Dauer ändert sich
   const handleEndChange = (value) => {
-    // Wenn neues Ende vor Start liegt, auf Start setzen
+    // Validierung: Ende muss nach oder am Start sein
     if (value < newStart) {
       setNewEnd(newStart);
     } else {
@@ -1234,6 +1237,7 @@ function EditEntryModal({ entry, onClose, onSave }) {
 
   // VALIDIERUNG: Speichern nur wenn Start <= Ende
   const isValid = newStart <= newEnd;
+  const currentDuration = calculateWorkdays(newStart, newEnd);
 
   return (
     <div 
@@ -1262,24 +1266,53 @@ function EditEntryModal({ entry, onClose, onSave }) {
         
         <div className="space-y-4 mb-6">
           <div>
-            <label className="block text-white font-semibold mb-2">Neuer Start</label>
+            <label className="block text-white font-semibold mb-2">
+              Neuer Start
+              <span className="text-gray-400 text-sm font-normal ml-2">
+                (Endtermin passt sich automatisch an)
+              </span>
+            </label>
             <input
               type="date"
               value={newStart}
               onChange={(e) => handleStartChange(e.target.value)}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-teal-500"
             />
           </div>
           
           <div>
-            <label className="block text-white font-semibold mb-2">Neues Ende</label>
+            <label className="block text-white font-semibold mb-2">
+              Neues Ende
+              <span className="text-gray-400 text-sm font-normal ml-2">
+                (Ändern um Dauer anzupassen)
+              </span>
+            </label>
             <input
               type="date"
               value={newEnd}
               onChange={(e) => handleEndChange(e.target.value)}
               min={newStart}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-teal-500"
             />
+          </div>
+
+          {/* DAUER-ANZEIGE */}
+          <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Ursprüngliche Dauer:</span>
+              <span className="text-white font-semibold">{originalDuration} Arbeitstage</span>
+            </div>
+            <div className="flex justify-between text-sm mt-1">
+              <span className="text-gray-400">Neue Dauer:</span>
+              <span className={`font-semibold ${currentDuration !== originalDuration ? 'text-orange-300' : 'text-white'}`}>
+                {currentDuration} Arbeitstage
+                {currentDuration !== originalDuration && (
+                  <span className="ml-1">
+                    ({currentDuration > originalDuration ? '+' : ''}{currentDuration - originalDuration})
+                  </span>
+                )}
+              </span>
+            </div>
           </div>
 
           {/* VALIDIERUNGS-HINWEIS */}
@@ -1299,34 +1332,34 @@ function EditEntryModal({ entry, onClose, onSave }) {
               onChange={(e) => setCascade(e.target.checked)}
               className="w-4 h-4"
             />
-            <span className="text-gray-300">Folgetermine automatisch verschieben</span>
+            <span className="text-gray-300">Abhängige Folgetermine automatisch verschieben</span>
           </label>
         </div>
 
-{entry.is_minor_work && (
-  <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-    <h5 className="text-blue-300 font-semibold mb-2 flex items-center gap-2">
-      <Info className="w-4 h-4" />
-      Parallelarbeit
-    </h5>
-    <p className="text-blue-200 text-sm">
-      Diese kleine Arbeit kann parallel zu anderen Gewerken ausgeführt werden, 
-      da sie räumlich getrennt ist oder nur wenig Koordination erfordert.
-    </p>
-  </div>
-)}
+        {entry.is_minor_work && (
+          <div className="mb-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <h5 className="text-blue-300 font-semibold mb-2 flex items-center gap-2">
+              <Info className="w-4 h-4" />
+              Parallelarbeit
+            </h5>
+            <p className="text-blue-200 text-sm">
+              Diese kleine Arbeit kann parallel zu anderen Gewerken ausgeführt werden, 
+              da sie räumlich getrennt ist oder nur wenig Koordination erfordert.
+            </p>
+          </div>
+        )}
         
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
           >
             Abbrechen
           </button>
-         <button
+          <button
             onClick={() => onSave(newStart, newEnd, cascade)}
             disabled={!isValid}
-            className={`flex-1 px-4 py-2 rounded-lg ${
+            className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
               isValid 
                 ? 'bg-teal-600 text-white hover:bg-teal-700 cursor-pointer' 
                 : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50'
