@@ -259,6 +259,44 @@ return () => clearInterval(pollInterval);
     return Object.values(grouped);
   };
 
+  // Helper: Addiere Arbeitstage (Mo-Fr, ohne Feiertage)
+const addWorkdays = (startDate, days) => {
+  let current = new Date(startDate);
+  let addedDays = 0;
+  
+  // Deutsche Feiertage (fest, jedes Jahr gleich)
+  const fixedHolidays = [
+    '01-01', // Neujahr
+    '05-01', // Tag der Arbeit
+    '10-03', // Tag der Deutschen Einheit
+    '12-24', // Heiligabend
+    '12-25', // 1. Weihnachtstag
+    '12-26', // 2. Weihnachtstag
+    '12-31', // Silvester
+  ];
+  
+  const isHoliday = (date) => {
+    const monthDay = String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                     String(date.getDate()).padStart(2, '0');
+    return fixedHolidays.includes(monthDay);
+  };
+  
+  while (addedDays < days) {
+    current.setDate(current.getDate() + 1);
+    const dayOfWeek = current.getDay();
+    
+    // Samstag (6) und Sonntag (0) überspringen
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+    
+    // Feiertage überspringen
+    if (isHoliday(current)) continue;
+    
+    addedDays++;
+  }
+  
+  return current;
+};
+  
   // Helper: Finde Dependencies zwischen Gewerken
 const findDependencies = (entries) => {
   const deps = [];
