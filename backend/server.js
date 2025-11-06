@@ -27472,23 +27472,59 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
         [entryId, bauherrId, oldStart, oldEnd, newStart, newEnd, reason]
       );
       
-      // Cascade: Verschiebe alle Folge-Termine
+      // Cascade: Verschiebe alle Folge-Termine BASIEREND AUF DEPENDENCIES
 let affectedEntries = [];
 if (cascadeChanges) {
   const daysDiff = calculateWorkdays(oldEnd, new Date(newEnd));
   
   if (daysDiff !== 0) {
-    const followingEntries = await query(
-      `SELECT se.*, t.code as trade_code, t.id as trade_id_fk
+    // 1. Finde alle Entries die direkt oder indirekt von diesem Entry abhängen
+    const allEntries = await query(
+      `SELECT se.*, t.code as trade_code, t.name as trade_name
        FROM schedule_entries se
        JOIN trades t ON se.trade_id = t.id
        WHERE se.schedule_id = (SELECT schedule_id FROM schedule_entries WHERE id = $1)
-         AND se.planned_start > $2
        ORDER BY se.planned_start`,
-      [entryId, oldEnd]
+      [entryId]
     );
     
-    for (const followEntry of followingEntries.rows) {
+    // 2. Baue Dependency-Graph
+    const entries = allEntries.rows;
+    const toUpdate = new Set();
+    const processed = new Set([entryId]);
+    
+    // Finde alle Entries die von diesem Entry abhängen (rekursiv)
+    const findDependents = (tradeCode, phaseNumber) => {
+      entries.forEach(e => {
+        if (processed.has(e.id)) return;
+        
+        const deps = e.dependencies ? JSON.parse(e.dependencies) : [];
+        
+        // Prüfe ob Entry von geändertem Trade abhängt
+        if (deps.includes(tradeCode)) {
+          toUpdate.add(e.id);
+          processed.add(e.id);
+          // Rekursiv: Finde auch Abhängigkeiten von diesem Entry
+          findDependents(e.trade_code, e.phase_number);
+        }
+        
+        // Prüfe auch nachfolgende Phasen des gleichen Gewerks
+        if (e.trade_code === tradeCode && e.phase_number > phaseNumber) {
+          toUpdate.add(e.id);
+          processed.add(e.id);
+          findDependents(e.trade_code, e.phase_number);
+        }
+      });
+    };
+    
+    // Starte Suche
+    findDependents(entry.code, entry.phase_number);
+    
+    // 3. Verschiebe alle betroffenen Entries
+    for (const followEntryId of toUpdate) {
+      const followEntry = entries.find(e => e.id === followEntryId);
+      if (!followEntry) continue;
+      
       const newFollowStart = addWorkdays(new Date(followEntry.planned_start), daysDiff);
       const newFollowEnd = addWorkdays(new Date(followEntry.planned_end), daysDiff);
       
@@ -27523,7 +27559,7 @@ if (cascadeChanges) {
       
       affectedEntries.push({
         id: followEntry.id,
-        trade_id: followEntry.trade_id_fk,
+        trade_id: followEntry.trade_id,
         trade_code: followEntry.trade_code,
         old_start: followEntry.planned_start,
         new_start: newFollowStart.toISOString().split('T')[0]
