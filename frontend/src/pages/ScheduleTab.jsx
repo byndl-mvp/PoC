@@ -116,49 +116,35 @@ return () => clearInterval(pollInterval);
 
   const handleInitiate = async (targetDate, dateType) => {
   try {
-    console.log('🚀 Starte Generierung...');
-    console.log('📊 Aktueller Schedule State:', schedule);
-    console.log('📊 Project ID:', project.id);
-    console.log('📊 Target Date:', targetDate, 'Type:', dateType);
+    setShowInitModal(false);  // ← ERST Modal schließen
+    setGenerating(true);       // ← DANN Generierung starten (zeigt Loading-Modal)
     
-    setGenerating(true);
-    
-    // SCHRITT 1: Initiieren (OHNE DELETE)
-    console.log('📝 Sende Initiate Request...');
+    // SCHRITT 1: Initiieren
     const initRes = await fetch(apiUrl(`/api/projects/${project.id}/schedule/initiate`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetDate, dateType })
     });
     
-    console.log('📥 Initiate Response Status:', initRes.status);
-    
     if (!initRes.ok) {
       const error = await initRes.json();
-      console.error('❌ Initiate error:', error);
-      console.error('📋 Full error object:', JSON.stringify(error, null, 2));
-      alert('Fehler beim Erstellen: ' + JSON.stringify(error));
+      alert('Fehler beim Erstellen: ' + error.error);
       setGenerating(false);
-      setShowInitModal(false);
       return;
     }
-    
-    console.log('✅ Initiierung erfolgreich, starte Generate...');
     
     // Schritt 2: Generieren STARTEN (warten NICHT auf Response!)
     fetch(apiUrl(`/api/projects/${project.id}/schedule/generate`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     }).catch(err => {
-      console.error('❌ Generate error:', err);
+      console.error('Generate error:', err);
       alert('Fehler bei der Generierung');
       setGenerating(false);
     });
     
-    console.log('⏳ Polling überwacht jetzt die Generierung...');
-    
   } catch (err) {
-    console.error('❌ Fehler:', err);
+    console.error('Fehler:', err);
     alert('Ein Fehler ist aufgetreten');
     setGenerating(false);
   }
