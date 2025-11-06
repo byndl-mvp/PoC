@@ -1137,7 +1137,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
         </div>
         
         {/* Balken-Bereich - IMMER normaler Balken */}
-        <div className="flex-1 relative">
+        <div className="flex-1" style={{ position: 'relative' }}>
           <div
             data-entry-id={entry.id} 
             onClick={() => {
@@ -1150,6 +1150,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
             } transition-all`}
             title={isMinorWork ? 'Kleine Arbeit - läuft parallel' : (editMode ? 'Klicken zum Bearbeiten' : '')}
             style={{ 
+              position: 'absolute',
               ...position, 
               height: '40px',
               top: '0',
