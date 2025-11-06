@@ -1158,10 +1158,10 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
               opacity: isMinorWork ? 0.75 : 1
             }}
           >
-            <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
+           <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`} style={{ pointerEvents: 'none' }}>
               {/* Status-Indicator */}
               {entry.confirmed && (
-                <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+                <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white" style={{ pointerEvents: 'none' }}></div>
               )}
               
               {/* Puffer */}
@@ -1184,7 +1184,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
               
               {/* Minor Work Badge */}
               {isMinorWork && (
-                <div className="absolute top-1 left-2">
+                <div className="absolute top-1 left-2" style={{ pointerEvents: 'none' }}>
                   <span className="text-xs bg-white/20 backdrop-blur px-1.5 py-0.5 rounded text-white font-medium">
                     parallel
                   </span>
