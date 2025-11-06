@@ -362,34 +362,22 @@ const findDependencies = (entries) => {
 )}
 
 {/* Generierungs-Modal */}
-{(() => {
-  console.log('🔍 MODAL CHECK:', {
-    condition: schedule?.status === 'draft',
-    schedule: schedule,
-    status: schedule?.status
-  });
-  
-  if (schedule?.status === 'draft') {
-    console.log('✅ MODAL WIRD GERENDERT!');
-    return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="bg-slate-800 rounded-xl p-8 max-w-md w-full mx-4 border border-white/20">
-          <div className="text-center">
-            <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-            <h3 className="text-2xl font-bold text-white mb-4">Terminplan wird generiert...</h3>
-            <p className="text-gray-300 mb-6">
-              Die KI erstellt gerade Ihren individuellen Bauablaufplan. Dies kann einige Minuten dauern.
-            </p>
-            <p className="text-sm text-gray-400">
-              Bitte warten Sie - die Generierung läuft im Hintergrund.
-            </p>
-          </div>
-        </div>
+{generating && (
+  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="bg-slate-800 rounded-xl p-8 max-w-md w-full mx-4 border border-white/20">
+      <div className="text-center">
+        <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+        <h3 className="text-2xl font-bold text-white mb-4">Terminplan wird generiert...</h3>
+        <p className="text-gray-300 mb-6">
+          Die KI erstellt gerade Ihren individuellen Bauablaufplan. Dies kann einige Minuten dauern.
+        </p>
+        <p className="text-sm text-gray-400">
+          Bitte warten Sie - die Generierung läuft im Hintergrund.
+        </p>
       </div>
-    );
-  }
-  return null;
-})()}
+    </div>
+  </div>
+)}
 
 {/* Initiierungs-Modal */}
 {!schedule && showInitModal && (
