@@ -26698,17 +26698,40 @@ Erstelle einen realistischen, professionellen Bauablaufplan mit klaren Erklärun
   target_completion_date: schedule.target_completion_date
 });
     
-    // Berechne tatsächliche Start- und Enddaten
     let currentDate;
-    if (schedule.input_type === 'start_date') {
-      currentDate = new Date(schedule.target_start_date);
-    } else {
-      // Rückwärts rechnen vom Enddatum
-      currentDate = addWorkdays(
-        new Date(schedule.target_completion_date),
-        -scheduleData.total_duration_days
-      );
-    }
+let planningDirection = 'forward'; // NEU
+
+if (schedule.input_type === 'start_date') {
+  currentDate = new Date(schedule.target_start_date);
+  planningDirection = 'forward';
+} else {
+  // Bei Fertigstellungstermin: Starte von hinten und plane rückwärts
+  currentDate = new Date(schedule.target_completion_date);
+  planningDirection = 'backward';
+}
+
+// Wenn rückwärts → Sortiere Entries in umgekehrter Reihenfolge
+if (planningDirection === 'backward') {
+  scheduledEntries.reverse();
+  
+  // Berechne Start-Daten rückwärts
+  let currentBackwardDate = new Date(currentDate);
+  
+  for (let i = 0; i < scheduledEntries.length; i++) {
+    const entry = scheduledEntries[i];
+    const endDate = new Date(currentBackwardDate);
+    const startDate = addWorkdays(endDate, -(entry.phase.duration_days - 1));
+    
+    entry.endDate = endDate.toISOString().split('T')[0];
+    entry.startDate = startDate.toISOString().split('T')[0];
+    
+    // Nächster Entry endet 1 Tag vor diesem Start
+    currentBackwardDate = addWorkdays(startDate, -1);
+  }
+  
+  // Wieder vorwärts sortieren für DB
+  scheduledEntries.reverse();
+}
     
     // Speichere Schedule Entries
 await query('BEGIN');
