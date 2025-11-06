@@ -26515,8 +26515,20 @@ ELEKT (Elektroarbeiten):
   - Phase 1: Rohinstallation (4-6 Tage)
   - Phase 2: Zählerschrank & Verteilung (2-3 Tage)
   - Phase 3: Feininstallation & Prüfung (4-5 Tage)
-  
-**REGEL:** 2-4 Phasen pro Gewerk, niemals mehr! Fasse ähnliche Arbeitsschritte zusammen!
+
+**WICHTIG:** Die Phasen-Nummerierung muss der LOGISCHEN REIHENFOLGE folgen!
+- Phase 1 = ERSTE Arbeit
+- Phase 2 = ZWEITE Arbeit  
+- Phase 3 = DRITTE Arbeit
+
+NIEMALS:
+- Phase 1: Einbau ❌
+- Phase 2: Demontage ❌ (falsche Reihenfolge!)
+
+**WICHTIGE REGEL:** 
+- 2-4 Phasen pro Gewerk, niemals mehr! 
+- Phasen MÜSSEN in logischer Arbeitsreihenfolge nummeriert sein!
+- Phase 1 ist IMMER die erste Arbeit, Phase 2 die zweite, usw.
 
 OUTPUT (NUR valides JSON):
 {
@@ -26748,8 +26760,30 @@ for (let i = 0; i < allEntries.length; i++) {
   if (!allDependenciesMet && entry.dependencies.length > 0) {
     continue;
   }
-    
-   // ================================================================
+
+  // WICHTIG: Phasen des gleichen Gewerks NIEMALS parallel!
+const sameTradeEntries = scheduledEntries.filter(s => 
+  s.trade_code === entry.trade_code && 
+  s.phase.phase_number < phase.phase_number
+);
+
+if (sameTradeEntries.length > 0) {
+  // Vorherige Phase des gleichen Gewerks muss fertig sein
+  const previousPhase = sameTradeEntries[sameTradeEntries.length - 1];
+  const nextStart = addWorkdays(new Date(previousPhase.endDate), 1);
+  
+  scheduledEntries.push({
+    ...entry,
+    startDate: nextStart.toISOString().split('T')[0],
+    endDate: addWorkdays(nextStart, phase.duration_days - 1).toISOString().split('T')[0],
+    isParallel: false
+  });
+  processedIndices.add(i);
+  console.log(`[SAME-TRADE-SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number} nach Phase ${previousPhase.phase.phase_number}`);
+  continue;
+}
+  
+// ================================================================
 // FALL 1: EXPLIZITE can_parallel_with (aus LLM)
 // ================================================================
 if (entry.can_parallel_with.length > 0) {
