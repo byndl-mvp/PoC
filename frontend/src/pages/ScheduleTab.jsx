@@ -1153,6 +1153,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
               zIndex: isSummary ? 1 : 10
             }}
             disabled={!editMode || isSummary}
+            title={isMinorWork ? 'Kleine Arbeit - läuft parallel' : (editMode ? 'Klicken zum Bearbeiten' : '')}
             style={{ 
               ...position, 
               height: '40px',
@@ -1161,7 +1162,6 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
               zIndex: isSummary ? 1 : 10,
               pointerEvents: isSummary ? 'none' : 'auto'
             }}
-            title={isMinorWork ? 'Kleine Arbeit - läuft parallel' : (editMode ? 'Klicken zum Bearbeiten' : '')}
           >
             <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
               {/* Status-Indicator */}
