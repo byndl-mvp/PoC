@@ -535,6 +535,7 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
       return;
     }
     onSubmit(selectedDate, dateType === 'start' ? 'start_date' : 'end_date');
+    onClose(); 
   };
 
   // Mindestdatum: heute + 7 Tage
