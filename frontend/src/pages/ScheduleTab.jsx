@@ -1152,7 +1152,15 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
               opacity: isSummary ? 0.4 : (isMinorWork ? 0.75 : 1),
               zIndex: isSummary ? 1 : 10
             }}
-            disabled={!editMode}
+            disabled={!editMode || isSummary}
+            style={{ 
+              ...position, 
+              height: '40px',
+              top: '0',
+              opacity: isSummary ? 0.4 : (isMinorWork ? 0.75 : 1),
+              zIndex: isSummary ? 1 : 10,
+              pointerEvents: isSummary ? 'none' : 'auto'
+            }}
             title={isMinorWork ? 'Kleine Arbeit - läuft parallel' : (editMode ? 'Klicken zum Bearbeiten' : '')}
           >
             <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
