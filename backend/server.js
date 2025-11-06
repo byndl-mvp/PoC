@@ -25818,12 +25818,6 @@ app.post('/api/projects/:projectId/schedule/initiate', async (req, res) => {
         error: 'Mindestens 2 Gewerke erforderlich für Terminplanung' 
       });
     }
-
-// LÖSCHE ALTE DRAFTS (damit kein duplicate key error)
-await query(
-  'DELETE FROM project_schedules WHERE project_id = $1 AND status = $2',
-  [projectId, 'draft']
-);
     
    // Prüfe ob bereits ein AKTIVER Terminplan existiert 
 const existingSchedule = await query(
