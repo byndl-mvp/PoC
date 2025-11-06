@@ -1158,7 +1158,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
               cursor: editMode ? 'pointer' : 'default'
             }}
           >
-           <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`} style={{ pointerEvents: 'none' }}>
+          <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`} style={{ pointerEvents: 'all' }}>
               {/* Status-Indicator */}
               {entry.confirmed && (
                 <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white" style={{ pointerEvents: 'none' }}></div>
