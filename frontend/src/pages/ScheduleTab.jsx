@@ -565,6 +565,7 @@ const findDependencies = (entries) => {
 
       {/* Gantt-Chart Balkenplan */}
       <GanttChart
+        key={schedule.entries?.map(e => `${e.id}-${e.planned_start}-${e.planned_end}`).join('_')}
         entries={schedule.entries}
         groupedTrades={groupedTrades}
         editMode={editMode && schedule.status !== 'pending_approval'}
