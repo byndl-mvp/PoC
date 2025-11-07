@@ -1115,8 +1115,10 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
                   totalDays={totalDays}
                   editMode={editMode}
                   onEdit={() => setEditingEntry(entry)}
+                  onDelete={() => onDeleteEntry(entry.id)} 
                   color={tradeColors[tradeIdx % tradeColors.length]}
-                />
+                  scheduleStatus={scheduleStatus} 
+                  />
               ))}
               
               {/* Gesamtbalken (collapsed) */}
@@ -1213,7 +1215,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
 // SUB-KOMPONENTE: EINZELNER GANTT-BALKEN 
 // ============================================================================
 
-function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allEntries, color }) {
+function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSummary, allEntries, color }) {
 
   const isMinorWork = entry.is_minor_work === true;
   
