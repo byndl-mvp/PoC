@@ -137,11 +137,23 @@ useEffect(() => {
       if (value) stored[tab] = value;
     });
     
+    // SPECIAL FIX FÜR ORDERS: Wenn kein lastViewed existiert, setze auf neuesten Order
+    // Damit beim ersten Laden nicht alle Orders als "neu" gezählt werden
+    if (!stored.orders && orders.length > 0) {
+      const newestOrderDate = orders.reduce((latest, order) => {
+        const orderDate = new Date(order.updated_at || order.created_at);
+        return orderDate > new Date(latest) ? orderDate.toISOString() : latest;
+      }, orders[0].updated_at || orders[0].created_at);
+      
+      stored.orders = newestOrderDate;
+      sessionStorage.setItem(`lastViewed_${selectedProject.id}_orders`, newestOrderDate);
+    }
+    
     if (Object.keys(stored).length > 0) {
       setLastViewedTabs(prev => ({ ...prev, ...stored }));
     }
   }
-}, [selectedProject?.id]);
+}, [selectedProject?.id, orders]); // orders als Dependency
   
   // AKTUALISIERTE loadUserProjects Funktion
   const loadUserProjects = async (email) => {
@@ -1383,16 +1395,6 @@ const BudgetVisualization = ({ budget }) => {
                 >
                   {isPending ? 'LVs bearbeiten →' : 'Projekt öffnen →'}
                 </button>
-                {/* Optionaler Quick-Delete Button */}
-  <button
-    onClick={(e) => {
-      e.stopPropagation(); // Verhindert das Öffnen des Projekts
-      deleteProject(project.id);
-    }}
-    className="mt-2 w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors text-sm"
-  >
-    Projekt löschen
-  </button>
 </div>             
             </div>
           );
@@ -1474,12 +1476,6 @@ const BudgetVisualization = ({ budget }) => {
     <div className="text-right">
       <p className="text-sm text-gray-400">Geschätzte Kosten</p>
       <p className="text-2xl font-bold text-teal-400">{formatCurrency(selectedProject.totalCost)}</p>
-      <button
-        onClick={() => deleteProject(selectedProject.id)}
-        className="mt-3 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors text-sm"
-      >
-        🗑️ Projekt löschen
-      </button>
     </div>
   </div>
 </div>
@@ -1562,11 +1558,29 @@ const BudgetVisualization = ({ budget }) => {
           setActiveTab(tab);
           // Markiere als gelesen
           if (['tenders', 'offers', 'contracts', 'orders'].includes(tab)) {
-            setLastViewedTabs(prev => ({
-              ...prev,
-              [tab]: new Date().toISOString()
-            }));
-            sessionStorage.setItem(`lastViewed_${selectedProject?.id}_${tab}`, new Date().toISOString());
+            const now = new Date().toISOString();
+            
+            // SPECIAL FIX FÜR ORDERS: Beim ersten Mal setze auf neuesten Order, nicht auf jetzt
+            if (tab === 'orders' && !lastViewedTabs.orders && orders.length > 0) {
+              // Finde neuesten Order
+              const newestOrderDate = orders.reduce((latest, order) => {
+                const orderDate = new Date(order.updated_at || order.created_at);
+                return orderDate > new Date(latest) ? orderDate.toISOString() : latest;
+              }, orders[0].updated_at || orders[0].created_at);
+              
+              setLastViewedTabs(prev => ({
+                ...prev,
+                [tab]: newestOrderDate
+              }));
+              sessionStorage.setItem(`lastViewed_${selectedProject?.id}_${tab}`, newestOrderDate);
+            } else {
+              // Normales Verhalten für andere Tabs
+              setLastViewedTabs(prev => ({
+                ...prev,
+                [tab]: now
+              }));
+              sessionStorage.setItem(`lastViewed_${selectedProject?.id}_${tab}`, now);
+            }
           }
         }}
         className={`px-4 py-2 pt-3 text-sm font-medium transition-colors whitespace-nowrap relative ${
@@ -3127,15 +3141,17 @@ const deadlineDate = tender.deadline
   />
 )}
         
-        {/* Neues Projekt Button */}
-        <div className="mt-8 text-center">
-          <Link
-            to="/start"
-            className="inline-block px-6 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
-          >
-            + Neues Projekt anlegen
-          </Link>
-        </div>
+        {/* Projekt löschen Button - nur im Overview Tab */}
+        {activeTab === 'overview' && selectedProject && (
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => deleteProject(selectedProject.id)}
+              className="inline-block px-6 py-3 bg-red-500/10 hover:bg-red-500/20 backdrop-blur border border-red-500/30 rounded-lg text-red-300 hover:text-red-200 transition-all"
+            >
+              🗑️ Projekt löschen
+            </button>
+          </div>
+        )}
       </div>
     </>
   )}
