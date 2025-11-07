@@ -27726,7 +27726,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
             
             allEntries.forEach(e => {
               // Überspringe bereits verarbeitete
-              if (processed.has(e.id)) return;
+              if (processed.has(e.id) || e.id === entryId) return;
               
               const deps = parseDeps(e.dependencies);
               
