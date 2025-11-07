@@ -27599,8 +27599,24 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       console.log('[CASCADE] 📊 Entry:', { 
         trade: entry.code, 
         phase: entry.phase_number,
+        oldStart: oldStart.toISOString().split('T')[0],
         oldEnd: oldEnd.toISOString().split('T')[0],
+        newStart: newStartDate.toISOString().split('T')[0],
         newEnd: newEndDate.toISOString().split('T')[0]
+      });
+      
+      // ========================================================================
+      // WICHTIG: PRÜFE WAS SICH GEÄNDERT HAT
+      // ========================================================================
+      const startChanged = oldStart.getTime() !== newStartDate.getTime();
+      const endChanged = oldEnd.getTime() !== newEndDate.getTime();
+      
+      console.log('[CASCADE] 🔍 Changes:', { 
+        startChanged, 
+        endChanged,
+        changeType: startChanged && endChanged ? 'BOTH' : 
+                   startChanged ? 'START_ONLY' : 
+                   endChanged ? 'END_ONLY' : 'NONE'
       });
       
       // ========================================================================
@@ -27633,14 +27649,19 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       let affectedEntries = [];
       
       // ========================================================================
-      // SCHRITT 3: CASCADE - VERSCHIEBE ALLE ABHÄNGIGEN TERMINE
+      // SCHRITT 3: CASCADE - NUR WENN START SICH GEÄNDERT HAT!
       // ========================================================================
-      if (cascadeChanges) {
-        console.log('[CASCADE] ✅ Cascade enabled');
+      
+      // ⚠️ WICHTIG: Cascade NUR wenn der START sich ändert
+      // Wenn nur das ENDE sich ändert = Verlängerung/Verkürzung ohne Cascade
+      const shouldCascade = cascadeChanges && startChanged;
+      
+      if (shouldCascade) {
+        console.log('[CASCADE] ✅ Cascade enabled (START changed)');
         
-        // Berechne um wieviele Arbeitstage sich das Ende verschoben hat
-        const dayShift = calculateWorkdays(oldEnd, newEndDate);
-        console.log('[CASCADE] 📈 Day shift:', dayShift, 'days');
+        // Berechne um wieviele Arbeitstage sich der START verschoben hat
+        const dayShift = calculateWorkdays(oldStart, newStartDate);
+        console.log('[CASCADE] 📈 Start shift:', dayShift, 'days');
         
         if (dayShift !== 0) {
           // Lade ALLE Entries des Schedules
@@ -27668,43 +27689,56 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
           };
           
           // ===================================================================
-          // KERN-LOGIK: FINDE ALLE ABHÄNGIGEN ENTRIES
+          // KERN-LOGIK: FINDE ALLE ABHÄNGIGEN ENTRIES (OHNE DUPLIKATE!)
           // ===================================================================
           const toUpdate = new Set();
           const processed = new Set([entryId]);
           
           const findAllDependents = (sourceTradeCode, sourcePhaseNumber) => {
+            console.log('[CASCADE] 🔍 Finding dependents of:', sourceTradeCode, 'Phase', sourcePhaseNumber);
+            
             allEntries.forEach(e => {
               // Überspringe bereits verarbeitete
               if (processed.has(e.id)) return;
               
               const deps = parseDeps(e.dependencies);
               
-              // FALL 1: Nachfolgende Phase des GLEICHEN Gewerks
-              // Beispiel: DACH Phase 1 → DACH Phase 2
+              // ================================================================
+              // WICHTIG: NUR EINE REGEL PRO ENTRY!
+              // ================================================================
+              
+              let shouldUpdate = false;
+              let reason = '';
+              
+              // REGEL 1: Nachfolgende Phase des GLEICHEN Gewerks
+              // Beispiel: DACH Phase 1 (geändert) → DACH Phase 2 muss folgen
               if (e.trade_code === sourceTradeCode && e.phase_number > sourcePhaseNumber) {
-                console.log('[CASCADE] ✅ Found same-trade dependent:', e.trade_code, 'Phase', e.phase_number);
-                toUpdate.add(e.id);
-                processed.add(e.id);
-                // Rekursion: Prüfe ob weitere Phasen folgen
-                findAllDependents(e.trade_code, e.phase_number);
+                shouldUpdate = true;
+                reason = 'same-trade next phase';
               }
               
-              // FALL 2: ABHÄNGIGES Gewerk (via Dependencies)
-              // Beispiel: DACH → PUTZ (weil PUTZ dependencies enthält "DACH")
-              let isDependent = false;
-              deps.forEach(dep => {
-                // Format 1: "DACH"
-                if (dep === sourceTradeCode) isDependent = true;
-                // Format 2: "DACH-Eindeckung"
-                if (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-')) isDependent = true;
-              });
+              // REGEL 2: ABHÄNGIGES Gewerk (via Dependencies)
+              // NUR wenn NICHT das gleiche Gewerk (sonst doppelt!)
+              if (!shouldUpdate && e.trade_code !== sourceTradeCode) {
+                deps.forEach(dep => {
+                  // Format 1: "DACH"
+                  if (dep === sourceTradeCode) {
+                    shouldUpdate = true;
+                    reason = 'dependent trade';
+                  }
+                  // Format 2: "DACH-Eindeckung"
+                  if (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-')) {
+                    shouldUpdate = true;
+                    reason = 'dependent trade (with phase)';
+                  }
+                });
+              }
               
-              if (isDependent) {
-                console.log('[CASCADE] ✅ Found dependent trade:', e.trade_code);
+              if (shouldUpdate) {
+                console.log('[CASCADE] ✅ Found dependent:', e.trade_code, 'Phase', e.phase_number, '(' + reason + ')');
                 toUpdate.add(e.id);
                 processed.add(e.id);
-                // Rekursion: Prüfe ob weitere Gewerke von diesem abhängen
+                // Rekursion: Prüfe ob weitere Entries von diesem abhängen
                 findAllDependents(e.trade_code, e.phase_number);
               }
             });
@@ -27729,10 +27763,10 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
             const newFollowStart = addWorkdays(currentStart, dayShift);
             const newFollowEnd = addWorkdays(currentEnd, dayShift);
             
-            console.log('[CASCADE] 🔄 Updating:', updateEntry.trade_code, 'Phase', updateEntry.phase_number, {
+            console.log('[CASCADE] 🔄 Shifting:', updateEntry.trade_code, 'Phase', updateEntry.phase_number, {
               oldStart: currentStart.toISOString().split('T')[0],
               newStart: newFollowStart.toISOString().split('T')[0],
-              shift: dayShift
+              shift: dayShift + ' days'
             });
             
             // Update in DB
@@ -27762,7 +27796,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
                 currentEnd.toISOString().split('T')[0],
                 newFollowStart.toISOString().split('T')[0],
                 newFollowEnd.toISOString().split('T')[0],
-                `Automatisch verschoben wegen Änderung bei ${entry.trade_name}`
+                `Automatisch verschoben wegen Starttermin-Änderung bei ${entry.trade_name}`
               ]
             );
             
@@ -27779,6 +27813,8 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
         } else {
           console.log('[CASCADE] ⏸️ No shift (dayShift = 0)');
         }
+      } else if (cascadeChanges && !startChanged && endChanged) {
+        console.log('[CASCADE] ℹ️ Only END changed - no cascade (just extension/shortening)');
       } else {
         console.log('[CASCADE] ⏸️ Cascade disabled');
       }
@@ -27821,7 +27857,11 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
         success: true,
         affectedEntries: affectedEntries.length,
         affectedDetails: affectedEntries,
-        message: 'Termine erfolgreich aktualisiert'
+        changeType: startChanged && endChanged ? 'both' : 
+                   startChanged ? 'start_only' : 
+                   endChanged ? 'end_only' : 'none',
+        cascadeApplied: shouldCascade && affectedEntries.length > 0,
+        message: shouldCascade ? 'Termine erfolgreich aktualisiert' : 'Termin erfolgreich verlängert/verkürzt'
       });
       
     } catch (innerErr) {
