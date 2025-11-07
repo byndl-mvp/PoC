@@ -26753,252 +26753,239 @@ if (entry.is_minor_work && tradePhaseCount === 1) {
 
 // Multi-Phasen-Gewerke sind immer sequentiell (auch wenn Minor Work dabei ist)
   
-  // Prüfe Dependencies
-const allDependenciesMet = entry.dependencies.every(dep => {
-  if (typeof dep === 'string' && dep.includes('-')) {
-    const [tradeDep, phaseDep] = dep.split('-');
-    return scheduledEntries.some(s => 
-      s.trade_code === tradeDep && 
-      s.phase.phase_name?.toLowerCase().includes(phaseDep.toLowerCase())
-    );
-  }
-  return scheduledEntries.some(s => s.trade_code === dep);
-});
-
-if (!allDependenciesMet && entry.dependencies.length > 0) {
-  continue;
-}
-
-    // WICHTIG: Phasen des gleichen Gewerks NIEMALS parallel!
-const sameTradeEntries = scheduledEntries.filter(s => 
-  s.trade_code === entry.trade_code && 
-  s.phase.phase_number < phase.phase_number
-);
-
-if (sameTradeEntries.length > 0) {
-  // Vorherige Phase des gleichen Gewerks muss fertig sein
-  const previousPhase = sameTradeEntries[sameTradeEntries.length - 1];
-  const nextStart = addWorkdays(new Date(previousPhase.endDate), 1);
+ // ================================================================
+// PHASE 1: HAUPTSCHLEIFE
+// ================================================================
+for (let i = 0; i < allEntries.length; i++) {
+  if (processedIndices.has(i)) continue;
   
-  scheduledEntries.push({
-    ...entry,
-    startDate: nextStart.toISOString().split('T')[0],
-    endDate: addWorkdays(nextStart, phase.duration_days - 1).toISOString().split('T')[0],
-    isParallel: false
-  });
-  processedIndices.add(i);
-  console.log(`[SAME-TRADE-SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number} nach Phase ${previousPhase.phase.phase_number}`);
-  continue;
-}
-
-// SPEZIAL-REGEL: FASS Phase 1 muss warten bis DACH UND FEN 100% FERTIG sind!
-// (Andere FASS-Phasen werden oben durch same-trade-check behandelt)
-if (entry.trade_code === 'FASS' && phase.phase_number === 1) {
-  const fenEntries = scheduledEntries.filter(s => s.trade_code === 'FEN');
-  const allFenPhases = allEntries.filter(e => e.trade_code === 'FEN');
+  const entry = allEntries[i];
+  const phase = entry.phase;
   
-  const dachEntries = scheduledEntries.filter(s => s.trade_code === 'DACH');
-  const allDachPhases = allEntries.filter(e => e.trade_code === 'DACH');
-  
-  // FASS wartet bis ALLE FEN-Phasen eingeplant sind
-  if (fenEntries.length < allFenPhases.length) {
-    console.log(`[WAITING] FASS Phase 1 wartet auf alle FEN-Phasen (${fenEntries.length}/${allFenPhases.length})`);
+  // SKIP: Minor Works
+  const tradePhaseCount = allEntries.filter(e => e.trade_code === entry.trade_code).length;
+  if (entry.is_minor_work && tradePhaseCount === 1) {
+    console.log(`[SKIP-FOR-LATER] ${entry.trade_code} (Single-Phase Minor Work)`);
     continue;
   }
   
-  // FASS wartet bis ALLE DACH-Phasen eingeplant sind
-  if (dachEntries.length < allDachPhases.length) {
-    console.log(`[WAITING] FASS Phase 1 wartet auf alle DACH-Phasen (${dachEntries.length}/${allDachPhases.length})`);
-    continue;
-  }
-  
-  // FASS startet 1 Tag NACH der SPÄTEREN von DACH/FEN
-  const lastFenEntry = fenEntries.reduce((latest, curr) => 
-    new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
-  );
-  const lastDachEntry = dachEntries.reduce((latest, curr) => 
-    new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+  // ================================================================
+  // REGEL 1: GLEICHE GEWERK-PHASEN IMMER SEQUENTIELL (HÖCHSTE PRIORITÄT!)
+  // ================================================================
+  const sameTradeEntries = scheduledEntries.filter(s => 
+    s.trade_code === entry.trade_code && 
+    s.phase.phase_number < phase.phase_number
   );
   
-  const lastEndDate = new Date(lastFenEntry.endDate) > new Date(lastDachEntry.endDate) 
-    ? lastFenEntry.endDate 
-    : lastDachEntry.endDate;
-  
-  const fassStart = addWorkdays(new Date(lastEndDate), 1);
-  
-  scheduledEntries.push({
-    ...entry,
-    startDate: fassStart.toISOString().split('T')[0],
-    endDate: addWorkdays(fassStart, phase.duration_days - 1).toISOString().split('T')[0],
-    isParallel: false
-  });
-  processedIndices.add(i);
-  console.log(`[SEQUENTIAL] FASS Phase 1 startet NACH DACH und FEN`);
-  continue;
-}
-  
-// ================================================================
-// FALL 1: EXPLIZITE can_parallel_with (aus LLM)
-// ================================================================
-if (entry.can_parallel_with.length > 0) {
-  const parallelTrades = entry.can_parallel_with;
-  const parallelEntries = scheduledEntries.filter(s => 
-    parallelTrades.includes(s.trade_code)
-  );
-  
-  if (parallelEntries.length > 0) {
-    const referenceEntry = parallelEntries[0];
+  if (sameTradeEntries.length > 0) {
+    const previousPhase = sameTradeEntries[sameTradeEntries.length - 1];
+    const nextStart = addWorkdays(new Date(previousPhase.endDate), 1);
+    
     scheduledEntries.push({
       ...entry,
-      startDate: referenceEntry.startDate,
-      endDate: addWorkdays(new Date(referenceEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
-      isParallel: true,
-      parallelTo: parallelTrades
+      startDate: nextStart.toISOString().split('T')[0],
+      endDate: addWorkdays(nextStart, phase.duration_days - 1).toISOString().split('T')[0],
+      isParallel: false
     });
     processedIndices.add(i);
-    console.log(`[PARALLEL-EXPLICIT] ${entry.trade_code} Phase ${phase.phase_number} läuft parallel zu ${parallelTrades.join(', ')}`);
+    console.log(`[SAME-TRADE-SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number} nach Phase ${previousPhase.phase.phase_number}`);
     continue;
   }
-}
-    
-    // ================================================================
-    // FALL 2: IMPLIZITE PARALLELITÄTEN (nach Prompt-Regeln)
-    // ================================================================
-    
-    const isRohinstallation = phase.phase_name?.toLowerCase().includes('rohinstallation');
-    const isFeininstallation = phase.phase_name?.toLowerCase().includes('feininstallation');
-    
-    // 2A. ROHINSTALLATIONEN PARALLEL (ELEKT + SAN + HEI)
-    if (isRohinstallation && ['ELEKT', 'SAN', 'HEI'].includes(entry.trade_code)) {
-      const otherRohinstallations = scheduledEntries.filter(s => 
-        s.phase.phase_name?.toLowerCase().includes('rohinstallation') &&
-        ['ELEKT', 'SAN', 'HEI'].includes(s.trade_code) &&
-        !s.isParallel
-      );
-      
-      if (otherRohinstallations.length > 0) {
-        const refEntry = otherRohinstallations[0];
-        scheduledEntries.push({
-          ...entry,
-          startDate: refEntry.startDate,
-          endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
-          isParallel: true,
-          parallelTo: ['Rohinstallationen']
-        });
-        processedIndices.add(i);
-        console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Rohinstallation läuft parallel`);
-        continue;
-      }
-    }
-    
-    // 2B. FEININSTALLATIONEN PARALLEL (ELEKT + SAN + HEI)
-    if (isFeininstallation && ['ELEKT', 'SAN', 'HEI'].includes(entry.trade_code)) {
-      const otherFeininstallations = scheduledEntries.filter(s => 
-        s.phase.phase_name?.toLowerCase().includes('feininstallation') &&
-        ['ELEKT', 'SAN', 'HEI'].includes(s.trade_code)
-      );
-      
-      if (otherFeininstallations.length > 0) {
-        const refEntry = otherFeininstallations[0];
-        scheduledEntries.push({
-          ...entry,
-          startDate: refEntry.startDate,
-          endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
-          isParallel: true,
-          parallelTo: ['Feininstallationen']
-        });
-        processedIndices.add(i);
-        console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Feininstallation läuft parallel`);
-        continue;
-      }
-    }
-    
-    // 2C. DACH UND FEN TEILWEISE ÜBERSCHNEIDEND
-    if (entry.trade_code === 'FEN') {
-      const dachEntries = scheduledEntries.filter(s => s.trade_code === 'DACH');
-      
-      if (dachEntries.length > 0) {
-        const dachEntry = dachEntries[dachEntries.length - 1];
-        const dachDuration = dachEntry.phase.duration_days;
-        const dachTwoThirds = Math.floor(dachDuration * 0.66);
-        
-        const fenStart = addWorkdays(new Date(dachEntry.startDate), dachTwoThirds);
-        
-        scheduledEntries.push({
-          ...entry,
-          startDate: fenStart.toISOString().split('T')[0],
-          endDate: addWorkdays(fenStart, phase.duration_days - 1).toISOString().split('T')[0],
-          isParallel: true,
-          parallelTo: ['DACH']
-        });
-        processedIndices.add(i);
-        console.log(`[PARALLEL-IMPLICIT] FEN läuft teilweise parallel zu DACH`);
-        continue;
-      }
-    }
-    
-    // 2D. BODEN + FLIESEN PARALLEL
-    if (entry.trade_code === 'BOD') {
-      const fliEntries = scheduledEntries.filter(s => 
-        s.trade_code === 'FLI' && !s.isParallel
-      );
-      
-      if (fliEntries.length > 0) {
-        const fliEntry = fliEntries[fliEntries.length - 1];
-        
-        scheduledEntries.push({
-          ...entry,
-          startDate: fliEntry.startDate,
-          endDate: addWorkdays(new Date(fliEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
-          isParallel: true,
-          parallelTo: ['FLI']
-        });
-        processedIndices.add(i);
-        console.log(`[PARALLEL-IMPLICIT] BOD läuft parallel zu FLI`);
-        continue;
-      }
-    }
-    
-    // 2E. AUSSENANLAGEN PARALLEL ZU INNENAUSBAU
-    if (entry.trade_code === 'AUSS') {
-      const innenarbeiten = scheduledEntries.filter(s => 
-        ['MAL', 'BOD', 'TIS', 'FLI', 'ELEKT', 'SAN', 'HEI'].includes(s.trade_code) &&
-        !s.isParallel
-      );
-      
-      if (innenarbeiten.length > 0) {
-        const refEntry = innenarbeiten[0];
-        
-        scheduledEntries.push({
-          ...entry,
-          startDate: refEntry.startDate,
-          endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
-          isParallel: true,
-          parallelTo: ['Innenausbau']
-        });
-        processedIndices.add(i);
-        console.log(`[PARALLEL-IMPLICIT] AUSS läuft parallel zu Innenausbau`);
-        continue;
-      }
-    }
   
-    // ================================================================
-    // FALL 3: SEQUENTIELL
-    // ================================================================
-    const startDate = new Date(currentSequenceDate);
-const endDate = addWorkdays(startDate, phase.duration_days - 1);
-
-scheduledEntries.push({
-  ...entry,
-  startDate: startDate.toISOString().split('T')[0],
-  endDate: endDate.toISOString().split('T')[0],
-  isParallel: false
-});
-processedIndices.add(i);
-currentSequenceDate = addWorkdays(endDate, 1); // ← NUR 1 Tag = nahtlos
-    
-    console.log(`[SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]}`);
+  // ================================================================
+  // REGEL 2: DEPENDENCIES PRÜFEN
+  // ================================================================
+  const allDependenciesMet = entry.dependencies.every(dep => {
+    if (typeof dep === 'string' && dep.includes('-')) {
+      const [tradeDep, phaseDep] = dep.split('-');
+      return scheduledEntries.some(s => 
+        s.trade_code === tradeDep && 
+        s.phase.phase_name?.toLowerCase().includes(phaseDep.toLowerCase())
+      );
+    }
+    return scheduledEntries.some(s => s.trade_code === dep);
+  });
+  
+  if (!allDependenciesMet && entry.dependencies.length > 0) {
+    continue;
   }
+  
+  // ================================================================
+  // REGEL 3: FASS SPEZIAL (nur Phase 1!)
+  // ================================================================
+  if (entry.trade_code === 'FASS' && phase.phase_number === 1) {
+    const fenEntries = scheduledEntries.filter(s => s.trade_code === 'FEN');
+    const allFenPhases = allEntries.filter(e => e.trade_code === 'FEN');
+    const dachEntries = scheduledEntries.filter(s => s.trade_code === 'DACH');
+    const allDachPhases = allEntries.filter(e => e.trade_code === 'DACH');
+    
+    if (fenEntries.length < allFenPhases.length || dachEntries.length < allDachPhases.length) {
+      continue;
+    }
+    
+    const lastFenEntry = fenEntries.reduce((latest, curr) => 
+      new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+    );
+    const lastDachEntry = dachEntries.reduce((latest, curr) => 
+      new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+    );
+    const lastEndDate = new Date(lastFenEntry.endDate) > new Date(lastDachEntry.endDate) 
+      ? lastFenEntry.endDate : lastDachEntry.endDate;
+    const fassStart = addWorkdays(new Date(lastEndDate), 1);
+    
+    scheduledEntries.push({
+      ...entry,
+      startDate: fassStart.toISOString().split('T')[0],
+      endDate: addWorkdays(fassStart, phase.duration_days - 1).toISOString().split('T')[0],
+      isParallel: false
+    });
+    processedIndices.add(i);
+    console.log(`[SEQUENTIAL] FASS Phase 1 startet NACH DACH und FEN`);
+    continue;
+  }
+  
+  // ================================================================
+  // REGEL 4: PARALLELITÄTEN (nur für Phase 1 eines Gewerks!)
+  // ================================================================
+  
+  // 4A. EXPLIZITE can_parallel_with
+  if (entry.can_parallel_with.length > 0) {
+    const parallelEntries = scheduledEntries.filter(s => 
+      entry.can_parallel_with.includes(s.trade_code)
+    );
+    if (parallelEntries.length > 0) {
+      const referenceEntry = parallelEntries[0];
+      scheduledEntries.push({
+        ...entry,
+        startDate: referenceEntry.startDate,
+        endDate: addWorkdays(new Date(referenceEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+        isParallel: true,
+        parallelTo: entry.can_parallel_with
+      });
+      processedIndices.add(i);
+      console.log(`[PARALLEL-EXPLICIT] ${entry.trade_code} Phase ${phase.phase_number}`);
+      continue;
+    }
+  }
+  
+  // 4B. Rohinstallationen parallel
+  const isRohinstallation = phase.phase_name?.toLowerCase().includes('rohinstallation');
+  if (isRohinstallation && ['ELEKT', 'SAN', 'HEI'].includes(entry.trade_code)) {
+    const otherRohinstallations = scheduledEntries.filter(s => 
+      s.phase.phase_name?.toLowerCase().includes('rohinstallation') &&
+      ['ELEKT', 'SAN', 'HEI'].includes(s.trade_code) && !s.isParallel
+    );
+    if (otherRohinstallations.length > 0) {
+      const refEntry = otherRohinstallations[0];
+      scheduledEntries.push({
+        ...entry,
+        startDate: refEntry.startDate,
+        endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+        isParallel: true,
+        parallelTo: ['Rohinstallationen']
+      });
+      processedIndices.add(i);
+      console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Rohinstallation parallel`);
+      continue;
+    }
+  }
+  
+  // 4C. Feininstallationen parallel
+  const isFeininstallation = phase.phase_name?.toLowerCase().includes('feininstallation');
+  if (isFeininstallation && ['ELEKT', 'SAN', 'HEI'].includes(entry.trade_code)) {
+    const otherFeininstallations = scheduledEntries.filter(s => 
+      s.phase.phase_name?.toLowerCase().includes('feininstallation') &&
+      ['ELEKT', 'SAN', 'HEI'].includes(s.trade_code)
+    );
+    if (otherFeininstallations.length > 0) {
+      const refEntry = otherFeininstallations[0];
+      scheduledEntries.push({
+        ...entry,
+        startDate: refEntry.startDate,
+        endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+        isParallel: true,
+        parallelTo: ['Feininstallationen']
+      });
+      processedIndices.add(i);
+      console.log(`[PARALLEL-IMPLICIT] ${entry.trade_code} Feininstallation parallel`);
+      continue;
+    }
+  }
+  
+  // 4D. FEN teilweise parallel zu DACH (nur Phase 1!)
+  if (entry.trade_code === 'FEN' && phase.phase_number === 1) {
+    const dachEntries = scheduledEntries.filter(s => s.trade_code === 'DACH');
+    if (dachEntries.length > 0) {
+      const dachEntry = dachEntries[dachEntries.length - 1];
+      const dachTwoThirds = Math.floor(dachEntry.phase.duration_days * 0.66);
+      const fenStart = addWorkdays(new Date(dachEntry.startDate), dachTwoThirds);
+      
+      scheduledEntries.push({
+        ...entry,
+        startDate: fenStart.toISOString().split('T')[0],
+        endDate: addWorkdays(fenStart, phase.duration_days - 1).toISOString().split('T')[0],
+        isParallel: true,
+        parallelTo: ['DACH']
+      });
+      processedIndices.add(i);
+      console.log(`[PARALLEL-IMPLICIT] FEN Phase 1 teilweise parallel zu DACH`);
+      continue;
+    }
+  }
+  
+  // 4E. Weitere Parallelitäten...
+  if (entry.trade_code === 'BOD') {
+    const fliEntries = scheduledEntries.filter(s => s.trade_code === 'FLI' && !s.isParallel);
+    if (fliEntries.length > 0) {
+      const fliEntry = fliEntries[fliEntries.length - 1];
+      scheduledEntries.push({
+        ...entry,
+        startDate: fliEntry.startDate,
+        endDate: addWorkdays(new Date(fliEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+        isParallel: true,
+        parallelTo: ['FLI']
+      });
+      processedIndices.add(i);
+      console.log(`[PARALLEL-IMPLICIT] BOD parallel zu FLI`);
+      continue;
+    }
+  }
+  
+  if (entry.trade_code === 'AUSS') {
+    const innenarbeiten = scheduledEntries.filter(s => 
+      ['MAL', 'BOD', 'TIS', 'FLI', 'ELEKT', 'SAN', 'HEI'].includes(s.trade_code) && !s.isParallel
+    );
+    if (innenarbeiten.length > 0) {
+      const refEntry = innenarbeiten[0];
+      scheduledEntries.push({
+        ...entry,
+        startDate: refEntry.startDate,
+        endDate: addWorkdays(new Date(refEntry.startDate), phase.duration_days - 1).toISOString().split('T')[0],
+        isParallel: true,
+        parallelTo: ['Innenausbau']
+      });
+      processedIndices.add(i);
+      console.log(`[PARALLEL-IMPLICIT] AUSS parallel zu Innenausbau`);
+      continue;
+    }
+  }
+  
+  // ================================================================
+  // REGEL 5: SEQUENTIELL (Default)
+  // ================================================================
+  const startDate = new Date(currentSequenceDate);
+  const endDate = addWorkdays(startDate, phase.duration_days - 1);
+  
+  scheduledEntries.push({
+    ...entry,
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
+    isParallel: false
+  });
+  processedIndices.add(i);
+  currentSequenceDate = addWorkdays(endDate, 1);
+  console.log(`[SEQUENTIAL] ${entry.trade_code} Phase ${phase.phase_number}: ${startDate.toISOString().split('T')[0]}`);
+}
   
 // ================================================================
 // MINOR WORKS PARALLEL EINPLANEN
