@@ -5,7 +5,7 @@ import { Calendar, Clock, AlertTriangle, CheckCircle, Info, ChevronRight, Chevro
 // HAUPT-KOMPONENTE: TERMINPLAN-TAB FÜR BAUHERREN
 // ============================================================================
 
-export default function ScheduleTab({ project, apiUrl, onReload }) {
+export default function ScheduleTab({ project, apiUrl, onReload, reloadTrigger }) {
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showInitModal, setShowInitModal] = useState(false);
@@ -18,13 +18,20 @@ export default function ScheduleTab({ project, apiUrl, onReload }) {
 );
   console.log('🔍 DEBUG:', { status: schedule?.status, editMode: editMode });
   const [adjustedEntries, setAdjustedEntries] = useState({});
-  const [showExplanations, setShowExplanations] = useState(true);
+  const [showExplanations, setShowExplanations] = useState(false);
   const [changeRequests, setChangeRequests] = useState([]);
   const [expandedTrades, setExpandedTrades] = useState({});
 
   useEffect(() => {
     loadSchedule();
   }, [project.id]); // eslint-disable-line
+  
+  // NEU: Reagiere auf reloadTrigger Änderungen
+  useEffect(() => {
+    if (reloadTrigger > 0) {
+      loadSchedule();
+    }
+  }, [reloadTrigger]); // eslint-disable-line
 
   // NEU: Auto-expand für Multi-Phase Gewerke
 useEffect(() => {
@@ -191,25 +198,6 @@ return () => clearInterval(pollInterval);
   const handleUpdateEntry = async (entryId, newStart, newEnd, cascadeChanges = true) => {
   try {
     setLoading(true);
-    
-    // Berechne welche Entries betroffen sind
-    const entry = schedule.entries.find(e => e.id === entryId);
-    if (!entry) return;
-    
-    const oldEnd = new Date(entry.planned_end);
-    const newEndDate = new Date(newEnd);
-    const daysDiff = Math.ceil((newEndDate - oldEnd) / (1000 * 60 * 60 * 24));
-    
-    if (cascadeChanges && daysDiff !== 0) {
-      // Finde alle Entries die nahtlos danach starten (max 3 Tage Abstand)
-      const affectedEntries = schedule.entries.filter(e => {
-        const eStart = new Date(e.planned_start);
-        const gapDays = Math.ceil((eStart - oldEnd) / (1000 * 60 * 60 * 24));
-        return gapDays >= 0 && gapDays <= 3; // Nahtlos = max 3 Tage Abstand
-      });
-      
-      console.log('🔗 Nahtlose Termine gefunden:', affectedEntries.length);
-    }
     
     const res = await fetch(apiUrl(`/api/schedule-entries/${entryId}/update`), {
       method: 'POST',
@@ -700,10 +688,13 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 };
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-5xl w-full my-8 border border-white/20">
+    <div 
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
+    >
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col border border-white/20">
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-6 border-b border-white/10 backdrop-blur">
+        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-6 border-b border-white/10 backdrop-blur flex-shrink-0">
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-2xl font-bold text-white mb-2">Terminplan freigeben</h3>
@@ -721,7 +712,7 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 overflow-y-auto flex-1">
           {/* KI-Erklärung */}
           {aiData.general_explanation && (
             <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-lg p-4 mb-6">
@@ -883,7 +874,7 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur p-6 border-t border-white/10">
+        <div className="bg-slate-900/95 backdrop-blur p-6 border-t border-white/10 flex-shrink-0">
           <div className="flex gap-3">
             <button
               onClick={onClose}
@@ -1024,6 +1015,35 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
                   <ChevronDown className="w-5 h-5 text-gray-400 ml-auto" /> : 
                   <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
                 }
+                
+                {/* Button für Gesamtdauer-Anpassung (nur bei collapsed + editMode) */}
+                {!expandedTrades[trade.trade_code] && editMode && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Öffne Modal für Gesamtdauer-Anpassung
+                      setEditingEntry({
+                        ...trade.entries[0],
+                        isTradeSummary: true,
+                        trade_code: trade.trade_code,
+                        trade_name: trade.trade_name,
+                        allEntries: trade.entries,
+                        planned_start: trade.entries.reduce((min, e) => 
+                          e.planned_start < min ? e.planned_start : min, 
+                          trade.entries[0].planned_start
+                        ),
+                        planned_end: trade.entries.reduce((max, e) => 
+                          e.planned_end > max ? e.planned_end : max, 
+                          trade.entries[0].planned_end
+                        )
+                      });
+                    }}
+                    className="ml-2 px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm rounded-lg transition-colors"
+                    title="Gesamtdauer anpassen"
+                  >
+                    <Clock className="w-4 h-4" />
+                  </button>
+                )}
               </button>
 
               {/* Phasen */}
@@ -1113,8 +1133,14 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, expandedT
         <EditEntryModal
           entry={editingEntry}
           onClose={() => setEditingEntry(null)}
-          onSave={(newStart, newEnd, cascade) => {
-            onUpdateEntry(editingEntry.id, newStart, newEnd, cascade);
+          onSave={(entryIdOrStart, newEndOrDontUse, cascade) => {
+            // Check ob es ein Trade Summary ist (dann ist erster Parameter die Entry ID)
+            if (editingEntry.isTradeSummary) {
+              onUpdateEntry(entryIdOrStart, newEndOrDontUse, cascade);
+            } else {
+              // Normale Single Entry
+              onUpdateEntry(editingEntry.id, entryIdOrStart, newEndOrDontUse, cascade);
+            }
             setEditingEntry(null);
           }}
         />
@@ -1262,6 +1288,18 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, isSummary, allE
 // ============================================================================
 
 function EditEntryModal({ entry, onClose, onSave }) {
+  const isTradeSummary = entry.isTradeSummary === true;
+  const allEntries = entry.allEntries || [];
+  
+  // Finde den längsten Balken (Hauptleistung)
+  const longestEntry = isTradeSummary 
+    ? allEntries.reduce((longest, e) => {
+        const eDuration = calculateWorkdays(e.planned_start, e.planned_end);
+        const longestDuration = calculateWorkdays(longest.planned_start, longest.planned_end);
+        return eDuration > longestDuration ? e : longest;
+      }, allEntries[0])
+    : entry;
+  
   const originalDuration = calculateWorkdays(entry.planned_start, entry.planned_end);
   
   const [newStart, setNewStart] = useState(entry.planned_start);
@@ -1286,6 +1324,31 @@ function EditEntryModal({ entry, onClose, onSave }) {
       setNewEnd(value);
     }
   };
+  
+  const handleSave = async () => {
+    if (!isValid) return;
+    
+    if (isTradeSummary) {
+      // Bei Gesamtdauer-Anpassung: Nur den längsten Balken anpassen
+      const daysDiff = calculateWorkdays(entry.planned_start, newStart) + 
+                      calculateWorkdays(entry.planned_end, newEnd);
+      
+      if (daysDiff !== 0) {
+        // Berechne neue Dauer für längsten Balken
+        const originalLongestDuration = calculateWorkdays(longestEntry.planned_start, longestEntry.planned_end);
+        const newLongestStart = longestEntry.planned_start === entry.planned_start 
+          ? newStart 
+          : longestEntry.planned_start;
+        const newLongestEnd = addWorkdays(new Date(newLongestStart), originalLongestDuration + daysDiff - 1);
+        
+        // Speichere Anpassung des längsten Balkens
+        onSave(longestEntry.id, newLongestStart, newLongestEnd.toISOString().split('T')[0], cascade);
+      }
+    } else {
+      // Normale Einzelphase
+      onSave(newStart, newEnd, cascade);
+    }
+  };
 
   // VALIDIERUNG: Speichern nur wenn Start <= Ende
   const isValid = newStart <= newEnd;
@@ -1294,7 +1357,7 @@ function EditEntryModal({ entry, onClose, onSave }) {
   return (
     <div 
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
-      style={{ zIndex: 9999 }}
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -1302,11 +1365,13 @@ function EditEntryModal({ entry, onClose, onSave }) {
       }}
     >
       <div 
-        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl max-w-md w-full p-6 border border-white/20"
+        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl max-w-md w-full p-6 border border-white/20 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h4 className="text-xl font-bold text-white">Termin anpassen</h4>
+          <h4 className="text-xl font-bold text-white">
+            {isTradeSummary ? `Gesamtdauer ${entry.trade_name}` : 'Termin anpassen'}
+          </h4>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -1315,6 +1380,15 @@ function EditEntryModal({ entry, onClose, onSave }) {
             <X className="w-5 h-5" />
           </button>
         </div>
+        
+        {isTradeSummary && (
+          <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <p className="text-blue-300 text-sm flex items-center gap-2">
+              <Info className="w-4 h-4" />
+              Die Anpassung wird auf die Hauptleistung "{longestEntry.phase_name}" angewendet
+            </p>
+          </div>
+        )}
         
         <div className="space-y-4 mb-6">
           <div>
@@ -1409,7 +1483,7 @@ function EditEntryModal({ entry, onClose, onSave }) {
             Abbrechen
           </button>
           <button
-            onClick={() => onSave(newStart, newEnd, cascade)}
+            onClick={handleSave}
             disabled={!isValid}
             className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
               isValid 
