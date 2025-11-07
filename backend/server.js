@@ -25667,6 +25667,8 @@ app.get('/api/projects/:projectId/trades/:tradeId/evaluations', async (req, res)
 // Zweck: KI-gestützte Bauablaufplanung mit Handwerker-Koordination
 // ============================================================================
 
+const { validateAndFixDependencies } = require('./dependency-validator');
+
 // ============================================================================
 // HILFSFUNKTIONEN - KORRIGIERT MIT FEIERTAGEN
 // ============================================================================
