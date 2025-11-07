@@ -23,13 +23,18 @@ export default function ScheduleTab({ project, apiUrl, onReload, reloadTrigger }
   const [expandedTrades, setExpandedTrades] = useState({});
 
   useEffect(() => {
+    console.log('📊 ScheduleTab mounted/updated, project.id:', project.id);
     loadSchedule();
   }, [project.id]); // eslint-disable-line
   
   // NEU: Reagiere auf reloadTrigger Änderungen
   useEffect(() => {
+    console.log('🔄 reloadTrigger changed:', reloadTrigger);
     if (reloadTrigger > 0) {
+      console.log('✅ Triggering loadSchedule because reloadTrigger > 0');
       loadSchedule();
+    } else {
+      console.log('⏸️ Skip loadSchedule because reloadTrigger = 0');
     }
   }, [reloadTrigger]); // eslint-disable-line
 
@@ -87,7 +92,15 @@ return () => clearInterval(pollInterval);
   const loadSchedule = async () => {
     try {
       setLoading(true);
-      const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule`));
+      // Cache-Buster: Timestamp + No-Cache Headers
+      const timestamp = new Date().getTime();
+      const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule?_t=${timestamp}`), {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       
       if (res.status === 404) {
         // Kein Terminplan vorhanden
@@ -95,6 +108,7 @@ return () => clearInterval(pollInterval);
       } else if (res.ok) {
         const data = await res.json();
         setSchedule(data);
+        console.log('📊 Schedule loaded:', data.entries?.length, 'entries at', new Date().toLocaleTimeString());
         
         // Lade offene Change Requests
         if (data.status === 'locked' || data.status === 'active') {
@@ -199,6 +213,14 @@ return () => clearInterval(pollInterval);
   try {
     setLoading(true);
     
+    console.log('🔄 UPDATE ENTRY:', {
+      entryId,
+      newStart,
+      newEnd,
+      cascadeChanges,
+      url: apiUrl(`/api/schedule-entries/${entryId}/update`)
+    });
+    
     const res = await fetch(apiUrl(`/api/schedule-entries/${entryId}/update`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -207,25 +229,30 @@ return () => clearInterval(pollInterval);
         newEnd,
         reason: 'Anpassung durch Bauherr',
         bauherrId: project.bauherr_id,
-        cascadeChanges
+        cascadeChanges: cascadeChanges // Explizit true
       })
     });
     
+    console.log('📡 Response status:', res.status);
+    
     if (res.ok) {
       const data = await res.json();
+      console.log('✅ Response data:', data);
+      
       await loadSchedule();
       
       if (data.affectedEntries > 0) {
         alert(`✅ Termine aktualisiert\n⚠️ ${data.affectedEntries} abhängige Termine wurden automatisch angepasst`);
       } else {
-        alert('✅ Termine aktualisiert');
+        alert('✅ Termine aktualisiert\n⚠️ HINWEIS: Keine abhängigen Termine wurden verschoben. Bitte Backend-Cascade-Logik prüfen.');
       }
     } else {
       const error = await res.json();
+      console.error('❌ Backend error:', error);
       alert('Fehler: ' + error.error);
     }
   } catch (err) {
-    console.error('Fehler:', err);
+    console.error('❌ Frontend error:', err);
     alert('Ein Fehler ist aufgetreten');
   } finally {
     setLoading(false);
