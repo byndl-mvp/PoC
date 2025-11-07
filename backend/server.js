@@ -27560,13 +27560,15 @@ app.post('/api/schedule-entries/confirm', async (req, res) => {
 });
 
 // ============================================================================
-// 7. TERMINÄNDERUNG DURCH BAUHERR (nach Lock-Status)
+// 7. TERMINÄNDERUNG DURCH BAUHERR (nach Lock-Status) - KORRIGIERT
 // ============================================================================
 
 app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
   try {
     const { entryId } = req.params;
     const { newStart, newEnd, reason, bauherrId, cascadeChanges } = req.body;
+    
+    console.log('[CASCADE] 🔄 Starting update:', { entryId, cascadeChanges });
     
     await query('BEGIN');
     
@@ -27589,6 +27591,13 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       const entry = entryResult.rows[0];
       const oldStart = entry.planned_start;
       const oldEnd = entry.planned_end;
+      
+      console.log('[CASCADE] 📊 Entry loaded:', { 
+        trade_code: entry.code, 
+        phase: entry.phase_number,
+        old_end: oldEnd,
+        new_end: newEnd
+      });
       
       // Update Entry
       await query(
@@ -27616,145 +27625,196 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       );
       
       // Cascade: Verschiebe alle Folge-Termine BASIEREND AUF DEPENDENCIES
-let affectedEntries = [];
-if (cascadeChanges) {
-  const daysDiff = calculateWorkdays(oldEnd, new Date(newEnd));
-  
-  if (daysDiff !== 0) {
-    // 1. Lade alle Entries des Schedules
-    const allEntries = await query(
-      `SELECT se.*, t.code as trade_code, t.name as trade_name
-       FROM schedule_entries se
-       JOIN trades t ON se.trade_id = t.id
-       WHERE se.schedule_id = (SELECT schedule_id FROM schedule_entries WHERE id = $1)
-       ORDER BY se.planned_start`,
-      [entryId]
-    );
-    
-    const entries = allEntries.rows;
-    const toUpdate = new Set();
-    const processed = new Set([entryId]);
-    
-    // Helper: Parse Dependencies sicher
-    const parseDeps = (depsField) => {
-      if (!depsField) return [];
-      try {
-        const parsed = typeof depsField === 'string' ? JSON.parse(depsField) : depsField;
-        return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
-      } catch {
-        return [];
+      let affectedEntries = [];
+      
+      if (cascadeChanges) {
+        console.log('[CASCADE] ✅ Cascade enabled, calculating daysDiff...');
+        
+        // ✅ FIX 1: Beide Parameter als Date Objects
+        const daysDiff = calculateWorkdays(new Date(oldEnd), new Date(newEnd));
+        
+        console.log('[CASCADE] 📈 Days diff:', daysDiff);
+        
+        if (daysDiff !== 0) {
+          // 1. Lade alle Entries des Schedules
+          const allEntries = await query(
+            `SELECT se.*, t.code as trade_code, t.name as trade_name
+             FROM schedule_entries se
+             JOIN trades t ON se.trade_id = t.id
+             WHERE se.schedule_id = (SELECT schedule_id FROM schedule_entries WHERE id = $1)
+             ORDER BY se.planned_start`,
+            [entryId]
+          );
+          
+          const entries = allEntries.rows;
+          console.log('[CASCADE] 📦 Total entries in schedule:', entries.length);
+          
+          const toUpdate = new Set();
+          const processed = new Set([entryId]);
+          
+          // Helper: Parse Dependencies sicher
+          const parseDeps = (depsField) => {
+            if (!depsField) return [];
+            try {
+              const parsed = typeof depsField === 'string' ? JSON.parse(depsField) : depsField;
+              return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+            } catch {
+              return [];
+            }
+          };
+          
+          // Finde alle Entries die von diesem Entry abhängen (rekursiv)
+          const findDependents = (tradeCode, phaseNumber) => {
+            console.log('[CASCADE] 🔍 Finding dependents of:', tradeCode, 'Phase', phaseNumber);
+            
+            entries.forEach(e => {
+              if (processed.has(e.id)) return;
+              
+              const deps = parseDeps(e.dependencies);
+              
+              // ✅ FIX 2: Prüfe verschiedene Dependency-Formate flexibel
+              let isDependentOnTrade = false;
+              
+              deps.forEach(dep => {
+                // Format 1: "DACH" (nur Trade Code)
+                if (dep === tradeCode) {
+                  isDependentOnTrade = true;
+                }
+                // Format 2: "DACH-Eindeckung" (Trade Code + Phase Name)
+                if (typeof dep === 'string' && dep.startsWith(tradeCode + '-')) {
+                  isDependentOnTrade = true;
+                }
+              });
+              
+              // Fall 1: Entry e hängt direkt von unserem Trade ab
+              if (isDependentOnTrade) {
+                console.log('[CASCADE] ✅ Found dependent:', e.trade_code, 'Phase', e.phase_number);
+                toUpdate.add(e.id);
+                processed.add(e.id);
+                findDependents(e.trade_code, e.phase_number);
+              }
+              
+              // Fall 2: Nachfolgende Phasen des gleichen Gewerks
+              if (e.trade_code === tradeCode && e.phase_number > phaseNumber) {
+                console.log('[CASCADE] ✅ Found same-trade dependent:', e.trade_code, 'Phase', e.phase_number);
+                toUpdate.add(e.id);
+                processed.add(e.id);
+                findDependents(e.trade_code, e.phase_number);
+              }
+            });
+          };
+          
+          // ✅ FIX 3: Verwende entry.code (ist in SELECT vorhanden)
+          // Die Query selektiert: t.code → wird zu entry.code
+          findDependents(entry.code, entry.phase_number);
+          
+          console.log('[CASCADE] 🎯 Found', toUpdate.size, 'entries to update');
+          
+          // ZUSÄTZLICH: Wenn nach HINTEN verschoben (daysDiff > 0)
+          // Prüfe ob Entry jetzt mit abhängigen Entries kollidiert
+          if (daysDiff > 0) {
+            const newEndDate = new Date(newEnd);
+            
+            entries.forEach(e => {
+              if (processed.has(e.id)) return;
+              
+              const deps = parseDeps(e.dependencies);
+              const eStartDate = new Date(e.planned_start);
+              
+              // Prüfe ob abhängig (flexibel mit beiden Formaten)
+              let isDependentOnTrade = false;
+              deps.forEach(dep => {
+                if (dep === entry.code || (typeof dep === 'string' && dep.startsWith(entry.code + '-'))) {
+                  isDependentOnTrade = true;
+                }
+              });
+              
+              // Wenn Entry e von unserem Trade abhängt UND
+              // unser neues Ende NACH oder AM Start von e liegt
+              if (isDependentOnTrade && newEndDate >= eStartDate) {
+                console.log('[CASCADE] ⚠️ Found collision:', e.trade_code);
+                toUpdate.add(e.id);
+                processed.add(e.id);
+                findDependents(e.trade_code, e.phase_number);
+              }
+            });
+          }
+          
+          // 3. Verschiebe alle betroffenen Entries
+          for (const followEntryId of toUpdate) {
+            const followEntry = entries.find(e => e.id === followEntryId);
+            if (!followEntry) continue;
+            
+            // ✅ FIX 4: addWorkdays korrekt mit Date Objects verwenden
+            const newFollowStart = addWorkdays(new Date(followEntry.planned_start), daysDiff);
+            const newFollowEnd = addWorkdays(new Date(followEntry.planned_end), daysDiff);
+            
+            console.log('[CASCADE] 🔄 Updating entry:', followEntry.trade_code, {
+              old_start: followEntry.planned_start,
+              new_start: newFollowStart.toISOString().split('T')[0],
+              shift: daysDiff + ' days'
+            });
+            
+            await query(
+              `UPDATE schedule_entries 
+               SET planned_start = $2,
+                   planned_end = $3,
+                   updated_at = NOW()
+               WHERE id = $1`,
+              [
+                followEntry.id,
+                newFollowStart.toISOString().split('T')[0],
+                newFollowEnd.toISOString().split('T')[0]
+              ]
+            );
+            
+            await query(
+              `INSERT INTO schedule_history 
+               (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+                old_start, old_end, new_start, new_end, reason, created_at)
+               VALUES ($1, 'system', $2, 'cascade_change', $3, $4, $5, $6, $7, NOW())`,
+              [
+                followEntry.id,
+                bauherrId,
+                followEntry.planned_start,
+                followEntry.planned_end,
+                newFollowStart.toISOString().split('T')[0],
+                newFollowEnd.toISOString().split('T')[0],
+                `Automatisch verschoben wegen Änderung bei ${entry.trade_name}`
+              ]
+            );
+            
+            affectedEntries.push({
+              id: followEntry.id,
+              trade_id: followEntry.trade_id,
+              trade_code: followEntry.trade_code,
+              old_start: followEntry.planned_start,
+              new_start: newFollowStart.toISOString().split('T')[0]
+            });
+          }
+        } else {
+          console.log('[CASCADE] ⏸️ No shift needed (daysDiff = 0)');
+        }
+      } else {
+        console.log('[CASCADE] ⏸️ Cascade disabled by request');
       }
-    };
-    
-    // Finde alle Entries die von diesem Entry abhängen (rekursiv)
-    const findDependents = (tradeCode, phaseNumber) => {
-      entries.forEach(e => {
-        if (processed.has(e.id)) return;
-        
-        const deps = parseDeps(e.dependencies);
-        
-        // Fall 1: Entry e hängt direkt von unserem Trade ab
-        if (deps.includes(tradeCode)) {
-          toUpdate.add(e.id);
-          processed.add(e.id);
-          findDependents(e.trade_code, e.phase_number);
-        }
-        
-        // Fall 2: Nachfolgende Phasen des gleichen Gewerks
-        if (e.trade_code === tradeCode && e.phase_number > phaseNumber) {
-          toUpdate.add(e.id);
-          processed.add(e.id);
-          findDependents(e.trade_code, e.phase_number);
-        }
-      });
-    };
-    
-    // Starte rekursive Suche
-    findDependents(entry.code, entry.phase_number);
-    
-    // ZUSÄTZLICH: Wenn nach HINTEN verschoben (daysDiff > 0)
-    // Prüfe ob Entry jetzt mit abhängigen Entries kollidiert
-    if (daysDiff > 0) {
-      const newEndDate = new Date(newEnd);
       
-      entries.forEach(e => {
-        if (processed.has(e.id)) return;
-        
-        const deps = parseDeps(e.dependencies);
-        const eStartDate = new Date(e.planned_start);
-        
-        // Wenn Entry e von unserem Trade abhängt UND
-        // unser neues Ende NACH oder AM Start von e liegt
-        if (deps.includes(entry.code) && newEndDate >= eStartDate) {
-          toUpdate.add(e.id);
-          processed.add(e.id);
-          findDependents(e.trade_code, e.phase_number);
-        }
-      });
-    }
-    
-    // 3. Verschiebe alle betroffenen Entries
-    for (const followEntryId of toUpdate) {
-      const followEntry = entries.find(e => e.id === followEntryId);
-      if (!followEntry) continue;
-      
-      const newFollowStart = addWorkdays(new Date(followEntry.planned_start), daysDiff);
-      const newFollowEnd = addWorkdays(new Date(followEntry.planned_end), daysDiff);
-      
-      await query(
-        `UPDATE schedule_entries 
-         SET planned_start = $2,
-             planned_end = $3,
-             updated_at = NOW()
-         WHERE id = $1`,
-        [
-          followEntry.id,
-          newFollowStart.toISOString().split('T')[0],
-          newFollowEnd.toISOString().split('T')[0]
-        ]
-      );
-      
-      await query(
-        `INSERT INTO schedule_history 
-         (schedule_entry_id, changed_by_type, changed_by_id, change_type,
-          old_start, old_end, new_start, new_end, reason, created_at)
-         VALUES ($1, 'system', $2, 'cascade_change', $3, $4, $5, $6, $7, NOW())`,
-        [
-          followEntry.id,
-          bauherrId,
-          followEntry.planned_start,
-          followEntry.planned_end,
-          newFollowStart.toISOString().split('T')[0],
-          newFollowEnd.toISOString().split('T')[0],
-          `Automatisch verschoben wegen Änderung bei ${entry.trade_name}`
-        ]
-      );
-      
-      affectedEntries.push({
-        id: followEntry.id,
-        trade_id: followEntry.trade_id,
-        trade_code: followEntry.trade_code,
-        old_start: followEntry.planned_start,
-        new_start: newFollowStart.toISOString().split('T')[0]
-      });
-    }
-  }
-}
+      console.log('[CASCADE] ✅ Affected entries:', affectedEntries.length);
       
       // Benachrichtige betroffene Handwerker
       const affectedTradeIds = [entry.trade_id, ...affectedEntries.map(e => e.trade_id)];
       
       const handwerkerResult = await query(
-  `SELECT DISTINCT h.id, t.code, t.name as trade_name
-   FROM handwerker h
-   JOIN offers o ON h.id = o.handwerker_id
-   JOIN tenders tn ON o.tender_id = tn.id
-   JOIN trades t ON tn.trade_id = t.id
-   WHERE tn.project_id = $1 
-     AND tn.trade_id = ANY($2::int[])
-     AND o.status IN ('preliminary', 'confirmed')`,
-  [entry.project_id, affectedTradeIds]
-);
+        `SELECT DISTINCT h.id, t.code, t.name as trade_name
+         FROM handwerker h
+         JOIN offers o ON h.id = o.handwerker_id
+         JOIN tenders tn ON o.tender_id = tn.id
+         JOIN trades t ON tn.trade_id = t.id
+         WHERE tn.project_id = $1 
+           AND tn.trade_id = ANY($2::int[])
+           AND o.status IN ('preliminary', 'confirmed')`,
+        [entry.project_id, affectedTradeIds]
+      );
       
       for (const handwerker of handwerkerResult.rows) {
         await query(
@@ -27771,6 +27831,11 @@ if (cascadeChanges) {
       
       await query('COMMIT');
       
+      console.log('[CASCADE] 🎉 Success! Returning:', { 
+        success: true,
+        affectedEntries: affectedEntries.length 
+      });
+      
       res.json({ 
         success: true,
         affectedEntries: affectedEntries.length,
@@ -27779,11 +27844,12 @@ if (cascadeChanges) {
       
     } catch (innerErr) {
       await query('ROLLBACK');
+      console.error('[CASCADE] ❌ Transaction error:', innerErr);
       throw innerErr;
     }
     
   } catch (err) {
-    console.error('[SCHEDULE] Update failed:', err);
+    console.error('[CASCADE] ❌ Update failed:', err);
     res.status(500).json({ error: 'Fehler bei der Terminänderung' });
   }
 });
