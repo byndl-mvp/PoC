@@ -27653,7 +27653,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
     
     try {
       // ========================================================================
-      // SCHRITT 1: LADE DEN ZU ÄNDERNDEN TERMIN
+      // SCHRITT 1: LADE DEN ZU ÄNDERNDEN TERMIN (VOR UPDATE!)
       // ========================================================================
       const entryResult = await query(
         `SELECT se.*, ps.status, ps.project_id, t.code, t.name as trade_name
@@ -27669,17 +27669,18 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
         return res.status(404).json({ error: 'Termin nicht gefunden' });
       }
       
-      const entry = entryResult.rows[0];
-      const oldStart = new Date(entry.planned_start);
-      const oldEnd = new Date(entry.planned_end);
+      // ✅ FIX: Speichere ALTE Werte VOR dem Update!
+      const originalEntry = { ...entryResult.rows[0] };
+      const oldStart = new Date(originalEntry.planned_start);
+      const oldEnd = new Date(originalEntry.planned_end);
       const newStartDate = new Date(newStart);
       const newEndDate = new Date(newEnd);
       
-      console.log('[CASCADE] 📊 Entry:', { 
-        id: entry.id,
-        trade: entry.code, 
-        phase: entry.phase_number,
-        phase_name: entry.phase_name,
+      console.log('[CASCADE] 📊 Original Entry:', { 
+        id: originalEntry.id,
+        trade: originalEntry.code, 
+        phase: originalEntry.phase_number,
+        phase_name: originalEntry.phase_name,
         oldStart: oldStart.toISOString().split('T')[0],
         oldEnd: oldEnd.toISOString().split('T')[0],
         newStart: newStartDate.toISOString().split('T')[0],
@@ -27687,7 +27688,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       });
       
       // ========================================================================
-      // WICHTIG: PRÜFE WAS SICH GEÄNDERT HAT
+      // PRÜFE WAS SICH GEÄNDERT HAT
       // ========================================================================
       const startChanged = oldStart.getTime() !== newStartDate.getTime();
       const endChanged = oldEnd.getTime() !== newEndDate.getTime();
@@ -27730,37 +27731,37 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       let affectedEntries = [];
       
       // ========================================================================
-      // SCHRITT 3: CASCADE - WENN START ODER END SICH ÄNDERT!
+      // SCHRITT 3: CASCADE - NUR WENN AKTIVIERT UND ÄNDERUNGEN VORHANDEN
       // ========================================================================
-      
-      // ✅ FIX: Cascade läuft bei Start ODER End Änderung
       const shouldCascade = cascadeChanges && (startChanged || endChanged);
       
       if (shouldCascade) {
         console.log('[CASCADE] ✅ Cascade enabled');
         
-        // ✅ FIX: Berechne Shift basierend auf was sich geändert hat
+        // ✅ FIX: Berechne Shift richtig
+        // Bei Startverschiebung: Differenz vom Start
+        // Bei Endverschiebung: Differenz vom Ende
         let dayShift = 0;
         
         if (startChanged) {
-          // Start verschoben -> alle nachfolgenden verschieben um Start-Differenz
+          // Start verschoben -> berechne Arbeitstage zwischen altem und neuem Start
           dayShift = calculateWorkdays(oldStart, newStartDate);
           console.log('[CASCADE] 📈 Start shift:', dayShift, 'days');
         } else if (endChanged) {
-          // Nur Ende geändert -> nachfolgende verschieben um End-Differenz
+          // Nur Ende geändert -> berechne Arbeitstage zwischen altem und neuem Ende
           dayShift = calculateWorkdays(oldEnd, newEndDate);
           console.log('[CASCADE] 📈 End shift:', dayShift, 'days');
         }
         
         if (dayShift !== 0) {
-          // Lade ALLE Entries des Schedules
+          // ✅ FIX: Lade ALLE Entries INKLUSIVE der gerade geänderten mit NEUEN Werten
           const allEntriesResult = await query(
             `SELECT se.*, t.code as trade_code, t.name as trade_name
              FROM schedule_entries se
              JOIN trades t ON se.trade_id = t.id
              WHERE se.schedule_id = $1
              ORDER BY se.planned_start`,
-            [entry.schedule_id]
+            [originalEntry.schedule_id]
           );
           
           const allEntries = allEntriesResult.rows;
@@ -27778,16 +27779,16 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
           };
           
           // ===================================================================
-          // KERN-LOGIK: FINDE ALLE ABHÄNGIGEN ENTRIES
+          // ✅ FIX: VERWENDE ORIGINALE WERTE FÜR CASCADE-LOGIK
           // ===================================================================
           const toUpdate = new Set();
           const processed = new Set([entryId]);
           
-          const findAllDependents = (sourceTradeCode, sourcePhaseNumber, sourceEntry) => {
-            console.log('[CASCADE] 🔍 Finding dependents of:', sourceTradeCode, 'Phase', sourcePhaseNumber);
+          const findAllDependents = (sourceTradeCode, sourcePhaseNumber, sourcePhaseName) => {
+            console.log('[CASCADE] 🔍 Finding dependents of:', sourceTradeCode, 'Phase', sourcePhaseNumber || sourcePhaseName || 'N/A');
             
             allEntries.forEach(e => {
-              // Überspringe bereits verarbeitete
+              // Überspringe bereits verarbeitete und den ursprünglichen Entry
               if (processed.has(e.id) || e.id === entryId) return;
               
               const deps = parseDeps(e.dependencies);
@@ -27805,22 +27806,31 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
                   reason = 'same-trade next phase';
                   console.log('[CASCADE] ✅ Found same-trade phase:', e.trade_code, 'Phase', e.phase_number, '>', sourcePhaseNumber);
                 }
-                // Szenario B: Entry hat Dependency auf das gleiche Gewerk
-                else if (deps.some(d => d === sourceTradeCode || (typeof d === 'string' && d.startsWith(sourceTradeCode + '-')))) {
-                  shouldUpdate = true;
-                  reason = 'same-trade via dependency';
-                  console.log('[CASCADE] ✅ Found same-trade dependency:', e.trade_code);
+                // Szenario B: Entry hat explizite Dependency auf das Gewerk oder Phase
+                else if (deps.length > 0) {
+                  deps.forEach(dep => {
+                    // Format: "DACH" oder "DACH-Eindeckung"
+                    if (dep === sourceTradeCode || 
+                        (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-'))) {
+                      shouldUpdate = true;
+                      reason = 'same-trade via dependency';
+                      console.log('[CASCADE] ✅ Found same-trade dependency:', e.trade_code);
+                    }
+                  });
                 }
-                // Szenario C: Keine phase_numbers, prüfe ob Entry nach Source-Ende startet
-                else if (!sourcePhaseNumber) {
+                // ✅ FIX: Szenario C - Implizite Reihenfolge bei gleichem Gewerk
+                // Wenn keine phase_number existiert, prüfe ob Entry nach dem ORIGINAL-Ende startet
+                else if (!sourcePhaseNumber && !e.phase_number) {
                   const eStart = new Date(e.planned_start);
-                  const sourceEnd = new Date(sourceEntry.planned_end);
+                  // ⚠️ WICHTIG: Verwende das ALTE Ende vom ORIGINAL-Entry, nicht das neue!
+                  const sourceEndDate = oldEnd;
                   
-                  // Prüfe ob Entry nach dem Source-Ende startet (mit 1 Tag Toleranz)
-                  if (eStart >= sourceEnd) {
+                  // Prüfe ob Entry nach dem ursprünglichen Ende startet (mit 1 Tag Toleranz)
+                  const daysDiff = Math.floor((eStart - sourceEndDate) / (1000 * 60 * 60 * 24));
+                  if (daysDiff >= -1) {
                     shouldUpdate = true;
                     reason = 'same-trade follows by date';
-                    console.log('[CASCADE] ✅ Found same-trade by date:', e.trade_code);
+                    console.log('[CASCADE] ✅ Found same-trade by date:', e.trade_code, 'starts', daysDiff, 'days after original end');
                   }
                 }
               }
@@ -27834,17 +27844,21 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
                   if (dep === sourceTradeCode) {
                     shouldUpdate = true;
                     reason = 'dependent trade';
+                    console.log('[CASCADE] ✅ Found dependent trade:', e.trade_code, 'depends on', sourceTradeCode);
                   }
                   // Format 2: "DACH-Eindeckung" (mit Phase)
                   if (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-')) {
+                    const depPhaseName = dep.substring(sourceTradeCode.length + 1);
                     // Prüfe ob es die richtige Phase ist
-                    if (sourceEntry.phase_name && dep.includes(sourceEntry.phase_name)) {
+                    if (sourcePhaseName && depPhaseName === sourcePhaseName) {
                       shouldUpdate = true;
                       reason = 'dependent trade (specific phase)';
+                      console.log('[CASCADE] ✅ Found dependent trade with phase match:', e.trade_code, 'depends on', dep);
                     } else if (!sourcePhaseNumber) {
-                      // Keine Phase-Info -> verschiebe trotzdem
+                      // Keine Phase-Info beim Source -> verschiebe trotzdem
                       shouldUpdate = true;
                       reason = 'dependent trade (with phase ref)';
+                      console.log('[CASCADE] ✅ Found dependent trade with phase ref:', e.trade_code, 'depends on', dep);
                     }
                   }
                 });
@@ -27855,15 +27869,15 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
                 toUpdate.add(e.id);
                 processed.add(e.id);
                 
-                // Rekursion: Prüfe ob weitere Entries von diesem abhängen
-                findAllDependents(e.trade_code, e.phase_number, e);
+                // ✅ FIX: Rekursion mit AKTUELLEN Werten des gefundenen Entries
+                findAllDependents(e.trade_code, e.phase_number, e.phase_name);
               }
             });
           };
           
-          // Starte rekursive Suche vom geänderten Entry
-          console.log('[CASCADE] 🚀 Starting cascade from:', entry.code, 'Phase', entry.phase_number || 'N/A');
-          findAllDependents(entry.code, entry.phase_number, entry);
+          // ✅ FIX: Starte mit ORIGINALEN Werten (vor Update!)
+          console.log('[CASCADE] 🚀 Starting cascade from ORIGINAL:', originalEntry.code, 'Phase', originalEntry.phase_number || originalEntry.phase_name || 'N/A');
+          findAllDependents(originalEntry.code, originalEntry.phase_number, originalEntry.phase_name);
           
           console.log('[CASCADE] 🎯 Found', toUpdate.size, 'entries to shift by', dayShift, 'days');
           
@@ -27914,7 +27928,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
                 currentEnd.toISOString().split('T')[0],
                 newFollowStart.toISOString().split('T')[0],
                 newFollowEnd.toISOString().split('T')[0],
-                `Automatisch verschoben wegen Terminänderung bei ${entry.trade_name}${entry.phase_number ? ' Phase ' + entry.phase_number : ''}`
+                `Automatisch verschoben wegen Terminänderung bei ${originalEntry.trade_name}${originalEntry.phase_number ? ' Phase ' + originalEntry.phase_number : ''}`
               ]
             );
             
@@ -27938,7 +27952,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       // ========================================================================
       // SCHRITT 4: BENACHRICHTIGUNGEN
       // ========================================================================
-      const affectedTradeIds = [entry.trade_id, ...affectedEntries.map(e => e.trade_id)];
+      const affectedTradeIds = [originalEntry.trade_id, ...affectedEntries.map(e => e.trade_id)];
       
       const handwerkerResult = await query(
         `SELECT DISTINCT h.id, t.code, t.name as trade_name
@@ -27949,7 +27963,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
          WHERE tn.project_id = $1 
            AND tn.trade_id = ANY($2::int[])
            AND o.status IN ('preliminary', 'confirmed')`,
-        [entry.project_id, affectedTradeIds]
+        [originalEntry.project_id, affectedTradeIds]
       );
       
       for (const handwerker of handwerkerResult.rows) {
@@ -27977,8 +27991,9 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
                    startChanged ? 'start_only' : 
                    endChanged ? 'end_only' : 'none',
         cascadeApplied: shouldCascade && affectedEntries.length > 0,
+        dayShift: shouldCascade ? dayShift : 0,
         message: shouldCascade ? 
-          `Termine erfolgreich aktualisiert. ${affectedEntries.length} abhängige Termine wurden verschoben.` : 
+          `Termine erfolgreich aktualisiert. ${affectedEntries.length} abhängige Termine wurden um ${Math.abs(dayShift)} Tag${Math.abs(dayShift) !== 1 ? 'e' : ''} ${dayShift > 0 ? 'nach hinten' : 'nach vorne'} verschoben.` : 
           'Termin erfolgreich aktualisiert'
       });
       
@@ -27991,6 +28006,92 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
   } catch (err) {
     console.error('[CASCADE] ❌ Update failed:', err);
     res.status(500).json({ error: 'Fehler bei der Terminänderung' });
+  }
+});
+
+// ============================================================================
+// EINZELNEN TERMIN LÖSCHEN (NUR VOR FREIGABE)
+// ============================================================================
+
+app.delete('/api/schedule-entries/:entryId', async (req, res) => {
+  try {
+    const { entryId } = req.params;
+    const { bauherrId } = req.body;
+    
+    console.log('[DELETE] 🗑️ Deleting entry:', entryId);
+    
+    await query('BEGIN');
+    
+    try {
+      // Lade den Entry und prüfe Status
+      const entryResult = await query(
+        `SELECT se.*, ps.status, ps.project_id, t.code, t.name as trade_name
+         FROM schedule_entries se
+         JOIN project_schedules ps ON se.schedule_id = ps.id
+         JOIN trades t ON se.trade_id = t.id
+         WHERE se.id = $1`,
+        [entryId]
+      );
+      
+      if (entryResult.rows.length === 0) {
+        await query('ROLLBACK');
+        return res.status(404).json({ error: 'Termin nicht gefunden' });
+      }
+      
+      const entry = entryResult.rows[0];
+      
+      // ✅ Prüfe: Nur bei "pending_approval" erlaubt
+      if (entry.status !== 'pending_approval') {
+        await query('ROLLBACK');
+        return res.status(403).json({ 
+          error: 'Termine können nur vor der Freigabe gelöscht werden',
+          currentStatus: entry.status
+        });
+      }
+      
+      console.log('[DELETE] ✅ Entry can be deleted:', {
+        id: entry.id,
+        trade: entry.code,
+        phase: entry.phase_number || 'N/A',
+        status: entry.status
+      });
+      
+      // Lösche den Entry
+      await query('DELETE FROM schedule_entries WHERE id = $1', [entryId]);
+      
+      // History: Dokumentiere die Löschung
+      await query(
+        `INSERT INTO schedule_history 
+         (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+          old_start, old_end, reason, created_at)
+         VALUES ($1, 'bauherr', $2, 'deleted', $3, $4, $5, NOW())`,
+        [
+          entryId,
+          bauherrId,
+          entry.planned_start,
+          entry.planned_end,
+          `Termin für ${entry.trade_name}${entry.phase_number ? ' Phase ' + entry.phase_number : ''} wurde vor Freigabe gelöscht`
+        ]
+      );
+      
+      await query('COMMIT');
+      
+      console.log('[DELETE] 🎉 Entry deleted successfully');
+      
+      res.json({ 
+        success: true,
+        message: `Termin für ${entry.trade_name}${entry.phase_number ? ' (Phase ' + entry.phase_number + ')' : ''} wurde gelöscht`
+      });
+      
+    } catch (innerErr) {
+      await query('ROLLBACK');
+      console.error('[DELETE] ❌ Transaction error:', innerErr);
+      throw innerErr;
+    }
+    
+  } catch (err) {
+    console.error('[DELETE] ❌ Delete failed:', err);
+    res.status(500).json({ error: 'Fehler beim Löschen des Termins' });
   }
 });
 
