@@ -27173,7 +27173,7 @@ if (processedIndices.size < allEntries.length) {
     scheduleData,
     message: 'Terminplan erfolgreich generiert'
   });
-  
+ } 
 } catch (innerErr) {
   await query('ROLLBACK');
   throw innerErr;
