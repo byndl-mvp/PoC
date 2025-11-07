@@ -1142,10 +1142,12 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
       totalDays={totalDays}
       editMode={false}
       onEdit={() => {}}
+      onDelete={null}   
       isSummary={true}
       allEntries={trade.entries}
       color={tradeColors[tradeIdx % tradeColors.length]}
-    />
+      scheduleStatus={scheduleStatus} 
+      />
   );
 })()}
             </div>
