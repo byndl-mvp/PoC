@@ -27167,6 +27167,21 @@ if (processedIndices.size < allEntries.length) {
   );
   
   await query('COMMIT');
+
+  // Validiere und fixe Dependencies
+  console.log('[SCHEDULE-GEN] Validating dependencies...');
+  try {
+    const validationResult = await validateAndFixDependencies(schedule.id);
+    
+    if (validationResult.issuesFound > 0) {
+      console.log('[SCHEDULE-GEN] Dependencies corrected:', validationResult.issuesFound, 'issues fixed');
+    } else {
+      console.log('[SCHEDULE-GEN] ✅ All dependencies valid');
+    }
+  } catch (validationErr) {
+    console.error('[SCHEDULE-GEN] ⚠️ Dependency validation failed:', validationErr);
+    // Nicht abbrechen - Schedule ist bereits gespeichert
+  }
   
   // Erstelle Benachrichtigung für Bauherrn
   await query(
