@@ -27900,63 +27900,6 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
     res.status(500).json({ error: 'Fehler bei der Terminänderung' });
   }
 });
-      
-      // ========================================================================
-      // SCHRITT 4: BENACHRICHTIGUNGEN
-      // ========================================================================
-      const affectedTradeIds = [entry.trade_id, ...affectedEntries.map(e => e.trade_id)];
-      
-      const handwerkerResult = await query(
-        `SELECT DISTINCT h.id, t.code, t.name as trade_name
-         FROM handwerker h
-         JOIN offers o ON h.id = o.handwerker_id
-         JOIN tenders tn ON o.tender_id = tn.id
-         JOIN trades t ON tn.trade_id = t.id
-         WHERE tn.project_id = $1 
-           AND tn.trade_id = ANY($2::int[])
-           AND o.status IN ('preliminary', 'confirmed')`,
-        [entry.project_id, affectedTradeIds]
-      );
-      
-      for (const handwerker of handwerkerResult.rows) {
-        await query(
-          `INSERT INTO notifications 
-           (user_type, user_id, type, message, reference_type, reference_id, created_at)
-           VALUES ('handwerker', $1, 'schedule_changed', $2, 'schedule_entry', $3, NOW())`,
-          [
-            handwerker.id,
-            `Terminänderung für ${handwerker.trade_name} - Bitte prüfen Sie die neuen Termine`,
-            entryId
-          ]
-        );
-      }
-      
-      await query('COMMIT');
-      
-      console.log('[CASCADE] 🎉 Success! Affected:', affectedEntries.length, 'entries');
-      
-      res.json({ 
-        success: true,
-        affectedEntries: affectedEntries.length,
-        affectedDetails: affectedEntries,
-        changeType: startChanged && endChanged ? 'both' : 
-                   startChanged ? 'start_only' : 
-                   endChanged ? 'end_only' : 'none',
-        cascadeApplied: shouldCascade && affectedEntries.length > 0,
-        message: shouldCascade ? 'Termine erfolgreich aktualisiert' : 'Termin erfolgreich verlängert/verkürzt'
-      });
-      
-    } catch (innerErr) {
-      await query('ROLLBACK');
-      console.error('[CASCADE] ❌ Transaction error:', innerErr);
-      throw innerErr;
-    }
-    
-  } catch (err) {
-    console.error('[CASCADE] ❌ Update failed:', err);
-    res.status(500).json({ error: 'Fehler bei der Terminänderung' });
-  }
-});
 
 // ============================================================================
 // 8. TERMINÄNDERUNGS-ANFRAGE ERSTELLEN (Handwerker nach Beauftragung)
