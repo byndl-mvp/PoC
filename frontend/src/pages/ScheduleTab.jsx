@@ -1323,12 +1323,24 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
         </div>
 
         {/* Status Badge */}
-        <div className="w-32 flex-shrink-0 flex justify-end pt-2">
-          {entry.confirmed ? (
-            <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" />
-              Bestätigt
-            </span>
+<div className="w-32 flex-shrink-0 flex justify-end items-center gap-2 pt-2">
+  {onDelete && scheduleStatus === 'pending_approval' && (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onDelete();
+      }}
+      className="p-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded transition-colors"
+      title="Termin löschen"
+    >
+      <X className="w-4 h-4" />
+    </button>
+  )}
+  {entry.confirmed ? (
+    <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
+      <CheckCircle className="w-3 h-3" />
+      Bestätigt
+    </span>
           ) : entry.status === 'change_requested' ? (
             <span className="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-semibold flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />
