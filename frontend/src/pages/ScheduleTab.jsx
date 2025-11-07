@@ -601,6 +601,7 @@ const findDependencies = (entries) => {
         groupedTrades={groupedTrades}
         editMode={editMode && schedule.status !== 'pending_approval'}
         onUpdateEntry={handleUpdateEntry}
+        onDeleteEntry={handleDeleteEntry} 
         expandedTrades={expandedTrades}
         onToggleTrade={(code) => setExpandedTrades(prev => ({ ...prev, [code]: !prev[code] }))}
         findDependencies={findDependencies}
