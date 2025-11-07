@@ -27560,7 +27560,7 @@ app.post('/api/schedule-entries/confirm', async (req, res) => {
 });
 
 // ============================================================================
-// 7. TERMINÄNDERUNG DURCH BAUHERR (nach Lock-Status) - KORRIGIERT
+// TERMINÄNDERUNG DURCH BAUHERR - FINALE KORREKTE LÖSUNG
 // ============================================================================
 
 app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
