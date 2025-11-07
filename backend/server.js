@@ -27580,7 +27580,6 @@ app.post('/api/schedule-entries/confirm', async (req, res) => {
 // TERMINÄNDERUNG DURCH BAUHERR - FINALE KORREKTE LÖSUNG
 // ============================================================================
 
-
 app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
   try {
     const { entryId } = req.params;
@@ -27669,18 +27668,27 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       let affectedEntries = [];
       
       // ========================================================================
-      // SCHRITT 3: CASCADE - NUR WENN START SICH GEÄNDERT HAT!
+      // SCHRITT 3: CASCADE - WENN START ODER END SICH ÄNDERT!
       // ========================================================================
       
-      // ⚠️ WICHTIG: Cascade NUR wenn der START sich ändert
-      const shouldCascade = cascadeChanges && startChanged;
+      // ✅ FIX: Cascade läuft bei Start ODER End Änderung
+      const shouldCascade = cascadeChanges && (startChanged || endChanged);
       
       if (shouldCascade) {
-        console.log('[CASCADE] ✅ Cascade enabled (START changed)');
+        console.log('[CASCADE] ✅ Cascade enabled');
         
-        // Berechne um wieviele Arbeitstage sich der START verschoben hat
-        const dayShift = calculateWorkdays(oldStart, newStartDate);
-        console.log('[CASCADE] 📈 Start shift:', dayShift, 'days');
+        // ✅ FIX: Berechne Shift basierend auf was sich geändert hat
+        let dayShift = 0;
+        
+        if (startChanged) {
+          // Start verschoben -> alle nachfolgenden verschieben um Start-Differenz
+          dayShift = calculateWorkdays(oldStart, newStartDate);
+          console.log('[CASCADE] 📈 Start shift:', dayShift, 'days');
+        } else if (endChanged) {
+          // Nur Ende geändert -> nachfolgende verschieben um End-Differenz
+          dayShift = calculateWorkdays(oldEnd, newEndDate);
+          console.log('[CASCADE] 📈 End shift:', dayShift, 'days');
+        }
         
         if (dayShift !== 0) {
           // Lade ALLE Entries des Schedules
@@ -27713,7 +27721,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
           const toUpdate = new Set();
           const processed = new Set([entryId]);
           
-          const findAllDependents = (sourceTradeCode, sourcePhaseNumber) => {
+          const findAllDependents = (sourceTradeCode, sourcePhaseNumber, sourceEntry) => {
             console.log('[CASCADE] 🔍 Finding dependents of:', sourceTradeCode, 'Phase', sourcePhaseNumber);
             
             allEntries.forEach(e => {
@@ -27728,19 +27736,36 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
               // ================================================================
               // FALL 1: Nachfolgende Phase des GLEICHEN Gewerks
               // ================================================================
-              // WICHTIG: Phase-Number MUSS höher sein!
-              if (e.trade_code === sourceTradeCode && 
-                  e.phase_number && sourcePhaseNumber && 
-                  e.phase_number > sourcePhaseNumber) {
-                shouldUpdate = true;
-                reason = 'same-trade next phase';
-                console.log('[CASCADE] ✅ Found same-trade phase:', e.trade_code, 'Phase', e.phase_number, '>', sourcePhaseNumber);
+              if (e.trade_code === sourceTradeCode) {
+                // Szenario A: Beide haben phase_number -> höhere Phase verschieben
+                if (e.phase_number && sourcePhaseNumber && e.phase_number > sourcePhaseNumber) {
+                  shouldUpdate = true;
+                  reason = 'same-trade next phase';
+                  console.log('[CASCADE] ✅ Found same-trade phase:', e.trade_code, 'Phase', e.phase_number, '>', sourcePhaseNumber);
+                }
+                // Szenario B: Entry hat Dependency auf das gleiche Gewerk
+                else if (deps.some(d => d === sourceTradeCode || (typeof d === 'string' && d.startsWith(sourceTradeCode + '-')))) {
+                  shouldUpdate = true;
+                  reason = 'same-trade via dependency';
+                  console.log('[CASCADE] ✅ Found same-trade dependency:', e.trade_code);
+                }
+                // Szenario C: Keine phase_numbers, prüfe ob Entry nach Source-Ende startet
+                else if (!sourcePhaseNumber) {
+                  const eStart = new Date(e.planned_start);
+                  const sourceEnd = new Date(sourceEntry.planned_end);
+                  
+                  // Prüfe ob Entry nach dem Source-Ende startet (mit 1 Tag Toleranz)
+                  if (eStart >= sourceEnd) {
+                    shouldUpdate = true;
+                    reason = 'same-trade follows by date';
+                    console.log('[CASCADE] ✅ Found same-trade by date:', e.trade_code);
+                  }
+                }
               }
               
               // ================================================================
               // FALL 2: ABHÄNGIGES Gewerk (via Dependencies)
               // ================================================================
-              // NUR wenn NICHT das gleiche Gewerk (sonst doppelt!)
               if (!shouldUpdate && e.trade_code !== sourceTradeCode) {
                 deps.forEach(dep => {
                   // Format 1: "DACH"
@@ -27748,27 +27773,35 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
                     shouldUpdate = true;
                     reason = 'dependent trade';
                   }
-                  // Format 2: "DACH-Eindeckung"
+                  // Format 2: "DACH-Eindeckung" (mit Phase)
                   if (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-')) {
-                    shouldUpdate = true;
-                    reason = 'dependent trade (with phase)';
+                    // Prüfe ob es die richtige Phase ist
+                    if (sourceEntry.phase_name && dep.includes(sourceEntry.phase_name)) {
+                      shouldUpdate = true;
+                      reason = 'dependent trade (specific phase)';
+                    } else if (!sourcePhaseNumber) {
+                      // Keine Phase-Info -> verschiebe trotzdem
+                      shouldUpdate = true;
+                      reason = 'dependent trade (with phase ref)';
+                    }
                   }
                 });
               }
               
               if (shouldUpdate) {
-                console.log('[CASCADE] ✅ Will update:', e.trade_code, 'Phase', e.phase_number, `(${reason})`);
+                console.log('[CASCADE] ✅ Will update:', e.trade_code, 'Phase', e.phase_number || 'N/A', `(${reason})`);
                 toUpdate.add(e.id);
                 processed.add(e.id);
+                
                 // Rekursion: Prüfe ob weitere Entries von diesem abhängen
-                findAllDependents(e.trade_code, e.phase_number);
+                findAllDependents(e.trade_code, e.phase_number, e);
               }
             });
           };
           
-          // Starte rekursive Suche
-          console.log('[CASCADE] 🚀 Starting cascade from:', entry.code, 'Phase', entry.phase_number);
-          findAllDependents(entry.code, entry.phase_number);
+          // Starte rekursive Suche vom geänderten Entry
+          console.log('[CASCADE] 🚀 Starting cascade from:', entry.code, 'Phase', entry.phase_number || 'N/A');
+          findAllDependents(entry.code, entry.phase_number, entry);
           
           console.log('[CASCADE] 🎯 Found', toUpdate.size, 'entries to shift by', dayShift, 'days');
           
@@ -27786,7 +27819,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
             const newFollowStart = addWorkdays(currentStart, dayShift);
             const newFollowEnd = addWorkdays(currentEnd, dayShift);
             
-            console.log('[CASCADE] 🔄 Shifting:', updateEntry.trade_code, 'Phase', updateEntry.phase_number, {
+            console.log('[CASCADE] 🔄 Shifting:', updateEntry.trade_code, 'Phase', updateEntry.phase_number || 'N/A', {
               oldStart: currentStart.toISOString().split('T')[0],
               newStart: newFollowStart.toISOString().split('T')[0],
               shift: dayShift + ' days'
@@ -27819,7 +27852,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
                 currentEnd.toISOString().split('T')[0],
                 newFollowStart.toISOString().split('T')[0],
                 newFollowEnd.toISOString().split('T')[0],
-                `Automatisch verschoben wegen Starttermin-Änderung bei ${entry.trade_name} Phase ${entry.phase_number}`
+                `Automatisch verschoben wegen Terminänderung bei ${entry.trade_name}${entry.phase_number ? ' Phase ' + entry.phase_number : ''}`
               ]
             );
             
@@ -27836,10 +27869,8 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
         } else {
           console.log('[CASCADE] ⏸️ No shift (dayShift = 0)');
         }
-      } else if (cascadeChanges && !startChanged && endChanged) {
-        console.log('[CASCADE] ℹ️ Only END changed - no cascade (just extension/shortening)');
       } else {
-        console.log('[CASCADE] ⏸️ Cascade disabled');
+        console.log('[CASCADE] ⏸️ Cascade disabled or no changes');
       }
       
       // ========================================================================
@@ -27886,7 +27917,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
         cascadeApplied: shouldCascade && affectedEntries.length > 0,
         message: shouldCascade ? 
           `Termine erfolgreich aktualisiert. ${affectedEntries.length} abhängige Termine wurden verschoben.` : 
-          'Termin erfolgreich verlängert/verkürzt (keine Folgetermine verschoben)'
+          'Termin erfolgreich aktualisiert'
       });
       
     } catch (innerErr) {
