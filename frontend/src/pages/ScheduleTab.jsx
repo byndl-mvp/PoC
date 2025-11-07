@@ -1217,7 +1217,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
 // SUB-KOMPONENTE: EINZELNER GANTT-BALKEN 
 // ============================================================================
 
-function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSummary, allEntries, color }) {
+function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSummary, allEntries, color, scheduleStatus }) {
 
   const isMinorWork = entry.is_minor_work === true;
   
