@@ -26150,6 +26150,47 @@ Feininstallation:
 
 ## 3. ABHÄNGIGKEITEN & GEWERK-REIHENFOLGE
 
+**ZWINGENDE DEPENDENCIES (IMMER SETZEN!):**
+
+   // GEBÄUDEHÜLLE (sequentiell)
+   - ABBR → ROH (falls Abbruch nötig)
+   - ROH → ZIMM
+   - ZIMM → DACH
+   - DACH → FEN (FEN kann während DACH starten, braucht aber Referenz)
+   - FEN → FASS
+   - [DACH, ZIMM, FEN, FASS] → GER Phase 2 (Abbau)
+   
+   // ROHINSTALLATIONEN (parallel möglich, aber alle brauchen ROH)
+   - ROH → ELEKT-Roh
+   - ROH → SAN-Roh
+   - ROH → HEI-Roh
+   
+   // WANDSCHLIESSUNG (braucht alle Rohinstallationen)
+   - [ELEKT-Roh, SAN-Roh, HEI-Roh] → TRO
+   - [ELEKT-Roh, SAN-Roh, HEI-Roh] → ESTR
+   
+   // MALERARBEITEN (nach Wandschliessung)
+   - TRO → MAL
+   - ESTR → MAL
+   
+   // FEININSTALLATIONEN (nach Malerarbeiten)
+   - MAL → ELEKT-Fein
+   - MAL → HEI-Fein
+   - [MAL, FLI] → SAN-Fein (in Nassbereichen)
+   
+   // BODENBELÄGE
+   - MAL → BOD
+   - ESTR → BOD (falls Estrich vorhanden)
+   - FLI-Abdichtung → FLI-Verlegung → FLI-Verfugung
+   
+   // TISCHLEREI (ganz am Schluss)
+   - MAL → TIS-Zargen
+   - [MAL, BOD] → TIS-Türen
+   - [ELEKT-Fein, SAN-Fein, FLI] → TIS-Küche
+   
+   // AUSSENANLAGEN (nach Gebäudehülle fertig)
+   - [DACH, FEN, FASS] → AUSS
+   
 ### ZWINGENDE ABFOLGEN:
 
 1. **VORBEREITUNGSPHASE:**
@@ -26163,18 +26204,32 @@ Feininstallation:
      - Setze: is_minor_work: true
      - Setze: can_parallel_with: ["DACH", "FEN", "FASS", "MAL", "TRO"]
 
-3. **GERÜST/DACH/FENSTER/FASSADE (Gebäudehülle):**
+3. **GERÜST/ZIMMERER/DACH/FENSTER/FASSADE (Gebäudehülle) - STRIKTE REIHENFOLGE:**
    - Gerüstaufbau GER Phase 1 immer zuerst
-   - ZIMM (falls neuer Dachstuhl oder Gauben nötig) immer nach oder bereits während ROH
-   - DACH immer nach ROH und ZIMM 
-   - FEN startet wenn DACH zu 2/3 fertig ist (kann teilweise parallel laufen)
-   - FASS MUSS warten bis FEN 100% fertig! (WDVS braucht fertige Fenster!)
-   - Gerüstabbau GER Phase 2 immer erst nach Abschluss DACH + ZIMM + FEN + FASS
+   - ZIMM MUSS IMMER VOR DACH kommen!** Dachstuhl/Gauben müssen stehen bevor Dach gedeckt wird
+   - ZIMM NIEMALS parallel zu DACH!** Erst wenn ZIMM komplett fertig, dann DACH
+   - DACH startet 1 Tag nach ZIMM-Ende
+   - FEN startet wenn DACH zu 60% fertig ist (kann leicht überschneidend laufen)
+   - FEN MUSS 100% fertig sein bevor FASS startet! (WDVS braucht fertige Fenster)
+   - FASS startet 1 Tag nach FEN-Ende
+   - Gerüstabbau GER Phase 2 erst nach DACH + ZIMM + FEN + FASS komplett fertig
 
-  **NIEMALS:**
+   **NIEMALS:**
+   - ROH ohne ABBR in dependencies ❌ (falls ABBR vorhanden)
+   - ZIMM ohne ROH in dependencies ❌
+   - DACH vor ZIMM ❌
+   - DACH parallel zu ZIMM ❌
+   - DACH ohne ZIMM in dependencies ❌
    - FASS vor FEN ❌
    - FASS parallel zu FEN ❌
    - FASS ohne FEN in dependencies ❌
+   - FASS ohne DACH in dependencies ❌
+   - GER Phase 2 (Abbau) ohne DACH, ZIMM, FEN, FASS in dependencies ❌
+   
+   // MEHRSTUFIGE GEWERKE
+   - Phase 2 ohne Phase 1 desselben Gewerks ❌
+   - Phase 3 ohne Phase 2 desselben Gewerks ❌
+   - Feininstallation ohne Rohinstallation ❌
    
 4. **ROHINSTALLATIONEN (PARALLEL MÖGLICH):**
    - Abschluss dichte Gebäudehülle → Start Innenausbau, zuerst Rohinstallationen
@@ -26234,6 +26289,13 @@ KRITISCHE LOGIK-REGELN:
   - Muss NACH allen Außenarbeiten erfolgen
   - Dependencies: ["DACH", "FEN", "FASS", "ZIMM"]
   - Frühester Start: 1 Tag nach letzter Außenarbeit
+
+**ZIMMERER VOR DACH (ABSOLUT ZWINGEND!):**
+- ZIMM muss IMMER komplett fertig sein bevor DACH startet
+- Dachstuhl/Gauben/Verstärkungen müssen stehen
+- Dann erst Dacheindeckung möglich
+- Dependencies: ZIMM → DACH (niemals parallel!)
+- Zeitversatz: DACH startet 1 Tag nach ZIMM-Ende
 
 **🔴 FASSADE & FENSTER (EXTREM WICHTIG!):**
 - FEN muss IMMER VOR FASS kommen!
