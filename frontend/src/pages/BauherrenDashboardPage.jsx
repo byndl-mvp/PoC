@@ -45,6 +45,7 @@ export default function BauherrenDashboardPage() {
   const [extensionType, setExtensionType] = useState('days'); // 'days' oder 'custom'
   const [bundleModalOpen, setBundleModalOpen] = useState(false);
   const [selectedBundleOffer, setSelectedBundleOffer] = useState(null);
+  const [scheduleReloadTrigger, setScheduleReloadTrigger] = useState(0);
   const [evaluationModal, setEvaluationModal] = useState({
   isOpen: false,
   type: null,
@@ -1233,7 +1234,11 @@ const BudgetVisualization = ({ budget }) => {
   userType="bauherr"
   userId={userData?.id}
   apiUrl={apiUrl}
-  onTabChange={setActiveTab}        
+  onTabChange={setActiveTab}
+  onScheduleReload={() => {
+    // Trigger Schedule reload
+    setScheduleReloadTrigger(prev => prev + 1);
+  }}        
 />
 <MessageCenter
   userType="bauherr"
@@ -3114,6 +3119,7 @@ const deadlineDate = tender.deadline
   <ScheduleTab
     project={selectedProject}
     apiUrl={apiUrl}
+    reloadTrigger={scheduleReloadTrigger}
     onReload={() => {
       loadProjectDetails(selectedProject.id);
       loadScheduleBadgeCount(selectedProject.id);
