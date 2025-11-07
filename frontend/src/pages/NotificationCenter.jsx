@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { Bell, X, Check, Trash2, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 
-const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onTabChange }) => {
+const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onTabChange, onScheduleReload }) => {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -160,6 +160,11 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
         onTabChange('tenders');
         setIsOpen(false);  
       }
+    }
+    
+    // Schedule-Notifications - Tab wechseln UND Schedule reload triggern
+    if (notification.type === 'schedule_generated' && onScheduleReload) {
+      onScheduleReload();
     }
     
     // Andere Notifications - Tab wechseln wenn onTabChange vorhanden ist
