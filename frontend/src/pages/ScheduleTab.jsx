@@ -259,6 +259,37 @@ return () => clearInterval(pollInterval);
   }
 };
 
+const handleDeleteEntry = async (entryId) => {
+  try {
+    const confirmed = window.confirm('Möchten Sie diesen Termin wirklich löschen?');
+    if (!confirmed) return;
+    
+    setLoading(true);
+    
+    const res = await fetch(apiUrl(`/api/schedule-entries/${entryId}`), {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bauherrId: project.bauherr_id
+      })
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      await loadSchedule();
+      alert('✅ ' + data.message);
+    } else {
+      const error = await res.json();
+      alert('❌ ' + error.error);
+    }
+  } catch (err) {
+    console.error('Fehler beim Löschen:', err);
+    alert('Ein Fehler ist aufgetreten');
+  } finally {
+    setLoading(false);
+  }
+};
+  
   const handleResolveChangeRequest = async (requestId, decision, rejectionReason) => {
     try {
       const res = await fetch(apiUrl(`/api/schedule-change-requests/${requestId}/resolve`), {
