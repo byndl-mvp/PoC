@@ -20,7 +20,7 @@ export default function ScheduleTab({ project, apiUrl, onReload, reloadTrigger }
   const [adjustedEntries, setAdjustedEntries] = useState({});
   const [showExplanations, setShowExplanations] = useState(false);
   const [changeRequests, setChangeRequests] = useState([]);
-  const [expandedTrades, setExpandedTrades] = useState({ GER: true });
+  const [expandedTrades, setExpandedTrades] = useState({});
 
   useEffect(() => {
     console.log('📊 ScheduleTab mounted/updated, project.id:', project.id);
@@ -45,7 +45,7 @@ useEffect(() => {
     const expanded = {};
     grouped.forEach(trade => {
       // Automatisch ausklappen wenn > 1 Einsatz
-      expanded[trade.trade_code] = trade.trade_code === 'GER';
+      expanded[trade.trade_code] = false;
     });
     setExpandedTrades(expanded);
   }
