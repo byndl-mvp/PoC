@@ -1071,10 +1071,11 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
                 </div>
                 <span className="text-white font-bold text-lg">{trade.trade_name}</span>
                 <span className="text-gray-400 text-sm ml-2">({trade.entries.length} {trade.entries.length === 1 ? 'Einsatz' : 'Einsätze'})</span>
-                {expandedTrades[trade.trade_code] ? 
-                  <ChevronDown className="w-5 h-5 text-gray-400 ml-auto" /> : 
-                  <ChevronRight className="w-5 h-5 text-gray-400 ml-auto" />
-                }
+<span className="text-gray-400 text-sm ml-auto mr-2">Termindetails anzeigen</span>
+{expandedTrades[trade.trade_code] ? 
+  <ChevronDown className="w-5 h-5 text-gray-400" /> : 
+  <ChevronRight className="w-5 h-5 text-gray-400" />
+}
                 
                 {/* Button für Gesamtdauer-Anpassung (nur bei collapsed + editMode) */}
                 {!expandedTrades[trade.trade_code] && editMode && (
