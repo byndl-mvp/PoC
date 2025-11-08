@@ -90,37 +90,44 @@ return () => clearInterval(pollInterval);
 }, [generating, project.id]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const loadSchedule = async () => {
-    try {
-      setLoading(true);
-      // Cache-Buster: Timestamp + No-Cache Headers
-      const timestamp = new Date().getTime();
-      const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule?_t=${timestamp}`), {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
+  try {
+    setLoading(true);
+    setSchedule(null);  // ✅ NEU: Erst auf null setzen
+    
+    const timestamp = Date.now();
+    const random = Math.random();
+    const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule?_t=${timestamp}&_r=${random}`), {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
+      cache: 'no-store'
+    });
+    
+    if (res.status === 404) {
+      setSchedule(null);
+    } else if (res.ok) {
+      const data = await res.json();
       
-      if (res.status === 404) {
-        // Kein Terminplan vorhanden
-        setSchedule(null);
-      } else if (res.ok) {
-        const data = await res.json();
-        setSchedule(data);
-        console.log('📊 Schedule loaded:', data.entries?.length, 'entries at', new Date().toLocaleTimeString());
-        
-        // Lade offene Change Requests
-        if (data.status === 'locked' || data.status === 'active') {
-          loadChangeRequests();
-        }
+      // ✅ NEU: Deep clone + extra property
+      const newSchedule = JSON.parse(JSON.stringify(data));
+      newSchedule._loadedAt = timestamp;
+      
+      setSchedule(newSchedule);  // ✅ NEU: Komplett neues Objekt
+      
+      console.log('📊 Schedule loaded:', newSchedule.entries?.length, 'entries at', new Date().toLocaleTimeString());
+      
+      if (data.status === 'locked' || data.status === 'active') {
+        loadChangeRequests();
       }
-    } catch (err) {
-      console.error('Fehler beim Laden:', err);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error('Fehler beim Laden:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const loadChangeRequests = async () => {
     try {
