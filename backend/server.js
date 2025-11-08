@@ -17792,44 +17792,46 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
     
     await query('BEGIN');
 
-// NEUE PRÜFUNG: Check ob bereits eine andere Firma in Vertragsanbahnung ist
-const existingPreliminary = await query(
-  `SELECT o.*, h.company_name 
-   FROM offers o
-   JOIN handwerker h ON o.handwerker_id = h.id
-   JOIN tenders tn2 ON o.tender_id = tn2.id
-   WHERE tn2.project_id = $1 
-   AND tn2.trade_id = (
-     SELECT trade_id FROM tenders WHERE id = (
-       SELECT tender_id FROM offers WHERE id = $2
-     )
-   )
-   AND o.status = 'preliminary'
-   AND o.id != $2`,
-  [projectId, offerId]
-);
+    // NEUE PRÜFUNG: Check ob bereits eine andere Firma in Vertragsanbahnung ist
+    const existingPreliminary = await query(
+      `SELECT o.*, h.company_name 
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn2 ON o.tender_id = tn2.id
+       WHERE tn2.project_id = $1 
+       AND tn2.trade_id = (
+         SELECT trade_id FROM tenders WHERE id = (
+           SELECT tender_id FROM offers WHERE id = $2
+         )
+       )
+       AND o.status = 'preliminary'
+       AND o.id != $2`,
+      [projectId, offerId]
+    );
 
-if (existingPreliminary.rows.length > 0) {
-  await query('ROLLBACK');
-  return res.status(400).json({ 
-    error: 'conflict',
-    existingCompany: existingPreliminary.rows[0].company_name,
-    message: `Sie befinden sich in diesem Gewerk bereits in der Vertragsanbahnung mit ${existingPreliminary.rows[0].company_name}. In diesem Status hat ${existingPreliminary.rows[0].company_name} Exklusivität zu Ihrem Auftrag. Dies ermöglicht beiden Seiten eine vertrauensvolle Kennenlernphase mit ausreichend Zeit für Ortstermine und Kalkulationsanpassungen. Falls Sie mit ${existingPreliminary.rows[0].company_name} nicht fortfahren möchten, beenden Sie bitte zuerst die bestehende Vertragsanbahnung.`
-  });
-}
+    if (existingPreliminary.rows.length > 0) {
+      await query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'conflict',
+        existingCompany: existingPreliminary.rows[0].company_name,
+        message: `Sie befinden sich in diesem Gewerk bereits in der Vertragsanbahnung mit ${existingPreliminary.rows[0].company_name}. In diesem Status hat ${existingPreliminary.rows[0].company_name} Exklusivität zu Ihrem Auftrag. Dies ermöglicht beiden Seiten eine vertrauensvolle Kennenlernphase mit ausreichend Zeit für Ortstermine und Kalkulationsanpassungen. Falls Sie mit ${existingPreliminary.rows[0].company_name} nicht fortfahren möchten, beenden Sie bitte zuerst die bestehende Vertragsanbahnung.`
+      });
+    }
     
     // Hole Angebotsdaten
-const offerResult = await query(
-  `SELECT o.*, h.*, t.name as trade_name,
-          p.bauherr_id, tn.project_id
-   FROM offers o
-   JOIN handwerker h ON o.handwerker_id = h.id
-   JOIN tenders tn ON o.tender_id = tn.id
-   JOIN trades t ON tn.trade_id = t.id
-   JOIN projects p ON tn.project_id = p.id
-   WHERE o.id = $1`,
-  [offerId]
-);
+    const offerResult = await query(
+      `SELECT o.*, h.*, t.name as trade_name,
+              p.bauherr_id, p.description as project_description, tn.project_id,
+              b.first_name || ' ' || b.last_name as bauherr_name
+       FROM offers o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN trades t ON tn.trade_id = t.id
+       JOIN projects p ON tn.project_id = p.id
+       LEFT JOIN bauherren b ON p.bauherr_id = b.id
+       WHERE o.id = $1`,
+      [offerId]
+    );
     
     if (offerResult.rows.length === 0) {
       throw new Error('Angebot nicht gefunden');
@@ -17848,32 +17850,32 @@ const offerResult = await query(
       [offerId]
     );
 
-// NEUE AKTION: Setze alle anderen Angebote desselben Gewerks auf "locked"
-await query(
-  `UPDATE offers 
-   SET locked_reason = 'Anderes Angebot in Vertragsanbahnung'
-   WHERE tender_id IN (
-     SELECT tn2.id FROM tenders tn2 
-     WHERE tn2.project_id = $1 
-     AND tn2.trade_id = (
-       SELECT trade_id FROM tenders WHERE id = (
-         SELECT tender_id FROM offers WHERE id = $2
+    // NEUE AKTION: Setze alle anderen Angebote desselben Gewerks auf "locked"
+    await query(
+      `UPDATE offers 
+       SET locked_reason = 'Anderes Angebot in Vertragsanbahnung'
+       WHERE tender_id IN (
+         SELECT tn2.id FROM tenders tn2 
+         WHERE tn2.project_id = $1 
+         AND tn2.trade_id = (
+           SELECT trade_id FROM tenders WHERE id = (
+             SELECT tender_id FROM offers WHERE id = $2
+           )
+         )
        )
-     )
-   )
-   AND id != $2
-   AND status NOT IN ('preliminary', 'accepted', 'rejected', 'withdrawn')`,
-  [projectId, offerId]
-);
+       AND id != $2
+       AND status NOT IN ('preliminary', 'accepted', 'rejected', 'withdrawn')`,
+      [projectId, offerId]
+    );
     
     // Schritt 2: Tender-Handwerker-Status (HINZUFÜGEN)
-await query(
-  `UPDATE tender_handwerker 
-   SET status = 'preliminary_accepted'
-   WHERE tender_id = (SELECT tender_id FROM offers WHERE id = $1) 
-   AND handwerker_id = (SELECT handwerker_id FROM offers WHERE id = $1)`,
-  [offerId]
-);
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'preliminary_accepted'
+       WHERE tender_id = (SELECT tender_id FROM offers WHERE id = $1) 
+       AND handwerker_id = (SELECT handwerker_id FROM offers WHERE id = $1)`,
+      [offerId]
+    );
     
     // Protokolliere Kontaktfreigabe
     await query(
@@ -17888,70 +17890,88 @@ await query(
     );
 
     // Prüfe ob Konversation bereits existiert
-const existingConv = await query(
-  `SELECT c.id 
-   FROM conversations c
-   JOIN conversation_participants cp1 ON c.id = cp1.conversation_id
-   JOIN conversation_participants cp2 ON c.id = cp2.conversation_id
-   WHERE c.type = 'direct'
-     AND cp1.user_type = 'bauherr' AND cp1.user_id = $1
-     AND cp2.user_type = 'handwerker' AND cp2.user_id = $2`,
-  [offer.bauherr_id, offer.handwerker_id]
-);
+    const existingConv = await query(
+      `SELECT c.id 
+       FROM conversations c
+       JOIN conversation_participants cp1 ON c.id = cp1.conversation_id
+       JOIN conversation_participants cp2 ON c.id = cp2.conversation_id
+       WHERE c.type = 'direct'
+         AND cp1.user_type = 'bauherr' AND cp1.user_id = $1
+         AND cp2.user_type = 'handwerker' AND cp2.user_id = $2`,
+      [offer.bauherr_id, offer.handwerker_id]
+    );
 
-if (existingConv.rows.length === 0) {
-  // Neue Direct-Conversation erstellen
-  const convResult = await query(
-    `INSERT INTO conversations (type, offer_id, created_at, updated_at)
-     VALUES ('direct', $1, NOW(), NOW())
-     RETURNING id`,
-    [offerId]
-  );
-  
-  const conversationId = convResult.rows[0].id;
-  
-  // Beide Teilnehmer hinzufügen
-  await query(
-    `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
-     VALUES 
-       ($1, 'bauherr', $2, 'participant'),
-       ($1, 'handwerker', $3, 'participant')`,
-    [conversationId, offer.bauherr_id, offer.handwerker_id]
-  );
-}
+    if (existingConv.rows.length === 0) {
+      // Neue Direct-Conversation erstellen
+      const convResult = await query(
+        `INSERT INTO conversations (type, offer_id, created_at, updated_at)
+         VALUES ('direct', $1, NOW(), NOW())
+         RETURNING id`,
+        [offerId]
+      );
+      
+      const conversationId = convResult.rows[0].id;
+      
+      // Beide Teilnehmer hinzufügen
+      await query(
+        `INSERT INTO conversation_participants (conversation_id, user_type, user_id, role)
+         VALUES 
+           ($1, 'bauherr', $2, 'participant'),
+           ($1, 'handwerker', $3, 'participant')`,
+        [conversationId, offer.bauherr_id, offer.handwerker_id]
+      );
+    }
+    
+    // ✅ NEU: Notification für Handwerker erstellen
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, reference_id, message, metadata, created_at)
+       VALUES ('handwerker', $1, 'preliminary_accepted', $2, $3, $4, NOW())`,
+      [
+        offer.handwerker_id,
+        offerId,
+        'Vorläufige Beauftragung erhalten',
+        JSON.stringify({
+          bauherr_name: offer.bauherr_name || 'Bauherr',
+          trade_name: offer.trade_name,
+          project_name: offer.project_description || 'Projekt',
+          amount: offer.amount
+        })
+      ]
+    );
     
     // Sende E-Mail-Benachrichtigungen
-if (transporter) {
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-      to: offer.email,
-      subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
-      html: `
-        <h2>Glückwunsch! Sie haben eine vorläufige Beauftragung erhalten</h2>
-        <p>Der Bauherr hat Ihr Angebot vorläufig angenommen und möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
-        
-        <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px; margin: 20px 0;">
-          <strong>Status: Vertragsanbahnung</strong><br>
-          Sie befinden sich nun in der geschützten Kennenlernphase. Die 24-monatige Nachwirkfrist ist aktiv.
-          Beide Seiten können das Angebot noch anpassen oder zurückziehen.
-        </div>
-        
-        <h3>Nächste Schritte:</h3>
-        <ul>
-          <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
-          <li>Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</li>
-          <li>Nach Ihrer Bestätigung kann der Bauherr verbindlich beauftragen</li>
-        </ul>
-        
-        <p><strong>Projektdetails:</strong> ${offer.trade_name}</p>
-        <a href="https://byndl.de/handwerker/dashboard">Zum Dashboard</a>
-      `
-    });
-  } catch (emailError) {
-    console.error('Email-Versand fehlgeschlagen:', emailError.message);
-  }
-}
+    if (transporter) {
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+          to: offer.email,
+          subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
+          html: `
+            <h2>Glückwunsch! Sie haben eine vorläufige Beauftragung erhalten</h2>
+            <p>Der Bauherr hat Ihr Angebot vorläufig angenommen und möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
+            
+            <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px; margin: 20px 0;">
+              <strong>Status: Vertragsanbahnung</strong><br>
+              Sie befinden sich nun in der geschützten Kennenlernphase. Die 24-monatige Nachwirkfrist ist aktiv.
+              Beide Seiten können das Angebot noch anpassen oder zurückziehen.
+            </div>
+            
+            <h3>Nächste Schritte:</h3>
+            <ul>
+              <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
+              <li>Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</li>
+              <li>Nach Ihrer Bestätigung kann der Bauherr verbindlich beauftragen</li>
+            </ul>
+            
+            <p><strong>Projektdetails:</strong> ${offer.trade_name}</p>
+            <a href="https://byndl.de/handwerker/dashboard">Zum Dashboard</a>
+          `
+        });
+      } catch (emailError) {
+        console.error('Email-Versand fehlgeschlagen:', emailError.message);
+      }
+    }
     
     await query('COMMIT');
     
