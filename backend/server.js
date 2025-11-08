@@ -24328,13 +24328,29 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   try {
     const { tenderId } = req.params;
     const { 
-  handwerkerId, 
-  positions, 
-  notes, 
-  totalSum, 
-  stage = 'preliminary',
-  bundleDiscount = 0  
-} = req.body;
+      handwerkerId, 
+      positions, 
+      notes, 
+      totalSum, 
+      stage = 'preliminary',      
+      isPreliminary,              
+      bundleDiscount = 0  
+    } = req.body;
+    
+    // ✅ FIX: Unterstütze BEIDE Formate (isPreliminary Boolean + stage String)
+    let stageValue;
+    let stageString;
+    
+    if (isPreliminary !== undefined) {
+      // Frontend sendet isPreliminary (Boolean)
+      stageValue = isPreliminary ? 0 : 1;
+      stageString = isPreliminary ? 'preliminary' : 'final';
+    } else {
+      // Backend/API sendet stage (String)
+      const stageMap = { 'preliminary': 0, 'final': 1 };
+      stageValue = stageMap[stage] ?? 0;
+      stageString = stage;
+    }
     
     await query('BEGIN');
     
@@ -24348,7 +24364,7 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
     
     // Prüfen ob bereits ein Angebot existiert
     const existingOffer = await query(
-      'SELECT id FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
+      'SELECT id, stage FROM offers WHERE tender_id = $1 AND handwerker_id = $2',
       [tenderId, handwerkerId]
     );
     
@@ -24356,33 +24372,34 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
     
     if (existingOffer.rows.length > 0) {
       offerId = existingOffer.rows[0].id;
+      const oldStage = existingOffer.rows[0].stage;
       
       await query(
-  `UPDATE offers 
-   SET lv_data = $1, 
-       notes = $2, 
-       amount = $3, 
-       stage = $4, 
-       bundle_discount = $5,  -- ✅ NEU
-       status = CASE 
-         WHEN stage = 'preliminary' AND $4 != 'preliminary' THEN 'confirmed'
-         ELSE status 
-       END,  -- ✅ NEU: Status-Übergang
-       updated_at = NOW()
-   WHERE id = $6`,
-  [JSON.stringify({ positions }), notes, totalSum, stage, bundleDiscount, offerId]
-);
+        `UPDATE offers 
+         SET lv_data = $1, 
+             notes = $2, 
+             amount = $3, 
+             stage = $4, 
+             bundle_discount = $5,
+             status = CASE 
+               WHEN $6 = 0 AND $4 != 0 THEN 'confirmed'
+               ELSE status 
+             END,
+             updated_at = NOW()
+         WHERE id = $7`,
+        [JSON.stringify({ positions }), notes, totalSum, stageValue, bundleDiscount, oldStage, offerId]
+      );
     } else {
-  const result = await query(
-    `INSERT INTO offers (
-      tender_id, handwerker_id, amount, 
-      lv_data, notes, status, stage, bundle_discount, created_at
-    ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, $7, NOW())
-    RETURNING id`,
-    [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, stage, bundleDiscount]  // ✅ bundleDiscount als $7
-  );
-  offerId = result.rows[0].id;
-}
+      const result = await query(
+        `INSERT INTO offers (
+          tender_id, handwerker_id, amount, 
+          lv_data, notes, status, stage, bundle_discount, created_at
+        ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, $7, NOW())
+        RETURNING id`,
+        [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, stageValue, bundleDiscount]
+      );
+      offerId = result.rows[0].id;
+    }
     
     // Benachrichtigung für Bauherr
     const tenderInfo = await query(
@@ -24397,42 +24414,42 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       );
       
       if (projectInfo.rows.length > 0) {
-  // Hole die fehlenden Informationen
-  const offerDetails = await query(
-    `SELECT h.company_name, t.name as trade_name, p.description as project_description
-     FROM handwerker h
-     CROSS JOIN tenders tn
-     JOIN trades t ON tn.trade_id = t.id
-     JOIN projects p ON tn.project_id = p.id
-     WHERE h.id = $1 AND tn.id = $2`,
-    [handwerkerId, tenderId]
-  );
-  
-  await query(
-    `INSERT INTO notifications 
-     (user_type, user_id, type, reference_id, message, metadata)
-     VALUES ('bauherr', $1, 'new_offer', $2, $3, $4)`,
-    [
-      projectInfo.rows[0].bauherr_id, 
-      offerId,
-      'Neues Angebot eingegangen',
-      JSON.stringify({
-        company_name: offerDetails.rows[0]?.company_name || 'Handwerker',
-        trade_name: offerDetails.rows[0]?.trade_name || 'Gewerk',
-        project_name: offerDetails.rows[0]?.project_description || 'Projekt',
-        amount: totalSum  // Diese Variable existiert bereits aus req.body
-      })
-    ]
-  );
-} 
-}
+        // Hole die fehlenden Informationen
+        const offerDetails = await query(
+          `SELECT h.company_name, t.name as trade_name, p.description as project_description
+           FROM handwerker h
+           CROSS JOIN tenders tn
+           JOIN trades t ON tn.trade_id = t.id
+           JOIN projects p ON tn.project_id = p.id
+           WHERE h.id = $1 AND tn.id = $2`,
+          [handwerkerId, tenderId]
+        );
+        
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, reference_id, message, metadata)
+           VALUES ('bauherr', $1, 'new_offer', $2, $3, $4)`,
+          [
+            projectInfo.rows[0].bauherr_id, 
+            offerId,
+            'Neues Angebot eingegangen',
+            JSON.stringify({
+              company_name: offerDetails.rows[0]?.company_name || 'Handwerker',
+              trade_name: offerDetails.rows[0]?.trade_name || 'Gewerk',
+              project_name: offerDetails.rows[0]?.project_description || 'Projekt',
+              amount: totalSum
+            })
+          ]
+        );
+      } 
+    }
     
     await query('COMMIT');
     
     res.json({ 
       success: true, 
       offerId,
-      message: stage === 'preliminary' ? 
+      message: stageString === 'preliminary' ? 
         'Vorläufiges Angebot abgegeben. Der Bauherr kann nun Kontakt aufnehmen.' :
         'Verbindliches Angebot abgegeben.'
     });
