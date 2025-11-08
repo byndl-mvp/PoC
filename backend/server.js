@@ -26294,8 +26294,8 @@ KRITISCHE LOGIK-REGELN:
 - ZIMM muss IMMER komplett fertig sein bevor DACH startet
 - Dachstuhl/Gauben/Verstärkungen müssen stehen
 - Dann erst Dacheindeckung möglich
-- Dependencies: ZIMM → DACH (niemals parallel!)
-- Zeitversatz: DACH startet 1 Tag nach ZIMM-Ende
+- Dependencies: ZIMM → DACH (niemals parallel!), letzte ZIMM-Phase → DACH Phase 1
+- Zeitversatz: DACH startet 1 Tag nach LETZTER ZIMM-Phase
 
 **🔴 FASSADE & FENSTER (EXTREM WICHTIG!):**
 - FEN muss IMMER VOR FASS kommen!
