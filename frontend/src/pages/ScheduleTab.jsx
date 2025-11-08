@@ -1333,22 +1333,12 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
             </div>
           </div>
           
-          {/* Datum */}
+         {/* Datum */}
           <div 
   className="absolute text-center text-white text-xs font-semibold whitespace-nowrap pointer-events-none" 
   style={{ ...position, top: '45px', zIndex: 5 }}
 >
             {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
-            {entry.trade_code === 'GER' && (() => {
-              const start = new Date(entry.planned_start);
-              const end = new Date(entry.planned_end);
-              const weeks = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 7));
-              return (
-                <div className="text-teal-300 mt-1">
-                  Standzeit: {weeks} {weeks === 1 ? 'Woche' : 'Wochen'}
-                </div>
-              );
-            })()}
           </div>
         </div>
 
