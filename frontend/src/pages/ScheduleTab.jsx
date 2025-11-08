@@ -45,7 +45,7 @@ useEffect(() => {
     const expanded = {};
     grouped.forEach(trade => {
       // Automatisch ausklappen wenn > 1 Einsatz
-      expanded[trade.trade_code] = false;
+      expanded[trade.trade_code] = trade.trade_code === 'GER';
     });
     setExpandedTrades(expanded);
   }
