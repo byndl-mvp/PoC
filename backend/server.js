@@ -28010,7 +28010,7 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
 });
 
 // ============================================================================
-// EINZELNEN TERMIN LÖSCHEN (NUR VOR FREIGABE)
+// ROUTE: EINZELNEN TERMIN LÖSCHEN (NUR VOR FREIGABE)
 // ============================================================================
 
 app.delete('/api/schedule-entries/:entryId', async (req, res) => {
@@ -28056,10 +28056,7 @@ app.delete('/api/schedule-entries/:entryId', async (req, res) => {
         status: entry.status
       });
       
-      // Lösche den Entry
-      await query('DELETE FROM schedule_entries WHERE id = $1', [entryId]);
-      
-      // History: Dokumentiere die Löschung
+      // History: ERST dokumentieren (bevor Entry gelöscht wird!)
       await query(
         `INSERT INTO schedule_history 
          (schedule_entry_id, changed_by_type, changed_by_id, change_type,
@@ -28073,6 +28070,9 @@ app.delete('/api/schedule-entries/:entryId', async (req, res) => {
           `Termin für ${entry.trade_name}${entry.phase_number ? ' Phase ' + entry.phase_number : ''} wurde vor Freigabe gelöscht`
         ]
       );
+      
+      // DANN: Lösche den Entry
+      await query('DELETE FROM schedule_entries WHERE id = $1', [entryId]);
       
       await query('COMMIT');
       
