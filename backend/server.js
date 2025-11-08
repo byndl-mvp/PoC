@@ -27734,14 +27734,11 @@ app.post('/api/schedule-entries/:entryId/update', async (req, res) => {
       // SCHRITT 3: CASCADE - NUR WENN AKTIVIERT UND ÄNDERUNGEN VORHANDEN
       // ========================================================================
       const shouldCascade = cascadeChanges && (startChanged || endChanged);
-      
-      if (shouldCascade) {
-        console.log('[CASCADE] ✅ Cascade enabled');
-        
-        // ✅ FIX: Berechne Shift richtig
-        // Bei Startverschiebung: Differenz vom Start
-        // Bei Endverschiebung: Differenz vom Ende
-        let dayShift = 0;
+
+let dayShift = 0; // ← Außerhalb, für gesamten Scope verfügbar
+
+if (shouldCascade) {
+  console.log('[CASCADE] ✅ Cascade enabled');
         
         if (startChanged) {
           // Start verschoben -> berechne Arbeitstage zwischen altem und neuem Start
