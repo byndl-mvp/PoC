@@ -20,7 +20,7 @@ export default function ScheduleTab({ project, apiUrl, onReload, reloadTrigger }
   const [adjustedEntries, setAdjustedEntries] = useState({});
   const [showExplanations, setShowExplanations] = useState(false);
   const [changeRequests, setChangeRequests] = useState([]);
-  const [expandedTrades, setExpandedTrades] = useState({});
+  const [expandedTrades, setExpandedTrades] = useState({ GER: true });
 
   useEffect(() => {
     console.log('📊 ScheduleTab mounted/updated, project.id:', project.id);
