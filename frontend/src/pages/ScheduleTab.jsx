@@ -1284,7 +1284,21 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
     zIndex: 10
   }}
 >
-          <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
+         <div className={`h-full rounded-lg relative overflow-hidden bg-gradient-to-r ${color}`}>
+              {/* Standzeit für GER (nur im collapsed summary bar) */}
+              {isSummary && entry.trade_code === 'GER' && (() => {
+                const start = new Date(allEntries[0].planned_start);
+                const end = new Date(allEntries[allEntries.length - 1].planned_end);
+                const weeks = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 7));
+                return (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-white text-xs font-semibold opacity-90">
+                      Standzeit: {weeks} {weeks === 1 ? 'Woche' : 'Wochen'}
+                    </span>
+                  </div>
+                );
+              })()}
+              
               {/* Status-Indicator */}
               {entry.confirmed && (
                 <div className="absolute top-2 right-2 w-3 h-3 bg-green-400 rounded-full border-2 border-white" style={{ pointerEvents: 'none' }}></div>
