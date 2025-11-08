@@ -27848,23 +27848,34 @@ if (e.trade_code === sourceTradeCode) {
   }
 }
               
-              // ================================================================
-              // FALL 2: ABHÄNGIGES Gewerk (via Dependencies)
-              // ================================================================
+// ================================================================
+// FALL 2: ABHÄNGIGES Gewerk (via Dependencies)
+// ================================================================
 if (!shouldUpdate && e.trade_code !== sourceTradeCode) {
+  // ✅ FIX: Finde das Source-Entry aus allEntries
+  const currentSourceEntry = allEntries.find(entry => 
+    entry.trade_code === sourceTradeCode && 
+    (entry.phase_number === sourcePhaseNumber || entry.phase_name === sourcePhaseName)
+  );
+  
+  if (!currentSourceEntry) {
+    console.log('[CASCADE] ⚠️ Source entry not found for:', sourceTradeCode, sourcePhaseNumber);
+    return;
+  }
+  
   deps.forEach(dep => {
     // Format 1: "DACH"
     if (dep === sourceTradeCode) {
       // ✅ FIX: Prüfe zeitliche Reihenfolge!
       const eStart = new Date(e.planned_start);
-      const sourceEnd = new Date(sourceEntry.planned_end);
+      const sourceEnd = new Date(currentSourceEntry.planned_end);
       
       if (eStart >= sourceEnd) {
         shouldUpdate = true;
         reason = 'dependent trade';
         console.log('[CASCADE] ✅ Found dependent trade:', e.trade_code, 'depends on', sourceTradeCode);
       } else {
-        console.log('[CASCADE] ⏸️ Skipping dependent trade (comes before source):', e.trade_code);
+        console.log('[CASCADE] ⏸️ Skipping dependent trade (comes before source):', e.trade_code, 'starts', eStart.toISOString().split('T')[0], 'before source ends', sourceEnd.toISOString().split('T')[0]);
       }
     }
     // Format 2: "DACH-Eindeckung" (mit Phase)
@@ -27872,7 +27883,7 @@ if (!shouldUpdate && e.trade_code !== sourceTradeCode) {
       const depPhaseName = dep.substring(sourceTradeCode.length + 1);
       // ✅ FIX: Auch hier zeitliche Prüfung
       const eStart = new Date(e.planned_start);
-      const sourceEnd = new Date(sourceEntry.planned_end);
+      const sourceEnd = new Date(currentSourceEntry.planned_end);
       
       if (eStart < sourceEnd) {
         console.log('[CASCADE] ⏸️ Skipping dependent trade with phase (comes before source):', e.trade_code);
@@ -27883,30 +27894,24 @@ if (!shouldUpdate && e.trade_code !== sourceTradeCode) {
       if (sourcePhaseName && depPhaseName === sourcePhaseName) {
         shouldUpdate = true;
         reason = 'dependent trade (specific phase)';
+        console.log('[CASCADE] ✅ Found dependent trade with phase match:', e.trade_code, 'depends on', dep);
       } else if (!sourcePhaseNumber) {
         shouldUpdate = true;
         reason = 'dependent trade (with phase ref)';
+        console.log('[CASCADE] ✅ Found dependent trade with phase ref:', e.trade_code, 'depends on', dep);
       }
     }
   });
 }
-              
-              if (shouldUpdate) {
-                console.log('[CASCADE] ✅ Will update:', e.trade_code, 'Phase', e.phase_number || 'N/A', `(${reason})`);
-                toUpdate.add(e.id);
-                processed.add(e.id);
-                
-                // ✅ FIX: Rekursion mit AKTUELLEN Werten des gefundenen Entries
-                findAllDependents(e.trade_code, e.phase_number, e.phase_name);
-              }
-            });
-          };
-          
-          // ✅ FIX: Starte mit ORIGINALEN Werten (vor Update!)
-          console.log('[CASCADE] 🚀 Starting cascade from ORIGINAL:', originalEntry.code, 'Phase', originalEntry.phase_number || originalEntry.phase_name || 'N/A');
-          findAllDependents(originalEntry.code, originalEntry.phase_number, originalEntry.phase_name);
-          
-          console.log('[CASCADE] 🎯 Found', toUpdate.size, 'entries to shift by', dayShift, 'days');
+
+if (shouldUpdate) {
+  console.log('[CASCADE] ✅ Will update:', e.trade_code, 'Phase', e.phase_number || 'N/A', `(${reason})`);
+  toUpdate.add(e.id);
+  processed.add(e.id);
+  
+  // ✅ FIX: Rekursion mit AKTUELLEN Werten des gefundenen Entries
+  findAllDependents(e.trade_code, e.phase_number, e.phase_name, e);
+}
           
           // ===================================================================
           // UPDATE ALLER ABHÄNGIGEN ENTRIES
