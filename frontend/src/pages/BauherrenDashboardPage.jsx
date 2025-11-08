@@ -1376,11 +1376,17 @@ const BudgetVisualization = ({ budget }) => {
                     </p>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
-                    <p className="text-xs text-gray-400 mb-1">Geschätzt</p>
-                    <p className="text-lg font-semibold text-teal-400">
-                      {formatCurrency(project.totalCost)}
-                    </p>
-                  </div>
+  <p className="text-xs text-gray-400 mb-1">Geschätzt</p>
+  <p className="text-xs text-gray-500">
+    {formatCurrency(project.totalCost / 1.19)} netto
+  </p>
+  <p className="text-[10px] text-gray-600">
+    + {formatCurrency(project.totalCost * 0.19 / 1.19)} MwSt
+  </p>
+  <p className="text-lg font-semibold text-teal-400">
+    {formatCurrency(project.totalCost)}
+  </p>
+</div>
                 </div>
               </div>
               
