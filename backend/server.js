@@ -27793,44 +27793,60 @@ if (shouldCascade) {
               let shouldUpdate = false;
               let reason = '';
               
-              // ================================================================
-              // FALL 1: Nachfolgende Phase des GLEICHEN Gewerks
-              // ================================================================
-              if (e.trade_code === sourceTradeCode) {
-                // Szenario A: Beide haben phase_number -> höhere Phase verschieben
-                if (e.phase_number && sourcePhaseNumber && e.phase_number > sourcePhaseNumber) {
-                  shouldUpdate = true;
-                  reason = 'same-trade next phase';
-                  console.log('[CASCADE] ✅ Found same-trade phase:', e.trade_code, 'Phase', e.phase_number, '>', sourcePhaseNumber);
-                }
-                // Szenario B: Entry hat explizite Dependency auf das Gewerk oder Phase
-                else if (deps.length > 0) {
-                  deps.forEach(dep => {
-                    // Format: "DACH" oder "DACH-Eindeckung"
-                    if (dep === sourceTradeCode || 
-                        (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-'))) {
-                      shouldUpdate = true;
-                      reason = 'same-trade via dependency';
-                      console.log('[CASCADE] ✅ Found same-trade dependency:', e.trade_code);
-                    }
-                  });
-                }
-                // ✅ FIX: Szenario C - Implizite Reihenfolge bei gleichem Gewerk
-                // Wenn keine phase_number existiert, prüfe ob Entry nach dem ORIGINAL-Ende startet
-                else if (!sourcePhaseNumber && !e.phase_number) {
-                  const eStart = new Date(e.planned_start);
-                  // ⚠️ WICHTIG: Verwende das ALTE Ende vom ORIGINAL-Entry, nicht das neue!
-                  const sourceEndDate = oldEnd;
-                  
-                  // Prüfe ob Entry nach dem ursprünglichen Ende startet (mit 1 Tag Toleranz)
-                  const daysDiff = Math.floor((eStart - sourceEndDate) / (1000 * 60 * 60 * 24));
-                  if (daysDiff >= -1) {
-                    shouldUpdate = true;
-                    reason = 'same-trade follows by date';
-                    console.log('[CASCADE] ✅ Found same-trade by date:', e.trade_code, 'starts', daysDiff, 'days after original end');
-                  }
-                }
-              }
+// ================================================================
+// FALL 1: Nachfolgende Phase des GLEICHEN Gewerks
+// ================================================================
+if (e.trade_code === sourceTradeCode) {
+  // Szenario A: Beide haben phase_number -> höhere Phase verschieben
+  if (e.phase_number && sourcePhaseNumber && e.phase_number > sourcePhaseNumber) {
+    shouldUpdate = true;
+    reason = 'same-trade next phase';
+    console.log('[CASCADE] ✅ Found same-trade phase:', e.trade_code, 'Phase', e.phase_number, '>', sourcePhaseNumber);
+  }
+  // Szenario B: Entry hat explizite Dependency auf das Gewerk oder Phase
+  else if (deps.length > 0) {
+    // ✅ FIX: Finde das Source-Entry aus allEntries
+    const currentSourceEntry = allEntries.find(entry => 
+      entry.trade_code === sourceTradeCode && 
+      (entry.phase_number === sourcePhaseNumber || entry.phase_name === sourcePhaseName)
+    );
+    
+    if (currentSourceEntry) {
+      deps.forEach(dep => {
+        // Format: "DACH" oder "DACH-Eindeckung"
+        if (dep === sourceTradeCode || 
+            (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-'))) {
+          // ✅ FIX: Prüfe ob Entry NACH Source kommt (sonst Rückwärts-Cascade!)
+          const eStart = new Date(e.planned_start);
+          const sourceEnd = new Date(currentSourceEntry.planned_end);
+          
+          if (eStart >= sourceEnd) {
+            shouldUpdate = true;
+            reason = 'same-trade via dependency';
+            console.log('[CASCADE] ✅ Found same-trade dependency:', e.trade_code);
+          } else {
+            console.log('[CASCADE] ⏸️ Skipping same-trade dependency (comes before source):', e.trade_code, 'Phase', e.phase_number);
+          }
+        }
+      });
+    }
+  }
+  // ✅ FIX: Szenario C - Implizite Reihenfolge bei gleichem Gewerk
+  // Wenn keine phase_number existiert, prüfe ob Entry nach dem ORIGINAL-Ende startet
+  else if (!sourcePhaseNumber && !e.phase_number) {
+    const eStart = new Date(e.planned_start);
+    // ⚠️ WICHTIG: Verwende das ALTE Ende vom ORIGINAL-Entry, nicht das neue!
+    const sourceEndDate = oldEnd;
+    
+    // Prüfe ob Entry nach dem ursprünglichen Ende startet (mit 1 Tag Toleranz)
+    const daysDiff = Math.floor((eStart - sourceEndDate) / (1000 * 60 * 60 * 24));
+    if (daysDiff >= -1) {
+      shouldUpdate = true;
+      reason = 'same-trade follows by date';
+      console.log('[CASCADE] ✅ Found same-trade by date:', e.trade_code, 'starts', daysDiff, 'days after original end');
+    }
+  }
+}
               
               // ================================================================
               // FALL 2: ABHÄNGIGES Gewerk (via Dependencies)
