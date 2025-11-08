@@ -27912,7 +27912,15 @@ if (shouldUpdate) {
   // ✅ FIX: Rekursion mit AKTUELLEN Werten des gefundenen Entries
   findAllDependents(e.trade_code, e.phase_number, e.phase_name, e);
 }
+ });  
+};     
           
+          // Starte CASCADE  // ← NEU
+          console.log('[CASCADE] 🚀 Starting cascade from ORIGINAL:', originalEntry.code, 'Phase', originalEntry.phase_number || originalEntry.phase_name || 'N/A');  // ← NEU
+          findAllDependents(originalEntry.code, originalEntry.phase_number, originalEntry.phase_name, originalEntry);  // ← NEU
+          
+          console.log('[CASCADE] 🎯 Found', toUpdate.size, 'entries to shift by', dayShift, 'days');  // ← NEU
+              
           // ===================================================================
           // UPDATE ALLER ABHÄNGIGEN ENTRIES
           // ===================================================================
