@@ -251,7 +251,7 @@ return () => clearInterval(pollInterval);
       if (data.affectedEntries > 0) {
         alert(`✅ Termine aktualisiert\n⚠️ ${data.affectedEntries} abhängige Termine wurden automatisch angepasst`);
       } else {
-        alert('✅ Termine aktualisiert\n⚠️ HINWEIS: Keine abhängigen Termine wurden verschoben. Bitte Backend-Cascade-Logik prüfen.');
+        alert('✅ Termine aktualisiert');
       }
     } else {
       const error = await res.json();
