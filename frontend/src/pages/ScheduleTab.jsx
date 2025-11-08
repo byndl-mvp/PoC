@@ -1198,21 +1198,19 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
 
       {/* ZENTRALISIERTES MODAL - nur EINES für alle Balken */}
       {editingEntry && (
-        <EditEntryModal
-          entry={editingEntry}
-          onClose={() => setEditingEntry(null)}
-          onSave={(entryIdOrStart, newEndOrDontUse, cascade) => {
-            // Check ob es ein Trade Summary ist (dann ist erster Parameter die Entry ID)
-            if (editingEntry.isTradeSummary) {
-              onUpdateEntry(entryIdOrStart, newEndOrDontUse, cascade);
-            } else {
-              // Normale Single Entry
-              onUpdateEntry(editingEntry.id, entryIdOrStart, newEndOrDontUse, cascade);
-            }
-            setEditingEntry(null);
-          }}
-        />
-      )}
+  <EditEntryModal
+    entry={editingEntry}
+    onClose={() => setEditingEntry(null)}
+    onSave={async (entryIdOrStart, newEndOrDontUse, cascade) => {  // ✅ async
+      if (editingEntry.isTradeSummary) {
+        await onUpdateEntry(entryIdOrStart, newEndOrDontUse, cascade);  // ✅ await
+      } else {
+        await onUpdateEntry(editingEntry.id, entryIdOrStart, newEndOrDontUse, cascade);  // ✅ await
+      }
+      setEditingEntry(null);  // ✅ Modal schließt NACH Update + Reload
+    }}
+  />
+)}
     </div>
   );
 }
