@@ -27835,31 +27835,45 @@ if (shouldCascade) {
               // ================================================================
               // FALL 2: ABHÄNGIGES Gewerk (via Dependencies)
               // ================================================================
-              if (!shouldUpdate && e.trade_code !== sourceTradeCode) {
-                deps.forEach(dep => {
-                  // Format 1: "DACH"
-                  if (dep === sourceTradeCode) {
-                    shouldUpdate = true;
-                    reason = 'dependent trade';
-                    console.log('[CASCADE] ✅ Found dependent trade:', e.trade_code, 'depends on', sourceTradeCode);
-                  }
-                  // Format 2: "DACH-Eindeckung" (mit Phase)
-                  if (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-')) {
-                    const depPhaseName = dep.substring(sourceTradeCode.length + 1);
-                    // Prüfe ob es die richtige Phase ist
-                    if (sourcePhaseName && depPhaseName === sourcePhaseName) {
-                      shouldUpdate = true;
-                      reason = 'dependent trade (specific phase)';
-                      console.log('[CASCADE] ✅ Found dependent trade with phase match:', e.trade_code, 'depends on', dep);
-                    } else if (!sourcePhaseNumber) {
-                      // Keine Phase-Info beim Source -> verschiebe trotzdem
-                      shouldUpdate = true;
-                      reason = 'dependent trade (with phase ref)';
-                      console.log('[CASCADE] ✅ Found dependent trade with phase ref:', e.trade_code, 'depends on', dep);
-                    }
-                  }
-                });
-              }
+if (!shouldUpdate && e.trade_code !== sourceTradeCode) {
+  deps.forEach(dep => {
+    // Format 1: "DACH"
+    if (dep === sourceTradeCode) {
+      // ✅ FIX: Prüfe zeitliche Reihenfolge!
+      const eStart = new Date(e.planned_start);
+      const sourceEnd = new Date(sourceEntry.planned_end);
+      
+      if (eStart >= sourceEnd) {
+        shouldUpdate = true;
+        reason = 'dependent trade';
+        console.log('[CASCADE] ✅ Found dependent trade:', e.trade_code, 'depends on', sourceTradeCode);
+      } else {
+        console.log('[CASCADE] ⏸️ Skipping dependent trade (comes before source):', e.trade_code);
+      }
+    }
+    // Format 2: "DACH-Eindeckung" (mit Phase)
+    if (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-')) {
+      const depPhaseName = dep.substring(sourceTradeCode.length + 1);
+      // ✅ FIX: Auch hier zeitliche Prüfung
+      const eStart = new Date(e.planned_start);
+      const sourceEnd = new Date(sourceEntry.planned_end);
+      
+      if (eStart < sourceEnd) {
+        console.log('[CASCADE] ⏸️ Skipping dependent trade with phase (comes before source):', e.trade_code);
+        return;
+      }
+      
+      // Prüfe ob es die richtige Phase ist
+      if (sourcePhaseName && depPhaseName === sourcePhaseName) {
+        shouldUpdate = true;
+        reason = 'dependent trade (specific phase)';
+      } else if (!sourcePhaseNumber) {
+        shouldUpdate = true;
+        reason = 'dependent trade (with phase ref)';
+      }
+    }
+  });
+}
               
               if (shouldUpdate) {
                 console.log('[CASCADE] ✅ Will update:', e.trade_code, 'Phase', e.phase_number || 'N/A', `(${reason})`);
