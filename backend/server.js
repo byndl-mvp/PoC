@@ -27212,31 +27212,37 @@ if (processedIndices.size < allEntries.length) {
   // 4. SPEICHERE IN DATENBANK
   // ================================================================
   for (const entry of scheduledEntries) {
-    await query(
-      `INSERT INTO schedule_entries 
-       (schedule_id, trade_id, phase_name, phase_number,
-        planned_start, planned_end, duration_days, buffer_days,
-        status, dependencies,
-        scheduling_reason, buffer_reason, risks, is_minor_work)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-      [
-        schedule.id,
-        entry.trade_id,
-        entry.phase.phase_name,
-        entry.phase.phase_number,
-        entry.startDate,
-        entry.endDate,
-        entry.phase.duration_days,
-        entry.phase.buffer_days || 0,
-        'pending',
-        JSON.stringify(entry.dependencies),
-        entry.phase.scheduling_reason,
-        entry.phase.buffer_reason,
-        entry.phase.risks,
-        entry.is_minor_work || false 
-      ]
-    );
-  }
+  // ✅ Zähle Phasen pro Trade für is_multi_phase
+  const tradePhaseCount = scheduledEntries.filter(e => 
+    e.trade_code === entry.trade_code
+  ).length;
+  
+  await query(
+    `INSERT INTO schedule_entries 
+     (schedule_id, trade_id, phase_name, phase_number,
+      planned_start, planned_end, duration_days, buffer_days,
+      status, dependencies,
+      scheduling_reason, buffer_reason, risks, is_minor_work, is_multi_phase)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+    [
+      schedule.id,
+      entry.trade_id,
+      entry.phase.phase_name,
+      entry.phase.phase_number,
+      entry.startDate,
+      entry.endDate,
+      entry.phase.duration_days,
+      entry.phase.buffer_days || 0,
+      'pending',
+      JSON.stringify(entry.dependencies),
+      entry.phase.scheduling_reason,
+      entry.phase.buffer_reason,
+      entry.phase.risks,
+      entry.is_minor_work || false,
+      tradePhaseCount > 1  
+    ]
+  );
+}
   
   console.log(`[SCHEDULE-SUCCESS] ${scheduledEntries.length} Einträge gespeichert`);
   console.log(`[PARALLEL-COUNT] ${scheduledEntries.filter(e => e.isParallel).length} parallele Phasen`);
