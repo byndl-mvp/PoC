@@ -533,8 +533,11 @@ const findDependencies = (entries) => {
       <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
       <div>
         <p className="text-blue-300 font-semibold mb-1">💡 Terminplan prüfen & freigeben</p>
-        <p className="text-gray-300 text-sm">
+        <p className="text-gray-300 text-sm mb-3">
           Die KI hat einen Terminplan erstellt. Prüfen Sie die Abfolge und geben Sie ihn dann frei. Nach der Freigabe können Sie Termine weiterhin jederzeit anpassen und mit Ihren Handwerkern abstimmen.
+        </p>
+        <p className="text-gray-400 text-xs">
+          <strong className="text-gray-300">Status "Ausstehend":</strong> Termine sind noch nicht von Handwerkern bestätigt. Die Bestätigung erfolgt nach der Freigabe im Zuge der Auftragsvergabe.
         </p>
       </div>
     </div>
@@ -1322,6 +1325,16 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
   style={{ ...position, top: '45px', zIndex: 5 }}
 >
             {new Date(entry.planned_start).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} - {new Date(entry.planned_end).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+            {entry.trade_code === 'GER' && (() => {
+              const start = new Date(entry.planned_start);
+              const end = new Date(entry.planned_end);
+              const weeks = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 7));
+              return (
+                <div className="text-teal-300 mt-1">
+                  Standzeit: {weeks} {weeks === 1 ? 'Woche' : 'Wochen'}
+                </div>
+              );
+            })()}
           </div>
         </div>
 
