@@ -1233,6 +1233,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
       allEntries={trade.entries}
       color={tradeColors[tradeIdx % tradeColors.length]}
       scheduleStatus={scheduleStatus} 
+      apiUrl={apiUrl}
       />
   );
 })()}
