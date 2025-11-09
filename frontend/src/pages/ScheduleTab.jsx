@@ -675,7 +675,8 @@ const findDependencies = (entries) => {
         onToggleTrade={(code) => setExpandedTrades(prev => ({ ...prev, [code]: !prev[code] }))}
         findDependencies={findDependencies}
         scheduleStatus={schedule.status} 
-      />
+        apiUrl={apiUrl}
+        />
 
       {/* Approval Modal */}
       {showApprovalModal && (
