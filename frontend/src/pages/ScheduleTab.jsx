@@ -1452,9 +1452,8 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
         }
       }}
     />
-  ) : entry.confirmed && entry.confirmed_by ? (
-    // ✅ NEU: Badge mit Firma-Name wenn bestätigt
-    <HandwerkerConfirmedBadge entryId={entry.id} />
+    ) : entry.confirmed && entry.confirmed_by ? (
+    <HandwerkerConfirmedBadge entryId={entry.id} apiUrl={apiUrl} />
   ) : entry.confirmed ? (
     <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
       <CheckCircle className="w-3 h-3" />
