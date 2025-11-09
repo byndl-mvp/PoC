@@ -17792,37 +17792,37 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
     
     await query('BEGIN');
 
-    // NEUE PRÜFUNG: Check ob bereits eine andere Firma in Vertragsanbahnung ist
-    const existingPreliminary = await query(
-      `SELECT o.*, h.company_name 
-       FROM offers o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN tenders tn2 ON o.tender_id = tn2.id
-       WHERE tn2.project_id = $1 
-       AND tn2.trade_id = (
-         SELECT trade_id FROM tenders WHERE id = (
-           SELECT tender_id FROM offers WHERE id = $2
-         )
-       )
-       AND o.status = 'preliminary'
-       AND o.id != $2`,
-      [projectId, offerId]
-    );
+    // Check ob bereits eine andere Firma in Vertragsanbahnung ist
+const existingPreliminary = await query(
+  `SELECT o.*, h.company_name 
+   FROM offers o
+   JOIN handwerker h ON o.handwerker_id = h.id
+   JOIN tenders tn2 ON o.tender_id = tn2.id
+   WHERE tn2.project_id = $1 
+   AND tn2.trade_id = (
+     SELECT trade_id FROM tenders WHERE id = (
+       SELECT tender_id FROM offers WHERE id = $2
+     )
+   )
+   AND o.status = 'preliminary'
+   AND o.id != $2`,
+  [projectId, offerId]
+);
 
-    if (existingPreliminary.rows.length > 0) {
-      await query('ROLLBACK');
-      return res.status(400).json({ 
-        error: 'conflict',
-        existingCompany: existingPreliminary.rows[0].company_name,
-        message: `Sie befinden sich in diesem Gewerk bereits in der Vertragsanbahnung mit ${existingPreliminary.rows[0].company_name}. In diesem Status hat ${existingPreliminary.rows[0].company_name} Exklusivität zu Ihrem Auftrag. Dies ermöglicht beiden Seiten eine vertrauensvolle Kennenlernphase mit ausreichend Zeit für Ortstermine und Kalkulationsanpassungen. Falls Sie mit ${existingPreliminary.rows[0].company_name} nicht fortfahren möchten, beenden Sie bitte zuerst die bestehende Vertragsanbahnung.`
-      });
-    }
-    
-    // Hole Angebotsdaten
-    const offerResult = await query(
+if (existingPreliminary.rows.length > 0) {
+  await query('ROLLBACK');
+  return res.status(400).json({ 
+    error: 'conflict',
+    existingCompany: existingPreliminary.rows[0].company_name,
+    message: `Sie befinden sich in diesem Gewerk bereits in der Vertragsanbahnung mit ${existingPreliminary.rows[0].company_name}. In diesem Status hat ${existingPreliminary.rows[0].company_name} Exklusivität zu Ihrem Auftrag. Dies ermöglicht beiden Seiten eine vertrauensvolle Kennenlernphase mit ausreichend Zeit für Ortstermine und Kalkulationsanpassungen. Falls Sie mit ${existingPreliminary.rows[0].company_name} nicht fortfahren möchten, beenden Sie bitte zuerst die bestehende Vertragsanbahnung.`
+  });
+}
+
+// Hole Angebotsdaten - MIT FIX!
+const offerResult = await query(
   `SELECT o.*, h.*, t.name as trade_name,
           p.bauherr_id, p.description as project_description, tn.project_id,
-          b.name as bauherr_name  // ✅ FIX: b.name statt b.first_name || ' ' || b.last_name
+          b.name as bauherr_name  // ✅ FIX: b.name statt b.first_name
    FROM offers o
    JOIN handwerker h ON o.handwerker_id = h.id
    JOIN tenders tn ON o.tender_id = tn.id
