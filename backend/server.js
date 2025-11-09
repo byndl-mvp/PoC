@@ -19855,15 +19855,17 @@ app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
 // NEU: Terminplan-Änderungen verarbeiten
 if (schedule_phases && schedule_phases.length > 0) {
   const offerInfo = await query(
-    'SELECT handwerker_id FROM offers WHERE id = $1',
+    'SELECT handwerker_id, tender_id FROM offers WHERE id = $1',
     [offerId]
   );
   
   if (offerInfo.rows.length > 0) {
     const handwerkerId = offerInfo.rows[0].handwerker_id;
+    const tenderId = offerInfo.rows[0].tender_id;
     
     for (const phase of schedule_phases) {
       if (has_schedule_changes && phase.changed) {
+        // ✅ Termine SOFORT in DB ändern
         await query(
           `UPDATE schedule_entries 
            SET planned_start = $2,
@@ -19871,28 +19873,29 @@ if (schedule_phases && schedule_phases.length > 0) {
                status = 'change_requested',
                updated_at = NOW()
            WHERE id = $1`,
-          [phase.id, phase.start, phase.end]
+          [phase.id, phase.planned_start, phase.planned_end]  // ✅ RICHTIG
         );
         
-        await query(
-          `INSERT INTO schedule_change_requests 
-           (schedule_entry_id, handwerker_id, requested_start, requested_end, 
-            reason, urgency, status, created_at)
-           VALUES ($1, $2, $3, $4, $5, 'normal', 'pending', NOW())`,
-          [phase.id, handwerkerId, phase.start, phase.end, schedule_change_reason]
-        );
-        
+        // ✅ History speichern mit original_start/original_end
         await query(
           `INSERT INTO schedule_history 
            (schedule_entry_id, changed_by_type, changed_by_id, change_type,
             old_start, old_end, new_start, new_end, reason, created_at)
            VALUES ($1, 'handwerker', $2, 'date_change', $3, $4, $5, $6, $7, NOW())`,
-          [phase.id, handwerkerId, phase.planned_start, phase.planned_end, 
-           phase.start, phase.end, schedule_change_reason]
+          [
+            phase.id, 
+            handwerkerId, 
+            phase.original_start,   // ✅ ALT
+            phase.original_end,     // ✅ ALT
+            phase.planned_start,    // ✅ NEU
+            phase.planned_end,      // ✅ NEU
+            schedule_change_reason
+          ]
         );
       } else {
+        // ✅ Bestätigt ohne Änderung
         await query(
-          `UPDATE schedule_entries 
+          `UPDATE schedule_entries
            SET confirmed = true,
                confirmed_by = $2,
                confirmed_at = NOW(),
@@ -19904,6 +19907,7 @@ if (schedule_phases && schedule_phases.length > 0) {
       }
     }
     
+    // Notification an Bauherr (NUR bei Änderungen!)
     if (has_schedule_changes) {
       const projectInfo = await query(
         `SELECT p.bauherr_id, t.name as trade_name
@@ -19916,21 +19920,29 @@ if (schedule_phases && schedule_phases.length > 0) {
       );
       
       if (projectInfo.rows.length > 0) {
+        const tradeName = projectInfo.rows[0].trade_name;
+        
+        // ✅ Notification mit Begründung
         await query(
           `INSERT INTO notifications 
-           (user_type, user_id, type, message, reference_type, reference_id, created_at)
-           VALUES ('bauherr', $1, 'schedule_change_request', $2, 'offer', $3, NOW())`,
+           (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+           VALUES ('bauherr', $1, 'schedule_change_request', $2, 'offer', $3, $4, NOW())`,
           [
             projectInfo.rows[0].bauherr_id,
-            `Handwerker hat Terminänderung für ${projectInfo.rows[0].trade_name} vorgeschlagen`,
-            offerId
+            `Handwerker hat Terminänderung für ${tradeName} vorgeschlagen`,
+            offerId,
+            JSON.stringify({
+              reason: schedule_change_reason,
+              offer_id: offerId,
+              trade_name: tradeName
+            })
           ]
         );
       }
     }
   }
 }
-    
+
     // Benachrichtige Bauherr
     const offerData = await query(
       `SELECT o.*, b.email, b.name, t.name as trade_name, h.company_name
