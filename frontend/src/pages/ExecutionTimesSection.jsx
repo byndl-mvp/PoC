@@ -306,16 +306,16 @@ export default function ExecutionTimesSection({
           {!editMode ? (
             <>
               <button
-                onClick={() => {
-                  // Termine als bestätigt markieren
-                  // Dies wird beim Submit des Angebots verwendet
-                  console.log('Termine bestätigt');
-                }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold rounded-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-              >
-                <CheckCircle className="w-5 h-5" />
-                Termine bestätigen
-              </button>
+  onClick={() => {
+    if (onPhasesChange) {
+      onPhasesChange(localPhases, '', false);
+    }
+  }}
+  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold rounded-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+>
+  <CheckCircle className="w-5 h-5" />
+  Termine bestätigen
+</button>
               
               <button
                 onClick={() => setEditMode(true)}
