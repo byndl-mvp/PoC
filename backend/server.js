@@ -29174,6 +29174,31 @@ app.get('/api/projects/:projectId/schedule/badge-count', async (req, res) => {
 });
 
 // ============================================================================
+// LADE ALLE CHANGE REQUESTS FÜR EIN PROJEKT
+// ============================================================================
+app.get('/api/projects/:projectId/schedule-change-requests', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const result = await query(
+      `SELECT scr.*
+       FROM schedule_change_requests scr
+       JOIN schedule_entries se ON scr.schedule_entry_id = se.id
+       JOIN project_schedules ps ON se.schedule_id = ps.id
+       WHERE ps.project_id = $1
+       ORDER BY scr.created_at DESC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Load change requests failed:', err);
+    res.status(500).json({ error: 'Fehler beim Laden' });
+  }
+});
+
+// ============================================================================
 // HANDWERKER-INFO FÜR SCHEDULE ENTRY ABRUFEN
 // ============================================================================
 app.get('/api/schedule-entries/:entryId/handwerker-info', async (req, res) => {
