@@ -27713,7 +27713,12 @@ app.get('/api/projects/:projectId/schedule', async (req, res) => {
           ) ORDER BY se.planned_start
         ) FILTER (WHERE se.id IS NOT NULL) as entries
        FROM project_schedules ps
-       LEFT JOIN schedule_entries se ON ps.id = se.schedule_id
+       LEFT JOIN (
+         -- ✅ Hole nur die neuesten Einträge pro trade/phase
+         SELECT DISTINCT ON (schedule_id, trade_id, phase_number) *
+         FROM schedule_entries
+         ORDER BY schedule_id, trade_id, phase_number, updated_at DESC
+       ) se ON ps.id = se.schedule_id
        LEFT JOIN trades t ON se.trade_id = t.id
        WHERE ps.project_id = $1
        GROUP BY ps.id`,
