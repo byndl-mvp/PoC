@@ -1215,7 +1215,11 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
   
   return (
     <GanttBar
-      entry={summaryEntry}
+      entry={{
+        ...summaryEntry,
+        onAcceptChange: onAcceptChange,
+        onRejectChange: onRejectChange
+      }}
       minDate={minDate}
       totalDays={totalDays}
       editMode={false}
