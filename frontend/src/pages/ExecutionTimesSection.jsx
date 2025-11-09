@@ -373,11 +373,6 @@ export default function ExecutionTimesSection({
           </div>
         )}
       </div>
-
-      {/* Export für parent component */}
-      <input type="hidden" data-schedule-phases={JSON.stringify(localPhases)} />
-      <input type="hidden" data-change-reason={changeReason} />
-      <input type="hidden" data-has-changes={hasChanges} />
     </div>
   );
 }
