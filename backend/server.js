@@ -19885,7 +19885,7 @@ if (schedule_phases && schedule_phases.length > 0) {
     const tenderId = offerInfo.rows[0].tender_id;
     
     for (const phase of schedule_phases) {
-      if (has_schedule_changes && phase.changed) {
+      if (has_schedule_changes) {
         // ✅ Termine SOFORT in DB ändern
         await query(
           `UPDATE schedule_entries 
