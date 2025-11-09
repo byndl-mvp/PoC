@@ -1193,6 +1193,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
                   onDelete={() => onDeleteEntry(entry.id)} 
                   color={tradeColors[tradeIdx % tradeColors.length]}
                   scheduleStatus={scheduleStatus} 
+                  apiUrl={apiUrl}
                   />
               ))}
               
