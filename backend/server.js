@@ -19854,6 +19854,13 @@ app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
     console.log('EMPFANGEN - Offer ID:', offerId);
     console.log('EMPFANGEN - Amount:', amount);
     console.log('EMPFANGEN - LV_DATA vorhanden?:', !!lv_data);
+
+    // ✅ NEU: Schedule-Daten loggen
+console.log('🔍 SCHEDULE DEBUG:', {
+  has_schedule_changes,
+  schedule_phases_count: schedule_phases?.length,
+  schedule_change_reason
+});
     
     await query('BEGIN');
     
@@ -19885,48 +19892,75 @@ if (schedule_phases && schedule_phases.length > 0) {
     const tenderId = offerInfo.rows[0].tender_id;
     
     for (const phase of schedule_phases) {
-      if (has_schedule_changes) {
-        // ✅ Termine SOFORT in DB ändern
-        await query(
-          `UPDATE schedule_entries 
-           SET planned_start = $2,
-               planned_end = $3,
-               status = 'change_requested',
-               updated_at = NOW()
-           WHERE id = $1`,
-          [phase.id, phase.planned_start, phase.planned_end]  // ✅ RICHTIG
-        );
-        
-        // ✅ History speichern mit original_start/original_end
-        await query(
-          `INSERT INTO schedule_history 
-           (schedule_entry_id, changed_by_type, changed_by_id, change_type,
-            old_start, old_end, new_start, new_end, reason, created_at)
-           VALUES ($1, 'handwerker', $2, 'date_change', $3, $4, $5, $6, $7, NOW())`,
-          [
-            phase.id, 
-            handwerkerId, 
-            phase.original_start,   // ✅ ALT
-            phase.original_end,     // ✅ ALT
-            phase.planned_start,    // ✅ NEU
-            phase.planned_end,      // ✅ NEU
-            schedule_change_reason
-          ]
-        );
-      } else {
-        // ✅ Bestätigt ohne Änderung
-        await query(
-          `UPDATE schedule_entries
-           SET confirmed = true,
-               confirmed_by = $2,
-               confirmed_at = NOW(),
-               status = 'confirmed',
-               updated_at = NOW()
-           WHERE id = $1`,
-          [phase.id, handwerkerId]
-        );
-      }
-    }
+  // ✅ Validiere dass Phase existiert
+  const phaseCheck = await query(
+    'SELECT id FROM schedule_entries WHERE id = $1 AND offer_id = $2',
+    [phase.id, offerId]
+  );
+  
+  if (phaseCheck.rows.length === 0) {
+    throw new Error(`Invalid phase ID: ${phase.id}`);
+  }
+  
+  // ✅ Detailliertes Logging
+  console.log('📅 Processing phase:', {
+    id: phase.id,
+    old_start: phase.original_start || 'from_db',
+    new_start: phase.planned_start,
+    has_changes: has_schedule_changes
+  });
+  
+  if (has_schedule_changes) {
+    // ✅ Hole alte Werte aus DB VOR dem Update
+    const oldPhaseData = await query(
+      'SELECT planned_start, planned_end FROM schedule_entries WHERE id = $1',
+      [phase.id]
+    );
+    
+    const oldStart = phase.original_start || oldPhaseData.rows[0]?.planned_start;
+    const oldEnd = phase.original_end || oldPhaseData.rows[0]?.planned_end;
+    
+    // ✅ Termine SOFORT in DB ändern
+    await query(
+      `UPDATE schedule_entries 
+       SET planned_start = $2,
+           planned_end = $3,
+           status = 'change_requested',
+           updated_at = NOW()
+       WHERE id = $1`,
+      [phase.id, phase.planned_start, phase.planned_end]
+    );
+    
+    // ✅ History speichern mit Fallback
+    await query(
+      `INSERT INTO schedule_history 
+       (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+        old_start, old_end, new_start, new_end, reason, created_at)
+       VALUES ($1, 'handwerker', $2, 'date_change', $3, $4, $5, $6, $7, NOW())`,
+      [
+        phase.id, 
+        handwerkerId, 
+        oldStart,
+        oldEnd,
+        phase.planned_start,
+        phase.planned_end,
+        schedule_change_reason
+      ]
+    );
+  } else {
+    // ✅ Bestätigt ohne Änderung
+    await query(
+      `UPDATE schedule_entries
+       SET confirmed = true,
+           confirmed_by = $2,
+           confirmed_at = NOW(),
+           status = 'confirmed',
+           updated_at = NOW()
+       WHERE id = $1`,
+      [phase.id, handwerkerId]
+    );
+  }
+}
     
     // Notification an Bauherr (NUR bei Änderungen!)
     if (has_schedule_changes) {
