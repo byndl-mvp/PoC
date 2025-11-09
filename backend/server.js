@@ -20342,9 +20342,6 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     
     const offer = offerData.rows[0];
     
-    // 3. Werkvertrag-Text generieren
-    const contractText = generateVOBContract(offer);
-    
    // 3a. ✅ NEU: Hole finale Termine aus schedule_entries
     const scheduleTermine = await query(
       `SELECT 
