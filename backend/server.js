@@ -17822,7 +17822,7 @@ if (existingPreliminary.rows.length > 0) {
 const offerResult = await query(
   `SELECT o.*, h.*, t.name as trade_name,
           p.bauherr_id, p.description as project_description, tn.project_id,
-          b.name as bauherr_name  // ✅ FIX: b.name statt b.first_name
+          b.name as bauherr_name  
    FROM offers o
    JOIN handwerker h ON o.handwerker_id = h.id
    JOIN tenders tn ON o.tender_id = tn.id
@@ -17998,18 +17998,39 @@ const offerResult = await query(
 // Prüft ob bereits eine Vertragsanbahnung für dieses Gewerk existiert
 app.get('/api/projects/:projectId/trades/:tradeId/preliminary-check', async (req, res) => {
   try {
-    const { projectId, tradeId } = req.params;
+    const { projectId, tradeIdOrCode } = req.params;
     
-    const existingPreliminary = await query(
-      `SELECT o.*, h.company_name 
-       FROM offers o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN tenders t ON o.tender_id = t.id
-       WHERE t.project_id = $1 
-       AND t.trade_id = $2 
-       AND o.status = 'preliminary'`,
-      [projectId, tradeId]
-    );
+    // Prüfe ob es eine ID (Zahl) oder ein Code (String) ist
+    const isNumeric = /^\d+$/.test(tradeIdOrCode);
+    
+    let existingPreliminary;
+    
+    if (isNumeric) {
+      // Trade-ID wurde übergeben
+      existingPreliminary = await query(
+        `SELECT o.*, h.company_name 
+         FROM offers o
+         JOIN handwerker h ON o.handwerker_id = h.id
+         JOIN tenders t ON o.tender_id = t.id
+         WHERE t.project_id = $1 
+         AND t.trade_id = $2 
+         AND o.status = 'preliminary'`,
+        [projectId, tradeIdOrCode]
+      );
+    } else {
+      // Trade-Code wurde übergeben - konvertiere zu ID
+      existingPreliminary = await query(
+        `SELECT o.*, h.company_name 
+         FROM offers o
+         JOIN handwerker h ON o.handwerker_id = h.id
+         JOIN tenders t ON o.tender_id = t.id
+         JOIN trades tr ON t.trade_id = tr.id
+         WHERE t.project_id = $1 
+         AND tr.code = $2 
+         AND o.status = 'preliminary'`,
+        [projectId, tradeIdOrCode]
+      );
+    }
     
     if (existingPreliminary.rows.length > 0) {
       return res.json({
