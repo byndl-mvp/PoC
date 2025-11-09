@@ -1201,6 +1201,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
               
               {/* Gesamtbalken (collapsed) */}
 {!expandedTrades[trade.trade_code] && (() => {
+  // Finde den Entry mit status='change_requested' für diesen Trade (falls vorhanden)
+  const changeRequestEntry = trade.entries.find(e => e.status === 'change_requested');
+  
   const summaryEntry = {
     ...trade.entries[0],
     planned_start: trade.entries.reduce((min, e) => 
@@ -1210,16 +1213,19 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
     planned_end: trade.entries.reduce((max, e) => 
       e.planned_end > max ? e.planned_end : max, 
       trade.entries[0].planned_end
-    )
+    ),
+    // Wenn es eine Änderungsanfrage gibt, übernimm den Status
+    status: changeRequestEntry ? 'change_requested' : trade.entries[0].status,
+    // Falls confirmed, prüfe ob einer der entries confirmed ist
+    confirmed: trade.entries.some(e => e.confirmed),
+    confirmed_by: trade.entries.find(e => e.confirmed_by)?.confirmed_by,
+    onAcceptChange: onAcceptChange,
+    onRejectChange: onRejectChange
   };
   
   return (
     <GanttBar
-      entry={{
-        ...summaryEntry,
-        onAcceptChange: onAcceptChange,
-        onRejectChange: onRejectChange
-      }}
+      entry={summaryEntry}
       minDate={minDate}
       totalDays={totalDays}
       editMode={false}
