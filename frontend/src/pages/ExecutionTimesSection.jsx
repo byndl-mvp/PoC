@@ -283,13 +283,18 @@ export default function ExecutionTimesSection({
               Begründung für Terminänderung (Pflichtfeld)
             </label>
             <textarea
-              value={changeReason}
-              onChange={(e) => setChangeReason(e.target.value)}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              rows="3"
-              placeholder="Bitte erläutern Sie, warum eine Anpassung der Termine notwendig ist (z.B. Personalengpässe, Materiallieferung, andere Projekte)..."
-              required
-            />
+  value={changeReason}
+  onChange={(e) => {
+    setChangeReason(e.target.value);
+    if (onPhasesChange) {
+      onPhasesChange(localPhases, e.target.value, hasChanges);
+    }
+  }}
+  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+  rows="3"
+  placeholder="Bitte erläutern Sie, warum eine Anpassung der Termine notwendig ist (z.B. Personalengpässe, Materiallieferung, andere Projekte)..."
+  required
+/>
             <p className="text-gray-400 text-xs mt-2">
               Der Bauherr muss Ihre Änderung genehmigen, bevor Sie das Angebot verbindlich bestätigen können.
             </p>
