@@ -17,7 +17,8 @@ export default function ExecutionTimesSection({
   formData, 
   setFormData, 
   apiUrl,
-  offerStatus 
+  offerStatus,
+  onPhasesChange  
 }) {
   const [scheduleData, setScheduleData] = useState(null);
   const [loading, setLoading] = useState(true);
