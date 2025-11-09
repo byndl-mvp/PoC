@@ -32,44 +32,59 @@ export default function ExecutionTimesSection({
   }, [offerId]); // eslint-disable-line
 
   const loadScheduleDates = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/offers/${offerId}/schedule-dates`));
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/offers/${offerId}/schedule-dates`));
+    
+    if (res.ok) {
+      const data = await res.json();
       
-      if (res.ok) {
-        const data = await res.json();
+      if (data.hasSchedule) {
+        setScheduleData(data.schedule);
         
-        if (data.hasSchedule) {
-          setScheduleData(data.schedule);
-          
-          // Initialisiere localPhases mit Daten aus Terminplan
-          const phases = data.schedule.phases.map(phase => ({
-            ...phase,
-            start: phase.planned_start,
-            end: phase.planned_end,
-            changed: false
-          }));
-          setLocalPhases(phases);
-          
-          // Setze formData für Kompatibilität mit bestehendem Code
-          if (phases.length > 0) {
-            // Bei Mehrfach-Einsätzen: Nimm ersten und letzten
-            setFormData({
-              ...formData,
-              execution_start: phases[0].start,
-              execution_end: phases[phases.length - 1].end
-            });
-          }
-        } else {
-          setScheduleData(null);
+        const phases = data.schedule.phases.map(phase => ({
+          id: phase.id,
+          phase_name: phase.phase_name,
+          planned_start: phase.planned_start,
+          planned_end: phase.planned_end,
+          original_start: phase.planned_start,
+          original_end: phase.planned_end,
+          start: phase.planned_start,
+          end: phase.planned_end,
+          scheduling_reason: phase.scheduling_reason,
+          buffer_days: phase.buffer_days,
+          buffer_reason: phase.buffer_reason,
+          risks: phase.risks,
+          execution_order: phase.execution_order,
+          changed: false
+        }));
+        
+        setLocalPhases(phases);
+        
+        if (onPhasesChange) {
+          onPhasesChange(phases, '', false);
+        }
+        
+        if (phases.length > 0) {
+          setFormData({
+            ...formData,
+            execution_start: phases[0].start,
+            execution_end: phases[phases.length - 1].end
+          });
+        }
+      } else {
+        setScheduleData(null);
+        if (onPhasesChange) {
+          onPhasesChange([], '', false);
         }
       }
-    } catch (err) {
-      console.error('Fehler beim Laden der Termine:', err);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error('Fehler beim Laden der Termine:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handlePhaseChange = (phaseId, field, value) => {
     setLocalPhases(prev => prev.map(phase => 
