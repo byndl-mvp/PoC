@@ -217,6 +217,13 @@ console.log('Execution End:', formData.execution_end);
 // Prüfe ob lvData wirklich die aktualisierten Daten hat
 const positionenMitPreis = lvData.positions.filter(p => p.unitPrice && p.unitPrice > 0);
 console.log('Positionen mit Preis:', positionenMitPreis.length);
+
+console.log('🔥 SCHEDULE DEBUG:', {
+  schedulePhases,
+  hasScheduleChanges,
+  scheduleChangeReason,
+  phasesCount: schedulePhases.length
+});
       
       const res = await fetch(apiUrl(`/api/offers/${offerId}/confirm-final`), {
         method: 'POST',
