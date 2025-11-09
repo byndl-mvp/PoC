@@ -1983,10 +1983,11 @@ function HandwerkerConfirmedBadge({ entryId }) {
 
   const loadHandwerkerName = async () => {
     try {
-      // Hole Handwerker-Name über API
-      // TODO: API-Endpunkt muss noch erstellt werden
-      // Vorerst Placeholder
-      setHandwerkerName('Firma XY');
+      const res = await fetch(apiUrl(`/api/schedule-entries/${entryId}/handwerker-info`));
+      if (res.ok) {
+        const data = await res.json();
+        setHandwerkerName(data.company_name || 'Handwerker');
+      }
     } catch (err) {
       console.error('Error loading handwerker name:', err);
     } finally {
