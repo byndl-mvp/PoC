@@ -13,6 +13,8 @@ export default function HandwerkerScheduleTab({ handwerkerId, apiUrl }) {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'upcoming', 'in_progress'
   const [expandedProjects, setExpandedProjects] = useState({});
+  const [showChangeModal, setShowChangeModal] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState(null);
 
   useEffect(() => {
     loadSchedule();
@@ -34,6 +36,50 @@ export default function HandwerkerScheduleTab({ handwerkerId, apiUrl }) {
       }
     } catch (err) {
       console.error('Fehler beim Laden:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestChange = (entry) => {
+    setSelectedEntry(entry);
+    setShowChangeModal(true);
+  };
+
+  const handleSubmitChange = async (requestData) => {
+    try {
+      setLoading(true);
+      
+      const res = await fetch(apiUrl(`/api/schedule-entries/${selectedEntry.entry_id}/request-change`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          handwerkerId,
+          requestedStart: requestData.newStart,
+          requestedEnd: requestData.newEnd,
+          reason: requestData.reason,
+          urgency: requestData.urgency
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setShowChangeModal(false);
+        setSelectedEntry(null);
+        await loadSchedule();
+        
+        alert(`✅ ${data.message}\n\n` + 
+          (data.affectsFollowing 
+            ? `⚠️ Ihre Änderung betrifft ${data.estimatedDelay} Tag${data.estimatedDelay !== 1 ? 'e' : ''} Verzögerung für Folgetermine.`
+            : '✓ Keine Auswirkungen auf andere Gewerke.'
+          ));
+      } else {
+        const error = await res.json();
+        alert('❌ Fehler: ' + error.error);
+      }
+    } catch (err) {
+      console.error('Fehler beim Senden:', err);
+      alert('Ein Fehler ist aufgetreten');
     } finally {
       setLoading(false);
     }
@@ -226,10 +272,23 @@ export default function HandwerkerScheduleTab({ handwerkerId, apiUrl }) {
               }))}
               getStatusInfo={getStatusInfo}
               isToday={isToday}
+              onRequestChange={handleRequestChange}
             />
           ))
         )}
       </div>
+
+      {/* Change Request Modal */}
+      {showChangeModal && selectedEntry && (
+        <RequestChangeModal
+          entry={selectedEntry}
+          onClose={() => {
+            setShowChangeModal(false);
+            setSelectedEntry(null);
+          }}
+          onSubmit={handleSubmitChange}
+        />
+      )}
     </div>
   );
 }
@@ -258,7 +317,7 @@ function StatCard({ icon, label, value, color }) {
 // SUB-KOMPONENTE: PROJEKT-KARTE
 // ============================================================================
 
-function ProjectCard({ project, expanded, onToggle, getStatusInfo, isToday }) {
+function ProjectCard({ project, expanded, onToggle, getStatusInfo, isToday, onRequestChange }) {
   const allConfirmed = project.entries.every(e => e.confirmed);
   const hasContract = project.entries.some(e => e.is_contracted);
 
@@ -403,6 +462,22 @@ function ProjectCard({ project, expanded, onToggle, getStatusInfo, isToday }) {
                     </p>
                   </div>
                 )}
+
+                {/* Button: Termin ändern (nur bei confirmed und order_id vorhanden) */}
+                {entry.confirmed && entry.order_id && entry.status !== 'change_requested' && (
+                  <div className="mt-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRequestChange(entry);
+                      }}
+                      className="w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold"
+                    >
+                      <Clock className="w-4 h-4" />
+                      Terminänderung beantragen
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -427,5 +502,194 @@ function calculateWorkdays(start, end) {
     current.setDate(current.getDate() + 1);
   }
   return count;
+}
+
+// ============================================================================
+// SUB-KOMPONENTE: TERMINÄNDERUNGS-MODAL
+// ============================================================================
+
+function RequestChangeModal({ entry, onClose, onSubmit }) {
+  const [newStart, setNewStart] = useState(entry.planned_start);
+  const [newEnd, setNewEnd] = useState(entry.planned_end);
+  const [reason, setReason] = useState('');
+  const [urgency, setUrgency] = useState('normal');
+  const [submitting, setSubmitting] = useState(false);
+
+  const originalDuration = calculateWorkdays(entry.planned_start, entry.planned_end);
+  const newDuration = calculateWorkdays(newStart, newEnd);
+  const isValid = reason.trim().length >= 10 && newStart && newEnd && newEnd >= newStart;
+
+  const handleSubmit = async () => {
+    if (!isValid) return;
+    
+    setSubmitting(true);
+    await onSubmit({
+      newStart,
+      newEnd,
+      reason,
+      urgency
+    });
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-2xl w-full border border-white/20 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="p-6 border-b border-white/10">
+          <h3 className="text-2xl font-bold text-white mb-2">Terminänderung beantragen</h3>
+          <p className="text-gray-400 text-sm">
+            {entry.phase_name ? `${entry.trade_name} - Phase ${entry.phase_number}: ${entry.phase_name}` : entry.trade_name}
+          </p>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Aktuelle Termine */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <Info className="w-5 h-5 text-blue-400" />
+              Aktuelle Termine
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-400 text-xs mb-1">Start</p>
+                <p className="text-white font-semibold">
+                  {new Date(entry.planned_start).toLocaleDateString('de-DE', {
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs mb-1">Ende</p>
+                <p className="text-white font-semibold">
+                  {new Date(entry.planned_end).toLocaleDateString('de-DE', {
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </p>
+              </div>
+            </div>
+            <p className="text-gray-400 text-sm mt-2">
+              Dauer: {originalDuration} Arbeitstage
+            </p>
+          </div>
+
+          {/* Neue Termine */}
+          <div>
+            <h4 className="text-white font-semibold mb-3">Neue gewünschte Termine</h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Neuer Start</label>
+                <input
+                  type="date"
+                  value={newStart}
+                  onChange={(e) => setNewStart(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Neues Ende</label>
+                <input
+                  type="date"
+                  value={newEnd}
+                  onChange={(e) => setNewEnd(e.target.value)}
+                  min={newStart}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+            <p className="text-gray-400 text-sm mt-2">
+              Neue Dauer: {newDuration} Arbeitstage 
+              {newDuration !== originalDuration && (
+                <span className={newDuration > originalDuration ? 'text-orange-400' : 'text-green-400'}>
+                  {' '}({newDuration > originalDuration ? '+' : ''}{newDuration - originalDuration} Tage)
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Begründung */}
+          <div>
+            <label className="block text-white font-semibold mb-2">
+              Begründung <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              rows="4"
+              placeholder="Bitte beschreiben Sie ausführlich, warum eine Terminänderung notwendig ist (min. 10 Zeichen)..."
+            />
+            <p className="text-gray-400 text-xs mt-1">
+              {reason.length}/10 Zeichen {reason.length >= 10 ? '✓' : '(noch ' + (10 - reason.length) + ')'}
+            </p>
+          </div>
+
+          {/* Dringlichkeit */}
+          <div>
+            <label className="block text-white font-semibold mb-2">Dringlichkeit</label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setUrgency('normal')}
+                className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                  urgency === 'normal'
+                    ? 'bg-blue-500/20 border-blue-500 text-blue-300'
+                    : 'bg-white/5 border-white/20 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Normal
+              </button>
+              <button
+                onClick={() => setUrgency('urgent')}
+                className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                  urgency === 'urgent'
+                    ? 'bg-orange-500/20 border-orange-500 text-orange-300'
+                    : 'bg-white/5 border-white/20 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Dringend
+              </button>
+            </div>
+          </div>
+
+          {/* Warnung */}
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+            <p className="text-yellow-300 text-sm flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <span>
+                Ihre Anfrage wird dem Bauherrn zur Genehmigung vorgelegt. 
+                Bis zur Genehmigung bleiben die ursprünglichen Termine bestehen.
+                {newDuration !== originalDuration && ' Beachten Sie, dass sich dadurch auch Folgetermine verschieben können.'}
+              </span>
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-white/10 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!isValid || submitting}
+            className="flex-1 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Wird gesendet...' : 'Änderung beantragen'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
