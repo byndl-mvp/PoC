@@ -180,8 +180,10 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
         'message_from_handwerker': 'messages',
         'schedule_generated': 'schedule',
         'schedule_active': 'schedule',
-        'schedule_change_request': 'schedule',
+        'schedule_change_request': 'contracts',           
         'schedule_changed': 'schedule',
+        'schedule_change_accepted': 'schedule',           
+        'schedule_change_rejected': 'schedule',           
         'change_request_approved': 'schedule',
         'change_request_rejected': 'schedule'
       };
@@ -232,8 +234,10 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
       'schedule_change_request': '⏰',
       'schedule_changed': '🔄',
       'change_request_approved': '✅',
-      'change_request_rejected': '❌'
-    };
+      'change_request_rejected': '❌',
+      'schedule_change_accepted': '✅',
+      'schedule_change_rejected': '❌'
+  };
     return icons[type] || '🔔';
   };
 
@@ -258,7 +262,9 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
       'schedule_change_request': 'from-orange-600/20 to-red-600/20 border-orange-500/30',
       'schedule_changed': 'from-purple-600/20 to-blue-600/20 border-purple-500/30',
       'change_request_approved': 'from-green-600/20 to-teal-600/20 border-green-500/30',
-      'change_request_rejected': 'from-red-600/20 to-orange-600/20 border-red-500/30'
+      'change_request_rejected': 'from-red-600/20 to-orange-600/20 border-red-500/30',
+      'schedule_change_accepted': 'from-green-600/20 to-teal-600/20 border-green-500/30',
+      'schedule_change_rejected': 'from-red-600/20 to-orange-600/20 border-red-500/30'
     };
     return colors[type] || 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
   };
@@ -340,7 +346,17 @@ case 'appointment_request':
       return `Terminplan freigegeben - Bitte bestätigen Sie Ihre Einsatzzeiten${projectInfo}`;
     
     case 'schedule_change_request':
-      return `${getValue(['company_name', 'companyName'], 'Handwerker')} hat Terminänderung für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} vorgeschlagen${projectInfo}`;
+      const changeReason = details.reason || 'Keine Begründung angegeben';
+      return (
+        <div>
+          <div className="font-semibold mb-1">
+            {getValue(['company_name', 'companyName'], 'Handwerker')} hat Terminänderung für {getValue(['trade_name', 'tradeName'], 'Gewerk')} vorgeschlagen
+          </div>
+          <div className="text-sm text-gray-400 mt-1 italic">
+            Begründung: "{changeReason}"
+          </div>
+        </div>
+      );
     
     case 'schedule_changed':
       return `Terminplan wurde angepasst - Bitte prüfen Sie Ihre Termine${projectInfo}`;
@@ -350,7 +366,14 @@ case 'appointment_request':
     
     case 'change_request_rejected':
       return `Ihre Terminänderung für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} wurde abgelehnt${details.rejection_reason ? `: ${details.rejection_reason}` : ''}${projectInfo}`;      
+
+    case 'schedule_change_accepted':
+      return `Bauherr hat Ihre Terminänderung für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} akzeptiert${projectInfo}`;
     
+    case 'schedule_change_rejected':
+      const rejectionReason = details.reason || 'Keine Begründung angegeben';
+      return `Bauherr hat Ihre Terminänderung für ${getValue(['trade_name', 'tradeName'], 'Gewerk')} abgelehnt: "${rejectionReason}"${projectInfo}`;
+      
     default:
       return notification.message || `Neue Benachrichtigung${projectInfo}`;
   }
