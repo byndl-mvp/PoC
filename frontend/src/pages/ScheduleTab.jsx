@@ -382,26 +382,52 @@ const handleAcceptScheduleChange = async (idOrRequestId) => {
 };
 
 // ✅ NEU: Terminänderung ablehnen (Bauherr)
-const handleRejectScheduleChange = async (entryId, reason) => {
+const handleRejectScheduleChange = async (idOrRequestId, reason) => {
   try {
     setLoading(true);
     const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
     
-    const res = await fetch(apiUrl(`/api/schedule-changes/${entryId}/reject`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        bauherrId: userData.id,
-        reason 
-      })
-    });
+    const entry = schedule.entries?.find(e => e.change_request_id === idOrRequestId);
+    
+    if (entry && entry.change_request_id) {
+      // NACH BEAUFTRAGUNG: Nutze /resolve Route
+      const res = await fetch(apiUrl(`/api/schedule-change-requests/${idOrRequestId}/resolve`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          bauherrId: userData.id,
+          decision: 'rejected',
+          rejectionReason: reason,
+          cascadeChanges: false
+        })
+      });
 
-    if (res.ok) {
-      await loadSchedule();
-      alert('✅ Terminänderung wurde abgelehnt und Original-Termine wiederhergestellt.');
+      if (res.ok) {
+        const data = await res.json();
+        await loadSchedule();
+        alert(`✅ ${data.message}`);
+      } else {
+        const error = await res.json();
+        alert('❌ Fehler: ' + error.error);
+      }
     } else {
-      const error = await res.json();
-      alert('❌ Fehler: ' + error.error);
+      // VOR BEAUFTRAGUNG: Nutze alte Route (Fallback)
+      const res = await fetch(apiUrl(`/api/schedule-changes/${idOrRequestId}/reject`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          bauherrId: userData.id,
+          reason 
+        })
+      });
+
+      if (res.ok) {
+        await loadSchedule();
+        alert('✅ Terminänderung wurde abgelehnt.');
+      } else {
+        const error = await res.json();
+        alert('❌ Fehler: ' + error.error);
+      }
     }
   } catch (err) {
     console.error('Error rejecting schedule change:', err);
