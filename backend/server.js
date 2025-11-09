@@ -19894,13 +19894,13 @@ if (schedule_phases && schedule_phases.length > 0) {
     for (const phase of schedule_phases) {
   // ✅ Validiere dass Phase existiert
   const phaseCheck = await query(
-    'SELECT id FROM schedule_entries WHERE id = $1 AND offer_id = $2',
-    [phase.id, offerId]
-  );
-  
-  if (phaseCheck.rows.length === 0) {
-    throw new Error(`Invalid phase ID: ${phase.id}`);
-  }
+        'SELECT id FROM schedule_entries WHERE id = $1',
+        [phase.id]
+      );
+      
+      if (phaseCheck.rows.length === 0) {
+        throw new Error(`Invalid phase ID: ${phase.id}`);
+      }
   
   // ✅ Detailliertes Logging
   console.log('📅 Processing phase:', {
