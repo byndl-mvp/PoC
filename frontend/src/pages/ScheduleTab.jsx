@@ -297,8 +297,6 @@ const handleDeleteEntry = async (entryId) => {
   }
 };
 
-};
-  
   // ✅ NEU: Terminänderung akzeptieren (Bauherr)
   const handleAcceptScheduleChange = async (entryId) => {
     try {
