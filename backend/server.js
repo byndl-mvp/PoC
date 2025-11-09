@@ -28884,6 +28884,139 @@ app.get('/api/projects/:projectId/schedule/badge-count', async (req, res) => {
 });
 
 // ============================================================================
+// HANDWERKER-INFO FÜR SCHEDULE ENTRY ABRUFEN
+// ============================================================================
+app.get('/api/schedule-entries/:entryId/handwerker-info', async (req, res) => {
+  try {
+    const { entryId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+         h.id,
+         h.company_name,
+         h.contact_person,
+         se.confirmed,
+         se.confirmed_at,
+         se.status
+       FROM schedule_entries se
+       LEFT JOIN offers o ON o.id = (
+         SELECT o2.id 
+         FROM offers o2
+         JOIN tenders t ON o2.tender_id = t.id
+         WHERE t.trade_id = se.trade_id 
+         AND o2.status IN ('confirmed', 'accepted')
+         ORDER BY o2.updated_at DESC
+         LIMIT 1
+       )
+       LEFT JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE se.id = $1`,
+      [entryId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Entry nicht gefunden' });
+    }
+    
+    res.json(result.rows[0]);
+    
+  } catch (err) {
+    console.error('[SCHEDULE] Handwerker info failed:', err);
+    res.status(500).json({ error: 'Fehler beim Laden der Handwerker-Info' });
+  }
+});
+
+// ============================================================================
+// HANDWERKER SCHEDULE - ALLE EIGENEN TERMINE
+// ============================================================================
+app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+         p.id as project_id,
+         p.street,
+         p.house_number,
+         p.zip_code,
+         p.city,
+         p.description as project_description,
+         b.name as bauherr_name,
+         b.phone as bauherr_phone,
+         b.email as bauherr_email,
+         se.id as entry_id,
+         se.trade_id,
+         se.phase_name,
+         se.phase_number,
+         se.planned_start,
+         se.planned_end,
+         se.duration_days,
+         se.buffer_days,
+         se.confirmed,
+         se.confirmed_at,
+         se.status,
+         se.scheduling_reason,
+         t.name as trade_name,
+         t.code as trade_code,
+         o.id as order_id,
+         o.amount as order_amount
+       FROM schedule_entries se
+       JOIN project_schedules ps ON se.schedule_id = ps.id
+       JOIN projects p ON ps.project_id = p.id
+       JOIN bauherren b ON p.bauherr_id = b.id
+       JOIN trades t ON se.trade_id = t.id
+       JOIN orders o ON o.project_id = p.id AND o.trade_id = se.trade_id AND o.handwerker_id = $1
+       WHERE ps.status IN ('active', 'locked')
+       AND o.status = 'active'
+       ORDER BY se.planned_start ASC`,
+      [handwerkerId]
+    );
+    
+    // Gruppiere nach Projekt
+    const projects = {};
+    result.rows.forEach(row => {
+      if (!projects[row.project_id]) {
+        projects[row.project_id] = {
+          project_id: row.project_id,
+          address: `${row.street} ${row.house_number}, ${row.zip_code} ${row.city}`,
+          description: row.project_description,
+          bauherr_name: row.bauherr_name,
+          bauherr_phone: row.bauherr_phone,
+          bauherr_email: row.bauherr_email,
+          entries: []
+        };
+      }
+      
+      projects[row.project_id].entries.push({
+        entry_id: row.entry_id,
+        trade_id: row.trade_id,
+        trade_name: row.trade_name,
+        trade_code: row.trade_code,
+        phase_name: row.phase_name,
+        phase_number: row.phase_number,
+        planned_start: row.planned_start,
+        planned_end: row.planned_end,
+        duration_days: row.duration_days,
+        buffer_days: row.buffer_days,
+        confirmed: row.confirmed,
+        confirmed_at: row.confirmed_at,
+        status: row.status,
+        scheduling_reason: row.scheduling_reason,
+        order_id: row.order_id,
+        order_amount: row.order_amount
+      });
+    });
+    
+    res.json(Object.values(projects));
+    
+  } catch (err) {
+    console.error('[HANDWERKER] Schedule load failed:', err);
+    res.status(500).json({ error: 'Fehler beim Laden des Terminplans' });
+  }
+});
+
+
+
+// ============================================================================
 // HELPER-FUNKTION EXPORT (falls benötigt)
 // ============================================================================
 
