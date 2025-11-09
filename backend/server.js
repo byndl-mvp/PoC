@@ -29121,6 +29121,7 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
         duration_days: row.duration_days,
         status: row.status,
         confirmed: row.confirmed,
+        order_id: row.order_id,
         is_contracted: row.is_contracted
       });
     });
