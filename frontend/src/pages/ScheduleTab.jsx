@@ -92,7 +92,7 @@ return () => clearInterval(pollInterval);
   const loadSchedule = async () => {
   try {
     setLoading(true);
-    setSchedule(null);  // ✅ NEU: Erst auf null setzen
+    setSchedule(null);  // ✅ Erst auf null setzen
     
     const timestamp = Date.now();
     const random = Math.random();
@@ -110,14 +110,32 @@ return () => clearInterval(pollInterval);
     } else if (res.ok) {
       const data = await res.json();
       
-      // ✅ NEU: Deep clone + extra property
+      // ✅ NEU: Lade nachträgliche Change Requests (nach Beauftragung)
+      const scheduleChangeRequests = await loadScheduleChangeRequests();
+      
+      // ✅ NEU: Reichere Entries mit change_request_id an
+      if (data.entries) {
+        data.entries = data.entries.map(entry => {
+          const matchingRequest = scheduleChangeRequests.find(
+            req => req.schedule_entry_id === entry.id && req.status === 'pending'
+          );
+          
+          return {
+            ...entry,
+            change_request_id: matchingRequest?.id || null
+          };
+        });
+      }
+      
+      // ✅ Deep clone + extra property
       const newSchedule = JSON.parse(JSON.stringify(data));
       newSchedule._loadedAt = timestamp;
       
-      setSchedule(newSchedule);  // ✅ NEU: Komplett neues Objekt
+      setSchedule(newSchedule);  // ✅ Komplett neues Objekt
       
       console.log('📊 Schedule loaded:', newSchedule.entries?.length, 'entries at', new Date().toLocaleTimeString());
       
+      // ✅ Lade VOR-Beauftragung Change Requests (alter Workflow)
       if (data.status === 'locked' || data.status === 'active') {
         loadChangeRequests();
       }
@@ -128,7 +146,7 @@ return () => clearInterval(pollInterval);
     setLoading(false);
   }
 };
-
+  
   const loadChangeRequests = async () => {
     try {
       const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule/change-requests`));
@@ -141,6 +159,19 @@ return () => clearInterval(pollInterval);
     }
   };
 
+  const loadScheduleChangeRequests = async () => {  // ← ANDERER NAME!
+  try {
+    const res = await fetch(apiUrl(`/api/projects/${project.id}/schedule-change-requests`));
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (err) {
+    console.error('Fehler beim Laden der Schedule Change Requests:', err);
+  }
+  return [];
+};
+  
   // Prüfe ob Projekt für Terminplan geeignet ist (mind. 2 Gewerke)
   const isEligibleForSchedule = () => {
     const tradeCount = project.trades?.filter(t => t.code !== 'INT').length || 0;
