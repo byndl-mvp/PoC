@@ -224,6 +224,12 @@ console.log('🔥 SCHEDULE DEBUG:', {
   scheduleChangeReason,
   phasesCount: schedulePhases.length
 });
+
+const phasesForBackend = schedulePhases.map(phase => ({
+  ...phase,
+  planned_start: phase.start,      // ← KOPIERE geänderten Wert
+  planned_end: phase.end            // ← KOPIERE geänderten Wert
+}));
       
       const res = await fetch(apiUrl(`/api/offers/${offerId}/confirm-final`), {
         method: 'POST',
@@ -235,7 +241,7 @@ console.log('🔥 SCHEDULE DEBUG:', {
         execution_end: formData.execution_end,
         notes: formData.notes,
         lv_data: lvData,
-        schedule_phases: schedulePhases,
+        schedule_phases: phasesForBackend,
         schedule_change_reason: hasScheduleChanges ? scheduleChangeReason : null,
         has_schedule_changes: hasScheduleChanges
       })
