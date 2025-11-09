@@ -19985,6 +19985,252 @@ if (schedule_phases && schedule_phases.length > 0) {
   }
 });
 
+// ============================================================================
+// TERMINÄNDERUNG AKZEPTIEREN (Bauherr)
+// ============================================================================
+app.post('/api/schedule-changes/:entryId/accept', async (req, res) => {
+  try {
+    const { entryId } = req.params;
+    const { bauherrId } = req.body;
+    
+    console.log('✅ Bauherr akzeptiert Terminänderung für Entry:', entryId);
+    
+    await query('BEGIN');
+    
+    // 1. Update Schedule Entry Status
+    await query(
+      `UPDATE schedule_entries 
+       SET status = 'confirmed',
+           confirmed = true,
+           confirmed_by = $2,
+           confirmed_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [entryId, bauherrId]
+    );
+    
+    // 2. Hole Handwerker-Info für Notification
+    const entryInfo = await query(
+      `SELECT 
+         se.trade_id,
+         t.name as trade_name,
+         se.planned_start,
+         se.planned_end,
+         o.handwerker_id,
+         h.company_name
+       FROM schedule_entries se
+       JOIN trades t ON se.trade_id = t.id
+       LEFT JOIN tenders tn ON tn.trade_id = se.trade_id
+       LEFT JOIN offers o ON o.tender_id = tn.id AND o.status IN ('confirmed', 'accepted')
+       LEFT JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE se.id = $1`,
+      [entryId]
+    );
+    
+    if (entryInfo.rows.length > 0) {
+      const info = entryInfo.rows[0];
+      
+      // 3. Notification an Handwerker
+      if (info.handwerker_id) {
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+           VALUES ('handwerker', $1, 'schedule_change_accepted', $2, 'schedule_entry', $3, $4, NOW())`,
+          [
+            info.handwerker_id,
+            `Bauherr hat Ihre Terminänderung für ${info.trade_name} akzeptiert`,
+            entryId,
+            JSON.stringify({
+              trade_name: info.trade_name,
+              new_start: info.planned_start,
+              new_end: info.planned_end
+            })
+          ]
+        );
+      }
+    }
+    
+    await query('COMMIT');
+    
+    console.log('✅ Terminänderung akzeptiert');
+    
+    res.json({ 
+      success: true,
+      message: 'Terminänderung wurde akzeptiert'
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('❌ Error accepting schedule change:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TERMINÄNDERUNG ABLEHNEN (Bauherr)
+// ============================================================================
+app.post('/api/schedule-changes/:entryId/reject', async (req, res) => {
+  try {
+    const { entryId } = req.params;
+    const { bauherrId, reason } = req.body;
+    
+    console.log('❌ Bauherr lehnt Terminänderung ab für Entry:', entryId);
+    
+    await query('BEGIN');
+    
+    // 1. Hole Original-Termine aus History
+    const historyResult = await query(
+      `SELECT old_start, old_end 
+       FROM schedule_history 
+       WHERE schedule_entry_id = $1 
+       AND change_type = 'date_change'
+       ORDER BY created_at DESC 
+       LIMIT 1`,
+      [entryId]
+    );
+    
+    if (historyResult.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Keine History gefunden für diese Terminänderung' });
+    }
+    
+    const { old_start, old_end } = historyResult.rows[0];
+    
+    console.log('🔄 Restore Termine:', old_start, '→', old_end);
+    
+    // 2. Restore Original-Termine
+    await query(
+      `UPDATE schedule_entries
+       SET planned_start = $2,
+           planned_end = $3,
+           status = 'pending',
+           confirmed = false,
+           confirmed_by = NULL,
+           confirmed_at = NULL,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [entryId, old_start, old_end]
+    );
+    
+    // 3. History-Eintrag für Ablehnung
+    await query(
+      `INSERT INTO schedule_history 
+       (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+        old_start, old_end, new_start, new_end, reason, created_at)
+       VALUES ($1, 'bauherr', $2, 'rejection', $3, $4, $5, $6, $7, NOW())`,
+      [
+        entryId,
+        bauherrId,
+        old_start,  // Die "alten" waren die geänderten
+        old_end,
+        old_start,  // Die "neuen" sind wieder die Original-Termine
+        old_end,
+        reason || 'Terminänderung abgelehnt'
+      ]
+    );
+    
+    // 4. Hole Handwerker-Info für Notification
+    const entryInfo = await query(
+      `SELECT 
+         se.trade_id,
+         t.name as trade_name,
+         o.handwerker_id,
+         h.company_name
+       FROM schedule_entries se
+       JOIN trades t ON se.trade_id = t.id
+       LEFT JOIN tenders tn ON tn.trade_id = se.trade_id
+       LEFT JOIN offers o ON o.tender_id = tn.id AND o.status IN ('confirmed', 'accepted')
+       LEFT JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE se.id = $1`,
+      [entryId]
+    );
+    
+    if (entryInfo.rows.length > 0) {
+      const info = entryInfo.rows[0];
+      
+      // 5. Notification an Handwerker
+      if (info.handwerker_id) {
+        await query(
+          `INSERT INTO notifications 
+           (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+           VALUES ('handwerker', $1, 'schedule_change_rejected', $2, 'schedule_entry', $3, $4, NOW())`,
+          [
+            info.handwerker_id,
+            `Bauherr hat Ihre Terminänderung für ${info.trade_name} abgelehnt`,
+            entryId,
+            JSON.stringify({
+              trade_name: info.trade_name,
+              reason: reason || 'Keine Begründung angegeben',
+              restored_start: old_start,
+              restored_end: old_end
+            })
+          ]
+        );
+      }
+    }
+    
+    await query('COMMIT');
+    
+    console.log('✅ Terminänderung abgelehnt und restored');
+    
+    res.json({ 
+      success: true,
+      message: 'Terminänderung wurde abgelehnt und Original-Termine wiederhergestellt'
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('❌ Error rejecting schedule change:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TERMINÄNDERUNGEN FÜR PROJEKT ABRUFEN (Bauherr)
+// ============================================================================
+app.get('/api/projects/:projectId/schedule-changes', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Hole alle schedule_entries mit status='change_requested' für dieses Projekt
+    const result = await query(
+      `SELECT 
+         se.id as entry_id,
+         se.trade_id,
+         se.phase_name,
+         se.planned_start as new_start,
+         se.planned_end as new_end,
+         se.status,
+         t.name as trade_name,
+         t.code as trade_code,
+         sh.old_start,
+         sh.old_end,
+         sh.reason,
+         sh.created_at as change_requested_at,
+         h.company_name,
+         o.id as offer_id
+       FROM schedule_entries se
+       JOIN project_schedules ps ON se.schedule_id = ps.id
+       JOIN trades t ON se.trade_id = t.id
+       LEFT JOIN schedule_history sh ON se.id = sh.schedule_entry_id 
+         AND sh.change_type = 'date_change'
+       LEFT JOIN tenders tn ON tn.trade_id = se.trade_id AND tn.project_id = $1
+       LEFT JOIN offers o ON o.tender_id = tn.id AND o.status = 'confirmed'
+       LEFT JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE ps.project_id = $1
+         AND se.status = 'change_requested'
+       ORDER BY sh.created_at DESC`,
+      [projectId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching schedule changes:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // LV-Details für einen Auftrag abrufen
 app.get('/api/orders/:orderId/lv-details', async (req, res) => {
   try {
