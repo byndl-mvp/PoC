@@ -1347,8 +1347,8 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
           </div>
         </div>
 
-        {/* Status Badge */}
-<div className="w-32 flex-shrink-0 flex justify-end items-center gap-2 pt-2">
+        {/* Status Badge & Action Buttons */}
+<div className="w-48 flex-shrink-0 flex justify-end items-center gap-2 pt-2">
   {onDelete && scheduleStatus === 'pending_approval' && (
     <button
       onClick={(e) => {
@@ -1361,22 +1361,38 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
       <X className="w-4 h-4" />
     </button>
   )}
-  {entry.confirmed ? (
+  
+  {/* ✅ NEU: Terminänderung mit Buttons */}
+  {entry.status === 'change_requested' ? (
+    <ScheduleChangeButtons 
+      entry={entry}
+      onAccept={async (entryId) => {
+        // Diese Funktion wird vom Parent (ScheduleTab) übergeben
+        if (entry.onAcceptChange) {
+          await entry.onAcceptChange(entryId);
+        }
+      }}
+      onReject={async (entryId, reason) => {
+        // Diese Funktion wird vom Parent (ScheduleTab) übergeben
+        if (entry.onRejectChange) {
+          await entry.onRejectChange(entryId, reason);
+        }
+      }}
+    />
+  ) : entry.confirmed && entry.confirmed_by ? (
+    // ✅ NEU: Badge mit Firma-Name wenn bestätigt
+    <HandwerkerConfirmedBadge entryId={entry.id} />
+  ) : entry.confirmed ? (
     <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
       <CheckCircle className="w-3 h-3" />
       Bestätigt
     </span>
-          ) : entry.status === 'change_requested' ? (
-            <span className="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-semibold flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              Änderung
-            </span>
-          ) : (
-            <span className="px-2 py-1 bg-gray-500/20 text-gray-300 rounded-full text-xs">
-              Ausstehend
-            </span>
-          )}
-        </div>
+  ) : (
+    <span className="px-2 py-1 bg-gray-500/20 text-gray-300 rounded-full text-xs">
+      Ausstehend
+    </span>
+  )}
+</div>
       </div>
     </>
   );
