@@ -297,64 +297,62 @@ const handleDeleteEntry = async (entryId) => {
   }
 };
 
-  // ✅ NEU: Terminänderung akzeptieren (Bauherr)
-  const handleAcceptScheduleChange = async (entryId) => {
-    try {
-      setLoading(true);
-      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
-      
-      const res = await fetch(apiUrl(`/api/schedule-changes/${entryId}/accept`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bauherrId: userData.id })
-      });
+ // ✅ NEU: Terminänderung akzeptieren (Bauherr)
+const handleAcceptScheduleChange = async (entryId) => {
+  try {
+    setLoading(true);
+    const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+    
+    const res = await fetch(apiUrl(`/api/schedule-changes/${entryId}/accept`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bauherrId: userData.id })
+    });
 
-      if (res.ok) {
-        await loadSchedule();
-        if (onScheduleReload) onScheduleReload();
-        alert('✅ Terminänderung wurde akzeptiert.');
-      } else {
-        const error = await res.json();
-        alert('❌ Fehler: ' + error.error);
-      }
-    } catch (err) {
-      console.error('Error accepting schedule change:', err);
-      alert('Ein Fehler ist aufgetreten');
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      await loadSchedule();
+      alert('✅ Terminänderung wurde akzeptiert.');
+    } else {
+      const error = await res.json();
+      alert('❌ Fehler: ' + error.error);
     }
-  };
+  } catch (err) {
+    console.error('Error accepting schedule change:', err);
+    alert('Ein Fehler ist aufgetreten');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  // ✅ NEU: Terminänderung ablehnen (Bauherr)
-  const handleRejectScheduleChange = async (entryId, reason) => {
-    try {
-      setLoading(true);
-      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
-      
-      const res = await fetch(apiUrl(`/api/schedule-changes/${entryId}/reject`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          bauherrId: userData.id,
-          reason 
-        })
-      });
+// ✅ NEU: Terminänderung ablehnen (Bauherr)
+const handleRejectScheduleChange = async (entryId, reason) => {
+  try {
+    setLoading(true);
+    const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+    
+    const res = await fetch(apiUrl(`/api/schedule-changes/${entryId}/reject`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        bauherrId: userData.id,
+        reason 
+      })
+    });
 
-      if (res.ok) {
-        await loadSchedule();
-        if (onScheduleReload) onScheduleReload();
-        alert('✅ Terminänderung wurde abgelehnt und Original-Termine wiederhergestellt.');
-      } else {
-        const error = await res.json();
-        alert('❌ Fehler: ' + error.error);
-      }
-    } catch (err) {
-      console.error('Error rejecting schedule change:', err);
-      alert('Ein Fehler ist aufgetreten');
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      await loadSchedule();
+      alert('✅ Terminänderung wurde abgelehnt und Original-Termine wiederhergestellt.');
+    } else {
+      const error = await res.json();
+      alert('❌ Fehler: ' + error.error);
     }
-  };
+  } catch (err) {
+    console.error('Error rejecting schedule change:', err);
+    alert('Ein Fehler ist aufgetreten');
+  } finally {
+    setLoading(false);
+  }
+};
     
   const handleResolveChangeRequest = async (requestId, decision, rejectionReason) => {
     try {
