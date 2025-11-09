@@ -341,20 +341,21 @@ export default function ExecutionTimesSection({
               </button>
               
               <button
-                onClick={() => {
-                  if (hasChanges && !changeReason.trim()) {
-                    alert('Bitte geben Sie eine Begründung für die Terminänderung an');
-                    return;
-                  }
-                  setEditMode(false);
-                  // Änderungen speichern (wird beim Submit verwendet)
-                  console.log('Änderungen gespeichert:', localPhases, changeReason);
-                }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold rounded-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-              >
-                <Save className="w-5 h-5" />
-                Änderungen übernehmen
-              </button>
+  onClick={() => {
+    if (hasChanges && !changeReason.trim()) {
+      alert('Bitte geben Sie eine Begründung für die Terminänderung an');
+      return;
+    }
+    setEditMode(false);
+    if (onPhasesChange) {
+      onPhasesChange(localPhases, changeReason, hasChanges);
+    }
+  }}
+  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold rounded-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+>
+  <Save className="w-5 h-5" />
+  Änderungen übernehmen
+</button>
             </>
           )}
         </div>
