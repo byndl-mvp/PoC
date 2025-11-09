@@ -1338,7 +1338,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
 ) : (
   <p className="text-teal-300 text-sm flex items-center gap-2">
     <Info className="w-4 h-4" />
-    Klicken Sie auf Balken zum Bearbeiten
+    Klicken Sie unter Termindetails auf die Balken um Termine zu bearbeiten
   </p>
 )}
         </div>
