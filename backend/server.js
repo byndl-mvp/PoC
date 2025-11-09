@@ -28580,7 +28580,7 @@ app.post('/api/schedule-entries/:entryId/request-change', async (req, res) => {
 });
 
 // ============================================================================
-// 9. TERMINÄNDERUNGS-ANFRAGE BEARBEITEN (Bauherr)
+// 9. TERMINÄNDERUNGS-ANFRAGE BEARBEITEN (Bauherr) - MIT CASCADE
 // ============================================================================
 
 app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) => {
@@ -28592,15 +28592,22 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
       return res.status(400).json({ error: 'Ungültige Entscheidung' });
     }
     
+    console.log('[RESOLVE-CASCADE] 🔄 Starting resolve:', { requestId, decision, cascadeChanges });
+    
     await query('BEGIN');
     
     try {
-      // Lade Change Request
+      // ========================================================================
+      // SCHRITT 1: LADE CHANGE REQUEST
+      // ========================================================================
       const requestResult = await query(
         `SELECT cr.*, se.schedule_id, se.planned_start, se.planned_end, 
-                se.trade_id, t.name as trade_name, h.company_name
+                se.trade_id, se.sequence_order, se.phase_number, se.phase_name,
+                t.name as trade_name, t.code as trade_code, h.company_name,
+                ps.project_id
          FROM schedule_change_requests cr
          JOIN schedule_entries se ON cr.schedule_entry_id = se.id
+         JOIN project_schedules ps ON se.schedule_id = ps.id
          JOIN trades t ON se.trade_id = t.id
          JOIN handwerker h ON cr.handwerker_id = h.id
          WHERE cr.id = $1`,
@@ -28613,9 +28620,36 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
       }
       
       const request = requestResult.rows[0];
+      const entryId = request.schedule_entry_id;
+      
+      // Speichere ALTE Werte VOR dem Update
+      const oldStart = new Date(request.planned_start);
+      const oldEnd = new Date(request.planned_end);
+      const newStartDate = new Date(request.requested_start);
+      const newEndDate = new Date(request.requested_end);
+      
+      console.log('[RESOLVE-CASCADE] 📊 Request Details:', {
+        id: entryId,
+        trade: request.trade_code,
+        phase: request.phase_number || request.phase_name,
+        oldStart: oldStart.toISOString().split('T')[0],
+        oldEnd: oldEnd.toISOString().split('T')[0],
+        newStart: newStartDate.toISOString().split('T')[0],
+        newEnd: newEndDate.toISOString().split('T')[0]
+      });
       
       if (decision === 'approved') {
-        // Genehmigt: Termine anpassen
+        // ====================================================================
+        // GENEHMIGT: UPDATE MIT CASCADE
+        // ====================================================================
+        
+        // Berechne Verschiebung
+        const startChanged = oldStart.getTime() !== newStartDate.getTime();
+        const endChanged = oldEnd.getTime() !== newEndDate.getTime();
+        
+        console.log('[RESOLVE-CASCADE] 🔍 Changes:', { startChanged, endChanged });
+        
+        // Update Entry selbst
         await query(
           `UPDATE schedule_entries 
            SET planned_start = $2,
@@ -28625,10 +28659,10 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
                updated_at = NOW()
            WHERE id = $1`,
           [
-            request.schedule_entry_id,
+            entryId,
             request.requested_start,
             request.requested_end,
-            calculateWorkdays(request.requested_start, request.requested_end)
+            calculateWorkdays(newStartDate, newEndDate)
           ]
         );
         
@@ -28639,33 +28673,174 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
             old_start, old_end, new_start, new_end, reason, change_request_id)
            VALUES ($1, 'bauherr', $2, 'approved_change', $3, $4, $5, $6, $7, $8)`,
           [
-            request.schedule_entry_id,
+            entryId,
             bauherrId,
-            request.planned_start,
-            request.planned_end,
+            oldStart.toISOString().split('T')[0],
+            oldEnd.toISOString().split('T')[0],
             request.requested_start,
             request.requested_end,
-            `Änderungsanfrage von ${request.company_name} genehmigt`,
+            `Änderungsanfrage von ${request.company_name} genehmigt: ${request.reason}`,
             requestId
           ]
         );
         
-        // Cascade wenn gewünscht und nötig
-        if (cascadeChanges && request.affects_following_trades) {
-          const daysDiff = request.estimated_delay_days;
+        let affectedEntries = [];
+        
+        // ====================================================================
+        // CASCADE-LOGIK (KOPIERT AUS /update)
+        // ====================================================================
+        const shouldCascade = cascadeChanges && (startChanged || endChanged);
+        let dayShift = 0;
+        
+        if (shouldCascade) {
+          console.log('[RESOLVE-CASCADE] ✅ Cascade enabled');
           
-          if (daysDiff > 0) {
-            const followingEntries = await query(
-              `SELECT * FROM schedule_entries 
-               WHERE schedule_id = $1
-                 AND sequence_order > (SELECT sequence_order FROM schedule_entries WHERE id = $2)
-               ORDER BY sequence_order`,
-              [request.schedule_id, request.schedule_entry_id]
+          if (startChanged) {
+            dayShift = calculateWorkdays(oldStart, newStartDate);
+            console.log('[RESOLVE-CASCADE] 📈 Start shift:', dayShift, 'days');
+          } else if (endChanged) {
+            dayShift = calculateWorkdays(oldEnd, newEndDate);
+            console.log('[RESOLVE-CASCADE] 📈 End shift:', dayShift, 'days');
+          }
+          
+          if (dayShift !== 0) {
+            // Lade ALLE Entries
+            const allEntriesResult = await query(
+              `SELECT se.*, t.code as trade_code, t.name as trade_name
+               FROM schedule_entries se
+               JOIN trades t ON se.trade_id = t.id
+               WHERE se.schedule_id = $1
+               ORDER BY se.planned_start`,
+              [request.schedule_id]
             );
             
-            for (const entry of followingEntries.rows) {
-              const newStart = addWorkdays(new Date(entry.planned_start), daysDiff);
-              const newEnd = addWorkdays(new Date(entry.planned_end), daysDiff);
+            const allEntries = allEntriesResult.rows;
+            console.log('[RESOLVE-CASCADE] 📦 Total entries:', allEntries.length);
+            
+            // Helper: Parse Dependencies
+            const parseDeps = (depsField) => {
+              if (!depsField) return [];
+              try {
+                const parsed = typeof depsField === 'string' ? JSON.parse(depsField) : depsField;
+                return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+              } catch {
+                return [];
+              }
+            };
+            
+            const toUpdate = new Set();
+            const processed = new Set([entryId]);
+            
+            const findAllDependents = (sourceTradeCode, sourcePhaseNumber, sourcePhaseName) => {
+              console.log('[RESOLVE-CASCADE] 🔍 Finding dependents of:', sourceTradeCode, 'Phase', sourcePhaseNumber || sourcePhaseName || 'N/A');
+              
+              allEntries.forEach(e => {
+                if (processed.has(e.id) || e.id === entryId) return;
+                
+                const deps = parseDeps(e.dependencies);
+                let shouldUpdate = false;
+                let reason = '';
+                
+                // FALL 1: Nachfolgende Phase des GLEICHEN Gewerks
+                if (e.trade_code === sourceTradeCode) {
+                  if (e.phase_number && sourcePhaseNumber && e.phase_number > sourcePhaseNumber) {
+                    shouldUpdate = true;
+                    reason = 'same-trade next phase';
+                  } else if (deps.length > 0) {
+                    const currentSourceEntry = allEntries.find(entry => 
+                      entry.trade_code === sourceTradeCode && 
+                      (entry.phase_number === sourcePhaseNumber || entry.phase_name === sourcePhaseName)
+                    );
+                    
+                    if (currentSourceEntry) {
+                      deps.forEach(dep => {
+                        if (dep === sourceTradeCode || 
+                            (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-'))) {
+                          const eStart = new Date(e.planned_start);
+                          const sourceEnd = new Date(currentSourceEntry.planned_end);
+                          
+                          if (eStart >= sourceEnd) {
+                            shouldUpdate = true;
+                            reason = 'same-trade via dependency';
+                          }
+                        }
+                      });
+                    }
+                  } else if (!sourcePhaseNumber && !e.phase_number) {
+                    const eStart = new Date(e.planned_start);
+                    const sourceEndDate = oldEnd;
+                    const daysDiff = Math.floor((eStart - sourceEndDate) / (1000 * 60 * 60 * 24));
+                    
+                    if (daysDiff >= -1) {
+                      shouldUpdate = true;
+                      reason = 'same-trade follows by date';
+                    }
+                  }
+                }
+                
+                // FALL 2: ABHÄNGIGES Gewerk
+                if (!shouldUpdate && e.trade_code !== sourceTradeCode) {
+                  const currentSourceEntry = allEntries.find(entry => 
+                    entry.trade_code === sourceTradeCode && 
+                    (entry.phase_number === sourcePhaseNumber || entry.phase_name === sourcePhaseName)
+                  );
+                  
+                  if (currentSourceEntry) {
+                    deps.forEach(dep => {
+                      if (dep === sourceTradeCode) {
+                        const eStart = new Date(e.planned_start);
+                        const sourceEnd = new Date(currentSourceEntry.planned_end);
+                        
+                        if (eStart >= sourceEnd) {
+                          shouldUpdate = true;
+                          reason = 'dependent trade';
+                        }
+                      }
+                      if (typeof dep === 'string' && dep.startsWith(sourceTradeCode + '-')) {
+                        const depPhaseName = dep.substring(sourceTradeCode.length + 1);
+                        const eStart = new Date(e.planned_start);
+                        const sourceEnd = new Date(currentSourceEntry.planned_end);
+                        
+                        if (eStart >= sourceEnd) {
+                          if (sourcePhaseName && depPhaseName === sourcePhaseName) {
+                            shouldUpdate = true;
+                            reason = 'dependent trade (specific phase)';
+                          } else if (!sourcePhaseNumber) {
+                            shouldUpdate = true;
+                            reason = 'dependent trade (with phase ref)';
+                          }
+                        }
+                      }
+                    });
+                  }
+                }
+                
+                if (shouldUpdate) {
+                  console.log('[RESOLVE-CASCADE] ✅ Will update:', e.trade_code, 'Phase', e.phase_number || 'N/A', `(${reason})`);
+                  toUpdate.add(e.id);
+                  processed.add(e.id);
+                  findAllDependents(e.trade_code, e.phase_number, e.phase_name);
+                }
+              });
+            };
+            
+            // Starte CASCADE
+            findAllDependents(request.trade_code, request.phase_number, request.phase_name);
+            
+            console.log('[RESOLVE-CASCADE] 🎯 Found', toUpdate.size, 'entries to shift by', dayShift, 'days');
+            
+            // UPDATE ALLER ABHÄNGIGEN ENTRIES
+            for (const updateId of toUpdate) {
+              const updateEntry = allEntries.find(e => e.id === updateId);
+              if (!updateEntry) continue;
+              
+              const currentStart = new Date(updateEntry.planned_start);
+              const currentEnd = new Date(updateEntry.planned_end);
+              
+              const newFollowStart = addWorkdays(currentStart, dayShift);
+              const newFollowEnd = addWorkdays(currentEnd, dayShift);
+              
+              console.log('[RESOLVE-CASCADE] 🔄 Shifting:', updateEntry.trade_code, 'Phase', updateEntry.phase_number || 'N/A');
               
               await query(
                 `UPDATE schedule_entries 
@@ -28674,16 +28849,47 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
                      updated_at = NOW()
                  WHERE id = $1`,
                 [
-                  entry.id,
-                  newStart.toISOString().split('T')[0],
-                  newEnd.toISOString().split('T')[0]
+                  updateEntry.id,
+                  newFollowStart.toISOString().split('T')[0],
+                  newFollowEnd.toISOString().split('T')[0]
                 ]
               );
+              
+              await query(
+                `INSERT INTO schedule_history 
+                 (schedule_entry_id, changed_by_type, changed_by_id, change_type,
+                  old_start, old_end, new_start, new_end, reason, created_at)
+                 VALUES ($1, 'system', $2, 'cascade_change', $3, $4, $5, $6, $7, NOW())`,
+                [
+                  updateEntry.id,
+                  bauherrId,
+                  currentStart.toISOString().split('T')[0],
+                  currentEnd.toISOString().split('T')[0],
+                  newFollowStart.toISOString().split('T')[0],
+                  newFollowEnd.toISOString().split('T')[0],
+                  `Automatisch verschoben wegen genehmigter Terminänderung bei ${request.trade_name}${request.phase_number ? ' Phase ' + request.phase_number : ''}`
+                ]
+              );
+              
+              affectedEntries.push({
+                id: updateEntry.id,
+                trade_id: updateEntry.trade_id,
+                trade_code: updateEntry.trade_code,
+                trade_name: updateEntry.trade_name,
+                phase_number: updateEntry.phase_number,
+                old_start: currentStart.toISOString().split('T')[0],
+                new_start: newFollowStart.toISOString().split('T')[0],
+                shift_days: dayShift
+              });
             }
           }
         }
         
-        // Benachrichtige Handwerker
+        // ====================================================================
+        // BENACHRICHTIGUNGEN
+        // ====================================================================
+        
+        // Benachrichtige ursprünglichen Handwerker
         await query(
           `INSERT INTO notifications 
            (user_type, user_id, type, message, reference_type, reference_id, created_at)
@@ -28691,20 +28897,63 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
           [
             request.handwerker_id,
             `Ihre Terminänderung für ${request.trade_name} wurde genehmigt`,
-            request.schedule_entry_id
+            entryId
           ]
         );
         
+        // Benachrichtige ALLE betroffenen Handwerker
+        if (affectedEntries.length > 0) {
+          const affectedTradeIds = [...new Set(affectedEntries.map(e => e.trade_id))];
+          
+          const handwerkerResult = await query(
+            `SELECT DISTINCT h.id, t.code, t.name as trade_name
+             FROM handwerker h
+             JOIN offers o ON h.id = o.handwerker_id
+             JOIN tenders tn ON o.tender_id = tn.id
+             JOIN trades t ON tn.trade_id = t.id
+             WHERE tn.project_id = $1 
+               AND tn.trade_id = ANY($2::int[])
+               AND o.status IN ('preliminary', 'confirmed')
+               AND h.id != $3`,
+            [request.project_id, affectedTradeIds, request.handwerker_id]
+          );
+          
+          for (const handwerker of handwerkerResult.rows) {
+            const affectedForThisHandwerker = affectedEntries.filter(e => 
+              e.trade_code === handwerker.code
+            );
+            
+            if (affectedForThisHandwerker.length > 0) {
+              await query(
+                `INSERT INTO notifications 
+                 (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+                 VALUES ('handwerker', $1, 'schedule_changed', $2, 'project', $3, $4, NOW())`,
+                [
+                  handwerker.id,
+                  `Ihre Termine für ${handwerker.trade_name} wurden um ${Math.abs(dayShift)} Tag${Math.abs(dayShift) !== 1 ? 'e' : ''} ${dayShift > 0 ? 'nach hinten' : 'nach vorne'} verschoben`,
+                  request.project_id,
+                  JSON.stringify({
+                    reason: `Terminänderung bei ${request.trade_name} genehmigt`,
+                    shift_days: dayShift,
+                    affected_phases: affectedForThisHandwerker.map(e => e.phase_number || 'N/A')
+                  })
+                ]
+              );
+            }
+          }
+        }
+        
       } else {
-        // Abgelehnt: Status zurücksetzen
+        // ====================================================================
+        // ABGELEHNT: STATUS ZURÜCKSETZEN
+        // ====================================================================
         await query(
           `UPDATE schedule_entries 
            SET status = 'confirmed'
            WHERE id = $1`,
-          [request.schedule_entry_id]
+          [entryId]
         );
         
-        // Benachrichtige Handwerker
         await query(
           `INSERT INTO notifications 
            (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
@@ -28712,7 +28961,7 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
           [
             request.handwerker_id,
             `Ihre Terminänderung für ${request.trade_name} wurde abgelehnt`,
-            request.schedule_entry_id,
+            entryId,
             JSON.stringify({ reason: rejectionReason })
           ]
         );
@@ -28731,21 +28980,30 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
       
       await query('COMMIT');
       
+      console.log('[RESOLVE-CASCADE] 🎉 Success! Affected:', affectedEntries?.length || 0, 'entries');
+      
       res.json({ 
         success: true,
         decision,
+        affectedEntries: affectedEntries?.length || 0,
+        affectedDetails: affectedEntries || [],
+        cascadeApplied: shouldCascade && (affectedEntries?.length || 0) > 0,
+        dayShift: shouldCascade ? dayShift : 0,
         message: decision === 'approved' 
-          ? 'Terminänderung genehmigt'
+          ? (affectedEntries && affectedEntries.length > 0 
+              ? `Terminänderung genehmigt. ${affectedEntries.length} abhängige Termine wurden um ${Math.abs(dayShift)} Tag${Math.abs(dayShift) !== 1 ? 'e' : ''} ${dayShift > 0 ? 'nach hinten' : 'nach vorne'} verschoben.`
+              : 'Terminänderung genehmigt')
           : 'Terminänderung abgelehnt'
       });
       
     } catch (innerErr) {
       await query('ROLLBACK');
+      console.error('[RESOLVE-CASCADE] ❌ Transaction error:', innerErr);
       throw innerErr;
     }
     
   } catch (err) {
-    console.error('[SCHEDULE] Resolve failed:', err);
+    console.error('[RESOLVE-CASCADE] ❌ Resolve failed:', err);
     res.status(500).json({ error: 'Fehler bei der Bearbeitung' });
   }
 });
