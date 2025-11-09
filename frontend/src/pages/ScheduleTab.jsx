@@ -1184,7 +1184,11 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
              {expandedTrades[trade.trade_code] && trade.entries.map(entry => (
                 <GanttBar
                   key={entry.id}
-                  entry={entry}
+                  entry={{
+                    ...entry,
+                    onAcceptChange: onAcceptChange,
+                    onRejectChange: onRejectChange
+                  }}
                   minDate={minDate}
                   totalDays={totalDays}
                   editMode={editMode}
