@@ -17820,18 +17820,18 @@ app.post('/api/offers/:offerId/preliminary-accept', async (req, res) => {
     
     // Hole Angebotsdaten
     const offerResult = await query(
-      `SELECT o.*, h.*, t.name as trade_name,
-              p.bauherr_id, p.description as project_description, tn.project_id,
-              b.first_name || ' ' || b.last_name as bauherr_name
-       FROM offers o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN tenders tn ON o.tender_id = tn.id
-       JOIN trades t ON tn.trade_id = t.id
-       JOIN projects p ON tn.project_id = p.id
-       LEFT JOIN bauherren b ON p.bauherr_id = b.id
-       WHERE o.id = $1`,
-      [offerId]
-    );
+  `SELECT o.*, h.*, t.name as trade_name,
+          p.bauherr_id, p.description as project_description, tn.project_id,
+          b.name as bauherr_name  // ✅ FIX: b.name statt b.first_name || ' ' || b.last_name
+   FROM offers o
+   JOIN handwerker h ON o.handwerker_id = h.id
+   JOIN tenders tn ON o.tender_id = tn.id
+   JOIN trades t ON tn.trade_id = t.id
+   JOIN projects p ON tn.project_id = p.id
+   LEFT JOIN bauherren b ON p.bauherr_id = b.id
+   WHERE o.id = $1`,
+  [offerId]
+);
     
     if (offerResult.rows.length === 0) {
       throw new Error('Angebot nicht gefunden');
