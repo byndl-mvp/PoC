@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, AlertTriangle, CheckCircle, Info, ChevronRight, ChevronDown, X } from 'lucide-react';
 
 // ============================================================================
@@ -1975,15 +1975,11 @@ function ScheduleChangeButtons({ entry, onAccept, onReject }) {
 // ============================================================================
 // SUB-KOMPONENTE: HANDWERKER-BESTÄTIGT BADGE
 // ============================================================================
-function HandwerkerConfirmedBadge({ entryId }) {
+function HandwerkerConfirmedBadge({ entryId, apiUrl }) {
   const [handwerkerName, setHandwerkerName] = useState('Handwerker');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadHandwerkerName();
-  }, [entryId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const loadHandwerkerName = async () => {
+  const loadHandwerkerName = useCallback(async () => {
     try {
       const res = await fetch(apiUrl(`/api/schedule-entries/${entryId}/handwerker-info`));
       if (res.ok) {
@@ -1995,7 +1991,11 @@ function HandwerkerConfirmedBadge({ entryId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [entryId, apiUrl]);
+
+  useEffect(() => {
+    loadHandwerkerName();
+  }, [loadHandwerkerName]);
 
   if (loading) {
     return (
