@@ -1037,7 +1037,7 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
 // SUB-KOMPONENTE: GANTT-CHART BALKENPLAN - KORRIGIERT
 // ============================================================================
 
-function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteEntry, expandedTrades, onToggleTrade, findDependencies, scheduleStatus }) {
+function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteEntry, onAcceptChange, onRejectChange, expandedTrades, onToggleTrade, findDependencies, scheduleStatus }) {
   // ✅ ZENTRALISIERTER MODAL-STATE (nur EINE Instanz für alle Balken)
   const [editingEntry, setEditingEntry] = useState(null);
   
