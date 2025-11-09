@@ -1835,6 +1835,110 @@ function StatusBadge({ status }) {
 }
 
 // ============================================================================
+// SUB-KOMPONENTE: TERMINÄNDERUNGS-BUTTONS
+// ============================================================================
+function ScheduleChangeButtons({ entry, onAccept, onReject }) {
+  const [processing, setProcessing] = useState(false);
+
+  const handleAccept = async () => {
+    if (!window.confirm('Möchten Sie diese Terminänderung akzeptieren?')) return;
+    
+    try {
+      setProcessing(true);
+      await onAccept(entry.id);
+    } catch (err) {
+      console.error('Error accepting change:', err);
+      alert('Fehler beim Akzeptieren der Terminänderung');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    const reason = prompt('Bitte geben Sie eine Begründung für die Ablehnung ein:');
+    if (!reason) return;
+    
+    try {
+      setProcessing(true);
+      await onReject(entry.id, reason);
+    } catch (err) {
+      console.error('Error rejecting change:', err);
+      alert('Fehler beim Ablehnen der Terminänderung');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div className="flex gap-1">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleAccept();
+        }}
+        disabled={processing}
+        className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold disabled:opacity-50 transition-colors"
+        title="Änderung annehmen"
+      >
+        ✓
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleReject();
+        }}
+        disabled={processing}
+        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold disabled:opacity-50 transition-colors"
+        title="Änderung ablehnen"
+      >
+        ✗
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// SUB-KOMPONENTE: HANDWERKER-BESTÄTIGT BADGE
+// ============================================================================
+function HandwerkerConfirmedBadge({ entryId }) {
+  const [handwerkerName, setHandwerkerName] = useState('Handwerker');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadHandwerkerName();
+  }, [entryId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadHandwerkerName = async () => {
+    try {
+      // Hole Handwerker-Name über API
+      // TODO: API-Endpunkt muss noch erstellt werden
+      // Vorerst Placeholder
+      setHandwerkerName('Firma XY');
+    } catch (err) {
+      console.error('Error loading handwerker name:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold">
+        <CheckCircle className="w-3 h-3 inline mr-1" />
+        Bestätigt
+      </span>
+    );
+  }
+
+  return (
+    <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-semibold flex items-center gap-1">
+      <CheckCircle className="w-3 h-3" />
+      ✓ von {handwerkerName}
+    </span>
+  );
+}
+
+// ============================================================================
 // HILFSFUNKTIONEN
 // ============================================================================
 
