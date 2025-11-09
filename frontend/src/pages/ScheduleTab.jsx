@@ -5,7 +5,7 @@ import { Calendar, Clock, AlertTriangle, CheckCircle, Info, ChevronRight, Chevro
 // HAUPT-KOMPONENTE: TERMINPLAN-TAB FÜR BAUHERREN
 // ============================================================================
 
-export default function ScheduleTab({ project, apiUrl, onReload, reloadTrigger }) {
+export default function ScheduleTab({ project, apiUrl, onReload, onScheduleReload, reloadTrigger }) {
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showInitModal, setShowInitModal] = useState(false);
