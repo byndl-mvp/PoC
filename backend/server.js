@@ -20345,13 +20345,48 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     // 3. Werkvertrag-Text generieren
     const contractText = generateVOBContract(offer);
     
-    // 4. Erstelle Order/Werkvertrag
+   // 3a. ✅ NEU: Hole finale Termine aus schedule_entries
+    const scheduleTermine = await query(
+      `SELECT 
+         MIN(se.planned_start) as execution_start,
+         MAX(se.planned_end) as execution_end
+       FROM schedule_entries se
+       JOIN project_schedules ps ON se.schedule_id = ps.id
+       WHERE ps.project_id = $1
+         AND se.trade_id = $2
+         AND se.status = 'confirmed'
+         AND se.confirmed = true`,
+      [offer.project_id, offer.trade_id]
+    );
+    
+    // Nutze Schedule-Termine (falls vorhanden), sonst Fallback auf Offer
+    const executionStart = scheduleTermine.rows[0]?.execution_start || 
+                          offer.execution_start || 
+                          new Date();
+    const executionEnd = scheduleTermine.rows[0]?.execution_end || 
+                        offer.execution_end || 
+                        new Date(Date.now() + 30*24*60*60*1000);
+    
+    console.log('📅 Verwendete Ausführungstermine:', {
+      fromSchedule: scheduleTermine.rows[0],
+      fromOffer: { start: offer.execution_start, end: offer.execution_end },
+      final: { executionStart, executionEnd }
+    });
+    
+    // 3b. Werkvertrag-Text generieren MIT finalen Terminen
+    const contractText = generateVOBContract({
+      ...offer,
+      execution_start: executionStart,  // ✅ Finale Termine!
+      execution_end: executionEnd        // ✅ Finale Termine!
+    });
+    
+    // 4. Erstelle Order/Werkvertrag MIT finalen Terminen
     const orderResult = await query(
       `INSERT INTO orders  
-(project_id, offer_id, handwerker_id, bauherr_id, trade_id, 
- amount, bundle_discount, execution_start, execution_end, 
- contract_text, status, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', NOW())
+       (project_id, offer_id, handwerker_id, bauherr_id, trade_id, 
+        amount, bundle_discount, execution_start, execution_end, 
+        contract_text, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', NOW())
        RETURNING id`,
       [
         offer.project_id,
@@ -20361,8 +20396,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', NOW())
         offer.trade_id,
         offer.amount,
         offer.bundle_discount || 0,
-        offer.execution_start || new Date(),
-        offer.execution_end || new Date(Date.now() + 30*24*60*60*1000),
+        executionStart,   // ✅ Aus schedule_entries!
+        executionEnd,     // ✅ Aus schedule_entries!
         contractText
       ]
     );
