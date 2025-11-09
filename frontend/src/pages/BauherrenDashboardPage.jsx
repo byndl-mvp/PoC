@@ -14,6 +14,199 @@ function formatCurrency(value) {
   }).format(value);
 }
 
+// ============================================================================
+// NEUE KOMPONENTE: Ausführungstermine mit Änderungs-Management
+// ============================================================================
+function ExecutionTimesDisplay({ offerId, projectId, tradeName, apiUrl, onScheduleChange }) {
+  const [scheduleData, setScheduleData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [processingChange, setProcessingChange] = useState(null);
+
+  useEffect(() => {
+    loadScheduleData();
+  }, [offerId]);
+
+  const loadScheduleData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(apiUrl(`/api/projects/${projectId}/schedule-changes`));
+      if (res.ok) {
+        const allChanges = await res.json();
+        // Filtere nur Änderungen für dieses Angebot
+        const offerChanges = allChanges.filter(change => change.offer_id === parseInt(offerId));
+        setScheduleData(offerChanges);
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden der Terminänderungen:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAccept = async (entryId) => {
+    if (!window.confirm('Möchten Sie diese Terminänderung akzeptieren?')) return;
+
+    try {
+      setProcessingChange(entryId);
+      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+      
+      const res = await fetch(apiUrl(`/api/schedule-changes/${entryId}/accept`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bauherrId: userData.id })
+      });
+
+      if (res.ok) {
+        alert('Terminänderung wurde akzeptiert.');
+        loadScheduleData();
+        if (onScheduleChange) onScheduleChange();
+      } else {
+        throw new Error('Fehler beim Akzeptieren');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Fehler beim Akzeptieren der Terminänderung');
+    } finally {
+      setProcessingChange(null);
+    }
+  };
+
+  const handleReject = async (entryId) => {
+    const reason = prompt('Bitte geben Sie eine Begründung für die Ablehnung ein:');
+    if (!reason) return;
+
+    try {
+      setProcessingChange(entryId);
+      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+      
+      const res = await fetch(apiUrl(`/api/schedule-changes/${entryId}/reject`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          bauherrId: userData.id,
+          reason 
+        })
+      });
+
+      if (res.ok) {
+        alert('Terminänderung wurde abgelehnt und Original-Termine wiederhergestellt.');
+        loadScheduleData();
+        if (onScheduleChange) onScheduleChange();
+      } else {
+        throw new Error('Fehler beim Ablehnen');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Fehler beim Ablehnen der Terminänderung');
+    } finally {
+      setProcessingChange(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white/10 rounded-lg p-4 mb-4">
+        <h4 className="text-sm font-semibold text-white mb-3">⏱️ Ausführungstermine</h4>
+        <p className="text-gray-400 text-sm">Lade Terminplan...</p>
+      </div>
+    );
+  }
+
+  if (!scheduleData || scheduleData.length === 0) {
+    return (
+      <div className="bg-white/10 rounded-lg p-4 mb-4">
+        <h4 className="text-sm font-semibold text-white mb-3">⏱️ Ausführungstermine</h4>
+        <p className="text-gray-400 text-sm">✓ Alle Termine bestätigt</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 mb-4">
+      <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+        🔄 Terminänderung vorgeschlagen
+      </h4>
+      
+      <div className="space-y-3">
+        {scheduleData.map((change) => (
+          <div key={change.entry_id} className="bg-white/10 rounded-lg p-4">
+            <div className="mb-3">
+              <h5 className="text-white font-semibold">{change.phase_name}</h5>
+              <p className="text-sm text-gray-400">
+                Handwerker: {change.company_name || 'Unbekannt'}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Bisheriger Termin:</p>
+                <p className="text-white">
+                  {new Date(change.old_start).toLocaleDateString('de-DE')}
+                  {change.old_start !== change.old_end && (
+                    <> - {new Date(change.old_end).toLocaleDateString('de-DE')}</>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Neuer Vorschlag:</p>
+                <p className="text-orange-300 font-semibold">
+                  {new Date(change.new_start).toLocaleDateString('de-DE')}
+                  {change.new_start !== change.new_end && (
+                    <> - {new Date(change.new_end).toLocaleDateString('de-DE')}</>
+                  )}
+                </p>
+                <p className="text-xs text-orange-200">
+                  (Verschiebung: {calculateDayDifference(change.old_start, change.new_start)} Tage)
+                </p>
+              </div>
+            </div>
+            
+            {change.reason && (
+              <div className="mb-3 p-3 bg-white/5 rounded">
+                <p className="text-xs text-gray-500 mb-1">Begründung:</p>
+                <p className="text-sm text-gray-300 italic">"{change.reason}"</p>
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleAccept(change.entry_id)}
+                disabled={processingChange === change.entry_id}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold disabled:opacity-50"
+              >
+                ✓ Annehmen
+              </button>
+              <button
+                onClick={() => handleReject(change.entry_id)}
+                disabled={processingChange === change.entry_id}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold disabled:opacity-50"
+              >
+                ✗ Ablehnen
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
+        <p className="text-yellow-300 text-xs">
+          ⚠️ Hinweis: Bei Ablehnung werden die ursprünglichen Termine wiederhergestellt. 
+          Eine verbindliche Beauftragung ist erst nach Klärung der Termine möglich.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Hilfsfunktion
+function calculateDayDifference(date1, date2) {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  const diffTime = d2 - d1;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? `+${diffDays}` : diffDays;
+}
+
 export default function BauherrenDashboardPage() {
   const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
@@ -2604,6 +2797,18 @@ const deadlineDate = tender.deadline
                 </div>
               )}
             </div>
+
+            {/* ✅ NEU: Ausführungstermine - MIT TERMINÄNDERUNGEN */}
+            <ExecutionTimesDisplay 
+              offerId={offer.id}
+              projectId={selectedProject.id}
+              tradeName={offer.tradeName || offer.trade_name}
+              apiUrl={apiUrl}
+              onScheduleChange={() => {
+                loadProjectDetails(selectedProject.id);
+                setScheduleReloadTrigger(prev => prev + 1);
+              }}
+            />
             
             {/* Aktionsbuttons */}
 <div className="flex flex-wrap gap-3">
