@@ -329,23 +329,49 @@ const handleDeleteEntry = async (entryId) => {
 };
 
  // ✅ NEU: Terminänderung akzeptieren (Bauherr)
-const handleAcceptScheduleChange = async (entryId) => {
+const handleAcceptScheduleChange = async (idOrRequestId) => {
   try {
     setLoading(true);
     const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
     
-    const res = await fetch(apiUrl(`/api/schedule-changes/${entryId}/accept`), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bauherrId: userData.id })
-    });
+    // Prüfe ob es eine requestId ist (nach Beauftragung)
+    const entry = schedule.entries?.find(e => e.change_request_id === idOrRequestId);
+    
+    if (entry && entry.change_request_id) {
+      // NACH BEAUFTRAGUNG: Nutze /resolve Route
+      const res = await fetch(apiUrl(`/api/schedule-change-requests/${idOrRequestId}/resolve`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          bauherrId: userData.id,
+          decision: 'approved',
+          cascadeChanges: true
+        })
+      });
 
-    if (res.ok) {
-      await loadSchedule();
-      alert('✅ Terminänderung wurde akzeptiert.');
+      if (res.ok) {
+        const data = await res.json();
+        await loadSchedule();
+        alert(`✅ ${data.message}`);
+      } else {
+        const error = await res.json();
+        alert('❌ Fehler: ' + error.error);
+      }
     } else {
-      const error = await res.json();
-      alert('❌ Fehler: ' + error.error);
+      // VOR BEAUFTRAGUNG: Nutze alte Route (Fallback)
+      const res = await fetch(apiUrl(`/api/schedule-changes/${idOrRequestId}/accept`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bauherrId: userData.id })
+      });
+
+      if (res.ok) {
+        await loadSchedule();
+        alert('✅ Terminänderung wurde akzeptiert.');
+      } else {
+        const error = await res.json();
+        alert('❌ Fehler: ' + error.error);
+      }
     }
   } catch (err) {
     console.error('Error accepting schedule change:', err);
