@@ -87,12 +87,19 @@ export default function ExecutionTimesSection({
 };
 
   const handlePhaseChange = (phaseId, field, value) => {
-    setLocalPhases(prev => prev.map(phase => 
-      phase.id === phaseId 
-        ? { ...phase, [field]: value, changed: true }
-        : phase
-    ));
-  };
+  const updatedPhases = localPhases.map(phase => 
+    phase.id === phaseId 
+      ? { ...phase, [field]: value, changed: true }
+      : phase
+  );
+  setLocalPhases(updatedPhases);
+  
+  // HINZUFÜGEN: Sofort nach oben kommunizieren
+  const hasChanges = updatedPhases.some(p => p.changed);
+  if (onPhasesChange) {
+    onPhasesChange(updatedPhases, changeReason, hasChanges);
+  }
+};
 
   const calculateWorkdays = (start, end) => {
     let count = 0;
