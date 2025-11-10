@@ -17,7 +17,7 @@ function formatCurrency(value) {
 // ============================================================================
 // NEUE KOMPONENTE: Ausführungstermine mit Änderungs-Management
 // ============================================================================
-function ExecutionTimesDisplay({ offerId, projectId, tradeName, apiUrl, onScheduleChange }) {
+function ExecutionTimesDisplay({ offerId, projectId, tradeName, apiUrl, onScheduleChange, reloadTrigger }) {
   const [scheduleData, setScheduleData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processingChange, setProcessingChange] = useState(null);
