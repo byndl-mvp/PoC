@@ -19666,8 +19666,20 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
     o.preliminary_accepted_at,
     o.offer_confirmed_at,
     o.notes as offer_notes,
-    o.execution_start,
-    o.execution_end,
+    (SELECT MIN(se.planned_start) 
+ FROM schedule_entries se
+ JOIN schedules s ON se.schedule_id = s.id
+ WHERE s.tender_id = t.id
+ AND se.trade_id = tr.id
+ AND (se.status = 'confirmed' OR se.status = 'change_requested')
+) as execution_start,
+(SELECT MAX(se.planned_end) 
+ FROM schedule_entries se
+ JOIN schedules s ON se.schedule_id = s.id
+ WHERE s.tender_id = t.id
+ AND se.trade_id = tr.id
+ AND (se.status = 'confirmed' OR se.status = 'change_requested')
+) as execution_end,
     o.lv_data
    FROM offers o
    JOIN tenders t ON o.tender_id = t.id
