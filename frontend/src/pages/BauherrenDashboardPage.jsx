@@ -18,30 +18,66 @@ function formatCurrency(value) {
 // NEUE KOMPONENTE: Ausführungstermine mit Änderungs-Management
 // ============================================================================
 function ExecutionTimesDisplay({ offerId, projectId, tradeName, apiUrl, onScheduleChange, reloadTrigger }) {
-  const [scheduleData, setScheduleData] = useState(null);
+  const [offerData, setOfferData] = useState(null);
+  const [scheduleChanges, setScheduleChanges] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processingChange, setProcessingChange] = useState(null);
 
-  const loadScheduleData = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/schedule-changes`));
-      if (res.ok) {
-        const allChanges = await res.json();
-        // Filtere nur Änderungen für dieses Angebot
-        const offerChanges = allChanges.filter(change => change.offer_id === parseInt(offerId));
-        setScheduleData(offerChanges);
+      
+      // Lade Offer-Daten
+      const offerRes = await fetch(apiUrl(`/api/offers/${offerId}`));
+      const offer = await offerRes.json();
+      setOfferData(offer);
+      
+      // Lade Schedule-Änderungen
+      const changesRes = await fetch(apiUrl(`/api/offers/${offerId}/schedule-changes`));
+      if (changesRes.ok) {
+        const changes = await changesRes.json();
+        setScheduleChanges(changes);
       }
     } catch (err) {
-      console.error('Fehler beim Laden der Terminänderungen:', err);
+      console.error('Fehler:', err);
     } finally {
       setLoading(false);
     }
-  }, [offerId, projectId, apiUrl]);
+  }, [offerId, apiUrl]);
 
   useEffect(() => {
-    loadScheduleData();
-  }, [loadScheduleData, reloadTrigger]);
+    loadData();
+  }, [loadData, reloadTrigger]);
+
+  if (loading) return <div className="bg-white/10 rounded-lg p-4 mb-4">Lade...</div>;
+
+  const hasChanges = scheduleChanges.length > 0;
+
+  return (
+    <div className={`rounded-lg p-4 mb-4 ${hasChanges ? 'bg-orange-500/10 border border-orange-500/30' : 'bg-green-500/10 border border-green-500/30'}`}>
+      <h4 className="text-white font-semibold mb-2">📅 Ausführungstermine</h4>
+      
+      {hasChanges && (
+        <div className="mb-3 p-3 bg-orange-500/20 rounded">
+          <p className="text-orange-300 text-sm font-semibold mb-2">
+            ⚠️ Handwerker hat Terminänderungen vorgeschlagen
+          </p>
+          {scheduleChanges.map(change => (
+            <div key={change.id} className="text-sm text-orange-200 mb-1">
+              • {change.phase_name}: {new Date(change.old_start).toLocaleDateString('de-DE')} → {new Date(change.new_start).toLocaleDateString('de-DE')}
+            </div>
+          ))}
+          <p className="text-orange-200 text-xs mt-2">
+            Mit der verbindlichen Beauftragung akzeptieren Sie diese Terminänderungen automatisch.
+          </p>
+        </div>
+      )}
+      
+      <p className="text-green-200 text-sm">
+        {new Date(offerData.execution_start).toLocaleDateString('de-DE')} bis {new Date(offerData.execution_end).toLocaleDateString('de-DE')}
+      </p>
+    </div>
+  );
+}
 
   const handleAccept = async (entryId) => {
     if (!window.confirm('Möchten Sie diese Terminänderung akzeptieren?')) return;
