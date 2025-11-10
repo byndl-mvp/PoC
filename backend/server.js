@@ -19622,7 +19622,7 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
   try {
     const { identifier } = req.params;
     let handwerkerId;
-    
+
     // Flexible ID-Erkennung
     if (/^\d+$/.test(identifier)) {
       handwerkerId = parseInt(identifier);
@@ -19636,11 +19636,11 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
       }
       handwerkerId = result.rows[0].id;
     }
-    
+
     console.log('🔴 Loading contracts für Handwerker:', handwerkerId);
-    
+
     const result = await query(
-  `SELECT 
+  SELECT 
     t.id as tender_id,
     t.deadline,
     t.timeframe,
@@ -19666,20 +19666,8 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
     o.preliminary_accepted_at,
     o.offer_confirmed_at,
     o.notes as offer_notes,
-    (SELECT MIN(se.planned_start) 
-     FROM schedule_entries se
-     JOIN schedules s ON se.schedule_id = s.id
-     WHERE s.tender_id = t.id
-     AND se.trade_id = tr.id
-     AND (se.status = 'confirmed' OR se.status = 'change_requested')
-    ) as execution_start,
-    (SELECT MAX(se.planned_end) 
-     FROM schedule_entries se
-     JOIN schedules s ON se.schedule_id = s.id
-     WHERE s.tender_id = t.id
-     AND se.trade_id = tr.id
-     AND (se.status = 'confirmed' OR se.status = 'change_requested')
-    ) as execution_end,
+    o.execution_start,
+    o.execution_end,
     o.lv_data
    FROM offers o
    JOIN tenders t ON o.tender_id = t.id
@@ -19689,17 +19677,17 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
    WHERE o.handwerker_id = $1
    AND (o.status = 'preliminary' OR o.status = 'confirmed')
    AND NOT EXISTS (
-     SELECT 1 FROM orders WHERE offer_id = o.id
-   )  
-   ORDER BY o.preliminary_accepted_at DESC`,
+   SELECT 1 FROM orders WHERE offer_id = o.id
+  )  
+  ORDER BY o.preliminary_accepted_at DESC,
   [handwerkerId]
 );
-    
+
     console.log('🔴 Contracts gefunden:', result.rows.length);
     console.log('🔴 Daten:', result.rows);
-    
+
     res.json(result.rows);
-    
+
   } catch (error) {
     console.error('Error fetching contracts:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Vertragsanbahnungen' });
