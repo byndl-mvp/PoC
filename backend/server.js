@@ -28557,7 +28557,6 @@ app.delete('/api/schedule-entries/:entryId', async (req, res) => {
   }
 });
 
-// Neue Route für Schedule-Änderungen pro Offer
 app.get('/api/offers/:offerId/schedule-changes', async (req, res) => {
   try {
     const { offerId } = req.params;
@@ -28572,12 +28571,18 @@ app.get('/api/offers/:offerId/schedule-changes', async (req, res) => {
         sh.old_end,
         sh.reason
        FROM schedule_entries se
-       JOIN schedule_history sh ON se.id = sh.schedule_entry_id
+       JOIN LATERAL (
+         SELECT old_start, old_end, reason
+         FROM schedule_history
+         WHERE schedule_entry_id = se.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) sh ON true
        JOIN project_schedules ps ON se.schedule_id = ps.id
        JOIN tenders t ON ps.project_id = t.project_id AND t.trade_id = se.trade_id
        WHERE t.id = (SELECT tender_id FROM offers WHERE id = $1)
        AND se.status = 'change_requested'
-       ORDER BY sh.created_at DESC`,
+       ORDER BY se.planned_start`,
       [offerId]
     );
     
