@@ -19961,6 +19961,20 @@ if (schedule_phases && schedule_phases.length > 0) {
     );
   }
 }
+
+    // ✅ NEU: Update offers mit den neuesten Schedule-Terminen
+    if (schedule_phases && schedule_phases.length > 0) {
+      const newExecutionStart = schedule_phases[0].planned_start;
+      const newExecutionEnd = schedule_phases[schedule_phases.length - 1].planned_end;
+      
+      await query(
+        `UPDATE offers 
+         SET execution_start = $2,
+             execution_end = $3
+         WHERE id = $1`,
+        [offerId, newExecutionStart, newExecutionEnd]
+      );
+    }
     
     // Notification an Bauherr (NUR bei Änderungen!)
     if (has_schedule_changes) {
