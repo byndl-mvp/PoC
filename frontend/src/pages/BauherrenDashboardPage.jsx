@@ -2803,6 +2803,7 @@ const deadlineDate = tender.deadline
               projectId={selectedProject.id}
               tradeName={offer.tradeName || offer.trade_name}
               apiUrl={apiUrl}
+              reloadTrigger={scheduleReloadTrigger} 
               onScheduleChange={() => {
                 loadProjectDetails(selectedProject.id);
                 setScheduleReloadTrigger(prev => prev + 1);
