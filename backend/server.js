@@ -19622,7 +19622,7 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
   try {
     const { identifier } = req.params;
     let handwerkerId;
-
+    
     // Flexible ID-Erkennung
     if (/^\d+$/.test(identifier)) {
       handwerkerId = parseInt(identifier);
@@ -19636,11 +19636,11 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
       }
       handwerkerId = result.rows[0].id;
     }
-
+    
     console.log('🔴 Loading contracts für Handwerker:', handwerkerId);
-
+    
     const result = await query(
-  SELECT 
+  `SELECT 
     t.id as tender_id,
     t.deadline,
     t.timeframe,
@@ -19679,15 +19679,15 @@ app.get('/api/handwerker/:identifier/contracts', async (req, res) => {
    AND NOT EXISTS (
    SELECT 1 FROM orders WHERE offer_id = o.id
   )  
-  ORDER BY o.preliminary_accepted_at DESC,
+  ORDER BY o.preliminary_accepted_at DESC`,
   [handwerkerId]
 );
-
+    
     console.log('🔴 Contracts gefunden:', result.rows.length);
     console.log('🔴 Daten:', result.rows);
-
+    
     res.json(result.rows);
-
+    
   } catch (error) {
     console.error('Error fetching contracts:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Vertragsanbahnungen' });
