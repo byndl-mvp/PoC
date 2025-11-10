@@ -28709,7 +28709,8 @@ app.post('/api/schedule-entries/:entryId/request-change', async (req, res) => {
           JSON.stringify({ 
             urgency,
             affects_following: affectsFollowing,
-            delay_days: delayDays
+            delay_days: delayDays,
+            reason: reason 
           })
         ]
       );
