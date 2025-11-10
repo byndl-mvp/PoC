@@ -18449,6 +18449,38 @@ app.post('/api/offers/:offerId/final-accept', async (req, res) => {
     
     await query('BEGIN');
     
+    // ✅ NEU: Hole Offer-Daten für trade_id und project_id
+    const offerInfo = await query(
+      `SELECT o.handwerker_id, tn.project_id, tn.trade_id, p.bauherr_id
+       FROM offers o
+       JOIN tenders tn ON o.tender_id = tn.id
+       JOIN projects p ON tn.project_id = p.id
+       WHERE o.id = $1`,
+      [offerId]
+    );
+    
+    if (offerInfo.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    }
+    
+    const { project_id, trade_id, bauherr_id } = offerInfo.rows[0];
+    
+    // ✅ NEU: Akzeptiere alle change_requested Termine automatisch
+    await query(
+      `UPDATE schedule_entries
+       SET status = 'confirmed',
+           confirmed = true,
+           confirmed_by = $2,
+           confirmed_at = NOW()
+       WHERE schedule_id IN (
+         SELECT id FROM project_schedules WHERE project_id = $1
+       )
+       AND trade_id = $3
+       AND status = 'change_requested'`,
+      [project_id, bauherr_id, trade_id]
+    );
+    
     // Update zu Stufe 2
     await query(
       `UPDATE offers 
@@ -18470,15 +18502,14 @@ app.post('/api/offers/:offerId/final-accept', async (req, res) => {
        RETURNING id`,
       [offerId]
     );
-
-    // ===== HIER EINFÜGEN =====
-await query(
-  `UPDATE tender_handwerker 
-   SET status = 'awarded'
-   WHERE tender_id = (SELECT tender_id FROM offers WHERE id = $1) 
-   AND handwerker_id = (SELECT handwerker_id FROM offers WHERE id = $1)`,
-  [offerId]
-);
+    
+    await query(
+      `UPDATE tender_handwerker 
+       SET status = 'awarded'
+       WHERE tender_id = (SELECT tender_id FROM offers WHERE id = $1) 
+       AND handwerker_id = (SELECT handwerker_id FROM offers WHERE id = $1)`,
+      [offerId]
+    );
     
     // Aktiviere Premium-Features
     await query(
