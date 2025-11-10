@@ -41,7 +41,7 @@ function ExecutionTimesDisplay({ offerId, projectId, tradeName, apiUrl, onSchedu
 
   useEffect(() => {
     loadScheduleData();
-  }, [loadScheduleData]);
+  }, [loadScheduleData, reloadTrigger]);
 
   const handleAccept = async (entryId) => {
     if (!window.confirm('Möchten Sie diese Terminänderung akzeptieren?')) return;
