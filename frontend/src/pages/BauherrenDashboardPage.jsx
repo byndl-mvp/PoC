@@ -27,7 +27,7 @@ function ExecutionTimesDisplay({ offerId, projectId, tradeName, apiUrl, onSchedu
       setLoading(true);
       
       // Lade Offer-Daten
-      const offerRes = await fetch(apiUrl(`/api/offers/${offerId}`));
+      const offerRes = await fetch(apiUrl(`/api/offers/${offerId}/details`));
       const offer = await offerRes.json();
       setOfferData(offer);
       
