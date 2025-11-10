@@ -28542,6 +28542,37 @@ app.delete('/api/schedule-entries/:entryId', async (req, res) => {
   }
 });
 
+// Neue Route für Schedule-Änderungen pro Offer
+app.get('/api/offers/:offerId/schedule-changes', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        se.id,
+        se.phase_name,
+        se.planned_start as new_start,
+        se.planned_end as new_end,
+        sh.old_start,
+        sh.old_end,
+        sh.reason
+       FROM schedule_entries se
+       JOIN schedule_history sh ON se.id = sh.schedule_entry_id
+       JOIN project_schedules ps ON se.schedule_id = ps.id
+       JOIN tenders t ON ps.project_id = t.project_id AND t.trade_id = se.trade_id
+       WHERE t.id = (SELECT tender_id FROM offers WHERE id = $1)
+       AND se.status = 'change_requested'
+       ORDER BY sh.created_at DESC`,
+      [offerId]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================================================
 // 8. TERMINÄNDERUNGS-ANFRAGE ERSTELLEN (Handwerker nach Beauftragung)
 // ============================================================================
