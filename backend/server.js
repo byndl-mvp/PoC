@@ -20410,6 +20410,21 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     }
     
     const offer = offerData.rows[0];
+
+    // ✅ NEU: Akzeptiere alle change_requested Termine automatisch
+    await query(
+      `UPDATE schedule_entries
+       SET status = 'confirmed',
+           confirmed = true,
+           confirmed_by = $2,
+           confirmed_at = NOW()
+       WHERE schedule_id IN (
+         SELECT id FROM project_schedules WHERE project_id = $1
+       )
+       AND trade_id = $3
+       AND status = 'change_requested'`,
+      [offer.project_id, offer.bauherr_id, offer.trade_id]
+    );
     
    // 3a. ✅ NEU: Hole finale Termine aus schedule_entries
     const scheduleTermine = await query(
