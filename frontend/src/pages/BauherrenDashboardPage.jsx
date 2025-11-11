@@ -2271,7 +2271,7 @@ const deadlineDate = tender.deadline
                             {!offer.viewed && (
                               <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
                             )}
-                            {offer.bundle_id && (
+                            {offer.is_bundle_offer && offer.bundle_discount > 0 && (
   <button
     onClick={(e) => {
       e.stopPropagation();
@@ -2280,7 +2280,7 @@ const deadlineDate = tender.deadline
     }}
     className="bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs px-3 py-1 rounded-full font-semibold shadow-lg hover:from-green-600 hover:to-teal-600 transition-all flex items-center gap-1"
   >
-    📦 Bündelangebot{offer.bundle_discount > 0 ? `: ${offer.bundle_discount}% Rabatt` : ''} - Was heißt das?
+    📦 Bündelangebot: {offer.bundle_discount}% Rabatt - Was heißt das?
   </button>
 )}
                           </div>
