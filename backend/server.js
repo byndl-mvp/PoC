@@ -17472,6 +17472,10 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
         h.company_name,
         h.email as handwerker_email,
         h.phone as handwerker_phone,
+        h.street as handwerker_street,           
+        h.house_number as handwerker_house_number, 
+        h.zip_code as handwerker_zip,            
+        h.city as handwerker_city,    
         t.name as trade_name,
         tn.estimated_value,
         CASE 
@@ -17492,20 +17496,24 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
     console.log('📦 First offer:', offers.rows[0]);
     
     // Kontaktdaten maskieren
-    const processedOffers = offers.rows.map(offer => {
-      if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
-        return {
-          ...offer,
-          email: 'Nach Beauftragung sichtbar',
-          phone: 'Nach Beauftragung sichtbar'
-        };
-      }
-      return {
-        ...offer,
-        email: offer.handwerker_email,
-        phone: offer.handwerker_phone
-      };
-    });
+const processedOffers = offers.rows.map(offer => {
+  if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
+    return {
+      ...offer,
+      email: 'Nach Beauftragung sichtbar',
+      phone: 'Nach Beauftragung sichtbar',
+      address: 'Nach Beauftragung sichtbar'  // NEU
+    };
+  }
+  return {
+    ...offer,
+    email: offer.handwerker_email,
+    phone: offer.handwerker_phone,
+    address: offer.handwerker_street  // NEU - Vollständige Adresse zusammenbauen
+      ? `${offer.handwerker_street} ${offer.handwerker_house_number || ''}, ${offer.handwerker_zip} ${offer.handwerker_city}`.trim()
+      : 'Adresse nicht hinterlegt'
+  };
+});
     
     console.log('✅ Sending processed offers:', processedOffers.length);
     res.json(processedOffers);
@@ -17582,51 +17590,6 @@ app.post('/api/offers/:offerId/mark-read', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Fehler' });
-  }
-});
-
-// Erweiterte Route für Angebote mit mehr Details
-app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    
-    const result = await query(
-      `SELECT 
-        o.*,
-        o.bundle_discount, 
-        o.is_bundle_offer,
-        tn.bundle_id,       
-        h.company_name,
-        h.email,
-        h.phone,
-        h.street,
-        h.house_number,
-        h.zip_code,
-        h.city,
-        h.rating,
-        t.name as trade_name,
-        tn.estimated_value,
-        tn.timeframe,
-        o.lv_data,
-        o.notes,
-        CASE 
-          WHEN o.viewed_at IS NULL THEN false 
-          ELSE true 
-        END as viewed
-       FROM offers o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       JOIN tenders tn ON o.tender_id = tn.id
-       JOIN trades t ON tn.trade_id = t.id
-       WHERE tn.project_id = $1
-       ORDER BY t.name, o.amount ASC`,
-      [projectId]
-    );
-    
-    res.json(result.rows);
-    
-  } catch (error) {
-    console.error('Error fetching detailed offers:', error);
-    res.status(500).json({ error: 'Fehler beim Laden der Angebote' });
   }
 });
 
