@@ -73,8 +73,16 @@ function ExecutionTimesDisplay({ offerId, projectId, tradeName, apiUrl, onSchedu
       )}
       
       <p className="text-green-200 text-sm">
-        {new Date(offerData.execution_start).toLocaleDateString('de-DE')} bis {new Date(offerData.execution_end).toLocaleDateString('de-DE')}
-      </p>
+  {offerData.status === 'preliminary' ? (
+    <span className="text-gray-400 italic">
+      Ausführungstermine werden nach Absprache und technischer Klärung im verbindlichen Angebot konkretisiert.
+    </span>
+  ) : (
+    <>
+      {new Date(offerData.execution_start).toLocaleDateString('de-DE')} bis {new Date(offerData.execution_end).toLocaleDateString('de-DE')}
+    </>
+  )}
+</p>
     </div>
   );
 }
