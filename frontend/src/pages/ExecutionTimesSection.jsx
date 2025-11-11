@@ -114,57 +114,6 @@ export default function ExecutionTimesSection({
     return count;
   };
 
-  // ✅ NEU: Berechne Dauer in Tagen
-  const calculateDurationDays = (start, end) => {
-    if (!start || !end) return 0;
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const diffTime = Math.abs(endDate - startDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
-  // ✅ NEU: Addiere Tage zu einem Datum
-  const addDays = (dateString, days) => {
-    const date = new Date(dateString);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
-  };
-
-  // ✅ NEU: Intelligente Starttermin-Änderung
-  const handleStartDateChange = (newStartDate) => {
-    if (!formData.execution_end) {
-      setFormData({ ...formData, execution_start: newStartDate });
-      return;
-    }
-
-    // Berechne aktuelle Dauer
-    const currentDuration = calculateDurationDays(formData.execution_start, formData.execution_end);
-    
-    // Berechne neues Enddatum (Startdatum + Dauer)
-    const newEndDate = addDays(newStartDate, currentDuration);
-
-    setFormData({
-      ...formData,
-      execution_start: newStartDate,
-      execution_end: newEndDate
-    });
-  };
-
-  // ✅ NEU: Intelligente Endtermin-Änderung
-  const handleEndDateChange = (newEndDate) => {
-    // Verhindere, dass Endtermin vor Starttermin liegt
-    if (formData.execution_start && newEndDate < formData.execution_start) {
-      alert('Das Enddatum kann nicht vor dem Startdatum liegen.');
-      return;
-    }
-
-    setFormData({
-      ...formData,
-      execution_end: newEndDate
-    });
-  };
-  
   const hasChanges = localPhases.some(p => p.changed);
   const totalDuration = localPhases.reduce((sum, p) => {
     return sum + calculateWorkdays(p.start, p.end);
@@ -195,13 +144,9 @@ export default function ExecutionTimesSection({
               type="date"
               className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
               value={formData.execution_start}
-              onChange={(e) => handleStartDateChange(e.target.value)}
-              max={formData.execution_end || undefined}
+              onChange={(e) => setFormData({...formData, execution_start: e.target.value})}
               required
             />
-            <p className="text-xs text-gray-400 mt-1">
-              ℹ️ Endtermin passt sich automatisch an
-            </p>
           </div>
           <div>
             <label className="block text-white font-semibold mb-2">Ausführung bis</label>
@@ -209,13 +154,9 @@ export default function ExecutionTimesSection({
               type="date"
               className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
               value={formData.execution_end}
-              onChange={(e) => handleEndDateChange(e.target.value)}
-              min={formData.execution_start || undefined}
+              onChange={(e) => setFormData({...formData, execution_end: e.target.value})}
               required
             />
-            <p className="text-xs text-gray-400 mt-1">
-              ℹ️ Kann nicht vor Starttermin liegen
-            </p>
           </div>
         </div>
       </div>
