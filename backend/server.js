@@ -22868,8 +22868,9 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
     tender_id, handwerker_id, 
     amount, lv_data, notes,
     bundle_discount,
+    is_bundle_offer,
     status, stage, created_at
-  ) VALUES ($1, $2, $3, $4, $5, $6, 'submitted', 1, NOW())
+  ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'submitted', 1, NOW())
   RETURNING id`,
   [
     tender.tender_id, 
@@ -22877,7 +22878,8 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
     offerData.amount, 
     JSON.stringify(offerData.positions), 
     offerData.notes, 
-    bundleDiscount || 0
+    bundleDiscount || 0,
+    true
   ]
 );
       
