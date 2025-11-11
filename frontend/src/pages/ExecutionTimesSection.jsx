@@ -195,9 +195,13 @@ export default function ExecutionTimesSection({
               type="date"
               className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
               value={formData.execution_start}
-              onChange={(e) => setFormData({...formData, execution_start: e.target.value})}
+              onChange={(e) => handleStartDateChange(e.target.value)}
+              max={formData.execution_end || undefined}
               required
             />
+            <p className="text-xs text-gray-400 mt-1">
+              ℹ️ Endtermin passt sich automatisch an
+            </p>
           </div>
           <div>
             <label className="block text-white font-semibold mb-2">Ausführung bis</label>
@@ -205,9 +209,13 @@ export default function ExecutionTimesSection({
               type="date"
               className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
               value={formData.execution_end}
-              onChange={(e) => setFormData({...formData, execution_end: e.target.value})}
+              onChange={(e) => handleEndDateChange(e.target.value)}
+              min={formData.execution_start || undefined}
               required
             />
+            <p className="text-xs text-gray-400 mt-1">
+              ℹ️ Kann nicht vor Starttermin liegen
+            </p>
           </div>
         </div>
       </div>
