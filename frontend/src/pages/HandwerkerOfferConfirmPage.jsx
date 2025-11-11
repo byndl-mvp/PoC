@@ -239,7 +239,7 @@ const phasesForBackend = schedulePhases.map(phase => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
         amount: totalAmount,
-        bundle_discount: bundleDiscount, 
+        bundle_discount: offer?.is_bundle_offer ? bundleDiscount : 0, 
         execution_start: formData.execution_start,
         execution_end: formData.execution_end,
         notes: formData.notes,
