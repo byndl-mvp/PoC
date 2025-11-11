@@ -166,12 +166,13 @@ export default function ExecutionTimesSection({
           <div>
             <label className="block text-white font-semibold mb-2">Ausführung bis</label>
             <input
-              type="date"
-              className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
-              value={formData.execution_end}
-              onChange={(e) => setFormData({...formData, execution_end: e.target.value})}
-              required
-            />
+  type="date"
+  className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
+  value={formData.execution_end}
+  min={formData.execution_start}
+  onChange={(e) => setFormData({...formData, execution_end: e.target.value})}
+  required
+/>
           </div>
         </div>
       </div>
