@@ -141,12 +141,27 @@ export default function ExecutionTimesSection({
           <div>
             <label className="block text-white font-semibold mb-2">Ausführung von</label>
             <input
-              type="date"
-              className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
-              value={formData.execution_start}
-              onChange={(e) => setFormData({...formData, execution_start: e.target.value})}
-              required
-            />
+  type="date"
+  className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
+  value={formData.execution_start}
+  onChange={(e) => {
+    const newStartDate = e.target.value;
+    const oldStart = new Date(formData.execution_start);
+    const oldEnd = new Date(formData.execution_end);
+    const durationInDays = Math.ceil((oldEnd - oldStart) / (1000 * 60 * 60 * 24));
+    
+    const newStart = new Date(newStartDate);
+    const newEnd = new Date(newStart);
+    newEnd.setDate(newEnd.getDate() + durationInDays);
+    
+    setFormData({
+      ...formData,
+      execution_start: newStartDate,
+      execution_end: newEnd.toISOString().split('T')[0]
+    });
+  }}
+  required
+/>
           </div>
           <div>
             <label className="block text-white font-semibold mb-2">Ausführung bis</label>
