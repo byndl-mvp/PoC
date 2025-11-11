@@ -24761,7 +24761,7 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       totalSum, 
       stage = 'preliminary',      
       isPreliminary,              
-      bundleDiscount = 0,
+      bundleDiscount = isBundleOffer ? (bundleDiscount || 0) : 0,
       isBundleOffer = false
     } = req.body;
     
