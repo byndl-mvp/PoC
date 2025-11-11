@@ -151,7 +151,7 @@ export default function ExecutionTimesSection({
     const durationInDays = Math.ceil((oldEnd - oldStart) / (1000 * 60 * 60 * 24));
     
     const newStart = new Date(newStartDate);
-    const newEnd = new Date(newStart);
+    const newEnd = new Date(newStartDate);  // HIER WAR DER FEHLER - newStartDate statt newStart!
     newEnd.setDate(newEnd.getDate() + durationInDays);
     
     setFormData({
