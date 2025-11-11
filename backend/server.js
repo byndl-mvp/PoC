@@ -24761,7 +24761,8 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       totalSum, 
       stage = 'preliminary',      
       isPreliminary,              
-      bundleDiscount = 0  
+      bundleDiscount = 0,
+      isBundleOffer = false
     } = req.body;
     
     // ✅ FIX: Unterstütze BEIDE Formate (isPreliminary Boolean + stage String)
@@ -24801,30 +24802,49 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       offerId = existingOffer.rows[0].id;
       const oldStage = existingOffer.rows[0].stage;
       
-      await query(
-        `UPDATE offers 
-         SET lv_data = $1, 
-             notes = $2, 
-             amount = $3, 
-             stage = $4, 
-             bundle_discount = $5,
-             status = CASE 
-               WHEN $6 = 0 AND $4 != 0 THEN 'confirmed'
-               ELSE status 
-             END,
-             updated_at = NOW()
-         WHERE id = $7`,
-        [JSON.stringify({ positions }), notes, totalSum, stageValue, bundleDiscount, oldStage, offerId]
-      );
+     await query(
+  `UPDATE offers 
+   SET lv_data = $1, 
+       notes = $2, 
+       amount = $3, 
+       stage = $4, 
+       bundle_discount = $5,
+       is_bundle_offer = $6,  // NEU
+       status = CASE 
+         WHEN $7 = 0 AND $4 != 0 THEN 'confirmed'
+         ELSE status 
+       END,
+       updated_at = NOW()
+   WHERE id = $8`,
+  [
+    JSON.stringify({ positions }), 
+    notes, 
+    totalSum, 
+    stageValue, 
+    bundleDiscount,
+    isBundleOffer,  
+    oldStage,       
+    offerId         
+  ]
+);
     } else {
       const result = await query(
-        `INSERT INTO offers (
-          tender_id, handwerker_id, amount, 
-          lv_data, notes, status, stage, bundle_discount, created_at
-        ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, $7, NOW())
-        RETURNING id`,
-        [tenderId, handwerkerId, totalSum, JSON.stringify({ positions }), notes, stageValue, bundleDiscount]
-      );
+  `INSERT INTO offers (
+    tender_id, handwerker_id, amount, 
+    lv_data, notes, status, stage, bundle_discount, is_bundle_offer, created_at
+  ) VALUES ($1, $2, $3, $4, $5, 'submitted', $6, $7, $8, NOW())
+  RETURNING id`,
+  [
+    tenderId, 
+    handwerkerId, 
+    totalSum, 
+    JSON.stringify({ positions }), 
+    notes, 
+    stageValue, 
+    bundleDiscount,
+    isBundleOffer  // NEU: Flag setzen
+  ]
+);
       offerId = result.rows[0].id;
     }
     
