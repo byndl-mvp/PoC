@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 import ExecutionTimesSection from './ExecutionTimesSection';
 
@@ -14,9 +14,6 @@ function formatCurrency(value) {
 export default function HandwerkerOfferConfirmPage() {
   const { offerId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const isFromBundleView = location.state?.fromBundleView === true;
   
   const [loading, setLoading] = useState(true);
   const [offer, setOffer] = useState(null);
