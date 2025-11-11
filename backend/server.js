@@ -20409,6 +20409,7 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
       `SELECT 
         o.*,
         o.bundle_discount,
+        o.is_bundle_offer,
         h.company_name,
         h.address as handwerker_address,
         h.contact_person,
