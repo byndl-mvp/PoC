@@ -25426,7 +25426,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', as
     const offerData = await query(
   `SELECT 
     o.*, 
-    o.bundle_discount,     
+    o.bundle_discount, 
+    o.is_bundle_offer,
     h.company_name, 
     h.email, 
     h.phone, 
