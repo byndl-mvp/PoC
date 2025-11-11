@@ -25750,7 +25750,8 @@ app.post('/api/projects/:projectId/trades/:tradeId/offers/compare', async (req, 
     const offersData = await query(
   `SELECT 
     o.*, 
-    o.bundle_discount,     
+    o.bundle_discount,  
+    o.is_bundle_offer,
     h.company_name, 
     h.email, 
     h.phone, 
