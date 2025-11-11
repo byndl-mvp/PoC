@@ -618,8 +618,8 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
           />
         </div>
         
-        {/* ✅ NEU: Bündelrabatt */}
-{offer?.bundle_discount != null && (
+        {/* ✅ Bündelrabatt - nur bei Bundle-Offers anzeigen */}
+{offer?.is_bundle_offer && (
   <div className="bg-gradient-to-r from-green-600/10 to-teal-600/10 backdrop-blur-md rounded-xl p-6 border border-green-500/30 mb-6">
     <div className="flex items-center gap-3 mb-4">
       <span className="text-3xl">📦</span>
