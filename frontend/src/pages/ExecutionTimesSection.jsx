@@ -86,15 +86,51 @@ export default function ExecutionTimesSection({
   }
 };
 
-  const handlePhaseChange = (phaseId, field, value) => {
-  const updatedPhases = localPhases.map(phase => 
-    phase.id === phaseId 
-      ? { ...phase, [field]: value, changed: true }
-      : phase
-  );
+ const handlePhaseChange = (phaseId, field, value) => {
+  const updatedPhases = localPhases.map(phase => {
+    if (phase.id !== phaseId) return phase;
+    
+    // ✅ NEUE LOGIK: Wenn Start geändert wird, Ende mitverschieben
+    if (field === 'start') {
+      const oldStart = new Date(phase.start);
+      const newStart = new Date(value);
+      const oldEnd = new Date(phase.end);
+      
+      // Berechne Differenz in Tagen
+      const duration = Math.ceil((oldEnd - oldStart) / (1000 * 60 * 60 * 24));
+      
+      // Neues Ende = Neuer Start + Dauer
+      const newEnd = new Date(newStart);
+      newEnd.setDate(newEnd.getDate() + duration);
+      
+      return { 
+        ...phase, 
+        start: value, 
+        end: newEnd.toISOString().split('T')[0],
+        changed: true 
+      };
+    }
+    
+    // ✅ NEUE LOGIK: Wenn Ende geändert wird, prüfe ob nicht vor Start
+    if (field === 'end') {
+      const startDate = new Date(phase.start);
+      const endDate = new Date(value);
+      
+      if (endDate < startDate) {
+        alert('Das Enddatum kann nicht vor dem Startdatum liegen.');
+        return phase; // Keine Änderung
+      }
+      
+      return { ...phase, [field]: value, changed: true };
+    }
+    
+    // Alle anderen Felder normal
+    return { ...phase, [field]: value, changed: true };
+  });
+  
   setLocalPhases(updatedPhases);
   
-  // HINZUFÜGEN: Sofort nach oben kommunizieren
+  // Sofort nach oben kommunizieren
   const hasChanges = updatedPhases.some(p => p.changed);
   if (onPhasesChange) {
     onPhasesChange(updatedPhases, changeReason, hasChanges);
