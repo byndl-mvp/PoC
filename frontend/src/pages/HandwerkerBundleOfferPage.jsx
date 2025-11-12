@@ -660,10 +660,14 @@ const toggleProjectSelection = (tenderId) => {
                   <div className="space-y-3">
                     {offer.positions.map((position, posIdx) => (
                       <div 
-                        key={posIdx}
-                        className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-teal-500/50 transition-all cursor-pointer"
-                        onClick={() => openPositionModal(projectIdx, posIdx)}
-                      >
+  key={posIdx}
+  className={`bg-white/5 rounded-lg p-4 border border-white/10 transition-all ${
+    selectedProjects[project.tender_id] 
+      ? 'hover:border-teal-500/50 cursor-pointer' 
+      : 'opacity-50 cursor-not-allowed'
+  }`}
+  onClick={() => selectedProjects[project.tender_id] && openPositionModal(projectIdx, posIdx)}
+>
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
