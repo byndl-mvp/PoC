@@ -21797,14 +21797,12 @@ await query(
 
 // ============= AUSSCHREIBUNGS-SYSTEM =============
 
-// kleiner Helfer
 function safeParseJSON(v) {
   if (!v) return null;
   if (typeof v !== 'string') return v;
   try { return JSON.parse(v); } catch { return null; }
 }
 
-// Gemeinsamer Handler NUR für die alte URL
 async function createProjectTenders(req, res) {
   const { projectId } = req.params;
   const { tradeIds, timeframe, bundleSettings } = req.body || {};
@@ -21860,114 +21858,223 @@ async function createProjectTenders(req, res) {
     }
 
     const createdTenders = [];
-    const skipped = []; // z.B. { tradeId, tradeName, reason: 'no_lv'|'exists' }
+    const skipped = [];
+    const tendersForNormalBundle = [];
+    const tendersForForceBundle = [];
 
-    // 4) pro Gewerk Tender erzeugen
+    // 4) Pro Gewerk Tender erzeugen
     for (const trade of tradesToProcess.rows) {
-      // 4a) Schon vorhanden?
-      const existingTender = await query(
-        `SELECT id
-           FROM tenders
-          WHERE project_id = $1
-            AND trade_id   = $2
-            AND status    != 'open'`,
+      
+      // ========================================
+      // NEUE 3-FÄLLE LOGIK
+      // ========================================
+      
+      // Prüfe existierende Tenders
+      const existingTenders = await query(
+        `SELECT id, status FROM tenders 
+         WHERE project_id = $1 AND trade_id = $2 
+         ORDER BY created_at DESC`,
         [projectId, trade.id]
       );
-      if (existingTender.rows.length > 0) {
-        skipped.push({ tradeId: trade.id, tradeName: trade.name, reason: 'exists' });
-        continue;
+
+      let tenderId;
+      let tenderDeadline;  // ✅ Für E-Mail speichern
+      let isNewTender = false;
+      let matchAllHandwerker = false;
+      let addToBundle = false;
+      let forceReadd = false;
+
+      const activeTender = existingTenders.rows.find(t => t.status !== 'withdrawn');
+      const wasWithdrawn = existingTenders.rows.some(t => t.status === 'withdrawn');
+
+      if (activeTender) {
+        // ========================================
+        // FALL 2: Wiederholter Tender
+        // ========================================
+        tenderId = activeTender.id;
+        matchAllHandwerker = false;
+        addToBundle = true;
+        forceReadd = false;
+        
+        // Deadline für E-Mail laden
+        const deadlineResult = await query(
+          `SELECT deadline FROM tenders WHERE id = $1`,
+          [tenderId]
+        );
+        tenderDeadline = deadlineResult.rows[0]?.deadline;
+        
+        console.log(`♻️  [FALL 2] Wiederholter Tender ${tenderId} für ${trade.name}`);
+        
+      } else {
+        // LV laden für neue Tenders
+        const lvResult = await query(
+          `SELECT * FROM lvs WHERE project_id = $1 AND trade_id = $2`,
+          [projectId, trade.id]
+        );
+        if (lvResult.rows.length === 0) {
+          skipped.push({ tradeId: trade.id, tradeName: trade.name, reason: 'no_lv' });
+          continue;
+        }
+
+        const lv = lvResult.rows[0];
+        const lvContent = safeParseJSON(lv.content) || lv.content || {};
+        const estimatedValue = Number(lvContent?.totalSum || 0);
+
+        // Tender erstellen
+        const tenderInsert = await query(
+          `INSERT INTO tenders (
+             project_id, trade_id, status,
+             deadline, estimated_value, timeframe,
+             lv_data, created_at
+           ) VALUES (
+             $1, $2, 'open',
+             NOW() + INTERVAL '14 days', $3, $4,
+             $5, NOW()
+           )
+           RETURNING id, deadline`,
+          [
+            projectId,
+            trade.id,
+            estimatedValue,
+            timeframe || project.timeframe || 'Nach Absprache',
+            JSON.stringify(lvContent || {})
+          ]
+        );
+        
+        tenderId = tenderInsert.rows[0].id;
+        tenderDeadline = tenderInsert.rows[0].deadline;  // ✅ Direkt aus INSERT
+        isNewTender = true;
+        
+        if (wasWithdrawn) {
+          // ========================================
+          // FALL 3: Nach Zurückziehung
+          // ========================================
+          matchAllHandwerker = true;
+          addToBundle = true;
+          forceReadd = true;
+          console.log(`🔄 [FALL 3] Tender ${tenderId} nach Zurückziehung neu erstellt für ${trade.name}`);
+        } else {
+          // ========================================
+          // FALL 1: Komplett neu
+          // ========================================
+          matchAllHandwerker = true;
+          addToBundle = true;
+          forceReadd = false;
+          console.log(`✅ [FALL 1] Neuer Tender ${tenderId} für ${trade.name} erstellt`);
+        }
       }
 
-      // 4b) LV laden (ohne LV kein Tender)
-      const lvResult = await query(
-        `SELECT * FROM lvs WHERE project_id = $1 AND trade_id = $2`,
-        [projectId, trade.id]
-      );
-      if (lvResult.rows.length === 0) {
-        skipped.push({ tradeId: trade.id, tradeName: trade.name, reason: 'no_lv' });
-        continue;
+      // Bundle-Check (einzeln)
+      if (addToBundle && typeof checkAndAddToExistingBundle === 'function') {
+        try {
+          console.log(`🔍 [TENDER] Starting bundle check for ${tenderId}`);
+          await checkAndAddToExistingBundle(tenderId, forceReadd);
+          console.log(`✅ [TENDER] Bundle check completed`);
+        } catch (bundleErr) {
+          console.error(`❌ [TENDER] Bundle check failed:`, bundleErr);
+          // Fehler loggen aber nicht werfen - weiter machen
+        }
       }
 
-      const lv = lvResult.rows[0];
-      const lvContent = safeParseJSON(lv.content) || lv.content || {};
-      const estimatedValue = Number(lvContent?.totalSum || 0);
-
-      // 4c) Tender anlegen
-      const tenderInsert = await query(
-        `INSERT INTO tenders (
-           project_id, trade_id, status,
-           deadline, estimated_value, timeframe,
-           lv_data, created_at
-         ) VALUES (
-           $1, $2, 'open',
-           NOW() + INTERVAL '14 days', $3, $4,
-           $5, NOW()
-         )
-         RETURNING id, deadline`,
-        [
-          projectId,
-          trade.id,
-          estimatedValue,
-          timeframe || project.timeframe || 'Nach Absprache',
-          JSON.stringify(lvContent || {})
-        ]
-      );
-      const tenderId = tenderInsert.rows[0].id;
-
-      console.log(`✅ [TENDER] Created tender ${tenderId}`);
+      console.log(`🔍 [TENDER] Starting handwerker matching...`);
       
-try {
-  console.log(`🔍 [TENDER] Starting bundle check for ${tenderId}`);
-  await checkAndAddToExistingBundle(tenderId);
-  console.log(`✅ [TENDER] Bundle check completed`);
-} catch (bundleErr) {
-  console.error(`❌ [TENDER] Bundle check failed:`, bundleErr);
-  // Fehler loggen aber nicht werfen - weiter machen
-}
+      // ✅ PostGIS Check (wie im Original)
+      await query(`SELECT zip, latitude, longitude FROM zip_codes WHERE zip = $1`, [targetZip]);
 
-console.log(`🔍 [TENDER] Starting handwerker matching...`);
+      // ========================================
+      // HANDWERKER-MATCHING
+      // ========================================
       
-      // 4d) Matching (PostGIS)
-      await query(`SELECT zip, latitude, longitude FROM zip_codes WHERE zip = $1`, [targetZip]); // nur Check
-
-      const matchingHandwerker = await query(
-        `SELECT DISTINCT h.*,
-                CASE
-                  WHEN z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL THEN
-                    ST_Distance(
-                      ST_MakePoint(z1.longitude, z1.latitude)::geography,
-                      ST_MakePoint(z2.longitude, z2.latitude)::geography
-                    ) / 1000
-                  WHEN h.zip_code = $1 THEN 0
-                  ELSE h.action_radius
-                END AS distance_km
-           FROM handwerker h
-           JOIN handwerker_trades ht ON h.id = ht.handwerker_id
-      LEFT JOIN zip_codes z1 ON z1.zip::text = h.zip_code::text
-      LEFT JOIN zip_codes z2 ON z2.zip::text = $1::text
-          WHERE ht.trade_id = $2
-            AND h.active = true
-            AND (
-              h.zip_code = $1
-              OR (
-                z1.latitude IS NOT NULL AND z1.longitude IS NOT NULL
-                AND z2.latitude IS NOT NULL AND z2.longitude IS NOT NULL
-                AND ST_DWithin(
-                  ST_MakePoint(z1.longitude, z1.latitude)::geography,
-                  ST_MakePoint(z2.longitude, z2.latitude)::geography,
-                  GREATEST(h.action_radius * 1000, 1)
+      let matchQuery, matchParams;
+      
+      if (matchAllHandwerker) {
+        // ALLE Handwerker (Fall 1 & 3)
+        matchQuery = `
+          SELECT DISTINCT h.*,
+                  CASE
+                    WHEN z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL THEN
+                      ST_Distance(
+                        ST_MakePoint(z1.longitude, z1.latitude)::geography,
+                        ST_MakePoint(z2.longitude, z2.latitude)::geography
+                      ) / 1000
+                    WHEN h.zip_code = $1 THEN 0
+                    ELSE h.action_radius
+                  END AS distance_km
+             FROM handwerker h
+             JOIN handwerker_trades ht ON h.id = ht.handwerker_id
+             LEFT JOIN zip_codes z1 ON z1.zip::text = h.zip_code::text
+             LEFT JOIN zip_codes z2 ON z2.zip::text = $1::text
+            WHERE ht.trade_id = $2
+              AND h.active = true
+              AND (
+                h.zip_code = $1
+                OR (
+                  z1.latitude IS NOT NULL AND z1.longitude IS NOT NULL
+                  AND z2.latitude IS NOT NULL AND z2.longitude IS NOT NULL
+                  AND ST_DWithin(
+                    ST_MakePoint(z1.longitude, z1.latitude)::geography,
+                    ST_MakePoint(z2.longitude, z2.latitude)::geography,
+                    GREATEST(h.action_radius * 1000, 1)
+                  )
+                )
+                OR (
+                  (z1.latitude IS NULL OR z2.latitude IS NULL)
+                  AND h.action_radius >= 30
                 )
               )
-              OR (
-                (z1.latitude IS NULL OR z2.latitude IS NULL)
-                AND h.action_radius >= 30
+          ORDER BY distance_km ASC`;
+        matchParams = [targetZip, trade.id];
+        
+      } else {
+        // Nur NEUE Handwerker (Fall 2)
+        matchQuery = `
+          SELECT DISTINCT h.*,
+                  CASE
+                    WHEN z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL THEN
+                      ST_Distance(
+                        ST_MakePoint(z1.longitude, z1.latitude)::geography,
+                        ST_MakePoint(z2.longitude, z2.latitude)::geography
+                      ) / 1000
+                    WHEN h.zip_code = $1 THEN 0
+                    ELSE h.action_radius
+                  END AS distance_km
+             FROM handwerker h
+             JOIN handwerker_trades ht ON h.id = ht.handwerker_id
+             LEFT JOIN zip_codes z1 ON z1.zip::text = h.zip_code::text
+             LEFT JOIN zip_codes z2 ON z2.zip::text = $1::text
+            WHERE ht.trade_id = $2
+              AND h.active = true
+              AND NOT EXISTS (
+                SELECT 1 FROM tender_handwerker th
+                WHERE th.tender_id = $3
+                AND th.handwerker_id = h.id
               )
-            )
-        ORDER BY distance_km ASC`,
-        [targetZip, trade.id]
-      );
+              AND (
+                h.zip_code = $1
+                OR (
+                  z1.latitude IS NOT NULL AND z1.longitude IS NOT NULL
+                  AND z2.latitude IS NOT NULL AND z2.longitude IS NOT NULL
+                  AND ST_DWithin(
+                    ST_MakePoint(z1.longitude, z1.latitude)::geography,
+                    ST_MakePoint(z2.longitude, z2.latitude)::geography,
+                    GREATEST(h.action_radius * 1000, 1)
+                  )
+                )
+                OR (
+                  (z1.latitude IS NULL OR z2.latitude IS NULL)
+                  AND h.action_radius >= 30
+                )
+              )
+          ORDER BY distance_km ASC`;
+        matchParams = [targetZip, trade.id, tenderId];
+      }
 
-      // 4e) HW verknüpfen + Tracking + (optional) Mail
+      const matchingHandwerker = await query(matchQuery, matchParams);
+
+      // ========================================
+      // HANDWERKER VERKNÜPFEN + MAIL
+      // ========================================
+      
       for (const hw of matchingHandwerker.rows) {
         try {
           await query(
@@ -21987,6 +22094,12 @@ console.log(`🔍 [TENDER] Starting handwerker matching...`);
 
           if (typeof transporter !== 'undefined' && transporter && hw.email) {
             try {
+              // ✅ estimatedValue für E-Mail laden
+              const estimatedValue = Number(await query(
+                `SELECT estimated_value FROM tenders WHERE id = $1`,
+                [tenderId]
+              ).then(r => r.rows[0]?.estimated_value || 0));
+
               await transporter.sendMail({
                 from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
                 to: hw.email,
@@ -22001,7 +22114,7 @@ console.log(`🔍 [TENDER] Starting handwerker matching...`);
                       <tr><td><strong>Gewerk:</strong></td><td>${trade.name}</td></tr>
                       <tr><td><strong>Standort:</strong></td><td>${targetZip} (${Math.round(hw.distance_km || 0)} km)</td></tr>
                       <tr><td><strong>Geschätztes Volumen:</strong></td><td>${formatCurrency(estimatedValue)}</td></tr>
-                      <tr><td><strong>Angebotsfrist:</strong></td><td>${new Date(tenderInsert.rows[0].deadline).toLocaleDateString('de-DE')}</td></tr>
+                      <tr><td><strong>Angebotsfrist:</strong></td><td>${tenderDeadline ? new Date(tenderDeadline).toLocaleDateString('de-DE') : 'Offen'}</td></tr>
                     </table>
                     <p><a href="https://byndl.de/handwerker/dashboard">Zum Dashboard →</a></p>
                   </body></html>`
@@ -22021,22 +22134,45 @@ console.log(`🔍 [TENDER] Starting handwerker matching...`);
         }
       }
 
-      createdTenders.push({
+      const tenderInfo = {
         tenderId,
         tradeId: trade.id,
         tradeName: trade.name,
         matchedHandwerker: matchingHandwerker.rows.length
-      });
+      };
+      
+      createdTenders.push(tenderInfo);
+      
+      // Für Bundle-Processing
+      if (addToBundle) {
+        if (forceReadd) {
+          tendersForForceBundle.push(tenderInfo);
+        } else {
+          tendersForNormalBundle.push(tenderInfo);
+        }
+      }
     }
 
     // 5) Bundles automatisch prüfen und erstellen
-if (typeof checkAndCreateBundles === 'function' && createdTenders.length > 0) {
-  try {
-    await checkAndCreateBundles(project, createdTenders);
-  } catch (bundleErr) {
-    console.warn('Bundle-Erstellung fehlgeschlagen:', bundleErr?.message || bundleErr);
-  }
-}
+    if (typeof checkAndCreateBundles === 'function') {
+      // Normale Bundle-Zuordnung
+      if (tendersForNormalBundle.length > 0) {
+        try {
+          await checkAndCreateBundles(project, tendersForNormalBundle, false);
+        } catch (bundleErr) {
+          console.warn('Bundle-Erstellung fehlgeschlagen:', bundleErr?.message || bundleErr);
+        }
+      }
+      
+      // Force-Readd für zurückgezogene Tenders
+      if (tendersForForceBundle.length > 0) {
+        try {
+          await checkAndCreateBundles(project, tendersForForceBundle, true);
+        } catch (bundleErr) {
+          console.warn('Force-Bundle fehlgeschlagen:', bundleErr?.message || bundleErr);
+        }
+      }
+    }
 
     // 6) E-Mail an Bauherr (Zusammenfassung)
     if (
