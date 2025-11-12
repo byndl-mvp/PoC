@@ -609,19 +609,36 @@ const toggleProjectSelection = (tenderId) => {
               <div key={projectIdx} className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden">
                 {/* Projekt Header */}
                 <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-6 border-b border-white/10">
-                  <div className="flex items-center gap-3 mb-2">
-  <span className="w-10 h-10 bg-teal-500/20 rounded-full flex items-center justify-center text-teal-300 font-bold">
-    {projectIdx + 1}
-  </span>
-  <div>
-    <h3 className="text-2xl font-bold text-white">{project.title}</h3>
-    <p className="text-gray-300">📍 PLZ: {project.zip}</p>
-    <p className="text-gray-400 text-sm mt-1">
-      ⏱️ Gewünschter Termin: {project.timeframe || 'Nach Absprache'}
-    </p>
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <label className="flex items-center cursor-pointer">
+        <input
+          type="checkbox"
+          checked={selectedProjects[project.tender_id] || false}
+          onChange={() => toggleProjectSelection(project.tender_id)}
+          className="w-6 h-6 rounded border-2 border-white/30 bg-white/10 checked:bg-teal-500 checked:border-teal-500 cursor-pointer"
+        />
+      </label>
+      
+      <span className="w-10 h-10 bg-teal-500/20 rounded-full flex items-center justify-center text-teal-300 font-bold">
+        {projectIdx + 1}
+      </span>
+      <div>
+        <h3 className="text-2xl font-bold text-white">{project.title}</h3>
+        <p className="text-gray-300">📍 PLZ: {project.zip}</p>
+        <p className="text-gray-400 text-sm mt-1">
+          ⏱️ Gewünschter Termin: {project.timeframe || 'Nach Absprache'}
+        </p>
+      </div>
+    </div>
+    
+    {!selectedProjects[project.tender_id] && (
+      <span className="px-3 py-1 bg-gray-500/30 text-gray-400 text-sm rounded-full">
+        Nicht ausgewählt
+      </span>
+    )}
   </div>
 </div>
-                </div>
 
                 {/* LV Positionen */}
                 <div className="p-6">
