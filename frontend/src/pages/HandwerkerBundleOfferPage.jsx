@@ -630,88 +630,72 @@ const toggleProjectSelection = (tenderId) => {
   </div>
 </div>
 
-                {/* LV Positionen */}
-<div className="p-6 relative">
-  {!selectedProjects[project.tender_id] && (
-    <div className="absolute inset-0 bg-gray-900/70 backdrop-blur-sm rounded-2xl z-10 flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-white text-lg font-semibold mb-2">
-          Projekt nicht ausgewählt
-        </p>
-        <p className="text-gray-400 text-sm">
-          Aktivieren Sie die Checkbox oben
-        </p>
-      </div>
-    </div>
-  )}
-  
-  <h4 className="text-lg font-semibold text-white mb-4">Leistungsverzeichnis:</h4>
-                  
-                  <div className="space-y-3">
-                    {offer.positions.map((position, posIdx) => (
-                      <div 
-  key={posIdx}
-  className={`bg-white/5 rounded-lg p-4 border border-white/10 transition-all ${
-    selectedProjects[project.tender_id] 
-      ? 'hover:border-teal-500/50 cursor-pointer' 
-      : 'opacity-50 cursor-not-allowed'
-  }`}
-  onClick={() => selectedProjects[project.tender_id] && openPositionModal(projectIdx, posIdx)}
->
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-teal-400 font-bold">{position.pos}</span>
-                              <h5 className="text-white font-semibold">{position.title}</h5>
-                            </div>
-                            
-                            {position.description && (
-                              <p className="text-gray-400 text-sm mb-2">{position.description}</p>
-                            )}
-                            
-                            <div className="flex gap-4 text-sm text-gray-300">
-                              <span>{position.quantity} {position.unit}</span>
-                              {position.unitPrice > 0 && (
-                                <span>à {formatCurrency(position.unitPrice)}</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right ml-4">
-                            {position.totalPrice > 0 ? (
-                              <p className="text-xl font-bold text-teal-400">
-                                {formatCurrency(position.totalPrice)}
-                              </p>
-                            ) : (
-                              <p className="text-sm text-yellow-400">
-                                Preis eingeben →
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                 {/* Projekt-Summe - nur für ausgewählte */}
+                {/* LV Positionen - nur wenn ausgewählt */}
 {selectedProjects[project.tender_id] && (
-  <div className="mt-6 pt-4 border-t border-white/20">
-  <div className="flex justify-between items-center">
-    <span className="text-lg text-gray-300">Projektsumme (Netto):</span>
-    <span className="text-2xl font-bold text-teal-400">
-      {formatCurrency(
-        offer.positions.reduce((sum, pos) => 
-          sum + (parseFloat(pos.totalPrice) || 0), 0
-        )
+  <div className="p-6">
+    <h4 className="text-lg font-semibold text-white mb-4">Leistungsverzeichnis:</h4>
+    
+    <div className="space-y-3">
+      {offer.positions.map((position, posIdx) => (
+        <div 
+          key={posIdx}
+          className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-teal-500/50 transition-all cursor-pointer"
+          onClick={() => openPositionModal(projectIdx, posIdx)}
+        >
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-teal-400 font-bold">{position.pos}</span>
+                <h5 className="text-white font-semibold">{position.title}</h5>
+              </div>
+              
+              {position.description && (
+                <p className="text-gray-400 text-sm mb-2">{position.description}</p>
+              )}
+              
+              <div className="flex gap-4 text-sm text-gray-300">
+                <span>{position.quantity} {position.unit}</span>
+                {position.unitPrice > 0 && (
+                  <span>à {formatCurrency(position.unitPrice)}</span>
+                )}
+              </div>
+            </div>
+            <div className="text-right ml-4">
+              {position.totalPrice > 0 ? (
+                <p className="text-xl font-bold text-teal-400">
+                  {formatCurrency(position.totalPrice)}
+                </p>
+              ) : (
+                <p className="text-sm text-yellow-400">
+                  Preis eingeben →
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    {/* Projekt-Summe */}
+    <div className="mt-6 pt-4 border-t border-white/20">
+      <div className="flex justify-between items-center">
+        <span className="text-lg text-gray-300">Projektsumme (Netto):</span>
+        <span className="text-2xl font-bold text-teal-400">
+          {formatCurrency(
+            offer.positions.reduce((sum, pos) => 
+              sum + (parseFloat(pos.totalPrice) || 0), 0
+            )
+          )}
+        </span>
+      </div>
+      {offer.positions.some(pos => !pos.unitPrice || pos.unitPrice === 0) && (
+        <p className="text-yellow-400 text-xs mt-2 text-right">
+          ⚠️ Bitte alle Positionen mit Preisen versehen
+        </p>
       )}
-    </span>
+    </div>
   </div>
-  {offer.positions.some(pos => !pos.unitPrice || pos.unitPrice === 0) && (
-    <p className="text-yellow-400 text-xs mt-2 text-right">
-      ⚠️ Bitte alle Positionen mit Preisen versehen
-    </p>
-  )}
-</div>
-)}  
+)} 
                 </div>
               </div>
             );
