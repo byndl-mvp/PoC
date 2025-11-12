@@ -22973,11 +22973,27 @@ async function checkAndCreateBundles(project, tenders) {
         bundleId = bundleResult.rows[0].id;
       }
       
-      // Tender mit Bundle verknüpfen
-      await query(
-        `UPDATE tenders SET bundle_id = $1 WHERE id = $2`,
-        [bundleId, tender.tenderId]
-      );
+      // ✅ NACHHER:
+// 1. Prüfe zuerst ob Tender bereits in Bundle ist
+const existingBundleCheck = await query(
+  `SELECT bundle_id FROM tenders WHERE id = $1`,
+  [tender.tenderId]
+);
+
+if (existingBundleCheck.rows.length > 0 && existingBundleCheck.rows[0].bundle_id !== null) {
+  console.log(`⏭️ Tender ${tender.tenderId} bereits in Bundle, überspringe`);
+  continue; // ✅ Überspringe!
+}
+
+// 2. UPDATE nur wenn bundle_id noch NULL ist
+const updateResult = await query(
+  `UPDATE tenders 
+   SET bundle_id = $1 
+   WHERE id = $2 
+   AND bundle_id IS NULL  -- ✅ Wichtige Prüfung!
+   RETURNING id`,
+  [bundleId, tender.tenderId]
+);
       
       // Ähnliche Tenders auch zum Bundle hinzufügen
       for (const similar of similarProjects.rows) {
