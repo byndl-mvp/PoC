@@ -755,7 +755,10 @@ const toggleProjectSelection = (tenderId) => {
               <div className="flex justify-between text-lg">
                 <span className="text-gray-300">Summe aller Projekte (Netto):</span>
                 <span className="text-white font-bold">
-                  {formatCurrency(Object.values(projectOffers).reduce((sum, o) => sum + (o.amount || 0), 0))}
+                  {formatCurrency(Object.entries(projectOffers).reduce((sum, [tenderId, o]) => {
+  if (!selectedProjects[tenderId]) return sum;
+  return sum + (o.amount || 0);
+}, 0))}
                 </span>
               </div>
               
