@@ -22767,51 +22767,75 @@ bundle.center = calculateCenter(bundle.projects);
   }
 });
 
-// Bündel-Angebot abgeben (angepasst)
+// ============================================
+// KORRIGIERTE ROUTE: Bundle-Angebot abgeben
+// ============================================
+
 app.post('/api/bundles/:bundleId/submit-offer', async (req, res) => {
   try {
     const { bundleId } = req.params;
-    const { companyId, bundleDiscount, individualOffers } = req.body;
+    
+    // ✅ FIX: Akzeptiere beide Formate (camelCase und snake_case)
+    const { 
+      companyId, 
+      bundleDiscount,           // camelCase (wenn Frontend korrigiert wird)
+      bundle_discount,          // snake_case (aktuelles Frontend)
+      individualOffers,
+      notes
+    } = req.body;
+    
+    // ✅ FIX: Konvertiere zu Number und verwende vorhandenen Wert
+    const discountValue = parseFloat(bundleDiscount || bundle_discount) || 0;
+    
+    // ✅ DEBUG-Logging
+    console.log('📦 Bundle offer submission:', {
+      bundleId,
+      companyId,
+      discountValue,
+      individualOffersCount: Object.keys(individualOffers || {}).length
+    });
     
     await query('BEGIN');
     
     // CompanyId zu HandwerkerId konvertieren - flexibel
-let handwerkerId;
-
-// Prüfe ob companyId eine Zahl ist (dann ist es möglicherweise schon die handwerker_id)
-if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
-  // Versuche zuerst als handwerker_id
-  const directResult = await query(
-    'SELECT id FROM handwerker WHERE id = $1',
-    [parseInt(companyId)]
-  );
-  
-  if (directResult.rows.length > 0) {
-    handwerkerId = directResult.rows[0].id;
-  } else {
-    // Falls nicht gefunden, versuche als company_id
-    const companyResult = await query(
-      'SELECT id FROM handwerker WHERE company_id = $1',
-      [companyId]
-    );
+    let handwerkerId;
     
-    if (companyResult.rows.length === 0) {
-      throw new Error('Handwerker nicht gefunden');
+    // Prüfe ob companyId eine Zahl ist (dann ist es möglicherweise schon die handwerker_id)
+    if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
+      // Versuche zuerst als handwerker_id
+      const directResult = await query(
+        'SELECT id FROM handwerker WHERE id = $1',
+        [parseInt(companyId)]
+      );
+      
+      if (directResult.rows.length > 0) {
+        handwerkerId = directResult.rows[0].id;
+      } else {
+        // Falls nicht gefunden, versuche als company_id
+        const companyResult = await query(
+          'SELECT id FROM handwerker WHERE company_id = $1',
+          [companyId]
+        );
+        
+        if (companyResult.rows.length === 0) {
+          throw new Error('Handwerker nicht gefunden');
+        }
+        handwerkerId = companyResult.rows[0].id;
+      }
+    } else {
+      // String company_id
+      const handwerkerResult = await query(
+        'SELECT id FROM handwerker WHERE company_id = $1',
+        [companyId]
+      );
+      
+      if (handwerkerResult.rows.length === 0) {
+        throw new Error('Handwerker nicht gefunden');
+      }
+      handwerkerId = handwerkerResult.rows[0].id;
     }
-    handwerkerId = companyResult.rows[0].id;
-  }
-} else {
-  // String company_id
-  const handwerkerResult = await query(
-    'SELECT id FROM handwerker WHERE company_id = $1',
-    [companyId]
-  );
-  
-  if (handwerkerResult.rows.length === 0) {
-    throw new Error('Handwerker nicht gefunden');
-  }
-  handwerkerId = handwerkerResult.rows[0].id;
-}
+    
+    console.log(`✅ Handwerker ID: ${handwerkerId}, Discount: ${discountValue}%`);
     
     // Tenders für dieses Bundle laden
     const bundleTenders = await query(
@@ -22828,31 +22852,38 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
     for (const tender of bundleTenders.rows) {
       const offerData = individualOffers[tender.tender_id];
       
-      if (!offerData) continue;
+      if (!offerData) {
+        console.warn(`⚠️ No offer data for tender ${tender.tender_id}`);
+        continue;
+      }
       
-      // Prüfe ob bundle_id Spalte in offers existiert
+      console.log(`📝 Creating offer for tender ${tender.tender_id} with ${discountValue}% discount`);
+      
+      // ✅ FIX: Verwende discountValue statt bundleDiscount
       const offerResult = await query(
-  `INSERT INTO offers (
-    tender_id, handwerker_id, 
-    amount, lv_data, notes,
-    bundle_discount,
-    is_bundle_offer,
-    status, stage, created_at
-  ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'submitted', 1, NOW())
-  RETURNING id`,
-  [
-    tender.tender_id, 
-    handwerkerId, 
-    offerData.amount, 
-    JSON.stringify(offerData.positions), 
-    offerData.notes, 
-    bundleDiscount || 0,
-    true
-  ]
-);
+        `INSERT INTO offers (
+          tender_id, handwerker_id, 
+          amount, lv_data, notes,
+          bundle_discount,
+          is_bundle_offer,
+          status, stage, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'submitted', 1, NOW())
+        RETURNING id`,
+        [
+          tender.tender_id, 
+          handwerkerId, 
+          parseFloat(offerData.amount),              
+          JSON.stringify(offerData.positions), 
+          offerData.notes || notes || '',           
+          discountValue,                             
+          true
+        ]
+      );
+      
+      console.log(`✅ Created offer ${offerResult.rows[0].id} with ${discountValue}% discount`);
       
       createdOffers.push(offerResult.rows[0].id);
-      totalAmount += offerData.amount;
+      totalAmount += parseFloat(offerData.amount);   // ✅ Konvertiere zu Number
     }
     
     // tender_handwerker Status aktualisieren
@@ -22867,16 +22898,22 @@ if (typeof companyId === 'number' || /^\d+$/.test(companyId)) {
     
     await query('COMMIT');
     
+    // ✅ FIX: Verwende discountValue statt bundleDiscount
+    const finalAmount = discountValue > 0 
+      ? totalAmount * (1 - discountValue / 100) 
+      : totalAmount;
+    
     res.json({
       success: true,
       message: `Bündel-Angebot über ${createdOffers.length} Projekte abgegeben`,
-      totalAmount: bundleDiscount ? totalAmount * (1 - bundleDiscount/100) : totalAmount,
+      totalAmount: finalAmount,
+      discount: discountValue,                       // ✅ Gib verwendeten Discount zurück
       offerIds: createdOffers
     });
     
   } catch (error) {
     await query('ROLLBACK');
-    console.error('Error submitting bundle offer:', error);
+    console.error('❌ Error submitting bundle offer:', error);
     res.status(500).json({ error: error.message });
   }
 });
