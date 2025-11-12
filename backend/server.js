@@ -22469,10 +22469,15 @@ app.post('/api/admin/rematch-tenders', async (req, res) => {
 // BUNDLE EXPANSION - Neue Projekte zu Bundles hinzufügen
 // ============================================
 
-async function checkAndAddToExistingBundle(tenderId) {
-  console.log(`🔍 [BUNDLE-EXPANSION] Starting check for tender ${tenderId}`);
+async function checkAndAddToExistingBundle(tenderId, forceReadd = false) {
+  console.log(`🔍 [BUNDLE-EXPANSION] Starting check for tender ${tenderId}, forceReadd=${forceReadd}`);
   
   try {
+    // ✅ ÄNDERUNG 1: Query anpassen - bundle_id Prüfung nur wenn forceReadd = false
+    const whereClause = forceReadd 
+      ? 'WHERE tn.id = $1'  // Fall 3: Auch Tender mit bundle_id laden
+      : 'WHERE tn.id = $1 AND tn.bundle_id IS NULL';  // Fall 1 & 2: Nur ohne bundle_id
+    
     // Hole Tender-Details
     const tenderResult = await query(
       `SELECT tn.*, p.zip_code, p.street, p.house_number, p.city,
@@ -22483,19 +22488,25 @@ async function checkAndAddToExistingBundle(tenderId) {
        JOIN projects p ON tn.project_id = p.id
        JOIN trades t ON tn.trade_id = t.id
        LEFT JOIN zip_codes z ON p.zip_code = z.zip
-       WHERE tn.id = $1 AND tn.bundle_id IS NULL`,
+       ${whereClause}`,
       [tenderId]
     );
     
     console.log(`📊 [BUNDLE-EXPANSION] Tender result:`, tenderResult.rows);
     
     if (tenderResult.rows.length === 0) {
-      console.log(`⚠️ [BUNDLE-EXPANSION] Tender ${tenderId} not found or already in bundle`);
+      console.log(`⚠️ [BUNDLE-EXPANSION] Tender ${tenderId} not found${!forceReadd ? ' or already in bundle' : ''}`);
       return;
     }
     
     const tender = tenderResult.rows[0];
     console.log(`✅ [BUNDLE-EXPANSION] Tender ${tenderId} - Trade: ${tender.trade_code}, Coords: ${tender.lat}, ${tender.lng}`);
+    
+    // ✅ ÄNDERUNG 2: Bei forceReadd = false, zusätzliche Prüfung
+    if (!forceReadd && tender.bundle_id !== null) {
+      console.log(`⏭️ [BUNDLE-EXPANSION] Tender ${tenderId} already in bundle ${tender.bundle_id}, skipping`);
+      return;
+    }
     
     // Finde passende offene Bundles
     const bundlesResult = await query(
@@ -22554,24 +22565,42 @@ async function checkAndAddToExistingBundle(tenderId) {
       }
       
       if (allWithinRange) {
-        console.log(`✅ [BUNDLE-EXPANSION] Bundle ${bundle.id} matches! Adding tender ${tenderId}...`);
+        console.log(`✅ [BUNDLE-EXPANSION] Bundle ${bundle.id} matches! Adding tender ${tenderId}${forceReadd ? ' (force)' : ''}...`);
         
-        await query(
-          `UPDATE tenders 
-           SET bundle_id = $1 
-           WHERE id = $2`,
-          [bundle.id, tenderId]
-        );
+        // ✅ ÄNDERUNG 3: UPDATE Query anpassen basierend auf forceReadd
+        const updateQuery = forceReadd
+          ? `UPDATE tenders SET bundle_id = $1 WHERE id = $2`  // Fall 3: Immer setzen
+          : `UPDATE tenders SET bundle_id = $1 WHERE id = $2 AND bundle_id IS NULL`;  // Fall 1 & 2: Nur wenn NULL
         
-        await query(
-          `UPDATE bundles 
-           SET current_projects = current_projects + 1,
-               total_volume = total_volume + $1
-           WHERE id = $2`,
-          [tender.estimated_value || 0, bundle.id]
-        );
+        const updateResult = await query(updateQuery, [bundle.id, tenderId]);
         
-        console.log(`🎉 [BUNDLE-EXPANSION] Tender ${tenderId} successfully added to Bundle ${bundle.id}`);
+        // Prüfe ob UPDATE erfolgreich war
+        if (updateResult.rowCount === 0 && !forceReadd) {
+          console.log(`⚠️ [BUNDLE-EXPANSION] Tender ${tenderId} already in another bundle, skipping`);
+          continue;
+        }
+        
+        // ✅ ÄNDERUNG 4: Bundle-Stats nur updaten wenn Tender tatsächlich hinzugefügt wurde
+        if (updateResult.rowCount > 0) {
+          await query(
+            `UPDATE bundles 
+             SET current_projects = (
+               SELECT COUNT(DISTINCT project_id) 
+               FROM tenders 
+               WHERE bundle_id = $1
+             ),
+             total_volume = (
+               SELECT SUM(estimated_value) 
+               FROM tenders 
+               WHERE bundle_id = $1
+             )
+             WHERE id = $1`,
+            [bundle.id]
+          );
+          
+          console.log(`🎉 [BUNDLE-EXPANSION] Tender ${tenderId} successfully added to Bundle ${bundle.id}`);
+        }
+        
         return;
       } else {
         console.log(`❌ [BUNDLE-EXPANSION] Bundle ${bundle.id} rejected - distance too far`);
