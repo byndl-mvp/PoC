@@ -272,6 +272,7 @@ export default function HandwerkerBundleOfferPage() {
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [selectedProjectIndex, setSelectedProjectIndex] = useState(null);
   const [selectedPositionIndex, setSelectedPositionIndex] = useState(null);
+  const [selectedProjects, setSelectedProjects] = useState({});
   
   useEffect(() => {
     loadBundleDetails();
@@ -305,6 +306,13 @@ export default function HandwerkerBundleOfferPage() {
           };
         });
         setProjectOffers(initialOffers);
+        // ✅ HIER EINFÜGEN: Alle Projekte initial ausgewählt
+const initialSelected = {};
+data.projects.forEach(p => {
+  initialSelected[p.tender_id] = true;
+});
+setSelectedProjects(initialSelected);
+        
       } else {
         throw new Error('Fehler beim Laden des Bündels');
       }
@@ -330,14 +338,16 @@ useEffect(() => {
 }, [bundle]);
 
   const calculateTotalAmount = () => {
-    const total = Object.values(projectOffers).reduce((sum, offer) => {
-      return sum + (parseFloat(offer.amount) || 0);
-    }, 0);
-    
-    // Mit Rabatt
-    return total * (1 - bundleDiscount / 100);
-  };
-
+  // ✅ Filtere nur ausgewählte Projekte
+  const total = Object.entries(projectOffers).reduce((sum, [tenderId, offer]) => {
+    if (!selectedProjects[tenderId]) return sum;  // ✅ DIESE ZEILE NEU
+    return sum + (parseFloat(offer.amount) || 0);
+  }, 0);
+  
+  // Mit Rabatt
+  return total * (1 - bundleDiscount / 100);
+};
+  
   const handlePositionUpdate = (projectIdx, posIdx, updatedPosition) => {
     const tenderId = bundle.projects[projectIdx].tender_id;
     
@@ -365,45 +375,77 @@ useEffect(() => {
     setModalOpen(true);
   };
 
-  const handleSubmitBundle = async () => {
-    if (!window.confirm(`Möchten Sie ein vorläufiges Angebot für alle ${bundle.projects.length} Projekte abgeben?`)) {
-      return;
-    }
+  // ✅ HIER EINFÜGEN
+const toggleProjectSelection = (tenderId) => {
+  setSelectedProjects(prev => ({
+    ...prev,
+    [tenderId]: !prev[tenderId]
+  }));
+};
+  
+ const handleSubmitBundle = async () => {
+  // Validierung
+  const selectedCount = Object.values(selectedProjects).filter(Boolean).length;
+  
+  if (selectedCount === 0) {
+    alert('⚠️ Bitte wählen Sie mindestens ein Projekt aus!');
+    return;
+  }
+  
+  const missingPrices = Object.entries(projectOffers).some(([tenderId, offer]) => {
+    if (!selectedProjects[tenderId]) return false;
+    return offer.positions.some(pos => !pos.unitPrice || pos.unitPrice === 0);
+  });
+  
+  if (missingPrices) {
+    alert('⚠️ Bitte füllen Sie alle Preise für die ausgewählten Projekte aus!');
+    return;
+  }
+  
+  if (!window.confirm(`Möchten Sie ein vorläufiges Angebot für ${selectedCount} ausgewählte${selectedCount === 1 ? 's' : ''} Projekt${selectedCount === 1 ? '' : 'e'} abgeben?`)) {
+    return;
+  }
 
-    try {
-      setLoading(true);
-      
-      const handwerkerData = JSON.parse(sessionStorage.getItem('handwerkerData'));
-
-// Sende die richtige ID
-const handwerkerId = handwerkerData.id || handwerkerData.handwerker_id;
-
-const res = await fetch(apiUrl(`/api/bundles/${bundleId}/submit-offer`), {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    companyId: handwerkerId, // Verwende direkt die Handwerker-ID
-    bundleDiscount: bundleDiscount, 
-    individualOffers: projectOffers,
-    notes: notes
-  })
-});
-
-      if (res.ok) {
-        const data = await res.json();
-        alert(`✅ Bündelangebot erfolgreich abgegeben!\n\nGesamtsumme: ${formatCurrency(data.totalAmount)}\n${bundle.projects.length} Projekte`);
-        navigate('/handwerker/dashboard?tab=angebote');
-      } else {
-        const error = await res.json();
-        throw new Error(error.error || 'Fehler beim Absenden');
+  try {
+    setLoading(true);
+    
+    const handwerkerData = JSON.parse(sessionStorage.getItem('handwerkerData'));
+    const handwerkerId = handwerkerData.id || handwerkerData.handwerker_id;
+    
+    // Filtere nur ausgewählte Projekte
+    const selectedOffers = {};
+    Object.entries(projectOffers).forEach(([tenderId, offer]) => {
+      if (selectedProjects[tenderId]) {
+        selectedOffers[tenderId] = offer;
       }
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Fehler beim Absenden des Angebots: ' + err.message);
-    } finally {
-      setLoading(false);
+    });
+
+    const res = await fetch(apiUrl(`/api/bundles/${bundleId}/submit-offer`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        companyId: handwerkerId,
+        bundle_discount: bundleDiscount,
+        individualOffers: selectedOffers,
+        notes: notes
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      alert(`✅ Bündelangebot erfolgreich abgegeben!\n\nGesamtsumme: ${formatCurrency(data.totalAmount)}\n${selectedCount} Projekt${selectedCount === 1 ? '' : 'e'}`);
+      navigate('/handwerker/dashboard?tab=angebote');
+    } else {
+      const error = await res.json();
+      throw new Error(error.error || 'Fehler beim Absenden');
     }
-  };
+  } catch (err) {
+    console.error('Error:', err);
+    alert('Fehler beim Absenden des Angebots: ' + err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading || !bundle) {
     return (
