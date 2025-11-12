@@ -23087,105 +23087,151 @@ app.post('/api/bundles/:bundleId/submit-offer', async (req, res) => {
 // 8. HELPER FUNCTIONS
 // ============================================
 
-// Bundle-Check-Funktion - ANGEPASST an tatsächliche DB-Struktur
-async function checkAndCreateBundles(project, tenders) {
+async function checkAndCreateBundles(project, tenders, forceReadd = false) {
+  console.log(`📦 [BUNDLE-CREATE] Starting for ${tenders.length} tenders, forceReadd=${forceReadd}`);
+  
   for (const tender of tenders) {
-    // Suche nach ähnlichen Projekten in der Region
-    const similarProjects = await query(
-      `SELECT DISTINCT t.*, p.zip_code, p.bauherr_id, tr.code as trade_code
-       FROM tenders t
-       JOIN projects p ON t.project_id = p.id
-       JOIN trades tr ON t.trade_id = tr.id
-       JOIN zip_codes z1 ON z1.zip = p.zip_code
-       JOIN zip_codes z2 ON z2.zip = $1
-       WHERE t.trade_id = $2
-       AND t.status = 'open'
-       AND t.project_id != $3
-       AND t.bundle_id IS NULL  -- Noch nicht in einem Bundle
-       AND ST_DWithin(
-         ST_MakePoint(z1.longitude, z1.latitude)::geography,
-         ST_MakePoint(z2.longitude, z2.latitude)::geography,
-         5000 -- 5km Radius für Bündel
-       )`,
-      [project.zip_code, tender.tradeId, project.id]
-    );
-    
-    if (similarProjects.rows.length > 0) {
-      const tradeCode = similarProjects.rows[0].trade_code;
+    try {
+      console.log(`🔍 [BUNDLE-CREATE] Processing tender ${tender.tenderId}`);
       
-      // Existierendes offenes Bundle suchen oder neues erstellen
-      let bundleId;
-      const existingBundle = await query(
-        `SELECT id FROM bundles 
-         WHERE trade_code = $1 
-         AND region = $2 
-         AND status = 'forming'
-         AND (max_projects IS NULL OR current_projects < max_projects)`,
-        [tradeCode, project.zip_code]
+      // ✅ ÄNDERUNG 1: Prüfe bundle_id nur wenn forceReadd = false
+      if (!forceReadd) {
+        const existingBundleCheck = await query(
+          `SELECT bundle_id FROM tenders WHERE id = $1`,
+          [tender.tenderId]
+        );
+        
+        if (existingBundleCheck.rows.length > 0 && existingBundleCheck.rows[0].bundle_id !== null) {
+          console.log(`⏭️ [BUNDLE-CREATE] Tender ${tender.tenderId} bereits in Bundle ${existingBundleCheck.rows[0].bundle_id}, überspringe`);
+          continue;
+        }
+      } else {
+        console.log(`🔄 [BUNDLE-CREATE] Force-readd mode: Will update tender ${tender.tenderId} even if already in bundle`);
+      }
+      
+      // Suche nach ähnlichen Projekten in der Region
+      const similarProjects = await query(
+        `SELECT DISTINCT t.*, p.zip_code, p.bauherr_id, tr.code as trade_code
+         FROM tenders t
+         JOIN projects p ON t.project_id = p.id
+         JOIN trades tr ON t.trade_id = tr.id
+         JOIN zip_codes z1 ON z1.zip = p.zip_code
+         JOIN zip_codes z2 ON z2.zip = $1
+         WHERE t.trade_id = $2
+         AND t.status = 'open'
+         AND t.project_id != $3
+         AND t.bundle_id IS NULL  -- Noch nicht in einem Bundle
+         AND ST_DWithin(
+           ST_MakePoint(z1.longitude, z1.latitude)::geography,
+           ST_MakePoint(z2.longitude, z2.latitude)::geography,
+           5000 -- 5km Radius für Bündel
+         )`,
+        [project.zip_code, tender.tradeId, project.id]
       );
       
-      if (existingBundle.rows.length > 0) {
-        bundleId = existingBundle.rows[0].id;
-      } else {
-        // Neues Bundle erstellen
-        const bundleResult = await query(
-          `INSERT INTO bundles (
-            trade_code, region, status, max_projects, current_projects, created_at
-          ) VALUES ($1, $2, 'forming', 5, 0, NOW())
-          RETURNING id`,
+      console.log(`🔍 [BUNDLE-CREATE] Found ${similarProjects.rows.length} similar projects`);
+      
+      if (similarProjects.rows.length > 0) {
+        const tradeCode = similarProjects.rows[0].trade_code;
+        
+        // Existierendes offenes Bundle suchen oder neues erstellen
+        let bundleId;
+        const existingBundle = await query(
+          `SELECT id FROM bundles 
+           WHERE trade_code = $1 
+           AND region = $2 
+           AND status = 'forming'
+           AND (max_projects IS NULL OR current_projects < max_projects)`,
           [tradeCode, project.zip_code]
         );
-        bundleId = bundleResult.rows[0].id;
-      }
-      
-      // ✅ NACHHER:
-// 1. Prüfe zuerst ob Tender bereits in Bundle ist
-const existingBundleCheck = await query(
-  `SELECT bundle_id FROM tenders WHERE id = $1`,
-  [tender.tenderId]
-);
-
-if (existingBundleCheck.rows.length > 0 && existingBundleCheck.rows[0].bundle_id !== null) {
-  console.log(`⏭️ Tender ${tender.tenderId} bereits in Bundle, überspringe`);
-  continue; // ✅ Überspringe!
-}
-
-// 2. UPDATE nur wenn bundle_id noch NULL ist
-const updateResult = await query(
-  `UPDATE tenders 
-   SET bundle_id = $1 
-   WHERE id = $2 
-   AND bundle_id IS NULL  -- ✅ Wichtige Prüfung!
-   RETURNING id`,
-  [bundleId, tender.tenderId]
-);
-      
-      // Ähnliche Tenders auch zum Bundle hinzufügen
-      for (const similar of similarProjects.rows) {
+        
+        if (existingBundle.rows.length > 0) {
+          bundleId = existingBundle.rows[0].id;
+          console.log(`📦 [BUNDLE-CREATE] Using existing bundle ${bundleId}`);
+        } else {
+          // Neues Bundle erstellen
+          const bundleResult = await query(
+            `INSERT INTO bundles (
+              trade_code, region, status, max_projects, current_projects, created_at
+            ) VALUES ($1, $2, 'forming', 5, 0, NOW())
+            RETURNING id`,
+            [tradeCode, project.zip_code]
+          );
+          bundleId = bundleResult.rows[0].id;
+          console.log(`📦 [BUNDLE-CREATE] Created new bundle ${bundleId}`);
+        }
+        
+        // ✅ ÄNDERUNG 2: UPDATE Query basierend auf forceReadd
+        const updateQuery = forceReadd
+          ? `UPDATE tenders SET bundle_id = $1 WHERE id = $2 RETURNING id`
+          : `UPDATE tenders SET bundle_id = $1 WHERE id = $2 AND bundle_id IS NULL RETURNING id`;
+        
+        const updateResult = await query(updateQuery, [bundleId, tender.tenderId]);
+        
+        if (updateResult.rows.length > 0) {
+          console.log(`✅ [BUNDLE-CREATE] Tender ${tender.tenderId} added to bundle ${bundleId}${forceReadd ? ' (forced)' : ''}`);
+        } else {
+          console.log(`⏭️ [BUNDLE-CREATE] Tender ${tender.tenderId} not added (already in bundle or constraint failed)`);
+        }
+        
+        // ✅ ÄNDERUNG 3: Ähnliche Tenders auch mit forceReadd Option
+        for (const similar of similarProjects.rows) {
+          const similarUpdateQuery = forceReadd
+            ? `UPDATE tenders SET bundle_id = $1 WHERE id = $2 RETURNING id`
+            : `UPDATE tenders SET bundle_id = $1 WHERE id = $2 AND bundle_id IS NULL RETURNING id`;
+          
+          const similarUpdateResult = await query(similarUpdateQuery, [bundleId, similar.id]);
+          
+          if (similarUpdateResult.rows.length > 0) {
+            console.log(`✅ [BUNDLE-CREATE] Similar tender ${similar.id} added to bundle ${bundleId}`);
+          }
+        }
+        
+        // Bundle-Projekte Tabelle befüllen (falls verwendet)
+        try {
+          await query(
+            `INSERT INTO bundle_projects (bundle_id, project_id, joined_at)
+             SELECT $1, project_id, NOW() 
+             FROM tenders 
+             WHERE bundle_id = $1
+             ON CONFLICT (bundle_id, project_id) DO NOTHING`,
+            [bundleId]
+          );
+        } catch (bundleProjectsErr) {
+          // Tabelle existiert möglicherweise nicht, ignorieren
+          console.log(`⚠️ [BUNDLE-CREATE] bundle_projects table might not exist:`, bundleProjectsErr.message);
+        }
+        
+        // ✅ ÄNDERUNG 4: Current_projects mit COUNT(DISTINCT project_id)
         await query(
-          `UPDATE tenders SET bundle_id = $1 WHERE id = $2 AND bundle_id IS NULL`,
-          [bundleId, similar.id]
+          `UPDATE bundles 
+           SET current_projects = (
+             SELECT COUNT(DISTINCT project_id) 
+             FROM tenders 
+             WHERE bundle_id = $1
+           ),
+           total_volume = (
+             SELECT SUM(estimated_value) 
+             FROM tenders 
+             WHERE bundle_id = $1
+           )
+           WHERE id = $1`,
+          [bundleId]
         );
+        
+        console.log(`📊 [BUNDLE-CREATE] Bundle ${bundleId} stats updated`);
+        
+      } else {
+        console.log(`⚠️ [BUNDLE-CREATE] No similar projects found for tender ${tender.tenderId}`);
       }
       
-      // Bundle-Projekte Tabelle befüllen (falls verwendet)
-      await query(
-        `INSERT INTO bundle_projects (bundle_id, project_id, joined_at)
-         SELECT $1, project_id, NOW() FROM tenders WHERE bundle_id = $1
-         ON CONFLICT DO NOTHING`,
-        [bundleId]
-      );
-      
-      // Current_projects im Bundle aktualisieren
-      await query(
-        `UPDATE bundles 
-         SET current_projects = (SELECT COUNT(*) FROM tenders WHERE bundle_id = $1),
-             total_volume = (SELECT SUM(estimated_value) FROM tenders WHERE bundle_id = $1)
-         WHERE id = $1`,
-        [bundleId]
-      );
+    } catch (error) {
+      console.error(`❌ [BUNDLE-CREATE] Error processing tender ${tender.tenderId}:`, error);
+      // Fahre mit nächstem Tender fort
     }
   }
+  
+  console.log(`✅ [BUNDLE-CREATE] Completed processing ${tenders.length} tenders`);
 }
 
 // Berechne maximale Distanz zwischen Koordinaten
