@@ -743,7 +743,13 @@ const toggleProjectSelection = (tenderId) => {
         {/* Gesamtsumme */}
         <div className="bg-gradient-to-r from-green-600/20 to-teal-600/20 rounded-2xl p-8 border border-white/20 mb-8">
           <div className="max-w-2xl mx-auto">
-            <h3 className="text-2xl font-bold text-white mb-6 text-center">Gesamtsumme Bündelangebot</h3>
+  <div className="text-center mb-4">
+    <span className="inline-block px-4 py-2 bg-teal-500/20 text-teal-300 rounded-full text-sm font-semibold">
+      {Object.values(selectedProjects).filter(Boolean).length} von {bundle.projects.length} Projekten ausgewählt
+    </span>
+  </div>
+  
+  <h3 className="text-2xl font-bold text-white mb-6 text-center">Gesamtsumme Bündelangebot</h3>
             
             <div className="space-y-3">
               <div className="flex justify-between text-lg">
