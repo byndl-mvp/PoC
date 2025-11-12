@@ -801,7 +801,7 @@ const toggleProjectSelection = (tenderId) => {
             disabled={loading || totalNetto === 0}
             className="flex-1 px-8 py-4 bg-gradient-to-r from-teal-500 to-blue-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Wird gesendet...' : `✓ Vorläufiges Bündelangebot für alle ${bundle.projects.length} Projekte abgeben`}
+            {loading ? 'Wird gesendet...' : `✓ Angebot für ${Object.values(selectedProjects).filter(Boolean).length} ausgewählte${Object.values(selectedProjects).filter(Boolean).length === 1 ? 's' : ''} Projekt${Object.values(selectedProjects).filter(Boolean).length === 1 ? '' : 'e'} abgeben`}
           </button>
         </div>
       </div>
