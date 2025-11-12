@@ -641,8 +641,21 @@ const toggleProjectSelection = (tenderId) => {
 </div>
 
                 {/* LV Positionen */}
-                <div className="p-6">
-                  <h4 className="text-lg font-semibold text-white mb-4">Leistungsverzeichnis:</h4>
+<div className="p-6 relative">
+  {!selectedProjects[project.tender_id] && (
+    <div className="absolute inset-0 bg-gray-900/70 backdrop-blur-sm rounded-2xl z-10 flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-white text-lg font-semibold mb-2">
+          Projekt nicht ausgewählt
+        </p>
+        <p className="text-gray-400 text-sm">
+          Aktivieren Sie die Checkbox oben
+        </p>
+      </div>
+    </div>
+  )}
+  
+  <h4 className="text-lg font-semibold text-white mb-4">Leistungsverzeichnis:</h4>
                   
                   <div className="space-y-3">
                     {offer.positions.map((position, posIdx) => (
