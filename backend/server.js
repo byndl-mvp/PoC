@@ -24766,8 +24766,8 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       totalSum, 
       stage = 'preliminary',      
       isPreliminary,              
-      bundleDiscount = isBundleOffer ? (bundleDiscount || 0) : 0,
-      isBundleOffer = false
+      isBundleOffer = false,                                    
+      bundleDiscount = isBundleOffer ? (bundleDiscount || 0) : 0  
     } = req.body;
     
     // ✅ FIX: Unterstütze BEIDE Formate (isPreliminary Boolean + stage String)
