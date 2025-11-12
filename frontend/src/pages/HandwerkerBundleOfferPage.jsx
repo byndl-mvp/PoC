@@ -392,16 +392,6 @@ const toggleProjectSelection = (tenderId) => {
     return;
   }
   
-  const missingPrices = Object.entries(projectOffers).some(([tenderId, offer]) => {
-    if (!selectedProjects[tenderId]) return false;
-    return offer.positions.some(pos => !pos.unitPrice || pos.unitPrice === 0);
-  });
-  
-  if (missingPrices) {
-    alert('⚠️ Bitte füllen Sie alle Preise für die ausgewählten Projekte aus!');
-    return;
-  }
-  
   if (!window.confirm(`Möchten Sie ein vorläufiges Angebot für ${selectedCount} ausgewählte${selectedCount === 1 ? 's' : ''} Projekt${selectedCount === 1 ? '' : 'e'} abgeben?`)) {
     return;
   }
