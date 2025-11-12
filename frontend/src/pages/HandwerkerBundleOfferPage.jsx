@@ -696,7 +696,6 @@ const toggleProjectSelection = (tenderId) => {
     </div>
   </div>
 )} 
-                </div>
               </div>
             );
           })}
