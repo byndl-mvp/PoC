@@ -702,8 +702,9 @@ const toggleProjectSelection = (tenderId) => {
                     ))}
                   </div>
                   
-                  {/* Projekt-Summe */}
-<div className="mt-6 pt-4 border-t border-white/20">
+                 {/* Projekt-Summe - nur für ausgewählte */}
+{selectedProjects[project.tender_id] && (
+  <div className="mt-6 pt-4 border-t border-white/20">
   <div className="flex justify-between items-center">
     <span className="text-lg text-gray-300">Projektsumme (Netto):</span>
     <span className="text-2xl font-bold text-teal-400">
@@ -720,6 +721,7 @@ const toggleProjectSelection = (tenderId) => {
     </p>
   )}
 </div>
+)}  
                 </div>
               </div>
             );
