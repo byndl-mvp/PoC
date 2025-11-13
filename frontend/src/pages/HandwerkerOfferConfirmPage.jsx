@@ -187,83 +187,193 @@ const checkAppointmentBeforeConfirm = async () => {
       alert('Bitte geben Sie die Ausführungstermine an.');
       return;
     }
-
     if (lvData.positions.length === 0) {
       alert('Bitte fügen Sie mindestens eine Position hinzu.');
       return;
     }
-
     // Prüfe ob Terminplan-Änderungen eine Begründung benötigen
-  if (hasScheduleChanges && !scheduleChangeReason.trim()) {
-    alert('Bitte geben Sie eine Begründung für die Terminänderung an.');
-    return;
-  }
+    if (hasScheduleChanges && !scheduleChangeReason.trim()) {
+      alert('Bitte geben Sie eine Begründung für die Terminänderung an.');
+      return;
+    }
     
     if (!window.confirm('Möchten Sie dieses Angebot verbindlich bestätigen?')) return;
-
+    
     try {
       setLoading(true);
       const totalAmount = calculateTotal();
-
-      // DEBUG AUSGABEN
-console.log('=== CONFIRM FINAL - SENDEN ===');
-console.log('Offer ID:', offerId);
-console.log('Berechneter Betrag:', totalAmount);
-console.log('Anzahl Positionen:', lvData.positions.length);
-console.log('Erste 3 Positionen:', lvData.positions.slice(0, 3));
-console.log('Execution Start:', formData.execution_start);
-console.log('Execution End:', formData.execution_end);
-
-// Prüfe ob lvData wirklich die aktualisierten Daten hat
-const positionenMitPreis = lvData.positions.filter(p => p.unitPrice && p.unitPrice > 0);
-console.log('Positionen mit Preis:', positionenMitPreis.length);
-
-console.log('🔥 SCHEDULE DEBUG:', {
-  schedulePhases,
-  hasScheduleChanges,
-  scheduleChangeReason,
-  phasesCount: schedulePhases.length
-});
-
-const phasesForBackend = schedulePhases.map(phase => ({
-  ...phase,
-  planned_start: phase.start,      // ← KOPIERE geänderten Wert
-  planned_end: phase.end            // ← KOPIERE geänderten Wert
-}));
       
-      const res = await fetch(apiUrl(`/api/offers/${offerId}/confirm-final`), {
+      // DEBUG AUSGABEN
+      console.log('=== CONFIRM FINAL - SENDEN ===');
+      console.log('Offer ID:', offerId);
+      console.log('Berechneter Betrag:', totalAmount);
+      console.log('Anzahl Positionen:', lvData.positions.length);
+      console.log('Execution Start:', formData.execution_start);
+      console.log('Execution End:', formData.execution_end);
+      
+      const positionenMitPreis = lvData.positions.filter(p => p.unitPrice && p.unitPrice > 0);
+      console.log('Positionen mit Preis:', positionenMitPreis.length);
+      
+      // ========================================================================
+      // NEU: UNTERSCHEIDE ZWISCHEN BAUHERREN-PLAN UND MANUELLEN TERMINEN
+      // ========================================================================
+      const hasBauherrenSchedule = schedulePhases.length > 0 && schedulePhases[0].id; // Hat IDs = aus DB
+      const hasManualEntries = schedulePhases.length > 0 && !schedulePhases[0].id; // Keine IDs = manuell
+      
+      console.log('🔥 SCHEDULE DEBUG:', {
+        schedulePhases,
+        hasBauherrenSchedule,
+        hasManualEntries,
+        hasScheduleChanges,
+        scheduleChangeReason,
+        phasesCount: schedulePhases.length
+      });
+      
+      // ========================================================================
+      // SCHRITT 1: TERMINE VERARBEITEN (VOR Angebotsbestätigung!)
+      // ========================================================================
+      
+      if (hasBauherrenSchedule) {
+        // FALL A: Es gibt einen Bauherren-Terminplan → Bestätigen/Ändern
+        console.log('[SCHEDULE] 📅 Bauherren-Terminplan vorhanden → Bestätige/Ändere Termine');
+        
+        const adjustments = schedulePhases
+          .filter(phase => phase.start !== phase.planned_start || phase.end !== phase.planned_end)
+          .map(phase => ({
+            entryId: phase.id,
+            changed: true,
+            old_start: phase.planned_start,
+            old_end: phase.planned_end,
+            new_start: phase.start,
+            new_end: phase.end,
+            reason: scheduleChangeReason || 'Anpassung durch Handwerker'
+          }));
+        
+        const scheduleRes = await fetch('/api/schedule-entries/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entryIds: schedulePhases.map(p => p.id),
+            handwerkerId: currentUser.id,
+            adjustments: adjustments,
+            offerId: offerId,
+            manualEntries: null // Kein manueller Schedule
+          })
+        });
+        
+        if (!scheduleRes.ok) {
+          throw new Error('Fehler bei der Terminbestätigung');
+        }
+        
+        const scheduleData = await scheduleRes.json();
+        console.log('[SCHEDULE] ✅ Termine bestätigt:', scheduleData);
+        
+      } else if (hasManualEntries) {
+        // FALL B: Keine Bauherren-Termine → Handwerker hat manuell eingetragen
+        console.log('[SCHEDULE] 📝 Keine Bauherren-Termine → Erstelle manuellen Terminplan');
+        
+        const manualEntries = schedulePhases.map((phase, idx) => ({
+          phase_name: phase.phase_name || `Phase ${idx + 1}`,
+          phase_number: phase.phase_number || (idx + 1),
+          planned_start: phase.start,
+          planned_end: phase.end,
+          is_multi_phase: schedulePhases.length > 1
+        }));
+        
+        const scheduleRes = await fetch('/api/schedule-entries/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entryIds: [], // Leer bei manuellem Schedule
+            handwerkerId: currentUser.id,
+            adjustments: null,
+            offerId: offerId,
+            manualEntries: manualEntries // NEU: Manuell eingetragene Termine
+          })
+        });
+        
+        if (!scheduleRes.ok) {
+          throw new Error('Fehler beim Erstellen des Terminplans');
+        }
+        
+        const scheduleData = await scheduleRes.json();
+        console.log('[SCHEDULE] ✅ Manueller Terminplan erstellt:', scheduleData);
+        
+      } else {
+        // FALL C: Nur execution_start/end, keine Phasen
+        console.log('[SCHEDULE] ⚠️ Nur execution_start/end ohne Phasen → Erstelle Single-Entry');
+        
+        const manualEntries = [{
+          phase_name: 'Ausführung',
+          phase_number: 1,
+          planned_start: formData.execution_start,
+          planned_end: formData.execution_end,
+          is_multi_phase: false
+        }];
+        
+        const scheduleRes = await fetch('/api/schedule-entries/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entryIds: [],
+            handwerkerId: currentUser.id,
+            adjustments: null,
+            offerId: offerId,
+            manualEntries: manualEntries
+          })
+        });
+        
+        if (!scheduleRes.ok) {
+          throw new Error('Fehler beim Erstellen der Ausführungszeiten');
+        }
+        
+        const scheduleData = await scheduleRes.json();
+        console.log('[SCHEDULE] ✅ Single-Entry Terminplan erstellt:', scheduleData);
+      }
+      
+      // ========================================================================
+      // SCHRITT 2: ANGEBOT BESTÄTIGEN
+      // ========================================================================
+      
+      const phasesForBackend = schedulePhases.map(phase => ({
+        ...phase,
+        planned_start: phase.start,
+        planned_end: phase.end
+      }));
+      
+      const res = await fetch(`/api/offers/${offerId}/confirm-final`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-        amount: totalAmount,
-        bundle_discount: offer?.is_bundle_offer ? bundleDiscount : 0, 
-        execution_start: formData.execution_start,
-        execution_end: formData.execution_end,
-        notes: formData.notes,
-        lv_data: lvData,
-        schedule_phases: phasesForBackend,
-        schedule_change_reason: hasScheduleChanges ? scheduleChangeReason : null,
-        has_schedule_changes: hasScheduleChanges
-      })
-    });
+          amount: totalAmount,
+          bundle_discount: offer?.is_bundle_offer ? bundleDiscount : 0, 
+          execution_start: formData.execution_start,
+          execution_end: formData.execution_end,
+          notes: formData.notes,
+          lv_data: lvData,
+          schedule_phases: phasesForBackend, // Bleibt für Kompatibilität
+          schedule_change_reason: hasScheduleChanges ? scheduleChangeReason : null,
+          has_schedule_changes: hasScheduleChanges
+        })
+      });
       
       if (res.ok) {
-  console.log('=== ERFOLGREICH GESENDET ===');
-  alert('Angebot wurde verbindlich bestätigt! Der Bauherr wird benachrichtigt.');
-  navigate('/handwerker/dashboard');
-} else {
-  const errorData = await res.json();
-  console.error('=== FEHLER BEIM SENDEN ===', errorData);
-  throw new Error('Fehler beim Bestätigen');
-}
+        console.log('=== ERFOLGREICH GESENDET ===');
+        alert('Angebot wurde verbindlich bestätigt! Der Bauherr wird benachrichtigt.');
+        navigate('/handwerker/dashboard');
+      } else {
+        const errorData = await res.json();
+        console.error('=== FEHLER BEIM SENDEN ===', errorData);
+        throw new Error('Fehler beim Bestätigen');
+      }
     } catch (err) {
       console.error('Error:', err);
-      alert('Fehler beim Bestätigen des Angebots');
+      alert('Fehler beim Bestätigen des Angebots: ' + err.message);
     } finally {
       setLoading(false);
     }
   };
-
+  
   // Position Modal Component
 const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
   const [localPosition, setLocalPosition] = useState(null);
