@@ -29716,10 +29716,13 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
   try {
     const { handwerkerId } = req.params;
     
-    // Lade alle Projekte mit Terminen wo Handwerker beauftragt ist
+    console.log('[SCHEDULE] 📋 Loading schedule for handwerker:', handwerkerId);
+    
+    // ✅ FIX: Erweiterte Query die auch manuell eingetragene Termine lädt
     const scheduleResult = await query(
       `SELECT 
         p.id as project_id,
+        p.title as project_title,
         p.description as project_description,
         p.street,
         p.house_number,
@@ -29735,7 +29738,11 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
         se.duration_days,
         se.status,
         se.confirmed,
+        se.confirmed_at,
+        ps.created_by_type,
+        ps.id as schedule_id,
         o.id as order_id,
+        o.status as offer_status,
         CASE 
           WHEN o.id IS NOT NULL THEN true 
           ELSE false 
@@ -29744,25 +29751,32 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
        JOIN project_schedules ps ON se.schedule_id = ps.id
        JOIN projects p ON ps.project_id = p.id
        JOIN trades t ON se.trade_id = t.id
-       JOIN offers of ON of.tender_id IN (
-         SELECT id FROM tenders WHERE project_id = p.id AND trade_id = t.id
-       )
+       JOIN tenders tn ON tn.project_id = p.id AND tn.trade_id = t.id
+       JOIN offers of ON of.tender_id = tn.id
        LEFT JOIN orders o ON o.offer_id = of.id
        WHERE of.handwerker_id = $1
          AND of.status IN ('preliminary', 'confirmed', 'accepted')
          AND ps.status IN ('active', 'locked')
-       ORDER BY se.planned_start, p.id, se.phase_number`,
+       ORDER BY p.id, se.planned_start, se.phase_number`,
       [handwerkerId]
     );
     
-    // Gruppiere nach Projekt
+    console.log('[SCHEDULE] ✅ Found', scheduleResult.rows.length, 'schedule entries');
+    
+    // ✅ FIX: Gruppiere nach Projekt mit erweiterten Infos
     const projects = {};
     scheduleResult.rows.forEach(row => {
       if (!projects[row.project_id]) {
         projects[row.project_id] = {
           project_id: row.project_id,
+          project_title: row.project_title || 'Projekt',
           project_description: row.project_description,
           address: `${row.street} ${row.house_number}, ${row.zip_code} ${row.city}`,
+          trade_code: row.trade_code,
+          trade_name: row.trade_name,
+          schedule_id: row.schedule_id,
+          is_manual_schedule: row.created_by_type === 'handwerker', // ✅ NEU!
+          offer_status: row.offer_status,
           entries: []
         };
       }
@@ -29778,15 +29792,25 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
         duration_days: row.duration_days,
         status: row.status,
         confirmed: row.confirmed,
+        confirmed_at: row.confirmed_at,
         order_id: row.order_id,
         is_contracted: row.is_contracted
       });
     });
     
-    res.json(Object.values(projects));
+    const projectList = Object.values(projects);
+    
+    console.log('[SCHEDULE] 📦 Returning', projectList.length, 'projects');
+    projectList.forEach(p => {
+      if (p.is_manual_schedule) {
+        console.log('[SCHEDULE] 📝 Manual schedule:', p.project_title, 'with', p.entries.length, 'entries');
+      }
+    });
+    
+    res.json(projectList);
     
   } catch (err) {
-    console.error('[SCHEDULE] Handwerker schedule failed:', err);
+    console.error('[SCHEDULE] ❌ Handwerker schedule failed:', err);
     res.status(500).json({ error: 'Fehler beim Laden der Terminübersicht' });
   }
 });
