@@ -28239,11 +28239,144 @@ app.get('/api/offers/:offerId/schedule-dates', async (req, res) => {
 
 app.post('/api/schedule-entries/confirm', async (req, res) => {
   try {
-    const { entryIds, handwerkerId, adjustments } = req.body;
+    const { entryIds, handwerkerId, adjustments, offerId, manualEntries } = req.body;
     
     await query('BEGIN');
     
     try {
+      // ========================================================================
+      // NEU: PRÜFE OB MANUELL EINGETRAGENE TERMINE (kein Bauherren-Schedule)
+      // ========================================================================
+      let isManualSchedule = false;
+      let projectId = null;
+      let tradeId = null;
+      
+      if (manualEntries && manualEntries.length > 0) {
+        // Hole Project + Trade vom Offer
+        const offerResult = await query(
+          `SELECT o.*, tn.trade_id, tn.project_id
+           FROM offers o
+           JOIN tenders tn ON o.tender_id = tn.id
+           WHERE o.id = $1`,
+          [offerId]
+        );
+        
+        if (offerResult.rows.length === 0) {
+          await query('ROLLBACK');
+          return res.status(404).json({ error: 'Angebot nicht gefunden' });
+        }
+        
+        const offer = offerResult.rows[0];
+        projectId = offer.project_id;
+        tradeId = offer.trade_id;
+        isManualSchedule = true;
+        
+        // ====================================================================
+        // NEU: ERSTELLE HANDWERKER-SCHEDULE für dieses Projekt + Trade
+        // ====================================================================
+        const scheduleResult = await query(
+          `INSERT INTO project_schedules 
+           (project_id, created_by_type, created_by_id, status, created_at, updated_at)
+           VALUES ($1, 'handwerker', $2, 'active', NOW(), NOW())
+           RETURNING id`,
+          [projectId, handwerkerId]
+        );
+        
+        const scheduleId = scheduleResult.rows[0].id;
+        
+        console.log('[MANUAL_SCHEDULE] ✅ Created handwerker schedule:', scheduleId);
+        
+        // ====================================================================
+        // NEU: ERSTELLE SCHEDULE_ENTRIES für jede manuelle Eingabe
+        // ====================================================================
+        const createdEntryIds = [];
+        
+        for (let i = 0; i < manualEntries.length; i++) {
+          const entry = manualEntries[i];
+          
+          const entryResult = await query(
+            `INSERT INTO schedule_entries 
+             (schedule_id, trade_id, phase_name, phase_number, 
+              planned_start, planned_end, duration_days, 
+              confirmed, confirmed_by, confirmed_at, status, 
+              sequence_order, is_multi_phase, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10, $11, $12, NOW(), NOW())
+             RETURNING id`,
+            [
+              scheduleId,
+              tradeId,
+              entry.phase_name || 'Ausführung',
+              entry.phase_number || (i + 1),
+              entry.planned_start,
+              entry.planned_end,
+              calculateWorkdays(new Date(entry.planned_start), new Date(entry.planned_end)),
+              true, // confirmed
+              handwerkerId,
+              'confirmed',
+              i + 1, // sequence_order
+              entry.is_multi_phase || false
+            ]
+          );
+          
+          createdEntryIds.push(entryResult.rows[0].id);
+          
+          // History für manuelle Erstellung
+          await query(
+            `INSERT INTO schedule_history 
+             (schedule_entry_id, changed_by_type, changed_by_id, change_type, 
+              new_start, new_end, reason, created_at)
+             VALUES ($1, 'handwerker', $2, 'created', $3, $4, $5, NOW())`,
+            [
+              entryResult.rows[0].id,
+              handwerkerId,
+              entry.planned_start,
+              entry.planned_end,
+              'Manuell eingetragen bei Angebotsbestätigung'
+            ]
+          );
+        }
+        
+        console.log('[MANUAL_SCHEDULE] ✅ Created', createdEntryIds.length, 'entries');
+        
+        // Benachrichtigung an Bauherr
+        const bauherrResult = await query(
+          `SELECT bauherr_id FROM projects WHERE id = $1`,
+          [projectId]
+        );
+        
+        if (bauherrResult.rows.length > 0) {
+          const tradeResult = await query(
+            `SELECT name FROM trades WHERE id = $1`,
+            [tradeId]
+          );
+          
+          await query(
+            `INSERT INTO notifications 
+             (user_type, user_id, type, message, reference_type, reference_id, created_at)
+             VALUES ('bauherr', $1, 'schedule_created', $2, 'schedule', $3, NOW())`,
+            [
+              bauherrResult.rows[0].bauherr_id,
+              `Handwerker hat Ausführungszeiten für ${tradeResult.rows[0].name} eingetragen`,
+              scheduleId
+            ]
+          );
+        }
+        
+        await query('COMMIT');
+        
+        return res.json({ 
+          success: true,
+          hasChanges: false,
+          isManualSchedule: true,
+          scheduleId: scheduleId,
+          createdEntries: createdEntryIds.length,
+          message: 'Ausführungszeiten gespeichert und bestätigt'
+        });
+      }
+      
+      // ========================================================================
+      // BESTEHENDER CODE: Bauherren-Schedule Termine bestätigen/anpassen
+      // ========================================================================
       for (const entryId of entryIds) {
         const adjustment = adjustments?.find(a => a.entryId === entryId);
         
@@ -28331,6 +28464,7 @@ app.post('/api/schedule-entries/confirm', async (req, res) => {
       res.json({ 
         success: true,
         hasChanges,
+        isManualSchedule: false,
         message: hasChanges 
           ? 'Terminänderung gespeichert - wartet auf Bauherr-Freigabe'
           : 'Termine bestätigt'
@@ -29418,6 +29552,116 @@ app.post('/api/schedule-change-requests/:requestId/resolve', async (req, res) =>
   } catch (err) {
     console.error('[RESOLVE-CASCADE] ❌ Resolve failed:', err);
     res.status(500).json({ error: 'Fehler bei der Bearbeitung' });
+  }
+});
+
+// ============================================================================
+// NEU: TERMINE FÜR HANDWERKER DASHBOARD LADEN (inkl. manuell eingetragene)
+// ============================================================================
+
+app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    console.log('[HW_SCHEDULE] 📋 Loading schedule entries for handwerker:', handwerkerId);
+    
+    // ========================================================================
+    // LADE ALLE SCHEDULE_ENTRIES für Projekte wo Handwerker beauftragt ist
+    // ========================================================================
+    const result = await query(
+      `SELECT 
+        se.id,
+        se.schedule_id,
+        se.trade_id,
+        se.phase_name,
+        se.phase_number,
+        se.planned_start,
+        se.planned_end,
+        se.duration_days,
+        se.buffer_days,
+        se.status,
+        se.confirmed,
+        se.confirmed_at,
+        se.scheduling_reason,
+        se.buffer_reason,
+        se.is_multi_phase,
+        se.dependencies,
+        ps.project_id,
+        ps.status as schedule_status,
+        ps.created_by_type,
+        ps.approved_at,
+        p.title as project_title,
+        p.address as project_address,
+        p.bauherr_id,
+        t.name as trade_name,
+        t.code as trade_code,
+        o.id as offer_id,
+        o.status as offer_status,
+        o.confirmation_date
+       FROM schedule_entries se
+       JOIN project_schedules ps ON se.schedule_id = ps.id
+       JOIN projects p ON ps.project_id = p.id
+       JOIN trades t ON se.trade_id = t.id
+       JOIN tenders tn ON tn.project_id = p.id AND tn.trade_id = t.id
+       JOIN offers o ON o.tender_id = tn.id AND o.handwerker_id = $1
+       WHERE o.status IN ('preliminary', 'confirmed')
+         AND ps.status IN ('active', 'locked')
+       ORDER BY p.id, se.planned_start`,
+      [handwerkerId]
+    );
+    
+    console.log('[HW_SCHEDULE] ✅ Found', result.rows.length, 'schedule entries');
+    
+    // Gruppiere nach Projekt
+    const projectGroups = {};
+    
+    result.rows.forEach(entry => {
+      const projectId = entry.project_id;
+      
+      if (!projectGroups[projectId]) {
+        projectGroups[projectId] = {
+          project_id: projectId,
+          project_title: entry.project_title,
+          project_address: entry.project_address,
+          bauherr_id: entry.bauherr_id,
+          trade_name: entry.trade_name,
+          trade_code: entry.trade_code,
+          offer_id: entry.offer_id,
+          offer_status: entry.offer_status,
+          schedule_id: entry.schedule_id,
+          schedule_status: entry.schedule_status,
+          schedule_source: entry.created_by_type, // 'bauherr' oder 'handwerker'
+          is_manual_schedule: entry.created_by_type === 'handwerker',
+          entries: []
+        };
+      }
+      
+      projectGroups[projectId].entries.push({
+        id: entry.id,
+        phase_name: entry.phase_name,
+        phase_number: entry.phase_number,
+        planned_start: entry.planned_start,
+        planned_end: entry.planned_end,
+        duration_days: entry.duration_days,
+        buffer_days: entry.buffer_days,
+        status: entry.status,
+        confirmed: entry.confirmed,
+        confirmed_at: entry.confirmed_at,
+        scheduling_reason: entry.scheduling_reason,
+        buffer_reason: entry.buffer_reason,
+        is_multi_phase: entry.is_multi_phase,
+        dependencies: entry.dependencies
+      });
+    });
+    
+    res.json({
+      success: true,
+      projects: Object.values(projectGroups)
+    });
+    
+  } catch (err) {
+    console.error('[HW_SCHEDULE] ❌ Load failed:', err);
+    res.status(500).json({ error: 'Fehler beim Laden der Termine' });
   }
 });
 
