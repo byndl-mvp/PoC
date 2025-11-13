@@ -57,20 +57,56 @@ function ExecutionTimesDisplay({ offerId, projectId, tradeName, apiUrl, onSchedu
       <h4 className="text-white font-semibold mb-2">📅 Ausführungstermine</h4>
       
       {hasChanges && (
-        <div className="mb-3 p-3 bg-orange-500/20 rounded">
-          <p className="text-orange-300 text-sm font-semibold mb-2">
-            ⚠️ Handwerker hat Terminänderungen vorgeschlagen
-          </p>
-          {scheduleChanges.map(change => (
-            <div key={change.id} className="text-sm text-orange-200 mb-1">
-              • {change.phase_name}: {new Date(change.old_start).toLocaleDateString('de-DE')} → {new Date(change.new_start).toLocaleDateString('de-DE')}
+  <div className="mb-3 p-3 bg-orange-500/20 rounded">
+    <p className="text-orange-300 text-sm font-semibold mb-2">
+      ⚠️ Handwerker hat Terminänderungen vorgeschlagen
+    </p>
+    <div className="space-y-2">
+      {scheduleChanges.map(change => {
+        // ✅ FIX: Prüfe ob Start oder Ende sich geändert hat
+        const startChanged = change.old_start !== change.new_start;
+        const endChanged = change.old_end !== change.new_end;
+        
+        return (
+          <div key={change.id} className="bg-white/5 rounded p-2">
+            <div className="text-sm font-semibold text-orange-200 mb-1">
+              • {change.phase_name}
             </div>
-          ))}
-          <p className="text-orange-200 text-xs mt-2">
-            Mit der verbindlichen Beauftragung akzeptieren Sie diese Terminänderungen automatisch.
-          </p>
-        </div>
-      )}
+            <div className="text-xs text-orange-200 ml-4 space-y-0.5">
+              {startChanged && (
+                <div>
+                  Start: {' '}
+                  <span className="line-through text-orange-300/60">
+                    {new Date(change.old_start).toLocaleDateString('de-DE')}
+                  </span>
+                  {' → '}
+                  <span className="font-semibold">
+                    {new Date(change.new_start).toLocaleDateString('de-DE')}
+                  </span>
+                </div>
+              )}
+              {endChanged && (
+                <div>
+                  Ende: {' '}
+                  <span className="line-through text-orange-300/60">
+                    {new Date(change.old_end).toLocaleDateString('de-DE')}
+                  </span>
+                  {' → '}
+                  <span className="font-semibold">
+                    {new Date(change.new_end).toLocaleDateString('de-DE')}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+    <p className="text-orange-200 text-xs mt-2">
+      Mit der verbindlichen Beauftragung akzeptieren Sie diese Terminänderungen automatisch.
+    </p>
+  </div>
+)}
       
       <p className="text-green-200 text-sm">
   {offerData.status === 'preliminary' ? (
