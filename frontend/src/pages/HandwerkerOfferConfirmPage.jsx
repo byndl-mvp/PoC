@@ -14,7 +14,7 @@ function formatCurrency(value) {
 export default function HandwerkerOfferConfirmPage() {
   const { offerId } = useParams();
   const navigate = useNavigate();
-  
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [offer, setOffer] = useState(null);
   const [lvData, setLvData] = useState({ positions: [] });
@@ -32,11 +32,23 @@ export default function HandwerkerOfferConfirmPage() {
   const [editingPosition, setEditingPosition] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+
+   // ✅ FIX: Lade Handwerker-Daten beim Mount
+useEffect(() => {
+  const storedData = sessionStorage.getItem('handwerkerData');
+  if (storedData) {
+    const data = JSON.parse(storedData);
+    setCurrentUser(data);
+  } else {
+    // Falls nicht eingeloggt, redirect
+    navigate('/handwerker/login');
+  }
+}, [navigate]);
   
   useEffect(() => {
     loadOffer();
   }, [offerId]); // eslint-disable-line
-
+  
   const loadOffer = async () => {
     try {
       const res = await fetch(apiUrl(`/api/offers/${offerId}/details-with-contacts`));
