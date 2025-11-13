@@ -20,27 +20,51 @@ export default function HandwerkerScheduleTab({ handwerkerId, apiUrl }) {
     loadSchedule();
   }, [handwerkerId]); // eslint-disable-line
 
-  const loadSchedule = async () => {
+ const loadSchedule = async () => {
     try {
       setLoading(true);
-      const res = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/schedule`));
+      
+      console.log('[SCHEDULE_TAB] 📋 Loading schedule for handwerker:', handwerkerId);
+      
+      // ✅ FIX: Verwende die NEUE Route die manuelle Termine inkludiert
+      const res = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/schedule-entries`));
       
       if (res.ok) {
         const data = await res.json();
-        setSchedule(data);
         
-        // Alle Projekte initial expanded
-        const expanded = {};
-        data.forEach(project => expanded[project.project_id] = true);
-        setExpandedProjects(expanded);
+        console.log('[SCHEDULE_TAB] ✅ Received data:', data);
+        
+        // ✅ FIX: Neue Route hat andere Response-Struktur!
+        if (data.success && data.projects) {
+          setSchedule(data.projects);
+          
+          // Alle Projekte initial expanded
+          const expanded = {};
+          data.projects.forEach(project => expanded[project.project_id] = true);
+          setExpandedProjects(expanded);
+          
+          // Log für manuell eingetragene Schedules
+          data.projects.forEach(project => {
+            if (project.is_manual_schedule) {
+              console.log('[SCHEDULE_TAB] 📝 Manual schedule detected:', project.project_title);
+            }
+          });
+        } else {
+          console.log('[SCHEDULE_TAB] ⚠️ No projects in response');
+          setSchedule([]);
+        }
+      } else {
+        console.error('[SCHEDULE_TAB] ❌ Response not ok:', res.status);
+        setSchedule([]);
       }
     } catch (err) {
-      console.error('Fehler beim Laden:', err);
+      console.error('[SCHEDULE_TAB] ❌ Error loading schedule:', err);
+      setSchedule([]);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const handleRequestChange = (entry) => {
     setSelectedEntry(entry);
     setShowChangeModal(true);
