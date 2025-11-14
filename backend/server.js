@@ -18414,6 +18414,36 @@ app.post('/api/offers/:offerId/final-accept', async (req, res) => {
     const { offerId } = req.params;
     
     await query('BEGIN');
+
+    // ✅ PRÜFE: Gibt es bereits einen Order für dieses Gewerk?
+const existingOrderCheck = await query(
+  `SELECT ord.id, o2.id as existing_offer_id, h.company_name
+   FROM orders ord
+   JOIN offers o2 ON ord.offer_id = o2.id
+   JOIN tenders tn2 ON o2.tender_id = tn2.id
+   WHERE tn2.project_id = (
+     SELECT tn.project_id FROM offers o
+     JOIN tenders tn ON o.tender_id = tn.id
+     WHERE o.id = $1
+   )
+   AND tn2.trade_id = (
+     SELECT tn.trade_id FROM offers o
+     JOIN tenders tn ON o.tender_id = tn.id
+     WHERE o.id = $1
+   )
+   AND o2.handwerker_id = (
+     SELECT handwerker_id FROM offers WHERE id = $1
+   )`,
+  [offerId]
+);
+
+if (existingOrderCheck.rows.length > 0) {
+  await query('ROLLBACK');
+  return res.status(400).json({ 
+    error: 'order_exists',
+    message: 'Sie haben für dieses Gewerk bereits einen Auftrag erteilt. Ein Gewerk kann nur einmal beauftragt werden.'
+  });
+}
     
     // ✅ NEU: Hole Offer-Daten für trade_id und project_id
     const offerInfo = await query(
