@@ -353,7 +353,7 @@ const checkAppointmentBeforeConfirm = async () => {
         planned_end: phase.end
       }));
       
-      const res = await fetch(`/api/offers/${offerId}/confirm-final`, {
+      const res = await fetch(apiUrl(`/api/offers/${offerId}/confirm-final`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
