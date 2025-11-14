@@ -29610,7 +29610,7 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
         ps.status as schedule_status,
         ps.created_by_type,
         ps.approved_at,
-        p.title as project_title,
+        p.description as project_title,
         p.address as project_address,
         p.bauherr_id,
         t.name as trade_name,
