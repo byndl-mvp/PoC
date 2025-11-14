@@ -20397,6 +20397,27 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
       });
     }
 
+    // ✅ NEU: Prüfe ob ANDERER Handwerker bereits beauftragt wurde
+const otherHandwerkerOrderCheck = await query(
+  `SELECT ord.id, o2.handwerker_id, h.company_name
+   FROM orders ord
+   JOIN offers o2 ON ord.offer_id = o2.id
+   JOIN handwerker h ON o2.handwerker_id = h.id
+   JOIN tenders tn2 ON o2.tender_id = tn2.id
+   WHERE tn2.project_id = $1
+   AND tn2.trade_id = $2
+   AND o2.handwerker_id != $3`,
+  [offer.project_id, offer.trade_id, offer.handwerker_id]
+);
+
+if (otherHandwerkerOrderCheck.rows.length > 0) {
+  await query('ROLLBACK');
+  return res.status(400).json({ 
+    error: 'gewerk_already_awarded',
+    message: `Dieses Gewerk wurde bereits an ${otherHandwerkerOrderCheck.rows[0].company_name} vergeben.`
+  });
+}
+    
     // 2. Hole alle relevanten Daten
     const offerData = await query(
       `SELECT 
