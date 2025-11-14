@@ -29736,9 +29736,11 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
   try {
     const { handwerkerId } = req.params;
     
-    console.log('[SCHEDULE] 📋 Loading schedule for handwerker:', handwerkerId);
+    console.log('[HW_SCHEDULE] 📋 Loading schedule for handwerker:', handwerkerId);
     
-    // ✅ FIX: Erweiterte Query die auch manuell eingetragene Termine lädt
+    // ========================================================================
+    // LADE ALLE SCHEDULE_ENTRIES (Bauherren + Handwerker-Schedules)
+    // ========================================================================
     const scheduleResult = await query(
       `SELECT 
         p.id as project_id,
@@ -29772,19 +29774,19 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
        JOIN projects p ON ps.project_id = p.id
        JOIN trades t ON se.trade_id = t.id
        JOIN tenders tn ON tn.project_id = p.id AND tn.trade_id = t.id
-       JOIN offers of ON of.tender_id = tn.id
-       LEFT JOIN orders o ON o.offer_id = of.id
-       WHERE of.handwerker_id = $1
-         AND of.status IN ('preliminary', 'confirmed', 'accepted')
+       JOIN offers o ON o.tender_id = tn.id
+       WHERE o.handwerker_id = $1
+         AND o.status IN ('preliminary', 'confirmed', 'accepted')
          AND ps.status IN ('active', 'locked')
        ORDER BY p.id, se.planned_start, se.phase_number`,
       [handwerkerId]
     );
     
-    console.log('[SCHEDULE] ✅ Found', scheduleResult.rows.length, 'schedule entries');
+    console.log('[HW_SCHEDULE] ✅ Found', scheduleResult.rows.length, 'schedule entries');
     
-    // ✅ FIX: Gruppiere nach Projekt mit erweiterten Infos
+    // Gruppiere nach Projekt
     const projects = {};
+    
     scheduleResult.rows.forEach(row => {
       if (!projects[row.project_id]) {
         projects[row.project_id] = {
@@ -29795,7 +29797,7 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
           trade_code: row.trade_code,
           trade_name: row.trade_name,
           schedule_id: row.schedule_id,
-          is_manual_schedule: row.created_by_type === 'handwerker', // ✅ NEU!
+          is_manual_schedule: row.created_by_type === 'handwerker',
           offer_status: row.offer_status,
           entries: []
         };
@@ -29820,17 +29822,17 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
     
     const projectList = Object.values(projects);
     
-    console.log('[SCHEDULE] 📦 Returning', projectList.length, 'projects');
+    console.log('[HW_SCHEDULE] 📦 Returning', projectList.length, 'projects');
     projectList.forEach(p => {
       if (p.is_manual_schedule) {
-        console.log('[SCHEDULE] 📝 Manual schedule:', p.project_title, 'with', p.entries.length, 'entries');
+        console.log('[HW_SCHEDULE] 📝 Manual schedule:', p.project_title, 'entries:', p.entries.length);
       }
     });
     
     res.json(projectList);
     
   } catch (err) {
-    console.error('[SCHEDULE] ❌ Handwerker schedule failed:', err);
+    console.error('[HW_SCHEDULE] ❌ Load failed:', err);
     res.status(500).json({ error: 'Fehler beim Laden der Terminübersicht' });
   }
 });
