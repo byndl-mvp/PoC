@@ -29607,7 +29607,7 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
         ps.status as schedule_status,
         ps.created_by_type,
         ps.approved_at,
-        p.description as project_title,
+        p.description as project_description,
         p.street,
         p.house_number,
         p.zip_code,
@@ -29617,7 +29617,7 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
         t.code as trade_code,
         o.id as offer_id,
         o.status as offer_status,
-        o.confirmation_date
+        o.offer_confirmed_at
        FROM schedule_entries se
        JOIN project_schedules ps ON se.schedule_id = ps.id
        JOIN projects p ON ps.project_id = p.id
@@ -29640,7 +29640,7 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
       if (!projectGroups[projectId]) {
         projectGroups[projectId] = {
           project_id: projectId,
-          project_title: entry.project_title || 'Projekt',
+          project_title: entry.project_description || 'Projekt',
           project_address: `${entry.street || ''} ${entry.house_number || ''}, ${entry.zip_code || ''} ${entry.city || ''}`.trim(),
           bauherr_id: entry.bauherr_id,
           trade_name: entry.trade_name,
@@ -29672,6 +29672,8 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
         dependencies: entry.dependencies
       });
     });
+    
+    console.log('[HW_SCHEDULE] 📦 Returning', Object.keys(projectGroups).length, 'projects');
     
     res.json({
       success: true,
