@@ -74,7 +74,7 @@ export default function HandwerkerScheduleTab({ handwerkerId, apiUrl }) {
     try {
       setLoading(true);
       
-      const res = await fetch(apiUrl(`/api/schedule-entries/${selectedEntry.entry_id}/request-change`), {
+      const res = await fetch(apiUrl(`/api/schedule-entries/${selectedEntry.id}/request-change`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
