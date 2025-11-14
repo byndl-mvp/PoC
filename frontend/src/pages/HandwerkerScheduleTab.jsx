@@ -359,27 +359,9 @@ function ProjectCard({ project, expanded, onToggle, getStatusInfo, isToday, onRe
           
           <div className="text-left flex-1">
             <div className="flex items-center gap-3 mb-1">
-              <div className="flex items-center gap-3 mb-1">
-  <h3 className="text-lg font-bold text-white">
-    {project.project_title || 'Bauprojekt'}
-  </h3>
-  <span className="text-gray-400 text-sm">•</span>
-  <span className="text-gray-300 text-sm">
-    {project.project_address}
-  </span>
-  
-  {hasContract && (
-    <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs font-semibold">
-      Beauftragt
-    </span>
-  )}
-  
-  {allConfirmed && !hasContract && (
-    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded text-xs font-semibold">
-      Termine bestätigt
-    </span>
-  )}
-</div>
+              <h3 className="text-lg font-bold text-white">
+  {project.project_title || 'Bauprojekt'} - {project.project_address}
+</h3>
               
               {hasContract && (
                 <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs font-semibold">
