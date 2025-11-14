@@ -29586,7 +29586,7 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
     console.log('[HW_SCHEDULE] 📋 Loading schedule entries for handwerker:', handwerkerId);
     
     const result = await query(
-      `SELECT 
+      `SELECT DISTINCT ON (se.id)
         se.id,
         se.schedule_id,
         se.trade_id,
