@@ -261,7 +261,7 @@ const checkAppointmentBeforeConfirm = async () => {
             reason: scheduleChangeReason || 'Anpassung durch Handwerker'
           }));
         
-        const scheduleRes = await fetch('/api/schedule-entries/confirm', {
+        const scheduleRes = await fetch(apiUrl('/api/schedule-entries/confirm'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -292,7 +292,7 @@ const checkAppointmentBeforeConfirm = async () => {
           is_multi_phase: schedulePhases.length > 1
         }));
         
-        const scheduleRes = await fetch('/api/schedule-entries/confirm', {
+        const scheduleRes = await fetch(apiUrl('/api/schedule-entries/confirm'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -323,7 +323,7 @@ const checkAppointmentBeforeConfirm = async () => {
           is_multi_phase: false
         }];
         
-        const scheduleRes = await fetch('/api/schedule-entries/confirm', {
+        const scheduleRes = await fetch(apiUrl('/api/schedule-entries/confirm'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
