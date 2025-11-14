@@ -28274,17 +28274,37 @@ app.post('/api/schedule-entries/confirm', async (req, res) => {
         // ====================================================================
         // NEU: ERSTELLE HANDWERKER-SCHEDULE für dieses Projekt + Trade
         // ====================================================================
-        const scheduleResult = await query(
-          `INSERT INTO project_schedules 
-           (project_id, created_by_type, created_by_id, status, created_at, updated_at)
-           VALUES ($1, 'handwerker', $2, 'active', NOW(), NOW())
-           RETURNING id`,
-          [projectId, handwerkerId]
-        );
-        
-        const scheduleId = scheduleResult.rows[0].id;
-        
-        console.log('[MANUAL_SCHEDULE] ✅ Created handwerker schedule:', scheduleId);
+        let scheduleId;
+
+const existingScheduleResult = await query(
+  `SELECT id FROM project_schedules 
+   WHERE project_id = $1 
+     AND created_by_type = 'handwerker'
+     AND created_by_id = $2
+     AND status = 'active'
+   ORDER BY created_at DESC
+   LIMIT 1`,
+  [projectId, handwerkerId]
+);
+
+if (existingScheduleResult.rows.length > 0) {
+  scheduleId = existingScheduleResult.rows[0].id;
+  console.log('[MANUAL_SCHEDULE] ♻️ Reusing existing schedule:', scheduleId);
+  
+  await query('DELETE FROM schedule_entries WHERE schedule_id = $1', [scheduleId]);
+  console.log('[MANUAL_SCHEDULE] 🗑️ Cleared old entries');
+} else {
+  const scheduleResult = await query(
+    `INSERT INTO project_schedules 
+     (project_id, created_by_type, created_by_id, status, created_at, updated_at)
+     VALUES ($1, 'handwerker', $2, 'active', NOW(), NOW())
+     RETURNING id`,
+    [projectId, handwerkerId]
+  );
+  
+  scheduleId = scheduleResult.rows[0].id;
+  console.log('[MANUAL_SCHEDULE] ✅ Created new schedule:', scheduleId);
+}
         
         // ====================================================================
         // NEU: ERSTELLE SCHEDULE_ENTRIES für jede manuelle Eingabe
