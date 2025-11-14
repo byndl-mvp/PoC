@@ -749,6 +749,15 @@ const handleCompareOffers = async (tradeName) => {
   // NEUE FUNKTION: Vorläufige Beauftragung bestätigen
   const confirmPreliminaryOrder = async () => {
   if (!selectedOffer) return;
+
+  // ✅ DEBUG: Was wird gesendet?
+  console.log('🔍 DEBUG preliminary-accept:', {
+    offerId: selectedOffer.id,
+    projectId: selectedProject?.id,
+    selectedProject: selectedProject,
+    selectedOffer: selectedOffer
+  });
+    
   try {
     setLoading(true);
     const res = await fetch(apiUrl(`/api/offers/${selectedOffer.id}/preliminary-accept`), {
