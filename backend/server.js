@@ -29624,7 +29624,7 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
        JOIN trades t ON se.trade_id = t.id
        JOIN tenders tn ON tn.project_id = p.id AND tn.trade_id = t.id
        JOIN offers o ON o.tender_id = tn.id AND o.handwerker_id = $1
-       WHERE o.status IN ('preliminary', 'confirmed')
+       WHERE o.status IN ('preliminary', 'confirmed', 'accepted')
          AND ps.status IN ('active', 'locked')
        ORDER BY p.id, se.planned_start`,
       [handwerkerId]
