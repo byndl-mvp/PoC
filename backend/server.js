@@ -29617,13 +29617,15 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
         t.code as trade_code,
         o.id as offer_id,
         o.status as offer_status,
-        o.offer_confirmed_at
+        o.offer_confirmed_at,
+        ord.id as order_id
        FROM schedule_entries se
        JOIN project_schedules ps ON se.schedule_id = ps.id
        JOIN projects p ON ps.project_id = p.id
        JOIN trades t ON se.trade_id = t.id
        JOIN tenders tn ON tn.project_id = p.id AND tn.trade_id = t.id
        JOIN offers o ON o.tender_id = tn.id AND o.handwerker_id = $1
+       LEFT JOIN orders ord ON ord.offer_id = o.id
        WHERE o.status IN ('preliminary', 'confirmed', 'accepted')
          AND ps.status IN ('active', 'locked')
        ORDER BY p.id, se.planned_start`,
@@ -29669,7 +29671,8 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
         scheduling_reason: entry.scheduling_reason,
         buffer_reason: entry.buffer_reason,
         is_multi_phase: entry.is_multi_phase,
-        dependencies: entry.dependencies
+        dependencies: entry.dependencies,
+        order_id: entry.order_id
       });
     });
     
