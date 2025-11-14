@@ -29586,51 +29586,63 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
     console.log('[HW_SCHEDULE] 📋 Loading schedule entries for handwerker:', handwerkerId);
     
     const result = await query(
-      `SELECT 
-        se.id,
-        se.schedule_id,
-        se.trade_id,
-        se.phase_name,
-        se.phase_number,
-        se.planned_start,
-        se.planned_end,
-        se.duration_days,
-        se.buffer_days,
-        se.status,
-        se.confirmed,
-        se.confirmed_at,
-        se.scheduling_reason,
-        se.buffer_reason,
-        se.is_multi_phase,
-        se.dependencies,
-        ps.project_id,
-        ps.status as schedule_status,
-        ps.created_by_type,
-        ps.approved_at,
-        p.description as project_description,
-        p.street,
-        p.house_number,
-        p.zip_code,
-        p.city,
-        p.bauherr_id,
-        t.name as trade_name,
-        t.code as trade_code,
-        o.id as offer_id,
-        o.status as offer_status,
-        o.offer_confirmed_at,
-        ord.id as order_id
-       FROM schedule_entries se
-       JOIN project_schedules ps ON se.schedule_id = ps.id
-       JOIN projects p ON ps.project_id = p.id
-       JOIN trades t ON se.trade_id = t.id
-       JOIN tenders tn ON tn.project_id = p.id AND tn.trade_id = t.id
-       JOIN offers o ON o.tender_id = tn.id AND o.handwerker_id = $1
-       LEFT JOIN orders ord ON ord.offer_id = o.id
-       WHERE o.status IN ('preliminary', 'confirmed', 'accepted')
-         AND ps.status IN ('active', 'locked')
-       ORDER BY p.id, se.planned_start`,
-      [handwerkerId]
-    );
+  `SELECT 
+    se.id,
+    se.schedule_id,
+    se.trade_id,
+    se.phase_name,
+    se.phase_number,
+    se.planned_start,
+    se.planned_end,
+    se.duration_days,
+    se.buffer_days,
+    se.status,
+    se.confirmed,
+    se.confirmed_at,
+    se.scheduling_reason,
+    se.buffer_reason,
+    se.is_multi_phase,
+    se.dependencies,
+    ps.project_id,
+    ps.status as schedule_status,
+    ps.created_by_type,
+    ps.approved_at,
+    COALESCE(
+      p.description, 
+      CONCAT(p.category, ' - ', p.sub_category),
+      'Bauprojekt'
+    ) as project_description,
+    p.street,
+    p.house_number,
+    p.zip_code,
+    p.city,
+    p.bauherr_id,
+    t.name as trade_name,
+    t.code as trade_code,
+    relevant_offer.id as offer_id,
+    relevant_offer.status as offer_status,
+    relevant_offer.offer_confirmed_at,
+    ord.id as order_id
+   FROM schedule_entries se
+   JOIN project_schedules ps ON se.schedule_id = ps.id
+   JOIN projects p ON ps.project_id = p.id
+   JOIN trades t ON se.trade_id = t.id
+   JOIN LATERAL (
+     SELECT o.id, o.status, o.offer_confirmed_at
+     FROM offers o
+     JOIN tenders tn ON o.tender_id = tn.id
+     WHERE tn.project_id = ps.project_id
+       AND tn.trade_id = se.trade_id
+       AND o.handwerker_id = $1
+       AND o.status IN ('preliminary', 'confirmed', 'accepted')
+     ORDER BY o.created_at DESC
+     LIMIT 1
+   ) relevant_offer ON true
+   LEFT JOIN orders ord ON ord.offer_id = relevant_offer.id
+   WHERE ps.status IN ('active', 'locked')
+   ORDER BY p.id, se.planned_start`,
+  [handwerkerId]
+);
     
     console.log('[HW_SCHEDULE] ✅ Found', result.rows.length, 'schedule entries');
     
