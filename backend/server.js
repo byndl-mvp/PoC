@@ -29585,9 +29585,6 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
     
     console.log('[HW_SCHEDULE] 📋 Loading schedule entries for handwerker:', handwerkerId);
     
-    // ========================================================================
-    // LADE ALLE SCHEDULE_ENTRIES für Projekte wo Handwerker beauftragt ist
-    // ========================================================================
     const result = await query(
       `SELECT 
         se.id,
@@ -29611,7 +29608,10 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
         ps.created_by_type,
         ps.approved_at,
         p.description as project_title,
-        p.address as project_address,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
         p.bauherr_id,
         t.name as trade_name,
         t.code as trade_code,
@@ -29632,7 +29632,6 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
     
     console.log('[HW_SCHEDULE] ✅ Found', result.rows.length, 'schedule entries');
     
-    // Gruppiere nach Projekt
     const projectGroups = {};
     
     result.rows.forEach(entry => {
@@ -29641,8 +29640,8 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
       if (!projectGroups[projectId]) {
         projectGroups[projectId] = {
           project_id: projectId,
-          project_title: entry.project_title,
-          project_address: entry.project_address,
+          project_title: entry.project_title || 'Projekt',
+          project_address: `${entry.street || ''} ${entry.house_number || ''}, ${entry.zip_code || ''} ${entry.city || ''}`.trim(),
           bauherr_id: entry.bauherr_id,
           trade_name: entry.trade_name,
           trade_code: entry.trade_code,
@@ -29650,7 +29649,7 @@ app.get('/api/handwerker/:handwerkerId/schedule-entries', async (req, res) => {
           offer_status: entry.offer_status,
           schedule_id: entry.schedule_id,
           schedule_status: entry.schedule_status,
-          schedule_source: entry.created_by_type, // 'bauherr' oder 'handwerker'
+          schedule_source: entry.created_by_type,
           is_manual_schedule: entry.created_by_type === 'handwerker',
           entries: []
         };
