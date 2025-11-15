@@ -29129,6 +29129,9 @@ app.post('/api/schedule-entries/:entryId/request-change', async (req, res) => {
       
       const affectsFollowing = followingResult.rows.length > 0;
       const delayDays = calculateWorkdays(entry.planned_end, new Date(requestedEnd));
+
+      // ✅ Berechne neue Dauer
+      const newDurationDays = calculateWorkdays(new Date(requestedStart), new Date(requestedEnd));
       
       // Erstelle Change Request
       const requestResult = await query(
@@ -29149,14 +29152,18 @@ app.post('/api/schedule-entries/:entryId/request-change', async (req, res) => {
           Math.max(0, delayDays)
         ]
       );
-      
-      // Update Entry Status
-      await query(
-        `UPDATE schedule_entries 
-         SET status = 'change_requested'
-         WHERE id = $1`,
-        [entryId]
-      );
+
+// Update Entry mit neuen Terminen UND Status
+await query(
+  `UPDATE schedule_entries 
+   SET planned_start = $2,
+       planned_end = $3,
+       duration_days = $4,
+       status = 'change_requested',
+       updated_at = NOW()
+   WHERE id = $1`,
+  [entryId, requestedStart, requestedEnd, newDurationDays]
+);
       
       // Benachrichtige Bauherr
       await query(
