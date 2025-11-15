@@ -311,13 +311,13 @@ const checkAppointmentBeforeConfirm = async () => {
         const scheduleData = await scheduleRes.json();
         console.log('[SCHEDULE] ✅ Manueller Terminplan erstellt:', scheduleData);
         
-      } else {
-        // FALL C: Nur execution_start/end, keine Phasen
+      } else if (formData.execution_start && formData.execution_end && schedulePhases.length === 0) {
+        // FALL C: Nur execution_start/end, KEINE Phasen
         console.log('[SCHEDULE] ⚠️ Nur execution_start/end ohne Phasen → Erstelle Single-Entry');
         
         const manualEntries = [{
           phase_name: 'Ausführung',
-          phase_number: 1,
+          phase_number: null,  // ✅ NULL statt 1!
           planned_start: formData.execution_start,
           planned_end: formData.execution_end,
           is_multi_phase: false
@@ -341,6 +341,8 @@ const checkAppointmentBeforeConfirm = async () => {
         
         const scheduleData = await scheduleRes.json();
         console.log('[SCHEDULE] ✅ Single-Entry Terminplan erstellt:', scheduleData);
+      } else {
+        console.log('[SCHEDULE] ⚠️ Keine gültigen Termine zum Erstellen');
       }
       
       // ========================================================================
