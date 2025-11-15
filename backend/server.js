@@ -20371,54 +20371,8 @@ app.post('/api/offers/:offerId/create-contract', async (req, res) => {
     
     // ===== START TRANSACTION =====
     await query('BEGIN');
-
-    // 1. Prüfe ob Order bereits existiert
-    const existingOrder = await query(
-      `SELECT id FROM orders WHERE offer_id = $1`,
-      [offerId]
-    );
     
-    if (existingOrder.rows.length > 0) {
-      // Stelle sicher dass Offer-Status korrekt ist
-      await query(
-        `UPDATE offers 
-         SET status = 'accepted', 
-             stage = 2,
-             accepted_at = COALESCE(accepted_at, NOW())
-         WHERE id = $1`,
-        [offerId]
-      );
-      
-      await query('COMMIT');
-      return res.json({
-        success: true,
-        orderId: existingOrder.rows[0].id,
-        message: 'Auftrag wurde bereits erstellt'
-      });
-    }
-
-    // ✅ NEU: Prüfe ob ANDERER Handwerker bereits beauftragt wurde
-const otherHandwerkerOrderCheck = await query(
-  `SELECT ord.id, o2.handwerker_id, h.company_name
-   FROM orders ord
-   JOIN offers o2 ON ord.offer_id = o2.id
-   JOIN handwerker h ON o2.handwerker_id = h.id
-   JOIN tenders tn2 ON o2.tender_id = tn2.id
-   WHERE tn2.project_id = $1
-   AND tn2.trade_id = $2
-   AND o2.handwerker_id != $3`,
-  [offer.project_id, offer.trade_id, offer.handwerker_id]
-);
-
-if (otherHandwerkerOrderCheck.rows.length > 0) {
-  await query('ROLLBACK');
-  return res.status(400).json({ 
-    error: 'gewerk_already_awarded',
-    message: `Dieses Gewerk wurde bereits an ${otherHandwerkerOrderCheck.rows[0].company_name} vergeben.`
-  });
-}
-    
-    // 2. Hole alle relevanten Daten
+    // 1. Hole alle relevanten Daten
     const offerData = await query(
       `SELECT 
         o.*,
@@ -20461,7 +20415,53 @@ if (otherHandwerkerOrderCheck.rows.length > 0) {
     
     const offer = offerData.rows[0];
 
-    // ✅ NEU: Akzeptiere alle change_requested Termine automatisch
+// 2. Prüfe ob Order bereits existiert
+    const existingOrder = await query(
+      `SELECT id FROM orders WHERE offer_id = $1`,
+      [offerId]
+    );
+    
+    if (existingOrder.rows.length > 0) {
+      // Stelle sicher dass Offer-Status korrekt ist
+      await query(
+        `UPDATE offers 
+         SET status = 'accepted', 
+             stage = 2,
+             accepted_at = COALESCE(accepted_at, NOW())
+         WHERE id = $1`,
+        [offerId]
+      );
+      
+      await query('COMMIT');
+      return res.json({
+        success: true,
+        orderId: existingOrder.rows[0].id,
+        message: 'Auftrag wurde bereits erstellt'
+      });
+    }
+
+    // 3. Prüfe ob ANDERER Handwerker bereits beauftragt wurde
+const otherHandwerkerOrderCheck = await query(
+  `SELECT ord.id, o2.handwerker_id, h.company_name
+   FROM orders ord
+   JOIN offers o2 ON ord.offer_id = o2.id
+   JOIN handwerker h ON o2.handwerker_id = h.id
+   JOIN tenders tn2 ON o2.tender_id = tn2.id
+   WHERE tn2.project_id = $1
+   AND tn2.trade_id = $2
+   AND o2.handwerker_id != $3`,
+  [offer.project_id, offer.trade_id, offer.handwerker_id]
+);
+
+if (otherHandwerkerOrderCheck.rows.length > 0) {
+  await query('ROLLBACK');
+  return res.status(400).json({ 
+    error: 'gewerk_already_awarded',
+    message: `Dieses Gewerk wurde bereits an ${otherHandwerkerOrderCheck.rows[0].company_name} vergeben.`
+  });
+}
+    
+    // 4. Akzeptiere alle change_requested Termine automatisch
     await query(
       `UPDATE schedule_entries
        SET status = 'confirmed',
@@ -20476,7 +20476,7 @@ if (otherHandwerkerOrderCheck.rows.length > 0) {
       [offer.project_id, offer.bauherr_id, offer.trade_id]
     );
     
-   // 3a. ✅ NEU: Hole finale Termine aus schedule_entries
+   // 4a. ✅ NEU: Hole finale Termine aus schedule_entries
     const scheduleTermine = await query(
       `SELECT 
          MIN(se.planned_start) as execution_start,
@@ -20504,14 +20504,14 @@ if (otherHandwerkerOrderCheck.rows.length > 0) {
       final: { executionStart, executionEnd }
     });
     
-    // 3b. Werkvertrag-Text generieren MIT finalen Terminen
+    // 4b. Werkvertrag-Text generieren MIT finalen Terminen
     const contractText = generateVOBContract({
       ...offer,
       execution_start: executionStart,  // ✅ Finale Termine!
       execution_end: executionEnd        // ✅ Finale Termine!
     });
     
-    // 4. Erstelle Order/Werkvertrag MIT finalen Terminen
+    // 5. Erstelle Order/Werkvertrag MIT finalen Terminen
     const orderResult = await query(
       `INSERT INTO orders  
        (project_id, offer_id, handwerker_id, bauherr_id, trade_id, 
@@ -20548,7 +20548,7 @@ if (otherHandwerkerOrderCheck.rows.length > 0) {
       [offer.project_id, offer.trade_id, offerId]
     );
     
-    // 5. Update Offer Status
+    // 6. Update Offer Status
     await query(
       `UPDATE offers 
        SET status = 'accepted', 
@@ -20637,7 +20637,7 @@ if (tenderBundleCheck.rows.length > 0) {
     
     // ===== AB HIER: NICHT-KRITISCHE OPERATIONS =====
     
-    // 6. Conversations hinzufügen (Fehler hier sind nicht kritisch)
+    // 7. Conversations hinzufügen (Fehler hier sind nicht kritisch)
     try {
       // Zu Projekt-Gruppe hinzufügen
       await query(
@@ -20737,7 +20737,7 @@ if (tenderBundleCheck.rows.length > 0) {
       console.error('⚠️ Non-critical: Conversation setup failed:', convError.message);
     }
     
-    // 7. Email senden (Fehler hier sind nicht kritisch)
+    // 8. Email senden (Fehler hier sind nicht kritisch)
     try {
       if (transporter) {
         await transporter.sendMail({
