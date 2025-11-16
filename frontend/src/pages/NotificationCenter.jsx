@@ -203,7 +203,7 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
     'new_tender': 'ausschreibungen',
     'offer_confirmed': 'angebote',
     'offer_accepted': 'angebote',
-    'preliminary_accepted': 'vertragsanbahnung',
+    'preliminary_accepted': 'contracts',
     'offer_rejected': 'angebote',
     'offer_withdrawn': 'angebote',
     'awarded': 'auftraege',
