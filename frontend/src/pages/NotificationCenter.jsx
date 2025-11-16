@@ -180,25 +180,44 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
     // Andere Notifications - Tab wechseln wenn onTabChange vorhanden ist
     console.log('📍 Tab-Switch prüfen für:', notification.type);
     if (onTabChange) {
-      const tabMapping = {
-  'new_tender': 'tenders',          
-  'new_offer': 'offers',            
-  'offer_confirmed': 'offers',      
-  'offer_accepted': 'offers',       
-  'preliminary_accepted': 'contracts',  
-  'offer_rejected': 'offers',       
-  'offer_withdrawn': 'offers',      
-  'awarded': 'orders',              
-  'work_completed': 'orders',       
-  'schedule_generated': 'schedule', 
-  'schedule_active': 'schedule',    
-  'schedule_change_request': 'contracts', 
-  'schedule_changed': 'schedule',   
-  'schedule_change_accepted': 'schedule', 
-  'schedule_change_rejected': 'schedule', 
-  'change_request_approved': 'schedule',  
-  'change_request_rejected': 'schedule'   
-};
+  const tabMapping = userType === 'bauherr' ? {
+    // Bauherr Tabs
+    'new_offer': 'offers',
+    'offer_confirmed': 'offers',
+    'offer_accepted': 'offers',
+    'preliminary_accepted': 'contracts',
+    'offer_rejected': 'offers',
+    'offer_withdrawn': 'offers',
+    'awarded': 'orders',
+    'work_completed': 'orders',
+    'schedule_generated': 'schedule',
+    'schedule_active': 'schedule',
+    'schedule_change_request': 'contracts',
+    'schedule_changed': 'schedule',
+    'schedule_change_accepted': 'schedule',
+    'schedule_change_rejected': 'schedule',
+    'change_request_approved': 'schedule',
+    'change_request_rejected': 'schedule'
+  } : {
+    // Handwerker Tabs
+    'new_tender': 'ausschreibungen',
+    'offer_confirmed': 'angebote',
+    'offer_accepted': 'angebote',
+    'preliminary_accepted': 'vertragsanbahnung',
+    'offer_rejected': 'angebote',
+    'offer_withdrawn': 'angebote',
+    'awarded': 'auftraege',
+    'work_completed': 'auftraege',
+    'schedule_generated': 'termine',
+    'schedule_active': 'termine',
+    'schedule_change_request': 'vertragsanbahnung',
+    'schedule_changed': 'termine',
+    'schedule_change_accepted': 'termine',
+    'schedule_change_rejected': 'termine',
+    'change_request_approved': 'termine',
+    'change_request_rejected': 'termine',
+    'offer_not_selected': 'angebote'
+  };
 
       console.log('📋 Tab-Mapping:', tabMapping[notification.type]);
       
