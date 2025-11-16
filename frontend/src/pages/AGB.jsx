@@ -124,14 +124,26 @@ export default function AGB() {
                 über die Auftragsvergabe liegt ausschließlich beim Bauherrn.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">3.3 Keine Gewährleistung</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">3.3 Keine Gewährleistung für KI-generierte Inhalte</h3>
               <div className="bg-amber-900/30 border-l-4 border-amber-400 p-4 mb-4">
                 <p className="font-semibold text-amber-300 mb-2">Haftungsausschluss</p>
-                <p>
+                <p className="mb-3">
                   byndl übernimmt keine Gewährleistung für die Richtigkeit, Vollständigkeit oder Aktualität 
-                  der KI-generierten Leistungsverzeichnisse und Kostenschätzungen. Diese dienen lediglich als 
-                  Orientierungshilfe. Der Bauherr ist verpflichtet, die Angaben zu prüfen und bei Bedarf durch 
-                  Fachleute überprüfen zu lassen.
+                  der KI-generierten Leistungsverzeichnisse und Kostenschätzungen. Diese dienen ausschließlich 
+                  als erste Orientierungshilfe und stellen keine verbindliche Zusage dar.
+                </p>
+                <p className="mb-3">
+                  Der Bauherr ist verpflichtet, die KI-generierten Angaben eigenverantwortlich zu prüfen und 
+                  bei Bedarf durch Fachleute überprüfen zu lassen. Die automatisiert erstellten Unterlagen 
+                  können Ungenauigkeiten, unvollständige Erfassungen oder von den tatsächlichen Gegebenheiten 
+                  abweichende Angaben enthalten.
+                </p>
+                <p className="text-sm">
+                  <span className="font-semibold">Wichtiger Hinweis:</span> Für das verbindliche Angebot ist 
+                  ausschließlich der Handwerker verantwortlich, der im Rahmen der zweistufigen Vergabe (§ 5.1) 
+                  die Möglichkeit und Pflicht zur eigenständigen Prüfung und Verifizierung der Projektgegebenheiten 
+                  erhält, bevor er sein finales Angebot bestätigt. Bauherren sollten daher auf die sorgfältige 
+                  Prüfung und Verifizierung durch den Handwerker in Stufe 1 achten.
                 </p>
               </div>
 
@@ -204,12 +216,28 @@ export default function AGB() {
                 durch beide Parteien.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.5 Qualitätsstandards</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.5 Verifizierungspflicht und Qualitätsstandards</h3>
+              <div className="bg-blue-900/30 border-l-4 border-blue-400 p-4 mb-4">
+                <p className="font-semibold text-blue-300 mb-2">Pflicht zur Angebotsprüfung</p>
+                <p className="mb-3 text-sm">
+                  Der Handwerker ist verpflichtet, im Rahmen der Stufe 1 der zweistufigen Vergabe (§ 5.1) 
+                  das durch die KI-Software erstellte Leistungsverzeichnis eigenverantwortlich und sorgfältig 
+                  zu prüfen. Hierzu hat er insbesondere durch Vor-Ort-Besichtigung, Videocall oder auf anderem 
+                  geeigneten Wege die tatsächlichen Gegebenheiten des Projekts zu verifizieren. Der Handwerker 
+                  trägt die alleinige Verantwortung dafür, dass sein in Stufe 2 bestätigtes finales Angebot 
+                  vollständig, kalkulatorisch korrekt und realisierbar ist.
+                </p>
+                <p className="text-sm">
+                  Eine Berufung auf unzutreffende oder unvollständige Angaben in der KI-generierten Ausschreibung 
+                  ist nach Bestätigung des Angebots in Stufe 2 ausgeschlossen, da dem Handwerker ausreichend 
+                  Gelegenheit zur Prüfung und Korrektur eingeräumt wurde.
+                </p>
+              </div>
               <p className="mb-4">
-                Handwerker verpflichten sich zur fachgerechten und termingerechten Ausführung der übernommenen 
-                Aufträge sowie zur Einhaltung aller gesetzlichen und berufsrechtlichen Vorschriften. Bei 
-                wiederholten Beschwerden oder mangelhafter Leistung kann byndl den Nutzer von der Plattform 
-                ausschließen.
+                Darüber hinaus verpflichten sich Handwerker zur fachgerechten und termingerechten Ausführung 
+                der übernommenen Aufträge sowie zur Einhaltung aller gesetzlichen und berufsrechtlichen 
+                Vorschriften. Bei wiederholten Beschwerden oder mangelhafter Leistung kann byndl den Nutzer 
+                von der Plattform ausschließen.
               </p>
             </section>
 
@@ -218,35 +246,62 @@ export default function AGB() {
               
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.1 Zweistufige Vergabe</h3>
               <p className="mb-4">
-                Die Auftragsvergabe erfolgt in zwei Phasen:
+                Die Auftragsvergabe erfolgt in einem zweistufigen Verfahren, das sowohl dem Schutz beider 
+                Vertragsparteien als auch der rechtlichen Klarstellung der Verantwortlichkeiten dient:
               </p>
               <div className="bg-white/5 border border-white/20 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-white mb-2">Stufe 1: Vorläufige Beauftragung (Vertragsanbahnung)</p>
-                <p className="mb-4">
-                  Nach Auswahl eines Angebots durchlaufen Bauherr und Handwerker eine zweistufige Vergabe. 
-                  In Stufe 1 (Vorläufige Beauftragung) werden die Kontaktdaten freigegeben und eine 
-                  Kennenlernphase eingeleitet. Die Vermittlung gilt ab diesem Zeitpunkt rechtlich als erfolgt 
-                  und die Nachwirkfrist von 24 Monaten greift (siehe § 5.2). Die Vermittlungsprovision wird 
-                  jedoch erst in Stufe 2 bei verbindlicher Beauftragung und Zustandekommen des Werkvertrags fällig. 
-                  Dies gewährleistet eine reine Erfolgsprovision ohne unproduktive Gebühren für Kontaktaufnahmen, 
+                <p className="mb-3">
+                  Nach Auswahl eines Angebots durch den Bauherrn werden in Stufe 1 die Kontaktdaten zwischen 
+                  Bauherr und Handwerker freigegeben und eine Kennenlern- und Prüfphase eingeleitet. Die 
+                  Vermittlung gilt ab diesem Zeitpunkt rechtlich als erfolgt und die Nachwirkfrist von 24 Monaten 
+                  greift (siehe § 5.2). Die Vermittlungsprovision gemäß § 4.3 und § 4.4 wird jedoch erst in 
+                  Stufe 2 bei verbindlicher Beauftragung und Zustandekommen des Werkvertrags fällig. Dies 
+                  gewährleistet eine reine Erfolgsprovision ohne unproduktive Gebühren für Kontaktaufnahmen, 
                   die nicht zu einem Vertragsabschluss führen.
                 </p>
+                <p className="mb-3 font-semibold text-teal-300">Prüf- und Verifizierungsphase:</p>
                 <p className="mb-4">
-                  Während der Kennenlernphase können beide Parteien einen Videocall oder Ortstermin vereinbaren. 
-                  Der Handwerker kann nach Verifizierung sein Angebot bestätigen oder anpassen. Beide Seiten 
-                  haben faire Ausstiegsmöglichkeiten, falls sich herausstellt, dass eine Zusammenarbeit nicht 
-                  zustande kommen soll.
+                  Während der Kennenlernphase sind beide Parteien ausdrücklich aufgefordert, das durch die 
+                  KI-gestützte Plattform erstellte Leistungsverzeichnis und die Kostenschätzung eigenverantwortlich 
+                  zu überprüfen. Der Handwerker erhält die Möglichkeit und ist verpflichtet, durch eine 
+                  Vor-Ort-Besichtigung, einen Videocall oder auf anderem geeigneten Wege die tatsächlichen 
+                  Gegebenheiten des Projekts zu prüfen und sein Angebot entsprechend zu verifizieren, anzupassen 
+                  oder zu bestätigen. Der Bauherr kann seinerseits Änderungswünsche einbringen und die Eignung 
+                  des Handwerkers prüfen. Beide Seiten haben faire Ausstiegsmöglichkeiten, falls sich herausstellt, 
+                  dass eine Zusammenarbeit nicht zustande kommen soll.
                 </p>
+                
                 <p className="font-semibold text-white mb-2">Stufe 2: Verbindliche Beauftragung (Werkvertrag)</p>
-                <p>
-                  Nach eventueller Feinabstimmung (z.B. Vor-Ort-Besichtigung, Anpassung der Leistungsbeschreibung) 
-                  bestätigt der Handwerker sein finales Angebot. Anschließend klickt der Bauherr auf „verbindlich 
-                  beauftragen". Damit wird der finale Werkvertrag zwischen Bauherr und Handwerker geschlossen. 
-                  Dieser regelt alle Details der Leistungserbringung, Vergütung, Termine und Gewährleistung. 
-                  Mit Zustandekommen des Werkvertrags wird die Vermittlungsprovision fällig und byndl schaltet 
-                  alle Premium-Plattform-Features frei (Kosten- und Terminkontrolle, Nachtragsschutz, 
+                <p className="mb-3">
+                  Nach Abschluss der Prüfungsphase und eventueller Feinabstimmung (z.B. Vor-Ort-Besichtigung, 
+                  Anpassung der Leistungsbeschreibung, Präzisierung der Mengen und Preise) bestätigt der Handwerker 
+                  sein finales, verbindliches Angebot durch Klick auf die entsprechende Schaltfläche in der 
+                  Plattform. Anschließend erteilt der Bauherr durch Klick auf „verbindlich beauftragen" die 
+                  Auftragserteilung. Mit diesem Bestätigungsvorgang kommt der Werkvertrag ausschließlich zwischen 
+                  Bauherr und Handwerker zustande.
+                </p>
+                <p className="mb-3">
+                  Der Werkvertrag regelt alle Details der Leistungserbringung, Vergütung, Termine und Gewährleistung. 
+                  Mit Zustandekommen des Werkvertrags wird die Vermittlungsprovision an byndl fällig und die 
+                  Premium-Plattform-Features werden freigeschaltet (Kosten- und Terminkontrolle, Nachtragsschutz, 
                   Rechnungslauf, Projekt-Chat etc.).
                 </p>
+                
+                <div className="bg-amber-900/40 border border-amber-500/50 rounded p-3 mt-3">
+                  <p className="font-semibold text-amber-300 mb-2">Wichtig: Eigenverantwortung des Handwerkers</p>
+                  <p className="text-sm text-amber-100">
+                    Mit der Bestätigung seines finalen Angebots in Stufe 2 übernimmt der Handwerker die 
+                    ausschließliche und vollständige Verantwortung für die Richtigkeit, Vollständigkeit und 
+                    Durchführbarkeit seines Angebots. Die durch byndl bereitgestellte KI-gestützte Ausschreibung 
+                    dient lediglich als erste Orientierung. Durch die in Stufe 1 eingeräumte Möglichkeit zur 
+                    eigenständigen Prüfung und Verifizierung der Projektgegebenheiten (insbesondere durch 
+                    Ortsbesichtigung oder Videocall) trägt der Handwerker das ausschließliche Risiko für 
+                    Fehlkalkulationen, unzutreffende Mengenansätze oder unvollständige Leistungsbeschreibungen. 
+                    Eine Haftung von byndl für die Richtigkeit oder Vollständigkeit der in Stufe 1 bereitgestellten 
+                    Ausschreibungsunterlagen ist ausgeschlossen.
+                  </p>
+                </div>
               </div>
 
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.2 Nachwirkfrist (24 Monate)</h3>
@@ -346,6 +401,8 @@ export default function AGB() {
               <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
                 <li>Nachweis erforderlicher Qualifikationen und Genehmigungen</li>
                 <li>Bestehen einer Betriebshaftpflichtversicherung</li>
+                <li>Sorgfältige Prüfung und Verifizierung der KI-generierten Ausschreibungsunterlagen in Stufe 1 der zweistufigen Vergabe</li>
+                <li>Eigenverantwortliche Überprüfung der Projektgegebenheiten (insbesondere durch Vor-Ort-Besichtigung oder Videocall)</li>
                 <li>Fachgerechte Ausführung übernommener Aufträge</li>
                 <li>Einhaltung zugesagter Termine</li>
                 <li>Sachgerechte Kalkulation und realistische Angebote</li>
@@ -377,11 +434,25 @@ export default function AGB() {
                 Ansprüche sind ausschließlich gegenüber dem Handwerker geltend zu machen.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.3 Keine Haftung für Nutzerinhalte</h3>
-              <p className="mb-4">
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.3 Keine Haftung für Nutzerinhalte und KI-generierte Ausschreibungen</h3>
+              <p className="mb-3">
                 byndl übernimmt keine Haftung für von Nutzern eingestellte Inhalte, Angaben oder Angebote. 
                 Die Nutzer sind selbst für die Richtigkeit und Rechtmäßigkeit ihrer Angaben verantwortlich.
               </p>
+              <div className="bg-amber-900/30 border-l-4 border-amber-400 p-3 mb-4">
+                <p className="font-semibold text-amber-300 mb-2">Besonderer Haftungsausschluss für KI-Ausschreibungen</p>
+                <p className="text-sm">
+                  byndl haftet insbesondere nicht für die Richtigkeit, Vollständigkeit oder Eignung der durch 
+                  die KI-Software erstellten Leistungsverzeichnisse und Kostenschätzungen. Diese dienen 
+                  ausschließlich als erste Orientierung für die Vertragsanbahnung. Durch die in § 5.1 
+                  geregelte zweistufige Vergabe mit verpflichtender Prüf- und Verifizierungsphase wird beiden 
+                  Vertragsparteien die Möglichkeit eingeräumt, die KI-generierten Unterlagen eigenverantwortlich 
+                  zu überprüfen und zu korrigieren. Der Handwerker übernimmt mit Bestätigung seines finalen 
+                  Angebots in Stufe 2 die ausschließliche Verantwortung für dessen Richtigkeit und Vollständigkeit. 
+                  Ansprüche aus fehlerhaften oder unvollständigen Leistungsbeschreibungen, Mengenansätzen oder 
+                  Kalkulationen sind ausschließlich zwischen Bauherr und Handwerker zu klären.
+                </p>
+              </div>
 
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.4 Technische Verfügbarkeit</h3>
               <p className="mb-4">
