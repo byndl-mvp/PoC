@@ -166,8 +166,10 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
     if (notification.type === 'schedule_generated' && onScheduleReload) {
       onScheduleReload();
     }
+
     
     // Andere Notifications - Tab wechseln wenn onTabChange vorhanden ist
+    console.log('📍 Tab-Switch prüfen für:', notification.type);
     if (onTabChange) {
       const tabMapping = {
         'new_tender': 'ausschreibungen',
@@ -190,8 +192,11 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
         'change_request_approved': 'schedule',
         'change_request_rejected': 'schedule'
       };
+
+      console.log('📋 Tab-Mapping:', tabMapping[notification.type]);
       
       if (tabMapping[notification.type]) {
+        console.log('✅ Wechsle zu Tab:', tabMapping[notification.type]);
         onTabChange(tabMapping[notification.type]);
         setIsOpen(false);
       }
