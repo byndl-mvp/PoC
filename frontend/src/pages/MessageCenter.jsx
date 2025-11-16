@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { MessageSquare, Send, X, Search, ChevronLeft } from 'lucide-react';
 
-const MessageCenter = ({ userType, userId, userName, apiUrl }) => {
+const MessageCenter = React.forwardRef(({ userType, userId, userName, apiUrl }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
