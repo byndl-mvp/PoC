@@ -13,6 +13,11 @@ const MessageCenter = React.forwardRef(({ userType, userId, userName, apiUrl }, 
   const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
 
+  // ✅ NEU: Expose setIsOpen nach außen
+React.useImperativeHandle(ref, () => ({
+  setIsOpen
+}));
+  
  // Initiales Laden und Polling für Badge (auch wenn geschlossen)
 useEffect(() => {
   if (userId) {
@@ -411,6 +416,6 @@ const totalUnreadCount = conversations.reduce((sum, conv) => {
       )}
     </>
   );
-};
+});
 
 export default MessageCenter;
