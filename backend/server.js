@@ -20631,6 +20631,25 @@ if (tenderBundleCheck.rows.length > 0) {
         [offer.project_id, offer.trade_id]
       );
     }
+
+    // ✅ NEU: Notifications für abgelehnte Handwerker
+for (const otherOffer of otherOffers.rows) {
+  await query(
+    `INSERT INTO notifications 
+     (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+     VALUES ('handwerker', $1, 'offer_not_selected', $2, 'offer', $3, $4, NOW())`,
+    [
+      otherOffer.handwerker_id,
+      `Projekt "${offer.project_description || 'Bauprojekt'}" wurde an einen anderen Handwerker vergeben`,
+      otherOffer.id,
+      JSON.stringify({
+        project_id: offer.project_id,
+        trade_name: offer.trade_name,
+        reason: 'awarded_to_other'
+      })
+    ]
+  );
+}
     
     // ===== COMMIT - ORDER UND OFFER SIND JETZT SICHER! =====
     await query('COMMIT');
