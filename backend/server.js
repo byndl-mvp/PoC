@@ -20062,22 +20062,31 @@ if (has_schedule_changes) {
     );
     
     if (offerData.rows.length > 0 && transporter) {
-      const offer = offerData.rows[0];
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-        to: offer.email,
-        subject: `Angebot bestätigt - ${offer.trade_name}`,
-        html: `
-          <h2>Angebot wurde bestätigt</h2>
-          <p>Gute Nachrichten! <strong>${offer.company_name}</strong> hat das Angebot für <strong>${offer.trade_name}</strong> nach dem Ortstermin verbindlich bestätigt.</p>
-          <p><strong>Angebotssumme:</strong> ${amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</p>
-          <p><strong>Ausführung:</strong> ${new Date(execution_start).toLocaleDateString('de-DE')} bis ${new Date(execution_end).toLocaleDateString('de-DE')}</p>
-          ${notes ? `<p><strong>Anmerkungen:</strong> ${notes}</p>` : ''}
-          <p>Sie können das Angebot nun verbindlich beauftragen.</p>
-          <a href="https://byndl.de/bauherr/dashboard">Zum Dashboard</a>
-        `
-      });
-    }
+  const offer = offerData.rows[0];
+  
+  // ✅ Verwende die finalen Termine (entweder aus schedule_phases oder aus request)
+  const finalExecutionStart = schedule_phases && schedule_phases.length > 0 
+    ? schedule_phases[0].planned_start 
+    : execution_start;
+  const finalExecutionEnd = schedule_phases && schedule_phases.length > 0 
+    ? schedule_phases[schedule_phases.length - 1].planned_end 
+    : execution_end;
+  
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+    to: offer.email,
+    subject: `Angebot bestätigt - ${offer.trade_name}`,
+    html: `
+      <h2>Angebot wurde bestätigt</h2>
+      <p>Gute Nachrichten! <strong>${offer.company_name}</strong> hat das Angebot für <strong>${offer.trade_name}</strong> nach dem Ortstermin verbindlich bestätigt.</p>
+      <p><strong>Angebotssumme:</strong> ${amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</p>
+      <p><strong>Ausführung:</strong> ${new Date(finalExecutionStart).toLocaleDateString('de-DE')} bis ${new Date(finalExecutionEnd).toLocaleDateString('de-DE')}</p>
+      ${notes ? `<p><strong>Anmerkungen:</strong> ${notes}</p>` : ''}
+      <p>Sie können das Angebot nun verbindlich beauftragen.</p>
+      <a href="https://byndl.de/bauherr/dashboard">Zum Dashboard</a>
+    `
+  });
+}
     
     await query('COMMIT');
     
