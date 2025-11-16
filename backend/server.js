@@ -20005,34 +20005,37 @@ if (schedule_phases && schedule_phases.length > 0) {
     }
     
     // Notification an Bauherr (NUR bei Änderungen!)
-    if (has_schedule_changes) {
-      const projectInfo = await query(
-        `SELECT p.bauherr_id, t.name as trade_name
-         FROM offers o
-         JOIN tenders tn ON o.tender_id = tn.id
-         JOIN projects p ON tn.project_id = p.id
-         JOIN trades t ON tn.trade_id = t.id
-         WHERE o.id = $1`,
-        [offerId]
-      );
-      
-      if (projectInfo.rows.length > 0) {
-        const tradeName = projectInfo.rows[0].trade_name;
-        
-        // ✅ Notification mit Begründung
-        await query(
-          `INSERT INTO notifications 
-           (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
-           VALUES ('bauherr', $1, 'schedule_change_request', $2, 'offer', $3, $4, NOW())`,
-          [
-            projectInfo.rows[0].bauherr_id,
-            `Handwerker hat Terminänderung für ${tradeName} vorgeschlagen`,
-            offerId,
-            JSON.stringify({
-              reason: schedule_change_reason,
-              offer_id: offerId,
-              trade_name: tradeName
-            })
+if (has_schedule_changes) {
+  const projectInfo = await query(
+    `SELECT p.bauherr_id, t.name as trade_name, h.company_name
+     FROM offers o
+     JOIN tenders tn ON o.tender_id = tn.id
+     JOIN projects p ON tn.project_id = p.id
+     JOIN trades t ON tn.trade_id = t.id
+     JOIN handwerker h ON o.handwerker_id = h.id
+     WHERE o.id = $1`,
+    [offerId]
+  );
+  
+  if (projectInfo.rows.length > 0) {
+    const tradeName = projectInfo.rows[0].trade_name;
+    const handwerkerName = projectInfo.rows[0].company_name || 'Handwerker';
+    
+    // ✅ Notification mit Begründung
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+       VALUES ('bauherr', $1, 'schedule_change_request', $2, 'offer', $3, $4, NOW())`,
+      [
+        projectInfo.rows[0].bauherr_id,
+        `${handwerkerName} hat Terminänderung für ${tradeName} vorgeschlagen`,
+        offerId,
+        JSON.stringify({
+          reason: schedule_change_reason,
+          offer_id: offerId,
+          trade_name: tradeName,
+          company_name: handwerkerName
+        })
           ]
         );
       }
