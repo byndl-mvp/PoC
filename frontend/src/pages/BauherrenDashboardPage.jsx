@@ -2211,7 +2211,8 @@ const deadlineDate = tender.deadline
         o.status !== 'preliminary' && 
         o.status !== 'confirmed' && 
         o.status !== 'accepted' &&
-        o.status !== 'rejected'
+        o.status !== 'rejected' &&
+        o.status !== 'not_selected'
       ).length}
     </p>
   </div>
