@@ -16376,7 +16376,7 @@ app.get('/api/handwerker/:identifier/tenders/new', async (req, res) => {
       LEFT JOIN tender_handwerker th ON th.tender_id = t.id AND th.handwerker_id = $1
       LEFT JOIN offers o ON o.tender_id = t.id AND o.handwerker_id = $1
       WHERE t.trade_id = ANY($4::int[])
-  AND t.status IN ('open', 'pending')
+  AND t.status = 'open'  
   AND NOT EXISTS (
     SELECT 1 FROM orders ord
     JOIN offers o2 ON ord.offer_id = o2.id
