@@ -171,6 +171,9 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
     if (onTabChange) {
       const tabMapping = {
         'new_tender': 'ausschreibungen',
+        'new_offer': 'angebote',
+        'offer_confirmed': 'angebote',
+        'offer_accepted': 'angebote',
         'preliminary_accepted': 'contracts',
         'offer_rejected': 'angebote', 
         'offer_withdrawn': 'angebote',
