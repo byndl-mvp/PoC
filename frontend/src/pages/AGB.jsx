@@ -186,10 +186,11 @@ export default function AGB() {
               <div className="bg-white/5 border border-white/20 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-white mb-2">Phase 1: Vermittlungsvertrag</p>
                 <p className="mb-4">
-                  Nach Auswahl eines Angebots schließen Bauherr und Handwerker über die Plattform einen 
-                  Vermittlungsvertrag (Letter of Intent). Damit verpflichten sich beide zur Durchführung 
-                  des Projekts und zur finalen Vertragsgestaltung. Mit Abschluss dieser Phase ist die 
-                  Vermittlungsprovision an byndl fällig.
+                  Nach Auswahl eines Angebots durchlaufen Bauherr und Handwerker eine zweistufige Vergabe: 
+                  In Stufe 1 (Vorläufige Beauftragung) werden die Kontaktdaten freigegeben und eine Kennenlernphase eingeleitet. 
+                  Die Vermittlung gilt ab diesem Zeitpunkt rechtlich als erfolgt und die Nachwirkfrist von 24 Monaten greift. 
+                  Die Vermittlungsprovision wird jedoch erst in Stufe 2 bei verbindlicher Beauftragung und Zustandekommen des Werkvertrags fällig. 
+                  Dies gewährleistet eine reine Erfolgsprovision ohne unproduktive Gebühren für Kontaktaufnahmen, die nicht zu einem Vertragsabschluss führen.
                 </p>
                 <p className="font-semibold text-white mb-2">Phase 2: Werkvertrag</p>
                 <p>
@@ -212,7 +213,7 @@ export default function AGB() {
 
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.3 Nachwirkungsfrist</h3>
               <p className="mb-4">
-                Kommt innerhalb von 12 Monaten nach Vermittlung durch byndl ein Vertrag zwischen dem Bauherrn 
+                Kommt innerhalb von 24 Monaten nach Vermittlung durch byndl ein Vertrag zwischen dem Bauherrn 
                 und dem vermittelten Handwerker zustande (auch außerhalb der Plattform), gilt dieser als über 
                 byndl vermittelt. Die Vermittlungsprovision bleibt in diesem Fall fällig.
               </p>
