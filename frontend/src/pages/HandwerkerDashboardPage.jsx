@@ -353,9 +353,13 @@ useEffect(() => {
   userType="handwerker"
   userId={handwerkerData?.id}
   apiUrl={apiUrl}
-  onTabChange={setActiveTab}         
+  onTabChange={setActiveTab}
+  onMessageCenterOpen={() => {  
+    messageCenterRef.current?.setIsOpen(true);
+  }}
 />
 <MessageCenter
+  ref={messageCenterRef} 
   userType="handwerker"
   userId={handwerkerData?.id}
   userName={handwerkerData?.company_name}
