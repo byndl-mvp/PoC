@@ -128,6 +128,7 @@ export default function BauherrenDashboardPage() {
   const [userData, setUserData] = useState(null);
   const [projects, setProjects] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const messageCenterRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState(null);
   const [scheduleBadgeCount, setScheduleBadgeCount] = useState(0);
