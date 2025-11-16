@@ -17,6 +17,7 @@ export default function HandwerkerDashboardPage() {
   const navigate = useNavigate();
   const [handwerkerData, setHandwerkerData] = useState(null);
   const [activeTab, setActiveTab] = useState('ausschreibungen');
+  const messageCenterRef = useRef(null);
   const [loading, setLoading] = useState(true);
   
   // Data states
