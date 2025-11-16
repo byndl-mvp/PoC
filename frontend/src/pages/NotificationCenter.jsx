@@ -180,6 +180,8 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
     // Andere Notifications - Tab wechseln wenn onTabChange vorhanden ist
     console.log('📍 Tab-Switch prüfen für:', notification.type);
     if (onTabChange) {
+console.log('🚨 UserType:', userType);
+console.log('🚨 Ist Bauherr?', userType === 'bauherr');
   const tabMapping = userType === 'bauherr' ? {
     // Bauherr Tabs
     'new_offer': 'offers',
