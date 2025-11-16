@@ -28572,20 +28572,31 @@ if (bauherrResult.rows.length > 0) {
       
      // Benachrichtigung an Bauherr wenn Änderungen vorgenommen wurden
 const hasChanges = adjustments?.some(a => a.changed);
-if (hasChanges) {
+
+// ✅ NUR Notification erstellen wenn NICHT von confirm-final aufgerufen
+// (confirm-final erstellt eigene Notification mit vollständigen Daten)
+const isFromConfirmFinal = !!offerId;
+
+if (hasChanges && !isFromConfirmFinal) {
   const entryInfo = await query(
-    `SELECT se.*, t.name as trade_name, ps.project_id, p.bauherr_id, h.company_name
-     FROM schedule_entries se
-     JOIN trades t ON se.trade_id = t.id
-     JOIN project_schedules ps ON se.schedule_id = ps.id
-     JOIN projects p ON ps.project_id = p.id
-     LEFT JOIN offers o ON o.tender_id IN (
-       SELECT id FROM tenders WHERE project_id = ps.project_id AND trade_id = se.trade_id
-     ) AND o.handwerker_id = $2
-     LEFT JOIN handwerker h ON o.handwerker_id = h.id
-     WHERE se.id = $1`,
-    [entryIds[0], handwerkerId]
-  );
+  `SELECT 
+     se.*, 
+     t.name as trade_name, 
+     ps.project_id, 
+     p.bauherr_id, 
+     COALESCE(h1.company_name, h2.company_name, 'Handwerker') as company_name
+   FROM schedule_entries se
+   JOIN trades t ON se.trade_id = t.id
+   JOIN project_schedules ps ON se.schedule_id = ps.id
+   JOIN projects p ON ps.project_id = p.id
+   LEFT JOIN offers o ON o.tender_id IN (
+     SELECT id FROM tenders WHERE project_id = ps.project_id AND trade_id = se.trade_id
+   ) AND o.handwerker_id = $2
+   LEFT JOIN handwerker h1 ON o.handwerker_id = h1.id
+   LEFT JOIN handwerker h2 ON h2.id = $2
+   WHERE se.id = $1`,
+  [entryIds[0], handwerkerId]
+);
   
   if (entryInfo.rows.length > 0) {
     const info = entryInfo.rows[0];
