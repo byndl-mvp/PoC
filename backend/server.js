@@ -28457,28 +28457,35 @@ if (existingScheduleResult.rows.length > 0) {
         console.log('[MANUAL_SCHEDULE] ✅ Created', createdEntryIds.length, 'entries');
         
         // Benachrichtigung an Bauherr
-        const bauherrResult = await query(
-          `SELECT bauherr_id FROM projects WHERE id = $1`,
-          [projectId]
-        );
-        
-        if (bauherrResult.rows.length > 0) {
-          const tradeResult = await query(
-            `SELECT name FROM trades WHERE id = $1`,
-            [tradeId]
-          );
-          
-          await query(
-            `INSERT INTO notifications 
-             (user_type, user_id, type, message, reference_type, reference_id, created_at)
-             VALUES ('bauherr', $1, 'schedule_created', $2, 'schedule', $3, NOW())`,
-            [
-              bauherrResult.rows[0].bauherr_id,
-              `Handwerker hat Ausführungszeiten für ${tradeResult.rows[0].name} eingetragen`,
-              scheduleId
-            ]
-          );
-        }
+const bauherrResult = await query(
+  `SELECT bauherr_id FROM projects WHERE id = $1`,
+  [projectId]
+);
+
+if (bauherrResult.rows.length > 0) {
+  const tradeResult = await query(
+    `SELECT name FROM trades WHERE id = $1`,
+    [tradeId]
+  );
+  
+  // ✅ Hole Handwerker-Name
+  const handwerkerInfo = await query(
+    `SELECT company_name FROM handwerker WHERE id = $1`,
+    [handwerkerId]
+  );
+  const handwerkerName = handwerkerInfo.rows[0]?.company_name || 'Handwerker';
+  
+  await query(
+    `INSERT INTO notifications 
+     (user_type, user_id, type, message, reference_type, reference_id, created_at)
+     VALUES ('bauherr', $1, 'schedule_created', $2, 'schedule', $3, NOW())`,
+    [
+      bauherrResult.rows[0].bauherr_id,
+      `${handwerkerName} hat Ausführungszeiten für ${tradeResult.rows[0].name} eingetragen`,
+      scheduleId
+    ]
+  );
+}
         
         await query('COMMIT');
         
