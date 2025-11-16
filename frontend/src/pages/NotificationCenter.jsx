@@ -172,26 +172,26 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
     console.log('📍 Tab-Switch prüfen für:', notification.type);
     if (onTabChange) {
       const tabMapping = {
-        'new_tender': 'ausschreibungen',
-        'new_offer': 'angebote',
-        'offer_confirmed': 'angebote',
-        'offer_accepted': 'angebote',
-        'preliminary_accepted': 'contracts',
-        'offer_rejected': 'angebote', 
-        'offer_withdrawn': 'angebote',
-        'awarded': 'auftraege',
-        'work_completed': 'auftraege',
-        'message_from_bauherr': 'messages',
-        'message_from_handwerker': 'messages',
-        'schedule_generated': 'schedule',
-        'schedule_active': 'schedule',
-        'schedule_change_request': 'contracts',           
-        'schedule_changed': 'schedule',
-        'schedule_change_accepted': 'schedule',           
-        'schedule_change_rejected': 'schedule',           
-        'change_request_approved': 'schedule',
-        'change_request_rejected': 'schedule'
-      };
+  'new_tender': 'tenders',          
+  'new_offer': 'offers',            
+  'offer_confirmed': 'offers',      
+  'offer_accepted': 'offers',       
+  'preliminary_accepted': 'contracts',  
+  'offer_rejected': 'offers',       
+  'offer_withdrawn': 'offers',      
+  'awarded': 'orders',              
+  'work_completed': 'orders',       
+  'message_from_bauherr': 'messages',
+  'message_from_handwerker': 'messages',
+  'schedule_generated': 'schedule', 
+  'schedule_active': 'schedule',    
+  'schedule_change_request': 'contracts', 
+  'schedule_changed': 'schedule',   
+  'schedule_change_accepted': 'schedule', 
+  'schedule_change_rejected': 'schedule', 
+  'change_request_approved': 'schedule',  
+  'change_request_rejected': 'schedule'   
+};
 
       console.log('📋 Tab-Mapping:', tabMapping[notification.type]);
       
