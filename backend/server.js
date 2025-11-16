@@ -29134,14 +29134,17 @@ app.post('/api/schedule-entries/:entryId/request-change', async (req, res) => {
     try {
       // Berechne Auswirkungen
       const entryResult = await query(
-        `SELECT se.*, ps.project_id, p.bauherr_id, t.name as trade_name
-         FROM schedule_entries se
-         JOIN project_schedules ps ON se.schedule_id = ps.id
-         JOIN projects p ON ps.project_id = p.id
-         JOIN trades t ON se.trade_id = t.id
-         WHERE se.id = $1`,
-        [entryId]
-      );
+  `SELECT se.*, ps.project_id, p.bauherr_id, 
+          COALESCE(t.name, t.code, 'Gewerk') as trade_name,
+          h.company_name  
+   FROM schedule_entries se
+   JOIN project_schedules ps ON se.schedule_id = ps.id
+   JOIN projects p ON ps.project_id = p.id
+   JOIN trades t ON se.trade_id = t.id
+   LEFT JOIN handwerker h ON h.id = $2  
+   WHERE se.id = $1`,
+  [entryId, handwerkerId]  
+);
       
       if (entryResult.rows.length === 0) {
         await query('ROLLBACK');
@@ -29203,14 +29206,15 @@ await query(
          VALUES ('bauherr', $1, 'schedule_change_request', $2, 'change_request', $3, $4, NOW())`,
         [
           entry.bauherr_id,
-          `Terminänderung für ${entry.trade_name} beantragt - ${affectsFollowing ? 'Betrifft Folgetermine' : 'Keine Auswirkungen auf andere Gewerke'}`,
+          `${entry.company_name || 'Handwerker'} hat Terminänderung für ${entry.trade_name} beantragt${affectsFollowing ? ' - Betrifft Folgetermine' : 'Keine Auswirkungen auf andere Gewerke'}`,
           requestResult.rows[0].id,
           JSON.stringify({ 
             urgency,
             affects_following: affectsFollowing,
             delay_days: delayDays,
             reason: reason,
-            trade_name: entry.trade_name
+            trade_name: entry.trade_name,
+            company_name: entry.company_name
           })
         ]
       );
