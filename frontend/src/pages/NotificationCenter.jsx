@@ -161,13 +161,22 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
         setIsOpen(false);  
       }
     }
+
+    // Nachrichten - öffne MessageCenter
+if (notification.type === 'message_from_bauherr' || notification.type === 'message_from_handwerker') {
+  // Öffne MessageCenter - Funktion muss als Prop übergeben werden
+  if (onMessageCenterOpen) {
+    onMessageCenterOpen();
+  }
+  setIsOpen(false);
+  return;
+}
     
     // Schedule-Notifications - Tab wechseln UND Schedule reload triggern
     if (notification.type === 'schedule_generated' && onScheduleReload) {
       onScheduleReload();
     }
 
-    
     // Andere Notifications - Tab wechseln wenn onTabChange vorhanden ist
     console.log('📍 Tab-Switch prüfen für:', notification.type);
     if (onTabChange) {
@@ -181,8 +190,6 @@ const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onT
   'offer_withdrawn': 'offers',      
   'awarded': 'orders',              
   'work_completed': 'orders',       
-  'message_from_bauherr': 'messages',
-  'message_from_handwerker': 'messages',
   'schedule_generated': 'schedule', 
   'schedule_active': 'schedule',    
   'schedule_change_request': 'contracts', 
