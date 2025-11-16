@@ -24834,7 +24834,7 @@ await query(
               
               <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
                 <strong>Hinweis:</strong> Sie befinden sich in der Vertragsanbahnung. 
-                Die Kontaktdaten wurden bereits freigegeben und die 24-monatige Nachwirkfrist ist aktiv.
+                Die Kontaktdaten wurden bereits freigegeben und die 24-monatige Nachwirkfrist gemäß unseren AGB ist aktiv.
               </div>
             </div>
             
