@@ -1367,11 +1367,14 @@ const BudgetVisualization = ({ budget }) => {
   apiUrl={apiUrl}
   onTabChange={setActiveTab}
   onScheduleReload={() => {
-    // Trigger Schedule reload
     setScheduleReloadTrigger(prev => prev + 1);
-  }}        
+  }}
+  onMessageCenterOpen={() => {  
+    messageCenterRef.current?.setIsOpen(true);
+  }}
 />
 <MessageCenter
+  ref={messageCenterRef}
   userType="bauherr"
   userId={userData?.id}
   userName={userData?.name}
