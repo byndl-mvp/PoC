@@ -28556,33 +28556,39 @@ if (bauherrResult.rows.length > 0) {
         }
       }
       
-      // Benachrichtigung an Bauherr wenn Änderungen vorgenommen wurden
-      const hasChanges = adjustments?.some(a => a.changed);
-      if (hasChanges) {
-        const entryInfo = await query(
-          `SELECT se.*, t.name as trade_name, ps.project_id, p.bauherr_id
-           FROM schedule_entries se
-           JOIN trades t ON se.trade_id = t.id
-           JOIN project_schedules ps ON se.schedule_id = ps.id
-           JOIN projects p ON ps.project_id = p.id
-           WHERE se.id = $1`,
-          [entryIds[0]]
-        );
-        
-        if (entryInfo.rows.length > 0) {
-          const info = entryInfo.rows[0];
-          await query(
-            `INSERT INTO notifications 
-             (user_type, user_id, type, message, reference_type, reference_id, created_at)
-             VALUES ('bauherr', $1, 'schedule_change_request', $2, 'schedule_entry', $3, NOW())`,
-            [
-              info.bauherr_id,
-              `Handwerker hat Terminänderung für ${info.trade_name} vorgeschlagen`,
-              entryIds[0]
-            ]
-          );
-        }
-      }
+     // Benachrichtigung an Bauherr wenn Änderungen vorgenommen wurden
+const hasChanges = adjustments?.some(a => a.changed);
+if (hasChanges) {
+  const entryInfo = await query(
+    `SELECT se.*, t.name as trade_name, ps.project_id, p.bauherr_id, h.company_name
+     FROM schedule_entries se
+     JOIN trades t ON se.trade_id = t.id
+     JOIN project_schedules ps ON se.schedule_id = ps.id
+     JOIN projects p ON ps.project_id = p.id
+     LEFT JOIN offers o ON o.tender_id IN (
+       SELECT id FROM tenders WHERE project_id = ps.project_id AND trade_id = se.trade_id
+     ) AND o.handwerker_id = $2
+     LEFT JOIN handwerker h ON o.handwerker_id = h.id
+     WHERE se.id = $1`,
+    [entryIds[0], handwerkerId]
+  );
+  
+  if (entryInfo.rows.length > 0) {
+    const info = entryInfo.rows[0];
+    const handwerkerName = info.company_name || 'Handwerker';
+    
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, message, reference_type, reference_id, created_at)
+       VALUES ('bauherr', $1, 'schedule_change_request', $2, 'schedule_entry', $3, NOW())`,
+      [
+        info.bauherr_id,
+        `${handwerkerName} hat Terminänderung für ${info.trade_name} vorgeschlagen`,
+        entryIds[0]
+      ]
+    );
+  }
+}
       
       await query('COMMIT');
       
