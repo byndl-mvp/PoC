@@ -20106,23 +20106,28 @@ app.post('/api/schedule-changes/:entryId/accept', async (req, res) => {
       [entryId, bauherrId]
     );
     
-    // 2. Hole Handwerker-Info für Notification
-    const entryInfo = await query(
-      `SELECT 
-         se.trade_id,
-         t.name as trade_name,
-         se.planned_start,
-         se.planned_end,
-         o.handwerker_id,
-         h.company_name
-       FROM schedule_entries se
-       JOIN trades t ON se.trade_id = t.id
-       LEFT JOIN tenders tn ON tn.trade_id = se.trade_id
-       LEFT JOIN offers o ON o.tender_id = tn.id AND o.status IN ('confirmed', 'accepted')
-       LEFT JOIN handwerker h ON o.handwerker_id = h.id
-       WHERE se.id = $1`,
-      [entryId]
-    );
+   const entryInfo = await query(
+  `SELECT 
+     se.trade_id,
+     t.name as trade_name,
+     se.planned_start,
+     se.planned_end,
+     o.handwerker_id,
+     h.company_name,
+     ps.project_id,
+     p.bauherr_id,
+     b.name as bauherr_name  
+   FROM schedule_entries se
+   JOIN trades t ON se.trade_id = t.id
+   JOIN project_schedules ps ON se.schedule_id = ps.id  
+   JOIN projects p ON ps.project_id = p.id  
+   JOIN bauherren b ON p.bauherr_id = b.id  
+   LEFT JOIN tenders tn ON tn.trade_id = se.trade_id
+   LEFT JOIN offers o ON o.tender_id = tn.id AND o.status IN ('confirmed', 'accepted')
+   LEFT JOIN handwerker h ON o.handwerker_id = h.id
+   WHERE se.id = $1`,
+  [entryId]
+);
     
     if (entryInfo.rows.length > 0) {
       const info = entryInfo.rows[0];
@@ -20135,10 +20140,11 @@ app.post('/api/schedule-changes/:entryId/accept', async (req, res) => {
            VALUES ('handwerker', $1, 'schedule_change_accepted', $2, 'schedule_entry', $3, $4, NOW())`,
           [
             info.handwerker_id,
-            `Bauherr hat Ihre Terminänderung für ${info.trade_name} akzeptiert`,
+            `${info.bauherr_name || 'Bauherr'} hat Ihre Terminänderung für ${info.trade_name} akzeptiert`,
             entryId,
             JSON.stringify({
               trade_name: info.trade_name,
+              bauherr_name: info.bauherr_name,
               new_start: info.planned_start,
               new_end: info.planned_end
             })
@@ -20227,20 +20233,26 @@ app.post('/api/schedule-changes/:entryId/reject', async (req, res) => {
     );
     
     // 4. Hole Handwerker-Info für Notification
-    const entryInfo = await query(
-      `SELECT 
-         se.trade_id,
-         t.name as trade_name,
-         o.handwerker_id,
-         h.company_name
-       FROM schedule_entries se
-       JOIN trades t ON se.trade_id = t.id
-       LEFT JOIN tenders tn ON tn.trade_id = se.trade_id
-       LEFT JOIN offers o ON o.tender_id = tn.id AND o.status IN ('confirmed', 'accepted')
-       LEFT JOIN handwerker h ON o.handwerker_id = h.id
-       WHERE se.id = $1`,
-      [entryId]
-    );
+const entryInfo = await query(
+  `SELECT 
+     se.trade_id,
+     t.name as trade_name,
+     o.handwerker_id,
+     h.company_name,
+     ps.project_id,
+     p.bauherr_id,
+     b.name as bauherr_name  
+   FROM schedule_entries se
+   JOIN trades t ON se.trade_id = t.id
+   JOIN project_schedules ps ON se.schedule_id = ps.id  
+   JOIN projects p ON ps.project_id = p.id  
+   JOIN bauherren b ON p.bauherr_id = b.id  
+   LEFT JOIN tenders tn ON tn.trade_id = se.trade_id
+   LEFT JOIN offers o ON o.tender_id = tn.id AND o.status IN ('confirmed', 'accepted')
+   LEFT JOIN handwerker h ON o.handwerker_id = h.id
+   WHERE se.id = $1`,
+  [entryId]
+);
     
     if (entryInfo.rows.length > 0) {
       const info = entryInfo.rows[0];
@@ -20253,10 +20265,11 @@ app.post('/api/schedule-changes/:entryId/reject', async (req, res) => {
            VALUES ('handwerker', $1, 'schedule_change_rejected', $2, 'schedule_entry', $3, $4, NOW())`,
           [
             info.handwerker_id,
-            `Bauherr hat Ihre Terminänderung für ${info.trade_name} abgelehnt`,
+            `${info.bauherr_name || 'Bauherr'} hat Ihre Terminänderung für ${info.trade_name} abgelehnt`,
             entryId,
             JSON.stringify({
               trade_name: info.trade_name,
+              bauherr_name: info.bauherr_name,
               reason: reason || 'Keine Begründung angegeben',
               restored_start: old_start,
               restored_end: old_end
