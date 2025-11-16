@@ -159,15 +159,52 @@ export default function AGB() {
                 kein Anspruch auf Vermittlung bestimmter oder einer Mindestanzahl von Projekten.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.3 Provision</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.3 Vermittlungsprovision</h3>
               <p className="mb-4">
-                Bei erfolgreicher Vermittlung und Vertragsschluss zwischen Handwerker und Bauherr ist eine 
-                Vermittlungsprovision an byndl zu zahlen. Die Höhe richtet sich nach der jeweils gültigen 
-                Preisliste und wird prozentual auf Basis der Auftragssumme berechnet. Die Provision wird 
-                mit Abschluss des Vermittlungsvertrags (Phase 1 der zweistufigen Vergabe) fällig.
+                Bei erfolgreicher Vermittlung und verbindlichem Vertragsschluss zwischen Handwerker und 
+                Bauherr ist eine Vermittlungsprovision an byndl zu zahlen. Die Provision wird ausschließlich 
+                im Erfolgsfall erhoben – das heißt nur dann, wenn in Stufe 2 der zweistufigen Vergabe 
+                (siehe § 5.1) beide Parteien die verbindliche Beauftragung bestätigen und der Werkvertrag 
+                tatsächlich zustande kommt.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.4 Qualitätsstandards</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.4 Provisionsstaffelung</h3>
+              <p className="mb-4">
+                Die Höhe der Vermittlungsprovision richtet sich nach der Netto-Auftragssumme und wird wie 
+                folgt gestaffelt berechnet:
+              </p>
+              <div className="bg-white/5 border border-white/20 rounded-lg p-4 mb-4">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-white/20">
+                      <th className="pb-2 pr-4 font-semibold text-teal-300">Netto-Auftragssumme</th>
+                      <th className="pb-2 font-semibold text-teal-300">Provisionssatz</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-200">
+                    <tr className="border-b border-white/10">
+                      <td className="py-2 pr-4">bis 10.000 EUR</td>
+                      <td className="py-2">5%</td>
+                    </tr>
+                    <tr className="border-b border-white/10">
+                      <td className="py-2 pr-4">10.001 EUR bis 20.000 EUR</td>
+                      <td className="py-2">4%</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 pr-4">ab 20.001 EUR</td>
+                      <td className="py-2">3%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="mb-4">
+                Die Provision wird auf Basis der im Werkvertrag vereinbarten Gesamtvergütung (netto) 
+                berechnet und ist mit Zustandekommen des verbindlichen Werkvertrags (Stufe 2) fällig. 
+                Die Rechnungsstellung durch byndl erfolgt nach Bestätigung der verbindlichen Beauftragung 
+                durch beide Parteien.
+              </p>
+
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.5 Qualitätsstandards</h3>
               <p className="mb-4">
                 Handwerker verpflichten sich zur fachgerechten und termingerechten Ausführung der übernommenen 
                 Aufträge sowie zur Einhaltung aller gesetzlichen und berufsrechtlichen Vorschriften. Bei 
@@ -184,23 +221,66 @@ export default function AGB() {
                 Die Auftragsvergabe erfolgt in zwei Phasen:
               </p>
               <div className="bg-white/5 border border-white/20 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-white mb-2">Phase 1: Vermittlungsvertrag</p>
+                <p className="font-semibold text-white mb-2">Stufe 1: Vorläufige Beauftragung (Vertragsanbahnung)</p>
                 <p className="mb-4">
-                  Nach Auswahl eines Angebots durchlaufen Bauherr und Handwerker eine zweistufige Vergabe: 
-                  In Stufe 1 (Vorläufige Beauftragung) werden die Kontaktdaten freigegeben und eine Kennenlernphase eingeleitet. 
-                  Die Vermittlung gilt ab diesem Zeitpunkt rechtlich als erfolgt und die Nachwirkfrist von 24 Monaten greift. 
-                  Die Vermittlungsprovision wird jedoch erst in Stufe 2 bei verbindlicher Beauftragung und Zustandekommen des Werkvertrags fällig. 
-                  Dies gewährleistet eine reine Erfolgsprovision ohne unproduktive Gebühren für Kontaktaufnahmen, die nicht zu einem Vertragsabschluss führen.
+                  Nach Auswahl eines Angebots durchlaufen Bauherr und Handwerker eine zweistufige Vergabe. 
+                  In Stufe 1 (Vorläufige Beauftragung) werden die Kontaktdaten freigegeben und eine 
+                  Kennenlernphase eingeleitet. Die Vermittlung gilt ab diesem Zeitpunkt rechtlich als erfolgt 
+                  und die Nachwirkfrist von 24 Monaten greift (siehe § 5.2). Die Vermittlungsprovision wird 
+                  jedoch erst in Stufe 2 bei verbindlicher Beauftragung und Zustandekommen des Werkvertrags fällig. 
+                  Dies gewährleistet eine reine Erfolgsprovision ohne unproduktive Gebühren für Kontaktaufnahmen, 
+                  die nicht zu einem Vertragsabschluss führen.
                 </p>
-                <p className="font-semibold text-white mb-2">Phase 2: Werkvertrag</p>
+                <p className="mb-4">
+                  Während der Kennenlernphase können beide Parteien einen Videocall oder Ortstermin vereinbaren. 
+                  Der Handwerker kann nach Verifizierung sein Angebot bestätigen oder anpassen. Beide Seiten 
+                  haben faire Ausstiegsmöglichkeiten, falls sich herausstellt, dass eine Zusammenarbeit nicht 
+                  zustande kommen soll.
+                </p>
+                <p className="font-semibold text-white mb-2">Stufe 2: Verbindliche Beauftragung (Werkvertrag)</p>
                 <p>
-                  Nach eventueller Feinabstimmung (z.B. Vor-Ort-Besichtigung) wird der finale Werkvertrag 
-                  zwischen Bauherr und Handwerker geschlossen. Dieser regelt alle Details der Leistungserbringung, 
-                  Vergütung, Termine und Gewährleistung.
+                  Nach eventueller Feinabstimmung (z.B. Vor-Ort-Besichtigung, Anpassung der Leistungsbeschreibung) 
+                  bestätigt der Handwerker sein finales Angebot. Anschließend klickt der Bauherr auf „verbindlich 
+                  beauftragen". Damit wird der finale Werkvertrag zwischen Bauherr und Handwerker geschlossen. 
+                  Dieser regelt alle Details der Leistungserbringung, Vergütung, Termine und Gewährleistung. 
+                  Mit Zustandekommen des Werkvertrags wird die Vermittlungsprovision fällig und byndl schaltet 
+                  alle Premium-Plattform-Features frei (Kosten- und Terminkontrolle, Nachtragsschutz, 
+                  Rechnungslauf, Projekt-Chat etc.).
                 </p>
               </div>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.2 Direktes Vertragsverhältnis</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.2 Nachwirkfrist (24 Monate)</h3>
+              <div className="bg-blue-900/30 border-l-4 border-blue-400 p-4 mb-4">
+                <p className="font-semibold text-blue-300 mb-3">Schutz der Vermittlungsleistung</p>
+                <p className="mb-3">
+                  Ab dem Zeitpunkt der Kontaktfreigabe in Stufe 1 (Vorläufige Beauftragung) greift eine 
+                  Nachwirkfrist von 24 Monaten. Diese Frist schützt die Vermittlungsleistung von byndl und 
+                  stellt sicher, dass die Plattform für die erfolgreiche Zusammenführung von Bauherr und 
+                  Handwerker angemessen vergütet wird.
+                </p>
+                <p className="mb-3 font-semibold text-white">Was bedeutet die Nachwirkfrist konkret?</p>
+                <p className="mb-3">
+                  Kommt innerhalb von 24 Monaten nach der Kontaktfreigabe ein Vertrag zwischen dem Bauherrn 
+                  und dem vermittelten Handwerker zustande – unabhängig davon, ob dieser Vertrag über die 
+                  Plattform oder außerhalb der Plattform geschlossen wird – gilt dieser Vertrag als durch 
+                  byndl vermittelt. Die Vermittlungsprovision gemäß § 4.3 und § 4.4 bleibt in diesem Fall fällig.
+                </p>
+                <p className="mb-3">
+                  Dies gilt für dasselbe Projekt sowie für vergleichbare oder Folgeprojekte zwischen denselben 
+                  Vertragsparteien.
+                </p>
+                <p className="font-semibold text-white mb-2">Zweck und Fairness:</p>
+                <p>
+                  Die Nachwirkfrist verhindert eine Umgehung der Plattform und schützt byndl vor dem Szenario, 
+                  dass Nutzer die Plattform lediglich zur kostenlosen Kontaktaufnahme nutzen und anschließend 
+                  „offline" einen Vertrag schließen, um die Provision zu vermeiden. Gleichzeitig wird durch 
+                  das zweistufige Modell sichergestellt, dass nur tatsächlich zustande gekommene Aufträge 
+                  provisionspflichtig sind – es entstehen keine Kosten für bloße Kontaktaufnahmen ohne 
+                  Vertragsabschluss.
+                </p>
+              </div>
+
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.3 Direktes Vertragsverhältnis</h3>
               <div className="bg-teal-900/30 border-l-4 border-teal-400 p-4 mb-4">
                 <p className="font-semibold text-teal-300 mb-2">Wichtig</p>
                 <p>
@@ -210,13 +290,6 @@ export default function AGB() {
                   und Handwerker geltend zu machen.
                 </p>
               </div>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.3 Nachwirkungsfrist</h3>
-              <p className="mb-4">
-                Kommt innerhalb von 24 Monaten nach Vermittlung durch byndl ein Vertrag zwischen dem Bauherrn 
-                und dem vermittelten Handwerker zustande (auch außerhalb der Plattform), gilt dieser als über 
-                byndl vermittelt. Die Vermittlungsprovision bleibt in diesem Fall fällig.
-              </p>
             </section>
 
             <section>
@@ -226,20 +299,23 @@ export default function AGB() {
               <p className="mb-4">
                 Es ist untersagt, die Plattform zu umgehen, indem Bauherr und Handwerker nach erfolgtem 
                 Erstkontakt über byndl direkt außerhalb der Plattform einen Vertrag schließen, um die 
-                Vermittlungsprovision zu vermeiden.
+                Vermittlungsprovision zu vermeiden. Die Nachwirkfrist gemäß § 5.2 bleibt in jedem Fall 
+                bestehen.
               </p>
 
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">6.2 Vertragsstrafe</h3>
               <p className="mb-4">
-                Bei vorsätzlicher Umgehung der Plattform verpflichtet sich der Nutzer zur Zahlung einer 
-                Vertragsstrafe in Höhe der entgangenen Vermittlungsprovision, mindestens jedoch 2.500 Euro. 
-                Die Geltendmachung weitergehender Schadensersatzansprüche bleibt vorbehalten.
+                Bei vorsätzlicher Umgehung der Plattform verpflichtet sich der Handwerker zur Zahlung einer 
+                Vertragsstrafe in Höhe der doppelten entgangenen Vermittlungsprovision, mindestens jedoch 
+                2.500 Euro. Die Geltendmachung weitergehender Schadensersatzansprüche bleibt vorbehalten.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">6.3 Monitoring</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">6.3 Monitoring und Nachweis</h3>
               <p className="mb-4">
                 byndl behält sich vor, Verstöße gegen das Umgehungsverbot durch technische und organisatorische 
-                Maßnahmen zu überwachen und bei Verdacht Nachforschungen anzustellen.
+                Maßnahmen zu überwachen. Die Kontaktfreigabe wird protokolliert und beide Parteien erhalten 
+                Erinnerungen über ihre Verpflichtungen. Bei begründetem Verdacht auf Umgehung kann byndl 
+                Nachforschungen anstellen und entsprechende Nachweise verlangen.
               </p>
             </section>
 
