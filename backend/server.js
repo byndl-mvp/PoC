@@ -29178,7 +29178,8 @@ await query(
             urgency,
             affects_following: affectsFollowing,
             delay_days: delayDays,
-            reason: reason 
+            reason: reason,
+            trade_name: entry.trade_name
           })
         ]
       );
