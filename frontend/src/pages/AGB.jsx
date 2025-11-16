@@ -52,13 +52,24 @@ export default function AGB() {
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">1.2 Rolle von byndl als Vermittler</h3>
               <div className="bg-teal-900/30 border-l-4 border-teal-400 p-4 mb-4">
                 <p className="font-semibold text-teal-300 mb-2">WICHTIG: Reine Vermittlerrolle</p>
-                <p>
+                <p className="mb-3">
                   byndl tritt ausschließlich als Vermittler auf und stellt lediglich eine technische Plattform 
                   zur Verfügung, über die Bauherren und Handwerker zusammengebracht werden. byndl wird zu keinem 
                   Zeitpunkt Vertragspartei der zwischen Bauherren und Handwerkern geschlossenen Werkverträge. 
                   Das Vertragsverhältnis besteht ausschließlich zwischen dem Bauherrn (Auftraggeber) und dem 
-                  Handwerker (Auftragnehmer). byndl übernimmt keine Gewährleistung für die Ausführung, Qualität 
-                  oder Vollständigkeit der vermittelten Bauleistungen.
+                  Handwerker (Auftragnehmer).
+                </p>
+                <p className="mb-3">
+                  byndl übernimmt keine Gewährleistung für die Ausführung, Qualität oder Vollständigkeit der 
+                  vermittelten Bauleistungen. Ebenso übernimmt byndl keine Gewähr für die Richtigkeit oder 
+                  Vollständigkeit der durch KI-Software generierten Leistungsverzeichnisse und Kostenschätzungen, 
+                  die lediglich als erste Orientierung dienen.
+                </p>
+                <p className="text-sm">
+                  byndl tritt weder als Bauträger, Generalunternehmer noch als Erfüllungsgehilfe einer der 
+                  Vertragsparteien auf. Alle Rechte und Pflichten aus dem Werkvertrag bestehen ausschließlich 
+                  zwischen Bauherr und Handwerker. Die Plattform dient ausschließlich der Vermittlung und 
+                  Bereitstellung digitaler Werkzeuge zur Projektabwicklung.
                 </p>
               </div>
 
@@ -124,26 +135,38 @@ export default function AGB() {
                 über die Auftragsvergabe liegt ausschließlich beim Bauherrn.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">3.3 Keine Gewährleistung für KI-generierte Inhalte</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">3.3 Haftungsbeschränkung für KI-generierte Inhalte</h3>
               <div className="bg-amber-900/30 border-l-4 border-amber-400 p-4 mb-4">
-                <p className="font-semibold text-amber-300 mb-2">Haftungsausschluss</p>
+                <p className="font-semibold text-amber-300 mb-2">Wichtiger Haftungshinweis</p>
                 <p className="mb-3">
-                  byndl übernimmt keine Gewährleistung für die Richtigkeit, Vollständigkeit oder Aktualität 
-                  der KI-generierten Leistungsverzeichnisse und Kostenschätzungen. Diese dienen ausschließlich 
-                  als erste Orientierungshilfe und stellen keine verbindliche Zusage dar.
+                  Die von byndl bereitgestellten KI-generierten Leistungsverzeichnisse und Kostenschätzungen 
+                  werden nach bestem Wissen und auf Grundlage der vom Bauherrn bereitgestellten Informationen 
+                  erstellt. Sie dienen jedoch ausschließlich als erste, unverbindliche Orientierungshilfe für 
+                  die Vertragsanbahnung und stellen keine Gewährleistung für Richtigkeit, Vollständigkeit oder 
+                  Durchführbarkeit dar.
                 </p>
                 <p className="mb-3">
-                  Der Bauherr ist verpflichtet, die KI-generierten Angaben eigenverantwortlich zu prüfen und 
-                  bei Bedarf durch Fachleute überprüfen zu lassen. Die automatisiert erstellten Unterlagen 
-                  können Ungenauigkeiten, unvollständige Erfassungen oder von den tatsächlichen Gegebenheiten 
-                  abweichende Angaben enthalten.
+                  Der Bauherr wird ausdrücklich darauf hingewiesen, dass automatisiert erstellte Unterlagen 
+                  technisch bedingt Ungenauigkeiten, Abweichungen von tatsächlichen Gegebenheiten oder 
+                  unvollständige Erfassungen enthalten können. Der Bauherr ist daher verpflichtet, die 
+                  KI-generierten Angaben eigenverantwortlich zu prüfen und bei Bedarf durch Fachleute 
+                  (z.B. Architekten, Sachverständige) überprüfen zu lassen.
+                </p>
+                <p className="mb-3">
+                  <span className="font-semibold text-white">Haftungsbegrenzung:</span> Die Haftung von byndl 
+                  für die Richtigkeit oder Vollständigkeit der KI-generierten Ausschreibungsunterlagen ist auf 
+                  Vorsatz und grobe Fahrlässigkeit beschränkt. Für leichte Fahrlässigkeit haftet byndl nicht, 
+                  es sei denn, es handelt sich um die Verletzung wesentlicher Vertragspflichten oder um Schäden 
+                  aus der Verletzung des Lebens, des Körpers oder der Gesundheit. Bei Verletzung wesentlicher 
+                  Vertragspflichten durch leichte Fahrlässigkeit ist die Haftung auf den vorhersehbaren, 
+                  vertragstypischen Schaden begrenzt.
                 </p>
                 <p className="text-sm">
-                  <span className="font-semibold">Wichtiger Hinweis:</span> Für das verbindliche Angebot ist 
-                  ausschließlich der Handwerker verantwortlich, der im Rahmen der zweistufigen Vergabe (§ 5.1) 
-                  die Möglichkeit und Pflicht zur eigenständigen Prüfung und Verifizierung der Projektgegebenheiten 
-                  erhält, bevor er sein finales Angebot bestätigt. Bauherren sollten daher auf die sorgfältige 
-                  Prüfung und Verifizierung durch den Handwerker in Stufe 1 achten.
+                  <span className="font-semibold">Wichtiger Schutzmechanismus:</span> Für das verbindliche 
+                  Angebot ist ausschließlich der Handwerker verantwortlich, der im Rahmen der zweistufigen 
+                  Vergabe (§ 5.1) die Pflicht zur eigenständigen Prüfung und Verifizierung der Projektgegebenheiten 
+                  hat, bevor er sein finales Angebot bestätigt. Ansprüche wegen fehlerhafter Leistungsbeschreibungen 
+                  oder Kalkulationen sind vorrangig gegenüber dem Handwerker geltend zu machen.
                 </p>
               </div>
 
@@ -218,19 +241,27 @@ export default function AGB() {
 
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.5 Verifizierungspflicht und Qualitätsstandards</h3>
               <div className="bg-blue-900/30 border-l-4 border-blue-400 p-4 mb-4">
-                <p className="font-semibold text-blue-300 mb-2">Pflicht zur Angebotsprüfung</p>
+                <p className="font-semibold text-blue-300 mb-2">Unternehmerische Sorgfaltspflicht bei Angebotserstellung</p>
                 <p className="mb-3 text-sm">
-                  Der Handwerker ist verpflichtet, im Rahmen der Stufe 1 der zweistufigen Vergabe (§ 5.1) 
-                  das durch die KI-Software erstellte Leistungsverzeichnis eigenverantwortlich und sorgfältig 
-                  zu prüfen. Hierzu hat er insbesondere durch Vor-Ort-Besichtigung, Videocall oder auf anderem 
-                  geeigneten Wege die tatsächlichen Gegebenheiten des Projekts zu verifizieren. Der Handwerker 
-                  trägt die alleinige Verantwortung dafür, dass sein in Stufe 2 bestätigtes finales Angebot 
-                  vollständig, kalkulatorisch korrekt und realisierbar ist.
+                  Der Handwerker ist als Unternehmer (§ 14 BGB) verpflichtet, im Rahmen der Stufe 1 der 
+                  zweistufigen Vergabe (§ 5.1) das durch die KI-Software erstellte Leistungsverzeichnis 
+                  mit der im Geschäftsverkehr erforderlichen Sorgfalt eigenverantwortlich zu prüfen. 
+                  Hierzu hat er insbesondere durch Vor-Ort-Besichtigung, Videocall oder auf anderem geeigneten 
+                  Wege die tatsächlichen Gegebenheiten des Projekts zu verifizieren und zu dokumentieren.
+                </p>
+                <p className="mb-3 text-sm">
+                  Der Handwerker trägt als Fachunternehmer die alleinige Verantwortung dafür, dass sein in 
+                  Stufe 2 bestätigtes finales Angebot fachlich korrekt, vollständig, kalkulatorisch richtig 
+                  und realisierbar ist. Dies umfasst insbesondere die Verantwortung für zutreffende Mengenansätze, 
+                  vollständige Leistungspositionen und realistische Preise.
                 </p>
                 <p className="text-sm">
                   Eine Berufung auf unzutreffende oder unvollständige Angaben in der KI-generierten Ausschreibung 
-                  ist nach Bestätigung des Angebots in Stufe 2 ausgeschlossen, da dem Handwerker ausreichend 
-                  Gelegenheit zur Prüfung und Korrektur eingeräumt wurde.
+                  ist nach Bestätigung des Angebots in Stufe 2 grundsätzlich ausgeschlossen, da dem Handwerker 
+                  als Fachunternehmer ausreichend Gelegenheit zur sachkundigen Prüfung, Korrektur und Ergänzung 
+                  eingeräumt wurde. Etwaige Nachforderungen oder Nachträge aufgrund von Differenzen zwischen 
+                  KI-Ausschreibung und tatsächlichem Leistungsumfang sind zwischen Handwerker und Bauherr zu 
+                  klären; byndl ist insoweit nicht Ansprechpartner.
                 </p>
               </div>
               <p className="mb-4">
@@ -289,17 +320,27 @@ export default function AGB() {
                 </p>
                 
                 <div className="bg-amber-900/40 border border-amber-500/50 rounded p-3 mt-3">
-                  <p className="font-semibold text-amber-300 mb-2">Wichtig: Eigenverantwortung des Handwerkers</p>
+                  <p className="font-semibold text-amber-300 mb-2">Eigenverantwortung und Haftungsübernahme des Handwerkers</p>
+                  <p className="text-sm text-amber-100 mb-2">
+                    Mit der Bestätigung seines finalen Angebots in Stufe 2 übernimmt der Handwerker (als 
+                    Unternehmer im Sinne von § 14 BGB) die ausschließliche und vollständige Verantwortung für 
+                    die Richtigkeit, Vollständigkeit und Durchführbarkeit seines Angebots. Die durch byndl 
+                    bereitgestellte KI-gestützte Ausschreibung dient lediglich als erste, unverbindliche Orientierung.
+                  </p>
+                  <p className="text-sm text-amber-100 mb-2">
+                    Durch die in Stufe 1 eingeräumte Möglichkeit zur eigenständigen Prüfung und Verifizierung 
+                    der Projektgegebenheiten (insbesondere durch Ortsbesichtigung oder Videocall) trägt der 
+                    Handwerker das ausschließliche unternehmerische Risiko für Fehlkalkulationen, unzutreffende 
+                    Mengenansätze oder unvollständige Leistungsbeschreibungen in seinem finalen Angebot.
+                  </p>
                   <p className="text-sm text-amber-100">
-                    Mit der Bestätigung seines finalen Angebots in Stufe 2 übernimmt der Handwerker die 
-                    ausschließliche und vollständige Verantwortung für die Richtigkeit, Vollständigkeit und 
-                    Durchführbarkeit seines Angebots. Die durch byndl bereitgestellte KI-gestützte Ausschreibung 
-                    dient lediglich als erste Orientierung. Durch die in Stufe 1 eingeräumte Möglichkeit zur 
-                    eigenständigen Prüfung und Verifizierung der Projektgegebenheiten (insbesondere durch 
-                    Ortsbesichtigung oder Videocall) trägt der Handwerker das ausschließliche Risiko für 
-                    Fehlkalkulationen, unzutreffende Mengenansätze oder unvollständige Leistungsbeschreibungen. 
-                    Eine Haftung von byndl für die Richtigkeit oder Vollständigkeit der in Stufe 1 bereitgestellten 
-                    Ausschreibungsunterlagen ist ausgeschlossen.
+                    Die Haftung von byndl gegenüber dem Handwerker für die Richtigkeit oder Vollständigkeit 
+                    der in Stufe 1 bereitgestellten Ausschreibungsunterlagen ist - soweit rechtlich zulässig - 
+                    auf Vorsatz und grobe Fahrlässigkeit beschränkt. Für leichte Fahrlässigkeit haftet byndl 
+                    nicht, es sei denn, es handelt sich um die Verletzung wesentlicher Vertragspflichten. 
+                    In diesem Fall ist die Haftung auf den vorhersehbaren, vertragstypischen Schaden begrenzt. 
+                    Die Haftung für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit 
+                    bleibt unberührt.
                   </p>
                 </div>
               </div>
@@ -415,15 +456,38 @@ export default function AGB() {
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.1 Haftungsbeschränkung für byndl</h3>
               <div className="bg-amber-900/30 border-l-4 border-amber-400 p-4 mb-4">
                 <p className="font-semibold text-amber-300 mb-2">Wichtiger Haftungshinweis</p>
-                <p className="mb-2">
-                  byndl haftet nur bei Vorsatz und grober Fahrlässigkeit. Die Haftung für leichte 
-                  Fahrlässigkeit ist ausgeschlossen, außer bei Verletzung wesentlicher Vertragspflichten 
-                  (Kardinalpflichten), Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit 
-                  sowie bei Ansprüchen nach dem Produkthaftungsgesetz.
+                
+                <p className="mb-3 text-sm font-semibold text-white">a) Unbeschränkte Haftung</p>
+                <p className="mb-3 text-sm">
+                  byndl haftet unbeschränkt für Schäden aus der Verletzung des Lebens, des Körpers oder der 
+                  Gesundheit, die auf einer vorsätzlichen oder fahrlässigen Pflichtverletzung von byndl oder 
+                  deren gesetzlichen Vertretern oder Erfüllungsgehilfen beruhen. byndl haftet ferner unbeschränkt 
+                  bei Vorsatz und grober Fahrlässigkeit sowie bei Ansprüchen nach dem Produkthaftungsgesetz.
                 </p>
-                <p>
-                  Bei Verletzung wesentlicher Vertragspflichten durch leichte Fahrlässigkeit ist die Haftung 
-                  auf den vertragstypischen, vorhersehbaren Schaden begrenzt.
+                
+                <p className="mb-3 text-sm font-semibold text-white">b) Haftung bei Verletzung wesentlicher Vertragspflichten</p>
+                <p className="mb-3 text-sm">
+                  Bei leicht fahrlässiger Verletzung wesentlicher Vertragspflichten (Kardinalpflichten), deren 
+                  Erfüllung die ordnungsgemäße Durchführung des Vertrags überhaupt erst ermöglicht und auf deren 
+                  Einhaltung der Vertragspartner regelmäßig vertrauen darf, ist die Haftung von byndl der Höhe 
+                  nach auf den bei Vertragsschluss vorhersehbaren, vertragstypischen Schaden begrenzt. Dies gilt 
+                  nicht für Schäden gemäß lit. a).
+                </p>
+                
+                <p className="mb-3 text-sm font-semibold text-white">c) Ausschluss der Haftung für leichte Fahrlässigkeit</p>
+                <p className="mb-3 text-sm">
+                  Im Übrigen ist die Haftung von byndl für leicht fahrlässige Pflichtverletzungen ausgeschlossen, 
+                  soweit nicht Schäden gemäß lit. a) oder lit. b) betroffen sind.
+                </p>
+                
+                <p className="mb-3 text-sm font-semibold text-white">d) Besondere Haftungsbegrenzung bei KI-gestützten Inhalten</p>
+                <p className="text-sm">
+                  Die Haftung von byndl für die Richtigkeit, Vollständigkeit oder Eignung der durch KI-Software 
+                  erstellten Leistungsverzeichnisse und Kostenschätzungen ist - soweit rechtlich zulässig und 
+                  vorbehaltlich der Regelungen in lit. a) bis c) - auf Vorsatz und grobe Fahrlässigkeit beschränkt. 
+                  Dies gilt insbesondere, da durch die zweistufige Vergabe (§ 5.1) beiden Vertragsparteien 
+                  ausdrücklich die Möglichkeit und Pflicht zur eigenverantwortlichen Prüfung und Verifizierung 
+                  eingeräumt wird.
                 </p>
               </div>
 
@@ -434,23 +498,40 @@ export default function AGB() {
                 Ansprüche sind ausschließlich gegenüber dem Handwerker geltend zu machen.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.3 Keine Haftung für Nutzerinhalte und KI-generierte Ausschreibungen</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.3 Haftungsbeschränkung für Nutzerinhalte und KI-generierte Ausschreibungen</h3>
               <p className="mb-3">
                 byndl übernimmt keine Haftung für von Nutzern eingestellte Inhalte, Angaben oder Angebote. 
                 Die Nutzer sind selbst für die Richtigkeit und Rechtmäßigkeit ihrer Angaben verantwortlich.
               </p>
               <div className="bg-amber-900/30 border-l-4 border-amber-400 p-3 mb-4">
-                <p className="font-semibold text-amber-300 mb-2">Besonderer Haftungsausschluss für KI-Ausschreibungen</p>
-                <p className="text-sm">
-                  byndl haftet insbesondere nicht für die Richtigkeit, Vollständigkeit oder Eignung der durch 
-                  die KI-Software erstellten Leistungsverzeichnisse und Kostenschätzungen. Diese dienen 
-                  ausschließlich als erste Orientierung für die Vertragsanbahnung. Durch die in § 5.1 
-                  geregelte zweistufige Vergabe mit verpflichtender Prüf- und Verifizierungsphase wird beiden 
-                  Vertragsparteien die Möglichkeit eingeräumt, die KI-generierten Unterlagen eigenverantwortlich 
-                  zu überprüfen und zu korrigieren. Der Handwerker übernimmt mit Bestätigung seines finalen 
-                  Angebots in Stufe 2 die ausschließliche Verantwortung für dessen Richtigkeit und Vollständigkeit. 
+                <p className="font-semibold text-amber-300 mb-2">Besondere Haftungsbegrenzung für KI-Ausschreibungen</p>
+                <p className="text-sm mb-3">
+                  Die Haftung von byndl für die Richtigkeit, Vollständigkeit oder Eignung der durch die 
+                  KI-Software erstellten Leistungsverzeichnisse und Kostenschätzungen richtet sich nach § 8.1 
+                  dieser AGB und ist - vorbehaltlich zwingender gesetzlicher Haftungstatbestände - auf Vorsatz 
+                  und grobe Fahrlässigkeit beschränkt. Diese dienen ausschließlich als erste, unverbindliche 
+                  Orientierung für die Vertragsanbahnung.
+                </p>
+                <p className="text-sm mb-3">
+                  Durch die in § 5.1 geregelte zweistufige Vergabe mit obligatorischer Prüf- und Verifizierungsphase 
+                  wird sowohl dem Bauherrn als auch dem Handwerker ausdrücklich die Möglichkeit und Pflicht 
+                  eingeräumt, die KI-generierten Unterlagen eigenverantwortlich zu überprüfen, zu korrigieren 
+                  und zu ergänzen. Der Handwerker als Fachunternehmer übernimmt mit Bestätigung seines finalen 
+                  Angebots in Stufe 2 die ausschließliche fachliche und kalkulatorische Verantwortung für dessen 
+                  Richtigkeit und Vollständigkeit.
+                </p>
+                <p className="text-sm mb-3">
                   Ansprüche aus fehlerhaften oder unvollständigen Leistungsbeschreibungen, Mengenansätzen oder 
-                  Kalkulationen sind ausschließlich zwischen Bauherr und Handwerker zu klären.
+                  Kalkulationen, die nach erfolgter Verifizierungsphase in das finale Angebot übernommen wurden, 
+                  sind vorrangig zwischen Bauherr und Handwerker zu klären. Der Handwerker kann sich gegenüber 
+                  dem Bauherrn nicht auf Unrichtigkeit der KI-generierten Ausschreibung berufen, wenn er die 
+                  Möglichkeit zur Prüfung und Korrektur hatte.
+                </p>
+                <p className="text-sm">
+                  byndl haftet nicht für mittelbare Schäden, entgangenen Gewinn oder Folgeschäden, die aus der 
+                  Nutzung der KI-generierten Inhalte entstehen, es sei denn, diese beruhen auf Vorsatz oder 
+                  grober Fahrlässigkeit von byndl. Die Haftung für Schäden aus der Verletzung des Lebens, 
+                  des Körpers oder der Gesundheit bleibt hiervon unberührt.
                 </p>
               </div>
 
@@ -462,11 +543,22 @@ export default function AGB() {
               </p>
 
               <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.5 Freistellung</h3>
-              <p className="mb-4">
+              <p className="mb-3">
                 Der Nutzer stellt byndl von allen Ansprüchen Dritter frei, die auf einer rechtswidrigen oder 
                 vertragswidrigen Nutzung der Plattform durch den Nutzer beruhen. Dies umfasst auch die 
                 angemessenen Kosten der Rechtsverteidigung.
               </p>
+              <div className="bg-blue-900/20 border-l-4 border-blue-400 p-3 mb-4">
+                <p className="font-semibold text-blue-300 mb-2 text-sm">Besondere Freistellung für Handwerker</p>
+                <p className="text-sm">
+                  Der Handwerker stellt byndl insbesondere von allen Ansprüchen des Bauherrn frei, die auf 
+                  unzutreffenden, unvollständigen oder fehlerhaften Angaben in seinem finalen Angebot beruhen, 
+                  wenn diese Fehler durch sorgfältige Prüfung und Verifizierung in Stufe 1 der zweistufigen 
+                  Vergabe hätten erkannt und korrigiert werden können. Der Handwerker verpflichtet sich, byndl 
+                  von sämtlichen Regressansprüchen freizuhalten, die sich aus mangelhafter Prüfung der 
+                  KI-generierten Ausschreibungsunterlagen ergeben.
+                </p>
+              </div>
             </section>
 
             <section>
