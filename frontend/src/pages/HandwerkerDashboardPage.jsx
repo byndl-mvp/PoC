@@ -116,7 +116,8 @@ useEffect(() => {
         tender.offer_status !== 'preliminary' &&
         tender.offer_status !== 'confirmed' &&
         tender.status !== 'rejected' &&
-        tender.status !== 'cancelled'
+        tender.status !== 'cancelled' &&
+        tender.status !== 'awarded'
       );
       setTenders(uniqueTenders);
     }
