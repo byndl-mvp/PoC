@@ -17919,7 +17919,7 @@ const offerResult = await query(
             
             <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px; margin: 20px 0;">
               <strong>Status: Vertragsanbahnung</strong><br>
-              Sie befinden sich nun in der geschützten Kennenlernphase. Die 24-monatige Nachwirkfrist ist aktiv.
+              Sie befinden sich nun in der geschützten Kennenlernphase. 
               Beide Seiten können das Angebot noch anpassen oder zurückziehen.
             </div>
             
