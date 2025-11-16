@@ -17647,11 +17647,12 @@ app.get('/api/projects/:projectId/tenders', async (req, res) => {
         WHERE th.tender_id = t.id
       ) stats ON TRUE
       WHERE t.project_id = $1
-  AND t.status = 'open'
   AND NOT EXISTS (
     SELECT 1 FROM orders ord
     JOIN offers o2 ON ord.offer_id = o2.id
-    WHERE o2.tender_id = t.id
+    JOIN tenders t2 ON o2.tender_id = t2.id
+    WHERE t2.project_id = t.project_id
+      AND t2.trade_id = t.trade_id
   )
 ORDER BY t.created_at DESC
       `,
