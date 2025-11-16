@@ -20632,6 +20632,18 @@ if (tenderBundleCheck.rows.length > 0) {
       );
     }
 
+    // ✅ Auch tender_handwerker aktualisieren
+await query(
+  `UPDATE tender_handwerker 
+   SET status = 'awarded'
+   WHERE tender_id IN (
+     SELECT id FROM tenders 
+     WHERE project_id = $1 AND trade_id = $2
+   )
+   AND handwerker_id = $3`,
+  [offer.project_id, offer.trade_id, offer.handwerker_id]
+);
+    
     // ✅ NEU: Notifications für abgelehnte Handwerker
 for (const otherOffer of otherOffers.rows) {
   await query(
