@@ -10172,7 +10172,7 @@ function finalLVValidation(lv, tradeCode) {
       except: ['schutzmaßnahmen', 'sicherung']
     },
     'ESTR': {
-      forbidden: ['warmwasser', 'bewehrung', 'rohrsystem', 'aufheizprotokoll', 'dichtheitsprüfung', 'heizkreisverteiler', 'fliesen', 'parkett', 'oberbelag', 'elektro', 'sanitär', 'fenster'],
+      forbidden: ['warmwasser', 'bewehrung', 'rohrsystem', 'aufheizprotokoll', 'dichtheitsprüfung', 'funktionsprüfung', 'heizkreisverteiler', 'fliesen', 'parkett', 'oberbelag', 'elektro', 'sanitär', 'fenster'],
       except: ['fußbodenheizung', 'dämmung unter estrich']
     },
     'AUSS': {
