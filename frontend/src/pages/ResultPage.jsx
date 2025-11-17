@@ -1272,72 +1272,79 @@ const TradeOptimizationDisplay = ({
                   highlightedLv === lv.trade_id ? 'border-green-400' : 'border-white/20'
                 }`}
               >
-                <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 px-6 py-4 flex justify-between items-center">
-                  <h3 className="text-xl font-bold text-white">
-                    {lv.name || lv.trade_name || lv.code}
-                  </h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setSelectedLv(selectedLv === idx ? null : idx)}
-                      className="text-sm bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all"
-                    >
-                      {selectedLv === idx ? 'Schließen' : 'Details anzeigen'}
-                    </button>
-                    <button
-                      onClick={() => handleExportPDF(lv.trade_id, exportMode === 'with-prices')}
-                      className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all flex items-center gap-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      PDF
-                    </button>
-                    {/* Dezenter Lösch-Button - nur Icon */}
-<button
-  onClick={(e) => {
-    e.stopPropagation();
-    handleDeleteTrade(lv, idx);
-  }}
-  className="text-sm p-2 rounded-lg transition-all text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-  title="Gewerk komplett löschen"
->
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-</button>
-                  </div>
-                </div>
-                
-                {/* Zusammenfassung immer sichtbar */}
-                <div className="px-6 py-4">
-                  <div className="flex justify-between items-center text-white">
-                    <span className="text-gray-300">
-                      {lv.content?.positions?.length || 0} Positionen
-                    </span>
-                    <span className="text-2xl font-bold text-teal-400">
-  {formatCurrency(calculateTotal(lv))}
-</span>>
-                    
-                    {/* NEU: Optimierungs-Button pro Gewerk */}
-              {!tradeOptimizations[lv.trade_id] && (
-                <button
-                  onClick={() => loadTradeOptimization(lv, idx)}
-                  disabled={loadingTradeOptimization[lv.trade_id]}
-                  className="px-4 py-2 bg-orange-500/20 border border-orange-500/50 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-all text-sm"
-                >
-                  {loadingTradeOptimization[lv.trade_id] ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin h-3 w-3 border-2 border-orange-300 border-t-transparent rounded-full"></div>
-                      Analysiere...
-                    </div>
-                  ) : (
-                    '💡 Einsparpotenzial prüfen'
-                  )}
-                </button>
-              )}
-            </div>
+                {/* Header mit Titel und Action-Buttons */}
+<div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 px-4 sm:px-6 py-4">
+  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    {/* Titel */}
+    <h3 className="text-xl font-bold text-white">
+      {lv.name || lv.trade_name || lv.code}
+    </h3>
+    
+    {/* Action Buttons - rechts gruppiert */}
+    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+      <button
+        onClick={() => setSelectedLv(selectedLv === idx ? null : idx)}
+        className="text-sm bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all whitespace-nowrap"
+      >
+        {selectedLv === idx ? 'Schließen' : 'Details anzeigen'}
+      </button>
+      <button
+        onClick={() => handleExportPDF(lv.trade_id, exportMode === 'with-prices')}
+        className="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all flex items-center gap-1 whitespace-nowrap"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+        PDF
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDeleteTrade(lv, idx);
+        }}
+        className="text-sm p-2 rounded-lg transition-all text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+        title="Gewerk komplett löschen"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+{/* Zusammenfassung und Einsparpotenzial */}
+<div className="px-4 sm:px-6 py-4">
+  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div className="flex items-center gap-4">
+      <span className="text-gray-300">
+        {lv.content?.positions?.length || 0} Positionen
+      </span>
+      <span className="text-2xl font-bold text-teal-400">
+        {formatCurrency(calculateTotal(lv))}
+      </span>
+    </div>
+    
+    {/* Optimierungs-Button */}
+    {!tradeOptimizations[lv.trade_id] && (
+      <button
+        onClick={() => loadTradeOptimization(lv, idx)}
+        disabled={loadingTradeOptimization[lv.trade_id]}
+        className="px-4 py-2 bg-orange-500/20 border border-orange-500/50 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-all text-sm whitespace-nowrap"
+      >
+        {loadingTradeOptimization[lv.trade_id] ? (
+          <div className="flex items-center gap-2">
+            <div className="animate-spin h-3 w-3 border-2 border-orange-300 border-t-transparent rounded-full"></div>
+            Analysiere...
           </div>
+        ) : (
+          '💡 Einsparpotenzial prüfen'
+        )}
+      </button>
+    )}
+  </div>
+</div>
           
           {/* NEU: Zeige Optimierungen wenn geladen */}
           {expandedOptimizations[idx] && tradeOptimizations[lv.trade_id] && (
