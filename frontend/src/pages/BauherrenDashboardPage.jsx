@@ -1915,12 +1915,40 @@ const BudgetVisualization = ({ budget }) => {
           Ihre Leistungsverzeichnisse sind vollständig. Sie können jetzt die Ausschreibung starten.
         </p>
         <button
-          onClick={handleStartTender}
-          
-          className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
-        >
-          🚀 Jetzt alle Gewerke ausschreiben
-        </button>
+  onClick={async () => {
+    if (!window.confirm('Möchten Sie alle Gewerke an passende Handwerker ausschreiben?')) return;
+    
+    try {
+      setLoading(true);
+      const res = await fetch(apiUrl(`/api/projects/${selectedProject.id}/tender/create`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tradeIds: 'all',
+          timeframe: selectedProject.timeframe || 'Nach Absprache'
+        })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        alert(`✅ Erfolgreich! ${data.message}\n\nDie Handwerker wurden benachrichtigt und können nun Angebote abgeben.`);
+        
+        // Reload Projects to update status
+        await loadUserProjects(userData.email);
+        await loadProjectDetails(selectedProject.id);
+      } else {
+        throw new Error('Fehler beim Erstellen der Ausschreibung');
+      }
+    } catch (error) {
+      alert('Fehler: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  }}
+  className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
+>
+  🚀 Alle Gewerke jetzt an geeignete Handwerker ausschreiben
+</button>
       </div>
     )}
   </div>
