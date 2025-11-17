@@ -23,8 +23,15 @@ export default function LVReviewPage() {
   const [generatingQuestions, setGeneratingQuestions] = useState({});
   const [questionsStatus, setQuestionsStatus] = useState({});
   const [generatingLVs, setGeneratingLVs] = useState({});
-  const [questionGenerationProgress, setQuestionGenerationProgress] = useState({});
-  const [lvGenerationProgress, setLvGenerationProgress] = useState({});
+  const [questionGenerationProgress, setQuestionGenerationProgress] = useState(() => {
+  const saved = sessionStorage.getItem('questionGenerationProgress');
+  return saved ? JSON.parse(saved) : {};
+});
+
+  const [lvGenerationProgress, setLvGenerationProgress] = useState(() => {
+  const saved = sessionStorage.getItem('lvGenerationProgress');
+  return saved ? JSON.parse(saved) : {};
+});
   
   // Bearbeitungs-States (wie ResultPage)
   const [selectedLv, setSelectedLv] = useState(null);
