@@ -338,7 +338,11 @@ const handleGenerateQuestions = async (tradeId) => {
     }
     
     // ✅ NEU: Markiere als "generierend"
-    setGeneratingQuestions(prev => ({ ...prev, [tradeId]: true }));
+    setGeneratingQuestions(prev => {
+  const newState = { ...prev, [tradeId]: true };
+  sessionStorage.setItem('generatingQuestions', JSON.stringify(newState));
+  return newState;
+});
     
     // ✅ NEU: Lade gespeicherten Progress aus sessionStorage
     const savedProgress = JSON.parse(
