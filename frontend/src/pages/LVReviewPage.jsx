@@ -475,20 +475,34 @@ const pollQuestionStatus = (tradeId, progressInterval) => {
         const data = await res.json();
         setQuestionsStatus(prev => ({ ...prev, [tradeId]: data }));
         
-        // NEU: Wenn Special Trade, stoppe Polling
+        // ✅ SZENARIO 1: Special Trade erkannt
         if (data.requiresContext) {
           console.log('✅ Special trade - stopping poll');
           clearInterval(interval);
           clearInterval(progressInterval);
-          setGeneratingQuestions(prev => {
-  const newState = { ...prev, [tradeId]: false };
-  sessionStorage.setItem('generatingQuestions', JSON.stringify(newState));
-  return newState;
-});
+          
+          // ✅ NEU: Cleanup in sessionStorage
+          const savedGenerating = JSON.parse(
+            sessionStorage.getItem('generatingQuestions') || '{}'
+          );
+          delete savedGenerating[tradeId];
+          sessionStorage.setItem('generatingQuestions', JSON.stringify(savedGenerating));
+          
+          const savedProgress = JSON.parse(
+            sessionStorage.getItem('questionGenerationProgress') || '{}'
+          );
+          delete savedProgress[tradeId];
+          sessionStorage.setItem('questionGenerationProgress', JSON.stringify(savedProgress));
+          
+          console.log('💾 Cleaned sessionStorage for special trade:', tradeId);
+          
+          // Cleanup React State
+          setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
           setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
           return;
         }
         
+        // ✅ SZENARIO 2: Fragen fertig
         if (data.questionCount > 0) {
           console.log('✅ Questions ready for trade', tradeId);
           clearInterval(interval);
@@ -497,12 +511,25 @@ const pollQuestionStatus = (tradeId, progressInterval) => {
           setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 100 }));
           
           setTimeout(() => {
-            setGeneratingQuestions(prev => {
-  const newState = { ...prev, [tradeId]: false };
-  sessionStorage.setItem('generatingQuestions', JSON.stringify(newState));
-  return newState;
-});
+            // ✅ NEU: Cleanup in sessionStorage BEFORE reload
+            const savedGenerating = JSON.parse(
+              sessionStorage.getItem('generatingQuestions') || '{}'
+            );
+            delete savedGenerating[tradeId];
+            sessionStorage.setItem('generatingQuestions', JSON.stringify(savedGenerating));
+            
+            const savedProgress = JSON.parse(
+              sessionStorage.getItem('questionGenerationProgress') || '{}'
+            );
+            delete savedProgress[tradeId];
+            sessionStorage.setItem('questionGenerationProgress', JSON.stringify(savedProgress));
+            
+            console.log('💾 Cleaned sessionStorage before reload for trade:', tradeId);
+            
+            // Cleanup React State
+            setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
             setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
+            
             window.location.reload();
           }, 500);
         }
