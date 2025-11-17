@@ -427,9 +427,9 @@ useEffect(() => {
         const currentProgress = prev[tradeId] || 0;
         let newProgress;
         
-        if (currentProgress >= 90) {
+        if (currentProgress >= 99) {
           clearInterval(progressInterval);
-          newProgress = { ...prev, [tradeId]: 90 };
+          newProgress = { ...prev, [tradeId]: 99 };
         } else {
           newProgress = { ...prev, [tradeId]: currentProgress + 1.0 };
         }
