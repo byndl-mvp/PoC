@@ -2617,7 +2617,7 @@ const deadlineDate = tender.deadline
     
     <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
       <p className="text-yellow-300 text-sm">
-        <strong>⚠️ Exklusivitätsvereinbarung:</strong> In der Vertragsanbahnung haben Sie exklusiven Kontakt zum ausgewählten Handwerksbetrieb. Während dieser Verhandlungsphase sind weitere Angebote für dieses Gewerk in byndl gesperrt.         
+        <strong>⚠️ Exklusivitätsvereinbarung:</strong> In der Vertragsanbahnung haben Sie exklusiven Kontakt zum ausgewählten Handwerksbetrieb. Während dieser Verhandlungsphase sind weitere Angebote auf diese Ausschreibung in byndl gesperrt.         
         Nutzen Sie die Zeit für Ortstermine und finale Abstimmungen. Einen Auftrag können Sie in byndl erst nach verbindlicher Angebotsbestätigung durch den Handwerksbetrieb erteilen. Falls Sie sich doch für ein anderes Angebot entscheiden möchten, 
         beenden Sie bitte zunächst diese Vertragsanbahnung. Wir verweisen hierzu auf die Regelungen zur zweistufigen Vergabe in unseren AGB.
       </p>
