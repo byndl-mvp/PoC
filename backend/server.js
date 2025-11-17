@@ -9763,6 +9763,59 @@ lv.positions = lv.positions.map(pos => {
   return pos;
 });
 
+  // SPEZIAL-REGEL FÜR BODENBELAGSARBEITEN
+if (tradeCode === 'BOD') {
+  // ============ KRITISCH: Fußbodenheizungsprüfung gehört NICHT zum Bodenleger ============
+  if (titleLower.includes('fußboden') && titleLower.includes('heiz') && 
+      (titleLower.includes('prüf') || titleLower.includes('funktion') || 
+       titleLower.includes('test') || titleLower.includes('protokoll') ||
+       titleLower.includes('aufheiz'))) {
+    console.error(`[BOD] KRITISCH: Fußbodenheizungsprüfung gehört zu Heizung/Sanitär!`);
+    console.error(`  Position: "${pos.title}"`);
+    console.error(`  Preis: ${pos.unitPrice}€ × ${pos.quantity} = ${pos.totalPrice}€`);
+    
+    pos._remove = true;
+    pos._moveToTrade = 'HEI';
+    warnings.push(`Fußbodenheizungsprüfung entfernt - gehört zu HEIZUNG (nicht Bodenleger!)`);
+    fixedCount++;
+    return pos;
+  }
+
+  // Prompt definiert nur Sockelleisten selbst, aber nicht Ecken/Endkappen
+  if (titleLower.includes('sockel') && 
+      (titleLower.includes('innenecke') || titleLower.includes('außenecke') || 
+       titleLower.includes('endkappe') || titleLower.includes('ecke') ||
+       titleLower.includes('verbinder'))) {
+    
+    if (pos.unit === 'Stk' && pos.unitPrice > 12) {
+      const oldPrice = pos.unitPrice;
+      
+      // Realistische Preise für Zubehör (fehlt im Prompt)
+      if (titleLower.includes('endkappe')) {
+        pos.unitPrice = 3.50;
+      }
+      else if (titleLower.includes('innenecke')) {
+        pos.unitPrice = 6.00;
+      }
+      else if (titleLower.includes('außenecke')) {
+        pos.unitPrice = 8.00;
+      }
+      else if (titleLower.includes('verbinder')) {
+        pos.unitPrice = 4.00;
+      }
+      else {
+        pos.unitPrice = 7.00; // Generic "Ecke"
+      }
+      
+      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
+      warnings.push(`Sockelzubehör korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}/Stk`);
+      fixedCount++;
+      
+      console.log(`[BOD] Sockelzubehör: ${oldPrice}€ → ${pos.unitPrice}€/Stk`);
+    }
+  }
+}
+ 
 // ROH-spezifisch: Entferne falsche Holzbau-Positionen
 if (trade.code === 'ROH' && lv.positions) {
   console.log('[ROH] Prüfe auf falsche Holzbau-Positionen...');
