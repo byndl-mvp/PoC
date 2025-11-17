@@ -1143,9 +1143,13 @@ const badgeCounts = {
           method: 'DELETE'
         });
         if (res.ok) {
+          // Reload notifications
+          const notifRes = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/notifications`));
+          if (notifRes.ok) {
+            const data = await notifRes.json();
+            setNotifications(data);
+          }
           alert('Angebot gelöscht');
-          // Reload offers
-          loadOffers();
         } else {
           const error = await res.json();
           alert(error.error || 'Fehler beim Löschen');
