@@ -397,7 +397,11 @@ const handleGenerateQuestions = async (tradeId) => {
     delete savedProgress[tradeId];
     sessionStorage.setItem('questionGenerationProgress', JSON.stringify(savedProgress));
     
-    setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+    setGeneratingQuestions(prev => {
+  const newState = { ...prev, [tradeId]: false };
+  sessionStorage.setItem('generatingQuestions', JSON.stringify(newState));
+  return newState;
+});
     setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
   }
 };
@@ -419,7 +423,11 @@ const pollQuestionStatus = (tradeId, progressInterval) => {
           console.log('✅ Special trade - stopping poll');
           clearInterval(interval);
           clearInterval(progressInterval);
-          setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+          setGeneratingQuestions(prev => {
+  const newState = { ...prev, [tradeId]: false };
+  sessionStorage.setItem('generatingQuestions', JSON.stringify(newState));
+  return newState;
+});
           setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
           return;
         }
@@ -432,7 +440,11 @@ const pollQuestionStatus = (tradeId, progressInterval) => {
           setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 100 }));
           
           setTimeout(() => {
-            setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+            setGeneratingQuestions(prev => {
+  const newState = { ...prev, [tradeId]: false };
+  sessionStorage.setItem('generatingQuestions', JSON.stringify(newState));
+  return newState;
+});
             setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
             window.location.reload();
           }, 500);
