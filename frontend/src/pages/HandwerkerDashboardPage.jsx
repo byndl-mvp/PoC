@@ -1133,6 +1133,33 @@ const badgeCounts = {
                         Als gelesen markieren
                       </button>
                     )}
+                    {/* ✅ Delete Offer Button */}
+<button
+  onClick={async () => {
+    if (window.confirm('Abgelehntes Angebot wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+      try {
+        const offerId = metadata?.offer_id || notification.reference_id;
+        const res = await fetch(apiUrl(`/api/offers/${offerId}`), {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          alert('Angebot gelöscht');
+          // Reload offers
+          loadOffers();
+        } else {
+          const error = await res.json();
+          alert(error.error || 'Fehler beim Löschen');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Fehler beim Löschen');
+      }
+    }
+  }}
+  className="ml-2 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+>
+  🗑️ Löschen
+</button>                    
                   </div>
                 </div>
               );
