@@ -20599,6 +20599,26 @@ if (otherHandwerkerOrderCheck.rows.length > 0) {
       [offerId]
     );
 
+    // ✅ NEU: Notification an Handwerker über finale Beauftragung
+await query(
+  `INSERT INTO notifications 
+   (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+   VALUES ('handwerker', $1, 'awarded', $2, 'order', $3, $4, NOW())`,
+  [
+    offer.handwerker_id,
+    `Auftrag erteilt für ${offer.trade_name}`,
+    orderId,
+    JSON.stringify({
+      bauherr_name: offer.bauherr_name,
+      trade_name: offer.trade_name,
+      amount: offer.amount,
+      project_name: offer.project_description,
+      execution_start: executionStart,
+      execution_end: executionEnd
+    })
+  ]
+);
+    
     // NEU: Bundle-Logik - Projekt aus Bundle entfernen oder Bundle schließen
 const tenderBundleCheck = await query(
   `SELECT tn.bundle_id, b.current_projects
