@@ -25,12 +25,14 @@ export default function LVReviewPage() {
   return saved ? JSON.parse(saved) : {};
 });
   const [questionsStatus, setQuestionsStatus] = useState({});
-  const [generatingLVs, setGeneratingLVs] = useState({});
+  const [generatingLVs, setGeneratingLVs] = useState(() => {
+  const saved = sessionStorage.getItem('generatingLVs');
+  return saved ? JSON.parse(saved) : {};
+});
   const [questionGenerationProgress, setQuestionGenerationProgress] = useState(() => {
   const saved = sessionStorage.getItem('questionGenerationProgress');
   return saved ? JSON.parse(saved) : {};
 });
-
   const [lvGenerationProgress, setLvGenerationProgress] = useState(() => {
   const saved = sessionStorage.getItem('lvGenerationProgress');
   return saved ? JSON.parse(saved) : {};
@@ -304,7 +306,7 @@ useEffect(() => {
     // Starte Polling (falls noch nicht läuft)
     pollQuestionStatus(tradeId, progressInterval);
   });
-}, []); // Nur beim Mount ausführen
+}, [generatingQuestions]);  
   
 // NEU: useEffect für 120-Sekunden Fake-Progress für LV-Generierung
 useEffect(() => {
