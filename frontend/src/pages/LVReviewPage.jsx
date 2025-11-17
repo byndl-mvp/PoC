@@ -530,7 +530,7 @@ const handleGenerateQuestions = async (tradeId) => {
 };
 
 // Status-Polling
-const pollQuestionStatus = (tradeId, progressInterval) => {
+const pollQuestionStatus = useCallback((tradeId, progressInterval) => {
   const interval = setInterval(async () => {
     try {
       const res = await fetch(
@@ -604,7 +604,7 @@ const pollQuestionStatus = (tradeId, progressInterval) => {
       console.error('Polling error:', err);
     }
   }, 3000);
-};
+}, [projectId]);
 
 // Alle Fragen auf einmal starten
 const handleGenerateAllQuestions = async () => {
