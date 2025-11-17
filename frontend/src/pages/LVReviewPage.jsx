@@ -1020,9 +1020,17 @@ const handleGenerateAllQuestions = async () => {
           <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
             Leistungsverzeichnis-Übersicht
           </h1>
-          <p className="text-xl text-gray-300">
-            {project?.name || 'Ihr Projekt'}
-          </p>
+          {/* NEU: Projekttitel-Sektion */}
+  {project && (
+    <div className="mt-6 mb-6">
+      <h2 className="text-3xl font-bold text-teal-400">
+        {project.category}
+      </h2>
+      <p className="text-xl text-gray-300 mt-3">
+        {truncateWords(project.description || project.sub_category, 10)}
+      </p>
+    </div>
+  )}
           
           {/* Progress Info */}
           <div className="mt-6 flex justify-center gap-8">
