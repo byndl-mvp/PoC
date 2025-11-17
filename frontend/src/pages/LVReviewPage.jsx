@@ -91,6 +91,83 @@ export default function LVReviewPage() {
       nepSum: Math.round(nepSum * 100) / 100
     };
   };
+
+// Status-Polling
+const pollQuestionStatus = useCallback((tradeId, progressInterval) => {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-status`)
+      );
+      
+      if (res.ok) {
+        const data = await res.json();
+        setQuestionsStatus(prev => ({ ...prev, [tradeId]: data }));
+        
+        // ✅ SZENARIO 1: Special Trade erkannt
+        if (data.requiresContext) {
+          console.log('✅ Special trade - stopping poll');
+          clearInterval(interval);
+          clearInterval(progressInterval);
+          
+          // ✅ NEU: Cleanup in sessionStorage
+          const savedGenerating = JSON.parse(
+            sessionStorage.getItem('generatingQuestions') || '{}'
+          );
+          delete savedGenerating[tradeId];
+          sessionStorage.setItem('generatingQuestions', JSON.stringify(savedGenerating));
+          
+          const savedProgress = JSON.parse(
+            sessionStorage.getItem('questionGenerationProgress') || '{}'
+          );
+          delete savedProgress[tradeId];
+          sessionStorage.setItem('questionGenerationProgress', JSON.stringify(savedProgress));
+          
+          console.log('💾 Cleaned sessionStorage for special trade:', tradeId);
+          
+          // Cleanup React State
+          setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+          setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
+          return;
+        }
+        
+        // ✅ SZENARIO 2: Fragen fertig
+        if (data.questionCount > 0) {
+          console.log('✅ Questions ready for trade', tradeId);
+          clearInterval(interval);
+          clearInterval(progressInterval);
+          
+          setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 100 }));
+          
+          setTimeout(() => {
+            // ✅ NEU: Cleanup in sessionStorage BEFORE reload
+            const savedGenerating = JSON.parse(
+              sessionStorage.getItem('generatingQuestions') || '{}'
+            );
+            delete savedGenerating[tradeId];
+            sessionStorage.setItem('generatingQuestions', JSON.stringify(savedGenerating));
+            
+            const savedProgress = JSON.parse(
+              sessionStorage.getItem('questionGenerationProgress') || '{}'
+            );
+            delete savedProgress[tradeId];
+            sessionStorage.setItem('questionGenerationProgress', JSON.stringify(savedProgress));
+            
+            console.log('💾 Cleaned sessionStorage before reload for trade:', tradeId);
+            
+            // Cleanup React State
+            setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
+            setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
+            
+            window.location.reload();
+          }, 500);
+        }
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, 3000);
+}, [projectId]);
   
   // Daten laden
 useEffect(() => {
@@ -528,83 +605,6 @@ const handleGenerateQuestions = async (tradeId) => {
     setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
   }
 };
-
-// Status-Polling
-const pollQuestionStatus = useCallback((tradeId, progressInterval) => {
-  const interval = setInterval(async () => {
-    try {
-      const res = await fetch(
-        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/questions-status`)
-      );
-      
-      if (res.ok) {
-        const data = await res.json();
-        setQuestionsStatus(prev => ({ ...prev, [tradeId]: data }));
-        
-        // ✅ SZENARIO 1: Special Trade erkannt
-        if (data.requiresContext) {
-          console.log('✅ Special trade - stopping poll');
-          clearInterval(interval);
-          clearInterval(progressInterval);
-          
-          // ✅ NEU: Cleanup in sessionStorage
-          const savedGenerating = JSON.parse(
-            sessionStorage.getItem('generatingQuestions') || '{}'
-          );
-          delete savedGenerating[tradeId];
-          sessionStorage.setItem('generatingQuestions', JSON.stringify(savedGenerating));
-          
-          const savedProgress = JSON.parse(
-            sessionStorage.getItem('questionGenerationProgress') || '{}'
-          );
-          delete savedProgress[tradeId];
-          sessionStorage.setItem('questionGenerationProgress', JSON.stringify(savedProgress));
-          
-          console.log('💾 Cleaned sessionStorage for special trade:', tradeId);
-          
-          // Cleanup React State
-          setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
-          setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
-          return;
-        }
-        
-        // ✅ SZENARIO 2: Fragen fertig
-        if (data.questionCount > 0) {
-          console.log('✅ Questions ready for trade', tradeId);
-          clearInterval(interval);
-          clearInterval(progressInterval);
-          
-          setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 100 }));
-          
-          setTimeout(() => {
-            // ✅ NEU: Cleanup in sessionStorage BEFORE reload
-            const savedGenerating = JSON.parse(
-              sessionStorage.getItem('generatingQuestions') || '{}'
-            );
-            delete savedGenerating[tradeId];
-            sessionStorage.setItem('generatingQuestions', JSON.stringify(savedGenerating));
-            
-            const savedProgress = JSON.parse(
-              sessionStorage.getItem('questionGenerationProgress') || '{}'
-            );
-            delete savedProgress[tradeId];
-            sessionStorage.setItem('questionGenerationProgress', JSON.stringify(savedProgress));
-            
-            console.log('💾 Cleaned sessionStorage before reload for trade:', tradeId);
-            
-            // Cleanup React State
-            setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
-            setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
-            
-            window.location.reload();
-          }, 500);
-        }
-      }
-    } catch (err) {
-      console.error('Polling error:', err);
-    }
-  }, 3000);
-}, [projectId]);
 
 // Alle Fragen auf einmal starten
 const handleGenerateAllQuestions = async () => {
