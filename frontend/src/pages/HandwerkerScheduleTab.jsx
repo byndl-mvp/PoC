@@ -38,9 +38,9 @@ export default function HandwerkerScheduleTab({ handwerkerId, apiUrl }) {
         if (data.success && data.projects) {
           setSchedule(data.projects);
           
-          // Alle Projekte initial expanded
+          // Alle Projekte initial zugeklappt
           const expanded = {};
-          data.projects.forEach(project => expanded[project.project_id] = true);
+          data.projects.forEach(project => expanded[project.project_id] = false);
           setExpandedProjects(expanded);
           
           // Log für manuell eingetragene Schedules
