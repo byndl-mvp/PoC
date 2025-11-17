@@ -1467,12 +1467,12 @@ const BudgetVisualization = ({ budget }) => {
                 </div>
                 
                 {/* Projekt Name */}
-                <h3 className="text-xl font-bold text-white mb-2">
-                  {project.category}
-                </h3>
-                <p className="text-gray-400 text-sm mb-4">
-                  {project.sub_category}
-                </p>
+<h3 className="text-xl font-bold text-white mb-2">
+  {project.category}
+</h3>
+<p className="text-gray-400 text-sm mb-4">
+  {truncateWords(project.description || project.sub_category, 10)}
+</p>
                 
                 {/* Pending Hinweis */}
                 {isPending && (
