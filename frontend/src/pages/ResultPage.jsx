@@ -1316,8 +1316,8 @@ const TradeOptimizationDisplay = ({
                       {lv.content?.positions?.length || 0} Positionen
                     </span>
                     <span className="text-2xl font-bold text-teal-400">
-                      {safeToFixed(calculateTotal(lv))} €
-                    </span>
+  {formatCurrency(calculateTotal(lv))}
+</span>>
                     
                     {/* NEU: Optimierungs-Button pro Gewerk */}
               {!tradeOptimizations[lv.trade_id] && (
