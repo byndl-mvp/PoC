@@ -1150,8 +1150,9 @@ const badgeCounts = {
     
     <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
       <p className="text-yellow-300 text-sm">
-        <strong>⚠️ Exklusivitätsvereinbarung:</strong> In dieser Phase haben Sie exklusiven Kontakt zum Bauherren. 
-        Die Nachwirkfrist von 24 Monaten ist aktiv. Nutzen Sie die Zeit für Ortstermine und finale Abstimmungen.
+        <strong>⚠️ Exklusivitätsvereinbarung:</strong> Der Bauherr hat Ihr Angebot ausgewählt und möchte Sie kennenlernen. 
+        Während dieser exklusiven Verhandlungsphase sind weitere Angebote für dieses Gewerk in byndl gesperrt. Nutzen Sie die Zeit für Ortstermine und finale Abstimmungen. 
+        Bitte beachten Sie auch die Regelungen zur zweistufigen Vergabe in unseren AGB.
       </p>
     </div>
     
