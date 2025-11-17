@@ -16376,27 +16376,29 @@ app.get('/api/handwerker/:identifier/tenders/new', async (req, res) => {
       LEFT JOIN tender_handwerker th ON th.tender_id = t.id AND th.handwerker_id = $1
       LEFT JOIN offers o ON o.tender_id = t.id AND o.handwerker_id = $1
       WHERE t.trade_id = ANY($4::int[])
-  AND t.status = 'open'  
-  AND NOT EXISTS (
-    SELECT 1 FROM orders ord
-    JOIN offers o2 ON ord.offer_id = o2.id
-    WHERE o2.tender_id = t.id
+  AND t.status = 'open'
+  AND t.trade_id NOT IN (
+    SELECT DISTINCT t2.trade_id
+    FROM tenders t2
+    JOIN offers o2 ON o2.tender_id = t2.id
+    JOIN orders ord ON ord.offer_id = o2.id
+    WHERE t2.project_id = t.project_id
   )
   AND (
     o.id IS NULL 
     OR o.status = 'withdrawn'
   )
-        AND (
-          p.zip_code = $2
-          OR (
-            z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL
-            AND ST_DWithin(
-              ST_MakePoint(z1.longitude, z1.latitude)::geography,
-              ST_MakePoint(z2.longitude, z2.latitude)::geography,
-              $3 * 1000
-            )
-          )
-        )
+  AND (
+    p.zip_code = $2
+    OR (
+      z1.latitude IS NOT NULL AND z2.latitude IS NOT NULL
+      AND ST_DWithin(
+        ST_MakePoint(z1.longitude, z1.latitude)::geography,
+        ST_MakePoint(z2.longitude, z2.latitude)::geography,
+        $3 * 1000
+      )
+    )
+  )
       ORDER BY t.created_at DESC`,
       [handwerkerId, hw.zip_code, hw.action_radius, tradeIds]
     );
