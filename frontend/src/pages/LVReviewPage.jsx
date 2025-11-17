@@ -370,7 +370,7 @@ useEffect(() => {
     // Starte Polling (falls noch nicht läuft)
     pollQuestionStatus(tradeId, progressInterval);
   });
-}, [generatingQuestions]);  
+}, [generatingQuestions, pollQuestionStatus]);  
   
 // NEU: useEffect für 120-Sekunden Fake-Progress für LV-Generierung
 useEffect(() => {
