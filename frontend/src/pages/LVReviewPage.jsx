@@ -20,7 +20,10 @@ export default function LVReviewPage() {
   const [lvs, setLvs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [generatingQuestions, setGeneratingQuestions] = useState({});
+  const [generatingQuestions, setGeneratingQuestions] = useState(() => {
+  const saved = sessionStorage.getItem('generatingQuestions');
+  return saved ? JSON.parse(saved) : {};
+});
   const [questionsStatus, setQuestionsStatus] = useState({});
   const [generatingLVs, setGeneratingLVs] = useState({});
   const [questionGenerationProgress, setQuestionGenerationProgress] = useState(() => {
