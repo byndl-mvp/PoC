@@ -324,35 +324,54 @@ const handleGenerateQuestions = async (tradeId) => {
   try {
     const trade = selectedTrades.find(t => t.id === parseInt(tradeId));
     
-    // FIX: Beide Schreibweisen prüfen
+    // Check ob Special Trade
     const isSpecial = trade?.isManual || trade?.is_manual || 
                      trade?.isAiRecommended || trade?.is_ai_recommended || 
                      trade?.isAdditional || trade?.is_additional;
     
-    console.log('🔍 Trade check:', trade, 'isSpecial:', isSpecial);
-    
     if (isSpecial) {
-      console.log('🎯 Special trade - navigating directly to questions');
       handleStartQuestions(tradeId);
       return;
     }
     
-    // Normale Trades: Background-Generierung
+    // ✅ NEU: Markiere als "generierend"
     setGeneratingQuestions(prev => ({ ...prev, [tradeId]: true }));
-    setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
     
-    // Starte Fake-Progress (0 → 90% in 60 Sekunden)
+    // ✅ NEU: Lade gespeicherten Progress aus sessionStorage
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('questionGenerationProgress') || '{}'
+    );
+    const startProgress = savedProgress[tradeId] || 0;
+    
+    console.log(`📊 Starting question generation for trade ${tradeId} from ${startProgress}%`);
+    
+    // ✅ NEU: Setze Progress auf gespeicherten Wert (statt 0)
+    setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: startProgress }));
+    
+    // ✅ VERBESSERT: Fake-Progress läuft ab gespeichertem Wert weiter
     const progressInterval = setInterval(() => {
       setQuestionGenerationProgress(prev => {
         const currentProgress = prev[tradeId] || 0;
+        let newProgress;
+        
         if (currentProgress >= 90) {
           clearInterval(progressInterval);
-          return { ...prev, [tradeId]: 90 };
+          newProgress = { ...prev, [tradeId]: 90 };
+        } else {
+          newProgress = { ...prev, [tradeId]: currentProgress + 1.5 };
         }
-        return { ...prev, [tradeId]: currentProgress + 1.5 };
+        
+        // ✅ NEU: Speichere Progress in sessionStorage
+        sessionStorage.setItem(
+          'questionGenerationProgress', 
+          JSON.stringify(newProgress)
+        );
+        
+        return newProgress;
       });
     }, 1000);
     
+    // Starte Background-Generierung (nur wenn noch nicht läuft)
     const res = await fetch(
       apiUrl(`/api/projects/${projectId}/trades/${tradeId}/generate-questions-background`),
       { method: 'POST' }
@@ -363,6 +382,14 @@ const handleGenerateQuestions = async (tradeId) => {
     }
   } catch (err) {
     console.error('Failed to start question generation:', err);
+    
+    // ✅ NEU: Cleanup auch in sessionStorage
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('questionGenerationProgress') || '{}'
+    );
+    delete savedProgress[tradeId];
+    sessionStorage.setItem('questionGenerationProgress', JSON.stringify(savedProgress));
+    
     setGeneratingQuestions(prev => ({ ...prev, [tradeId]: false }));
     setQuestionGenerationProgress(prev => ({ ...prev, [tradeId]: 0 }));
   }
