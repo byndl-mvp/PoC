@@ -25517,6 +25517,43 @@ app.delete('/api/offers/:offerId/remove-cancelled', async (req, res) => {
   }
 });
 
+// Angebot löschen (nur für Handwerker bei abgelehnten Angeboten)
+app.delete('/api/offers/:offerId', async (req, res) => {
+  try {
+    const { offerId } = req.params;
+    
+    // Prüfe ob Angebot gelöscht werden darf
+    const offerCheck = await query(
+      `SELECT o.id, o.status, o.handwerker_id
+       FROM offers o
+       WHERE o.id = $1`,
+      [offerId]
+    );
+    
+    if (offerCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Angebot nicht gefunden' });
+    }
+    
+    const offer = offerCheck.rows[0];
+    
+    // Nur abgelehnte/nicht-ausgewählte Angebote dürfen gelöscht werden
+    if (!['not_selected', 'rejected'].includes(offer.status)) {
+      return res.status(400).json({ 
+        error: 'Nur abgelehnte Angebote können gelöscht werden' 
+      });
+    }
+    
+    // Lösche das Angebot
+    await query('DELETE FROM offers WHERE id = $1', [offerId]);
+    
+    res.json({ success: true, message: 'Angebot gelöscht' });
+    
+  } catch (error) {
+    console.error('Error deleting offer:', error);
+    res.status(500).json({ error: 'Fehler beim Löschen' });
+  }
+});
+
 // POST /api/tenders/:tenderId/extend-deadline
 app.post('/api/tenders/:tenderId/extend-deadline', async (req, res) => {
   const { tenderId } = req.params;
