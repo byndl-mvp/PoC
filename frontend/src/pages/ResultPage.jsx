@@ -1169,10 +1169,6 @@ const TradeOptimizationDisplay = ({
     </div>
   )}
   
-  <p className="text-lg text-gray-400 mt-6">
-    VOB-konform erstellt und bereit zum Export
-  </p>
-  
   {/* NEU: Status-Badge */}
   {!projectComplete && pendingTrades.length > 0 && (
     <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 rounded-full">
