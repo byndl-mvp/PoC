@@ -213,20 +213,26 @@ useEffect(() => {
           if (lvExists) {
   console.log(`✅ LV for trade ${tradeId} is ready!`);
   
-  // Entferne aus sessionStorage
+  // ✅ 1. Entferne aus generatingLVs
   const currentGeneratingLVs = JSON.parse(sessionStorage.getItem('generatingLVs') || '{}');
   delete currentGeneratingLVs[tradeId];
   sessionStorage.setItem('generatingLVs', JSON.stringify(currentGeneratingLVs));
   
+  // ✅ 2. NEU: Entferne aus lvGenerationProgress
+  const currentProgress = JSON.parse(sessionStorage.getItem('lvGenerationProgress') || '{}');
+  delete currentProgress[tradeId];
+  sessionStorage.setItem('lvGenerationProgress', JSON.stringify(currentProgress));
+  
   console.log('💾 Cleaned generatingLVs before reload:', currentGeneratingLVs);
+  console.log('💾 Cleaned lvGenerationProgress before reload:', currentProgress);
   
   // setTimeout für Sicherheit
   setTimeout(() => {
     window.location.reload();
   }, 100);
 } else {
-            console.log(`⏳ LV for trade ${tradeId} still generating...`);
-          }
+  console.log(`⏳ LV for trade ${tradeId} still generating...`);
+}
         }
       } catch (err) {
         console.error('❌ Polling error:', err);
