@@ -1597,8 +1597,11 @@ const BudgetVisualization = ({ budget }) => {
   <div className="flex justify-between items-start">
     <div>
       <h1 className="text-3xl font-bold text-white mb-2">
-        {selectedProject.category} - {selectedProject.sub_category}
+        {selectedProject.category}
       </h1>
+      <p className="text-lg text-gray-300 mb-3">
+        {truncateWords(selectedProject.description || selectedProject.sub_category, 10)}
+      </p>
       <p className="text-gray-400">
         Status: {selectedProject.status} | 
         Erstellt: {new Date(selectedProject.created_at).toLocaleDateString('de-DE')}
