@@ -2617,8 +2617,8 @@ const deadlineDate = tender.deadline
     
     <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
       <p className="text-yellow-300 text-sm">
-        <strong>⚠️ Exklusivitätsvereinbarung:</strong> In der Vertragsanbahnung haben Sie exklusiven Kontakt zum Handwerker. 
-        Die Nachwirkfrist von 24 Monaten ist bereits aktiv.
+        <strong>⚠️ Exklusivitätsvereinbarung:</strong> In der Vertragsanbahnung haben Sie exklusiven Kontakt zum ausgewählten Handwerksbetrieb. 
+        Bitte beachten Sie hierzu die Regelungen zur zweistufigen Vergabe in unseren AGB.
       </p>
     </div>
     
