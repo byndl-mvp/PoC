@@ -8651,27 +8651,6 @@ if (isSpecialEquipment && pos.unitPrice > 1000) {
       fixedCount++;  
       }  
                                
-// ZUSÄTZLICHE REGEL: KEINE PREISE UNTER 10€ (außer Kleinmaterial)
-if (!titleLower.includes('kleinmaterial') && 
-    !titleLower.includes('befestigungsmaterial') &&
-    pos.unitPrice < 10 && 
-    pos.unit === 'Stk') {
-  const oldPrice = pos.unitPrice;
-  
-  // Bestimme Mindestpreis basierend auf Gewerk
-  let minPrice = 50; // Default
-  
-  if (tradeCode === 'TIS') minPrice = 250;
-  if (tradeCode === 'FEN') minPrice = 400;
-  if (tradeCode === 'SAN') minPrice = 150;
-  if (tradeCode === 'ELEKT') minPrice = 30;
-  
-  pos.unitPrice = minPrice;
-  pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-  warnings.push(`Unrealistischer Preis korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
-  fixedCount++;
-}
-
 // GENERELLE REGEL: Wiederverwendbare Materialien werden NICHT entsorgt
 const wiederverwendbareItems = [
   'gerüst', 'baustütze', 'abstützung', 'unterzug', 
