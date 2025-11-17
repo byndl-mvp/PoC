@@ -460,7 +460,7 @@ useEffect(() => {
   const intervals = {};
   
   activeGenerations.forEach(tradeId => {
-    const totalDuration = 120000; // 120 Sekunden
+    const totalDuration = 150000; // 150 Sekunden
     const updateInterval = 100; // Update alle 100ms
     const increment = (100 / (totalDuration / updateInterval));
     
