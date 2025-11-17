@@ -255,23 +255,32 @@ useEffect(() => {
     const updateInterval = 100; // Update alle 100ms
     const increment = (100 / (totalDuration / updateInterval));
     
-    // Initialisiere Progress
+    // ✅ Lade gespeicherten Progress
+    const savedProgress = JSON.parse(sessionStorage.getItem('lvGenerationProgress') || '{}');
+    const startProgress = savedProgress[tradeId] || 0;
+    
+    // Initialisiere mit gespeichertem Wert (nur wenn noch nicht gesetzt)
     setLvGenerationProgress(prev => {
-      if (prev[tradeId] !== undefined) return prev; // Bereits initialisiert
-      return { ...prev, [tradeId]: 0 };
+      if (prev[tradeId] !== undefined) return prev;
+      return { ...prev, [tradeId]: startProgress };
     });
     
     intervals[tradeId] = setInterval(() => {
       setLvGenerationProgress(prev => {
-        const currentProgress = prev[tradeId] || 0;
-        const next = currentProgress + increment;
+        const current = prev[tradeId] || 0;
+        const next = current + increment;
         
+        let newProgress;
         if (next >= 99) {
           clearInterval(intervals[tradeId]);
-          return { ...prev, [tradeId]: 99 }; // Bleibt bei 99% bis tatsächlich fertig
+          newProgress = { ...prev, [tradeId]: 99 };
+        } else {
+          newProgress = { ...prev, [tradeId]: next };
         }
         
-        return { ...prev, [tradeId]: next };
+        // ✅ Speichere in sessionStorage
+        sessionStorage.setItem('lvGenerationProgress', JSON.stringify(newProgress));
+        return newProgress;
       });
     }, updateInterval);
   });
