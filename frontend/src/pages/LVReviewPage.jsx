@@ -565,7 +565,7 @@ const handleGenerateQuestions = async (tradeId) => {
           clearInterval(progressInterval);
           newProgress = { ...prev, [tradeId]: 90 };
         } else {
-          newProgress = { ...prev, [tradeId]: currentProgress + 1.5 };
+          newProgress = { ...prev, [tradeId]: currentProgress + 1.0 };
         }
         
         // ✅ NEU: Speichere Progress in sessionStorage
