@@ -2645,7 +2645,7 @@ const deadlineDate = tender.deadline
                   )}
                   {offer.status === 'confirmed' && (
                     <span className="inline-block px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
-                      ✓ Angebot verbindlich bestätigt - Kann verbindlich beauftragt werden
+                      ✓ Angebot verbindlich bestätigt 
                     </span>
                   )}
                 </div>
