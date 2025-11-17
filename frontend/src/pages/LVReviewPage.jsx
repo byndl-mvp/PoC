@@ -249,6 +249,63 @@ useEffect(() => {
   };
 }, [generatingLVs, projectId]);
 
+// NEU: Auto-restart für Fragengenerierung nach Reload
+useEffect(() => {
+  // Prüfe ob es aktive Fragen-Generierungen gibt
+  const activeGenerations = Object.entries(generatingQuestions)
+    .filter(([_, isGenerating]) => isGenerating)
+    .map(([tradeId]) => parseInt(tradeId));
+  
+  if (activeGenerations.length === 0) {
+    console.log('⏸️ No active question generations');
+    return;
+  }
+  
+  console.log('▶️ Resuming question generation for trades:', activeGenerations);
+  
+  activeGenerations.forEach(tradeId => {
+    // Lade gespeicherten Progress
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('questionGenerationProgress') || '{}'
+    );
+    const startProgress = savedProgress[tradeId] || 0;
+    
+    console.log(`📊 Resuming question generation for trade ${tradeId} from ${startProgress}%`);
+    
+    // Setze Progress wenn noch nicht gesetzt
+    setQuestionGenerationProgress(prev => {
+      if (prev[tradeId] !== undefined) return prev;
+      return { ...prev, [tradeId]: startProgress };
+    });
+    
+    // Starte Fake-Progress Interval
+    const progressInterval = setInterval(() => {
+      setQuestionGenerationProgress(prev => {
+        const currentProgress = prev[tradeId] || 0;
+        let newProgress;
+        
+        if (currentProgress >= 90) {
+          clearInterval(progressInterval);
+          newProgress = { ...prev, [tradeId]: 90 };
+        } else {
+          newProgress = { ...prev, [tradeId]: currentProgress + 1.5 };
+        }
+        
+        // Speichere in sessionStorage
+        sessionStorage.setItem(
+          'questionGenerationProgress',
+          JSON.stringify(newProgress)
+        );
+        
+        return newProgress;
+      });
+    }, 1000);
+    
+    // Starte Polling (falls noch nicht läuft)
+    pollQuestionStatus(tradeId, progressInterval);
+  });
+}, []); // Nur beim Mount ausführen
+  
 // NEU: useEffect für 120-Sekunden Fake-Progress für LV-Generierung
 useEffect(() => {
   const activeGenerations = Object.entries(generatingLVs)
