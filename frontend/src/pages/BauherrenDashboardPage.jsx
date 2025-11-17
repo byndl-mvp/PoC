@@ -14,6 +14,14 @@ function formatCurrency(value) {
   }).format(value);
 }
 
+// Helper function to truncate text to max words
+const truncateWords = (text, maxWords = 10) => {
+  if (!text) return '';
+  const words = text.trim().split(/\s+/);
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(' ') + '...';
+};
+
 // ============================================================================
 // NEUE KOMPONENTE: Ausführungstermine mit Änderungs-Management
 // ============================================================================
