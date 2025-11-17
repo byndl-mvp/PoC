@@ -251,6 +251,70 @@ useEffect(() => {
   };
 }, [generatingLVs, projectId]);
 
+// ✅ NEU: Auto-Resume für LV-Generierung nach Reload
+useEffect(() => {
+  const activeGenerations = Object.entries(generatingLVs)
+    .filter(([_, isGenerating]) => isGenerating)
+    .map(([tradeId]) => parseInt(tradeId));
+  
+  if (activeGenerations.length === 0) {
+    console.log('⏸️ No active LV generations for auto-resume');
+    return;
+  }
+  
+  console.log('▶️ Auto-resuming LV generation for trades:', activeGenerations);
+  
+  const intervals = {};
+  
+  activeGenerations.forEach(tradeId => {
+    const totalDuration = 120000; // 120 Sekunden
+    const updateInterval = 100; // Update alle 100ms
+    const increment = (100 / (totalDuration / updateInterval));
+    
+    // Lade gespeicherten Progress
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('lvGenerationProgress') || '{}'
+    );
+    const startProgress = savedProgress[tradeId] || 0;
+    
+    console.log(`📊 Auto-resuming LV generation for trade ${tradeId} from ${startProgress}%`);
+    
+    // Setze Progress wenn noch nicht gesetzt
+    setLvGenerationProgress(prev => {
+      if (prev[tradeId] !== undefined) return prev;
+      return { ...prev, [tradeId]: startProgress };
+    });
+    
+    // Starte Fake-Progress Interval
+    intervals[tradeId] = setInterval(() => {
+      setLvGenerationProgress(prev => {
+        const current = prev[tradeId] || 0;
+        const next = current + increment;
+        
+        let newProgress;
+        if (next >= 99) {
+          clearInterval(intervals[tradeId]);
+          newProgress = { ...prev, [tradeId]: 99 };
+        } else {
+          newProgress = { ...prev, [tradeId]: next };
+        }
+        
+        // Speichere in sessionStorage
+        sessionStorage.setItem(
+          'lvGenerationProgress',
+          JSON.stringify(newProgress)
+        );
+        
+        return newProgress;
+      });
+    }, updateInterval);
+  });
+  
+  return () => {
+    Object.values(intervals).forEach(interval => clearInterval(interval));
+  };
+}, [generatingLVs]);
+  
 // NEU: Auto-restart für Fragengenerierung nach Reload
 useEffect(() => {
   // Prüfe ob es aktive Fragen-Generierungen gibt
