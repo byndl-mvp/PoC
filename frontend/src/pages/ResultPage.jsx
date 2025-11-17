@@ -1149,30 +1149,43 @@ const TradeOptimizationDisplay = ({
       </div>
      
       <div className="relative max-w-7xl mx-auto px-4 py-12">
-        {/* ÄNDERUNG: Header mit Vollständigkeits-Indikator */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-            {projectComplete 
-              ? 'Vollständiges Leistungsverzeichnis' 
-              : 'Leistungsverzeichnis (In Bearbeitung)'}
-          </h1>
-          <p className="text-xl text-gray-300">
-            VOB-konform erstellt und bereit zum Export
-          </p>
-          
-          {/* NEU: Status-Badge */}
-          {!projectComplete && pendingTrades.length > 0 && (
-            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 rounded-full">
-              <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span className="text-yellow-300">
-                {pendingTrades.length} Gewerk(e) noch nicht bearbeitet
-              </span>
-            </div>
-          )}
-        </div>
+        {/* ÄNDERUNG: Header mit Vollständigkeits-Indikator UND Projekttitel */}
+<div className="text-center mb-12">
+  <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+    {projectComplete 
+      ? 'Vollständiges Leistungsverzeichnis' 
+      : 'Leistungsverzeichnis (In Bearbeitung)'}
+  </h1>
+  
+  {/* NEU: Projekttitel-Sektion */}
+  {project && (
+    <div className="mt-6 mb-4">
+      <h2 className="text-3xl font-bold text-teal-400">
+        {project.category}
+      </h2>
+      <p className="text-xl text-gray-300 mt-3">
+        {truncateWords(project.description || project.sub_category, 10)}
+      </p>
+    </div>
+  )}
+  
+  <p className="text-lg text-gray-400 mt-6">
+    VOB-konform erstellt und bereit zum Export
+  </p>
+  
+  {/* NEU: Status-Badge */}
+  {!projectComplete && pendingTrades.length > 0 && (
+    <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 rounded-full">
+      <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      <span className="text-yellow-300">
+        {pendingTrades.length} Gewerk(e) noch nicht bearbeitet
+      </span>
+    </div>
+  )}
+</div>
 
         {/* NEU: Erfolgs-Nachricht */}
         {showSuccessMessage && (
