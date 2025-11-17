@@ -10148,7 +10148,7 @@ function finalLVValidation(lv, tradeCode) {
       except: ['sockelleiste', 'übergangsprofil']
     },
     'BOD': {
-      forbidden: ['fliesen', 'naturstein bad', 'elektro', 'sanitär', 'heizung', 'fenster', 'dämmung'],
+      forbidden: ['fliesen', 'funktionsprüfung', 'naturstein bad', 'elektro', 'sanitär', 'heizung', 'fenster', 'dämmung'],
       except: ['sockelleiste', 'übergangsprofil']
     },
     'MAL': {
