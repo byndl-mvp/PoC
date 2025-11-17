@@ -17504,12 +17504,12 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
     
     // Kontaktdaten maskieren
 const processedOffers = offers.rows.map(offer => {
-  if (offer.status !== 'preliminary' && offer.status !== 'accepted') {
+  if (offer.status !== 'preliminary' && offer.status !== 'confirmed' && offer.status !== 'accepted') {
     return {
       ...offer,
       email: 'Nach Beauftragung sichtbar',
       phone: 'Nach Beauftragung sichtbar',
-      address: 'Nach Beauftragung sichtbar'  // NEU
+      address: 'Nach Beauftragung sichtbar'  
     };
   }
   return {
