@@ -17494,7 +17494,7 @@ app.get('/api/projects/:projectId/offers/detailed', async (req, res) => {
        JOIN tenders tn ON o.tender_id = tn.id
        JOIN trades t ON tn.trade_id = t.id
        WHERE tn.project_id = $1
-        AND o.status != 'withdrawn'
+        AND o.status NOT IN ('withdrawn', 'not_selected')
        ORDER BY o.status DESC, t.name, o.amount ASC`,
       [projectId]
     );
