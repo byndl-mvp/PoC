@@ -584,6 +584,198 @@ useEffect(() => {
     setLastViewedTabs(viewedTabs);
   }
 }, [selectedProject]);
+
+  useEffect(() => {
+  if (!selectedProject) return;
+  
+  const activeEvaluations = Object.entries(generatingEvaluations)
+    .filter(([_, isGenerating]) => isGenerating);
+  
+  const activeComparisons = Object.entries(generatingComparisons)
+    .filter(([_, isGenerating]) => isGenerating);
+  
+  if (activeEvaluations.length === 0 && activeComparisons.length === 0) {
+    console.log('⏸️ No active evaluations or comparisons');
+    return;
+  }
+  
+  console.log('▶️ Starting intervals for evaluations/comparisons');
+  
+  const evalIntervals = {};
+  const evalPollIntervals = {};
+  const compIntervals = {};
+  const compPollIntervals = {};
+  
+  // ============================================================================
+  // EVALUATIONEN
+  // ============================================================================
+  activeEvaluations.forEach(([evalKey, _]) => {
+    const [tradeId, offerId] = evalKey.split('-').map(n => parseInt(n));
+    
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('evaluationProgress') || '{}'
+    );
+    const startProgress = savedProgress[evalKey] || 0;
+    
+    console.log(`📊 Starting evaluation ${evalKey} from ${startProgress}%`);
+    
+    setEvaluationProgress(prev => ({ 
+      ...prev, 
+      [evalKey]: startProgress 
+    }));
+    
+    // Progress Interval
+    evalIntervals[evalKey] = setInterval(() => {
+      setEvaluationProgress(prev => {
+        const current = prev[evalKey] || 0;
+        const next = current + (99/90);
+        
+        let newProgress;
+        if (next >= 99) {
+          clearInterval(evalIntervals[evalKey]);
+          newProgress = { ...prev, [evalKey]: 99 };
+        } else {
+          newProgress = { ...prev, [evalKey]: next };
+        }
+        
+        sessionStorage.setItem('evaluationProgress', JSON.stringify(newProgress));
+        return newProgress;
+      });
+    }, 1000);
+    
+    // Polling Interval
+    evalPollIntervals[evalKey] = setInterval(async () => {
+      try {
+        const res = await fetch(
+          apiUrl(`/api/projects/${selectedProject.id}/trades/${tradeId}/offers/${offerId}/evaluate`)
+        );
+        
+        if (res.ok) {
+          const data = await res.json();
+          
+          if (data.evaluation && Object.keys(data.evaluation).length > 0) {
+            console.log(`✅ Evaluation ready for ${evalKey}`);
+            
+            clearInterval(evalIntervals[evalKey]);
+            clearInterval(evalPollIntervals[evalKey]);
+            
+            setEvaluationProgress(prev => ({ ...prev, [evalKey]: 100 }));
+            
+            setTimeout(() => {
+              // ✅ Speichere Ergebnis (öffne Modal NICHT automatisch!)
+              const tender = selectedProject.tenders?.find(t => t.trade_id === tradeId);
+              const offer = tender?.offers?.find(o => o.id === offerId);
+              
+              const result = {
+                data: data,
+                companyName: offer?.company_name
+              };
+              
+              setEvaluationResults(prev => {
+                const newResults = { ...prev, [evalKey]: result };
+                sessionStorage.setItem('evaluationResults', JSON.stringify(newResults));
+                return newResults;
+              });
+              
+              cleanupEvaluationState(evalKey);
+            }, 500);
+          }
+        }
+      } catch (err) {
+        console.error('Poll error:', err);
+      }
+    }, 5000);
+  });
+  
+  // ============================================================================
+  // COMPARISONS
+  // ============================================================================
+  activeComparisons.forEach(([compKey, _]) => {
+    const tradeId = parseInt(compKey.replace('compare-', ''));
+    
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('comparisonProgress') || '{}'
+    );
+    const startProgress = savedProgress[compKey] || 0;
+    
+    console.log(`📊 Starting comparison ${compKey} from ${startProgress}%`);
+    
+    setComparisonProgress(prev => ({ 
+      ...prev, 
+      [compKey]: startProgress 
+    }));
+    
+    // Progress Interval
+    compIntervals[compKey] = setInterval(() => {
+      setComparisonProgress(prev => {
+        const current = prev[compKey] || 0;
+        const next = current + (99/90);
+        
+        let newProgress;
+        if (next >= 99) {
+          clearInterval(compIntervals[compKey]);
+          newProgress = { ...prev, [compKey]: 99 };
+        } else {
+          newProgress = { ...prev, [compKey]: next };
+        }
+        
+        sessionStorage.setItem('comparisonProgress', JSON.stringify(newProgress));
+        return newProgress;
+      });
+    }, 1000);
+    
+    // Polling Interval
+    compPollIntervals[compKey] = setInterval(async () => {
+      try {
+        const res = await fetch(
+          apiUrl(`/api/projects/${selectedProject.id}/trades/${tradeId}/offers/compare`)
+        );
+        
+        if (res.ok) {
+          const data = await res.json();
+          
+          if (data.comparison && Object.keys(data.comparison).length > 0) {
+            console.log(`✅ Comparison ready for ${compKey}`);
+            
+            clearInterval(compIntervals[compKey]);
+            clearInterval(compPollIntervals[compKey]);
+            
+            setComparisonProgress(prev => ({ ...prev, [compKey]: 100 }));
+            
+            setTimeout(() => {
+              // ✅ Speichere Ergebnis
+              const result = {
+                data: data,
+                companyName: null
+              };
+              
+              setComparisonResults(prev => {
+                const newResults = { ...prev, [compKey]: result };
+                sessionStorage.setItem('comparisonResults', JSON.stringify(newResults));
+                return newResults;
+              });
+              
+              cleanupComparisonState(compKey);
+            }, 500);
+          }
+        }
+      } catch (err) {
+        console.error('Poll error:', err);
+      }
+    }, 5000);
+  });
+  
+  // Cleanup beim Unmount
+  return () => {
+    console.log('🧹 Cleaning up evaluation/comparison intervals');
+    Object.values(evalIntervals).forEach(interval => clearInterval(interval));
+    Object.values(evalPollIntervals).forEach(interval => clearInterval(interval));
+    Object.values(compIntervals).forEach(interval => clearInterval(interval));
+    Object.values(compPollIntervals).forEach(interval => clearInterval(interval));
+  };
+  
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [selectedProject?.id, generatingEvaluations, generatingComparisons]);
   
   // markAllAsRead VOR dem useEffect definieren mit useCallback
 const markAllAsRead = useCallback(async () => {
