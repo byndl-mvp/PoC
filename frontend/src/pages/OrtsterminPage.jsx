@@ -307,7 +307,7 @@ export default function OrtsterminPage() {
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
           <p className="text-yellow-300 text-sm">
             <strong>💡 Tipp:</strong> Nach der Terminbestätigung können beide Parteien direkt telefonisch oder per E-Mail weitere Details klären.
-            Die Nachwirkfrist von 24 Monaten ist bereits aktiv.
+            Zum Ablauf und Regelungen der zweistufigen Vergabe auf byndl beachten Sie bitte unsere AGB.
           </p>
         </div>
       </div>
