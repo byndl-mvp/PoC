@@ -112,6 +112,62 @@ const [optimizationProgress, setOptimizationProgress] = useState(() => {
     fetchData();
   }, [projectId]);
 
+  // ✅ NEU: Auto-Resume für Optimierungen nach Reload
+useEffect(() => {
+  const activeOptimizations = Object.entries(generatingOptimizations)
+    .filter(([_, isGenerating]) => isGenerating)
+    .map(([tradeId]) => parseInt(tradeId));
+  
+  if (activeOptimizations.length === 0) {
+    console.log('⏸️ No active optimizations');
+    return;
+  }
+  
+  console.log('▶️ Resuming optimizations for trades:', activeOptimizations);
+  
+  activeOptimizations.forEach(tradeId => {
+    // Finde LV Index
+    const lvIndex = lvs.findIndex(lv => lv.trade_id === tradeId);
+    if (lvIndex === -1) return;
+    
+    // Lade gespeicherten Progress
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('optimizationProgress') || '{}'
+    );
+    const startProgress = savedProgress[tradeId] || 0;
+    
+    console.log(`📊 Resuming optimization for trade ${tradeId} from ${startProgress}%`);
+    
+    // Setze Progress
+    setOptimizationProgress(prev => {
+      if (prev[tradeId] !== undefined) return prev;
+      return { ...prev, [tradeId]: startProgress };
+    });
+    
+    // Starte Interval
+    const progressInterval = setInterval(() => {
+      setOptimizationProgress(prev => {
+        const current = prev[tradeId] || 0;
+        const next = current + (99/90);
+        
+        let newProgress;
+        if (next >= 99) {
+          clearInterval(progressInterval);
+          newProgress = { ...prev, [tradeId]: 99 };
+        } else {
+          newProgress = { ...prev, [tradeId]: next };
+        }
+        
+        sessionStorage.setItem('optimizationProgress', JSON.stringify(newProgress));
+        return newProgress;
+      });
+    }, 1000);
+    
+    // Starte Polling
+    pollOptimizationStatus(tradeId, lvIndex, progressInterval);
+  });
+}, [lvs]); // Dependency: lvs (läuft nach fetchData)
+  
   // NEU: Nach Rückkehr von zusätzlichem Gewerk
   useEffect(() => {
     const returnToResults = sessionStorage.getItem('returnToResults');
