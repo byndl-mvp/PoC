@@ -288,14 +288,6 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [lvs, generatingOptimizations]); // ✅ FIX: BEIDE Dependencies!
 
-// eslint-disable-next-line react-hooks/exhaustive-deps
-useEffect(() => {
-  return () => {
-    console.log('🧹 Cleaning up intervals on unmount');
-    Object.values(progressIntervalsRef.current).forEach(interval => clearInterval(interval));
-    Object.values(pollIntervalsRef.current).forEach(interval => clearInterval(interval));
-  };
-}, []);
   
   // NEU: Nach Rückkehr von zusätzlichem Gewerk
   useEffect(() => {
