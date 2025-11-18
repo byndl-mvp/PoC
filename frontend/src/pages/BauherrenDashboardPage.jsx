@@ -170,7 +170,6 @@ export default function BauherrenDashboardPage() {
   data: null,
   companyName: null
 });
-  const [evaluatingTrade, setEvaluatingTrade] = useState(null);
   const [lastViewedTabs, setLastViewedTabs] = useState({
   tenders: null,
   offers: null,
