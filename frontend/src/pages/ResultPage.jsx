@@ -288,16 +288,12 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [lvs, generatingOptimizations]); // ✅ FIX: BEIDE Dependencies!
 
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   return () => {
     console.log('🧹 Cleaning up intervals on unmount');
-    
-    // Kopiere Refs in lokale Variablen (ESLint Fix)
-    const progressIntervals = progressIntervalsRef.current;
-    const pollIntervals = pollIntervalsRef.current;
-    
-    Object.values(progressIntervals).forEach(interval => clearInterval(interval));
-    Object.values(pollIntervals).forEach(interval => clearInterval(interval));
+    Object.values(progressIntervalsRef.current).forEach(interval => clearInterval(interval));
+    Object.values(pollIntervalsRef.current).forEach(interval => clearInterval(interval));
   };
 }, []);
   
