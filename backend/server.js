@@ -15716,6 +15716,28 @@ MATERIAL-ALTERNATIVEN:
   return rules[tradeCode] || rules['DEFAULT'];
 }
 
+app.get('/api/projects/:projectId/trades/:tradeId/optimization-status', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const result = await query(
+      `SELECT EXISTS(
+        SELECT 1 FROM trade_optimizations 
+        WHERE project_id = $1 AND trade_id = $2
+        AND created_at > NOW() - INTERVAL '5 minutes'
+      ) as has_optimization`,
+      [projectId, tradeId]
+    );
+    
+    res.json({ 
+      isComplete: result.rows[0].has_optimization,
+      status: result.rows[0].has_optimization ? 'ready' : 'generating'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Route zum Anwenden ausgewählter Optimierungen auf das LV
 app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (req, res) => {
   console.log('[APPLY-OPT] Starting optimization application for trade:', req.params.tradeId);
@@ -26508,6 +26530,55 @@ Vergleiche diese Angebote und erstelle eine fundierte Vergabeempfehlung!`;
       error: 'Vergleich fehlgeschlagen',
       details: err.message 
     });
+  }
+});
+
+// Für Angebotsbewertung
+app.get('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluation-status', async (req, res) => {
+  try {
+    const { projectId, tradeId, offerId } = req.params;
+    
+    const result = await query(
+      `SELECT EXISTS(
+        SELECT 1 FROM offer_evaluations 
+        WHERE project_id = $1 AND trade_id = $2 
+        AND evaluation_type = 'single'
+        AND $3 = ANY(offer_ids)
+        AND created_at > NOW() - INTERVAL '5 minutes'
+      ) as has_evaluation`,
+      [projectId, tradeId, offerId]
+    );
+    
+    res.json({ 
+      isComplete: result.rows[0].has_evaluation,
+      status: result.rows[0].has_evaluation ? 'ready' : 'generating'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Für Vergabeempfehlung
+app.get('/api/projects/:projectId/trades/:tradeId/comparison-status', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const result = await query(
+      `SELECT EXISTS(
+        SELECT 1 FROM offer_evaluations 
+        WHERE project_id = $1 AND trade_id = $2 
+        AND evaluation_type = 'comparison'
+        AND created_at > NOW() - INTERVAL '5 minutes'
+      ) as has_comparison`,
+      [projectId, tradeId]
+    );
+    
+    res.json({ 
+      isComplete: result.rows[0].has_comparison,
+      status: result.rows[0].has_comparison ? 'ready' : 'generating'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
