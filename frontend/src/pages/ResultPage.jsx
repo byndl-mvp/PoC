@@ -53,9 +53,6 @@ const [optimizationProgress, setOptimizationProgress] = useState(() => {
   const saved = sessionStorage.getItem('optimizationProgress');
   return saved ? JSON.parse(saved) : {};
 });
-
-const progressIntervalsRef = useRef({});
-const pollIntervalsRef = useRef({});
   
   // Helper für sichere Zahlenformatierung
   const safeToFixed = (value) => {
