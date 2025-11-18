@@ -733,7 +733,7 @@ useEffect(() => {
         if (res.ok) {
           const data = await res.json();
           
-          if (data.comparison && Object.keys(data.comparison).length > 0) {
+          if (data && data.summary) {
             console.log(`✅ Comparison ready for ${compKey}`);
             
             clearInterval(compIntervals[compKey]);
