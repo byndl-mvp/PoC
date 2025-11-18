@@ -111,7 +111,7 @@ const [optimizationProgress, setOptimizationProgress] = useState(() => {
     fetchData();
   }, [projectId]);
 
-  // ✅ NEU: Auto-Resume für Optimierungen nach Reload
+ // Dann der useEffect mit korrekten Dependencies:
 useEffect(() => {
   const activeOptimizations = Object.entries(generatingOptimizations)
     .filter(([_, isGenerating]) => isGenerating)
@@ -125,11 +125,9 @@ useEffect(() => {
   console.log('▶️ Resuming optimizations for trades:', activeOptimizations);
   
   activeOptimizations.forEach(tradeId => {
-    // Finde LV Index
     const lvIndex = lvs.findIndex(lv => lv.trade_id === tradeId);
     if (lvIndex === -1) return;
     
-    // Lade gespeicherten Progress
     const savedProgress = JSON.parse(
       sessionStorage.getItem('optimizationProgress') || '{}'
     );
@@ -137,13 +135,11 @@ useEffect(() => {
     
     console.log(`📊 Resuming optimization for trade ${tradeId} from ${startProgress}%`);
     
-    // Setze Progress
     setOptimizationProgress(prev => {
       if (prev[tradeId] !== undefined) return prev;
       return { ...prev, [tradeId]: startProgress };
     });
     
-    // Starte Interval
     const progressInterval = setInterval(() => {
       setOptimizationProgress(prev => {
         const current = prev[tradeId] || 0;
@@ -162,10 +158,9 @@ useEffect(() => {
       });
     }, 1000);
     
-    // Starte Polling
     pollOptimizationStatus(tradeId, lvIndex, progressInterval);
   });
-}, [lvs]); // Dependency: lvs (läuft nach fetchData)
+}, [lvs, generatingOptimizations, pollOptimizationStatus]); 
   
   // NEU: Nach Rückkehr von zusätzlichem Gewerk
   useEffect(() => {
