@@ -26613,7 +26613,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', asy
     const { projectId, tradeId, offerId } = req.params;
     
     const result = await query(
-      `SELECT evaluation 
+      `SELECT evaluation_data, offer_ids, rating, recommendation, created_at
        FROM offer_evaluations 
        WHERE project_id = $1 AND trade_id = $2 
        AND evaluation_type = 'single'
@@ -26624,7 +26624,11 @@ app.get('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', asy
     );
     
     if (result.rows[0]) {
-      res.json(result.rows[0]);
+      res.json({ 
+        evaluation: result.rows[0].evaluation_data,
+        rating: result.rows[0].rating,
+        recommendation: result.rows[0].recommendation
+      });
     } else {
       res.status(404).json({ error: 'Noch keine Bewertung vorhanden' });
     }
@@ -26640,7 +26644,7 @@ app.get('/api/projects/:projectId/trades/:tradeId/offers/compare', async (req, r
     const { projectId, tradeId } = req.params;
     
     const result = await query(
-      `SELECT comparison 
+      `SELECT evaluation_data, offer_ids, rating, recommendation, created_at
        FROM offer_evaluations 
        WHERE project_id = $1 AND trade_id = $2 
        AND evaluation_type = 'comparison'
@@ -26650,7 +26654,11 @@ app.get('/api/projects/:projectId/trades/:tradeId/offers/compare', async (req, r
     );
     
     if (result.rows[0]) {
-      res.json(result.rows[0]);
+      res.json({ 
+        comparison: result.rows[0].evaluation_data,
+        rating: result.rows[0].rating,
+        recommendation: result.rows[0].recommendation
+      });
     } else {
       res.status(404).json({ error: 'Noch kein Vergleich vorhanden' });
     }
