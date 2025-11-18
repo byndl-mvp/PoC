@@ -339,7 +339,7 @@ useEffect(() => {
   });
   
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [lvs]); // Läuft wenn lvs geladen sind
+}, [lvs.length]); 
 
 // ✅ useEffect #2: Auto-Resume für NICHT fertige (wie vorher)
 useEffect(() => {
