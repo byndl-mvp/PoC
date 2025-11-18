@@ -43,6 +43,17 @@ export default function ResultPage() {
   const [tradeOptimizations, setTradeOptimizations] = useState({});
   const [loadingTradeOptimization, setLoadingTradeOptimization] = useState({});
   const [expandedOptimizations, setExpandedOptimizations] = useState({});
+
+  // ✅ NEU: States für Background-Generierung
+const [generatingOptimizations, setGeneratingOptimizations] = useState(() => {
+  const saved = sessionStorage.getItem('generatingOptimizations');
+  return saved ? JSON.parse(saved) : {};
+});
+
+const [optimizationProgress, setOptimizationProgress] = useState(() => {
+  const saved = sessionStorage.getItem('optimizationProgress');
+  return saved ? JSON.parse(saved) : {};
+});
   
   // Helper für sichere Zahlenformatierung
   const safeToFixed = (value) => {
