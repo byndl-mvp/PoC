@@ -1486,21 +1486,38 @@ const TradeOptimizationDisplay = ({
     
     {/* Optimierungs-Button */}
     {!tradeOptimizations[lv.trade_id] && (
-      <button
-        onClick={() => loadTradeOptimization(lv, idx)}
-        disabled={loadingTradeOptimization[lv.trade_id]}
-        className="px-4 py-2 bg-orange-500/20 border border-orange-500/50 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-all text-sm whitespace-nowrap"
-      >
-        {loadingTradeOptimization[lv.trade_id] ? (
-          <div className="flex items-center gap-2">
-            <div className="animate-spin h-3 w-3 border-2 border-orange-300 border-t-transparent rounded-full"></div>
-            Analysiere...
-          </div>
-        ) : (
-          '💡 Einsparpotenzial prüfen'
-        )}
-      </button>
+  <div className="space-y-2">
+    <button
+      onClick={() => loadTradeOptimization(lv, idx)}
+      disabled={generatingOptimizations[lv.trade_id]}
+      className="px-4 py-2 bg-orange-500/20 border border-orange-500/50 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {generatingOptimizations[lv.trade_id] ? (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin h-3 w-3 border-2 border-orange-300 border-t-transparent rounded-full"></div>
+          <span>Analysiere...</span>
+          {optimizationProgress[lv.trade_id] !== undefined && (
+            <span className="text-xs font-mono">
+              {Math.round(optimizationProgress[lv.trade_id])}%
+            </span>
+          )}
+        </div>
+      ) : (
+        '💡 Einsparpotenzial prüfen'
+      )}
+    </button>
+    
+    {/* Progress Bar */}
+    {generatingOptimizations[lv.trade_id] && (
+      <div className="bg-gray-700 rounded-full h-1.5 overflow-hidden">
+        <div
+          className="bg-orange-500 h-full transition-all duration-300 ease-out"
+          style={{ width: `${optimizationProgress[lv.trade_id] || 0}%` }}
+        />
+      </div>
     )}
+  </div>
+)}
   </div>
 </div>
           
