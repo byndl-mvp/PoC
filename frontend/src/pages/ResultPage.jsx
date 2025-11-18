@@ -289,16 +289,54 @@ useEffect(() => {
     .filter(([_, isGenerating]) => isGenerating)
     .map(([tradeId]) => parseInt(tradeId));
   
-  if (activeOptimizations.length === 0 || lvs.length === 0) return;
+  if (activeOptimizations.length === 0 || lvs.length === 0) {
+    console.log('⏸️ No active optimizations');
+    return;
+  }
   
-  console.log('🔍 Checking for already completed optimizations...');
+  console.log('▶️ Starting intervals for:', activeOptimizations);
   
-  // Prüfe alle aktiven Optimierungen
-  Promise.all(
-    activeOptimizations.map(async (tradeId) => {
-      const lvIndex = lvs.findIndex(lv => lv.trade_id === tradeId);
-      if (lvIndex === -1) return null;
-      
+  // Lokale Intervals (wie LVReviewPage)
+  const intervals = {};
+  const pollIntervals = {};
+  
+  activeOptimizations.forEach(tradeId => {
+    const lvIndex = lvs.findIndex(lv => lv.trade_id === tradeId);
+    if (lvIndex === -1) return;
+    
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('optimizationProgress') || '{}'
+    );
+    const startProgress = savedProgress[tradeId] || 0;
+    
+    console.log(`📊 Starting for trade ${tradeId} from ${startProgress}%`);
+    
+    setOptimizationProgress(prev => {
+      if (prev[tradeId] !== undefined) return prev;
+      return { ...prev, [tradeId]: startProgress };
+    });
+    
+    // Progress Interval
+    intervals[tradeId] = setInterval(() => {
+      setOptimizationProgress(prev => {
+        const current = prev[tradeId] || 0;
+        const next = current + (99/90);
+        
+        let newProgress;
+        if (next >= 99) {
+          clearInterval(intervals[tradeId]);
+          newProgress = { ...prev, [tradeId]: 99 };
+        } else {
+          newProgress = { ...prev, [tradeId]: next };
+        }
+        
+        sessionStorage.setItem('optimizationProgress', JSON.stringify(newProgress));
+        return newProgress;
+      });
+    }, 1000);
+    
+    // Polling Interval
+    pollIntervals[tradeId] = setInterval(async () => {
       try {
         const res = await fetch(
           apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`)
@@ -307,128 +345,34 @@ useEffect(() => {
         if (res.ok) {
           const data = await res.json();
           
-          // Wenn Ergebnis existiert
           if (data.optimizations && data.optimizations.length > 0) {
-            return { tradeId, lvIndex, data };
+            console.log(`✅ Optimization ready for trade ${tradeId}`);
+            
+            clearInterval(intervals[tradeId]);
+            clearInterval(pollIntervals[tradeId]);
+            
+            setOptimizationProgress(prev => ({ ...prev, [tradeId]: 100 }));
+            
+            setTimeout(() => {
+              setTradeOptimizations(prev => ({ ...prev, [tradeId]: data }));
+              setExpandedOptimizations(prev => ({ ...prev, [lvIndex]: true }));
+              cleanupOptimizationState(tradeId);
+            }, 500);
           }
         }
       } catch (err) {
-        console.error(`Could not check optimization for trade ${tradeId}:`, err);
+        console.error('Poll error:', err);
       }
-      
-      return null;
-    })
-  ).then(results => {
-    // Filter null-Werte (nicht fertige)
-    const completedOptimizations = results.filter(r => r !== null);
-    
-    if (completedOptimizations.length > 0) {
-      console.log(`✅ Found ${completedOptimizations.length} already completed optimizations!`);
-      
-      // Zeige alle fertigen Optimierungen
-      completedOptimizations.forEach(({ tradeId, lvIndex, data }) => {
-        setOptimizationProgress(prev => ({ ...prev, [tradeId]: 100 }));
-        
-        setTimeout(() => {
-          setTradeOptimizations(prev => ({ ...prev, [tradeId]: data }));
-          setExpandedOptimizations(prev => ({ ...prev, [lvIndex]: true }));
-          cleanupOptimizationState(tradeId);
-        }, 300);
-      });
-    }
+    }, 5000);
   });
   
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [lvs.length]); 
-
-// ✅ useEffect #2: Auto-Resume für NICHT fertige (wie vorher)
-useEffect(() => {
-  const activeOptimizations = Object.entries(generatingOptimizations)
-    .filter(([_, isGenerating]) => isGenerating)
-    .map(([tradeId]) => parseInt(tradeId));
-  
-  if (activeOptimizations.length === 0) return;
-  
-  // Warte kurz (damit Check-useEffect Zeit hat)
-  const resumeTimer = setTimeout(() => {
-    console.log('▶️ Resuming optimizations that are not yet complete...');
-    
-    activeOptimizations.forEach(tradeId => {
-      // ✅ Überspringe wenn bereits in tradeOptimizations (= fertig)
-      if (tradeOptimizations[tradeId]) {
-        console.log(`⏭️ Skipping trade ${tradeId} - already complete`);
-        return;
-      }
-      
-      const lvIndex = lvs.findIndex(lv => lv.trade_id === tradeId);
-      if (lvIndex === -1) return;
-      
-      const savedProgress = JSON.parse(
-        sessionStorage.getItem('optimizationProgress') || '{}'
-      );
-      const startProgress = savedProgress[tradeId] || 0;
-      
-      console.log(`📊 Resuming optimization for trade ${tradeId} from ${startProgress}%`);
-      
-      setOptimizationProgress(prev => ({ 
-  ...prev, 
-  [tradeId]: startProgress 
-}));
-      
-      if (progressIntervalsRef.current[tradeId]) {
-        clearInterval(progressIntervalsRef.current[tradeId]);
-      }
-      
-      const progressInterval = setInterval(() => {
-        setOptimizationProgress(prev => {
-          const current = prev[tradeId] || 0;
-          const next = current + (99/90);
-          
-          let newProgress;
-          if (next >= 99) {
-            clearInterval(progressInterval);
-            delete progressIntervalsRef.current[tradeId];
-            newProgress = { ...prev, [tradeId]: 99 };
-          } else {
-            newProgress = { ...prev, [tradeId]: next };
-          }
-          
-          sessionStorage.setItem('optimizationProgress', JSON.stringify(newProgress));
-          return newProgress;
-        });
-      }, 1000);
-      
-      progressIntervalsRef.current[tradeId] = progressInterval;
-      pollOptimizationStatus(tradeId, lvIndex, progressInterval);
-    });
-  }, 1000); // 1 Sekunde Delay
-  
-  return () => clearTimeout(resumeTimer);
-  
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [lvs, tradeOptimizations]);
-
-  // ✅ NEU: Cleanup useEffect (ganz am Ende der Komponente, vor return)
-useEffect(() => {
-  // Cleanup Funktion wird beim Unmount aufgerufen
+  // CLEANUP beim Unmount
   return () => {
-    console.log('🧹 Cleaning up intervals on unmount');
-    
-    // Cleanup alle Progress Intervals
-    Object.values(progressIntervalsRef.current).forEach(interval => {
-      clearInterval(interval);
-    });
-    
-    // Cleanup alle Poll Intervals
-    Object.values(pollIntervalsRef.current).forEach(interval => {
-      clearInterval(interval);
-    });
-    
-    // Leere Refs
-    progressIntervalsRef.current = {};
-    pollIntervalsRef.current = {};
+    console.log('🧹 Cleaning up intervals');
+    Object.values(intervals).forEach(interval => clearInterval(interval));
+    Object.values(pollIntervals).forEach(interval => clearInterval(interval));
   };
-}, []); // Leeres Dependency Array = nur beim Mount/Unmount
+}, [generatingOptimizations, lvs, projectId]);
   
   // NEU: Nach Rückkehr von zusätzlichem Gewerk
   useEffect(() => {
