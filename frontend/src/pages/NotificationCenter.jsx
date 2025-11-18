@@ -227,6 +227,9 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
         console.log('✅ Wechsle zu Tab:', tabMapping[notification.type]);
         onTabChange(tabMapping[notification.type]);
         setIsOpen(false);
+  
+        // ✅ Reload Seite nach Tab-Wechsel
+        setTimeout(() => window.location.reload(), 100);
       }
     }
     
