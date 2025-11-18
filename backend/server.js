@@ -26547,7 +26547,7 @@ Vergleiche diese Angebote und erstelle eine fundierte Vergabeempfehlung!`;
     );
     
     console.log(`[OFFER-COMPARE] Comparison completed for ${offers.length} offers`);
-    res.json(comparison);
+    res.json({ success: true, message: 'Comparison started' });
     
   } catch (err) {
     console.error('[OFFER-COMPARE] Comparison failed:', err);
