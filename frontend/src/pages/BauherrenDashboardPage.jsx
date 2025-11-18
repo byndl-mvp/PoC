@@ -760,58 +760,72 @@ const handleRejectConfirm = async () => {
 };
 
 const handleEvaluateSingleOffer = async (offer, tradeName) => {
+  const tender = selectedProject.tenders?.find(t => t.trade_name === tradeName || t.name === tradeName);
+  if (!tender) {
+    alert('Gewerk nicht gefunden');
+    return;
+  }
+  
+  const tradeId = tender.trade_id;
+  const evalKey = `${tradeId}-${offer.id}`;
+  
   try {
-    setEvaluatingTrade(tradeName);
-    const tender = selectedProject.tenders?.find(t => t.trade_name === tradeName || t.name === tradeName);
-    if (!tender) { alert('Gewerk nicht gefunden'); return; }
+    setGeneratingEvaluations(prev => {
+      const newState = { ...prev, [evalKey]: true };
+      sessionStorage.setItem('generatingEvaluations', JSON.stringify(newState));
+      return newState;
+    });
+    
+    setEvaluationProgress(prev => ({ ...prev, [evalKey]: 0 }));
     
     const response = await fetch(
       apiUrl(`/api/projects/${selectedProject.id}/trades/${tender.trade_id}/offers/${offer.id}/evaluate`),
       { method: 'POST', headers: { 'Content-Type': 'application/json' } }
     );
     
-    if (!response.ok) throw new Error('Bewertung fehlgeschlagen');
-    const result = await response.json();
-    
-    setEvaluationModal({
-      isOpen: true,
-      type: 'single',
-      data: result,
-      companyName: offer.company_name || offer.companyName
-    });
-  } catch (error) {
-    console.error('Error evaluating offer:', error);
-    alert('❌ Fehler bei der Angebotsbewertung: ' + error.message);
-  } finally {
-    setEvaluatingTrade(null);
+    if (!response.ok) {
+      cleanupEvaluationState(evalKey);
+      alert('❌ Fehler bei der Angebotsbewertung');
+    }
+  } catch (err) {
+    console.error('Evaluation error:', err);
+    cleanupEvaluationState(evalKey);
+    alert('❌ Fehler: ' + err.message);
   }
 };
 
 const handleCompareOffers = async (tradeName) => {
+  const tender = selectedProject.tenders?.find(t => t.trade_name === tradeName || t.name === tradeName);
+  if (!tender) {
+    alert('Gewerk nicht gefunden');
+    return;
+  }
+  
+  const tradeId = tender.trade_id;
+  const compKey = `compare-${tradeId}`;
+  
   try {
-    setEvaluatingTrade(tradeName);
-    const tender = selectedProject.tenders?.find(t => t.trade_name === tradeName || t.name === tradeName);
-    if (!tender) { alert('Gewerk nicht gefunden'); return; }
+    setGeneratingComparisons(prev => {
+      const newState = { ...prev, [compKey]: true };
+      sessionStorage.setItem('generatingComparisons', JSON.stringify(newState));
+      return newState;
+    });
+    
+    setComparisonProgress(prev => ({ ...prev, [compKey]: 0 }));
     
     const response = await fetch(
       apiUrl(`/api/projects/${selectedProject.id}/trades/${tender.trade_id}/offers/compare`),
       { method: 'POST', headers: { 'Content-Type': 'application/json' } }
     );
     
-    if (!response.ok) throw new Error('Vergleich fehlgeschlagen');
-    const result = await response.json();
-    
-    setEvaluationModal({
-      isOpen: true,
-      type: 'comparison',
-      data: result,
-      companyName: null
-    });
-  } catch (error) {
-    console.error('Error comparing offers:', error);
-    alert('❌ Fehler beim Angebotsvergleich: ' + error.message);
-  } finally {
-    setEvaluatingTrade(null);
+    if (!response.ok) {
+      cleanupComparisonState(compKey);
+      alert('❌ Fehler beim Angebotsvergleich');
+    }
+  } catch (err) {
+    console.error('Comparison error:', err);
+    cleanupComparisonState(compKey);
+    alert('❌ Fehler: ' + err.message);
   }
 };
   
