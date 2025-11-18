@@ -335,10 +335,10 @@ useEffect(() => {
       
       console.log(`📊 Resuming optimization for trade ${tradeId} from ${startProgress}%`);
       
-      setOptimizationProgress(prev => {
-        if (prev[tradeId] !== undefined) return prev;
-        return { ...prev, [tradeId]: startProgress };
-      });
+      setOptimizationProgress(prev => ({ 
+  ...prev, 
+  [tradeId]: startProgress 
+}));
       
       if (progressIntervalsRef.current[tradeId]) {
         clearInterval(progressIntervalsRef.current[tradeId]);
