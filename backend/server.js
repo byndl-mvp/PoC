@@ -26175,7 +26175,7 @@ Bewerte dieses Angebot umfassend und erstelle eine Empfehlung!`;
     );
     
     console.log(`[OFFER-EVALUATE] Evaluation completed with rating: ${evaluation.rating}`);
-    res.json({ success: true, message: 'Evaluation started' });
+    res.json({ success: true });
     
   } catch (err) {
     console.error('[OFFER-EVALUATE] Evaluation failed:', err);
@@ -26547,7 +26547,7 @@ Vergleiche diese Angebote und erstelle eine fundierte Vergabeempfehlung!`;
     );
     
     console.log(`[OFFER-COMPARE] Comparison completed for ${offers.length} offers`);
-    res.json({ success: true, message: 'Comparison started' });
+    res.json({ success: true });
     
   } catch (err) {
     console.error('[OFFER-COMPARE] Comparison failed:', err);
