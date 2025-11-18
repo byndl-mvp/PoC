@@ -184,10 +184,10 @@ useEffect(() => {
     
     console.log(`📊 Starting for trade ${tradeId} from ${startProgress}%`);
     
-    setOptimizationProgress(prev => {
-      if (prev[tradeId] !== undefined) return prev;
-      return { ...prev, [tradeId]: startProgress };
-    });
+    setOptimizationProgress(prev => ({ 
+  ...prev, 
+  [tradeId]: startProgress 
+}));
     
     // Progress Interval
     intervals[tradeId] = setInterval(() => {
