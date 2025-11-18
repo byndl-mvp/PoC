@@ -177,6 +177,66 @@ export default function BauherrenDashboardPage() {
   contracts: null,
   orders: null
 });
+
+  // ✅ Background-Generierung States
+const [generatingEvaluations, setGeneratingEvaluations] = useState(() => {
+  const saved = sessionStorage.getItem('generatingEvaluations');
+  return saved ? JSON.parse(saved) : {};
+});
+
+const [evaluationProgress, setEvaluationProgress] = useState(() => {
+  const saved = sessionStorage.getItem('evaluationProgress');
+  return saved ? JSON.parse(saved) : {};
+});
+
+const [generatingComparisons, setGeneratingComparisons] = useState(() => {
+  const saved = sessionStorage.getItem('generatingComparisons');
+  return saved ? JSON.parse(saved) : {};
+});
+
+const [comparisonProgress, setComparisonProgress] = useState(() => {
+  const saved = sessionStorage.getItem('comparisonProgress');
+  return saved ? JSON.parse(saved) : {};
+});
+
+// ✅ NEU: Fertige Ergebnisse speichern (NICHT automatisch Modal öffnen!)
+const [evaluationResults, setEvaluationResults] = useState(() => {
+  const saved = sessionStorage.getItem('evaluationResults');
+  return saved ? JSON.parse(saved) : {};
+});
+
+const [comparisonResults, setComparisonResults] = useState(() => {
+  const saved = sessionStorage.getItem('comparisonResults');
+  return saved ? JSON.parse(saved) : {};
+});
+
+// Cleanup Helper für Evaluationen
+const cleanupEvaluationState = (evalKey) => {
+  const savedGen = JSON.parse(sessionStorage.getItem('generatingEvaluations') || '{}');
+  delete savedGen[evalKey];
+  sessionStorage.setItem('generatingEvaluations', JSON.stringify(savedGen));
+  
+  const savedProg = JSON.parse(sessionStorage.getItem('evaluationProgress') || '{}');
+  delete savedProg[evalKey];
+  sessionStorage.setItem('evaluationProgress', JSON.stringify(savedProg));
+  
+  setGeneratingEvaluations(prev => ({ ...prev, [evalKey]: false }));
+  setEvaluationProgress(prev => ({ ...prev, [evalKey]: 0 }));
+};
+
+// Cleanup Helper für Comparisons
+const cleanupComparisonState = (compKey) => {
+  const savedGen = JSON.parse(sessionStorage.getItem('generatingComparisons') || '{}');
+  delete savedGen[compKey];
+  sessionStorage.setItem('generatingComparisons', JSON.stringify(savedGen));
+  
+  const savedProg = JSON.parse(sessionStorage.getItem('comparisonProgress') || '{}');
+  delete savedProg[compKey];
+  sessionStorage.setItem('comparisonProgress', JSON.stringify(savedProg));
+  
+  setGeneratingComparisons(prev => ({ ...prev, [compKey]: false }));
+  setComparisonProgress(prev => ({ ...prev, [compKey]: 0 }));
+};
   
   useEffect(() => {
   // Prüfe beide mögliche Keys
