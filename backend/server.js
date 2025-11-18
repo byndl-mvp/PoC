@@ -15738,6 +15738,31 @@ app.get('/api/projects/:projectId/trades/:tradeId/optimization-status', async (r
   }
 });
 
+// In server.js - NACH der POST-Route
+app.get('/api/projects/:projectId/trades/:tradeId/optimize', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const result = await query(
+      `SELECT suggestions, created_at 
+       FROM trade_optimizations 
+       WHERE project_id = $1 AND trade_id = $2
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [projectId, tradeId]
+    );
+    
+    if (result.rows[0]) {
+      res.json(result.rows[0].suggestions);
+    } else {
+      res.status(404).json({ error: 'Noch keine Optimierung vorhanden' });
+    }
+  } catch (err) {
+    console.error('[GET-OPTIMIZE] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Route zum Anwenden ausgewählter Optimierungen auf das LV
 app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (req, res) => {
   console.log('[APPLY-OPT] Starting optimization application for trade:', req.params.tradeId);
