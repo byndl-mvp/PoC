@@ -26175,7 +26175,7 @@ Bewerte dieses Angebot umfassend und erstelle eine Empfehlung!`;
     );
     
     console.log(`[OFFER-EVALUATE] Evaluation completed with rating: ${evaluation.rating}`);
-    res.json(evaluation);
+    res.json({ success: true, message: 'Evaluation started' });
     
   } catch (err) {
     console.error('[OFFER-EVALUATE] Evaluation failed:', err);
