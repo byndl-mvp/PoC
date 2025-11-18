@@ -26607,6 +26607,59 @@ app.get('/api/projects/:projectId/trades/:tradeId/comparison-status', async (req
   }
 });
 
+// GET: Lade fertige Evaluation
+app.get('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', async (req, res) => {
+  try {
+    const { projectId, tradeId, offerId } = req.params;
+    
+    const result = await query(
+      `SELECT evaluation 
+       FROM offer_evaluations 
+       WHERE project_id = $1 AND trade_id = $2 
+       AND evaluation_type = 'single'
+       AND $3 = ANY(offer_ids)
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [projectId, tradeId, parseInt(offerId)]
+    );
+    
+    if (result.rows[0]) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Noch keine Bewertung vorhanden' });
+    }
+  } catch (err) {
+    console.error('[GET-EVALUATE] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET: Lade fertigen Vergleich
+app.get('/api/projects/:projectId/trades/:tradeId/offers/compare', async (req, res) => {
+  try {
+    const { projectId, tradeId } = req.params;
+    
+    const result = await query(
+      `SELECT comparison 
+       FROM offer_evaluations 
+       WHERE project_id = $1 AND trade_id = $2 
+       AND evaluation_type = 'comparison'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [projectId, tradeId]
+    );
+    
+    if (result.rows[0]) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Noch kein Vergleich vorhanden' });
+    }
+  } catch (err) {
+    console.error('[GET-COMPARE] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ----------------------------------------------------------------------------
 // 3. GESPEICHERTE BEWERTUNGEN ABRUFEN
 // ----------------------------------------------------------------------------
