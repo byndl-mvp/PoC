@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 import { useNavigate } from 'react-router-dom';
@@ -500,10 +500,9 @@ const loadTradeOptimization = async (lv, lvIndex) => {
 };
 
 // Polling für Optimization Status
-const pollOptimizationStatus = (tradeId, lvIndex, progressInterval) => {
+const pollOptimizationStatus = useCallback((tradeId, lvIndex, progressInterval) => {
   const interval = setInterval(async () => {
     try {
-      // Option 1: Nutze bestehenden trade_optimizations Table
       const res = await fetch(
         apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimization-status`)
       );
@@ -516,11 +515,9 @@ const pollOptimizationStatus = (tradeId, lvIndex, progressInterval) => {
           clearInterval(interval);
           clearInterval(progressInterval);
           
-          // Setze auf 100%
           setOptimizationProgress(prev => ({ ...prev, [tradeId]: 100 }));
           
           setTimeout(async () => {
-            // Lade finale Daten
             const finalRes = await fetch(
               apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`)
             );
@@ -530,7 +527,6 @@ const pollOptimizationStatus = (tradeId, lvIndex, progressInterval) => {
               setExpandedOptimizations(prev => ({ ...prev, [lvIndex]: true }));
             }
             
-            // Cleanup
             cleanupOptimizationState(tradeId);
           }, 500);
         }
@@ -538,12 +534,11 @@ const pollOptimizationStatus = (tradeId, lvIndex, progressInterval) => {
     } catch (err) {
       console.error('Polling error:', err);
     }
-  }, 3000); // Alle 3 Sekunden
-};
+  }, 3000);
+}, [projectId]); // Dependencies: nur projectId
 
 // Cleanup Helper
-const cleanupOptimizationState = (tradeId) => {
-  // sessionStorage
+const cleanupOptimizationState = useCallback((tradeId) => {
   const savedGen = JSON.parse(sessionStorage.getItem('generatingOptimizations') || '{}');
   delete savedGen[tradeId];
   sessionStorage.setItem('generatingOptimizations', JSON.stringify(savedGen));
@@ -552,10 +547,9 @@ const cleanupOptimizationState = (tradeId) => {
   delete savedProg[tradeId];
   sessionStorage.setItem('optimizationProgress', JSON.stringify(savedProg));
   
-  // React State
   setGeneratingOptimizations(prev => ({ ...prev, [tradeId]: false }));
   setOptimizationProgress(prev => ({ ...prev, [tradeId]: 0 }));
-};
+}, []);
 
 // Erweiterte Komponente für Trade-Optimierungen mit Auswahl-Funktionalität
 const TradeOptimizationDisplay = ({ 
