@@ -41,7 +41,6 @@ export default function ResultPage() {
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
   const [highlightedLv, setHighlightedLv] = useState(null);
   const [tradeOptimizations, setTradeOptimizations] = useState({});
-  const [loadingTradeOptimization, setLoadingTradeOptimization] = useState({});
   const [expandedOptimizations, setExpandedOptimizations] = useState({});
 
   // ✅ NEU: States für Background-Generierung
