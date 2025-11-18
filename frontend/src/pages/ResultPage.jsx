@@ -82,93 +82,8 @@ const cleanupOptimizationState = (tradeId) => {
   setOptimizationProgress(prev => ({ ...prev, [tradeId]: 0 }));
 };
 
-const pollOptimizationStatus = (tradeId, lvIndex, progressInterval) => {
-  console.log(`🔍 [POLL START] trade=${tradeId}, lvIndex=${lvIndex}`);
-  
-  if (pollIntervalsRef.current[tradeId]) {
-    console.log(`🧹 [POLL] Cleaning old interval for trade ${tradeId}`);
-    clearInterval(pollIntervalsRef.current[tradeId]);
-  }
-  
-  let pollCount = 0;
-  
-  const interval = setInterval(async () => {
-    pollCount++;
-    console.log(`🔍 [POLL #${pollCount}] Checking trade ${tradeId}...`);
-    
-    try {
-      const url = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimization-status`);
-      console.log(`📡 [POLL] Fetching: ${url}`);
-      
-      const res = await fetch(url);
-      console.log(`📡 [POLL] Response status: ${res.status}`);
-      
-      if (res.ok) {
-        const data = await res.json();
-        console.log(`📡 [POLL] Response data:`, data);
-        
-        if (data.isComplete) {
-          console.log('✅ [POLL] isComplete=true! Stopping intervals...');
-          
-          clearInterval(interval);
-          clearInterval(progressInterval);
-          delete pollIntervalsRef.current[tradeId];
-          delete progressIntervalsRef.current[tradeId];
-          
-          console.log('📊 [POLL] Setting progress to 100%');
-          setOptimizationProgress(prev => {
-            console.log('📊 [POLL] Current progress:', prev);
-            return { ...prev, [tradeId]: 100 };
-          });
-          
-          console.log('⏰ [POLL] Waiting 500ms before loading final data...');
-          setTimeout(async () => {
-            console.log('📥 [POLL] Loading final optimization data...');
-            
-            const finalUrl = apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`);
-            console.log(`📡 [POLL] Fetching final: ${finalUrl}`);
-            
-            const finalRes = await fetch(finalUrl);
-            console.log(`📡 [POLL] Final response status: ${finalRes.status}`);
-            
-            if (finalRes.ok) {
-              const finalData = await finalRes.json();
-              console.log('📥 [POLL] Final data received:', finalData);
-              console.log('📥 [POLL] Optimizations count:', finalData.optimizations?.length);
-              
-              setTradeOptimizations(prev => {
-                console.log('💾 [POLL] Saving to tradeOptimizations. Current:', prev);
-                return { ...prev, [tradeId]: finalData };
-              });
-              
-              setExpandedOptimizations(prev => {
-                console.log('📂 [POLL] Expanding optimization view. Current:', prev);
-                return { ...prev, [lvIndex]: true };
-              });
-              
-              console.log('🧹 [POLL] Calling cleanupOptimizationState...');
-              cleanupOptimizationState(tradeId);
-              console.log('✅ [POLL] COMPLETE!');
-            } else {
-              console.error('❌ [POLL] Final fetch failed:', finalRes.status);
-            }
-          }, 500);
-        } else {
-          console.log('⏳ [POLL] isComplete=false, continuing...');
-        }
-      } else {
-        console.error(`❌ [POLL] HTTP ${res.status}:`, await res.text());
-      }
-    } catch (err) {
-      console.error('❌ [POLL] Error:', err);
-    }
-  }, 3000);
-  
-  pollIntervalsRef.current[tradeId] = interval;
-  console.log(`✅ [POLL] Interval started for trade ${tradeId}`);
-};
-    
- const loadTradeOptimization = async (lv, lvIndex) => {
+// loadTradeOptimization (wird vom Button aufgerufen)
+const loadTradeOptimization = async (lv, lvIndex) => {
   const tradeId = lv.trade_id;
   
   try {
@@ -178,38 +93,7 @@ const pollOptimizationStatus = (tradeId, lvIndex, progressInterval) => {
       return newState;
     });
     
-    const savedProgress = JSON.parse(
-      sessionStorage.getItem('optimizationProgress') || '{}'
-    );
-    const startProgress = savedProgress[tradeId] || 0;
-    
-    setOptimizationProgress(prev => ({ ...prev, [tradeId]: startProgress }));
-    
-    // ✅ Cleanup alte Intervals falls vorhanden
-    if (progressIntervalsRef.current[tradeId]) {
-      clearInterval(progressIntervalsRef.current[tradeId]);
-    }
-    
-    const progressInterval = setInterval(() => {
-      setOptimizationProgress(prev => {
-        const currentProgress = prev[tradeId] || 0;
-        let newProgress;
-        
-        if (currentProgress >= 99) {
-          clearInterval(progressInterval);
-          delete progressIntervalsRef.current[tradeId]; // ✅ Cleanup Ref
-          newProgress = { ...prev, [tradeId]: 99 };
-        } else {
-          newProgress = { ...prev, [tradeId]: currentProgress + (99/90) };
-        }
-        
-        sessionStorage.setItem('optimizationProgress', JSON.stringify(newProgress));
-        return newProgress;
-      });
-    }, 1000);
-    
-    // ✅ Speichere Interval in Ref
-    progressIntervalsRef.current[tradeId] = progressInterval;
+    setOptimizationProgress(prev => ({ ...prev, [tradeId]: 0 }));
     
     const response = await fetch(
       apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`),
@@ -220,19 +104,11 @@ const pollOptimizationStatus = (tradeId, lvIndex, progressInterval) => {
       }
     );
     
-    if (response.ok) {
-      pollOptimizationStatus(tradeId, lvIndex, progressInterval);
-    } else {
-      clearInterval(progressInterval);
-      delete progressIntervalsRef.current[tradeId]; // ✅ Cleanup Ref
+    if (!response.ok) {
       cleanupOptimizationState(tradeId);
     }
   } catch (err) {
     console.error('Failed to start optimization:', err);
-    if (progressIntervalsRef.current[tradeId]) {
-      clearInterval(progressIntervalsRef.current[tradeId]);
-      delete progressIntervalsRef.current[tradeId];
-    }
     cleanupOptimizationState(tradeId);
   }
 };
