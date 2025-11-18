@@ -652,7 +652,7 @@ useEffect(() => {
         if (res.ok) {
           const data = await res.json();
           
-          if (data.evaluation && Object.keys(data.evaluation).length > 0) {
+          if (data && data.rating) {
             console.log(`✅ Evaluation ready for ${evalKey}`);
             
             clearInterval(evalIntervals[evalKey]);
