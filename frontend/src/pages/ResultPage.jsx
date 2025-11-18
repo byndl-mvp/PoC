@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 import { useNavigate } from 'react-router-dom';
@@ -67,6 +67,119 @@ const [optimizationProgress, setOptimizationProgress] = useState(() => {
       currency: 'EUR'
     }).format(value || 0);
   };
+
+  // Cleanup Helper
+const cleanupOptimizationState = (tradeId) => {
+  const savedGen = JSON.parse(sessionStorage.getItem('generatingOptimizations') || '{}');
+  delete savedGen[tradeId];
+  sessionStorage.setItem('generatingOptimizations', JSON.stringify(savedGen));
+  
+  const savedProg = JSON.parse(sessionStorage.getItem('optimizationProgress') || '{}');
+  delete savedProg[tradeId];
+  sessionStorage.setItem('optimizationProgress', JSON.stringify(savedProg));
+  
+  setGeneratingOptimizations(prev => ({ ...prev, [tradeId]: false }));
+  setOptimizationProgress(prev => ({ ...prev, [tradeId]: 0 }));
+};
+
+const pollOptimizationStatus = (tradeId, lvIndex, progressInterval) => {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(
+        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimization-status`)
+      );
+      
+      if (res.ok) {
+        const data = await res.json();
+        
+        if (data.isComplete) {
+          clearInterval(interval);
+          clearInterval(progressInterval);
+          
+          setOptimizationProgress(prev => ({ ...prev, [tradeId]: 100 }));
+          
+          setTimeout(async () => {
+            const finalRes = await fetch(
+              apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`)
+            );
+            if (finalRes.ok) {
+              const data = await finalRes.json();
+              setTradeOptimizations(prev => ({ ...prev, [tradeId]: data }));
+              setExpandedOptimizations(prev => ({ ...prev, [lvIndex]: true }));
+            }
+            
+            cleanupOptimizationState(tradeId);
+          }, 500);
+        }
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, 3000);
+};
+    
+ // Background-Generierung für Einsparpotenzial
+const loadTradeOptimization = async (lv, lvIndex) => {
+  const tradeId = lv.trade_id;
+  
+  try {
+    // ✅ Markiere als "generierend"
+    setGeneratingOptimizations(prev => {
+      const newState = { ...prev, [tradeId]: true };
+      sessionStorage.setItem('generatingOptimizations', JSON.stringify(newState));
+      return newState;
+    });
+    
+    // ✅ Lade gespeicherten Progress
+    const savedProgress = JSON.parse(
+      sessionStorage.getItem('optimizationProgress') || '{}'
+    );
+    const startProgress = savedProgress[tradeId] || 0;
+    
+    setOptimizationProgress(prev => ({ ...prev, [tradeId]: startProgress }));
+    
+    // ✅ Starte Fake-Progress Interval (90 Sekunden)
+    const progressInterval = setInterval(() => {
+      setOptimizationProgress(prev => {
+        const currentProgress = prev[tradeId] || 0;
+        let newProgress;
+        
+        if (currentProgress >= 99) {
+          clearInterval(progressInterval);
+          newProgress = { ...prev, [tradeId]: 99 };
+        } else {
+          newProgress = { ...prev, [tradeId]: currentProgress + (99/90) }; // ~1.1% pro Sekunde
+        }
+        
+        // Speichere in sessionStorage
+        sessionStorage.setItem('optimizationProgress', JSON.stringify(newProgress));
+        return newProgress;
+      });
+    }, 1000);
+    
+    // Starte Background-Request
+    const response = await fetch(
+      apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetSaving: null })
+      }
+    );
+    
+    if (response.ok) {
+      // Starte Polling
+      pollOptimizationStatus(tradeId, lvIndex, progressInterval);
+    } else {
+      // Error Cleanup
+      clearInterval(progressInterval);
+      cleanupOptimizationState(tradeId);
+    }
+  } catch (err) {
+    console.error('Failed to start optimization:', err);
+    cleanupOptimizationState(tradeId);
+  }
+};
   
   // ÄNDERUNG: Erweiterte fetchData mit Status-Check
   useEffect(() => {
@@ -160,7 +273,8 @@ useEffect(() => {
     
     pollOptimizationStatus(tradeId, lvIndex, progressInterval);
   });
-}, [lvs, generatingOptimizations, pollOptimizationStatus]); 
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [lvs]);
   
   // NEU: Nach Rückkehr von zusätzlichem Gewerk
   useEffect(() => {
@@ -435,121 +549,6 @@ useEffect(() => {
       setLoadingOptimizations(false);
     }
   };
-
- // Background-Generierung für Einsparpotenzial
-const loadTradeOptimization = async (lv, lvIndex) => {
-  const tradeId = lv.trade_id;
-  
-  try {
-    // ✅ Markiere als "generierend"
-    setGeneratingOptimizations(prev => {
-      const newState = { ...prev, [tradeId]: true };
-      sessionStorage.setItem('generatingOptimizations', JSON.stringify(newState));
-      return newState;
-    });
-    
-    // ✅ Lade gespeicherten Progress
-    const savedProgress = JSON.parse(
-      sessionStorage.getItem('optimizationProgress') || '{}'
-    );
-    const startProgress = savedProgress[tradeId] || 0;
-    
-    setOptimizationProgress(prev => ({ ...prev, [tradeId]: startProgress }));
-    
-    // ✅ Starte Fake-Progress Interval (90 Sekunden)
-    const progressInterval = setInterval(() => {
-      setOptimizationProgress(prev => {
-        const currentProgress = prev[tradeId] || 0;
-        let newProgress;
-        
-        if (currentProgress >= 99) {
-          clearInterval(progressInterval);
-          newProgress = { ...prev, [tradeId]: 99 };
-        } else {
-          newProgress = { ...prev, [tradeId]: currentProgress + (99/90) }; // ~1.1% pro Sekunde
-        }
-        
-        // Speichere in sessionStorage
-        sessionStorage.setItem('optimizationProgress', JSON.stringify(newProgress));
-        return newProgress;
-      });
-    }, 1000);
-    
-    // Starte Background-Request
-    const response = await fetch(
-      apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`),
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetSaving: null })
-      }
-    );
-    
-    if (response.ok) {
-      // Starte Polling
-      pollOptimizationStatus(tradeId, lvIndex, progressInterval);
-    } else {
-      // Error Cleanup
-      clearInterval(progressInterval);
-      cleanupOptimizationState(tradeId);
-    }
-  } catch (err) {
-    console.error('Failed to start optimization:', err);
-    cleanupOptimizationState(tradeId);
-  }
-};
-
-// Polling für Optimization Status
-const pollOptimizationStatus = useCallback((tradeId, lvIndex, progressInterval) => {
-  const interval = setInterval(async () => {
-    try {
-      const res = await fetch(
-        apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimization-status`)
-      );
-      
-      if (res.ok) {
-        const data = await res.json();
-        
-        if (data.isComplete) {
-          console.log('✅ Optimization ready for trade', tradeId);
-          clearInterval(interval);
-          clearInterval(progressInterval);
-          
-          setOptimizationProgress(prev => ({ ...prev, [tradeId]: 100 }));
-          
-          setTimeout(async () => {
-            const finalRes = await fetch(
-              apiUrl(`/api/projects/${projectId}/trades/${tradeId}/optimize`)
-            );
-            if (finalRes.ok) {
-              const data = await finalRes.json();
-              setTradeOptimizations(prev => ({ ...prev, [tradeId]: data }));
-              setExpandedOptimizations(prev => ({ ...prev, [lvIndex]: true }));
-            }
-            
-            cleanupOptimizationState(tradeId);
-          }, 500);
-        }
-      }
-    } catch (err) {
-      console.error('Polling error:', err);
-    }
-  }, 3000);
-}, [projectId]); // Dependencies: nur projectId
-
-// Cleanup Helper
-const cleanupOptimizationState = useCallback((tradeId) => {
-  const savedGen = JSON.parse(sessionStorage.getItem('generatingOptimizations') || '{}');
-  delete savedGen[tradeId];
-  sessionStorage.setItem('generatingOptimizations', JSON.stringify(savedGen));
-  
-  const savedProg = JSON.parse(sessionStorage.getItem('optimizationProgress') || '{}');
-  delete savedProg[tradeId];
-  sessionStorage.setItem('optimizationProgress', JSON.stringify(savedProg));
-  
-  setGeneratingOptimizations(prev => ({ ...prev, [tradeId]: false }));
-  setOptimizationProgress(prev => ({ ...prev, [tradeId]: 0 }));
-}, []);
 
 // Erweiterte Komponente für Trade-Optimierungen mit Auswahl-Funktionalität
 const TradeOptimizationDisplay = ({ 
