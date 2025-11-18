@@ -285,8 +285,7 @@ useEffect(() => {
     pollOptimizationStatus(tradeId, lvIndex, progressInterval);
   });
   
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [lvs, generatingOptimizations]); // ✅ FIX: BEIDE Dependencies!
+  }, [lvs.length, generatingOptimizations]);
 
   
   // NEU: Nach Rückkehr von zusätzlichem Gewerk
