@@ -26624,11 +26624,13 @@ app.get('/api/projects/:projectId/trades/:tradeId/offers/:offerId/evaluate', asy
     );
     
     if (result.rows[0]) {
-      res.json({ 
-        evaluation: result.rows[0].evaluation_data,
-        rating: result.rows[0].rating,
-        recommendation: result.rows[0].recommendation
-      });
+      // ✅ Parse evaluation_data (ist JSONB/String)
+      let evaluationData = result.rows[0].evaluation_data;
+      if (typeof evaluationData === 'string') {
+        evaluationData = JSON.parse(evaluationData);
+      }
+      
+      res.json(evaluationData);  // ← Gib direkt das geparste Object zurück!
     } else {
       res.status(404).json({ error: 'Noch keine Bewertung vorhanden' });
     }
@@ -26654,11 +26656,13 @@ app.get('/api/projects/:projectId/trades/:tradeId/offers/compare', async (req, r
     );
     
     if (result.rows[0]) {
-      res.json({ 
-        comparison: result.rows[0].evaluation_data,
-        rating: result.rows[0].rating,
-        recommendation: result.rows[0].recommendation
-      });
+      // ✅ Parse evaluation_data
+      let comparisonData = result.rows[0].evaluation_data;
+      if (typeof comparisonData === 'string') {
+        comparisonData = JSON.parse(comparisonData);
+      }
+      
+      res.json(comparisonData);  // ← Direkt das geparste Object!
     } else {
       res.status(404).json({ error: 'Noch kein Vergleich vorhanden' });
     }
