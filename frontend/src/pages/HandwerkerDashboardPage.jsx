@@ -471,7 +471,12 @@ const badgeCounts = {
     return (
       <button
         key={tab}
-        onClick={() => setActiveTab(tab)}
+        onClick={() => {
+  setActiveTab(tab);
+  if (handwerkerData) {
+    loadDashboardData(handwerkerData);
+  }
+}}
         className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
           activeTab === tab
             ? 'text-teal-400 border-b-2 border-teal-400'
