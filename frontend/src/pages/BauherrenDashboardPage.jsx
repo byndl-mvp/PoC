@@ -1603,7 +1603,7 @@ const BudgetVisualization = ({ budget }) => {
 };
 
 // NEUE LV-Edit Button Komponente
-const LVEditButton = ({ project }) => {
+function LVEditButton = ({ project }) => {
   const allLVsComplete = project.completedLvs === project.totalTrades && project.totalTrades > 0;
   
   if (allLVsComplete) {
