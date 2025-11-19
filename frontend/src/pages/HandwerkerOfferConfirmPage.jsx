@@ -632,17 +632,30 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
           {lvData.positions && lvData.positions.length > 0 ? (
             <div className="space-y-3">
               {lvData.positions.map((position, index) => (
-                <div 
-                  key={index} 
-                  className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-teal-500/50 transition-all cursor-pointer"
-                  onClick={() => openEditPosition(position, index)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-teal-400 font-bold">{position.pos}</span>
-                        <h3 className="text-white font-semibold">{position.title}</h3>
-                      </div>
+                <div
+  key={index}
+  onClick={() => openEditPosition(position, index)}
+  className={`rounded-lg p-4 hover:bg-white/10 cursor-pointer transition-all ${
+    position.isNEP ? 'bg-orange-500/10' : position.isOptional ? 'bg-blue-500/10' : 'bg-white/5'
+  }`}
+>
+  <div className="flex justify-between items-start">
+    <div className="flex-1">
+      <div className="flex items-baseline gap-3 mb-2">
+        <span className="text-teal-400 font-bold">#{position.pos}</span>
+        <h4 className="text-white font-semibold text-lg">{position.title}</h4>
+        {/* ✅ NEU: Badges */}
+        {position.isNEP && (
+          <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30 font-semibold">
+            NEP
+          </span>
+        )}
+        {position.isOptional && (
+          <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+            Optional
+          </span>
+        )}
+      </div>
                       {position.description && (
                         <p className="text-gray-400 text-sm mb-2">{position.description}</p>
                       )}
