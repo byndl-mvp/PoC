@@ -19974,9 +19974,25 @@ app.post('/api/offers/:offerId/confirm-final', async (req, res) => {
     } = req.body;
 
     console.log('EMPFANGEN - Offer ID:', offerId);
-    console.log('EMPFANGEN - Amount:', amount);
+    console.log('EMPFANGEN - Amount (vom Frontend):', amount);
     console.log('EMPFANGEN - LV_DATA vorhanden?:', !!lv_data);
 
+    // ✅ FIX: Berechne amount korrekt aus lv_data unter Berücksichtigung von NEP
+    let correctAmount = amount; // Fallback auf Frontend-Wert
+    
+    if (lv_data && lv_data.positions && Array.isArray(lv_data.positions)) {
+      correctAmount = lv_data.positions.reduce((sum, pos) => {
+        // NEP-Positionen nicht zur Summe addieren
+        if (pos.isNEP) return sum;
+        const quantity = parseFloat(pos.quantity) || 0;
+        const unitPrice = parseFloat(pos.unitPrice) || 0;
+        return sum + (quantity * unitPrice);
+      }, 0);
+      
+      console.log('✅ KORRIGIERTER Amount (ohne NEP):', correctAmount);
+      console.log('📊 Differenz zum Frontend-Wert:', correctAmount - amount);
+    }
+    
     // ✅ NEU: Schedule-Daten loggen
 console.log('🔍 SCHEDULE DEBUG:', {
   has_schedule_changes,
@@ -19999,7 +20015,7 @@ console.log('🔍 SCHEDULE DEBUG:', {
        offer_confirmed_at = NOW(),
        updated_at = NOW()
    WHERE id = $1`,
-  [offerId, amount, bundle_discount, execution_start, execution_end, notes, JSON.stringify(lv_data)]
+  [offerId, correctAmount, bundle_discount, execution_start, execution_end, notes, JSON.stringify(lv_data)]
 );
 
 // NEU: Terminplan-Änderungen verarbeiten
