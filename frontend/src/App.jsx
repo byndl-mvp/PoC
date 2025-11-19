@@ -42,6 +42,7 @@ import HandwerkerLVDetailsPage from './pages/HandwerkerLVDetailsPage';
 import OrtsterminPage from './pages/OrtsterminPage';
 import HandwerkerNachtragPage from './pages/HandwerkerNachtragPage';
 import HandwerkerNachtraegeUebersichtPage from './pages/HandwerkerNachtraegeUebersichtPage';
+import HandwerkerNachtragDetailsPage from './pages/HandwerkerNachtragDetailsPage';
 
 // Admin Pages
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -245,6 +246,7 @@ function App() {
 {/* Handwerker Nachträge */}
 <Route path="/handwerker/auftrag/:orderId/nachtrag/neu" element={<HandwerkerNachtragPage />} />
 <Route path="/handwerker/auftrag/:orderId/nachtraege" element={<HandwerkerNachtraegeUebersichtPage />} />
+<Route path="/handwerker/nachtraege/:nachtragId/details" element={<HandwerkerNachtragDetailsPage />} />
           
 {/* Ortstermin Route - für beide Nutzertypen */}
 <Route 
