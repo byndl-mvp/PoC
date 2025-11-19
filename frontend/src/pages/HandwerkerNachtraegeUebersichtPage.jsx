@@ -382,3 +382,7 @@ export default function HandwerkerNachtraegeUebersichtPage() {
     </div>
   </div>
 )}
+      </div>
+    </div>
+  );
+}
