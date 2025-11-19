@@ -30645,7 +30645,7 @@ app.get('/api/nachtraege/:nachtragId', async (req, res) => {
        JOIN handwerker h ON n.handwerker_id = h.id
        JOIN trades t ON n.trade_id = t.id
        JOIN orders o ON n.order_id = o.id
-       JOIN bauherr b ON n.bauherr_id = b.id
+       JOIN bauherren b ON n.bauherr_id = b.id
        WHERE n.id = $1`,
       [nachtragId]
     );
