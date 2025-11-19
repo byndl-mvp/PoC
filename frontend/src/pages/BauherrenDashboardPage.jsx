@@ -177,6 +177,9 @@ export default function BauherrenDashboardPage() {
   orders: null
 });
 
+const [orderTotals, setOrderTotals] = useState({}); // NEU: Speichert Summen inkl. Nachträge pro Auftrag
+const [pendingNachtraege, setPendingNachtraege] = useState({}); // NEU: Anzahl offener Nachträge pro Auftrag
+  
   // ✅ Background-Generierung States
 const [generatingEvaluations, setGeneratingEvaluations] = useState(() => {
   const saved = sessionStorage.getItem('generatingEvaluations');
