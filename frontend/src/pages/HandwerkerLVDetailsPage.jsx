@@ -146,12 +146,20 @@ export default function HandwerkerLVDetailsPage() {
                   {lvData.positions.map((pos, index) => (
                     <tr key={index} className="border-b border-white/10">
                       <td className="py-4 px-2 text-teal-400 font-bold">{pos.pos || index + 1}</td>
-                      <td className="py-4 px-2">
-                        <p className="text-white font-semibold">{pos.title}</p>
-                        {pos.description && (
-                          <p className="text-gray-400 text-sm mt-1">{pos.description}</p>
-                        )}
-                      </td>
+                     <td className="py-4 px-2">
+  <p className="text-white font-semibold">{pos.title}</p>
+  {pos.description && (
+    <p className="text-gray-400 text-sm mt-1">{pos.description}</p>
+  )}
+  {/* ✅ NEU: NEP Badge */}
+  {pos.isNEP && (
+    <p className="text-orange-300 text-xs mt-1 font-semibold">⚠️ NEP - Nur Einheitspreis</p>
+  )}
+  {/* ✅ NEU: Optional Badge */}
+  {pos.isOptional && (
+    <p className="text-blue-300 text-xs mt-1">💡 Optionale Position</p>
+  )}
+</td>
                       <td className="py-4 px-2 text-right text-white">{pos.quantity}</td>
                       <td className="py-4 px-2 text-white">{pos.unit}</td>
                       <td className="py-4 px-2 text-right text-white">{formatCurrency(pos.unitPrice)}</td>
