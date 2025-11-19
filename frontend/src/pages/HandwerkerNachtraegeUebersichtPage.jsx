@@ -327,8 +327,9 @@ export default function HandwerkerNachtraegeUebersichtPage() {
                           Details ansehen
                         </button>
                       </div>
-                  </div>
+                   </div>
                 </div>
+              </div> 
               ))}
             </div>
           </div>
