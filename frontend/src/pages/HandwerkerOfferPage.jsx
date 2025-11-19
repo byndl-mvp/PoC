@@ -225,11 +225,13 @@ if (tenderData.lv && tenderData.lv.vorbemerkungen) {
   setVorbemerkungen(tenderData.lv.vorbemerkungen);
 }
       
-      const initialPositions = tenderData.lv.positions.map(pos => ({
-        ...pos,
-        unitPrice: 0,
-        totalPrice: 0
-      }));
+     const initialPositions = tenderData.lv.positions.map(pos => ({
+  ...pos,
+  unitPrice: 0,
+  totalPrice: 0,
+  isNEP: pos.isNEP || false,        
+  isOptional: pos.isOptional || false  
+}));
       setPositions(initialPositions);
     } catch (error) {
       console.error('Error:', error);
