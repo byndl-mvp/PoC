@@ -491,24 +491,23 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
     
     // ═══ KRITISCHER FIX FÜR NaN ═══
     const ordersRes = await fetch(apiUrl(`/api/projects/${projectId}/orders?t=${timestamp}`));
-    if (ordersRes.ok) {
-      const ordersData = await ordersRes.json();
-      // Validiere und konvertiere amounts zu Numbers
-      const validatedOrders = (ordersData || []).map(order => ({
-        ...order,
-        amount: parseFloat(order.amount) || 0  // Stelle sicher dass amount eine Zahl ist
-      }));
-      setOrders(validatedOrders);
-      console.log('✅ Validierte Orders geladen:', validatedOrders);
-    } else {
-      setOrders([]);  // Setze leeres Array wenn keine Orders
-    }
-
-      // ✅ NEU: Lade Nachtrags-Daten für alle Aufträge
-  if (ordersData.length > 0) {
-    const orderIds = ordersData.map(o => o.id);
+if (ordersRes.ok) {
+  const ordersData = await ordersRes.json();
+  // Validiere und konvertiere amounts zu Numbers
+  const validatedOrders = (ordersData || []).map(order => ({
+    ...order,
+    amount: parseFloat(order.amount) || 0
+  }));
+  setOrders(validatedOrders);
+  console.log('✅ Validierte Orders geladen:', validatedOrders);
+  
+  // ✅ NEU: Lade Nachtrags-Daten für alle Aufträge
+  if (validatedOrders.length > 0) {
+    const orderIds = validatedOrders.map(o => o.id);
     await loadOrderTotalsAndNachtraege(orderIds);
   }
+} else {
+  setOrders([]);
 }
     
     const supplementsRes = await fetch(apiUrl(`/api/projects/${projectId}/supplements?t=${timestamp}`));
