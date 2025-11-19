@@ -49,8 +49,8 @@ export default function HandwerkerDashboardPage() {
     const data = JSON.parse(storedData);
     setHandwerkerData(data);
     loadDashboardData(data);
-  }, [navigate]);
-
+  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps 
+  
   // useEffect für Notifications mit der Funktion direkt darin definiert
   useEffect(() => {
     if (!handwerkerData?.id) return;
