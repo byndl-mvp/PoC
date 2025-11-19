@@ -2576,7 +2576,12 @@ const deadlineDate = tender.deadline
         <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
           <p className="text-gray-400 mb-4">Noch keine Angebote eingegangen.</p>
           <button
-            onClick={() => setActiveTab('overview')}
+            onClick={() => {
+  setActiveTab('overview');
+  if (selectedProject) {
+    loadProjectDetails(selectedProject.id);
+  }
+}}
             className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
           >
             Zur Übersicht
