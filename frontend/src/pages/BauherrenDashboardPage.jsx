@@ -1394,56 +1394,104 @@ const BudgetVisualization = ({ budget }) => {
           </div>
         </div>
         
-        {/* Beauftragte Summe (Ist-Kosten) */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
-              <div className={`w-4 h-4 rounded ${
-                budget.orderedAmount > budget.initialBudget ? 'bg-red-500' : 'bg-green-500'
-              }`}></div>
-              <span className="text-white font-semibold">Beauftragte Summe (Ist-Kosten)</span>
-            </div>
-            <div className="text-right">
-              <div className={`text-xl font-bold ${
-                budget.orderedAmount > budget.initialBudget ? 'text-red-400' : 'text-green-400'
-              }`}>
-                {formatCurrency(budget.orderedAmount)}
-              </div>
-              <div className={`text-sm font-medium ${
-                orderedDiff > 0 ? 'text-red-400' : 'text-green-400'
-              }`}>
-                {orderedDiff > 0 ? '+' : ''}{formatCurrency(orderedDiff)} 
-                ({getPercentOfBudget(budget.orderedAmount)}%)
-              </div>
-            </div>
+        {/* Beauftragte Summe + Nachträge (Ist-Kosten) */}
+<div>
+  {(() => {
+    // Berechne Nachträge
+    const nachtraegeNetto = orders.reduce((sum, o) => {
+      const totals = orderTotals[o.id];
+      return sum + (totals?.nachtraegeSum || 0);
+    }, 0);
+    const nachtraegeBrutto = nachtraegeNetto * 1.19;
+    const gesamtBrutto = budget.orderedAmount + nachtraegeBrutto;
+    const gesamtDiff = gesamtBrutto - budget.initialBudget;
+    
+    return (
+      <>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-4 h-4 rounded ${
+              gesamtBrutto > budget.initialBudget ? 'bg-red-500' : 'bg-green-500'
+            }`}></div>
+            <span className="text-white font-semibold">Beauftragte Summe (Ist-Kosten)</span>
           </div>
-          <div className="relative h-12 bg-white/10 rounded-lg overflow-hidden">
-            <div 
-              className={`absolute inset-y-0 left-0 flex items-center justify-center transition-all duration-700 ease-out ${
-                budget.orderedAmount > budget.initialBudget 
-                  ? 'bg-gradient-to-r from-red-500 to-red-600' 
-                  : 'bg-gradient-to-r from-green-500 to-green-600'
-              }`}
-              style={{ width: getBarWidth(budget.orderedAmount) }}
-            >
-              <span className="text-white font-bold text-sm">
-                {formatCurrency(budget.orderedAmount)}
-              </span>
+          <div className="text-right">
+            <div className={`text-xl font-bold ${
+              gesamtBrutto > budget.initialBudget ? 'text-red-400' : 'text-green-400'
+            }`}>
+              {formatCurrency(gesamtBrutto)}
             </div>
-            {/* Markierung für Budget-Grenze */}
-            <div 
-              className="absolute inset-y-0 border-l-2 border-dashed border-blue-400"
-              style={{ left: getBarWidth(budget.initialBudget) }}
-              title="Budget-Grenze"
-            >
-              <div className="absolute -top-1 -left-2 w-4 h-4 bg-blue-400 rounded-full"></div>
-              <div className="absolute top-14 -left-16 text-xs text-blue-400 whitespace-nowrap">
-                Budget-Grenze
-              </div>
+            <div className={`text-sm font-medium ${
+              gesamtDiff > 0 ? 'text-red-400' : 'text-green-400'
+            }`}>
+              {gesamtDiff > 0 ? '+' : ''}{formatCurrency(gesamtDiff)} 
+              ({getPercentOfBudget(gesamtBrutto)}%)
             </div>
           </div>
         </div>
-      </div>
+        
+        {/* Gestapelter Balken */}
+        <div className="relative h-12 bg-white/10 rounded-lg overflow-hidden mb-3">
+          {/* Grüner Balken - Ursprungsaufträge */}
+          <div 
+            className="absolute inset-y-0 left-0 flex items-center justify-center transition-all duration-700 ease-out bg-gradient-to-r from-green-500 to-green-600"
+            style={{ width: getBarWidth(budget.orderedAmount) }}
+          >
+            {budget.orderedAmount > budget.initialBudget * 0.1 && (
+              <span className="text-white font-bold text-sm">
+                {formatCurrency(budget.orderedAmount)}
+              </span>
+            )}
+          </div>
+          
+          {/* Türkiser Balken - Nachträge */}
+          {nachtraegeBrutto > 0 && (
+            <div 
+              className="absolute inset-y-0 flex items-center justify-center transition-all duration-700 ease-out bg-gradient-to-r from-teal-500 to-cyan-600"
+              style={{ 
+                left: getBarWidth(budget.orderedAmount),
+                width: getBarWidth(nachtraegeBrutto)
+              }}
+            >
+              {nachtraegeBrutto > budget.initialBudget * 0.05 && (
+                <span className="text-white font-bold text-sm">
+                  {formatCurrency(nachtraegeBrutto)}
+                </span>
+              )}
+            </div>
+          )}
+          
+          {/* Markierung für Budget-Grenze */}
+          <div 
+            className="absolute inset-y-0 border-l-2 border-dashed border-blue-400"
+            style={{ left: getBarWidth(budget.initialBudget) }}
+            title="Budget-Grenze"
+          >
+            <div className="absolute -top-1 -left-2 w-4 h-4 bg-blue-400 rounded-full"></div>
+            <div className="absolute top-14 -left-16 text-xs text-blue-400 whitespace-nowrap">
+              Budget-Grenze
+            </div>
+          </div>
+        </div>
+        
+        {/* Legende unter dem Balken */}
+        <div className="flex gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-green-500"></div>
+            <span className="text-gray-400">Aufträge: {formatCurrency(budget.orderedAmount)}</span>
+          </div>
+          {nachtraegeBrutto > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-teal-500"></div>
+              <span className="text-gray-400">Nachträge: {formatCurrency(nachtraegeBrutto)}</span>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  })()}
+</div>
       
       {/* Vergleichs-Übersicht */}
       <div className="mt-8 grid grid-cols-2 gap-4">
