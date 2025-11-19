@@ -144,10 +144,24 @@ export default function HandwerkerLVDetailsPage() {
                 </thead>
                 <tbody>
                   {lvData.positions.map((pos, index) => (
-                    <tr key={index} className="border-b border-white/10">
-                      <td className="py-4 px-2 text-teal-400 font-bold">{pos.pos || index + 1}</td>
-                     <td className="py-4 px-2">
-  <p className="text-white font-semibold">{pos.title}</p>
+  <tr key={index} className={`border-b border-white/10 ${
+    pos.isNEP ? 'bg-orange-500/10' : pos.isOptional ? 'bg-blue-500/10' : ''
+  }`}>
+    <td className="py-4 px-2 text-teal-400 font-bold">{pos.pos || index + 1}</td>
+    <td className="py-4 px-2">
+      <div className="flex items-center gap-2">
+        <p className="text-white font-semibold">{pos.title}</p>
+        {pos.isNEP && (
+          <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30 font-semibold">
+            NEP
+          </span>
+        )}
+        {pos.isOptional && (
+          <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+            Optional
+          </span>
+        )}
+      </div>
   {pos.description && (
     <p className="text-gray-400 text-sm mt-1">{pos.description}</p>
   )}
