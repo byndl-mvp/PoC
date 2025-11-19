@@ -174,16 +174,24 @@ export default function HandwerkerOfferDetailsPage() {
                 {positions.map((pos, idx) => (
                   <tr key={idx} className="border-t border-white/10">
                     <td className="p-3">{pos.pos}</td>
-                    <td className="p-3">
-                      <div className="font-medium">{pos.title}</div>
-                      {pos.description && (
-                        <div className="text-xs text-gray-400 mt-1">{pos.description}</div>
-                      )}
-                      {pos.notes && (
-                        <div className="text-xs text-yellow-300 mt-1 italic">Hinweis: {pos.notes}</div>
-                      )}
-                    </td>
-                    <td className="text-right p-3">{pos.quantity}</td>
+<td className="p-3">
+  <div className="font-medium">{pos.title}</div>
+  {pos.description && (
+    <div className="text-xs text-gray-400 mt-1">{pos.description}</div>
+  )}
+  {pos.notes && (
+    <div className="text-xs text-yellow-300 mt-1 italic">Hinweis: {pos.notes}</div>
+  )}
+  {/* ✅ NEU: NEP Badge */}
+  {pos.isNEP && (
+    <div className="text-xs text-orange-300 mt-1 font-semibold">⚠️ NEP - Nur Einheitspreis</div>
+  )}
+  {/* ✅ NEU: Optional Badge */}
+  {pos.isOptional && (
+    <div className="text-xs text-blue-300 mt-1">💡 Optionale Position</div>
+  )}
+</td>
+<td className="text-right p-3">{pos.quantity}</td>
                     <td className="p-3">{pos.unit}</td>
                     <td className="text-right p-3">{formatCurrency(pos.unitPrice)}</td>
                     <td className="text-right p-3 font-medium text-teal-400">
