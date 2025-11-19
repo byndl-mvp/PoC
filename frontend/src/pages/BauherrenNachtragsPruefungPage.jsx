@@ -124,26 +124,28 @@ useEffect(() => {
 }, [nachtragId, generatingEvaluation]);
   
   const loadNachtrag = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/nachtraege/${nachtragId}`));
-      
-      if (!res.ok) throw new Error('Fehler beim Laden');
-      
-      const data = await res.json();
-      setNachtrag(data);
-      
-      // Falls bereits evaluiert, lade Evaluation
-      if (data.evaluation_data) {
-        setEvaluation(data.evaluation_data);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Fehler beim Laden des Nachtrags');
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/nachtraege/${nachtragId}`));
+    
+    if (!res.ok) throw new Error('Fehler beim Laden');
+    
+    const data = await res.json();
+    setNachtrag(data);
+    
+    // ✅ Falls bereits evaluiert, setze evaluationResult
+    if (data.evaluation_data) {
+      setEvaluation(data.evaluation_data);
+      setEvaluationResult(data.evaluation_data);  // ← NEU!
+      sessionStorage.setItem(`nachtragEvalResult_${nachtragId}`, JSON.stringify(data.evaluation_data));  // ← NEU!
     }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Fehler beim Laden des Nachtrags');
+  } finally {
+    setLoading(false);
+  }
+};
   
   const startEvaluation = async () => {
   if (!window.confirm('Möchten Sie eine KI-gestützte Nachtragsprüfung durchführen?')) {
