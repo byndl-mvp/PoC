@@ -30452,8 +30452,6 @@ app.get('/api/handwerker/:handwerkerId/schedule', async (req, res) => {
   }
 });
 
-
-
 // ============================================================================
 // HELPER-FUNKTION EXPORT (falls benötigt)
 // ============================================================================
@@ -30463,6 +30461,662 @@ module.exports = {
   addWorkdays,
   checkScheduleEligibility
 };
+
+// ============================================================================
+// NACHTRAGS-SYSTEM BACKEND ROUTEN
+// ============================================================================
+
+// 1. Nachtrag einreichen (Handwerker)
+app.post('/api/orders/:orderId/nachtraege/submit', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { handwerkerId, reason, positions } = req.body;
+    
+    // Validierung
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Begründung erforderlich' });
+    }
+    
+    if (!positions || positions.length === 0) {
+      return res.status(400).json({ error: 'Mindestens eine Position erforderlich' });
+    }
+    
+    await query('BEGIN');
+    
+    // Hole Auftragsdaten
+    const orderData = await query(
+      `SELECT o.*, p.bauherr_id, o.project_id, o.trade_id
+       FROM orders o
+       JOIN projects p ON o.project_id = p.id
+       WHERE o.id = $1 AND o.handwerker_id = $2`,
+      [orderId, handwerkerId]
+    );
+    
+    if (orderData.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Auftrag nicht gefunden' });
+    }
+    
+    const order = orderData.rows[0];
+    
+    // Berechne nächste Nachtragsnummer für diesen Auftrag
+    const numberResult = await query(
+      'SELECT COALESCE(MAX(nachtrag_number), 0) + 1 as next_number FROM nachtraege WHERE order_id = $1',
+      [orderId]
+    );
+    const nachtragNumber = numberResult.rows[0].next_number;
+    
+    // Berechne Summe (ohne NEP)
+    const amount = positions.reduce((sum, pos) => {
+      if (pos.isNEP) return sum;
+      return sum + ((parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0));
+    }, 0);
+    
+    // Erstelle Nachtrag
+    const insertResult = await query(
+      `INSERT INTO nachtraege 
+       (order_id, handwerker_id, bauherr_id, project_id, trade_id,
+        nachtrag_number, reason, lv_data, amount, status, submitted_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'submitted', NOW())
+       RETURNING id`,
+      [
+        orderId,
+        handwerkerId,
+        order.bauherr_id,
+        order.project_id,
+        order.trade_id,
+        nachtragNumber,
+        reason,
+        JSON.stringify({ positions }),
+        amount
+      ]
+    );
+    
+    const nachtragId = insertResult.rows[0].id;
+    
+    // Hole Trade-Name für Notification
+    const tradeInfo = await query(
+      'SELECT name FROM trades WHERE id = $1',
+      [order.trade_id]
+    );
+    const tradeName = tradeInfo.rows[0]?.name || 'Gewerk';
+    
+    // Hole Handwerker-Name
+    const handwerkerInfo = await query(
+      'SELECT company_name FROM handwerker WHERE id = $1',
+      [handwerkerId]
+    );
+    const companyName = handwerkerInfo.rows[0]?.company_name || 'Handwerker';
+    
+    // Benachrichtigung an Bauherr
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+       VALUES ('bauherr', $1, 'nachtrag_submitted', $2, 'nachtrag', $3, $4, NOW())`,
+      [
+        order.bauherr_id,
+        `Nachtrag Nr. ${String(nachtragNumber).padStart(2, '0')} für ${tradeName} eingereicht`,
+        nachtragId,
+        JSON.stringify({
+          nachtrag_id: nachtragId,
+          order_id: orderId,
+          trade_name: tradeName,
+          company_name: companyName,
+          amount: amount,
+          nachtrag_number: nachtragNumber
+        })
+      ]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      nachtragId,
+      nachtragNumber 
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error submitting nachtrag:', error);
+    res.status(500).json({ error: 'Fehler beim Einreichen des Nachtrags' });
+  }
+});
+
+// 2. Nachträge für einen Auftrag abrufen
+app.get('/api/orders/:orderId/nachtraege', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const result = await query(
+      `SELECT n.*, 
+              h.company_name,
+              t.name as trade_name
+       FROM nachtraege n
+       JOIN handwerker h ON n.handwerker_id = h.id
+       JOIN trades t ON n.trade_id = t.id
+       WHERE n.order_id = $1
+       ORDER BY n.nachtrag_number DESC`,
+      [orderId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error loading nachtraege:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Nachträge' });
+  }
+});
+
+// 3. Einzelnen Nachtrag abrufen
+app.get('/api/nachtraege/:nachtragId', async (req, res) => {
+  try {
+    const { nachtragId } = req.params;
+    
+    const result = await query(
+      `SELECT n.*, 
+              h.company_name, h.email, h.phone,
+              t.name as trade_name,
+              o.amount as original_order_amount,
+              o.lv_data as original_lv_data
+       FROM nachtraege n
+       JOIN handwerker h ON n.handwerker_id = h.id
+       JOIN trades t ON n.trade_id = t.id
+       JOIN orders o ON n.order_id = o.id
+       WHERE n.id = $1`,
+      [nachtragId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Nachtrag nicht gefunden' });
+    }
+    
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('Error loading nachtrag:', error);
+    res.status(500).json({ error: 'Fehler beim Laden des Nachtrags' });
+  }
+});
+
+// 4. Nachtrag KI-Bewertung
+app.post('/api/nachtraege/:nachtragId/evaluate', async (req, res) => {
+  try {
+    const { nachtragId } = req.params;
+    
+    // Lade Nachtrag mit Original-Auftrag
+    const nachtragData = await query(
+      `SELECT n.*, 
+              o.lv_data as original_lv_data,
+              o.amount as original_amount,
+              t.name as trade_name,
+              h.company_name,
+              p.description as project_description,
+              p.category as project_category
+       FROM nachtraege n
+       JOIN orders o ON n.order_id = o.id
+       JOIN trades t ON n.trade_id = t.id
+       JOIN handwerker h ON n.handwerker_id = h.id
+       JOIN projects p ON n.project_id = p.id
+       WHERE n.id = $1`,
+      [nachtragId]
+    );
+    
+    if (nachtragData.rows.length === 0) {
+      return res.status(404).json({ error: 'Nachtrag nicht gefunden' });
+    }
+    
+    const nachtrag = nachtragData.rows[0];
+    
+    // Parse LV-Daten
+    let originalLV = nachtrag.original_lv_data;
+    if (typeof originalLV === 'string') {
+      originalLV = JSON.parse(originalLV);
+    }
+    if (Array.isArray(originalLV)) {
+      originalLV = { positions: originalLV };
+    }
+    
+    let nachtragLV = nachtrag.lv_data;
+    if (typeof nachtragLV === 'string') {
+      nachtragLV = JSON.parse(nachtragLV);
+    }
+    if (Array.isArray(nachtragLV)) {
+      nachtragLV = { positions: nachtragLV };
+    }
+    
+    // System-Prompt für Nachtragsprüfung
+    const systemPrompt = `Du bist ein erfahrener Bausachverständiger und Nachtragsprüfer für ${nachtrag.trade_name}.
+
+AUFGABE: Prüfe diesen Nachtrag professionell und objektiv. Bewerte ob er technisch notwendig, preislich angemessen und vertraglich gerechtfertigt ist.
+
+KRITISCHE PRÜFPUNKTE:
+
+1. TECHNISCHE NOTWENDIGKEIT
+   - Ist die Leistung wirklich erforderlich?
+   - War sie im Ursprungsauftrag bereits enthalten?
+   - Ist die Begründung nachvollziehbar und fachlich korrekt?
+   - Handelt es sich um Planungsänderung, Mehrleistung oder verdeckten Mangel?
+
+2. VERTRAGLICHE BERECHTIGUNG
+   - Ist der Nachtrag nach VOB/BGB berechtigt?
+   - Wurde die Leistung ordnungsgemäß angemeldet?
+   - War die Leistung vorhersehbar?
+   - Liegt eine Behinderungsanzeige vor (falls relevant)?
+
+3. PREISLICHE ANGEMESSENHEIT
+   - Sind die Preise marktüblich?
+   - Stimmen sie mit den Preisen des Hauptauftrags überein?
+   - Gibt es überhöhte Zuschläge?
+   - Ist die Kalkulation nachvollziehbar?
+
+4. VOLLSTÄNDIGKEIT & TRANSPARENZ
+   - Sind alle Positionen klar beschrieben?
+   - Sind Mengen nachvollziehbar ermittelt?
+   - Fehlen versteckte Kosten?
+   - Ist die Dokumentation ausreichend?
+
+5. VERGLEICH MIT URSPRUNGSAUFTRAG
+   - Passt der Nachtrag zur Qualität des Hauptauftrags?
+   - Sind ähnliche Leistungen ähnlich kalkuliert?
+   - Gibt es Widersprüche zu früheren Positionen?
+
+BEWERTUNGSSYSTEM (AMPEL):
+
+🟢 GRÜN = Nachtrag berechtigt und angemessen
+- Technisch klar notwendig
+- Im Ursprungsauftrag nicht enthalten
+- Preise marktüblich und fair
+- Kalkulation transparent und nachvollziehbar
+- Begründung schlüssig
+→ Empfehlung: Nachtrag kann beauftragt werden
+
+🟡 GELB = Nachtrag teilweise berechtigt
+- Notwendigkeit nachvollziehbar, aber diskutabel
+- Eventuell im Ursprungsauftrag enthalten (Graubereich)
+- Preise im oberen Bereich, aber vertretbar
+- Einzelne Positionen sollten verhandelt werden
+- Begründung könnte präziser sein
+→ Empfehlung: Nachverhandlung erforderlich
+
+🔴 ROT = Nachtrag nicht berechtigt oder überhöht
+- Leistung bereits im Ursprungsauftrag enthalten
+- Begründung nicht nachvollziehbar oder fehlerhaft
+- Preise deutlich überhöht (>30% über Markt)
+- Wesentliche Informationen fehlen
+- Verdacht auf Bauablaufstörung durch Auftragnehmer
+→ Empfehlung: Ablehnung oder erhebliche Kürzung
+
+AUSGABE als JSON:
+{
+  "rating": "green|yellow|red",
+  "overallScore": 1-100,
+  "summary": "Kurze 2-3 Sätze Gesamtbewertung",
+  
+  "technicalNecessity": {
+    "score": 1-100,
+    "isNecessary": true/false,
+    "wasInOriginal": true/false,
+    "reasoning": "Detaillierte Begründung der Notwendigkeit",
+    "concerns": ["Eventuelle Bedenken"]
+  },
+  
+  "contractualJustification": {
+    "score": 1-100,
+    "isJustified": true/false,
+    "legalBasis": "VOB §, BGB § oder andere Rechtsgrundlage",
+    "assessment": "Vertragliche Bewertung",
+    "risks": ["Rechtliche Risiken"]
+  },
+  
+  "priceAnalysis": {
+    "score": 1-100,
+    "totalNachtrag": Zahl,
+    "comparisonToOriginal": {
+      "originalPriceLevel": "Preisniveau des Hauptauftrags",
+      "consistency": "Sind Preise konsistent?",
+      "deviations": [
+        {
+          "position": "Pos-Nr",
+          "nachtragPrice": Zahl,
+          "comparableOriginalPrice": Zahl,
+          "deviationPercent": Zahl,
+          "explanation": "Warum weicht der Preis ab?"
+        }
+      ]
+    },
+    "marketComparison": "Vergleich mit Marktpreisen",
+    "assessment": "Gesamtbewertung der Preise"
+  },
+  
+  "completeness": {
+    "score": 1-100,
+    "missingInfo": ["Fehlende Informationen"],
+    "unclearPositions": ["Unklare Positionen"],
+    "assessment": "Bewertung der Vollständigkeit"
+  },
+  
+  "positionAnalysis": [
+    {
+      "position": "Pos-Nr",
+      "title": "Titel",
+      "amount": Zahl,
+      "assessment": "Bewertung dieser Position",
+      "wasInOriginal": true/false,
+      "priceOk": true/false,
+      "recommendation": "accept|negotiate|reject",
+      "suggestedPrice": Zahl (falls Verhandlung)
+    }
+  ],
+  
+  "negotiationPoints": [
+    {
+      "issue": "Was sollte verhandelt werden?",
+      "currentAmount": Zahl,
+      "fairAmount": Zahl,
+      "reasoning": "Begründung",
+      "priority": "high|medium|low"
+    }
+  ],
+  
+  "risks": [
+    "Konkrete Risiken bei Beauftragung"
+  ],
+  
+  "recommendation": {
+    "action": "approve|negotiate|reject",
+    "reasoning": "Ausführliche Begründung",
+    "suggestedAmount": Zahl (falls Kürzung empfohlen),
+    "nextSteps": [
+      "Konkrete Handlungsempfehlungen"
+    ],
+    "conditionsForApproval": [
+      "Bedingungen falls Verhandlung"
+    ]
+  }
+}
+
+WICHTIG:
+- Sei streng aber fair in der Bewertung
+- Schütze die Interessen des Bauherren
+- Erkläre komplexe Sachverhalte verständlich
+- Gib konkrete Verhandlungsargumente
+- Bei Ablehnung: Klare rechtliche Begründung
+
+KRITISCH: Antworte NUR mit validem JSON ohne Markdown-Codeblocks!`;
+
+    // User-Prompt
+    const userPrompt = `URSPRUNGSAUFTRAG (Hauptleistung):
+Gewerk: ${nachtrag.trade_name}
+Firma: ${nachtrag.company_name}
+Auftragssumme: ${nachtrag.original_amount}€
+
+POSITIONEN DES URSPRUNGSAUFTRAGS:
+${originalLV.positions.map(pos => 
+  `Position ${pos.pos}: ${pos.title}
+   Menge: ${pos.quantity} ${pos.unit}
+   EP: ${pos.unitPrice}€ | GP: ${pos.totalPrice}€
+   ${pos.description || ''}
+   ---`
+).join('\n')}
+
+═══════════════════════════════════════════════════════════════
+
+EINGEREICHTER NACHTRAG Nr. ${String(nachtrag.nachtrag_number).padStart(2, '0')}:
+Nachtragssumme: ${nachtrag.amount}€
+Eingereicht am: ${new Date(nachtrag.submitted_at).toLocaleDateString('de-DE')}
+
+BEGRÜNDUNG DES HANDWERKERS:
+"${nachtrag.reason}"
+
+NACHTRAGSPOSITIONEN:
+${nachtragLV.positions.map(pos => 
+  `Position ${pos.pos}: ${pos.title}
+   Menge: ${pos.quantity} ${pos.unit}
+   EP: ${pos.unitPrice}€ | GP: ${pos.totalPrice}€
+   ${pos.description || ''}
+   ${pos.isNEP ? '(NEP - Eventualposition)' : ''}
+   ${pos.notes ? `Notizen: ${pos.notes}` : ''}
+   ---`
+).join('\n')}
+
+PROJEKT-KONTEXT:
+Kategorie: ${nachtrag.project_category}
+Beschreibung: ${nachtrag.project_description}
+
+Prüfe diesen Nachtrag umfassend und erstelle eine fundierte Empfehlung!`;
+
+    // Claude API Call
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+
+    console.log('[NACHTRAG-EVALUATE] Calling Claude API...');
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 16000,
+      temperature: 0.3,
+      system: systemPrompt,
+      messages: [
+        { role: 'user', content: userPrompt }
+      ]
+    });
+
+    // Parse Response
+    let evaluation;
+    try {
+      let responseText = response.content[0].text.trim();
+      responseText = responseText
+        .replace(/^```json\s*\n?/, '')
+        .replace(/^```\s*\n?/, '')
+        .replace(/\n?```\s*$/, '')
+        .trim();
+      
+      evaluation = JSON.parse(responseText);
+      
+    } catch (parseError) {
+      console.error('[NACHTRAG-EVALUATE] Parse error:', parseError);
+      return res.status(500).json({ 
+        error: 'Fehler bei der Analyse',
+        details: parseError.message 
+      });
+    }
+    
+    // Speichere Bewertung
+    await query(
+      `UPDATE nachtraege 
+       SET evaluation_data = $2
+       WHERE id = $1`,
+      [nachtragId, JSON.stringify(evaluation)]
+    );
+    
+    res.json({ success: true, evaluation });
+    
+  } catch (error) {
+    console.error('[NACHTRAG-EVALUATE] Error:', error);
+    res.status(500).json({ 
+      error: 'Bewertung fehlgeschlagen',
+      details: error.message 
+    });
+  }
+});
+
+// 5. Nachtrag beauftragen
+app.post('/api/nachtraege/:nachtragId/approve', async (req, res) => {
+  try {
+    const { nachtragId } = req.params;
+    const { bauherrId } = req.body;
+    
+    await query('BEGIN');
+    
+    // Update Nachtrag
+    await query(
+      `UPDATE nachtraege 
+       SET status = 'approved',
+           decided_at = NOW(),
+           decided_by = $2
+       WHERE id = $1`,
+      [nachtragId, bauherrId]
+    );
+    
+    // Hole Nachtragsdaten für Notification
+    const nachtragInfo = await query(
+      `SELECT n.*, t.name as trade_name, h.company_name
+       FROM nachtraege n
+       JOIN trades t ON n.trade_id = t.id
+       JOIN handwerker h ON n.handwerker_id = h.id
+       WHERE n.id = $1`,
+      [nachtragId]
+    );
+    
+    const nachtrag = nachtragInfo.rows[0];
+    
+    // Benachrichtigung an Handwerker
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+       VALUES ('handwerker', $1, 'nachtrag_approved', $2, 'nachtrag', $3, $4, NOW())`,
+      [
+        nachtrag.handwerker_id,
+        `Nachtrag Nr. ${String(nachtrag.nachtrag_number).padStart(2, '0')} für ${nachtrag.trade_name} beauftragt`,
+        nachtragId,
+        JSON.stringify({
+          nachtrag_id: nachtragId,
+          trade_name: nachtrag.trade_name,
+          amount: nachtrag.amount,
+          nachtrag_number: nachtrag.nachtrag_number
+        })
+      ]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error approving nachtrag:', error);
+    res.status(500).json({ error: 'Fehler beim Beauftragen des Nachtrags' });
+  }
+});
+
+// 6. Nachtrag ablehnen
+app.post('/api/nachtraege/:nachtragId/reject', async (req, res) => {
+  try {
+    const { nachtragId } = req.params;
+    const { bauherrId, reason } = req.body;
+    
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Ablehnungsgrund erforderlich' });
+    }
+    
+    await query('BEGIN');
+    
+    // Update Nachtrag
+    await query(
+      `UPDATE nachtraege 
+       SET status = 'rejected',
+           rejection_reason = $2,
+           decided_at = NOW(),
+           decided_by = $3
+       WHERE id = $1`,
+      [nachtragId, reason, bauherrId]
+    );
+    
+    // Hole Nachtragsdaten für Notification
+    const nachtragInfo = await query(
+      `SELECT n.*, t.name as trade_name
+       FROM nachtraege n
+       JOIN trades t ON n.trade_id = t.id
+       WHERE n.id = $1`,
+      [nachtragId]
+    );
+    
+    const nachtrag = nachtragInfo.rows[0];
+    
+    // Benachrichtigung an Handwerker
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, message, reference_type, reference_id, metadata, created_at)
+       VALUES ('handwerker', $1, 'nachtrag_rejected', $2, 'nachtrag', $3, $4, NOW())`,
+      [
+        nachtrag.handwerker_id,
+        `Nachtrag Nr. ${String(nachtrag.nachtrag_number).padStart(2, '0')} für ${nachtrag.trade_name} abgelehnt`,
+        nachtragId,
+        JSON.stringify({
+          nachtrag_id: nachtragId,
+          trade_name: nachtrag.trade_name,
+          amount: nachtrag.amount,
+          nachtrag_number: nachtrag.nachtrag_number,
+          rejection_reason: reason
+        })
+      ]
+    );
+    
+    await query('COMMIT');
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error rejecting nachtrag:', error);
+    res.status(500).json({ error: 'Fehler beim Ablehnen des Nachtrags' });
+  }
+});
+
+// 7. Gesamtsumme inklusive Nachträge für einen Auftrag
+app.get('/api/orders/:orderId/total-with-nachtraege', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+         o.amount as original_amount,
+         o.bundle_discount,
+         COALESCE(SUM(CASE WHEN n.status = 'approved' THEN n.amount ELSE 0 END), 0) as nachtraege_sum,
+         COUNT(CASE WHEN n.status = 'approved' THEN 1 END) as approved_count,
+         COUNT(CASE WHEN n.status = 'submitted' THEN 1 END) as pending_count
+       FROM orders o
+       LEFT JOIN nachtraege n ON o.id = n.order_id
+       WHERE o.id = $1
+       GROUP BY o.id, o.amount, o.bundle_discount`,
+      [orderId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Auftrag nicht gefunden' });
+    }
+    
+    const data = result.rows[0];
+    const originalAmount = parseFloat(data.original_amount) || 0;
+    const nachtraegeSum = parseFloat(data.nachtraege_sum) || 0;
+    const bundleDiscount = parseFloat(data.bundle_discount) || 0;
+    
+    // Berechnung
+    const discountAmount = bundleDiscount > 0 ? (originalAmount * bundleDiscount / 100) : 0;
+    const nettoAfterDiscount = originalAmount - discountAmount;
+    const totalNetto = nettoAfterDiscount + nachtraegeSum;
+    const mwst = totalNetto * 0.19;
+    const totalBrutto = totalNetto + mwst;
+    
+    res.json({
+      originalAmount,
+      bundleDiscount,
+      discountAmount,
+      nettoAfterDiscount,
+      nachtraegeSum,
+      totalNetto,
+      mwst,
+      totalBrutto,
+      approvedCount: parseInt(data.approved_count),
+      pendingCount: parseInt(data.pending_count)
+    });
+    
+  } catch (error) {
+    console.error('Error calculating total:', error);
+    res.status(500).json({ error: 'Fehler bei der Berechnung' });
+  }
+});
 
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
