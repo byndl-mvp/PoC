@@ -30614,15 +30614,38 @@ app.get('/api/nachtraege/:nachtragId', async (req, res) => {
     const { nachtragId } = req.params;
     
     const result = await query(
-      `SELECT n.*, 
-              h.company_name, h.email, h.phone,
-              t.name as trade_name,
-              o.amount as original_order_amount,
-              o.lv_data as original_lv_data
+      `SELECT 
+        n.id,
+        n.order_id,
+        n.handwerker_id,
+        n.trade_id,
+        n.bauherr_id,
+        n.nachtrag_number,
+        n.amount,
+        n.reason,
+        n.lv_data,
+        n.status,
+        n.submitted_at,
+        n.decided_at,
+        n.rejection_reason,
+        n.evaluation_data,
+        n.created_at,
+        n.updated_at,
+        h.company_name,
+        h.email as handwerker_email,
+        h.phone as handwerker_phone,
+        t.name as trade_name,
+        o.amount as original_order_amount,
+        o.lv_data as original_lv_data,
+        o.bundle_discount,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone
        FROM nachtraege n
        JOIN handwerker h ON n.handwerker_id = h.id
        JOIN trades t ON n.trade_id = t.id
        JOIN orders o ON n.order_id = o.id
+       JOIN bauherr b ON n.bauherr_id = b.id
        WHERE n.id = $1`,
       [nachtragId]
     );
@@ -30631,7 +30654,20 @@ app.get('/api/nachtraege/:nachtragId', async (req, res) => {
       return res.status(404).json({ error: 'Nachtrag nicht gefunden' });
     }
     
-    res.json(result.rows[0]);
+    const nachtrag = result.rows[0];
+    
+    // Parse JSON fields falls sie als String kommen
+    if (typeof nachtrag.lv_data === 'string') {
+      nachtrag.lv_data = JSON.parse(nachtrag.lv_data);
+    }
+    if (typeof nachtrag.original_lv_data === 'string') {
+      nachtrag.original_lv_data = JSON.parse(nachtrag.original_lv_data);
+    }
+    if (typeof nachtrag.evaluation_data === 'string' && nachtrag.evaluation_data) {
+      nachtrag.evaluation_data = JSON.parse(nachtrag.evaluation_data);
+    }
+    
+    res.json(nachtrag);
     
   } catch (error) {
     console.error('Error loading nachtrag:', error);
