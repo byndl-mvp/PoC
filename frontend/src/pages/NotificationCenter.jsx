@@ -272,7 +272,10 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
       'change_request_approved': '✅',
       'change_request_rejected': '❌',
       'schedule_change_accepted': '✅',
-      'schedule_change_rejected': '❌'
+      'schedule_change_rejected': '❌',
+      'nachtrag_submitted': '📝',      
+      'nachtrag_approved': '✅',        
+      'nachtrag_rejected': '❌'         
   };
     return icons[type] || '🔔';
   };
@@ -300,7 +303,10 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
       'change_request_approved': 'from-green-600/20 to-teal-600/20 border-green-500/30',
       'change_request_rejected': 'from-red-600/20 to-orange-600/20 border-red-500/30',
       'schedule_change_accepted': 'from-green-600/20 to-teal-600/20 border-green-500/30',
-      'schedule_change_rejected': 'from-red-600/20 to-orange-600/20 border-red-500/30'
+      'schedule_change_rejected': 'from-red-600/20 to-orange-600/20 border-red-500/30',
+      'nachtrag_submitted': 'from-orange-500/20 to-yellow-500/20 border-orange-500/30',  
+      'nachtrag_approved': 'from-green-500/20 to-teal-500/20 border-green-500/30',       
+      'nachtrag_rejected': 'from-red-500/20 to-orange-500/20 border-red-500/30'  
     };
     return colors[type] || 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
   };
