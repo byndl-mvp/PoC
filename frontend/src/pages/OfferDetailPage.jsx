@@ -372,7 +372,9 @@ In der Kennenlernphase hat der ausgewählte Handwerker Exklusivität. Dies schü
                           <td className="text-right p-3">{pos.quantity}</td>
                           <td className="p-3">{pos.unit}</td>
                           <td className="text-right p-3">{formatCurrency(pos.unitPrice)}</td>
-                          <td className="text-right p-3 text-teal-400">{formatCurrency(pos.totalPrice)}</td>
+                          <td className="text-right p-3 text-teal-400">
+  {pos.isNEP ? '-' : formatCurrency(pos.totalPrice)}
+</td>
                         </tr>
                       ))}
                     </tbody>
