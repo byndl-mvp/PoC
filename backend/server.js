@@ -30636,8 +30636,8 @@ app.get('/api/nachtraege/:nachtragId', async (req, res) => {
         h.phone as handwerker_phone,
         t.name as trade_name,
         o.amount as original_order_amount,
-        o.lv_data as original_lv_data,
         o.bundle_discount,
+        ten.lv_data as original_lv_data,
         b.name as bauherr_name,
         b.email as bauherr_email,
         b.phone as bauherr_phone
@@ -30646,6 +30646,7 @@ app.get('/api/nachtraege/:nachtragId', async (req, res) => {
        JOIN trades t ON n.trade_id = t.id
        JOIN orders o ON n.order_id = o.id
        JOIN bauherren b ON n.bauherr_id = b.id
+       LEFT JOIN tenders ten ON o.tender_id = ten.id
        WHERE n.id = $1`,
       [nachtragId]
     );
@@ -30660,7 +30661,7 @@ app.get('/api/nachtraege/:nachtragId', async (req, res) => {
     if (typeof nachtrag.lv_data === 'string') {
       nachtrag.lv_data = JSON.parse(nachtrag.lv_data);
     }
-    if (typeof nachtrag.original_lv_data === 'string') {
+    if (typeof nachtrag.original_lv_data === 'string' && nachtrag.original_lv_data) {
       nachtrag.original_lv_data = JSON.parse(nachtrag.original_lv_data);
     }
     if (typeof nachtrag.evaluation_data === 'string' && nachtrag.evaluation_data) {
