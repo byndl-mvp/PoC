@@ -412,15 +412,29 @@ if (!window.confirm(confirmMessage)) {
                 </tr>
               </thead>
               <tbody>
-                {positions.map((pos, idx) => (
-                  <tr key={idx} className="border-t border-white/10 hover:bg-white/5">
-                    <td className="p-3">{pos.pos}</td>
-                    <td className="p-3">
-                      <div>{pos.title}</div>
-                      <div className="text-xs text-gray-400">{pos.description}</div>
-                    </td>
-                    <td className="text-right p-3">{pos.quantity}</td>
-                    <td className="p-3">{pos.unit}</td>
+               {positions.map((pos, idx) => (
+  <tr key={idx} className={`border-t border-white/10 hover:bg-white/5 ${
+    pos.isNEP ? 'bg-orange-500/10' : pos.isOptional ? 'bg-blue-500/10' : ''
+  }`}>
+    <td className="p-3">{pos.pos}</td>
+    <td className="p-3">
+      <div className="flex items-center gap-2">
+        <span>{pos.title}</span>
+        {pos.isNEP && (
+          <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30">
+            NEP
+          </span>
+        )}
+        {pos.isOptional && (
+          <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+            Optional
+          </span>
+        )}
+      </div>
+      <div className="text-xs text-gray-400">{pos.description}</div>
+    </td>
+    <td className="text-right p-3">{pos.quantity}</td>
+    <td className="p-3">{pos.unit}</td>
                     <td className="text-right p-3">
                       <input
                         type="number"
