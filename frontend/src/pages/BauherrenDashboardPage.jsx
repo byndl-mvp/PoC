@@ -1293,6 +1293,33 @@ const handleFinalOrder = async (offer) => {
     variance
   };
 };
+
+// NEUE LV-Edit Button Komponente
+const LVEditButton = ({ project }) => {
+  const allLVsComplete = project.completedLvs === project.totalTrades && project.totalTrades > 0;
+  
+  if (allLVsComplete) {
+    return (
+      <button
+        className="bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-xl p-6 opacity-75 cursor-not-allowed"
+        disabled
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold mb-2">✔ Alle LVs fertiggestellt</h3>
+            <p className="text-sm opacity-90">
+              Bearbeitung nur noch über Kostenübersicht möglich
+            </p>
+          </div>
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      </button>
+    );
+  }
+  return null;  
+};
   
 const BudgetVisualization = ({ budget }) => {
   if (!budget) return null;
@@ -1592,31 +1619,6 @@ const BudgetVisualization = ({ budget }) => {
     </div>
   );
 };
-
-  // NEUE LV-Edit Button Komponente
-  const LVEditButton = ({ project }) => {
-    const allLVsComplete = project.completedLvs === project.totalTrades && project.totalTrades > 0;
-    
-    if (allLVsComplete) {
-      return (
-        <button
-          className="bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-xl p-6 opacity-75 cursor-not-allowed"
-          disabled
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold mb-2">✔ Alle LVs fertiggestellt</h3>
-              <p className="text-sm opacity-90">
-                Bearbeitung nur noch über Kostenübersicht möglich
-              </p>
-            </div>
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        </button>
-      );
-    }
     
     return (
       <button
