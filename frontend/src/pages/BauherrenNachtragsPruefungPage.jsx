@@ -15,6 +15,22 @@ export default function BauherrenNachtragsPruefungPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [bauherrData, setBauherrData] = useState(null);
+
+  // ✅ NEU: Background-Generierung States
+  const [generatingEvaluation, setGeneratingEvaluation] = useState(() => {
+  const saved = sessionStorage.getItem(`generatingNachtragEval_${nachtragId}`);
+  return saved ? JSON.parse(saved) : false;
+});
+
+  const [evaluationProgress, setEvaluationProgress] = useState(() => {
+  const saved = sessionStorage.getItem(`nachtragEvalProgress_${nachtragId}`);
+  return saved ? parseFloat(saved) : 0;
+});
+
+  const [evaluationResult, setEvaluationResult] = useState(() => {
+  const saved = sessionStorage.getItem(`nachtragEvalResult_${nachtragId}`);
+  return saved ? JSON.parse(saved) : null;
+});
   
   useEffect(() => {
     const userData = sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData');
