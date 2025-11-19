@@ -48,14 +48,16 @@ export default function HandwerkerLVDetailsPage() {
   }, [loadLVDetails]);
 
   const calculateTotal = () => {
-    if (!lvData.positions || lvData.positions.length === 0) return 0;
-    return lvData.positions.reduce((sum, pos) => {
-      const quantity = parseFloat(pos.quantity) || 0;
-      const unitPrice = parseFloat(pos.unitPrice) || 0;
-      return sum + (quantity * unitPrice);
-    }, 0);
-  };
-
+  if (!lvData.positions || lvData.positions.length === 0) return 0;
+  return lvData.positions.reduce((sum, pos) => {
+    // ✅ FIX: NEP-Positionen nicht zur Summe addieren
+    if (pos.isNEP) return sum;
+    const quantity = parseFloat(pos.quantity) || 0;
+    const unitPrice = parseFloat(pos.unitPrice) || 0;
+    return sum + (quantity * unitPrice);
+  }, 0);
+};
+  
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
       <div className="text-center">
