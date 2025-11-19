@@ -1232,7 +1232,7 @@ const handleFinalOrder = async (offer) => {
   }
 };
 
-  const calculateBudgetOverview = () => {
+ const calculateBudgetOverview = () => {
   if (!selectedProject) return null;
   
   const initialBudget = parseFloat(selectedProject.budget) || 0;
@@ -1244,6 +1244,14 @@ const handleFinalOrder = async (offer) => {
     ? orders.reduce((sum, order) => {
         const amount = parseFloat(order.amount) || 0;
         return sum + amount;
+      }, 0)
+    : 0;
+  
+  // ✅ NEU: Nachträge berechnen
+  const nachtraegeNetto = Array.isArray(orders)
+    ? orders.reduce((sum, o) => {
+        const totals = orderTotals[o.id];
+        return sum + (totals?.nachtraegeSum || 0);
       }, 0)
     : 0;
   
@@ -1263,10 +1271,11 @@ const handleFinalOrder = async (offer) => {
   
   // Brutto-Beträge (mit 19% MwSt) für Vergleich mit Budget und Kostenschätzung
   const orderedAmount = orderedAmountNetto * 1.19;
+  const nachtraegeBrutto = nachtraegeNetto * 1.19;  // ✅ NEU
   const supplementsRequested = supplementsRequestedNetto * 1.19;
   const supplementsApproved = supplementsApprovedNetto * 1.19;
   
-  const totalCurrent = orderedAmount + supplementsApproved;
+  const totalCurrent = orderedAmount + nachtraegeBrutto + supplementsApproved;  // ✅ + nachtraegeBrutto
   const variance = initialBudget > 0 
     ? ((totalCurrent - initialBudget) / initialBudget * 100) 
     : 0;
@@ -1276,6 +1285,8 @@ const handleFinalOrder = async (offer) => {
     estimatedCost,
     orderedAmount,
     orderedAmountNetto,
+    nachtraegeNetto,        // ✅ NEU
+    nachtraegeBrutto,       // ✅ NEU
     supplementsRequested,
     supplementsApproved,
     totalCurrent,
@@ -1286,7 +1297,9 @@ const handleFinalOrder = async (offer) => {
     initialBudget,
     estimatedCost,
     orderedAmount,
-    orderedAmountNetto,  // Für Netto-Anzeige
+    orderedAmountNetto,
+    nachtraegeNetto,        // ✅ NEU
+    nachtraegeBrutto,       // ✅ NEU
     supplementsRequested,
     supplementsApproved,
     totalCurrent,
