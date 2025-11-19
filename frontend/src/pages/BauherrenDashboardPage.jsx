@@ -3513,7 +3513,10 @@ if (selectedProject) {
     </div>
   );
 })}
-        
+            </div>
+          </div>
+        )}
+              
         {/* ABGESCHLOSSENE AUFTRÄGE */}
         {orders.filter(o => o.status === 'completed').length > 0 && (
           <div>
