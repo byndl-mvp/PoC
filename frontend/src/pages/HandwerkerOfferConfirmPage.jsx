@@ -665,9 +665,9 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
                       </div>
                     </div>
                     <div className="text-right ml-4">
-                      <p className="text-xl font-bold text-teal-400">
-                        {formatCurrency((parseFloat(position.quantity) || 0) * (parseFloat(position.unitPrice) || 0))}
-                      </p>
+  <p className="text-xl font-bold text-teal-400">
+    {position.isNEP ? '-' : formatCurrency((parseFloat(position.quantity) || 0) * (parseFloat(position.unitPrice) || 0))}
+  </p>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
