@@ -199,7 +199,10 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
     'schedule_change_accepted': 'schedule',
     'schedule_change_rejected': 'schedule',
     'change_request_approved': 'schedule',
-    'change_request_rejected': 'schedule'
+    'change_request_rejected': 'schedule',
+    'nachtrag_submitted': 'orders',     
+    'nachtrag_approved': 'orders',      
+    'nachtrag_rejected': 'orders' 
   } : {
     // Handwerker Tabs
     'new_tender': 'ausschreibungen',
@@ -218,7 +221,10 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
     'schedule_change_rejected': 'termine',
     'change_request_approved': 'termine',
     'change_request_rejected': 'termine',
-    'offer_not_selected': 'angebote'
+    'offer_not_selected': 'angebote',
+    'nachtrag_submitted': 'auftraege',  
+    'nachtrag_approved': 'auftraege',   
+    'nachtrag_rejected': 'auftraege' 
   };
 
       console.log('📋 Tab-Mapping:', tabMapping[notification.type]);
