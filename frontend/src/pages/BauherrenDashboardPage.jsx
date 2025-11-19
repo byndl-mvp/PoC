@@ -503,6 +503,13 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
     } else {
       setOrders([]);  // Setze leeres Array wenn keine Orders
     }
+
+      // ✅ NEU: Lade Nachtrags-Daten für alle Aufträge
+  if (ordersData.length > 0) {
+    const orderIds = ordersData.map(o => o.id);
+    await loadOrderTotalsAndNachtraege(orderIds);
+  }
+}
     
     const supplementsRes = await fetch(apiUrl(`/api/projects/${projectId}/supplements?t=${timestamp}`));
     if (supplementsRes.ok) {
@@ -547,6 +554,28 @@ if (schedRes.ok) {
   }
 };
 
+const loadOrderTotalsAndNachtraege = async (orderIds) => {
+  const totals = {};
+  const pending = {};
+  
+  for (const orderId of orderIds) {
+    try {
+      // Lade Summen inkl. Nachträge
+      const totalsRes = await fetch(apiUrl(`/api/orders/${orderId}/total-with-nachtraege`));
+      if (totalsRes.ok) {
+        const data = await totalsRes.json();
+        totals[orderId] = data;
+        pending[orderId] = data.pendingCount || 0;
+      }
+    } catch (error) {
+      console.error(`Error loading data for order ${orderId}:`, error);
+    }
+  }
+  
+  setOrderTotals(totals);
+  setPendingNachtraege(pending);
+};
+  
 // Badge-Count für Terminplan laden
   const loadScheduleBadgeCount = async (projectId) => {
   try {
