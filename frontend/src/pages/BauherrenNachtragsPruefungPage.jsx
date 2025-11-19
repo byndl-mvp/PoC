@@ -190,7 +190,7 @@ export default function BauherrenNachtragsPruefungPage() {
     }
   }
   
-  const netto = nachtrag.amount;
+  const netto = parseFloat(nachtrag.amount) || 0;  
   const mwst = netto * 0.19;
   const brutto = netto + mwst;
   
