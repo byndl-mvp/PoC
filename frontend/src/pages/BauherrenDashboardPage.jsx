@@ -1956,6 +1956,10 @@ const BudgetVisualization = ({ budget }) => {
         key={tab}
         onClick={() => {
           setActiveTab(tab);
+           if (selectedProject) {
+            loadProjectDetails(selectedProject.id);
+          }
+          
           // Markiere als gelesen
           if (['tenders', 'offers', 'contracts', 'orders'].includes(tab)) {
             const now = new Date().toISOString();
