@@ -25233,6 +25233,22 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       isBundleOffer = false,                                    
       bundleDiscount = isBundleOffer ? (bundleDiscount || 0) : 0  
     } = req.body;
+
+    // ✅ FIX: Berechne totalSum korrekt unter Berücksichtigung von NEP
+let correctTotalSum = totalSum; // Fallback
+
+if (positions && Array.isArray(positions)) {
+  correctTotalSum = positions.reduce((sum, pos) => {
+    // NEP-Positionen nicht zur Summe addieren
+    if (pos.isNEP) return sum;
+    const quantity = parseFloat(pos.quantity) || 0;
+    const unitPrice = parseFloat(pos.unitPrice) || 0;
+    return sum + (quantity * unitPrice);
+  }, 0);
+  
+  console.log('✅ KORRIGIERTER totalSum (ohne NEP):', correctTotalSum);
+  console.log('📊 Differenz:', correctTotalSum - totalSum);
+}
     
     // ✅ FIX: Unterstütze BEIDE Formate (isPreliminary Boolean + stage String)
     let stageValue;
@@ -25288,7 +25304,7 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   [
     JSON.stringify({ positions }), 
     notes, 
-    totalSum, 
+    correctTotalSum, 
     stageValue, 
     bundleDiscount,
     isBundleOffer,  
@@ -25306,7 +25322,7 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
   [
     tenderId, 
     handwerkerId, 
-    totalSum, 
+    correctTotalSum, 
     JSON.stringify({ positions }), 
     notes, 
     stageValue, 
@@ -25353,7 +25369,7 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
               company_name: offerDetails.rows[0]?.company_name || 'Handwerker',
               trade_name: offerDetails.rows[0]?.trade_name || 'Gewerk',
               project_name: offerDetails.rows[0]?.project_description || 'Projekt',
-              amount: totalSum
+              amount: correctTotalSum
             })
           ]
         );
