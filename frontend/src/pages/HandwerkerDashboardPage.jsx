@@ -1409,176 +1409,229 @@ const badgeCounts = {
       ) : (
         <div className="space-y-6">
           {orders.filter(order => order.status !== 'completed').map((order, idx) => {
-            const netto = parseFloat(order.amount) || 0;
-            const bundleDiscount = order.bundle_discount || 0;
-            const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
-            const nettoAfterDiscount = netto - discountAmount;
-            const mwst = nettoAfterDiscount * 0.19;
-            const brutto = nettoAfterDiscount + mwst;
-            
-            return (
-              <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
-                {/* KOMPLETTER INHALT WIE BISHER - EXAKT KOPIERT */}
-                {/* Header */}
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
-                      <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
-                        Werkvertrag nach VOB/B
-                      </span>
-                    </div>
-                    
-                    <p className="text-gray-300 mb-2">
-                      Auftraggeber: <strong>{order.bauherr_name}</strong>
-                    </p>
-                    
-                    <div className="flex gap-4 text-sm text-gray-400">
-                      <p>📋 Auftrags-Nr: <strong className="text-white">#{order.id}</strong></p>
-                      <p>📅 Erteilt: <strong className="text-white">{new Date(order.created_at).toLocaleDateString('de-DE')}</strong></p>
-                    </div>
-                    
-                    {/* Projektadresse */}
-                    <div className="mt-3 p-3 bg-blue-500/10 rounded">
-                      <p className="text-blue-300 text-sm">
-                        <strong>🏗️ Ausführungsort:</strong><br />
-                        {order.project_street} {order.project_house_number}<br />
-                        {order.project_zip} {order.project_city}
-                      </p>
-                    </div>
-                    
-                    {/* Ausführungstermine */}
-                    <div className="mt-3 p-3 bg-purple-500/10 rounded">
-                      <p className="text-purple-300 text-sm">
-                        <strong>📅 Ausführungszeitraum:</strong><br />
-                        {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Vergütung */}
-<div className="text-right ml-6">
-  <p className="text-sm text-gray-400 mb-1">Auftragssumme</p>
-  <p className="text-2xl font-bold text-white">
-    {formatCurrency(netto)}
-  </p>
-  <p className="text-xs text-gray-400">Netto</p>
+  // ✅ NEU: Verwende Totals inkl. Nachträge falls vorhanden
+  const totals = orderTotals[order.id];
   
-  {bundleDiscount > 0 && (
-    <>
-      <div className="mt-2 pt-2 border-t border-white/20">
-        <p className="text-xs text-green-400">📦 Bündelrabatt ({bundleDiscount}%)</p>
-        <p className="text-sm font-semibold text-green-400">
-          - {formatCurrency(discountAmount)}
-        </p>
-      </div>
-      <div className="mt-1">
-        <p className="text-xs text-gray-400">Netto nach Rabatt</p>
-        <p className="text-lg font-bold text-white">
-          {formatCurrency(nettoAfterDiscount)}
-        </p>
-      </div>
-    </>
-  )}
+  const netto = totals ? totals.totalNetto : (parseFloat(order.amount) || 0);
+  const bundleDiscount = order.bundle_discount || 0;
+  const discountAmount = totals ? totals.discountAmount : (bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0);
+  const nettoAfterDiscount = totals ? totals.nettoAfterDiscount : (netto - discountAmount);
+  const mwst = totals ? totals.mwst : (nettoAfterDiscount * 0.19);
+  const brutto = totals ? totals.totalBrutto : (nettoAfterDiscount + mwst);
   
-  <div className="mt-2 pt-2 border-t border-white/20">
-    <p className="text-sm text-gray-400">zzgl. 19% MwSt.</p>
-    <p className="text-lg font-semibold text-teal-400">
-      {formatCurrency(brutto)}
-    </p>
-    <p className="text-xs text-gray-400">Brutto</p>
-  </div>
+  // ✅ NEU: Nachtrags-Info
+  const nachtraegeSum = totals ? totals.nachtraegeSum : 0;
+  const pendingNachtraege = totals ? totals.pendingCount : 0;
+  const approvedNachtraege = totals ? totals.approvedCount : 0;
   
-  {/* Status Badge */}
-  <span className={`mt-3 text-xs px-3 py-1 rounded inline-block ${
-    order.status === 'active' ? 'bg-blue-600 text-blue-200' :
-    order.status === 'completed' ? 'bg-green-600 text-green-200' :
-    order.status === 'in_progress' ? 'bg-yellow-600 text-yellow-200' :
-    'bg-gray-600 text-gray-300'
-  }`}>
-    {order.status === 'active' ? '🔧 In Ausführung' :
-     order.status === 'completed' ? '✅ Abgeschlossen' :
-     order.status === 'in_progress' ? '⚙️ In Bearbeitung' :
-     order.status}
-  </span>
-</div>
-                </div>
-                
-                {/* Kontaktdaten Bauherr */}
-<div className="bg-white/10 rounded-lg p-4 mb-4">
-  <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Auftraggeber</h4>
-  <div className="grid grid-cols-2 gap-4 text-sm">
-    <div className="text-gray-300">
-      <p><strong className="text-white">Name:</strong> {order.bauherr_name || order.clientName || 'Nicht verfügbar'}</p>
-      <p className="mt-1"><strong className="text-white">Tel:</strong> {order.bauherr_phone || order.clientPhone || 'Nicht verfügbar'}</p>
-    </div>
-    <div className="text-gray-300">
-      <p><strong className="text-white">E-Mail:</strong> {order.bauherr_email || order.clientEmail || 'Nicht verfügbar'}</p>
-      <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.project_street} {order.project_house_number}, {order.project_zip} {order.project_city}</p>
-    </div>
-  </div>
-</div>
-                
-                {/* Werkvertrag-Aktionen */}
-                <div className="border-t border-white/10 pt-4 mt-4">
-                  <div className="flex gap-3">
-                    {/* PDF Export */}
-                    <button
-                      onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Werkvertrag als PDF
-                    </button>
-                    
-                    {/* Vertrag ansehen */}
-                    <button
-                      onClick={() => {
-                        setSelectedOrderId(order.id);
-                        setShowContractView(true);
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Vertrag ansehen
-                    </button>
-                    
-                    {/* LV Details */}
-                     <button
-                      onClick={() => navigate(`/handwerker/order/${order.id}/lv-details`)}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                      </svg>
-                      LV-Details ansehen
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Status-Infos - HIER RICHTIG PLATZIERT */}
-                {order.status === 'active' && (
-                  <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-                    <p className="text-blue-300 text-sm">
-                      <strong>ℹ️ Status:</strong> Auftrag in Ausführung. Nach Fertigstellung erfolgt die Abnahme durch den Bauherrn.
-                    </p>
-                  </div>
-                )}
-                
-                {/* Anmerkungen - HIER RICHTIG PLATZIERT */}
-                {order.notes && (
-                  <div className="mt-4 p-3 bg-white/5 rounded">
-                    <p className="text-gray-400 text-xs mb-1">Anmerkungen:</p>
-                    <p className="text-gray-300 text-sm">{order.notes}</p>
-                  </div>
-                )}
+  return (
+    <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
+            <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
+              Werkvertrag nach VOB/B
+            </span>
+            {/* ✅ NEU: Nachtrags-Badge */}
+            {(approvedNachtraege > 0 || pendingNachtraege > 0) && (
+              <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded-full">
+                {approvedNachtraege > 0 && `${approvedNachtraege} NT beauftragt`}
+                {approvedNachtraege > 0 && pendingNachtraege > 0 && ' • '}
+                {pendingNachtraege > 0 && `${pendingNachtraege} NT in Prüfung`}
+              </span>
+            )}
+          </div>
+          
+          <p className="text-gray-300 mb-2">
+            Auftraggeber: <strong>{order.bauherr_name}</strong>
+          </p>
+          
+          <div className="flex gap-4 text-sm text-gray-400">
+            <p>📋 Auftrags-Nr: <strong className="text-white">#{order.id}</strong></p>
+            <p>📅 Erteilt: <strong className="text-white">{new Date(order.created_at).toLocaleDateString('de-DE')}</strong></p>
+          </div>
+          
+          {/* Projektadresse */}
+          <div className="mt-3 p-3 bg-blue-500/10 rounded">
+            <p className="text-blue-300 text-sm">
+              <strong>🏗️ Ausführungsort:</strong><br />
+              {order.project_street} {order.project_house_number}<br />
+              {order.project_zip} {order.project_city}
+            </p>
+          </div>
+          
+          {/* Ausführungstermine */}
+          <div className="mt-3 p-3 bg-purple-500/10 rounded">
+            <p className="text-purple-300 text-sm">
+              <strong>📅 Ausführungszeitraum:</strong><br />
+              {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
+            </p>
+          </div>
+        </div>
+        
+        {/* Vergütung - ✅ ANGEPASST mit Nachträgen */}
+        <div className="text-right ml-6">
+          <p className="text-sm text-gray-400 mb-1">Auftragssumme</p>
+          
+          {/* Original ohne Nachträge */}
+          <p className="text-lg font-semibold text-gray-300">
+            {formatCurrency(parseFloat(order.amount) || 0)}
+          </p>
+          <p className="text-xs text-gray-400">Ursprungsauftrag (Netto)</p>
+          
+          {/* ✅ NEU: Nachträge anzeigen falls vorhanden */}
+          {nachtraegeSum > 0 && (
+            <div className="mt-2 pt-2 border-t border-white/20">
+              <p className="text-xs text-teal-400">+ Nachträge</p>
+              <p className="text-sm font-semibold text-teal-400">
+                {formatCurrency(nachtraegeSum)}
+              </p>
+            </div>
+          )}
+          
+          {bundleDiscount > 0 && (
+            <>
+              <div className="mt-2 pt-2 border-t border-white/20">
+                <p className="text-xs text-green-400">📦 Bündelrabatt ({bundleDiscount}%)</p>
+                <p className="text-sm font-semibold text-green-400">
+                  - {formatCurrency(discountAmount)}
+                </p>
               </div>
-            );
-          })}
+            </>
+          )}
+          
+          {/* Gesamtsumme */}
+          <div className="mt-2 pt-2 border-t border-white/20">
+            <p className="text-xs text-gray-400">Gesamt Netto{nachtraegeSum > 0 ? ' (inkl. NT)' : ''}</p>
+            <p className="text-xl font-bold text-white">
+              {formatCurrency(netto)}
+            </p>
+          </div>
+          
+          <div className="mt-2 pt-2 border-t border-white/20">
+            <p className="text-sm text-gray-400">zzgl. 19% MwSt.</p>
+            <p className="text-2xl font-bold text-teal-400">
+              {formatCurrency(brutto)}
+            </p>
+            <p className="text-xs text-gray-400">Brutto</p>
+          </div>
+          
+          {/* Status Badge */}
+          <span className={`mt-3 text-xs px-3 py-1 rounded inline-block ${
+            order.status === 'active' ? 'bg-blue-600 text-blue-200' :
+            order.status === 'completed' ? 'bg-green-600 text-green-200' :
+            order.status === 'in_progress' ? 'bg-yellow-600 text-yellow-200' :
+            'bg-gray-600 text-gray-300'
+          }`}>
+            {order.status === 'active' ? '🔧 In Ausführung' :
+             order.status === 'completed' ? '✅ Abgeschlossen' :
+             order.status === 'in_progress' ? '⚙️ In Bearbeitung' :
+             order.status}
+          </span>
+        </div>
+      </div>
+      
+      {/* Kontaktdaten Bauherr */}
+      <div className="bg-white/10 rounded-lg p-4 mb-4">
+        <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Auftraggeber</h4>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="text-gray-300">
+            <p><strong className="text-white">Name:</strong> {order.bauherr_name || order.clientName || 'Nicht verfügbar'}</p>
+            <p className="mt-1"><strong className="text-white">Tel:</strong> {order.bauherr_phone || order.clientPhone || 'Nicht verfügbar'}</p>
+          </div>
+          <div className="text-gray-300">
+            <p><strong className="text-white">E-Mail:</strong> {order.bauherr_email || order.clientEmail || 'Nicht verfügbar'}</p>
+            <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.project_street} {order.project_house_number}, {order.project_zip} {order.project_city}</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Werkvertrag-Aktionen - ✅ MIT NACHTRAGS-BUTTONS */}
+      <div className="border-t border-white/10 pt-4 mt-4">
+        <div className="flex gap-3 flex-wrap">
+          {/* PDF Export */}
+          <button
+            onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Werkvertrag als PDF
+          </button>
+          
+          {/* Vertrag ansehen */}
+          <button
+            onClick={() => {
+              setSelectedOrderId(order.id);
+              setShowContractView(true);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Vertrag ansehen
+          </button>
+          
+          {/* LV Details */}
+          <button
+            onClick={() => navigate(`/handwerker/order/${order.id}/lv-details`)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            LV-Details ansehen
+          </button>
+          
+          {/* ✅ NEU: Nachtrag einreichen */}
+          <button
+            onClick={() => navigate(`/handwerker/auftrag/${order.id}/nachtrag/neu`)}
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nachtrag einreichen
+          </button>
+          
+          {/* ✅ NEU: Eingereichte Nachträge (nur wenn Nachträge existieren) */}
+          {(approvedNachtraege > 0 || pendingNachtraege > 0) && (
+            <button
+              onClick={() => navigate(`/handwerker/auftrag/${order.id}/nachtraege`)}
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Eingereichte Nachträge ({approvedNachtraege + pendingNachtraege})
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* Status-Infos */}
+      {order.status === 'active' && (
+        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
+          <p className="text-blue-300 text-sm">
+            <strong>ℹ️ Status:</strong> Auftrag in Ausführung. Nach Fertigstellung erfolgt die Abnahme durch den Bauherrn.
+          </p>
+        </div>
+      )}
+      
+      {/* Anmerkungen */}
+      {order.notes && (
+        <div className="mt-4 p-3 bg-white/5 rounded">
+          <p className="text-gray-400 text-xs mb-1">Anmerkungen:</p>
+          <p className="text-gray-300 text-sm">{order.notes}</p>
+        </div>
+      )}
+    </div>
+  );
+})}
         </div>
       )}
     </div>
