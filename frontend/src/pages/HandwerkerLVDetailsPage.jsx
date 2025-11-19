@@ -178,8 +178,8 @@ export default function HandwerkerLVDetailsPage() {
                       <td className="py-4 px-2 text-white">{pos.unit}</td>
                       <td className="py-4 px-2 text-right text-white">{formatCurrency(pos.unitPrice)}</td>
                       <td className="py-4 px-2 text-right text-teal-400 font-bold">
-                        {formatCurrency((parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0))}
-                      </td>
+  {pos.isNEP ? '-' : formatCurrency((parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0))}
+</td>
                     </tr>
                   ))}
                 </tbody>
