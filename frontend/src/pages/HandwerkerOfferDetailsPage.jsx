@@ -209,8 +209,8 @@ export default function HandwerkerOfferDetailsPage() {
                     <td className="p-3">{pos.unit}</td>
                     <td className="text-right p-3">{formatCurrency(pos.unitPrice)}</td>
                     <td className="text-right p-3 font-medium text-teal-400">
-                      {formatCurrency(pos.totalPrice)}
-                    </td>
+  {pos.isNEP ? '-' : formatCurrency(pos.totalPrice)}
+</td>
                   </tr>
                 ))}
               </tbody>
