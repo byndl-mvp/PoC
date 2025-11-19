@@ -442,19 +442,48 @@ useEffect(() => {
                   und preisliche Angemessenheit prüfen.
                 </p>
                 <button
-                  onClick={startEvaluation}
-                  disabled={evaluating}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-600 text-white rounded-lg hover:shadow-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {evaluating ? (
-                    <span className="flex items-center gap-2">
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                      Prüfung läuft...
-                    </span>
-                  ) : (
-                    '🤖 byndl-Nachtragsprüfung starten'
-                  )}
-                </button>
+  onClick={() => {
+    if (evaluationResult) {
+      // Zeige gespeichertes Ergebnis
+      setEvaluation(evaluationResult);
+      setShowEvaluation(true);
+    } else {
+      // Starte neue Prüfung
+      startEvaluation();
+    }
+  }}
+  disabled={generatingEvaluation}
+  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+    generatingEvaluation
+      ? 'bg-gray-600 cursor-not-allowed'
+      : evaluationResult
+      ? 'bg-green-600 hover:bg-green-700'
+      : 'bg-gradient-to-r from-purple-500 to-blue-600 hover:shadow-xl'
+  } text-white`}
+>
+  {generatingEvaluation ? (
+    <div className="flex items-center gap-2">
+      <span>⏳ Prüfung läuft...</span>
+      {evaluationProgress > 0 && (
+        <span className="font-semibold">{Math.round(evaluationProgress)}%</span>
+      )}
+    </div>
+  ) : evaluationResult ? (
+    <span>✅ Ergebnis anzeigen</span>
+  ) : (
+    <span>🤖 byndl-Nachtragsprüfung starten</span>
+  )}
+</button>
+
+{/* Progress Bar */}
+{generatingEvaluation && evaluationProgress > 0 && (
+  <div className="mt-3 bg-gray-700 rounded-full h-2 overflow-hidden">
+    <div
+      className="bg-purple-500 h-full transition-all duration-300"
+      style={{ width: `${evaluationProgress}%` }}
+    />
+  </div>
+)}
               </div>
             </div>
           </div>
