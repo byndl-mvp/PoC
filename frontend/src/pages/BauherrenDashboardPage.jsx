@@ -1408,7 +1408,7 @@ const BudgetVisualization = ({ budget }) => {
         </div>
         
         {/* Beauftragte Summe + Nachträge (Ist-Kosten) */}
-<div>
+       <div>
   {(() => {
     // ✅ GEÄNDERT: Verwende budget statt orders zu berechnen
     const nachtraegeBrutto = budget.nachtraegeBrutto || 0;
@@ -1500,7 +1500,7 @@ const BudgetVisualization = ({ budget }) => {
       </>
     );
   })()}
-</div>
+         </div>
       
       {/* Vergleichs-Übersicht */}
       <div className="mt-8 grid grid-cols-2 gap-4">
