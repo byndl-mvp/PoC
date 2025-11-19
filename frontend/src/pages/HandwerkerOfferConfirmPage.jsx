@@ -530,6 +530,35 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
             />
           </div>
 
+          {/* ✅ NEU: Zusatzoptionen für NEP und Optional */}
+<div className="space-y-3 bg-white/5 rounded-lg p-4">
+  <label className="flex items-center gap-3 cursor-pointer">
+    <input
+      type="checkbox"
+      className="w-5 h-5"
+      checked={localPosition.isOptional || false}
+      onChange={(e) => setLocalPosition({...localPosition, isOptional: e.target.checked})}
+    />
+    <div>
+      <span className="text-white font-medium">Als optionale Position markieren</span>
+      <p className="text-xs text-gray-400">Position wird als optional im Angebot gekennzeichnet</p>
+    </div>
+  </label>
+  
+  <label className="flex items-center gap-3 cursor-pointer">
+    <input
+      type="checkbox"
+      className="w-5 h-5"
+      checked={localPosition.isNEP || false}
+      onChange={(e) => setLocalPosition({...localPosition, isNEP: e.target.checked})}
+    />
+    <div>
+      <span className="text-white font-medium">Nach Einheitspreis (NEP) abrechnen</span>
+      <p className="text-xs text-gray-400">Position wird nicht zur Gesamtsumme addiert, nur EP wird ausgewiesen</p>
+    </div>
+  </label>
+</div>
+          
           <div>
             <label className="block text-white font-semibold mb-2">Preisbasis</label>
             <input
