@@ -31,6 +31,14 @@ export default function BauherrenNachtragsPruefungPage() {
   const saved = sessionStorage.getItem(`nachtragEvalResult_${nachtragId}`);
   return saved ? JSON.parse(saved) : null;
 });
+
+  const cleanupEvaluationState = () => {
+  sessionStorage.removeItem(`generatingNachtragEval_${nachtragId}`);
+  sessionStorage.removeItem(`nachtragEvalProgress_${nachtragId}`);
+  
+  setGeneratingEvaluation(false);
+  setEvaluationProgress(0);
+};
   
   useEffect(() => {
     const userData = sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData');
@@ -49,6 +57,72 @@ export default function BauherrenNachtragsPruefungPage() {
     
     loadNachtrag();
   }, [nachtragId, navigate]); // eslint-disable-line
+
+  // ✅ NEU: Auto-Resume für Nachtragsprüfung
+useEffect(() => {
+  if (!generatingEvaluation) {
+    console.log('⏸️ No active evaluation');
+    return;
+  }
+  
+  console.log('▶️ Starting evaluation progress');
+  
+  // Progress Interval
+  const progressInterval = setInterval(() => {
+    setEvaluationProgress(prev => {
+      const next = prev + (99/90);
+      
+      let newProgress;
+      if (next >= 99) {
+        clearInterval(progressInterval);
+        newProgress = 99;
+      } else {
+        newProgress = next;
+      }
+      
+      sessionStorage.setItem(`nachtragEvalProgress_${nachtragId}`, newProgress.toString());
+      return newProgress;
+    });
+  }, 1000);
+  
+  // Polling Interval
+  const pollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(apiUrl(`/api/nachtraege/${nachtragId}`));
+      
+      if (res.ok) {
+        const data = await res.json();
+        
+        if (data.evaluation_data) {
+          console.log('✅ Evaluation ready');
+          
+          clearInterval(progressInterval);
+          clearInterval(pollInterval);
+          
+          setEvaluationProgress(100);
+          
+          setTimeout(() => {
+            setEvaluationResult(data.evaluation_data);
+            sessionStorage.setItem(`nachtragEvalResult_${nachtragId}`, JSON.stringify(data.evaluation_data));
+            
+            cleanupEvaluationState();
+          }, 500);
+        }
+      }
+    } catch (err) {
+      console.error('Poll error:', err);
+    }
+  }, 5000);
+  
+  // Cleanup
+  return () => {
+    console.log('🧹 Cleaning up evaluation intervals');
+    clearInterval(progressInterval);
+    clearInterval(pollInterval);
+  };
+  
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [nachtragId, generatingEvaluation]);
   
   const loadNachtrag = async () => {
     try {
@@ -73,29 +147,34 @@ export default function BauherrenNachtragsPruefungPage() {
   };
   
   const startEvaluation = async () => {
-    if (!window.confirm('Möchten Sie eine KI-gestützte Nachtragsprüfung durchführen?')) {
-      return;
-    }
+  if (!window.confirm('Möchten Sie eine KI-gestützte Nachtragsprüfung durchführen?')) {
+    return;
+  }
+  
+  try {
+    // Markiere als generierend
+    setGeneratingEvaluation(true);
+    sessionStorage.setItem(`generatingNachtragEval_${nachtragId}`, 'true');
     
-    try {
-      setEvaluating(true);
-      const res = await fetch(apiUrl(`/api/nachtraege/${nachtragId}/evaluate`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (!res.ok) throw new Error('Fehler bei der Bewertung');
-      
-      const data = await res.json();
-      setEvaluation(data.evaluation);
-      setShowEvaluation(true);
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Fehler bei der Bewertung: ' + error.message);
-    } finally {
-      setEvaluating(false);
+    setEvaluationProgress(0);
+    sessionStorage.setItem(`nachtragEvalProgress_${nachtragId}`, '0');
+    
+    // Starte POST (läuft im Hintergrund)
+    const res = await fetch(apiUrl(`/api/nachtraege/${nachtragId}/evaluate`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) {
+      cleanupEvaluationState();
+      alert('Fehler beim Starten der Bewertung');
     }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+    cleanupEvaluationState();
+    alert('Fehler: ' + error.message);
+  }
+};
   
   const handleApprove = async () => {
     if (!window.confirm(`Möchten Sie diesen Nachtrag wirklich beauftragen?\n\nNachtragssumme: ${formatCurrency(nachtrag.amount * 1.19)} (Brutto)`)) {
