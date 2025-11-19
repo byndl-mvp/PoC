@@ -369,8 +369,16 @@ export default function HandwerkerNachtraegeUebersichtPage() {
                           <p className="text-sm text-red-300">{nachtrag.rejection_reason}</p>
                         </div>
                       )}
+                      {/* ✅ NEU: Details Button auch bei abgelehnten Nachträgen */}
+                      <div className="mt-3">
+                        <button
+                          onClick={() => navigate(`/handwerker/nachtraege/${nachtrag.id}/details`)}
+                          className="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
+                        >
+                          Details ansehen
+                        </button>
+                      </div>
                     </div>
-                  </div>
                 </div>
               ))}
             </div>
