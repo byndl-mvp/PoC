@@ -28,6 +28,8 @@ import BauherrenDashboardPage from './pages/BauherrenDashboardPage';
 import LVPreviewPage from './pages/LVPreviewPage';
 import BauherrenSettingsPage from './pages/BauherrenSettingsPage';
 import OfferDetailPage from './pages/OfferDetailPage';
+import BauherrenNachtragsPruefungPage from './pages/BauherrenNachtragsPruefungPage';
+import BauherrenNachtraegeUebersichtPage from './pages/BauherrenNachtraegeUebersichtPage';
 
 // Handwerker Pages
 import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
@@ -38,6 +40,8 @@ import HandwerkerOfferConfirmPage from './pages/HandwerkerOfferConfirmPage';
 import HandwerkerBundleOfferPage from './pages/HandwerkerBundleOfferPage';
 import HandwerkerLVDetailsPage from './pages/HandwerkerLVDetailsPage';
 import OrtsterminPage from './pages/OrtsterminPage';
+import HandwerkerNachtragPage from './pages/HandwerkerNachtragPage';
+import HandwerkerNachtraegeUebersichtPage from './pages/HandwerkerNachtraegeUebersichtPage';
 
 // Admin Pages
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -150,6 +154,11 @@ function App() {
     </ProtectedRoute>
   } 
 />          
+
+          {/* Bauherr Nachträge */}
+<Route path="/bauherr/nachtraege/:nachtragId/pruefen" element={<BauherrenNachtragsPruefungPage />} />
+<Route path="/bauherr/auftrag/:orderId/nachtraege" element={<BauherrenNachtraegeUebersichtPage />} />          
+          
           {/* Legacy/Alternative Routen für Bauherren */}
           <Route path="/bauherren/login" element={<BauherrLoginPage />} />
           <Route path="/bauherren/dashboard" element={<BauherrenDashboardPage />} />
@@ -232,7 +241,11 @@ function App() {
     </ProtectedRoute>
   }
 />
-
+          
+{/* Handwerker Nachträge */}
+<Route path="/handwerker/auftrag/:orderId/nachtrag/neu" element={<HandwerkerNachtragPage />} />
+<Route path="/handwerker/auftrag/:orderId/nachtraege" element={<HandwerkerNachtraegeUebersichtPage />} />
+          
 {/* Ortstermin Route - für beide Nutzertypen */}
 <Route 
   path="/offer/:offerId/appointment" 
