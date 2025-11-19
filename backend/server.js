@@ -30684,7 +30684,7 @@ app.post('/api/nachtraege/:nachtragId/evaluate', async (req, res) => {
     // Lade Nachtrag mit Original-Auftrag
     const nachtragData = await query(
       `SELECT n.*, 
-              o.lv_data as original_lv_data,
+              ten.lv_data as original_lv_data,
               o.amount as original_amount,
               t.name as trade_name,
               h.company_name,
@@ -30695,6 +30695,7 @@ app.post('/api/nachtraege/:nachtragId/evaluate', async (req, res) => {
        JOIN trades t ON n.trade_id = t.id
        JOIN handwerker h ON n.handwerker_id = h.id
        JOIN projects p ON n.project_id = p.id
+       LEFT JOIN tenders ten ON o.trade_id = ten.trade_id AND ten.project_id = o.project_id
        WHERE n.id = $1`,
       [nachtragId]
     );
