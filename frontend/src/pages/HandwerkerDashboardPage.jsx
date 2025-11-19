@@ -29,6 +29,7 @@ export default function HandwerkerDashboardPage() {
   const [schedule, setSchedule] = useState([]); // eslint-disable-line no-unused-vars
   const [showContractView, setShowContractView] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [orderTotals, setOrderTotals] = useState({}); 
   const [notifications, setNotifications] = useState([]);
   const [lastViewedTabs, setLastViewedTabs] = useState({
   ausschreibungen: null,
@@ -170,6 +171,22 @@ useEffect(() => {
   } finally {
     setLoading(false);
   }
+};
+
+const loadOrderTotals = async (orderIds) => {
+  const totals = {};
+  for (const orderId of orderIds) {
+    try {
+      const res = await fetch(apiUrl(`/api/orders/${orderId}/total-with-nachtraege`));
+      if (res.ok) {
+        const data = await res.json();
+        totals[orderId] = data;
+      }
+    } catch (error) {
+      console.error(`Error loading totals for order ${orderId}:`, error);
+    }
+  }
+  setOrderTotals(totals);
 };
   
   const handleRejectTender = async (tenderId) => {
