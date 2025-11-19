@@ -71,44 +71,45 @@ const PositionModal = ({ position, isOpen, onClose, onUpdate, index }) => {
             />
           </div>
           
-          {/* Menge und Einheit */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Menge</label>
-              <input
-                type="number"
-                step="0.01"
-                className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
-                value={editedPosition.quantity}
-                onChange={(e) => {
-                  const newQuantity = parseFloat(e.target.value) || 0;
-                  setEditedPosition({
-                    ...editedPosition, 
-                    quantity: newQuantity,
-                    totalPrice: newQuantity * (editedPosition.unitPrice || 0)
-                  });
-                }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Einheit</label>
-              <select
-                className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
-                value={editedPosition.unit}
-                onChange={(e) => setEditedPosition({...editedPosition, unit: e.target.value})}
-              >
-                <option value="Stk">Stk</option>
-                <option value="m">m</option>
-                <option value="m²">m²</option>
-                <option value="m³">m³</option>
-                <option value="kg">kg</option>
-                <option value="t">t</option>
-                <option value="Std">Std</option>
-                <option value="Tag">Tag</option>
-                <option value="Psch">Psch</option>
-              </select>
-            </div>
-          </div>
+        {/* Menge und Einheit */}
+<div className="grid grid-cols-2 gap-4">
+  <div>
+    <label className="block text-sm text-gray-400 mb-2">Menge</label>
+    <input
+      type="number"
+      step="0.01"
+      className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
+      value={editedPosition.quantity}
+      onChange={(e) => {
+        const newQuantity = parseFloat(e.target.value) || 0;
+        setEditedPosition({
+          ...editedPosition, 
+          quantity: newQuantity,
+          totalPrice: newQuantity * (editedPosition.unitPrice || 0)
+        });
+      }}
+    />
+  </div>
+  <div>
+    <label className="block text-sm text-gray-400 mb-2">Einheit</label>
+    <select
+      className="w-full bg-slate-800 border border-white/30 rounded-lg px-4 py-3 text-white [&>option]:bg-slate-800 [&>option]:text-white"
+      style={{ colorScheme: 'dark' }}
+      value={editedPosition.unit}
+      onChange={(e) => setEditedPosition({...editedPosition, unit: e.target.value})}
+    >
+      <option value="Stk">Stk</option>
+      <option value="m">m</option>
+      <option value="m²">m²</option>
+      <option value="m³">m³</option>
+      <option value="kg">kg</option>
+      <option value="t">t</option>
+      <option value="Std">Std</option>
+      <option value="Tag">Tag</option>
+      <option value="Psch">Psch</option>
+    </select>
+  </div>
+</div>
           
           {/* Preise */}
           <div className="grid grid-cols-2 gap-4">
