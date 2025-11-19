@@ -1410,12 +1410,8 @@ const BudgetVisualization = ({ budget }) => {
         {/* Beauftragte Summe + Nachträge (Ist-Kosten) */}
 <div>
   {(() => {
-    // Berechne Nachträge
-    const nachtraegeNetto = orders.reduce((sum, o) => {
-      const totals = orderTotals[o.id];
-      return sum + (totals?.nachtraegeSum || 0);
-    }, 0);
-    const nachtraegeBrutto = nachtraegeNetto * 1.19;
+    // ✅ GEÄNDERT: Verwende budget statt orders zu berechnen
+    const nachtraegeBrutto = budget.nachtraegeBrutto || 0;
     const gesamtBrutto = budget.orderedAmount + nachtraegeBrutto;
     const gesamtDiff = gesamtBrutto - budget.initialBudget;
     
