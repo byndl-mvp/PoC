@@ -233,48 +233,46 @@ export default function HandwerkerNachtraegeUebersichtPage() {
             <h2 className="text-2xl font-bold text-white mb-4">In Prüfung ({pendingNachtraege.length})</h2>
             <div className="space-y-4">
               {pendingNachtraege.map((nachtrag) => (
-                <div 
-                  key={nachtrag.id}
-                  className="bg-yellow-500/10 backdrop-blur-lg rounded-xl p-6 border border-yellow-500/30"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-bold text-white">
-                          Nachtrag Nr. {String(nachtrag.nachtrag_number).padStart(2, '0')}
-                        </h3>
-                        {getStatusBadge(nachtrag.status)}
-                      </div>
-                      <p className="text-gray-300 text-sm mb-3 line-clamp-2">{nachtrag.reason}</p>
-                      <div className="flex items-center gap-6 text-sm">
-                        <span className="text-gray-400">
-                          Eingereicht: {new Date(nachtrag.submitted_at).toLocaleDateString('de-DE')}
-                        </span>
-                        <span className="text-yellow-400 font-semibold">
-                          {formatCurrency(nachtrag.amount * 1.19)} Brutto
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2 text-yellow-300">
-                          <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span className="text-sm">Wird geprüft...</span>
-                        </div>
-                        <button
-                          onClick={() => navigate(`/handwerker/nachtraege/${nachtrag.id}/details`)}
-                          className="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
-                        >
-                          Details ansehen
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                ))}
+  <div 
+    key={nachtrag.id}
+    className="bg-yellow-500/10 backdrop-blur-lg rounded-xl p-6 border border-yellow-500/30"
+  >
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <div className="flex items-center gap-3 mb-2">
+          <h3 className="text-xl font-bold text-white">
+            Nachtrag Nr. {String(nachtrag.nachtrag_number).padStart(2, '0')}
+          </h3>
+          {getStatusBadge(nachtrag.status)}
+        </div>
+        <p className="text-gray-300 text-sm mb-3 line-clamp-2">{nachtrag.reason}</p>
+        <div className="flex items-center gap-6 text-sm">
+          <span className="text-gray-400">
+            Eingereicht: {new Date(nachtrag.submitted_at).toLocaleDateString('de-DE')}
+          </span>
+          <span className="text-yellow-400 font-semibold">
+            {formatCurrency(nachtrag.amount * 1.19)} Brutto
+          </span>
+        </div>
+      </div>
+      <div className="ml-4 flex flex-col items-end gap-3">
+        <div className="flex items-center gap-2 text-yellow-300">
+          <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm">Wird geprüft...</span>
+        </div>
+        <button
+          onClick={() => navigate(`/handwerker/nachtraege/${nachtrag.id}/details`)}
+          className="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
+        >
+          Details ansehen
+        </button>
+      </div>
+    </div>
+  </div>
+))}
             </div>
           </div>
         )}
