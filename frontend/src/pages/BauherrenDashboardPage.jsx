@@ -1638,7 +1638,12 @@ const BudgetVisualization = ({ budget }) => {
   userType="bauherr"
   userId={userData?.id}
   apiUrl={apiUrl}
-  onTabChange={setActiveTab}
+  onTabChange={(tab) => {
+    setActiveTab(tab);
+    if (selectedProject) {
+      loadProjectDetails(selectedProject.id);
+    }
+  }}
   onScheduleReload={() => {
     setScheduleReloadTrigger(prev => prev + 1);
   }}
