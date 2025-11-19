@@ -344,9 +344,17 @@ In der Kennenlernphase hat der ausgewählte Handwerker Exklusivität. Dies schü
                         <tr key={idx} className="border-t border-white/10">
                           <td className="p-3">{idx + 1}</td>
                           <td className="p-3">
-                            <div>{pos.title}</div>
-                            <div className="text-xs text-gray-400">{pos.description}</div>
-                          </td>
+  <div>{pos.title}</div>
+  <div className="text-xs text-gray-400">{pos.description}</div>
+  {/* ✅ NEU: NEP Badge */}
+  {pos.isNEP && (
+    <div className="text-xs text-orange-300 mt-1 font-semibold">⚠️ NEP - Nur Einheitspreis</div>
+  )}
+  {/* ✅ NEU: Optional Badge */}
+  {pos.isOptional && (
+    <div className="text-xs text-blue-300 mt-1">💡 Optionale Position</div>
+  )}
+</td>
                           <td className="text-right p-3">{pos.quantity}</td>
                           <td className="p-3">{pos.unit}</td>
                           <td className="text-right p-3">{formatCurrency(pos.unitPrice)}</td>
