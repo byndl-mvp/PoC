@@ -172,10 +172,24 @@ export default function HandwerkerOfferDetailsPage() {
               </thead>
               <tbody>
                 {positions.map((pos, idx) => (
-                  <tr key={idx} className="border-t border-white/10">
-                    <td className="p-3">{pos.pos}</td>
-<td className="p-3">
-  <div className="font-medium">{pos.title}</div>
+  <tr key={idx} className={`border-t border-white/10 ${
+    pos.isNEP ? 'bg-orange-500/10' : pos.isOptional ? 'bg-blue-500/10' : ''
+  }`}>
+    <td className="p-3">{pos.pos}</td>
+    <td className="p-3">
+      <div className="flex items-center gap-2">
+        <span className="font-medium">{pos.title}</span>
+        {pos.isNEP && (
+          <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30 font-semibold">
+            NEP
+          </span>
+        )}
+        {pos.isOptional && (
+          <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+            Optional
+          </span>
+        )}
+      </div>
   {pos.description && (
     <div className="text-xs text-gray-400 mt-1">{pos.description}</div>
   )}
