@@ -1901,7 +1901,12 @@ const BudgetVisualization = ({ budget }) => {
           </div>
         </div>
         <button
-          onClick={() => setActiveTab('schedule')}
+          onClick={() => {
+    setActiveTab('schedule');
+    if (selectedProject) {
+      loadProjectDetails(selectedProject.id);  
+    }
+  }}
           className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2 whitespace-nowrap"
         >
           📅 Zur KI-Terminplanung
