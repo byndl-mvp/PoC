@@ -353,7 +353,12 @@ useEffect(() => {
   userType="handwerker"
   userId={handwerkerData?.id}
   apiUrl={apiUrl}
-  onTabChange={setActiveTab}
+  onTabChange={(tab) => {
+    setActiveTab(tab);
+    if (handwerkerData) {
+      loadDashboardData(handwerkerData);
+    }
+  }}
   onMessageCenterOpen={() => {  
     messageCenterRef.current?.setIsOpen(true);
   }}
