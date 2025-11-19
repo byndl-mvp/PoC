@@ -445,8 +445,8 @@ if (!window.confirm(confirmMessage)) {
                       />
                     </td>
                     <td className="text-right p-3 font-medium text-teal-400">
-                      {pos.totalPrice.toFixed(2)} €
-                    </td>
+  {pos.isNEP ? '-' : `${pos.totalPrice.toFixed(2)} €`}
+</td>
                     <td className="text-center p-3">
                       <button
                         onClick={() => openPositionModal(pos, idx)}
