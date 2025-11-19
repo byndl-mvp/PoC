@@ -10,7 +10,6 @@ export default function BauherrenNachtragsPruefungPage() {
   const [loading, setLoading] = useState(true);
   const [nachtrag, setNachtrag] = useState(null);
   const [evaluation, setEvaluation] = useState(null);
-  const [evaluating, setEvaluating] = useState(false);
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
