@@ -272,7 +272,6 @@ export default function HandwerkerNachtraegeUebersichtPage() {
                         </button>
                       </div>
                     </div>
-                </div>
               ))}
             </div>
           </div>
