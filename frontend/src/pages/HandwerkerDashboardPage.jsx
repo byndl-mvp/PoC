@@ -151,11 +151,17 @@ useEffect(() => {
     }
     
     // Lade erteilte Aufträge
-    const ordersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/orders?t=${timestamp}`));
-    if (ordersRes.ok) {
-      const ordersData = await ordersRes.json();
-      setOrders(ordersData);
-    }
+const ordersRes = await fetch(apiUrl(`/api/handwerker/${handwerker.id}/orders?t=${timestamp}`));
+if (ordersRes.ok) {
+  const ordersData = await ordersRes.json();
+  setOrders(ordersData);
+  
+  // ✅ NEU: Lade Nachtrags-Summen für alle Aufträge
+  if (ordersData.length > 0) {
+    const orderIds = ordersData.map(o => o.id);
+    await loadOrderTotals(orderIds);
+  }
+}
     
     // Lade auch die Notifications beim initialen Laden
     if (handwerker.id) {
