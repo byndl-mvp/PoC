@@ -9135,23 +9135,6 @@ if (tradeCode === 'ROH') {
   });
 }
     
-    // 6. VERBESSERTE REGEL: Nur REINE Demontage korrigieren
-if ((titleLower.includes('demontage') || titleLower.includes('ausbau')) &&
-    !titleLower.includes('montage') &&  // WICHTIG: Nicht wenn auch Montage dabei
-    !titleLower.includes('lieferung') &&
-    !titleLower.includes('auf') &&
-    !titleLower.includes('aufzug') &&
-    !titleLower.includes('gerüst')) {
-  
-  if (pos.unit === 'Stk' && pos.unitPrice > 200) {
-    const oldPrice = pos.unitPrice;
-    pos.unitPrice = 80;
-    pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-    warnings.push(`Reine Demontage korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
-    fixedCount++;
-  }
-}
-    
     return pos;
   }).filter(pos => !pos._remove); 
   
