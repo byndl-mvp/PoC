@@ -3527,30 +3527,43 @@ if (selectedProject) {
           {order.status === 'active' && (
             <button
               onClick={async () => {
-                if (!window.confirm('Möchten Sie die Leistung abnehmen? Dies bestätigt die ordnungsgemäße Ausführung und startet die Gewährleistungsfrist.')) return;
-                
-                try {
-                  setLoading(true);
-                  const res = await fetch(apiUrl(`/api/orders/${order.id}/accept-completion`), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                  });
-                  
-                  if (res.ok) {
-                    const data = await res.json();
-                    alert('✅ ' + data.message);
-                    loadProjectDetails(selectedProject.id);
-                  } else {
-                    const error = await res.json();
-                    alert('❌ Fehler: ' + error.error);
-                  }
-                } catch (err) {
-                  console.error('Error:', err);
-                  alert('❌ Fehler beim Abnehmen der Leistung');
-                } finally {
-                  setLoading(false);
-                }
-              }}
+  if (!window.confirm('Möchten Sie die Leistung abnehmen? Dies bestätigt die ordnungsgemäße Ausführung und startet die Gewährleistungsfrist.')) return;
+  
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/orders/${order.id}/accept-completion`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      
+      // NEU: Zeige Bewertungs-Modal
+      setRatingModalData({
+        orderId: order.id,
+        companyName: order.company_name,
+        tradeName: order.trade_name
+      });
+      setShowRatingModal(true);
+      
+      // Lade Projektdetails neu
+      await loadProjectDetails(selectedProject.id);
+      
+      // Zeige Erfolgs-Nachricht (ohne alert, da Modal kommt)
+      console.log('✅ Leistung abgenommen:', data.message);
+      
+    } else {
+      const error = await res.json();
+      alert('❌ Fehler: ' + error.error);
+    }
+  } catch (err) {
+    console.error('Error:', err);
+    alert('❌ Fehler beim Abnehmen der Leistung');
+  } finally {
+    setLoading(false);
+  }
+}}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2"
               disabled={loading}
             >
