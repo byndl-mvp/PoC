@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { Calendar, Clock, AlertTriangle, CheckCircle, Info, ChevronRight, ChevronDown, X } from 'lucide-react';
 
 // ============================================================================
