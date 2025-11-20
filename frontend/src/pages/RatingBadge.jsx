@@ -75,7 +75,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
           ></div>
           
           {/* Details Panel */}
-          <div className="absolute top-full right-0 mt-2 w-80 bg-slate-800 border border-white/20 rounded-xl shadow-2xl z-50 overflow-hidden">
+          <div className="absolute top-full right-0 mt-2 w-80 bg-slate-800 border border-white/20 rounded-xl shadow-2xl z-100 overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-b border-white/10 p-4">
               <div className="flex items-center justify-between mb-2">
