@@ -30,6 +30,7 @@ import BauherrenSettingsPage from './pages/BauherrenSettingsPage';
 import OfferDetailPage from './pages/OfferDetailPage';
 import BauherrenNachtragsPruefungPage from './pages/BauherrenNachtragsPruefungPage';
 import BauherrenNachtraegeUebersichtPage from './pages/BauherrenNachtraegeUebersichtPage';
+import HandwerkerRatingPage from './pages/HandwerkerRatingPage';
 
 // Handwerker Pages
 import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
@@ -159,6 +160,8 @@ function App() {
           {/* Bauherr Nachträge */}
 <Route path="/bauherr/nachtraege/:nachtragId/pruefen" element={<BauherrenNachtragsPruefungPage />} />
 <Route path="/bauherr/auftrag/:orderId/nachtraege" element={<BauherrenNachtraegeUebersichtPage />} />          
+          
+<Route path="/bauherr/auftrag/:orderId/bewerten" element={<HandwerkerRatingPage />} />
           
           {/* Legacy/Alternative Routen für Bauherren */}
           <Route path="/bauherren/login" element={<BauherrLoginPage />} />
