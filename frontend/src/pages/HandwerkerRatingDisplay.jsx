@@ -70,11 +70,6 @@ export default function HandwerkerRatingDisplay({ handwerkerId, companyName }) {
     style={{ zIndex: 999999 }}
   >
     <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full border border-white/20 overflow-hidden max-h-[90vh] overflow-y-auto">
-      {/* Rest bleibt gleich */}
-    </div>
-  </div>,
-  document.body
-)}
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-b border-white/10 p-6">
               <div className="flex items-center justify-between mb-3">
@@ -238,7 +233,8 @@ export default function HandwerkerRatingDisplay({ handwerkerId, companyName }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
