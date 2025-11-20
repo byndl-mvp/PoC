@@ -3391,50 +3391,77 @@ if (selectedProject) {
   const approvedNachtraege = totalsData ? totalsData.approvedCount : 0;
   
   return (
-    <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
-            <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
-              Werkvertrag nach VOB/B
+  <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
+    <div className="flex justify-between items-start mb-4">
+      <div className="flex-1">
+        <div className="flex items-center gap-3 mb-2">
+          <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
+          <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
+            Werkvertrag nach VOB/B
+          </span>
+          {/* Badges */}
+          {pendingCount > 0 && (
+            <span className="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-sm rounded-full animate-pulse">
+              {pendingCount} Nachtrag{pendingCount > 1 ? 'e' : ''} zu prüfen
             </span>
-            {/* ✅ NEU: Nachtrag-Badge falls vorhanden */}
-            {pendingCount > 0 && (
-              <span className="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-sm rounded-full animate-pulse">
-                {pendingCount} Nachtrag{pendingCount > 1 ? 'e' : ''} zu prüfen
-              </span>
-            )}
-            {approvedNachtraege > 0 && (
-              <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded-full">
-                {approvedNachtraege} NT beauftragt
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-3 mb-2">
-  <p className="text-gray-300">{order.company_name}</p>
-  
-  {/* NEU: Bewertungs-Anzeige HIER einfügen */}
-  <HandwerkerRatingDisplay 
-    handwerkerId={order.handwerker_id}
-    companyName={order.company_name}
-  />
-</div>
-     
-          <p className="text-sm text-gray-400">
-            Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | 
-            Auftrags-Nr: #{order.id}
-          </p>
-          
-          {/* Ausführungstermine */}
-          <div className="mt-3 p-3 bg-blue-500/10 rounded">
-            <p className="text-blue-300 text-sm">
-              <strong>📅 Ausführungszeitraum:</strong><br />
-              {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
-            </p>
+          )}
+          {approvedNachtraege > 0 && (
+            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded-full">
+              {approvedNachtraege} NT beauftragt
+            </span>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-3 mb-2">
+          <p className="text-gray-300">{order.company_name}</p>
+          <HandwerkerRatingDisplay 
+            handwerkerId={order.handwerker_id}
+            companyName={order.company_name}
+          />
+        </div>
+        
+        <p className="text-sm text-gray-400">
+          Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | 
+          Auftrags-Nr: #{order.id}
+        </p>
+        
+        {/* NEU: Kontaktdaten Handwerker */}
+        <div className="mt-4 bg-white/10 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Handwerker</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="text-gray-300">
+              <p><strong className="text-white">Firma:</strong> {order.company_name}</p>
+              <p className="mt-1"><strong className="text-white">Telefon:</strong> {order.handwerker_phone || 'Nicht verfügbar'}</p>
+            </div>
+            <div className="text-gray-300">
+              <p><strong className="text-white">E-Mail:</strong> {order.handwerker_email || 'Nicht verfügbar'}</p>
+              <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.handwerker_address || 'Auf Anfrage'}</p>
+            </div>
           </div>
         </div>
+        
+        {/* NEU: Projektadresse */}
+        <div className="mt-4 bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
+          <h4 className="text-sm font-semibold text-white mb-2">🏗️ Projektadresse</h4>
+          <p className="text-gray-300 text-sm">
+            {order.project_street} {order.project_house_number}<br />
+            {order.project_zip} {order.project_city}
+          </p>
+          {order.project_description && (
+            <p className="text-gray-400 text-xs mt-2 italic">
+              {order.project_description}
+            </p>
+          )}
+        </div>
+        
+        {/* Ausführungstermine */}
+        <div className="mt-3 p-3 bg-teal-500/10 rounded border border-teal-500/30">
+          <p className="text-teal-300 text-sm">
+            <strong>📅 Ausführungszeitraum:</strong><br />
+            {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
+          </p>
+        </div>
+      </div>
         
         {/* ✅ ANGEPASST: Preisanzeige mit Nachträgen */}
         <div className="text-right ml-6 min-w-[200px]">
