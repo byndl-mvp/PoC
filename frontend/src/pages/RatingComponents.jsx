@@ -7,26 +7,46 @@ import { apiUrl } from '../api';
 export function RatingModal({ orderId, companyName, tradeName, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl max-w-md w-full border border-white/20 overflow-hidden">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl max-w-lg w-full border border-white/20 overflow-hidden">
         {/* Header mit Gradient */}
-        <div className="bg-gradient-to-r from-yellow-500 to-orange-600 p-6">
+        <div className="bg-gradient-to-r from-green-500 to-teal-600 p-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Star className="w-6 h-6 text-white" />
+            <div className="p-3 bg-white/20 rounded-lg">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <h2 className="text-2xl font-bold text-white">Bewertung</h2>
+            <div>
+              <h2 className="text-2xl font-bold text-white">Leistung abgenommen</h2>
+              <p className="text-white/90 text-sm">Auftrag erfolgreich abgeschlossen</p>
+            </div>
           </div>
-          <p className="text-white/90 text-sm">Auftrag erfolgreich abgeschlossen!</p>
         </div>
 
         {/* Content */}
         <div className="p-6">
-          <div className="mb-6">
-            <p className="text-white text-lg font-semibold mb-2">
-              Bitte bewerten Sie <span className="text-yellow-400">{companyName}</span>
+          {/* Erfolgs-Information */}
+          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <p className="text-white text-base leading-relaxed">
+              Sie haben die Leistungen von <span className="font-bold text-green-400">{companyName}</span> für 
+              das Gewerk <span className="font-bold">{tradeName}</span> erfolgreich abgenommen.
             </p>
-            <p className="text-gray-400 text-sm">
-              Gewerk: {tradeName}
+            <p className="text-gray-300 text-sm mt-2">
+              ✓ Der Auftrag ist damit abgeschlossen<br/>
+              ✓ Die Gewährleistungsfrist beginnt ab heute<br/>
+              ✓ Alle Vertragsunterlagen bleiben verfügbar
+            </p>
+          </div>
+
+          {/* Bewertungs-Aufforderung */}
+          <div className="mb-6">
+            <h3 className="text-white font-semibold text-lg mb-3 flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-400" />
+              Jetzt bewerten
+            </h3>
+            <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+              Helfen Sie anderen Bauherren bei der Auswahl und unterstützen Sie gute Handwerker dabei, 
+              mehr Aufträge zu erhalten.
             </p>
           </div>
 
@@ -38,9 +58,8 @@ export function RatingModal({ orderId, companyName, tradeName, onClose }) {
                   Warum ist Ihre Bewertung wichtig?
                 </p>
                 <p className="text-blue-200 text-xs leading-relaxed">
-                  Ihre ehrliche Bewertung hilft anderen Bauherren bei der Auswahl und 
-                  unterstützt gute Handwerker dabei, mehr Aufträge zu erhalten. 
-                  Sie fördern damit Qualität im gesamten byndl-Netzwerk!
+                  Ihre ehrliche Bewertung fördert Qualität und Transparenz im gesamten byndl-Netzwerk. 
+                  Sie dauert nur 2 Minuten und hilft der gesamten Community.
                 </p>
               </div>
             </div>
@@ -58,11 +77,16 @@ export function RatingModal({ orderId, companyName, tradeName, onClose }) {
               onClick={() => {
                 window.location.href = `/bauherr/auftrag/${orderId}/bewerten`;
               }}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
             >
+              <Star className="w-4 h-4" />
               Jetzt bewerten
             </button>
           </div>
+
+          <p className="text-xs text-gray-500 text-center mt-4">
+            Sie können den Handwerker auch später über Ihre abgeschlossenen Aufträge bewerten
+          </p>
         </div>
       </div>
     </div>
