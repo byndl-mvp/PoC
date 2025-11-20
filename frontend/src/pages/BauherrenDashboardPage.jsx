@@ -5,6 +5,7 @@ import NotificationCenter from '../pages/NotificationCenter';
 import MessageCenter from '../pages/MessageCenter';
 import { OfferEvaluationModal, OfferComparisonModal } from '../pages/OfferEvaluationModals';
 import ScheduleTab from './ScheduleTab';
+import { RatingModal, RatingButton, RatingBadge } from './RatingComponents'; 
 
 function formatCurrency(value) {
   if (!value && value !== 0) return '0 €';
