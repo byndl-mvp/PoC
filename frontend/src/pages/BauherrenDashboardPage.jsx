@@ -6,6 +6,7 @@ import MessageCenter from '../pages/MessageCenter';
 import { OfferEvaluationModal, OfferComparisonModal } from '../pages/OfferEvaluationModals';
 import ScheduleTab from './ScheduleTab';
 import { RatingModal, RatingButton, RatingBadge } from './RatingComponents'; 
+import HandwerkerRatingDisplay from './HandwerkerRatingDisplay';
 
 function formatCurrency(value) {
   if (!value && value !== 0) return '0 €';
