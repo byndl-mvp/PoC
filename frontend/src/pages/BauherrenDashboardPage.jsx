@@ -3091,6 +3091,13 @@ if (selectedProject) {
                   {offer.tradeName || offer.trade_name || offer.trade}
                 </h3>
                 <p className="text-gray-300">{offer.companyName || offer.company_name}</p>
+
+                 {/* NEU: Bewertungs-Anzeige HIER einfügen */}
+      <HandwerkerRatingDisplay 
+        handwerkerId={offer.handwerker_id}
+        companyName={offer.companyName || offer.company_name}
+      />
+    </div>
                 
                 {/* Status Badge */}
                 <div className="mt-2">
