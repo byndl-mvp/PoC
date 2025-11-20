@@ -31156,6 +31156,323 @@ app.get('/api/orders/:orderId/total-with-nachtraege', async (req, res) => {
   }
 });
 
+// ============================================================================
+// BEWERTUNGSSYSTEM FÜR HANDWERKER
+// ============================================================================
+
+// 1. Bewertung erstellen (nach Auftragsabnahme)
+app.post('/api/orders/:orderId/rating', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { 
+      cost_rating, 
+      schedule_rating, 
+      quality_rating, 
+      communication_notes,
+      bauherr_id 
+    } = req.body;
+    
+    // Validierung
+    if (!cost_rating || !schedule_rating || !quality_rating) {
+      return res.status(400).json({ error: 'Alle Bewertungskriterien sind erforderlich' });
+    }
+    
+    if (cost_rating < 1 || cost_rating > 5 || 
+        schedule_rating < 1 || schedule_rating > 5 || 
+        quality_rating < 1 || quality_rating > 5) {
+      return res.status(400).json({ error: 'Bewertungen müssen zwischen 1 und 5 liegen' });
+    }
+    
+    await query('BEGIN');
+    
+    // Prüfe ob Auftrag existiert und abgeschlossen ist
+    const orderCheck = await query(
+      `SELECT o.*, h.id as handwerker_id, h.company_name, h.email as handwerker_email
+       FROM orders o
+       JOIN handwerker h ON o.handwerker_id = h.id
+       WHERE o.id = $1 AND o.status = 'completed'`,
+      [orderId]
+    );
+    
+    if (orderCheck.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Auftrag nicht gefunden oder noch nicht abgeschlossen' });
+    }
+    
+    const order = orderCheck.rows[0];
+    
+    // Prüfe ob bereits bewertet
+    const existingRating = await query(
+      'SELECT id FROM ratings WHERE order_id = $1',
+      [orderId]
+    );
+    
+    if (existingRating.rows.length > 0) {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Dieser Auftrag wurde bereits bewertet' });
+    }
+    
+    // Berechne Durchschnitt
+    const overall_rating = (
+      parseFloat(cost_rating) + 
+      parseFloat(schedule_rating) + 
+      parseFloat(quality_rating)
+    ) / 3;
+    
+    // Erstelle Bewertung
+    const ratingResult = await query(
+      `INSERT INTO ratings 
+       (order_id, handwerker_id, bauherr_id, trade_id,
+        cost_rating, schedule_rating, quality_rating, overall_rating,
+        communication_notes, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+       RETURNING *`,
+      [
+        orderId,
+        order.handwerker_id,
+        bauherr_id,
+        order.trade_id,
+        cost_rating,
+        schedule_rating,
+        quality_rating,
+        overall_rating,
+        communication_notes || null
+      ]
+    );
+    
+    const rating = ratingResult.rows[0];
+    
+    // Update Handwerker-Statistiken
+    await query(
+      `UPDATE handwerker 
+       SET rating_count = COALESCE(rating_count, 0) + 1,
+           rating_sum = COALESCE(rating_sum, 0) + $1,
+           average_rating = (COALESCE(rating_sum, 0) + $1) / (COALESCE(rating_count, 0) + 1),
+           updated_at = NOW()
+       WHERE id = $2`,
+      [overall_rating, order.handwerker_id]
+    );
+    
+    // Notification für Handwerker erstellen
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, reference_id, message, metadata, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [
+        'handwerker',
+        order.handwerker_id,
+        'rating_received',
+        orderId,
+        'Neue Bewertung erhalten',
+        JSON.stringify({
+          orderId: orderId,
+          tradeName: order.trade_name,
+          overallRating: overall_rating.toFixed(1),
+          costRating: cost_rating,
+          scheduleRating: schedule_rating,
+          qualityRating: quality_rating,
+          ratingId: rating.id
+        })
+      ]
+    );
+    
+    // E-Mail an Handwerker (optional, wenn transporter konfiguriert ist)
+    if (transporter && order.handwerker_email) {
+      const starRating = '⭐'.repeat(Math.round(overall_rating));
+      
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: order.handwerker_email,
+        subject: `${starRating} Neue Bewertung erhalten - Auftrag #${orderId}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+              <h1>${starRating} Neue Bewertung!</h1>
+            </div>
+            
+            <div style="padding: 30px; background: #f7f7f7;">
+              <p>Sehr geehrtes Team von ${order.company_name},</p>
+              
+              <p>Sie haben eine neue Bewertung für Ihren abgeschlossenen Auftrag erhalten.</p>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #f59e0b;">Bewertungsdetails:</h3>
+                <table style="width: 100%;">
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Auftrag:</strong></td>
+                    <td style="text-align: right;">#${orderId} - ${order.trade_name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0;"><strong>Gesamtbewertung:</strong></td>
+                    <td style="text-align: right; font-size: 20px;">${starRating} ${overall_rating.toFixed(1)}/5.0</td>
+                  </tr>
+                </table>
+                
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                  <h4 style="margin-bottom: 10px;">Einzelbewertungen:</h4>
+                  <div style="display: grid; gap: 10px;">
+                    <div style="padding: 10px; background: #f3f4f6; border-radius: 4px;">
+                      <strong>💰 Kosten:</strong> ${'⭐'.repeat(cost_rating)} ${cost_rating}/5
+                    </div>
+                    <div style="padding: 10px; background: #f3f4f6; border-radius: 4px;">
+                      <strong>📅 Termine:</strong> ${'⭐'.repeat(schedule_rating)} ${schedule_rating}/5
+                    </div>
+                    <div style="padding: 10px; background: #f3f4f6; border-radius: 4px;">
+                      <strong>✨ Qualität:</strong> ${'⭐'.repeat(quality_rating)} ${quality_rating}/5
+                    </div>
+                  </div>
+                </div>
+                
+                ${communication_notes ? `
+                  <div style="margin-top: 20px; padding: 15px; background: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px;">
+                    <strong>💬 Anmerkungen zur Kommunikation:</strong><br>
+                    <p style="margin-top: 8px; color: #1e40af;">${communication_notes}</p>
+                  </div>
+                ` : ''}
+              </div>
+              
+              <div style="background: #d1fae5; padding: 15px; border-left: 4px solid #10b981; border-radius: 4px; margin: 20px 0;">
+                <strong>🎯 Warum sind Bewertungen wichtig?</strong><br>
+                Gute Bewertungen helfen Ihnen, mehr Aufträge über byndl zu erhalten!
+              </div>
+              
+              <p>Melden Sie sich an, um Ihre vollständige Bewertungsübersicht zu sehen.</p>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
+              <p>© 2025 byndl - Die digitale Handwerkerplattform</p>
+            </div>
+          </div>
+        `
+      });
+    }
+    
+    await query('COMMIT');
+    
+    res.json({ 
+      success: true,
+      message: 'Bewertung erfolgreich gespeichert',
+      rating: rating
+    });
+    
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error creating rating:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. Bewertung eines Handwerkers abrufen (für Badge im Header)
+app.get('/api/handwerker/:handwerkerId/ratings-summary', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        COUNT(*) as total_ratings,
+        COALESCE(AVG(overall_rating), 0) as average_rating,
+        COALESCE(AVG(cost_rating), 0) as avg_cost,
+        COALESCE(AVG(schedule_rating), 0) as avg_schedule,
+        COALESCE(AVG(quality_rating), 0) as avg_quality
+       FROM ratings
+       WHERE handwerker_id = $1`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('Error fetching ratings summary:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. Detaillierte Bewertungen eines Handwerkers abrufen
+app.get('/api/handwerker/:handwerkerId/ratings', async (req, res) => {
+  try {
+    const { handwerkerId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        r.*,
+        t.name as trade_name,
+        b.name as bauherr_name,
+        o.project_zip,
+        o.project_city
+       FROM ratings r
+       JOIN trades t ON r.trade_id = t.id
+       LEFT JOIN bauherren b ON r.bauherr_id = b.id
+       LEFT JOIN orders o ON r.order_id = o.id
+       WHERE r.handwerker_id = $1
+       ORDER BY r.created_at DESC`,
+      [handwerkerId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error fetching ratings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. Prüfen ob ein Auftrag bereits bewertet wurde
+app.get('/api/orders/:orderId/rating-status', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        CASE WHEN COUNT(*) > 0 THEN true ELSE false END as is_rated,
+        (SELECT status FROM orders WHERE id = $1) as order_status
+       FROM ratings
+       WHERE order_id = $1`,
+      [orderId]
+    );
+    
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('Error checking rating status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. Einzelne Bewertung abrufen (für Detailansicht)
+app.get('/api/ratings/:ratingId', async (req, res) => {
+  try {
+    const { ratingId } = req.params;
+    
+    const result = await query(
+      `SELECT 
+        r.*,
+        t.name as trade_name,
+        h.company_name,
+        b.name as bauherr_name,
+        o.project_zip,
+        o.project_city,
+        o.amount as order_amount
+       FROM ratings r
+       JOIN trades t ON r.trade_id = t.id
+       JOIN handwerker h ON r.handwerker_id = h.id
+       LEFT JOIN bauherren b ON r.bauherr_id = b.id
+       LEFT JOIN orders o ON r.order_id = o.id
+       WHERE r.id = $1`,
+      [ratingId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bewertung nicht gefunden' });
+    }
+    
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('Error fetching rating:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ADMIN ROUTES - COMPLETE DASHBOARD API
 // ===========================================================================
 
