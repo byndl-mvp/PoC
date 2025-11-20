@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Star, TrendingUp } from 'lucide-react';
 import { apiUrl } from '../api';
 
