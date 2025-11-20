@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
 import { Star, TrendingUp } from 'lucide-react';
 import { apiUrl } from '../api';
 
@@ -41,42 +40,42 @@ export default function RatingBadge({ handwerkerId, companyName }) {
   const hasRatings = totalRatings > 0;
 
   return (
-  <>
-    <button
-      onClick={() => setShowDetails(!showDetails)}
-      className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 border border-yellow-500/40 rounded-lg px-4 py-2 transition-all hover:shadow-lg group"
-    >
-      <div className="flex items-center gap-2">
-        {hasRatings ? (
-          <>
-            <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-            <span className="text-xl font-bold text-yellow-400">
-              {avgRating.toFixed(1)}
-            </span>
-            <span className="text-xs text-gray-400">
-              ({totalRatings} {totalRatings === 1 ? 'Bewertung' : 'Bewertungen'})
-            </span>
-          </>
-        ) : (
-          <>
-            <Star className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-gray-400">Noch keine Bewertungen</span>
-          </>
-        )}
-      </div>
-    </button>
+    <div className="relative">
+      <button
+        onClick={() => setShowDetails(!showDetails)}
+        className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 border border-yellow-500/40 rounded-lg px-4 py-2 transition-all hover:shadow-lg group"
+      >
+        <div className="flex items-center gap-2">
+          {hasRatings ? (
+            <>
+              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+              <span className="text-xl font-bold text-yellow-400">
+                {avgRating.toFixed(1)}
+              </span>
+              <span className="text-xs text-gray-400">
+                ({totalRatings} {totalRatings === 1 ? 'Bewertung' : 'Bewertungen'})
+              </span>
+            </>
+          ) : (
+            <>
+              <Star className="w-5 h-5 text-gray-500" />
+              <span className="text-sm text-gray-400">Noch keine Bewertungen</span>
+            </>
+          )}
+        </div>
+      </button>
 
-    {/* Dropdown mit Portal-ähnlicher Positionierung */}
-    {showDetails && hasRatings && ReactDOM.createPortal(
-      <>
-        {/* Backdrop */}
-        <div 
-          className="fixed inset-0 z-[9998]" 
-          onClick={() => setShowDetails(false)}
-        ></div>
+      {/* Dropdown mit Details */}
+      {showDetails && hasRatings && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={() => setShowDetails(false)}
+          ></div>
           
           {/* Details Panel */}
-          <div className="absolute top-full right-0 mt-2 w-80 bg-slate-800 border border-white/20 rounded-xl shadow-2xl z-[9999] overflow-hidden">
+          <div className="fixed top-20 right-4 w-80 bg-slate-800 border border-white/20 rounded-xl shadow-2xl z-[9999] overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-b border-white/10 p-4">
               <div className="flex items-center justify-between mb-2">
