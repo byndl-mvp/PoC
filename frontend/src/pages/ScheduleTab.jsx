@@ -863,6 +863,7 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
   </div>,
   document.body
 );
+}
 
 // ============================================================================
 // SUB-KOMPONENTE: APPROVAL MODAL (Freigabe-Ansicht)
