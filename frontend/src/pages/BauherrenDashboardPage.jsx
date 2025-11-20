@@ -3090,6 +3090,8 @@ if (selectedProject) {
                 <h3 className="text-xl font-semibold text-white mb-2">
                   {offer.tradeName || offer.trade_name || offer.trade}
                 </h3>
+                
+                <div className="flex items-center gap-3 mb-2">
                 <p className="text-gray-300">{offer.companyName || offer.company_name}</p>
 
                  {/* NEU: Bewertungs-Anzeige HIER einfügen */}
