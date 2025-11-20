@@ -62,10 +62,10 @@ export default function HandwerkerRatingDisplay({ handwerkerId, companyName }) {
         <span className="text-xs text-gray-400 group-hover:text-gray-300 ml-1">Details →</span>
       </button>
 
-      {/* Detail Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-          <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full border border-white/20 overflow-hidden">
+     {/* Detail Modal */}
+{showModal && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+    <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full border border-white/20 overflow-hidden max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-b border-white/10 p-6">
               <div className="flex items-center justify-between mb-3">
