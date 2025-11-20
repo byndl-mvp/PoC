@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { Star, TrendingUp } from 'lucide-react';
 import { apiUrl } from '../api';
 
@@ -6,6 +7,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
   const [ratingData, setRatingData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
+  const buttonRef = useRef(null);
 
   useEffect(() => {
     const loadRatings = async () => {
@@ -27,6 +29,16 @@ export default function RatingBadge({ handwerkerId, companyName }) {
     }
   }, [handwerkerId]);
 
+  const getDropdownPosition = () => {
+    if (!buttonRef.current) return {};
+    const rect = buttonRef.current.getBoundingClientRect();
+    
+    return {
+      top: rect.bottom + 8,
+      right: window.innerWidth - rect.right
+    };
+  };
+
   if (loading) {
     return (
       <div className="bg-white/5 rounded-lg px-4 py-2 border border-white/10 animate-pulse">
@@ -41,7 +53,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
 
   return (
     <>
-      <div className="relative z-10">
+      <div ref={buttonRef}>
         <button
           onClick={() => setShowDetails(!showDetails)}
           className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 border border-yellow-500/40 rounded-lg px-4 py-2 transition-all hover:shadow-lg group"
@@ -67,22 +79,22 @@ export default function RatingBadge({ handwerkerId, companyName }) {
         </button>
       </div>
 
-      {/* Dropdown mit Details - Außerhalb des relativen Containers */}
-      {showDetails && hasRatings && (
+      {/* Dropdown Panel - mit Portal wie NotificationCenter */}
+      {showDetails && hasRatings && ReactDOM.createPortal(
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black/20 z-[9998]" 
+            className="fixed inset-0"
+            style={{ zIndex: 999998 }}
             onClick={() => setShowDetails(false)}
           />
           
-          {/* Details Panel - Fixed positioning für garantierten Vordergrund */}
+          {/* Details Panel */}
           <div 
-            className="fixed bg-slate-800 border border-white/20 rounded-xl shadow-2xl z-[9999] overflow-hidden"
+            className="fixed w-80 bg-slate-800 border border-white/20 rounded-xl shadow-2xl overflow-hidden"
             style={{
-              top: '80px',
-              right: '20px',
-              width: '320px'
+              ...getDropdownPosition(),
+              zIndex: 999999
             }}
           >
             {/* Header */}
@@ -182,7 +194,8 @@ export default function RatingBadge({ handwerkerId, companyName }) {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );
