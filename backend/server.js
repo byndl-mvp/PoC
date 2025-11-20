@@ -31186,13 +31186,19 @@ app.post('/api/orders/:orderId/rating', async (req, res) => {
     await query('BEGIN');
     
     // Prüfe ob Auftrag existiert und abgeschlossen ist
-    const orderCheck = await query(
-      `SELECT o.*, h.id as handwerker_id, h.company_name, h.email as handwerker_email
-       FROM orders o
-       JOIN handwerker h ON o.handwerker_id = h.id
-       WHERE o.id = $1 AND o.status = 'completed'`,
-      [orderId]
-    );
+const orderCheck = await query(
+  `SELECT o.*, 
+          h.id as handwerker_id, 
+          h.company_name, 
+          h.email as handwerker_email,
+          t.name as trade_name,
+          o.project_description
+   FROM orders o
+   JOIN handwerker h ON o.handwerker_id = h.id
+   JOIN trades t ON o.trade_id = t.id
+   WHERE o.id = $1 AND o.status = 'completed'`,
+  [orderId]
+);
     
     if (orderCheck.rows.length === 0) {
       await query('ROLLBACK');
@@ -31299,9 +31305,9 @@ app.post('/api/orders/:orderId/rating', async (req, res) => {
                 <h3 style="color: #f59e0b;">Bewertungsdetails:</h3>
                 <table style="width: 100%;">
                   <tr>
-                    <td style="padding: 8px 0;"><strong>Auftrag:</strong></td>
-                    <td style="text-align: right;">#${orderId} - ${order.trade_name}</td>
-                  </tr>
+  <td style="padding: 8px 0;"><strong>Projekt & Gewerk:</strong></td>
+  <td style="text-align: right;">${order.project_description ? order.project_description + ' - ' : ''}${order.trade_name}</td>
+</tr>
                   <tr>
                     <td style="padding: 8px 0;"><strong>Gesamtbewertung:</strong></td>
                     <td style="text-align: right; font-size: 20px;">${starRating} ${overall_rating.toFixed(1)}/5.0</td>
