@@ -3539,19 +3539,16 @@ if (selectedProject) {
     if (res.ok) {
       const data = await res.json();
       
-      // NEU: Zeige Bewertungs-Modal
+      // ERST: Projektdetails neu laden
+      await loadProjectDetails(selectedProject.id);
+      
+      // DANN: Bewertungs-Modal öffnen
       setRatingModalData({
         orderId: order.id,
         companyName: order.company_name,
         tradeName: order.trade_name
       });
       setShowRatingModal(true);
-      
-      // Lade Projektdetails neu
-      await loadProjectDetails(selectedProject.id);
-      
-      // Zeige Erfolgs-Nachricht (ohne alert, da Modal kommt)
-      console.log('✅ Leistung abgenommen:', data.message);
       
     } else {
       const error = await res.json();
