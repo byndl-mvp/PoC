@@ -799,9 +799,9 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
   minDate.setDate(minDate.getDate() + 7);
   const minDateStr = minDate.toISOString().split('T')[0];
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-y-auto">
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-lg w-full p-8 border border-white/20 my-auto">
+ return ReactDOM.createPortal(
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 999999 }}>
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-lg w-full p-8 border border-white/20 max-h-[90vh] overflow-y-auto">
         <h3 className="text-2xl font-bold text-white mb-6">Terminplanung starten</h3>
         
         {!generating ? (
@@ -860,7 +860,8 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
