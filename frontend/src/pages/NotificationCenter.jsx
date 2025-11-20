@@ -224,7 +224,8 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
     'offer_not_selected': 'angebote',
     'nachtrag_submitted': 'auftraege',  
     'nachtrag_approved': 'auftraege',   
-    'nachtrag_rejected': 'auftraege' 
+    'nachtrag_rejected': 'auftraege',
+    'rating_received': 'auftraege'
   };
 
       console.log('📋 Tab-Mapping:', tabMapping[notification.type]);
@@ -281,8 +282,9 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
       'schedule_change_rejected': '❌',
       'nachtrag_submitted': '📝',      
       'nachtrag_approved': '✅',        
-      'nachtrag_rejected': '❌'         
-  };
+      'nachtrag_rejected': '❌',
+      'rating_received': '⭐'
+    };
     return icons[type] || '🔔';
   };
 
@@ -312,7 +314,8 @@ if (notification.type === 'message_from_bauherr' || notification.type === 'messa
       'schedule_change_rejected': 'from-red-600/20 to-orange-600/20 border-red-500/30',
       'nachtrag_submitted': 'from-orange-500/20 to-yellow-500/20 border-orange-500/30',  
       'nachtrag_approved': 'from-green-500/20 to-teal-500/20 border-green-500/30',       
-      'nachtrag_rejected': 'from-red-500/20 to-orange-500/20 border-red-500/30'  
+      'nachtrag_rejected': 'from-red-500/20 to-orange-500/20 border-red-500/30',
+      'rating_received': 'from-yellow-500/20 to-orange-500/20 border-yellow-500/30' 
     };
     return colors[type] || 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
   };
@@ -387,6 +390,9 @@ case 'appointment_request':
     case 'work_completed':
       return `${getValue(['sender_name', 'senderName'], 'Bauherr')} hat die Leistung für ${getValue(['trade_name', 'tradeName'], 'Auftrag')} abgenommen`;
 
+    case 'rating_received':
+      return `Neue Bewertung erhalten für ${getValue(['trade_name', 'tradeName'], 'Auftrag')} - ⭐ ${getValue(['overallRating'], '0')}/5`;
+      
     case 'schedule_generated':
       return `Terminplan wurde erstellt - Bitte prüfen und freigeben${projectInfo}`;
     
