@@ -2777,6 +2777,11 @@ if (selectedProject) {
                             <h4 className="font-semibold text-white">
                               {offer.companyName || offer.company_name}
                             </h4>
+                            {/* NEU: Bewertungs-Anzeige HIER einfügen */}
+  <HandwerkerRatingDisplay 
+    handwerkerId={offer.handwerker_id}
+    companyName={offer.companyName || offer.company_name}
+  />
                             {!offer.viewed && (
                               <span className="bg-teal-500 text-white text-xs px-2 py-1 rounded">NEU</span>
                             )}
