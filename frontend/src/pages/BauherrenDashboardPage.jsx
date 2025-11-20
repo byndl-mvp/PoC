@@ -3440,20 +3440,6 @@ if (selectedProject) {
           </div>
         </div>
         
-        {/* NEU: Projektadresse */}
-        <div className="mt-4 bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
-          <h4 className="text-sm font-semibold text-white mb-2">🏗️ Projektadresse</h4>
-          <p className="text-gray-300 text-sm">
-            {order.project_street} {order.project_house_number}<br />
-            {order.project_zip} {order.project_city}
-          </p>
-          {order.project_description && (
-            <p className="text-gray-400 text-xs mt-2 italic">
-              {order.project_description}
-            </p>
-          )}
-        </div>
-        
         {/* Ausführungstermine */}
         <div className="mt-3 p-3 bg-teal-500/10 rounded border border-teal-500/30">
           <p className="text-teal-300 text-sm">
