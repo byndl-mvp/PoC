@@ -8232,43 +8232,6 @@ function validateAndFixPrices(lv, tradeCode) {
       }
     }
     
-    // Zusätzlich: Extreme Einzelpreise im Vergleich zum Durchschnitt
-    if (pos.unitPrice > 1000 && lv.positions.length > 5) {
-      const gleicheEinheit = lv.positions.filter(p => 
-        p !== pos && 
-        p.unit === pos.unit && 
-        p.unitPrice > 0
-      );
-      
-      if (gleicheEinheit.length >= 2) {
-        const durchschnitt = gleicheEinheit.reduce((sum, p) => sum + p.unitPrice, 0) / gleicheEinheit.length;
-        
-        // Wenn Preis mehr als 50x höher als Durchschnitt
-        if (pos.unitPrice > durchschnitt * 50) {
-          const kandidaten = [
-            { divisor: 100, neuPreis: pos.unitPrice / 100 },
-            { divisor: 1000, neuPreis: pos.unitPrice / 1000 }
-          ];
-          
-          for (const k of kandidaten) {
-            // Neuer Preis sollte maximal 5x Durchschnitt sein
-            if (k.neuPreis > durchschnitt * 0.5 && k.neuPreis < durchschnitt * 5) {
-              const oldPrice = pos.unitPrice;
-              pos.unitPrice = Math.round(k.neuPreis * 100) / 100;
-              pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-              
-              console.error(`[AUSREISSER KORRIGIERT] ${oldPrice}€ war ${(oldPrice/durchschnitt).toFixed(0)}x Durchschnitt`);
-              console.error(`  Korrigiert auf ${pos.unitPrice}€ (${(pos.unitPrice/durchschnitt).toFixed(1)}x Durchschnitt)`);
-              
-              warnings.push(`Preisausreißer korrigiert: ${oldPrice}€ → ${pos.unitPrice}€`);
-              fixedCount++;
-              break;
-            }
-          }
-        }
-      }
-    }
-    
     return pos;
   });
   
