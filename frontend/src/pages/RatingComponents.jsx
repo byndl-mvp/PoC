@@ -6,8 +6,8 @@ import { apiUrl } from '../api';
 // Modal das nach Abnahme erscheint
 export function RatingModal({ orderId, companyName, tradeName, onClose }) {
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl max-w-lg w-full border border-white/20 overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl max-w-lg w-full border border-white/20 overflow-hidden my-8">
         {/* Header mit Gradient */}
         <div className="bg-gradient-to-r from-green-500 to-teal-600 p-6">
           <div className="flex items-center gap-3 mb-2">
@@ -24,7 +24,7 @@ export function RatingModal({ orderId, companyName, tradeName, onClose }) {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
           {/* Erfolgs-Information */}
           <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
             <p className="text-white text-base leading-relaxed">
