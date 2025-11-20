@@ -180,6 +180,9 @@ export default function BauherrenDashboardPage() {
 
 const [orderTotals, setOrderTotals] = useState({}); // NEU: Speichert Summen inkl. Nachträge pro Auftrag
 const [pendingNachtraege, setPendingNachtraege] = useState({}); // NEU: Anzahl offener Nachträge pro Auftrag
+
+const [showRatingModal, setShowRatingModal] = useState(false);
+const [ratingModalData, setRatingModalData] = useState(null);
   
   // ✅ Background-Generierung States
 const [generatingEvaluations, setGeneratingEvaluations] = useState(() => {
