@@ -800,70 +800,69 @@ function InitiateScheduleModal({ onClose, onSubmit, generating }) {
   const minDateStr = minDate.toISOString().split('T')[0];
 
  return ReactDOM.createPortal(
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 999999 }}>
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-lg w-full p-8 border border-white/20 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-2xl font-bold text-white mb-6">Terminplanung starten</h3>
-        
-        {!generating ? (
-          <>
-  <p className="text-gray-300 mb-6">
-    Geben Sie den gewünschten <strong>Starttermin</strong> für Ihr Projekt ein. 
-    Die KI berechnet automatisch alle Folgearbeiten und den voraussichtlichen Fertigstellungstermin.
-  </p>
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[999999] p-4 overflow-y-auto">
+    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-lg w-full p-8 border border-white/20 my-auto max-h-[90vh] overflow-y-auto">
+      <h3 className="text-2xl font-bold text-white mb-6">Terminplanung starten</h3>
+      
+      {!generating ? (
+        <>
+          <p className="text-gray-300 mb-6">
+            Geben Sie den gewünschten <strong>Starttermin</strong> für Ihr Projekt ein. 
+            Die KI berechnet automatisch alle Folgearbeiten und den voraussichtlichen Fertigstellungstermin.
+          </p>
 
-  {/* Datumsauswahl */}
-  <div className="mb-6">
-    <label className="block text-white font-semibold mb-2">
-      Gewünschter Starttermin
-    </label>
-    <input
-      type="date"
-      value={selectedDate}
-      onChange={(e) => setSelectedDate(e.target.value)}
-      min={minDateStr}
-      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-    />
-    <p className="text-gray-400 text-xs mt-2">
-      Mindestens 7 Tage in der Zukunft
-    </p>
-  </div>
-
-  {/* Buttons */}
-  <div className="flex gap-3">
-    <button
-      onClick={onClose}
-      className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-    >
-      Abbrechen
-    </button>
-    <button
-      onClick={handleSubmit}
-      disabled={!selectedDate || generating} 
-      className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold rounded-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      KI-Terminplan erstellen
-    </button>
-  </div>
-</>
-        ) : (
-          <div className="text-center py-8">
-            <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-            <h4 className="text-xl font-bold text-white mb-3">Terminplan wird generiert...</h4>
-            <p className="text-gray-300 mb-2">Die KI analysiert:</p>
-            <ul className="text-gray-400 text-sm space-y-2">
-              <li>✓ Gewerke-Abhängigkeiten</li>
-              <li>✓ Kritische Schnittstellen</li>
-              <li>✓ Optimale Reihenfolge</li>
-              <li>✓ Puffer-Berechnung</li>
-            </ul>
-            <p className="text-gray-500 text-xs mt-4">Dies kann je nach Komplexität 3-5 Minuten dauern</p>
+          {/* Datumsauswahl */}
+          <div className="mb-6">
+            <label className="block text-white font-semibold mb-2">
+              Gewünschter Starttermin
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              min={minDateStr}
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+            <p className="text-gray-400 text-xs mt-2">
+              Mindestens 7 Tage in der Zukunft
+            </p>
           </div>
-        )}
-      </div>
-    </div>,
-    document.body
-  );
-}
+
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!selectedDate || generating} 
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold rounded-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              KI-Terminplan erstellen
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-8">
+          <div className="w-20 h-20 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+          <h4 className="text-xl font-bold text-white mb-3">Terminplan wird generiert...</h4>
+          <p className="text-gray-300 mb-2">Die KI analysiert:</p>
+          <ul className="text-gray-400 text-sm space-y-2">
+            <li>✓ Gewerke-Abhängigkeiten</li>
+            <li>✓ Kritische Schnittstellen</li>
+            <li>✓ Optimale Reihenfolge</li>
+            <li>✓ Puffer-Berechnung</li>
+          </ul>
+          <p className="text-gray-500 text-xs mt-4">Dies kann je nach Komplexität 3-5 Minuten dauern</p>
+        </div>
+      )}
+    </div>
+  </div>,
+  document.body
+);
 
 // ============================================================================
 // SUB-KOMPONENTE: APPROVAL MODAL (Freigabe-Ansicht)
@@ -902,11 +901,8 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
   }));
 };
   
- return ReactDOM.createPortal(
-    <div 
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-      style={{ zIndex: 999999 }}
-    >
+return ReactDOM.createPortal(
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[999999] p-4">
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col border border-white/20 overflow-y-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-6 border-b border-white/10 backdrop-blur flex-shrink-0">
