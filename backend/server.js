@@ -8518,12 +8518,17 @@ if (tradeCode === 'TRO') {
     }
     
     // 2. VERBESSERTE REGEL: Putzarbeiten und Ausbesserungen
-if (titleLower.includes('putz') || 
-    titleLower.includes('laibung') || 
-    titleLower.includes('leibung') ||  // NEU: beide Schreibweisen
-    titleLower.includes('spachtel') ||
-    titleLower.includes('glätten') ||
-    titleLower.includes('ausbesser')) {
+if ((titleLower.includes('putz') || 
+     titleLower.includes('laibung') || 
+     titleLower.includes('leibung') ||
+     titleLower.includes('spachtel') ||
+     titleLower.includes('glätten') ||
+     titleLower.includes('ausbesser')) &&
+    !titleLower.includes('unterputz') &&  // NEU: Unterputz-Installation ausschließen
+    !titleLower.includes('edelputz') &&  // NEU: Teure Putzarten ausschließen
+    !titleLower.includes('strukturputz') &&
+    !titleLower.includes('wärmedämm') &&  // WDVS-Putz ist teurer
+    !titleLower.includes('sockel')) { 
   
   // NEU: Spezialfall Leibungsverputz nach Fenstermontage
   if ((titleLower.includes('leibung') || titleLower.includes('laibung')) && 
