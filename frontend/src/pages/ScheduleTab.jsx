@@ -902,12 +902,12 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
   }));
 };
   
-  return (
+ return ReactDOM.createPortal(
     <div 
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{ zIndex: 999999 }}
     >
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col border border-white/20">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col border border-white/20 overflow-y-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-6 border-b border-white/10 backdrop-blur flex-shrink-0">
           <div className="flex justify-between items-start">
@@ -1111,7 +1111,8 @@ function ApprovalModal({ schedule, aiData, groupedTrades, onClose, onApprove, ad
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
