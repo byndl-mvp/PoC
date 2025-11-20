@@ -31192,10 +31192,11 @@ const orderCheck = await query(
           h.company_name, 
           h.email as handwerker_email,
           t.name as trade_name,
-          o.project_description
+          p.description as project_description
    FROM orders o
    JOIN handwerker h ON o.handwerker_id = h.id
    JOIN trades t ON o.trade_id = t.id
+   LEFT JOIN projects p ON o.project_id = p.id
    WHERE o.id = $1 AND o.status = 'completed'`,
   [orderId]
 );
