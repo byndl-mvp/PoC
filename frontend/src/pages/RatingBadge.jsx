@@ -70,7 +70,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
         <>
           {/* Backdrop */}
           <div 
-  className="fixed inset-0 z-[100]" 
+  className="fixed inset-0 z-[9999]" 
   onClick={() => setShowDetails(false)}
 ></div>
           
