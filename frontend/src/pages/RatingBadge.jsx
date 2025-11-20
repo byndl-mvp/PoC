@@ -40,48 +40,60 @@ export default function RatingBadge({ handwerkerId, companyName }) {
   const hasRatings = totalRatings > 0;
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setShowDetails(!showDetails)}
-        className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 border border-yellow-500/40 rounded-lg px-4 py-2 transition-all hover:shadow-lg group"
-      >
-        <div className="flex items-center gap-2">
-          {hasRatings ? (
-            <>
-              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-              <span className="text-xl font-bold text-yellow-400">
-                {avgRating.toFixed(1)}
-              </span>
-              <span className="text-xs text-gray-400">
-                ({totalRatings} {totalRatings === 1 ? 'Bewertung' : 'Bewertungen'})
-              </span>
-            </>
-          ) : (
-            <>
-              <Star className="w-5 h-5 text-gray-500" />
-              <span className="text-sm text-gray-400">Noch keine Bewertungen</span>
-            </>
-          )}
-        </div>
-      </button>
+    <>
+      <div className="relative z-10">
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 border border-yellow-500/40 rounded-lg px-4 py-2 transition-all hover:shadow-lg group"
+        >
+          <div className="flex items-center gap-2">
+            {hasRatings ? (
+              <>
+                <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                <span className="text-xl font-bold text-yellow-400">
+                  {avgRating.toFixed(1)}
+                </span>
+                <span className="text-xs text-gray-400">
+                  ({totalRatings} {totalRatings === 1 ? 'Bewertung' : 'Bewertungen'})
+                </span>
+              </>
+            ) : (
+              <>
+                <Star className="w-5 h-5 text-gray-500" />
+                <span className="text-sm text-gray-400">Noch keine Bewertungen</span>
+              </>
+            )}
+          </div>
+        </button>
+      </div>
 
-      {/* Dropdown mit Details */}
+      {/* Dropdown mit Details - Außerhalb des relativen Containers */}
       {showDetails && hasRatings && (
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 z-[9998]" 
+            className="fixed inset-0 bg-black/20 z-[9998]" 
             onClick={() => setShowDetails(false)}
-          ></div>
+          />
           
-          {/* Details Panel */}
-          <div className="fixed top-20 right-4 w-80 bg-slate-800 border border-white/20 rounded-xl shadow-2xl z-[9999] overflow-hidden">
+          {/* Details Panel - Fixed positioning für garantierten Vordergrund */}
+          <div 
+            className="fixed bg-slate-800 border border-white/20 rounded-xl shadow-2xl z-[9999] overflow-hidden"
+            style={{
+              top: '80px',
+              right: '20px',
+              width: '320px'
+            }}
+          >
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-b border-white/10 p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-white font-semibold">Bewertungsübersicht</h3>
                 <button
-                  onClick={() => setShowDetails(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDetails(false);
+                  }}
                   className="text-gray-400 hover:text-white transition-colors"
                 >
                   ✕
@@ -123,7 +135,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
                   <div 
                     className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all"
                     style={{ width: `${(parseFloat(ratingData?.avg_cost || 0) / 5) * 100}%` }}
-                  ></div>
+                  />
                 </div>
               </div>
 
@@ -139,7 +151,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
                   <div 
                     className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
                     style={{ width: `${(parseFloat(ratingData?.avg_schedule || 0) / 5) * 100}%` }}
-                  ></div>
+                  />
                 </div>
               </div>
 
@@ -155,7 +167,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
                   <div 
                     className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all"
                     style={{ width: `${(parseFloat(ratingData?.avg_quality || 0) / 5) * 100}%` }}
-                  ></div>
+                  />
                 </div>
               </div>
 
@@ -172,6 +184,6 @@ export default function RatingBadge({ handwerkerId, companyName }) {
           </div>
         </>
       )}
-    </div>
+    </>
   );
 }
