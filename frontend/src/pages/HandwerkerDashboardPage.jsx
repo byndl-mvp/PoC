@@ -372,41 +372,56 @@ const loadOrderTotals = async (orderIds) => {
       </div>
       
       <div className="flex items-center gap-4">
-        {/* ═══ HIER DAS NOTIFICATION CENTER EINFÜGEN ═══ */}
+        {/* Notification Center */}
         <NotificationCenter 
-  userType="handwerker"
-  userId={handwerkerData?.id}
-  apiUrl={apiUrl}
-  onTabChange={(tab) => {
-    setActiveTab(tab);
-    if (handwerkerData) {
-      loadDashboardData(handwerkerData);
-    }
-  }}
-  onMessageCenterOpen={() => {  
-    messageCenterRef.current?.setIsOpen(true);
-  }}
-/>
-<MessageCenter
-  ref={messageCenterRef} 
-  userType="handwerker"
-  userId={handwerkerData?.id}
-  userName={handwerkerData?.company_name}
-  apiUrl={apiUrl}
-/> 
-        <div className="text-right">
-          <p className="text-white font-semibold">{handwerkerData?.companyName}</p>
-          <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
+          userType="handwerker"
+          userId={handwerkerData?.id}
+          apiUrl={apiUrl}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            if (handwerkerData) {
+              loadDashboardData(handwerkerData);
+            }
+          }}
+          onMessageCenterOpen={() => {  
+            messageCenterRef.current?.setIsOpen(true);
+          }}
+        />
+        
+        {/* Message Center */}
+        <MessageCenter
+          ref={messageCenterRef} 
+          userType="handwerker"
+          userId={handwerkerData?.id}
+          userName={handwerkerData?.company_name}
+          apiUrl={apiUrl}
+        /> 
+        
+        {/* NEU: Firmenname + Bewertungs-Badge */}
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-white font-semibold text-lg">
+              {handwerkerData?.company_name || handwerkerData?.companyName}
+            </p>
+            <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
+          </div>
+          
+          {/* NEU: Bewertungs-Badge */}
+          <RatingBadge 
+            handwerkerId={handwerkerData?.id}
+            companyName={handwerkerData?.company_name || handwerkerData?.companyName}
+          />
         </div>
-        <div className="text-gray-400 text-sm">
-          Region: {handwerkerData?.region} | Radius: {handwerkerData?.actionRadius} km
-        </div>
+        
+        {/* Einstellungen Button */}
         <Link 
           to="/handwerker/settings" 
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors flex items-center gap-2"
         >
           ⚙️ Einstellungen
         </Link>
+        
+        {/* Abmelden Button */}
         <button
           onClick={handleLogout}
           className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors"
