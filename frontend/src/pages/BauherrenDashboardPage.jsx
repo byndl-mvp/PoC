@@ -3409,7 +3409,17 @@ if (selectedProject) {
               </span>
             )}
           </div>
-          <p className="text-gray-300 mb-2">{order.company_name}</p>
+          
+          <div className="flex items-center gap-3 mb-2">
+  <p className="text-gray-300">{order.company_name}</p>
+  
+  {/* NEU: Bewertungs-Anzeige HIER einfügen */}
+  <HandwerkerRatingDisplay 
+    handwerkerId={order.handwerker_id}
+    companyName={order.company_name}
+  />
+</div>
+     
           <p className="text-sm text-gray-400">
             Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | 
             Auftrags-Nr: #{order.id}
