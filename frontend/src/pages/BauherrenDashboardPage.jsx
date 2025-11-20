@@ -3526,7 +3526,7 @@ if (selectedProject) {
           
           {order.status === 'active' && (
             <button
-              onClick={async () => {
+             onClick={async () => {
   if (!window.confirm('Möchten Sie die Leistung abnehmen? Dies bestätigt die ordnungsgemäße Ausführung und startet die Gewährleistungsfrist.')) return;
   
   try {
@@ -3537,8 +3537,6 @@ if (selectedProject) {
     });
     
     if (res.ok) {
-      const data = await res.json();
-      
       // ERST: Projektdetails neu laden
       await loadProjectDetails(selectedProject.id);
       
