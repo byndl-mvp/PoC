@@ -9135,23 +9135,6 @@ if (tradeCode === 'ROH') {
   });
 }
     
-    // 5. GENERELLE ABSURDITÄTSPRÜFUNG
-    if (pos.unit === 'm' && pos.unitPrice > 500) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 80;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Absurder Preis/m korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
-      fixedCount++;
-    }
-    
-    if (pos.unit === 'm²' && pos.unitPrice > 500) {
-      const oldPrice = pos.unitPrice;
-      pos.unitPrice = 120;
-      pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-      warnings.push(`Absurder Preis/m² korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
-      fixedCount++;
-    }
-    
     // 6. VERBESSERTE REGEL: Nur REINE Demontage korrigieren
 if ((titleLower.includes('demontage') || titleLower.includes('ausbau')) &&
     !titleLower.includes('montage') &&  // WICHTIG: Nicht wenn auch Montage dabei
