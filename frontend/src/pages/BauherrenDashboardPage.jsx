@@ -4167,6 +4167,18 @@ if (extensionType === 'days') {
       </div>
     </div>
   </div>
+)}  
+{/* Bewertungs-Modal */}
+{showRatingModal && ratingModalData && (
+  <RatingModal
+    orderId={ratingModalData.orderId}
+    companyName={ratingModalData.companyName}
+    tradeName={ratingModalData.tradeName}
+    onClose={() => {
+      setShowRatingModal(false);
+      setRatingModalData(null);
+    }}
+  />
 )}      
   </div>
   );
