@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { Bell, X, Check, Trash2, Clock } from 'lucide-react';
+import { Bell, X, Check, Trash2, Clock, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 
 const NotificationCenter = ({ userType, userId, apiUrl, onNotificationClick, onTabChange, onScheduleReload, onMessageCenterOpen }) => {
