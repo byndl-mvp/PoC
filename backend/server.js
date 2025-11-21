@@ -20234,11 +20234,238 @@ function generateVerificationToken() {
   return require('crypto').randomBytes(32).toString('hex');
 }
 
-// Send verification email (placeholder)
-async function sendVerificationEmail(email, token) {
-  // TODO: Implement email sending
-  console.log(`Sending verification email to ${email} with token ${token}`);
+// ============================================================================
+// E-MAIL FUNCTIONS FÜR SETTINGS (KEINE DUPLIKATE!)
+// ============================================================================
+
+// Passwort-Änderungs-Bestätigung (NEU - nicht in Register)
+async function sendPasswordChangeConfirmation(email, userName) {
+  if (!transporter) return;
+  
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || '"byndl" <noreply@byndl.de>',
+      to: email,
+      subject: 'Passwort wurde geändert - byndl',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+            <h1>🔐 Passwort geändert</h1>
+          </div>
+          
+          <div style="padding: 30px; background: #f7f7f7;">
+            <p>Hallo ${userName},</p>
+            
+            <p>Ihr Passwort wurde soeben erfolgreich geändert.</p>
+            
+            <div style="background: #e0f2f1; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0;"><strong>Zeitpunkt:</strong> ${new Date().toLocaleString('de-DE')}</p>
+            </div>
+            
+            <p style="color: #d32f2f; font-weight: bold;">
+              ⚠️ Haben Sie diese Änderung nicht vorgenommen?
+            </p>
+            
+            <p>Wenn Sie Ihr Passwort nicht geändert haben, kontaktieren Sie bitte umgehend unseren Support:</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="mailto:support@byndl.de" 
+                 style="display: inline-block; padding: 12px 30px; background: #d32f2f; color: white; text-decoration: none; border-radius: 5px;">
+                Support kontaktieren
+              </a>
+            </div>
+          </div>
+        </div>
+      `
+    });
+    
+    console.log(`✅ Passwort-Änderungs-Bestätigung gesendet an: ${email}`);
+  } catch (error) {
+    console.error('⚠️ Fehler beim E-Mail-Versand:', error);
+  }
 }
+
+// 2FA Aktivierungs-Bestätigung (NEU - nicht in Register)
+async function send2FAActivationEmail(email, userName, backupCodes) {
+  if (!transporter) return;
+  
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || '"byndl" <noreply@byndl.de>',
+      to: email,
+      subject: 'Zwei-Faktor-Authentifizierung aktiviert - byndl',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+            <h1>🔒 2FA aktiviert</h1>
+          </div>
+          
+          <div style="padding: 30px; background: #f7f7f7;">
+            <p>Hallo ${userName},</p>
+            
+            <p>Die Zwei-Faktor-Authentifizierung wurde für Ihr Konto erfolgreich aktiviert.</p>
+            
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; font-weight: bold;">⚠️ Wichtig: Backup-Codes</p>
+              <p style="margin: 10px 0 0 0; font-size: 14px;">
+                Bewahren Sie diese Codes sicher auf. Sie benötigen sie, falls Sie keinen Zugriff auf Ihr Authentifizierungs-Gerät haben.
+              </p>
+            </div>
+            
+            <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0;">Ihre Backup-Codes:</h3>
+              <div style="font-family: monospace; font-size: 16px; line-height: 2;">
+                ${backupCodes.map(code => `<div>${code}</div>`).join('')}
+              </div>
+            </div>
+            
+            <p style="font-size: 14px; color: #d32f2f;">
+              <strong>Wichtig:</strong> Jeder Code kann nur einmal verwendet werden. Speichern Sie diese Codes an einem sicheren Ort.
+            </p>
+            
+            <p style="font-size: 12px; color: #999; margin-top: 30px;">
+              Haben Sie 2FA nicht aktiviert? Kontaktieren Sie sofort unseren Support.
+            </p>
+          </div>
+        </div>
+      `
+    });
+    
+    console.log(`✅ 2FA-Aktivierungs-E-Mail gesendet an: ${email}`);
+  } catch (error) {
+    console.error('⚠️ Fehler beim E-Mail-Versand:', error);
+  }
+}
+
+// ============================================================================
+// SETTINGS ROUTEN MIT E-MAIL (OHNE DUPLIKATE)
+// ============================================================================
+
+// Passwort-Änderung MIT E-Mail-Bestätigung
+app.put('/api/bauherr/:id/password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Alle Felder erforderlich' });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Mindestens 8 Zeichen' });
+    }
+    
+    // Passwort-Stärke
+    const strength = (newPassword.length >= 8 ? 20 : 0) +
+                     (newPassword.length >= 12 ? 20 : 0) +
+                     (/[a-z]/.test(newPassword) ? 20 : 0) +
+                     (/[A-Z]/.test(newPassword) ? 20 : 0) +
+                     (/[0-9]/.test(newPassword) ? 10 : 0) +
+                     (/[^a-zA-Z0-9]/.test(newPassword) ? 10 : 0);
+    
+    if (strength < 40) {
+      return res.status(400).json({ 
+        error: 'Passwort zu schwach',
+        hint: 'Verwenden Sie Groß-/Kleinbuchstaben, Zahlen und Sonderzeichen'
+      });
+    }
+    
+    const result = await query(
+      'SELECT password_hash, name, email FROM bauherren WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    }
+    
+    const bauherr = result.rows[0];
+    
+    const isValid = await bcryptjs.compare(currentPassword, bauherr.password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Aktuelles Passwort falsch' });
+    }
+    
+    const isSame = await bcryptjs.compare(newPassword, bauherr.password_hash);
+    if (isSame) {
+      return res.status(400).json({ error: 'Neues Passwort darf nicht identisch sein' });
+    }
+    
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
+    
+    await query(
+      `UPDATE bauherren SET
+        password_hash = $2,
+        last_password_change = NOW(),
+        updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, hashedPassword]
+    );
+    
+    // ✅ E-Mail-Bestätigung senden (non-blocking)
+    sendPasswordChangeConfirmation(bauherr.email, bauherr.name).catch(err => 
+      console.error('E-Mail send failed (non-critical):', err)
+    );
+    
+    res.json({ 
+      success: true, 
+      message: 'Passwort erfolgreich geändert',
+      last_password_change: new Date().toISOString() 
+    });
+  } catch (err) {
+    console.error('Error changing password:', err);
+    res.status(500).json({ error: 'Passwortänderung fehlgeschlagen' });
+  }
+});
+
+// 2FA Toggle MIT E-Mail-Bestätigung
+app.put('/api/bauherr/:id/two-factor', async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    
+    const bauherrResult = await query(
+      'SELECT name, email FROM bauherren WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (bauherrResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    }
+    
+    const bauherr = bauherrResult.rows[0];
+    
+    let backupCodes = null;
+    if (enabled) {
+      backupCodes = Array.from({ length: 8 }, () => 
+        Math.random().toString(36).substring(2, 10).toUpperCase()
+      );
+    }
+    
+    await query(
+      `UPDATE bauherren SET
+        two_factor_enabled = $2,
+        backup_codes = $3,
+        updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, enabled, backupCodes ? JSON.stringify(backupCodes) : null]
+    );
+    
+    // ✅ E-Mail senden wenn aktiviert (non-blocking)
+    if (enabled && backupCodes) {
+      send2FAActivationEmail(bauherr.email, bauherr.name, backupCodes).catch(err =>
+        console.error('E-Mail send failed (non-critical):', err)
+      );
+    }
+    
+    res.json({ 
+      success: true,
+      message: enabled ? '2FA aktiviert' : '2FA deaktiviert',
+      backupCodes: enabled ? backupCodes : null
+    });
+  } catch (err) {
+    console.error('Error toggling 2FA:', err);
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
 
 // Delete Project
 app.delete('/api/projects/:id', async (req, res) => {
