@@ -27841,7 +27841,6 @@ if (sameTradeEntries.length > 0) {
 }
 
 // SPEZIAL-REGEL: FASS Phase 1 muss warten bis DACH UND FEN 100% FERTIG sind!
-// (Andere FASS-Phasen werden oben durch same-trade-check behandelt)
 if (entry.trade_code === 'FASS' && phase.phase_number === 1) {
   const fenEntries = scheduledEntries.filter(s => s.trade_code === 'FEN');
   const allFenPhases = allEntries.filter(e => e.trade_code === 'FEN');
@@ -27849,31 +27848,54 @@ if (entry.trade_code === 'FASS' && phase.phase_number === 1) {
   const dachEntries = scheduledEntries.filter(s => s.trade_code === 'DACH');
   const allDachPhases = allEntries.filter(e => e.trade_code === 'DACH');
   
-  // FASS wartet bis ALLE FEN-Phasen eingeplant sind
-  if (fenEntries.length < allFenPhases.length) {
+  // ✅ Prüfe ob FEN vorhanden und warte bis alle Phasen fertig
+  if (allFenPhases.length > 0 && fenEntries.length < allFenPhases.length) {
     console.log(`[WAITING] FASS Phase 1 wartet auf alle FEN-Phasen (${fenEntries.length}/${allFenPhases.length})`);
     continue;
   }
   
-  // FASS wartet bis ALLE DACH-Phasen eingeplant sind
-  if (dachEntries.length < allDachPhases.length) {
+  // ✅ Prüfe ob DACH vorhanden und warte bis alle Phasen fertig
+  if (allDachPhases.length > 0 && dachEntries.length < allDachPhases.length) {
     console.log(`[WAITING] FASS Phase 1 wartet auf alle DACH-Phasen (${dachEntries.length}/${allDachPhases.length})`);
     continue;
   }
   
-  // FASS startet 1 Tag NACH der SPÄTEREN von DACH/FEN
-  const lastFenEntry = fenEntries.reduce((latest, curr) => 
-    new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
-  );
-  const lastDachEntry = dachEntries.reduce((latest, curr) => 
-    new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
-  );
+  // ✅ Berechne Start nur wenn FEN oder DACH vorhanden
+  let fassStart;
   
-  const lastEndDate = new Date(lastFenEntry.endDate) > new Date(lastDachEntry.endDate) 
-    ? lastFenEntry.endDate 
-    : lastDachEntry.endDate;
-  
-  const fassStart = addWorkdays(new Date(lastEndDate), 1);
+  if (fenEntries.length > 0 && dachEntries.length > 0) {
+    // Beide vorhanden: Warte auf den späteren
+    const lastFenEntry = fenEntries.reduce((latest, curr) => 
+      new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+    );
+    const lastDachEntry = dachEntries.reduce((latest, curr) => 
+      new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+    );
+    
+    const lastEndDate = new Date(lastFenEntry.endDate) > new Date(lastDachEntry.endDate) 
+      ? lastFenEntry.endDate 
+      : lastDachEntry.endDate;
+    
+    fassStart = addWorkdays(new Date(lastEndDate), 1);
+    
+  } else if (fenEntries.length > 0) {
+    // Nur FEN vorhanden
+    const lastFenEntry = fenEntries.reduce((latest, curr) => 
+      new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+    );
+    fassStart = addWorkdays(new Date(lastFenEntry.endDate), 1);
+    
+  } else if (dachEntries.length > 0) {
+    // Nur DACH vorhanden
+    const lastDachEntry = dachEntries.reduce((latest, curr) => 
+      new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest
+    );
+    fassStart = addWorkdays(new Date(lastDachEntry.endDate), 1);
+    
+  } else {
+    // Weder DACH noch FEN: FASS läuft sequentiell weiter
+    fassStart = new Date(currentSequenceDate);
+  }
   
   scheduledEntries.push({
     ...entry,
@@ -27882,7 +27904,7 @@ if (entry.trade_code === 'FASS' && phase.phase_number === 1) {
     isParallel: false
   });
   processedIndices.add(i);
-  console.log(`[SEQUENTIAL] FASS Phase 1 startet NACH DACH und FEN`);
+  console.log(`[SEQUENTIAL] FASS Phase 1 startet`);
   continue;
 }
   
