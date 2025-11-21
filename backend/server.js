@@ -28134,18 +28134,18 @@ for (let i = 0; i < allEntries.length; i++) {
       let latestDepEnd = currentSequenceDate;
       
       entry.dependencies.forEach(dep => {
-        const depEntries = scheduledEntries.filter(s => {
-          if (typeof dep === 'string' && dep.includes('-')) {
-            const [tradeDep, phaseDep] = dep.split('-');
-            return s.trade_code === tradeDep && s.phase.phase_name?.includes(phaseDep);
-          }
-          return s.trade_code === dep;
-        });
-        
-        if (depEntries.length > 0) {
-          const latestDep = depEntries.reduce((latest, curr) => {
-            return new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest;
-          });
+  const depEntries = scheduledEntries.filter(s => {
+    if (typeof dep === 'string' && dep.includes('-')) {
+      const [tradeDep, phaseDep] = dep.split('-');
+      return s.trade_code === tradeDep && s.phase.phase_name?.includes(phaseDep);
+    }
+    return s.trade_code === dep;
+  });
+  
+  if (depEntries.length > 0) {
+    const latestDep = depEntries.reduce((latest, curr) => {
+      return new Date(curr.endDate) > new Date(latest.endDate) ? curr : latest;
+    }, depEntries[0]);  
           
           const depEndDate = addWorkdays(new Date(latestDep.endDate), 1);
           if (depEndDate > latestDepEnd) {
