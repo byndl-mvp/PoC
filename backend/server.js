@@ -26851,9 +26851,10 @@ if (existingSchedule.rows.length > 0) {
 // ============================================================================
 
 app.post('/api/projects/:projectId/schedule/generate', async (req, res) => {
+  const { projectId } = req.params;
+  
   try {
-    const { projectId } = req.params;
-
+    
     runningGenerations.add(projectId);
     
     console.log('[SCHEDULE-GEN] Starting generation for project:', projectId);
