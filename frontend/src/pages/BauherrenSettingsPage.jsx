@@ -68,7 +68,7 @@ const ToggleSwitch = ({ label, checked, onChange, description }) => (
     </button>
   </div>
 );
-
+// eslint-disable-next-line no-unused-vars
 const SelectField = ({ label, value, onChange, options, error }) => (
   <div className="space-y-1">
     {label && <label className="block text-white/90 text-sm font-medium">{label}</label>}
@@ -212,7 +212,7 @@ export default function BauherrenSettingsPage() {
   const hideToast = () => setToast(null);
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const validatePhone = (phone) => /^[\d\s\+\-\(\)]+$/.test(phone) && phone.replace(/\D/g, '').length >= 10;
+  const validatePhone = (phone) => /^[\d\s+\-()]+$/.test(phone) && phone.replace(/\D/g, '').length >= 10;
   const validateZipCode = (zip) => /^\d{5}$/.test(zip);
 
   const validatePersonalData = () => {
