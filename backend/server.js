@@ -8446,40 +8446,6 @@ if (tradeCode === 'TRO') {
       }
     }
     
-    // 1. NEUE REGEL: Entsorgungskosten prüfen
-    if (titleLower.includes('entsorg') || 
-        titleLower.includes('abtransport') ||
-        titleLower.includes('abfuhr') ||
-        titleLower.includes('demontage und entsorgung')) {
-      
-      // Entsorgung pro Stück (Fenster, Türen, etc.)
-      if (pos.unit === 'Stk' && pos.unitPrice > 100) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = titleLower.includes('demontage') ? 120 : 40; // 120€ wenn Demontage dabei, sonst 40€
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Entsorgung/Stück korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
-        fixedCount++;
-      }
-      
-      // Entsorgung pro m³
-      if (pos.unit === 'm³' && pos.unitPrice > 200) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = 120; // Realistisch für Bauschutt
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Entsorgung/m³ korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
-        fixedCount++;
-      }
-      
-      // Entsorgung pauschal
-      if (pos.unit === 'psch' && pos.unitPrice > 2000) {
-        const oldPrice = pos.unitPrice;
-        pos.unitPrice = 800; // Maximal für Pauschal-Entsorgung
-        pos.totalPrice = Math.round(pos.quantity * pos.unitPrice * 100) / 100;
-        warnings.push(`Entsorgung/pauschal korrigiert: "${pos.title}": €${oldPrice} → €${pos.unitPrice}`);
-        fixedCount++;
-      }
-    }
-    
     // 2. VERBESSERTE REGEL: Putzarbeiten und Ausbesserungen
 if (titleLower.includes('putz') || 
     titleLower.includes('laibung') || 
