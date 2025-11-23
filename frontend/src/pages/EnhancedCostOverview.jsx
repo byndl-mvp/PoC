@@ -86,7 +86,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                 : 'bg-white/10 text-gray-400 hover:bg-white/20'
             }`}
           >
-            📊 Übersicht
+            Übersicht
           </button>
           <button
             onClick={() => setActiveView('details')}
@@ -96,7 +96,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                 : 'bg-white/10 text-gray-400 hover:bg-white/20'
             }`}
           >
-            📋 Details
+            Details
           </button>
           {(approvedCount > 0 || rejectedCount > 0 || pendingCount > 0) && (
             <button
@@ -107,7 +107,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                   : 'bg-white/10 text-gray-400 hover:bg-white/20'
               }`}
             >
-              ⚠️ Nachträge
+              Nachträge
               {pendingCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {pendingCount}
