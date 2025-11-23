@@ -86,7 +86,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                 : 'bg-white/10 text-gray-400 hover:bg-white/20'
             }`}
           >
-            Übersicht
+            📊 Übersicht
           </button>
           <button
             onClick={() => setActiveView('details')}
@@ -96,7 +96,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                 : 'bg-white/10 text-gray-400 hover:bg-white/20'
             }`}
           >
-            Details
+            📋 Details
           </button>
           {(approvedCount > 0 || rejectedCount > 0 || pendingCount > 0) && (
             <button
@@ -107,7 +107,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                   : 'bg-white/10 text-gray-400 hover:bg-white/20'
               }`}
             >
-              Nachträge
+              ⚠️ Nachträge
               {pendingCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {pendingCount}
@@ -251,14 +251,14 @@ function OverviewView({ project, summary, trades, allTradesAwarded, approvedNach
         <div className="space-y-4 md:ml-auto md:w-full lg:max-w-md">
           {topSavings.length > 0 && (
             <TopList
-              title="Top Einsparungen"
+              title="🏆 Top Einsparungen"
               items={topSavings}
               type="savings"
             />
           )}
           {topOverruns.length > 0 && (
             <TopList
-              title="Top Mehrkosten"
+              title="⚠️ Top Mehrkosten"
               items={topOverruns}
               type="overruns"
             />
@@ -742,9 +742,15 @@ function CostPieChart({ trades }) {
 
   return (
     <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">
-        Kostenverteilung nach Gewerken
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-white">
+          Kostenverteilung nach Gewerken
+        </h3>
+        <div className="text-right">
+          <p className="text-xs text-gray-400">Gesamtkosten</p>
+          <p className="text-xl font-bold text-white">{formatCurrency(total)}</p>
+        </div>
+      </div>
       
       <div className="grid md:grid-cols-[300px,1fr] lg:grid-cols-[320px,1fr] gap-6">
         {/* SVG Kuchendiagramm */}
@@ -794,17 +800,6 @@ function CostPieChart({ trades }) {
             
             {/* Glanz-Overlay für 3D-Effekt */}
             <circle cx="120" cy="120" r="100" fill="url(#gloss)" pointerEvents="none"/>
-            
-            {/* Zentrums-Kreis */}
-            <circle cx="120" cy="120" r="40" fill="rgba(30, 41, 59, 0.95)" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
-            
-            {/* Gesamt-Text im Zentrum */}
-            <text x="120" y="110" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">
-              Gesamt
-            </text>
-            <text x="120" y="130" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">
-              {formatCurrency(total)}
-            </text>
           </svg>
         </div>
 
@@ -816,7 +811,7 @@ function CostPieChart({ trades }) {
               onClick={() => setSelectedTrade(selectedTrade?.tradeId === item.tradeId ? null : item)}
               onMouseEnter={() => setHoveredIndex(idx)}
               onMouseLeave={() => setHoveredIndex(null)}
-              className={`flex items-center justify-between p-3 rounded cursor-pointer transition-all ${
+              className={`p-3 rounded cursor-pointer transition-all ${
                 selectedTrade?.tradeId === item.tradeId
                   ? 'bg-white/20 scale-105'
                   : hoveredIndex === idx
@@ -824,16 +819,18 @@ function CostPieChart({ trades }) {
                   : 'hover:bg-white/10'
               }`}
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex items-start gap-3">
                 <div
-                  className="w-4 h-4 rounded flex-shrink-0 shadow-lg"
+                  className="w-4 h-4 rounded flex-shrink-0 shadow-lg mt-0.5"
                   style={{ backgroundColor: colors[idx % colors.length] }}
                 />
-                <span className="text-sm text-gray-300 truncate">{item.name}</span>
-              </div>
-              <div className="text-right ml-4 flex-shrink-0">
-                <p className="text-sm text-white font-semibold whitespace-nowrap">{item.percentage}%</p>
-                <p className="text-xs text-gray-400 whitespace-nowrap">{formatCurrency(item.value)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-300 font-medium">{item.name}</p>
+                  <div className="flex items-center gap-4 mt-1">
+                    <span className="text-sm text-white font-semibold">{item.percentage}%</span>
+                    <span className="text-xs text-gray-400">{formatCurrency(item.value)}</span>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -1052,7 +1049,7 @@ function ProjectionIndicator({ project, summary, completedTrades }) {
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            Dies ist eine Schätzung basierend auf bisherigen Daten. Tatsächliche Kosten können abweichen.
+            ⚠️ Dies ist eine Schätzung basierend auf bisherigen Daten. Tatsächliche Kosten können abweichen.
           </p>
         </div>
       </div>
