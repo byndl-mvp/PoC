@@ -15887,7 +15887,6 @@ app.post('/api/projects/:projectId/trades/:tradeId/apply-optimizations', async (
 // 1. AUTH ROUTES - Registrierung & Login für Bauherren/Handwerker
 // ----------------------------------------------------------------------------
 
-// Korrigierte Bauherr Registrierung Backend-Route
 app.post('/api/bauherr/register', async (req, res) => {
   try {
     const { 
@@ -15904,133 +15903,195 @@ app.post('/api/bauherr/register', async (req, res) => {
     
     // Validierung
     if (!email || !password || !name || !phone) {
-      return res.status(400).json({ 
-        error: 'Pflichtfelder fehlen' 
-      });
+      return res.status(400).json({ error: 'Pflichtfelder fehlen' });
     }
     
-    // Check if user exists
-    const userCheck = await query(
-      'SELECT * FROM bauherren WHERE email = $1', 
-      [email.toLowerCase()]
-    );
-    
-    if (userCheck.rows.length > 0) {
-      return res.status(400).json({ 
-        error: 'E-Mail bereits registriert' 
-      });
+    // E-Mail-Format prüfen
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Ungültige E-Mail-Adresse' });
     }
     
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Passwort-Länge prüfen
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen haben' });
+    }
     
-    // Generate email verification token
-    const crypto = require('crypto');
-    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
-    const emailVerificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 Stunden
+    // ===== TRANSACTION START =====
+    await query('BEGIN');
     
-    // Insert bauherr mit Token
-    const result = await query(
-      `INSERT INTO bauherren (
-        email, 
-        password, 
-        name, 
-        phone, 
-        street, 
-        house_number, 
-        zip, 
-        city,
-        email_verified,
-        email_verification_token,
-        email_verification_expires,
-        created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, NOW())
-      RETURNING id, email, name`,
-      [
-        email.toLowerCase(), 
-        hashedPassword, 
-        name, 
-        phone, 
-        street || null, 
-        houseNumber || null, 
-        zipCode || null, 
-        city || null,
-        emailVerificationToken,
-        emailVerificationExpires
-      ]
-    );
-    
-    const bauherrId = result.rows[0].id;
-    
-    // Wenn projectId vorhanden, verknüpfe Projekt mit Bauherr
-    if (projectId) {
-      await query(
-        'UPDATE projects SET bauherr_id = $1 WHERE id = $2',
-        [bauherrId, projectId]
+    try {
+      // Check if user exists
+      const userCheck = await query(
+        'SELECT id FROM bauherren WHERE email = $1', 
+        [email.toLowerCase()]
       );
+      
+      if (userCheck.rows.length > 0) {
+        await query('ROLLBACK');
+        return res.status(400).json({ error: 'E-Mail bereits registriert' });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcryptjs.hash(password, 10);
+      
+      // Generate email verification token
+      const crypto = require('crypto');
+      const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+      const emailVerificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+      
+      // Insert bauherr
+      const result = await query(
+        `INSERT INTO bauherren (
+          email, 
+          password_hash,
+          name, 
+          phone, 
+          street, 
+          house_number, 
+          zip, 
+          city,
+          email_verified,
+          email_verification_token,
+          email_verification_expires,
+          created_at,
+          updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, NOW(), NOW())
+        RETURNING id, email, name`,
+        [
+          email.toLowerCase(), 
+          hashedPassword,  // ✅ password_hash, nicht password!
+          name, 
+          phone, 
+          street || null, 
+          houseNumber || null, 
+          zipCode || null, 
+          city || null,
+          emailVerificationToken,
+          emailVerificationExpires
+        ]
+      );
+      
+      const bauherrId = result.rows[0].id;
+      
+      // Projekt verknüpfen falls vorhanden
+      let projectDetails = null;
+      if (projectId) {
+        const projectResult = await query(
+          'SELECT category, sub_category, description FROM projects WHERE id = $1',
+          [projectId]
+        );
+        
+        if (projectResult.rows.length > 0) {
+          await query(
+            'UPDATE projects SET bauherr_id = $1, updated_at = NOW() WHERE id = $2',
+            [bauherrId, projectId]
+          );
+          
+          const proj = projectResult.rows[0];
+          projectDetails = {
+            category: proj.category,
+            subCategory: proj.sub_category,
+            description: proj.description
+          };
+        }
+      }
+      
+      // ===== COMMIT - USER IST JETZT ERSTELLT =====
+      await query('COMMIT');
+      
+      // ===== AB HIER: NON-CRITICAL OPERATIONS =====
+      
+      // E-Mail senden (non-blocking)
+      if (transporter) {
+        const verifyUrl = `${process.env.FRONTEND_URL || 'https://byndl.de'}/verify-email?token=${emailVerificationToken}`;
+        
+        transporter.sendMail({
+          from: process.env.SMTP_FROM || '"byndl" <noreply@byndl.de>',
+          to: email,
+          subject: 'Willkommen bei byndl - E-Mail bestätigen',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1>🎉 Willkommen bei byndl!</h1>
+              </div>
+              
+              <div style="padding: 30px; background: #f7f7f7;">
+                <p>Hallo ${name},</p>
+                
+                <p>vielen Dank für Ihre Registrierung bei <strong>byndl</strong>!</p>
+                
+                ${projectDetails ? `
+                  <div style="background: #e0f2f1; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>📋 Ihr Projekt:</strong></p>
+                    <p style="margin: 5px 0 0 0;">${projectDetails.category}${projectDetails.subCategory ? ' - ' + projectDetails.subCategory : ''}</p>
+                    ${projectDetails.description ? `<p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">${projectDetails.description.substring(0, 100)}...</p>` : ''}
+                  </div>
+                ` : ''}
+                
+                <p>Bitte bestätigen Sie Ihre E-Mail-Adresse, um fortzufahren:</p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${verifyUrl}" 
+                     style="display: inline-block; padding: 15px 40px; background: #14b8a6; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    E-Mail-Adresse bestätigen
+                  </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666;">
+                  Oder kopieren Sie diesen Link:<br>
+                  <a href="${verifyUrl}" style="color: #14b8a6; word-break: break-all;">${verifyUrl}</a>
+                </p>
+                
+                <p style="font-size: 14px; color: #666;">
+                  <strong>Hinweis:</strong> Dieser Link ist 48 Stunden gültig.
+                </p>
+              </div>
+            </div>
+          `
+        }).then(() => {
+          console.log(`✅ Registrierungs-E-Mail gesendet an: ${email}`);
+        }).catch(err => {
+          console.error('⚠️ E-Mail-Versand fehlgeschlagen (non-critical):', err);
+        });
+      }
+      
+      // JWT Token erstellen
+      const token = jwt.sign(
+        { 
+          id: bauherrId, 
+          type: 'bauherr',
+          email: email,
+          name: name,
+          emailVerified: false
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '7d' }
+      );
+      
+      res.status(201).json({
+        success: true,
+        token,
+        user: {
+          id: bauherrId,
+          email: email,
+          name: name,
+          emailVerified: false
+        },
+        message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.',
+        requiresVerification: true
+      });
+      
+    } catch (innerError) {
+      await query('ROLLBACK');
+      throw innerError;
     }
-
-    // Hole Projektdetails falls projectId vorhanden
-let projectDetails = null;
-let projectResult = null; // Außerhalb definieren!
-    
-  if (projectId) {
-  projectResult = await query(
-    'SELECT category, sub_category, description FROM projects WHERE id = $1',
-    [projectId]
-  );
-  
-  if (projectResult.rows.length > 0) {
-    const proj = projectResult.rows[0];
-    projectDetails = `${proj.category}${proj.sub_category ? ' - ' + proj.sub_category : ''}: ${proj.description?.substring(0, 100)}`;
-  }
-}
-    
-    // E-Mail senden mit Token
-    const emailService = require('./emailService');
-    const emailResult = await emailService.sendBauherrRegistrationEmail({
-    id: bauherrId,
-    name: name,
-    email: email,
-    verificationToken: emailVerificationToken,
-    projectDetails: projectResult.rows.length > 0 ? {
-    category: projectResult.rows[0].category,
-    subCategory: projectResult.rows[0].sub_category,
-    description: projectResult.rows[0].description
-  } : null
-});
-    
-    // JWT Token für Session (aber E-Mail noch nicht verifiziert)
-    const token = jwt.sign(
-      { 
-        id: bauherrId, 
-        type: 'bauherr',
-        email: email,
-        name: name,
-        emailVerified: false
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
-    
-    res.status(201).json({
-      success: true,
-      token,
-      user: {
-        id: bauherrId,
-        email: email,
-        name: name,
-        emailVerified: false
-      },
-      message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.',
-      emailSent: emailResult.success,
-      requiresVerification: true
-    });
     
   } catch (error) {
     console.error('Bauherr registration error:', error);
     res.status(500).json({ 
-      error: 'Registrierung fehlgeschlagen' 
+      error: 'Registrierung fehlgeschlagen',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
