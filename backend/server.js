@@ -22716,10 +22716,11 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         t.name as trade_name,
         t.code as trade_code,
         
-        -- KI-Schätzung
-        lvs.total_net as ki_estimate_netto,
-        lvs.total_net * 1.19 as ki_estimate_brutto,
+        -- KI-Schätzung aus JSON content (wie im alten Code)
+        CAST(lvs.content->>'totalSum' AS DECIMAL) as ki_estimate_netto,
+        CAST(lvs.content->>'totalSum' AS DECIMAL) * 1.05 * 1.19 as ki_estimate_brutto,
         lvs.status as lv_status,
+        lvs.id as lv_id,
         
         -- Auftragsdaten
         o.id as order_id,
@@ -22767,12 +22768,14 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
        WHERE pt.project_id = $1
        GROUP BY 
          t.id, t.name, t.code, 
-         lvs.total_net, lvs.status, lvs.id,
+         lvs.content, lvs.status, lvs.id,
          o.id, o.amount, o.status, o.created_at, o.bundle_discount,
          h.company_name
        ORDER BY t.name`,
       [projectId]
     );
+    
+    console.log('🔍 DEBUG - Trade Analysis Rows:', JSON.stringify(tradeAnalysis.rows, null, 2));
     
     // 3. Berechne Gesamt-Statistiken
     const trades = tradeAnalysis.rows;
