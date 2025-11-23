@@ -22683,6 +22683,10 @@ function addSection(doc, title) {
   doc.fontSize(10).font('Helvetica');
 }
 
+// ============================================================================
+// KORRIGIERTE BACKEND-ROUTE: Detaillierte Kostenanalyse pro Gewerk
+// ============================================================================
+
 app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -22707,6 +22711,10 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
     const project = projectData.rows[0];
     
     // 2. Hole alle Gewerke mit KI-Schätzung, Auftragsstatus und Nachträgen NACH STATUS
+    // Die nachtraege-Tabelle hat bereits das status-Feld mit Werten:
+    // - 'submitted' = offen zur Prüfung
+    // - 'approved' = beauftragt
+    // - 'rejected' = abgelehnt
     const tradeAnalysis = await query(
       `SELECT 
         t.id as trade_id,
@@ -22732,7 +22740,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         h.company_name as contractor_name,
         h.id as contractor_id,
         
-        -- NACHTRÄGE NACH STATUS GRUPPIERT
+        -- NACHTRÄGE NACH STATUS GRUPPIERT (verwendet existierendes status-Feld!)
         -- Beauftragte Nachträge (approved)
         COALESCE(SUM(CASE WHEN n.status = 'approved' THEN n.amount ELSE 0 END), 0) as approved_nachtraege_netto,
         COALESCE(SUM(CASE WHEN n.status = 'approved' THEN n.amount ELSE 0 END), 0) * 1.19 as approved_nachtraege_brutto,
@@ -22767,7 +22775,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
        LEFT JOIN handwerker h ON h.id = o.handwerker_id
        LEFT JOIN nachtraege n ON n.order_id = o.id
        WHERE pt.project_id = $1
-         AND t.code NOT IN ('INT', 'APR')  -- Filtere INT und Allgemeine Projektaufnahme
+         AND t.code NOT IN ('INT', 'APR')
        GROUP BY 
          t.id, t.name, t.code, 
          lvs.content, lvs.status, lvs.id,
@@ -22776,8 +22784,6 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
        ORDER BY t.name`,
       [projectId]
     );
-    
-    console.log('🔍 DEBUG - Trade Analysis Rows:', JSON.stringify(tradeAnalysis.rows, null, 2));
     
     // 3. Berechne Gesamt-Statistiken
     const trades = tradeAnalysis.rows;
@@ -22801,10 +22807,6 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
     
     // Tatsächliche Gesamtkosten = Bestellungen + NUR beauftragte Nachträge
     const totalCurrent = totalOrdered + totalApprovedNachtraege;
-    
-    // Berechnungen pro Status
-    const completedTradesData = trades.filter(t => t.gewerk_status === 'vergeben');
-    const openTradesData = trades.filter(t => t.gewerk_status !== 'vergeben');
     
     const response = {
       project: {
@@ -22907,30 +22909,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
           // LV-Daten für Nachtragsprüfung
           lvData: trade.lv_data
         };
-      }),
-      
-      // Separate Listen für vergeben/offen
-      completedTrades: completedTradesData.map(t => {
-        const orderAmount = parseFloat(t.order_amount_brutto) || 0;
-        const approvedNachtraege = parseFloat(t.approved_nachtraege_brutto) || 0;
-        
-        return {
-          tradeId: t.trade_id,
-          tradeName: t.trade_name,
-          kiEstimate: parseFloat(t.ki_estimate_brutto) || 0,
-          totalCost: orderAmount + approvedNachtraege,
-          contractorName: t.contractor_name,
-          approvedNachtraege,
-          approvedCount: parseInt(t.approved_count) || 0
-        };
-      }),
-      
-      openTrades: openTradesData.map(t => ({
-        tradeId: t.trade_id,
-        tradeName: t.trade_name,
-        status: t.gewerk_status,
-        kiEstimate: parseFloat(t.ki_estimate_brutto) || 0
-      }))
+      })
     };
     
     res.json(response);
@@ -22940,28 +22919,6 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
     res.status(500).json({ error: 'Fehler bei der Kostenanalyse: ' + error.message });
   }
 });
-
-// ============================================================================
-// HELPER: Top Einsparungen und Mehrkosten berechnen
-// ============================================================================
-// Optional: Diese Funktion kann verwendet werden, um die Top-Listen zu generieren
-function calculateTopSavingsAndOverruns(trades) {
-  const completedTrades = trades.filter(t => t.status === 'vergeben' && t.vsEstimate !== undefined);
-  
-  // Top Einsparungen (vsEstimate < 0, savings > 0)
-  const topSavings = completedTrades
-    .filter(t => t.savings > 0)
-    .sort((a, b) => b.savings - a.savings)
-    .slice(0, 3);
-  
-  // Top Mehrkosten (vsEstimate > 0)
-  const topOverruns = completedTrades
-    .filter(t => t.vsEstimate > 0)
-    .sort((a, b) => b.vsEstimate - a.vsEstimate)
-    .slice(0, 3);
-  
-  return { topSavings, topOverruns };
-}
 
 // Leistung abnehmen
 app.post('/api/orders/:orderId/accept-completion', async (req, res) => {
