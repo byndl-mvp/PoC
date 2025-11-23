@@ -222,7 +222,7 @@ function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges
               </div>
             </div>
             <button
-              onClick={() => {}}
+              onClick={() => setActiveView('nachtraege')}
               className="px-4 py-2 bg-orange-500/20 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-colors"
             >
               Details ansehen
@@ -438,72 +438,208 @@ function KPICard({ icon, label, value, subtitle, color }) {
 }
 
 // ============================================================================
-// KOMPONENTE: Kuchendiagramm (Simple CSS Version)
+// KOMPONENTE: Echtes Kuchendiagramm (SVG, rund, klickbar)
 // ============================================================================
 function CostPieChart({ trades }) {
+  const [selectedTrade, setSelectedTrade] = useState(null);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  
   if (trades.length === 0) return null;
 
   const total = trades.reduce((sum, t) => sum + t.totalCost, 0);
   
-  // Sortiere nach Kosten und nehme Top 5 + "Sonstige"
-  const sortedTrades = [...trades].sort((a, b) => b.totalCost - a.totalCost);
-  const topTrades = sortedTrades.slice(0, 5);
-  const otherTrades = sortedTrades.slice(5);
-  const otherTotal = otherTrades.reduce((sum, t) => sum + t.totalCost, 0);
-  
-  const chartData = topTrades.map(t => ({
-    name: t.tradeName,
-    value: t.totalCost,
-    percentage: (t.totalCost / total * 100).toFixed(1)
-  }));
-  
-  if (otherTotal > 0) {
-    chartData.push({
-      name: 'Sonstige',
-      value: otherTotal,
-      percentage: (otherTotal / total * 100).toFixed(1)
-    });
-  }
+  // Zeige ALLE Gewerke einzeln, sortiert nach Kosten
+  const chartData = [...trades]
+    .sort((a, b) => b.totalCost - a.totalCost)
+    .map(t => ({
+      tradeId: t.tradeId,
+      name: t.tradeName,
+      value: t.totalCost,
+      percentage: (t.totalCost / total * 100).toFixed(1),
+      kiEstimate: t.kiEstimate,
+      savings: t.savings || 0,
+      vsEstimate: t.vsEstimate || 0
+    }));
 
-  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'];
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#6b7280'];
+
+  // SVG Pie Chart Berechnung
+  const createPieSlice = (percentage, startAngle, color, index) => {
+    const angle = (percentage / 100) * 360;
+    const endAngle = startAngle + angle;
+    
+    // Konvertiere zu Radians
+    const startRad = (startAngle - 90) * Math.PI / 180;
+    const endRad = (endAngle - 90) * Math.PI / 180;
+    
+    const radius = hoveredIndex === index ? 102 : 100; // Hover-Effekt
+    const cx = 120;
+    const cy = 120;
+    
+    const x1 = cx + radius * Math.cos(startRad);
+    const y1 = cy + radius * Math.sin(startRad);
+    const x2 = cx + radius * Math.cos(endRad);
+    const y2 = cy + radius * Math.sin(endRad);
+    
+    const largeArc = angle > 180 ? 1 : 0;
+    
+    const pathData = [
+      `M ${cx} ${cy}`,
+      `L ${x1} ${y1}`,
+      `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
+      'Z'
+    ].join(' ');
+    
+    return { pathData, endAngle, midAngle: startAngle + angle / 2 };
+  };
+
+  let currentAngle = 0;
+  const slices = chartData.map((item, index) => {
+    const slice = createPieSlice(parseFloat(item.percentage), currentAngle, colors[index % colors.length], index);
+    currentAngle = slice.endAngle;
+    return { ...slice, ...item, color: colors[index % colors.length], index };
+  });
 
   return (
     <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Kostenverteilung nach Gewerken</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Kostenverteilung nach Gewerken
+      </h3>
       
-      {/* Legende */}
-      <div className="space-y-2">
-        {chartData.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between">
-            <div className="flex items-center gap-2 flex-1">
-              <div
-                className="w-4 h-4 rounded"
-                style={{ backgroundColor: colors[idx % colors.length] }}
-              />
-              <span className="text-sm text-gray-300 truncate">{item.name}</span>
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* SVG Kuchendiagramm */}
+        <div className="flex items-center justify-center">
+          <svg width="240" height="240" viewBox="0 0 240 240" className="drop-shadow-lg">
+            {/* 3D-Effekt: Schatten */}
+            <defs>
+              <filter id="shadow">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                <feOffset dx="2" dy="4" result="offsetblur"/>
+                <feComponentTransfer>
+                  <feFuncA type="linear" slope="0.3"/>
+                </feComponentTransfer>
+                <feMerge>
+                  <feMergeNode/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+              
+              {/* 3D-Effekt: Glanz */}
+              <radialGradient id="gloss">
+                <stop offset="0%" stopColor="white" stopOpacity="0.3"/>
+                <stop offset="100%" stopColor="white" stopOpacity="0"/>
+              </radialGradient>
+            </defs>
+            
+            {/* Kuchenstücke */}
+            <g filter="url(#shadow)">
+              {slices.map((slice, idx) => (
+                <path
+                  key={idx}
+                  d={slice.pathData}
+                  fill={slice.color}
+                  stroke="rgba(255,255,255,0.2)"
+                  strokeWidth="2"
+                  className="cursor-pointer transition-all duration-200"
+                  style={{
+                    filter: selectedTrade?.tradeId === slice.tradeId ? 'brightness(1.3)' : 'brightness(1)',
+                    transformOrigin: '120px 120px'
+                  }}
+                  onMouseEnter={() => setHoveredIndex(idx)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                  onClick={() => setSelectedTrade(selectedTrade?.tradeId === slice.tradeId ? null : slice)}
+                />
+              ))}
+            </g>
+            
+            {/* Glanz-Overlay für 3D-Effekt */}
+            <circle cx="120" cy="120" r="100" fill="url(#gloss)" pointerEvents="none"/>
+            
+            {/* Zentrums-Kreis */}
+            <circle cx="120" cy="120" r="40" fill="rgba(30, 41, 59, 0.95)" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+            
+            {/* Gesamt-Text im Zentrum */}
+            <text x="120" y="110" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">
+              Gesamt
+            </text>
+            <text x="120" y="130" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">
+              {formatCurrency(total)}
+            </text>
+          </svg>
+        </div>
+
+        {/* Legende */}
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+          {chartData.map((item, idx) => (
+            <div
+              key={idx}
+              onClick={() => setSelectedTrade(selectedTrade?.tradeId === item.tradeId ? null : item)}
+              onMouseEnter={() => setHoveredIndex(idx)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all ${
+                selectedTrade?.tradeId === item.tradeId
+                  ? 'bg-white/20 scale-105'
+                  : hoveredIndex === idx
+                  ? 'bg-white/15'
+                  : 'hover:bg-white/10'
+              }`}
+            >
+              <div className="flex items-center gap-2 flex-1">
+                <div
+                  className="w-4 h-4 rounded flex-shrink-0 shadow-lg"
+                  style={{ backgroundColor: colors[idx % colors.length] }}
+                />
+                <span className="text-sm text-gray-300 truncate">{item.name}</span>
+              </div>
+              <div className="text-right ml-4">
+                <p className="text-sm text-white font-semibold">{item.percentage}%</p>
+                <p className="text-xs text-gray-400">{formatCurrency(item.value)}</p>
+              </div>
             </div>
-            <div className="text-right ml-4">
-              <p className="text-sm text-white font-semibold">{item.percentage}%</p>
-              <p className="text-xs text-gray-400">{formatCurrency(item.value)}</p>
+          ))}
+        </div>
+      </div>
+
+      {/* Detail-Panel wenn Gewerk ausgewählt */}
+      {selectedTrade && (
+        <div className="mt-6 p-4 bg-gradient-to-br from-white/10 to-white/5 rounded-lg border border-white/20">
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-6 h-6 rounded shadow-lg"
+                style={{ backgroundColor: selectedTrade.color }}
+              />
+              <h4 className="text-lg font-semibold text-white">{selectedTrade.name}</h4>
+            </div>
+            <button
+              onClick={() => setSelectedTrade(null)}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/5 rounded p-3">
+              <p className="text-xs text-gray-400">Ist-Kosten</p>
+              <p className="text-xl font-bold text-white">{formatCurrency(selectedTrade.value)}</p>
+              <p className="text-xs text-gray-400 mt-1">{selectedTrade.percentage}% der Gesamtkosten</p>
+            </div>
+            <div className="bg-white/5 rounded p-3">
+              <p className="text-xs text-gray-400">KI-Schätzung</p>
+              <p className="text-xl font-bold text-blue-400">{formatCurrency(selectedTrade.kiEstimate)}</p>
+              <p className={`text-xs mt-1 font-semibold ${
+                selectedTrade.savings > 0 ? 'text-green-400' : 
+                selectedTrade.vsEstimate > 0 ? 'text-red-400' : 'text-gray-400'
+              }`}>
+                {selectedTrade.savings > 0 && `✓ ${formatCurrency(selectedTrade.savings)} gespart`}
+                {selectedTrade.vsEstimate > 0 && `⚠ ${formatCurrency(selectedTrade.vsEstimate)} Mehrkosten`}
+                {selectedTrade.savings === 0 && selectedTrade.vsEstimate === 0 && 'Im Budget'}
+              </p>
             </div>
           </div>
-        ))}
-      </div>
-      
-      {/* Simple Balken-Visualisierung */}
-      <div className="mt-4 flex h-8 rounded-lg overflow-hidden">
-        {chartData.map((item, idx) => (
-          <div
-            key={idx}
-            style={{
-              width: `${item.percentage}%`,
-              backgroundColor: colors[idx % colors.length]
-            }}
-            className="transition-all hover:opacity-80"
-            title={`${item.name}: ${item.percentage}%`}
-          />
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -622,7 +758,9 @@ function ProjectionIndicator({ summary, completedTrades }) {
   
   // Projiziere auf alle Gewerke
   const projectedTotal = summary.totalKiEstimate * (1 + avgDeviation / 100);
-  const projectedVsBudget = ((projectedTotal - summary.initialBudget) / summary.initialBudget * 100);
+  const projectedVsBudget = summary.initialBudget > 0 
+    ? ((projectedTotal - summary.initialBudget) / summary.initialBudget * 100)
+    : 0;
   
   const isGood = projectedVsBudget < 0;
 
