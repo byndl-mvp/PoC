@@ -62,16 +62,14 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
   const { project, summary, trades } = costData;
   const allTradesAwarded = summary.allTradesAwarded;
   
-  // Berechne Nachträge-Summen nach Status
-  const approvedNachtraege = trades.reduce((sum, t) => sum + (t.approvedNachtraege || 0), 0);
-  const rejectedNachtraege = trades.reduce((sum, t) => sum + (t.rejectedNachtraege || 0), 0);
-  const pendingNachtraege = trades.reduce((sum, t) => sum + (t.pendingNachtraege || 0), 0);
-  const totalNachtraege = approvedNachtraege;
+  // Hole Nachträge-Summen direkt aus summary (Backend berechnet diese bereits!)
+  const approvedNachtraege = summary.totalApprovedNachtraege || 0;
+  const rejectedNachtraege = summary.totalRejectedNachtraege || 0;
+  const pendingNachtraege = summary.totalPendingNachtraege || 0;
   
-  const approvedCount = trades.reduce((sum, t) => sum + (t.approvedCount || 0), 0);
-  const rejectedCount = trades.reduce((sum, t) => sum + (t.rejectedCount || 0), 0);
-  const pendingCount = trades.reduce((sum, t) => sum + (t.pendingCount || 0), 0);
-  const nachtraegeCount = approvedCount;
+  const approvedCount = summary.totalApprovedCount || 0;
+  const rejectedCount = summary.totalRejectedCount || 0;
+  const pendingCount = summary.totalPendingCount || 0;
 
   return (
     <div className="space-y-6">
@@ -1169,6 +1167,36 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
                       {hasSavings ? 'unter' : 'über'} KI-Schätzung
                     </p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Nachträge-Details (wenn vorhanden) */}
+            {(trade.approvedCount > 0 || trade.rejectedCount > 0 || trade.pendingCount > 0) && (
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                <h4 className="text-sm font-semibold text-white mb-3">Nachträge im Detail</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {trade.approvedCount > 0 && (
+                    <div className="bg-green-500/10 rounded p-3 border border-green-500/30">
+                      <p className="text-xs text-green-300 mb-1">Beauftragt</p>
+                      <p className="text-lg font-bold text-green-400">{trade.approvedCount}</p>
+                      <p className="text-sm text-green-300 mt-1">{formatCurrency(trade.approvedNachtraege)}</p>
+                    </div>
+                  )}
+                  {trade.rejectedCount > 0 && (
+                    <div className="bg-red-500/10 rounded p-3 border border-red-500/30">
+                      <p className="text-xs text-red-300 mb-1">Abgelehnt</p>
+                      <p className="text-lg font-bold text-red-400">{trade.rejectedCount}</p>
+                      <p className="text-sm text-red-300 mt-1">{formatCurrency(trade.rejectedNachtraege)}</p>
+                    </div>
+                  )}
+                  {trade.pendingCount > 0 && (
+                    <div className="bg-orange-500/10 rounded p-3 border border-orange-500/30">
+                      <p className="text-xs text-orange-300 mb-1">Offen zur Prüfung</p>
+                      <p className="text-lg font-bold text-orange-400">{trade.pendingCount}</p>
+                      <p className="text-sm text-orange-300 mt-1">{formatCurrency(trade.pendingNachtraege)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
