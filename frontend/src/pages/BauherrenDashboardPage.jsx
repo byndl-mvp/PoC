@@ -147,6 +147,7 @@ export default function BauherrenDashboardPage() {
   const [tenders, setTenders] = useState([]); // eslint-disable-line no-unused-vars
   const [offers, setOffers] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [supplements, setSupplements] = useState([]); // eslint-disable-line no-unused-vars
   const [showContractModal, setShowContractModal] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [pendingLvProjectId, setPendingLvProjectId] = useState(null);
