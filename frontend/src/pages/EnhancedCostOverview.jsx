@@ -251,14 +251,14 @@ function OverviewView({ project, summary, trades, allTradesAwarded, approvedNach
         <div className="space-y-4 md:ml-auto md:w-full lg:max-w-md">
           {topSavings.length > 0 && (
             <TopList
-              title="🏆 Top Einsparungen"
+              title="Top Einsparungen"
               items={topSavings}
               type="savings"
             />
           )}
           {topOverruns.length > 0 && (
             <TopList
-              title="⚠️ Top Mehrkosten"
+              title="Top Mehrkosten"
               items={topOverruns}
               type="overruns"
             />
@@ -1052,7 +1052,7 @@ function ProjectionIndicator({ project, summary, completedTrades }) {
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            ⚠️ Dies ist eine Schätzung basierend auf bisherigen Daten. Tatsächliche Kosten können abweichen.
+            Dies ist eine Schätzung basierend auf bisherigen Daten. Tatsächliche Kosten können abweichen.
           </p>
         </div>
       </div>
@@ -1259,8 +1259,6 @@ function OpenTradeCard({ trade }) {
 // KOMPONENTE: Nachtrags-Karte
 // ============================================================================
 function NachtrageCard({ trade }) {
-  const totalNachtraege = (trade.approvedNachtraege || 0) + (trade.rejectedNachtraege || 0) + (trade.pendingNachtraege || 0);
-  
   return (
     <div className="bg-white/5 rounded-lg p-4 border border-white/10">
       <div className="flex justify-between items-start mb-4">
