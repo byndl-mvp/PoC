@@ -1875,7 +1875,7 @@ const TradeOptimizationDisplay = ({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              tradeIds: 'all',
+              tradeIds: lvs.map(lv => lv.trade_id),
               timeframe: project?.timeframe || 'Nach Absprache'
             })
           });
