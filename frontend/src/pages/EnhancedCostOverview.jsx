@@ -245,8 +245,8 @@ function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges
         {/* Linke Spalte: Kuchendiagramm */}
         <CostPieChart trades={trades.filter(t => t.status === 'vergeben')} />
 
-        {/* Rechte Spalte: Top Einsparungen/Mehrkosten */}
-        <div className="space-y-4">
+        {/* Rechte Spalte: Top Einsparungen/Mehrkosten - SCHMALER */}
+        <div className="space-y-4 max-w-md">
           {topSavings.length > 0 && (
             <TopList
               title="🏆 Top Einsparungen"
@@ -351,6 +351,7 @@ function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges
       {/* Prognose-Indikator */}
       {!allTradesAwarded && summary.completedTrades > 0 && (
         <ProjectionIndicator
+          project={project}
           summary={summary}
           completedTrades={completedTrades}
         />
@@ -520,15 +521,16 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
             <div
               className="absolute h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg transition-all duration-700"
               style={{ width: `${budgetWidth}%` }}
-            >
-              <div className="h-full flex items-center justify-end pr-3">
-                <span className="text-white text-sm font-semibold">Baseline</span>
-              </div>
-            </div>
-            {/* Budget-Marker für andere Balken */}
+            />
+            {/* Budget-Marker für andere Balken - GESTRICHELT */}
             <div
-              className="absolute top-0 w-1 h-full bg-blue-400 opacity-50"
-              style={{ left: `${budgetWidth}%` }}
+              className="absolute top-0 h-full pointer-events-none"
+              style={{ 
+                left: `${budgetWidth}%`,
+                width: '2px',
+                backgroundImage: 'repeating-linear-gradient(0deg, #60a5fa, #60a5fa 6px, transparent 6px, transparent 12px)',
+                opacity: 0.7
+              }}
             />
           </div>
         </div>
@@ -562,15 +564,20 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
                 </span>
               </div>
             </div>
-            {/* Budget-Linie */}
+            {/* Budget-Linie - GESTRICHELT */}
             <div
-              className="absolute top-0 w-1 h-full bg-blue-400 z-10"
-              style={{ left: `${budgetWidth}%` }}
+              className="absolute top-0 h-full pointer-events-none z-10"
+              style={{ 
+                left: `${budgetWidth}%`,
+                width: '2px',
+                backgroundImage: 'repeating-linear-gradient(0deg, #60a5fa, #60a5fa 6px, transparent 6px, transparent 12px)',
+                opacity: 0.8
+              }}
             />
           </div>
         </div>
 
-        {/* Ist-Kosten (bereits vergeben) */}
+        {/* Ist-Kosten (bereits vergeben) */
         <div>
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-semibold text-green-300">
@@ -605,10 +612,15 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
                 </span>
               </div>
             </div>
-            {/* Budget-Linie */}
+            {/* Budget-Linie - GESTRICHELT */}
             <div
-              className="absolute top-0 w-1 h-full bg-blue-400 z-10"
-              style={{ left: `${budgetWidth}%` }}
+              className="absolute top-0 h-full pointer-events-none z-10"
+              style={{ 
+                left: `${budgetWidth}%`,
+                width: '2px',
+                backgroundImage: 'repeating-linear-gradient(0deg, #60a5fa, #60a5fa 6px, transparent 6px, transparent 12px)',
+                opacity: 0.8
+              }}
             />
           </div>
         </div>
@@ -982,7 +994,7 @@ function WaterfallStep({ step, maxValue, isFirst }) {
 // ============================================================================
 // KOMPONENTE: Prognose-Indikator
 // ============================================================================
-function ProjectionIndicator({ summary, completedTrades }) {
+function ProjectionIndicator({ project, summary, completedTrades }) {
   if (completedTrades.length === 0) return null;
   
   // Berechne durchschnittliche Abweichung der bereits vergebenen Gewerke
@@ -990,13 +1002,17 @@ function ProjectionIndicator({ summary, completedTrades }) {
   
   // Projiziere auf alle Gewerke
   const projectedTotal = summary.totalKiEstimate * (1 + avgDeviation / 100);
-  const projectedVsBudget = summary.initialBudget > 0 
-    ? ((projectedTotal - summary.initialBudget) / summary.initialBudget * 100)
+  
+  // Budget aus project holen!
+  const budget = project.initialBudget || 0;
+  
+  const projectedVsBudget = budget > 0 
+    ? ((projectedTotal - budget) / budget * 100)
     : 0;
   
   // WICHTIG: Zeige auch aktuelle Ist-Kosten vs Budget
-  const currentVsBudget = summary.initialBudget > 0
-    ? ((summary.totalCurrent - summary.initialBudget) / summary.initialBudget * 100)
+  const currentVsBudget = budget > 0
+    ? ((summary.totalCurrent - budget) / budget * 100)
     : 0;
   
   const isGood = projectedVsBudget < 0;
