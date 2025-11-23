@@ -19450,7 +19450,7 @@ app.get('/api/bauherr/:id/settings', async (req, res) => {
     
     const bauherr = result.rows[0];
     
-    // Name in first_name und last_name aufteilen falls nötig
+    // Name in first_name und last_name aufteilen
     let firstName = '';
     let lastName = '';
     if (bauherr.name) {
@@ -19478,24 +19478,29 @@ app.get('/api/bauherr/:id/settings', async (req, res) => {
           : bauherr.privacy_settings)
       : null;
     
-    // Storage Usage berechnen
+    // Storage Usage berechnen - KORRIGIERT (ohne file_data)
     const storageResult = await query(`
       SELECT 
-        COALESCE(SUM(LENGTH(fu.file_data)), 0) as total_files,
-        COUNT(DISTINCT p.id) as project_count
+        COUNT(DISTINCT p.id) as project_count,
+        COUNT(fu.id) as file_count
       FROM projects p
       LEFT JOIN file_uploads fu ON p.id = fu.project_id
       WHERE p.bauherr_id = $1
     `, [req.params.id]);
     
+    // Geschätzte Storage-Nutzung (ca. 2MB pro Projekt, 500KB pro File)
+    const projectCount = parseInt(storageResult.rows[0].project_count) || 0;
+    const fileCount = parseInt(storageResult.rows[0].file_count) || 0;
+    const estimatedUsedMB = Math.round(projectCount * 2 + fileCount * 0.5);
+    
     const storageUsage = {
       total: 1024, // MB - Limit
-      used: Math.round((storageResult.rows[0].total_files || 0) / 1024 / 1024), // Bytes to MB
+      used: estimatedUsedMB,
       breakdown: {
-        projects: Math.round((storageResult.rows[0].total_files || 0) * 0.7 / 1024 / 1024),
-        files: Math.round((storageResult.rows[0].total_files || 0) * 0.2 / 1024 / 1024),
-        messages: Math.round((storageResult.rows[0].total_files || 0) * 0.08 / 1024 / 1024),
-        profile: Math.round((storageResult.rows[0].total_files || 0) * 0.02 / 1024 / 1024)
+        projects: Math.round(projectCount * 1.5),
+        files: Math.round(fileCount * 0.5),
+        messages: 0,
+        profile: bauherr.profile_image ? 1 : 0
       }
     };
     
