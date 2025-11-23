@@ -22766,6 +22766,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
        LEFT JOIN supplements s ON s.order_id = o.id
        LEFT JOIN nachtraege n ON n.order_id = o.id AND n.status = 'approved'
        WHERE pt.project_id = $1
+         AND t.code NOT IN ('INT', 'APR')  -- Filtere INT und Allgemeine Projektaufnahme
        GROUP BY 
          t.id, t.name, t.code, 
          lvs.content, lvs.status, lvs.id,
