@@ -22732,7 +22732,12 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         -- Handwerker-Info
         h.company_name as contractor_name,
         
-        -- Nachträge berechnen
+        -- Nachträge berechnen (nachtraege Tabelle)
+        COALESCE(SUM(n.amount), 0) as nachtraege_netto,
+        COALESCE(SUM(n.amount), 0) * 1.19 as nachtraege_brutto,
+        COUNT(n.id) as nachtraege_count,
+        
+        -- Supplements berechnen (supplements Tabelle)
         COALESCE(SUM(s.amount), 0) as supplements_netto,
         COALESCE(SUM(s.amount), 0) * 1.19 as supplements_brutto,
         COALESCE(SUM(CASE WHEN s.approved THEN s.amount ELSE 0 END), 0) as supplements_approved_netto,
@@ -22758,6 +22763,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
        LEFT JOIN orders o ON o.project_id = pt.project_id AND o.trade_id = t.id
        LEFT JOIN handwerker h ON h.id = o.handwerker_id
        LEFT JOIN supplements s ON s.order_id = o.id
+       LEFT JOIN nachtraege n ON n.order_id = o.id AND n.status = 'approved'
        WHERE pt.project_id = $1
        GROUP BY 
          t.id, t.name, t.code, 
@@ -22777,8 +22783,9 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
     // Summierung
     const totalKiEstimate = trades.reduce((sum, t) => sum + (parseFloat(t.ki_estimate_brutto) || 0), 0);
     const totalOrdered = trades.reduce((sum, t) => sum + (parseFloat(t.order_amount_brutto) || 0), 0);
+    const totalNachtraege = trades.reduce((sum, t) => sum + (parseFloat(t.nachtraege_brutto) || 0), 0);
     const totalSupplements = trades.reduce((sum, t) => sum + (parseFloat(t.supplements_approved_brutto) || 0), 0);
-    const totalCurrent = totalOrdered + totalSupplements;
+    const totalCurrent = totalOrdered + totalNachtraege + totalSupplements;
     
     // Berechnungen pro Status
     const completedTradesData = trades.filter(t => t.gewerk_status === 'vergeben');
@@ -22799,6 +22806,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         // Gesamtkosten
         totalKiEstimate,
         totalOrdered,
+        totalNachtraege,
         totalSupplements,
         totalCurrent,
         
@@ -22827,8 +22835,9 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
       trades: trades.map(trade => {
         const kiEstimate = parseFloat(trade.ki_estimate_brutto) || 0;
         const orderAmount = parseFloat(trade.order_amount_brutto) || 0;
+        const nachtraege = parseFloat(trade.nachtraege_brutto) || 0;
         const supplements = parseFloat(trade.supplements_approved_brutto) || 0;
-        const totalCost = orderAmount + supplements;
+        const totalCost = orderAmount + nachtraege + supplements;
         
         return {
           tradeId: trade.trade_id,
@@ -22839,6 +22848,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
           // Kosten
           kiEstimate,
           orderAmount,
+          nachtraege,
           supplements,
           totalCost,
           
@@ -22854,6 +22864,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
           orderId: trade.order_id,
           contractorName: trade.contractor_name,
           bundleDiscount: parseFloat(trade.bundle_discount) || 0,
+          nachtraegeCount: parseInt(trade.nachtraege_count) || 0,
           supplementsCount: parseInt(trade.supplements_count) || 0,
           supplementsPendingCount: parseInt(trade.supplements_pending_count) || 0,
           orderDate: trade.order_date
