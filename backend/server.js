@@ -22717,8 +22717,8 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         t.code as trade_code,
         
         -- KI-Schätzung
-        lvs.total_cost as ki_estimate_netto,
-        lvs.total_cost * 1.19 as ki_estimate_brutto,
+        lvs.total_net as ki_estimate_netto,
+        lvs.total_net * 1.19 as ki_estimate_brutto,
         lvs.status as lv_status,
         
         -- Auftragsdaten
@@ -22767,7 +22767,7 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
        WHERE pt.project_id = $1
        GROUP BY 
          t.id, t.name, t.code, 
-         lvs.total_cost, lvs.status, lvs.id,
+         lvs.total_net, lvs.status, lvs.id,
          o.id, o.amount, o.status, o.created_at, o.bundle_discount,
          h.company_name
        ORDER BY t.name`,
