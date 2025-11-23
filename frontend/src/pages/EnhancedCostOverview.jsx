@@ -625,7 +625,6 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
           </div>
         </div>
 
-        {/* Fazit */}
         {allTradesAwarded && (
           <div className={`mt-6 p-4 rounded-lg border ${
             actualCost <= budget
