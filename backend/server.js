@@ -15944,7 +15944,7 @@ app.post('/api/bauherr/register', async (req, res) => {
       const result = await query(
         `INSERT INTO bauherren (
           email, 
-          password_hash,
+          password,
           name, 
           phone, 
           street, 
