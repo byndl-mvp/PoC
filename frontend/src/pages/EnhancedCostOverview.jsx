@@ -209,6 +209,14 @@ function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges
         />
       </div>
 
+      {/* NEUE SEKTION: Vergleichsbalken wie in alter Version */}
+      <CostComparisonBars
+        budget={project.initialBudget}
+        kiEstimate={summary.totalKiEstimate}
+        actualCost={summary.totalCurrent}
+        allTradesAwarded={allTradesAwarded}
+      />
+
       {/* Nachträge-Warnung wenn vorhanden */}
       {(nachtraegeCount > 0 || supplementsCount > 0) && (
         <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
@@ -256,15 +264,88 @@ function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges
         </div>
       </div>
 
-      {/* Wasserfalldiagramm - nur wenn alle vergeben */}
+      {/* Wasserfalldiagramm + Gesamtanalyse - nur wenn alle vergeben */}
       {allTradesAwarded && (
-        <WaterfallChart
-          budget={project.initialBudget}
-          kiEstimate={summary.totalKiEstimate}
-          ordered={summary.totalOrdered}
-          changes={totalChanges}
-          total={summary.totalCurrent}
-        />
+        <>
+          <WaterfallChart
+            budget={project.initialBudget}
+            kiEstimate={summary.totalKiEstimate}
+            ordered={summary.totalOrdered}
+            changes={totalChanges}
+            total={summary.totalCurrent}
+          />
+          
+          {/* Detaillierte Gesamtanalyse */}
+          <div className="bg-gradient-to-br from-white/10 to-white/5 rounded-lg p-6 border border-white/20">
+            <h3 className="text-xl font-semibold text-white mb-4">📊 Gesamtanalyse</h3>
+            
+            <div className="grid md:grid-cols-3 gap-4">
+              {/* Budget vs KI-Schätzung */}
+              <div className="bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-gray-400 mb-2">Budget vs. KI-Schätzung</p>
+                <p className={`text-2xl font-bold ${
+                  summary.budgetVsEstimate < 0 ? 'text-green-400' : 'text-orange-400'
+                }`}>
+                  {summary.budgetVsEstimate > 0 ? '+' : ''}{formatCurrency(summary.budgetVsEstimate)}
+                </p>
+                <p className={`text-sm font-semibold ${
+                  summary.budgetVsEstimate < 0 ? 'text-green-300' : 'text-orange-300'
+                }`}>
+                  {summary.budgetVsEstimate > 0 ? '+' : ''}{summary.budgetVsEstimatePercent.toFixed(1)}%
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {summary.budgetVsEstimate < 0 ? 'Budget war höher als erwartet' : 'KI-Schätzung über Budget'}
+                </p>
+              </div>
+
+              {/* Budget vs Ist-Kosten */}
+              <div className="bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-gray-400 mb-2">Budget vs. Ist-Kosten</p>
+                <p className={`text-2xl font-bold ${
+                  summary.budgetVsActual < 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {summary.budgetVsActual > 0 ? '+' : ''}{formatCurrency(summary.budgetVsActual)}
+                </p>
+                <p className={`text-sm font-semibold ${
+                  summary.budgetVsActual < 0 ? 'text-green-300' : 'text-red-300'
+                }`}>
+                  {summary.budgetVsActual > 0 ? '+' : ''}{summary.budgetVsActualPercent.toFixed(1)}%
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {summary.budgetVsActual < 0 ? '✅ Unter Budget' : '⚠️ Über Budget'}
+                </p>
+              </div>
+
+              {/* KI-Schätzung vs Ist-Kosten */}
+              <div className="bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-gray-400 mb-2">KI-Schätzung vs. Ist-Kosten</p>
+                <p className={`text-2xl font-bold ${
+                  summary.estimateVsActual < 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {summary.estimateVsActual > 0 ? '+' : ''}{formatCurrency(summary.estimateVsActual)}
+                </p>
+                <p className={`text-sm font-semibold ${
+                  summary.estimateVsActual < 0 ? 'text-green-300' : 'text-red-300'
+                }`}>
+                  {summary.estimateVsActual > 0 ? '+' : ''}{summary.estimateVsActualPercent.toFixed(1)}%
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {summary.estimateVsActual < 0 ? '✅ Gute Verhandlung' : 'Mehrkosten entstanden'}
+                </p>
+              </div>
+            </div>
+
+            {/* Nachträge-Info */}
+            {totalChanges > 0 && (
+              <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                <p className="text-orange-300 text-sm">
+                  <span className="font-semibold">Hinweis:</span> Die Ist-Kosten enthalten {formatCurrency(totalChanges)} an Nachträgen und Änderungen 
+                  ({nachtraegeCount} Nachträge + {supplementsCount} Supplements).
+                </p>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* Prognose-Indikator */}
@@ -410,6 +491,156 @@ function StatusBanner({ summary }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONENTE: Vergleichsbalken (Budget vs KI vs Ist)
+// ============================================================================
+function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }) {
+  const maxValue = Math.max(budget, kiEstimate, actualCost) * 1.1;
+  
+  const budgetWidth = (budget / maxValue) * 100;
+  const kiEstimateWidth = (kiEstimate / maxValue) * 100;
+  const actualCostWidth = (actualCost / maxValue) * 100;
+
+  return (
+    <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+      <h3 className="text-xl font-semibold text-white mb-6">Visuelle Kostenübersicht</h3>
+      
+      <div className="space-y-6">
+        {/* Budget */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-semibold text-blue-300">💰 Budget (geplant)</span>
+            <span className="text-lg font-bold text-blue-400">{formatCurrency(budget)}</span>
+          </div>
+          <div className="relative h-12 bg-white/5 rounded-lg overflow-hidden">
+            <div
+              className="absolute h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg transition-all duration-700"
+              style={{ width: `${budgetWidth}%` }}
+            >
+              <div className="h-full flex items-center justify-end pr-3">
+                <span className="text-white text-sm font-semibold">Baseline</span>
+              </div>
+            </div>
+            {/* Budget-Marker für andere Balken */}
+            <div
+              className="absolute top-0 w-1 h-full bg-blue-400 opacity-50"
+              style={{ left: `${budgetWidth}%` }}
+            />
+          </div>
+        </div>
+
+        {/* KI-Schätzung */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-semibold text-orange-300">🤖 KI-Kostenschätzung (Gesamt)</span>
+            <div className="text-right">
+              <span className="text-lg font-bold text-orange-400">{formatCurrency(kiEstimate)}</span>
+              {kiEstimate !== budget && (
+                <span className={`ml-2 text-sm ${kiEstimate > budget ? 'text-red-400' : 'text-green-400'}`}>
+                  {kiEstimate > budget ? '+' : ''}{formatCurrency(kiEstimate - budget)} 
+                  ({((kiEstimate - budget) / budget * 100).toFixed(1)}%)
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="relative h-12 bg-white/5 rounded-lg overflow-hidden">
+            <div
+              className={`absolute h-full rounded-lg transition-all duration-700 ${
+                kiEstimate > budget
+                  ? 'bg-gradient-to-r from-orange-500 to-orange-600'
+                  : 'bg-gradient-to-r from-teal-500 to-teal-600'
+              }`}
+              style={{ width: `${kiEstimateWidth}%` }}
+            >
+              <div className="h-full flex items-center justify-end pr-3">
+                <span className="text-white text-sm font-semibold">
+                  {kiEstimate > budget ? '+' : ''}{((kiEstimate - budget) / budget * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            {/* Budget-Linie */}
+            <div
+              className="absolute top-0 w-1 h-full bg-blue-400 z-10"
+              style={{ left: `${budgetWidth}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Ist-Kosten (bereits vergeben) */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-semibold text-green-300">
+              ✅ {allTradesAwarded ? 'Ist-Kosten (komplett)' : 'Bereits vergeben'}
+            </span>
+            <div className="text-right">
+              <span className={`text-lg font-bold ${
+                actualCost > budget ? 'text-red-400' : 'text-green-400'
+              }`}>
+                {formatCurrency(actualCost)}
+              </span>
+              {actualCost !== budget && (
+                <span className={`ml-2 text-sm ${actualCost > budget ? 'text-red-400' : 'text-green-400'}`}>
+                  {actualCost > budget ? '+' : ''}{formatCurrency(actualCost - budget)}
+                  ({((actualCost - budget) / budget * 100).toFixed(1)}%)
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="relative h-12 bg-white/5 rounded-lg overflow-hidden">
+            <div
+              className={`absolute h-full rounded-lg transition-all duration-700 ${
+                actualCost > budget
+                  ? 'bg-gradient-to-r from-red-500 to-red-600'
+                  : 'bg-gradient-to-r from-green-500 to-green-600'
+              }`}
+              style={{ width: `${actualCostWidth}%` }}
+            >
+              <div className="h-full flex items-center justify-end pr-3">
+                <span className="text-white text-sm font-semibold">
+                  {actualCost > budget ? '+' : ''}{((actualCost - budget) / budget * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            {/* Budget-Linie */}
+            <div
+              className="absolute top-0 w-1 h-full bg-blue-400 z-10"
+              style={{ left: `${budgetWidth}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Fazit */}
+      {allTradesAwarded && (
+        <div className={`mt-6 p-4 rounded-lg border ${
+          actualCost <= budget
+            ? 'bg-green-500/10 border-green-500/30'
+            : 'bg-red-500/10 border-red-500/30'
+        }`}>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{actualCost <= budget ? '✅' : '⚠️'}</span>
+            <div>
+              <p className={`text-lg font-bold ${
+                actualCost <= budget ? 'text-green-300' : 'text-red-300'
+              }`}>
+                {actualCost <= budget ? '🎉 Gute Einsparung!' : '⚠️ Kostenüberschreitung'}
+              </p>
+              <p className={`text-sm ${
+                actualCost <= budget ? 'text-green-200' : 'text-red-200'
+              }`}>
+                {actualCost <= budget
+                  ? `Sie haben ${formatCurrency(budget - actualCost)} (${(((budget - actualCost) / budget) * 100).toFixed(1)}%) vom Budget eingespart.`
+                  : `Das Budget wurde um ${formatCurrency(actualCost - budget)} (${(((actualCost - budget) / budget) * 100).toFixed(1)}%) überschritten.`
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -570,7 +801,7 @@ function CostPieChart({ trades }) {
         </div>
 
         {/* Legende */}
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+        <div className="space-y-2">
           {chartData.map((item, idx) => (
             <div
               key={idx}
@@ -763,7 +994,13 @@ function ProjectionIndicator({ summary, completedTrades }) {
     ? ((projectedTotal - summary.initialBudget) / summary.initialBudget * 100)
     : 0;
   
+  // WICHTIG: Zeige auch aktuelle Ist-Kosten vs Budget
+  const currentVsBudget = summary.initialBudget > 0
+    ? ((summary.totalCurrent - summary.initialBudget) / summary.initialBudget * 100)
+    : 0;
+  
   const isGood = projectedVsBudget < 0;
+  const isCurrentGood = currentVsBudget < 0;
 
   return (
     <div className={`rounded-lg p-6 border ${
@@ -786,15 +1023,19 @@ function ProjectionIndicator({ summary, completedTrades }) {
           </p>
           <div className="mt-3 flex items-center gap-4">
             <div>
+              <p className="text-xs text-gray-400">Aktuell vergeben</p>
+              <p className="text-xl font-bold text-white">{formatCurrency(summary.totalCurrent)}</p>
+              <p className={`text-sm font-semibold ${isCurrentGood ? 'text-green-400' : 'text-red-400'}`}>
+                {isCurrentGood ? '' : '+'}{currentVsBudget.toFixed(1)}% vs. Budget
+              </p>
+            </div>
+            <div>
               <p className="text-xs text-gray-400">Prognostizierte Gesamtkosten</p>
               <p className={`text-xl font-bold ${isGood ? 'text-green-400' : 'text-orange-400'}`}>
                 {formatCurrency(projectedTotal)}
               </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">vs. Budget</p>
-              <p className={`text-xl font-bold ${isGood ? 'text-green-400' : 'text-orange-400'}`}>
-                {projectedVsBudget > 0 ? '+' : ''}{projectedVsBudget.toFixed(1)}%
+              <p className={`text-sm font-semibold ${isGood ? 'text-green-400' : 'text-orange-400'}`}>
+                {isGood ? '' : '+'}{projectedVsBudget.toFixed(1)}% vs. Budget
               </p>
             </div>
           </div>
