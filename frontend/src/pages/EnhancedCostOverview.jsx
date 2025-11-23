@@ -3,7 +3,7 @@
 // ============================================================================
 // Diese Komponente ersetzt den bestehenden 'budget' Tab in BauherrenDashboardPage.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // Hilfsfunktion für Währungsformatierung
 function formatCurrency(value) {
@@ -23,11 +23,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
   const [error, setError] = useState(null);
   const [expandedTrade, setExpandedTrade] = useState(null);
 
-  useEffect(() => {
-    loadCostAnalysis();
-  }, [projectId]);
-
-  const loadCostAnalysis = async () => {
+  const loadCostAnalysis = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(apiUrl(`/api/projects/${projectId}/cost-analysis`));
@@ -40,7 +36,11 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, apiUrl]);
+
+  useEffect(() => {
+    loadCostAnalysis();
+  }, [loadCostAnalysis]);
 
   if (loading) {
     return (
@@ -468,9 +468,12 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
                 <p className="text-lg text-white font-bold">
                   {formatCurrency(trade.totalCost)}
                 </p>
-                {trade.supplements > 0 && (
+                {(trade.nachtraege > 0 || trade.supplements > 0) && (
                   <p className="text-xs text-orange-300 mt-1">
-                    (inkl. {formatCurrency(trade.supplements)} Nachträge)
+                    (inkl. {[
+                      trade.nachtraege > 0 && `${formatCurrency(trade.nachtraege)} Nachträge`,
+                      trade.supplements > 0 && `${formatCurrency(trade.supplements)} Supplements`
+                    ].filter(Boolean).join(' + ')})
                   </p>
                 )}
               </div>
@@ -520,10 +523,18 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
                   <p className="text-teal-300 font-semibold">{trade.bundleDiscount}%</p>
                 </div>
               )}
-              {trade.supplementsCount > 0 && (
+              {trade.nachtraegeCount > 0 && (
                 <div className="bg-orange-500/10 rounded p-2">
                   <p className="text-gray-400">Nachträge</p>
                   <p className="text-orange-300 font-semibold">
+                    {trade.nachtraegeCount}
+                  </p>
+                </div>
+              )}
+              {trade.supplementsCount > 0 && (
+                <div className="bg-purple-500/10 rounded p-2">
+                  <p className="text-gray-400">Supplements</p>
+                  <p className="text-purple-300 font-semibold">
                     {trade.supplementsCount} 
                     {trade.supplementsPendingCount > 0 && ` (${trade.supplementsPendingCount} offen)`}
                   </p>
