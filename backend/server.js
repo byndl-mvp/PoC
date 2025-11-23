@@ -17178,11 +17178,11 @@ app.post('/api/bauherr/resend-verification', async (req, res) => {
     // E-Mail senden
     const emailService = require('./emailService');
     const emailResult = await emailService.sendBauherrRegistrationEmail({
-    id: bauherrId,  // Auch hier: bauherrId statt bauherr.id
-    name: name,
-    email: email,
-    verificationToken: emailVerificationToken  // RICHTIGE Variable!
-  });
+  id: bauherr.id,          // ✅ bauherr.id
+  name: bauherr.name,      // ✅ Nicht aus DB geholt, aber bauherr hat es
+  email: email,            // ✅ OK
+  verificationToken: verificationToken  // ✅ verificationToken (nicht emailVerificationToken)
+});
     
     // Log erstellen
     await query(
