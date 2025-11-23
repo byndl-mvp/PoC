@@ -22683,11 +22683,6 @@ function addSection(doc, title) {
   doc.fontSize(10).font('Helvetica');
 }
 
-// ============================================================================
-// NEUE BACKEND-ROUTE: Detaillierte Kostenanalyse pro Gewerk
-// ============================================================================
-// Füge diese Route zu deinem Backend hinzu (z.B. in routes/projects.js)
-
 app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -22697,7 +22692,9 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
       `SELECT 
         p.id,
         p.budget as initial_budget,
-        p.bauherr_id
+        p.bauherr_id,
+        p.category,
+        p.description
        FROM projects p
        WHERE p.id = $1`,
       [projectId]
@@ -22709,18 +22706,19 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
     
     const project = projectData.rows[0];
     
-    // 2. Hole alle Gewerke mit KI-Schätzung, Auftragsstatus und Nachträgen
+    // 2. Hole alle Gewerke mit KI-Schätzung, Auftragsstatus und Nachträgen NACH STATUS
     const tradeAnalysis = await query(
       `SELECT 
         t.id as trade_id,
         t.name as trade_name,
         t.code as trade_code,
         
-        -- KI-Schätzung aus JSON content (wie im alten Code)
+        -- KI-Schätzung aus JSON content
         CAST(lvs.content->>'totalSum' AS DECIMAL) as ki_estimate_netto,
         CAST(lvs.content->>'totalSum' AS DECIMAL) * 1.05 * 1.19 as ki_estimate_brutto,
         lvs.status as lv_status,
         lvs.id as lv_id,
+        lvs.content as lv_data,
         
         -- Auftragsdaten
         o.id as order_id,
@@ -22732,19 +22730,23 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         
         -- Handwerker-Info
         h.company_name as contractor_name,
+        h.id as contractor_id,
         
-        -- Nachträge berechnen (nachtraege Tabelle)
-        COALESCE(SUM(n.amount), 0) as nachtraege_netto,
-        COALESCE(SUM(n.amount), 0) * 1.19 as nachtraege_brutto,
-        COUNT(n.id) as nachtraege_count,
+        -- NACHTRÄGE NACH STATUS GRUPPIERT
+        -- Beauftragte Nachträge (approved)
+        COALESCE(SUM(CASE WHEN n.status = 'approved' THEN n.amount ELSE 0 END), 0) as approved_nachtraege_netto,
+        COALESCE(SUM(CASE WHEN n.status = 'approved' THEN n.amount ELSE 0 END), 0) * 1.19 as approved_nachtraege_brutto,
+        COUNT(CASE WHEN n.status = 'approved' THEN 1 END) as approved_count,
         
-        -- Supplements berechnen (supplements Tabelle)
-        COALESCE(SUM(s.amount), 0) as supplements_netto,
-        COALESCE(SUM(s.amount), 0) * 1.19 as supplements_brutto,
-        COALESCE(SUM(CASE WHEN s.approved THEN s.amount ELSE 0 END), 0) as supplements_approved_netto,
-        COALESCE(SUM(CASE WHEN s.approved THEN s.amount ELSE 0 END), 0) * 1.19 as supplements_approved_brutto,
-        COUNT(s.id) as supplements_count,
-        COUNT(CASE WHEN NOT s.approved THEN 1 END) as supplements_pending_count,
+        -- Abgelehnte Nachträge (rejected)
+        COALESCE(SUM(CASE WHEN n.status = 'rejected' THEN n.amount ELSE 0 END), 0) as rejected_nachtraege_netto,
+        COALESCE(SUM(CASE WHEN n.status = 'rejected' THEN n.amount ELSE 0 END), 0) * 1.19 as rejected_nachtraege_brutto,
+        COUNT(CASE WHEN n.status = 'rejected' THEN 1 END) as rejected_count,
+        
+        -- Offene Nachträge zur Prüfung (submitted)
+        COALESCE(SUM(CASE WHEN n.status = 'submitted' THEN n.amount ELSE 0 END), 0) as pending_nachtraege_netto,
+        COALESCE(SUM(CASE WHEN n.status = 'submitted' THEN n.amount ELSE 0 END), 0) * 1.19 as pending_nachtraege_brutto,
+        COUNT(CASE WHEN n.status = 'submitted' THEN 1 END) as pending_count,
         
         -- Status-Berechnung
         CASE 
@@ -22763,15 +22765,14 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
        LEFT JOIN lvs ON lvs.project_id = pt.project_id AND lvs.trade_id = t.id
        LEFT JOIN orders o ON o.project_id = pt.project_id AND o.trade_id = t.id
        LEFT JOIN handwerker h ON h.id = o.handwerker_id
-       LEFT JOIN supplements s ON s.order_id = o.id
-       LEFT JOIN nachtraege n ON n.order_id = o.id AND n.status = 'approved'
+       LEFT JOIN nachtraege n ON n.order_id = o.id
        WHERE pt.project_id = $1
          AND t.code NOT IN ('INT', 'APR')  -- Filtere INT und Allgemeine Projektaufnahme
        GROUP BY 
          t.id, t.name, t.code, 
          lvs.content, lvs.status, lvs.id,
          o.id, o.amount, o.status, o.created_at, o.bundle_discount,
-         h.company_name
+         h.company_name, h.id
        ORDER BY t.name`,
       [projectId]
     );
@@ -22784,12 +22785,22 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
     const completedTrades = trades.filter(t => t.gewerk_status === 'vergeben').length;
     const openTrades = totalTrades - completedTrades;
     
-    // Summierung
+    // Summierung - NUR beauftragte Nachträge zählen zu den tatsächlichen Kosten
     const totalKiEstimate = trades.reduce((sum, t) => sum + (parseFloat(t.ki_estimate_brutto) || 0), 0);
     const totalOrdered = trades.reduce((sum, t) => sum + (parseFloat(t.order_amount_brutto) || 0), 0);
-    const totalNachtraege = trades.reduce((sum, t) => sum + (parseFloat(t.nachtraege_brutto) || 0), 0);
-    const totalSupplements = trades.reduce((sum, t) => sum + (parseFloat(t.supplements_approved_brutto) || 0), 0);
-    const totalCurrent = totalOrdered + totalNachtraege + totalSupplements;
+    
+    // Nachträge nach Status summieren
+    const totalApprovedNachtraege = trades.reduce((sum, t) => sum + (parseFloat(t.approved_nachtraege_brutto) || 0), 0);
+    const totalRejectedNachtraege = trades.reduce((sum, t) => sum + (parseFloat(t.rejected_nachtraege_brutto) || 0), 0);
+    const totalPendingNachtraege = trades.reduce((sum, t) => sum + (parseFloat(t.pending_nachtraege_brutto) || 0), 0);
+    
+    // Counts
+    const totalApprovedCount = trades.reduce((sum, t) => sum + (parseInt(t.approved_count) || 0), 0);
+    const totalRejectedCount = trades.reduce((sum, t) => sum + (parseInt(t.rejected_count) || 0), 0);
+    const totalPendingCount = trades.reduce((sum, t) => sum + (parseInt(t.pending_count) || 0), 0);
+    
+    // Tatsächliche Gesamtkosten = Bestellungen + NUR beauftragte Nachträge
+    const totalCurrent = totalOrdered + totalApprovedNachtraege;
     
     // Berechnungen pro Status
     const completedTradesData = trades.filter(t => t.gewerk_status === 'vergeben');
@@ -22798,7 +22809,9 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
     const response = {
       project: {
         id: project.id,
-        initialBudget: parseFloat(project.initial_budget) || 0
+        initialBudget: parseFloat(project.initial_budget) || 0,
+        category: project.category,
+        description: project.description
       },
       
       summary: {
@@ -22808,11 +22821,18 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         completionPercentage: totalTrades > 0 ? Math.round((completedTrades / totalTrades) * 100) : 0,
         
         // Gesamtkosten
+        budget: parseFloat(project.initial_budget) || 0,
         totalKiEstimate,
         totalOrdered,
-        totalNachtraege,
-        totalSupplements,
         totalCurrent,
+        
+        // Nachträge nach Status
+        totalApprovedNachtraege,
+        totalRejectedNachtraege,
+        totalPendingNachtraege,
+        totalApprovedCount,
+        totalRejectedCount,
+        totalPendingCount,
         
         // Vergleiche mit Budget
         budgetVsEstimate: totalKiEstimate - project.initial_budget,
@@ -22839,9 +22859,14 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
       trades: trades.map(trade => {
         const kiEstimate = parseFloat(trade.ki_estimate_brutto) || 0;
         const orderAmount = parseFloat(trade.order_amount_brutto) || 0;
-        const nachtraege = parseFloat(trade.nachtraege_brutto) || 0;
-        const supplements = parseFloat(trade.supplements_approved_brutto) || 0;
-        const totalCost = orderAmount + nachtraege + supplements;
+        
+        // Nachträge nach Status
+        const approvedNachtraege = parseFloat(trade.approved_nachtraege_brutto) || 0;
+        const rejectedNachtraege = parseFloat(trade.rejected_nachtraege_brutto) || 0;
+        const pendingNachtraege = parseFloat(trade.pending_nachtraege_brutto) || 0;
+        
+        // Tatsächliche Kosten = Auftrag + nur beauftragte Nachträge
+        const totalCost = orderAmount + approvedNachtraege;
         
         return {
           tradeId: trade.trade_id,
@@ -22852,9 +22877,17 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
           // Kosten
           kiEstimate,
           orderAmount,
-          nachtraege,
-          supplements,
           totalCost,
+          
+          // Nachträge nach Status
+          approvedNachtraege,
+          rejectedNachtraege,
+          pendingNachtraege,
+          
+          // Counts nach Status
+          approvedCount: parseInt(trade.approved_count) || 0,
+          rejectedCount: parseInt(trade.rejected_count) || 0,
+          pendingCount: parseInt(trade.pending_count) || 0,
           
           // Vergleiche (nur wenn vergeben)
           ...(trade.gewerk_status === 'vergeben' ? {
@@ -22867,22 +22900,30 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
           // Zusatzinfos
           orderId: trade.order_id,
           contractorName: trade.contractor_name,
+          contractorId: trade.contractor_id,
           bundleDiscount: parseFloat(trade.bundle_discount) || 0,
-          nachtraegeCount: parseInt(trade.nachtraege_count) || 0,
-          supplementsCount: parseInt(trade.supplements_count) || 0,
-          supplementsPendingCount: parseInt(trade.supplements_pending_count) || 0,
-          orderDate: trade.order_date
+          orderDate: trade.order_date,
+          
+          // LV-Daten für Nachtragsprüfung
+          lvData: trade.lv_data
         };
       }),
       
       // Separate Listen für vergeben/offen
-      completedTrades: completedTradesData.map(t => ({
-        tradeId: t.trade_id,
-        tradeName: t.trade_name,
-        kiEstimate: parseFloat(t.ki_estimate_brutto) || 0,
-        totalCost: (parseFloat(t.order_amount_brutto) || 0) + (parseFloat(t.supplements_approved_brutto) || 0),
-        contractorName: t.contractor_name
-      })),
+      completedTrades: completedTradesData.map(t => {
+        const orderAmount = parseFloat(t.order_amount_brutto) || 0;
+        const approvedNachtraege = parseFloat(t.approved_nachtraege_brutto) || 0;
+        
+        return {
+          tradeId: t.trade_id,
+          tradeName: t.trade_name,
+          kiEstimate: parseFloat(t.ki_estimate_brutto) || 0,
+          totalCost: orderAmount + approvedNachtraege,
+          contractorName: t.contractor_name,
+          approvedNachtraege,
+          approvedCount: parseInt(t.approved_count) || 0
+        };
+      }),
       
       openTrades: openTradesData.map(t => ({
         tradeId: t.trade_id,
@@ -22899,6 +22940,28 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
     res.status(500).json({ error: 'Fehler bei der Kostenanalyse: ' + error.message });
   }
 });
+
+// ============================================================================
+// HELPER: Top Einsparungen und Mehrkosten berechnen
+// ============================================================================
+// Optional: Diese Funktion kann verwendet werden, um die Top-Listen zu generieren
+function calculateTopSavingsAndOverruns(trades) {
+  const completedTrades = trades.filter(t => t.status === 'vergeben' && t.vsEstimate !== undefined);
+  
+  // Top Einsparungen (vsEstimate < 0, savings > 0)
+  const topSavings = completedTrades
+    .filter(t => t.savings > 0)
+    .sort((a, b) => b.savings - a.savings)
+    .slice(0, 3);
+  
+  // Top Mehrkosten (vsEstimate > 0)
+  const topOverruns = completedTrades
+    .filter(t => t.vsEstimate > 0)
+    .sort((a, b) => b.vsEstimate - a.vsEstimate)
+    .slice(0, 3);
+  
+  return { topSavings, topOverruns };
+}
 
 // Leistung abnehmen
 app.post('/api/orders/:orderId/accept-completion', async (req, res) => {
