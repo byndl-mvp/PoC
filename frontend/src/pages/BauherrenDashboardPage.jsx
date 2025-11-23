@@ -7,6 +7,7 @@ import { OfferEvaluationModal, OfferComparisonModal } from '../pages/OfferEvalua
 import ScheduleTab from './ScheduleTab';
 import { RatingModal, RatingButton, RatingBadge } from './RatingComponents'; 
 import HandwerkerRatingDisplay from './HandwerkerRatingDisplay';
+import { EnhancedCostOverview } from './EnhancedCostOverview';
 
 function formatCurrency(value) {
   if (!value && value !== 0) return '0 €';
