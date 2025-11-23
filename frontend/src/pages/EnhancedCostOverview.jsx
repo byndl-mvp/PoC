@@ -273,7 +273,7 @@ function OverviewView({ project, summary, trades, allTradesAwarded, approvedNach
             budget={project.initialBudget}
             kiEstimate={summary.totalKiEstimate}
             ordered={summary.totalOrdered}
-            changes={totalChanges}
+            changes={approvedNachtraege}
             total={summary.totalCurrent}
           />
           
