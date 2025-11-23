@@ -131,7 +131,7 @@ function App() {
           {/* Auth-Routen */}
           <Route path="/bauherr/login" element={<BauherrLoginPage />} />
           <Route path="/bauherr/register" element={<BauherrRegisterPage />} />
-          <Route path="/bauherr/verify-email" element={<BauherrEmailVerification />} />
+          <Route path="/bauherr/verify" element={<BauherrEmailVerification />} />
           <Route path="/bauherr/reset-password" element={<BauherrPasswordResetPage />} />
 
           {/* NEUE ROUTE HIER */}
