@@ -241,12 +241,12 @@ function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges
       )}
 
       {/* Zwei-Spalten-Layout: Charts + Top Listen */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-[2fr,1fr] lg:grid-cols-[3fr,2fr] gap-6">
         {/* Linke Spalte: Kuchendiagramm */}
         <CostPieChart trades={trades.filter(t => t.status === 'vergeben')} />
 
-        {/* Rechte Spalte: Top Einsparungen/Mehrkosten - SCHMALER */}
-        <div className="space-y-4 max-w-md">
+        {/* Rechte Spalte: Top Einsparungen/Mehrkosten */}
+        <div className="space-y-4 md:ml-auto md:w-full lg:max-w-md">
           {topSavings.length > 0 && (
             <TopList
               title="🏆 Top Einsparungen"
@@ -741,9 +741,9 @@ function CostPieChart({ trades }) {
         Kostenverteilung nach Gewerken
       </h3>
       
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-[300px,1fr] lg:grid-cols-[320px,1fr] gap-6">
         {/* SVG Kuchendiagramm */}
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center flex-shrink-0">
           <svg width="240" height="240" viewBox="0 0 240 240" className="drop-shadow-lg">
             {/* 3D-Effekt: Schatten */}
             <defs>
@@ -804,14 +804,14 @@ function CostPieChart({ trades }) {
         </div>
 
         {/* Legende */}
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-2">
           {chartData.map((item, idx) => (
             <div
               key={idx}
               onClick={() => setSelectedTrade(selectedTrade?.tradeId === item.tradeId ? null : item)}
               onMouseEnter={() => setHoveredIndex(idx)}
               onMouseLeave={() => setHoveredIndex(null)}
-              className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all ${
+              className={`flex items-center justify-between p-3 rounded cursor-pointer transition-all ${
                 selectedTrade?.tradeId === item.tradeId
                   ? 'bg-white/20 scale-105'
                   : hoveredIndex === idx
@@ -819,16 +819,16 @@ function CostPieChart({ trades }) {
                   : 'hover:bg-white/10'
               }`}
             >
-              <div className="flex items-center gap-2 flex-1">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div
                   className="w-4 h-4 rounded flex-shrink-0 shadow-lg"
                   style={{ backgroundColor: colors[idx % colors.length] }}
                 />
                 <span className="text-sm text-gray-300 truncate">{item.name}</span>
               </div>
-              <div className="text-right ml-4">
-                <p className="text-sm text-white font-semibold">{item.percentage}%</p>
-                <p className="text-xs text-gray-400">{formatCurrency(item.value)}</p>
+              <div className="text-right ml-4 flex-shrink-0">
+                <p className="text-sm text-white font-semibold whitespace-nowrap">{item.percentage}%</p>
+                <p className="text-xs text-gray-400 whitespace-nowrap">{formatCurrency(item.value)}</p>
               </div>
             </div>
           ))}
@@ -892,22 +892,22 @@ function TopList({ title, items, type }) {
       <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
       <div className="space-y-3">
         {items.map((trade, idx) => (
-          <div key={trade.tradeId} className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
-              <span className={`text-2xl font-bold ${
+          <div key={trade.tradeId} className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <span className={`text-2xl font-bold flex-shrink-0 ${
                 isSavings ? 'text-green-400' : 'text-red-400'
               }`}>
                 #{idx + 1}
               </span>
               <span className="text-sm text-gray-300 truncate">{trade.tradeName}</span>
             </div>
-            <div className="text-right">
-              <p className={`text-lg font-bold ${
+            <div className="text-right flex-shrink-0">
+              <p className={`text-lg font-bold whitespace-nowrap ${
                 isSavings ? 'text-green-400' : 'text-red-400'
               }`}>
                 {isSavings ? '-' : '+'}{formatCurrency(Math.abs(isSavings ? trade.savings : trade.vsEstimate))}
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-400 whitespace-nowrap">
                 {Math.abs(isSavings ? trade.savingsPercent : trade.vsEstimatePercent).toFixed(1)}%
               </p>
             </div>
