@@ -86,7 +86,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                 : 'bg-white/10 text-gray-400 hover:bg-white/20'
             }`}
           >
-            📊 Übersicht
+            Übersicht
           </button>
           <button
             onClick={() => setActiveView('details')}
@@ -96,7 +96,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                 : 'bg-white/10 text-gray-400 hover:bg-white/20'
             }`}
           >
-            📋 Details
+            Details
           </button>
           {(approvedCount > 0 || rejectedCount > 0 || pendingCount > 0) && (
             <button
@@ -107,7 +107,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                   : 'bg-white/10 text-gray-400 hover:bg-white/20'
               }`}
             >
-              ⚠️ Nachträge
+              Nachträge
               {pendingCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {pendingCount}
@@ -182,28 +182,24 @@ function OverviewView({ project, summary, trades, allTradesAwarded, approvedNach
       {/* KPI-Karten */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KPICard
-          icon="💰"
           label="Budget"
           value={formatCurrency(project.initialBudget)}
           subtitle="Geplant"
           color="blue"
         />
         <KPICard
-          icon="🤖"
           label="KI-Prognose"
           value={formatCurrency(summary.totalKiEstimate)}
           subtitle={`${summary.budgetVsEstimatePercent > 0 ? '+' : ''}${summary.budgetVsEstimatePercent.toFixed(1)}% vs Budget`}
           color={summary.budgetVsEstimatePercent > 0 ? 'orange' : 'blue'}
         />
         <KPICard
-          icon="✅"
           label="Vergeben"
           value={formatCurrency(summary.totalCurrent)}
           subtitle={`${summary.budgetVsActualPercent > 0 ? '+' : ''}${summary.budgetVsActualPercent.toFixed(1)}% vs Budget`}
           color={summary.budgetVsActualPercent > 0 ? 'red' : 'green'}
         />
         <KPICard
-          icon="📊"
           label="Status"
           value={`${summary.completedTrades}/${summary.totalTrades}`}
           subtitle={`${summary.completionPercentage}% vergeben`}
@@ -251,14 +247,14 @@ function OverviewView({ project, summary, trades, allTradesAwarded, approvedNach
         <div className="space-y-4 md:ml-auto md:w-full lg:max-w-md">
           {topSavings.length > 0 && (
             <TopList
-              title="🏆 Top Einsparungen"
+              title="Top Einsparungen"
               items={topSavings}
               type="savings"
             />
           )}
           {topOverruns.length > 0 && (
             <TopList
-              title="⚠️ Top Mehrkosten"
+              title="Top Mehrkosten"
               items={topOverruns}
               type="overruns"
             />
@@ -279,7 +275,7 @@ function OverviewView({ project, summary, trades, allTradesAwarded, approvedNach
           
           {/* Detaillierte Gesamtanalyse */}
           <div className="bg-gradient-to-br from-white/10 to-white/5 rounded-lg p-6 border border-white/20">
-            <h3 className="text-xl font-semibold text-white mb-4">📊 Gesamtanalyse</h3>
+            <h3 className="text-xl font-semibold text-white mb-4">Gesamtanalyse</h3>
             
             <div className="grid md:grid-cols-3 gap-4">
               {/* Budget vs KI-Schätzung */}
