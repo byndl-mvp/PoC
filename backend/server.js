@@ -15990,7 +15990,7 @@ let projectResult = null; // Außerhalb definieren!
     name: name,
     email: email,
     verificationToken: emailVerificationToken,
-    projectDetails: projectResult.rows.length > 0 ? {
+    projectDetails: projectResult && projectResult.rows.length > 0 ? {
     category: projectResult.rows[0].category,
     subCategory: projectResult.rows[0].sub_category,
     description: projectResult.rows[0].description
