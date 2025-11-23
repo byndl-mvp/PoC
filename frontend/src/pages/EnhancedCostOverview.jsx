@@ -577,7 +577,7 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
           </div>
         </div>
 
-        {/* Ist-Kosten (bereits vergeben) */
+        {/* Ist-Kosten (bereits vergeben) */}
         <div>
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-semibold text-green-300">
@@ -626,22 +626,14 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
         </div>
 
         {allTradesAwarded && (
-          <div className={`mt-6 p-4 rounded-lg border ${
-            actualCost <= budget
-              ? 'bg-green-500/10 border-green-500/30'
-              : 'bg-red-500/10 border-red-500/30'
-          }`}>
+          <div className={`mt-6 p-4 rounded-lg border ${actualCost <= budget ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
             <div className="flex items-center gap-3">
               <span className="text-3xl">{actualCost <= budget ? '✅' : '⚠️'}</span>
               <div>
-                <p className={`text-lg font-bold ${
-                  actualCost <= budget ? 'text-green-300' : 'text-red-300'
-                }`}>
+                <p className={`text-lg font-bold ${actualCost <= budget ? 'text-green-300' : 'text-red-300'}`}>
                   {actualCost <= budget ? '🎉 Gute Einsparung!' : '⚠️ Kostenüberschreitung'}
                 </p>
-                <p className={`text-sm ${
-                  actualCost <= budget ? 'text-green-200' : 'text-red-200'
-                }`}>
+                <p className={`text-sm ${actualCost <= budget ? 'text-green-200' : 'text-red-200'}`}>
                   {actualCost <= budget
                     ? `Sie haben ${formatCurrency(budget - actualCost)} (${(((budget - actualCost) / budget) * 100).toFixed(1)}%) vom Budget eingespart.`
                     : `Das Budget wurde um ${formatCurrency(actualCost - budget)} (${(((actualCost - budget) / budget) * 100).toFixed(1)}%) überschritten.`
