@@ -22717,9 +22717,9 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         t.code as trade_code,
         
         -- KI-Schätzung
-        lv.total_cost as ki_estimate_netto,
-        lv.total_cost * 1.19 as ki_estimate_brutto,
-        lv.status as lv_status,
+        lvs.total_cost as ki_estimate_netto,
+        lvs.total_cost * 1.19 as ki_estimate_brutto,
+        lvs.status as lv_status,
         
         -- Auftragsdaten
         o.id as order_id,
@@ -22743,25 +22743,25 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         -- Status-Berechnung
         CASE 
           WHEN o.id IS NOT NULL THEN 'vergeben'
-          WHEN lv.status = 'Fertig' AND EXISTS (
+          WHEN lvs.status = 'Fertig' AND EXISTS (
             SELECT 1 FROM tenders tn 
             WHERE tn.project_id = $1 AND tn.trade_id = t.id
           ) THEN 'ausgeschrieben'
-          WHEN lv.status = 'Fertig' THEN 'bereit'
-          WHEN lv.id IS NOT NULL THEN 'in_bearbeitung'
+          WHEN lvs.status = 'Fertig' THEN 'bereit'
+          WHEN lvs.id IS NOT NULL THEN 'in_bearbeitung'
           ELSE 'offen'
         END as gewerk_status
         
        FROM project_trades pt
        JOIN trades t ON t.id = pt.trade_id
-       LEFT JOIN leistungsverzeichnisse lv ON lv.project_id = pt.project_id AND lv.trade_id = t.id
+       LEFT JOIN lvs ON lvs.project_id = pt.project_id AND lvs.trade_id = t.id
        LEFT JOIN orders o ON o.project_id = pt.project_id AND o.trade_id = t.id
        LEFT JOIN handwerker h ON h.id = o.handwerker_id
        LEFT JOIN supplements s ON s.order_id = o.id
        WHERE pt.project_id = $1
        GROUP BY 
          t.id, t.name, t.code, 
-         lv.total_cost, lv.status, lv.id,
+         lvs.total_cost, lvs.status, lvs.id,
          o.id, o.amount, o.status, o.created_at, o.bundle_discount,
          h.company_name
        ORDER BY t.name`,
