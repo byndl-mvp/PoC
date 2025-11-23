@@ -3769,93 +3769,14 @@ if (selectedProject) {
     )}
   </div>
 )}
-
-          {/* Kostenübersicht Tab - VERBESSERT */}
-{activeTab === 'budget' && budgetOverview && (
-  <div>
-    <h2 className="text-2xl font-bold text-white mb-6">Kostenübersicht</h2>
-    
-    {/* Neue Visualisierung */}
-    <BudgetVisualization budget={budgetOverview} />
-    
-    {/* Detaillierte Aufschlüsselung */}
-    <div className="mt-6 space-y-4">
-      <div className="bg-white/5 rounded-lg p-4">
-        <h4 className="text-white font-semibold mb-3">Detailaufschlüsselung</h4>
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">Anfangsbudget</span>
-            <span className="text-xl text-white">
-              {formatCurrency(budgetOverview.initialBudget)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">KI-Kostenschätzung</span>
-            <span className="text-xl text-blue-400">
-              {formatCurrency(budgetOverview.estimatedCost)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">Beauftragte Summe (Brutto)</span>
-            <div className="text-right">
-              <span className="text-xl text-green-400 block">
-                {formatCurrency(budgetOverview.orderedAmount)}
-              </span>
-              <span className="text-xs text-gray-500">
-                Netto: {formatCurrency(budgetOverview.orderedAmountNetto)}
-              </span>
-            </div>
-          </div>
-          
-          {supplements.length > 0 && (
-            <>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Eingegangene Nachträge</span>
-                <span className="text-xl text-orange-400">
-                  {formatCurrency(budgetOverview.supplementsRequested)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Genehmigte Nachträge</span>
-                <span className="text-xl text-orange-600">
-                  {formatCurrency(budgetOverview.supplementsApproved)}
-                </span>
-              </div>
-            </>
-          )}
-          
-          <div className="border-t border-white/20 pt-4">
-            <div className="flex justify-between items-center">
-              <span className="text-white font-semibold">Gesamtkosten aktuell</span>
-              <span className={`text-2xl font-bold ${
-                budgetOverview.totalCurrent > budgetOverview.initialBudget ? 'text-red-400' : 'text-green-400'
-              }`}>
-                {formatCurrency(budgetOverview.totalCurrent)}
-              </span>
-            </div>
-            {budgetOverview.variance !== 0 && (
-              <p className={`text-sm mt-2 text-right ${
-                budgetOverview.variance > 0 ? 'text-red-400' : 'text-green-400'
-              }`}>
-                {budgetOverview.variance > 0 ? '+' : ''}{budgetOverview.variance.toFixed(1)}% vom Budget
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {supplements.filter(s => !s.approved).length > 0 && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-          <p className="text-yellow-300 text-sm">
-            <strong>⚠️ KI-Hinweis:</strong> Sie haben {supplements.filter(s => !s.approved).length} ungeprüfte Nachträge. 
-            Die KI-Analyse kann Ihnen bei der Bewertung helfen.
-          </p>
-        </div>
-      )}
-    </div>
-  </div>
+          {/* Kostenübersicht Tab */}
+          {activeTab === 'budget' && selectedProject && (
+  <EnhancedCostOverview 
+    projectId={selectedProject.id}
+    apiUrl={apiUrl}
+  />
 )}
-
+          
          {/* Terminplan Tab */}
         {activeTab === 'schedule' && selectedProject && (
   <ScheduleTab
