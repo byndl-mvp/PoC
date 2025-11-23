@@ -19410,37 +19410,13 @@ app.post('/api/conversations/add-handwerker', async (req, res) => {
   }
 });
 
+// Bauherr Settings Endpoints
+
+// Get Bauherr Settings
 app.get('/api/bauherr/:id/settings', async (req, res) => {
   try {
     const result = await query(
-      `SELECT 
-        id,
-        name,
-        email,
-        phone,
-        alternative_phone,
-        street,
-        house_number,
-        zip,
-        city,
-        state,
-        country,
-        is_company,
-        company_name,
-        vat_id,
-        commercial_register,
-        email_verified,
-        profile_image,
-        two_factor_enabled,
-        two_factor_method,
-        last_password_change,
-        notification_settings,
-        appearance_settings,
-        privacy_settings,
-        created_at,
-        updated_at
-       FROM bauherren 
-       WHERE id = $1`,
+      `SELECT * FROM bauherren WHERE id = $1`,
       [req.params.id]
     );
     
@@ -19448,243 +19424,61 @@ app.get('/api/bauherr/:id/settings', async (req, res) => {
       return res.status(404).json({ error: 'Bauherr nicht gefunden' });
     }
     
-    const bauherr = result.rows[0];
-    
-    // Name in first_name und last_name aufteilen
-    let firstName = '';
-    let lastName = '';
-    if (bauherr.name) {
-      const nameParts = bauherr.name.trim().split(' ');
-      firstName = nameParts[0] || '';
-      lastName = nameParts.slice(1).join(' ') || '';
-    }
-    
-    // Parse JSON fields
-    const notificationSettings = bauherr.notification_settings 
-      ? (typeof bauherr.notification_settings === 'string' 
-          ? JSON.parse(bauherr.notification_settings) 
-          : bauherr.notification_settings)
-      : null;
-    
-    const appearanceSettings = bauherr.appearance_settings
-      ? (typeof bauherr.appearance_settings === 'string'
-          ? JSON.parse(bauherr.appearance_settings)
-          : bauherr.appearance_settings)
-      : null;
-    
-    const privacySettings = bauherr.privacy_settings
-      ? (typeof bauherr.privacy_settings === 'string'
-          ? JSON.parse(bauherr.privacy_settings)
-          : bauherr.privacy_settings)
-      : null;
-    
-    // Storage Usage berechnen - KORRIGIERT (ohne file_data)
-    const storageResult = await query(`
-      SELECT 
-        COUNT(DISTINCT p.id) as project_count,
-        COUNT(fu.id) as file_count
-      FROM projects p
-      LEFT JOIN file_uploads fu ON p.id = fu.project_id
-      WHERE p.bauherr_id = $1
-    `, [req.params.id]);
-    
-    // Geschätzte Storage-Nutzung (ca. 2MB pro Projekt, 500KB pro File)
-    const projectCount = parseInt(storageResult.rows[0].project_count) || 0;
-    const fileCount = parseInt(storageResult.rows[0].file_count) || 0;
-    const estimatedUsedMB = Math.round(projectCount * 2 + fileCount * 0.5);
-    
-    const storageUsage = {
-      total: 1024, // MB - Limit
-      used: estimatedUsedMB,
-      breakdown: {
-        projects: Math.round(projectCount * 1.5),
-        files: Math.round(fileCount * 0.5),
-        messages: 0,
-        profile: bauherr.profile_image ? 1 : 0
-      }
-    };
-    
-    // Response strukturieren
-    res.json({
-      first_name: firstName,
-      last_name: lastName,
-      email: bauherr.email,
-      phone: bauherr.phone,
-      alternative_phone: bauherr.alternative_phone,
-      street: bauherr.street,
-      house_number: bauherr.house_number,
-      zip: bauherr.zip,
-      city: bauherr.city,
-      state: bauherr.state,
-      country: bauherr.country || 'Deutschland',
-      is_company: bauherr.is_company || false,
-      company_name: bauherr.company_name,
-      vat_id: bauherr.vat_id,
-      commercial_register: bauherr.commercial_register,
-      email_verified: bauherr.email_verified || false,
-      profile_image: bauherr.profile_image,
-      two_factor_enabled: bauherr.two_factor_enabled || false,
-      two_factor_method: bauherr.two_factor_method || 'app',
-      backup_codes: [], // Nicht aus DB laden aus Sicherheitsgründen
-      last_password_change: bauherr.last_password_change,
-      notification_settings: notificationSettings,
-      appearance_settings: appearanceSettings,
-      privacy_settings: privacySettings,
-      storage_usage: storageUsage,
-      created_at: bauherr.created_at,
-      updated_at: bauherr.updated_at
-    });
+    res.json(result.rows[0]);
   } catch (err) {
     console.error('Error fetching settings:', err);
     res.status(500).json({ error: 'Fehler beim Laden der Einstellungen' });
   }
 });
 
-// ============================================================================
-// 2. UPDATE PERSONAL DATA - ERWEITERT
-// ============================================================================
+// Update Personal Data
 app.put('/api/bauherr/:id/personal', async (req, res) => {
   try {
-    const { 
-      firstName, 
-      lastName, 
-      email, 
-      phone, 
-      alternativePhone,
-      street, 
-      houseNumber, 
-      zipCode, 
-      city,
-      state,
-      country,
-      isCompany,
-      companyName,
-      vatId,
-      commercialRegister
-    } = req.body;
+    const { name, email, phone, street, houseNumber, zipCode, city } = req.body;
     
-    // Validierung
-    if (!firstName || !lastName || !email) {
-      return res.status(400).json({ error: 'Vorname, Nachname und E-Mail sind erforderlich' });
-    }
-    
-    // E-Mail-Format prüfen
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Ungültige E-Mail-Adresse' });
-    }
-    
-    // PLZ prüfen (falls vorhanden)
-    if (zipCode && !/^\d{5}$/.test(zipCode)) {
-      return res.status(400).json({ error: 'PLZ muss 5 Ziffern haben' });
-    }
-    
-    // Telefon prüfen (falls vorhanden)
-    if (phone) {
-      const phoneDigits = phone.replace(/\D/g, '');
-      if (phoneDigits.length < 10) {
-        return res.status(400).json({ error: 'Ungültige Telefonnummer' });
-      }
-    }
-    
-    // Firmendaten prüfen
-    if (isCompany && !companyName) {
-      return res.status(400).json({ error: 'Firmenname ist erforderlich für gewerbliche Bauherren' });
-    }
-    
-    // Check ob E-Mail bereits existiert (bei anderem User)
-    const emailCheck = await query(
-      'SELECT id FROM bauherren WHERE email = $1 AND id != $2',
-      [email, req.params.id]
-    );
-    
-    if (emailCheck.rows.length > 0) {
-      return res.status(409).json({ error: 'E-Mail-Adresse wird bereits verwendet' });
-    }
-    
-    // Name zusammenfügen
-    const fullName = `${firstName} ${lastName}`;
-    
-    // Update
     await query(
       `UPDATE bauherren SET
         name = $2,
         email = $3,
         phone = $4,
-        alternative_phone = $5,
-        street = $6,
-        house_number = $7,
-        zip = $8,
-        city = $9,
-        state = $10,
-        country = $11,
-        is_company = $12,
-        company_name = $13,
-        vat_id = $14,
-        commercial_register = $15,
+        street = $5,
+        house_number = $6,
+        zip = $7,
+        city = $8,
         updated_at = NOW()
        WHERE id = $1`,
-      [
-        req.params.id, 
-        fullName, 
-        email, 
-        phone, 
-        alternativePhone,
-        street, 
-        houseNumber, 
-        zipCode, 
-        city,
-        state,
-        country,
-        isCompany,
-        companyName,
-        vatId,
-        commercialRegister
-      ]
+      [req.params.id, name, email, phone, street, houseNumber, zipCode, city]
     );
     
-    res.json({ success: true, message: 'Persönliche Daten erfolgreich aktualisiert' });
+    res.json({ success: true });
   } catch (err) {
     console.error('Error updating personal data:', err);
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
 
-// ============================================================================
-// 3. CHANGE PASSWORD - VERBESSERT
-// ============================================================================
+// Update Notifications
+app.put('/api/bauherr/:id/notifications', async (req, res) => {
+  try {
+    await query(
+      `UPDATE bauherren SET
+        notification_settings = $2,
+        updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, JSON.stringify(req.body)]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating notifications:', err);
+    res.status(500).json({ error: 'Update fehlgeschlagen' });
+  }
+});
+
+// Change Password
 app.put('/api/bauherr/:id/password', async (req, res) => {
   try {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-    
-    // Validierung
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      return res.status(400).json({ error: 'Alle Felder sind erforderlich' });
-    }
-    
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({ error: 'Passwörter stimmen nicht überein' });
-    }
-    
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen lang sein' });
-    }
-    
-    // Passwort-Stärke prüfen
-    const hasLower = /[a-z]/.test(newPassword);
-    const hasUpper = /[A-Z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
-    const hasSpecial = /[^a-zA-Z0-9]/.test(newPassword);
-    
-    const strength = (hasLower ? 20 : 0) + (hasUpper ? 20 : 0) + (hasNumber ? 10 : 0) + (hasSpecial ? 10 : 0) + 
-                     (newPassword.length >= 8 ? 20 : 0) + (newPassword.length >= 12 ? 20 : 0);
-    
-    if (strength < 40) {
-      return res.status(400).json({ 
-        error: 'Passwort ist zu schwach',
-        hint: 'Verwenden Sie Groß-/Kleinbuchstaben, Zahlen und Sonderzeichen'
-      });
-    }
+    const { currentPassword, newPassword } = req.body;
     
     // Get current password hash
     const result = await query(
@@ -19699,13 +19493,7 @@ app.put('/api/bauherr/:id/password', async (req, res) => {
     // Verify current password
     const isValid = await bcryptjs.compare(currentPassword, result.rows[0].password_hash);
     if (!isValid) {
-      return res.status(401).json({ error: 'Aktuelles Passwort ist falsch' });
-    }
-    
-    // Check if new password is same as old
-    const isSame = await bcryptjs.compare(newPassword, result.rows[0].password_hash);
-    if (isSame) {
-      return res.status(400).json({ error: 'Neues Passwort darf nicht mit dem alten übereinstimmen' });
+      return res.status(401).json({ error: 'Falsches Passwort' });
     }
     
     // Hash new password
@@ -19715,328 +19503,53 @@ app.put('/api/bauherr/:id/password', async (req, res) => {
     await query(
       `UPDATE bauherren SET
         password_hash = $2,
-        last_password_change = NOW(),
         updated_at = NOW()
        WHERE id = $1`,
       [req.params.id, hashedPassword]
     );
     
-    res.json({ 
-      success: true, 
-      message: 'Passwort erfolgreich geändert',
-      last_password_change: new Date().toISOString()
-    });
+    res.json({ success: true });
   } catch (err) {
     console.error('Error changing password:', err);
     res.status(500).json({ error: 'Passwortänderung fehlgeschlagen' });
   }
 });
 
-// ============================================================================
-// 4. UPDATE NOTIFICATIONS - VERBESSERT
-// ============================================================================
-app.put('/api/bauherr/:id/notifications', async (req, res) => {
-  try {
-    const notificationSettings = req.body;
-    
-    // Validierung der Struktur
-    const requiredKeys = ['email', 'push', 'sms', 'digest', 'doNotDisturb'];
-    const hasAllKeys = requiredKeys.every(key => key in notificationSettings);
-    
-    if (!hasAllKeys) {
-      return res.status(400).json({ error: 'Ungültige Benachrichtigungsstruktur' });
-    }
-    
-    await query(
-      `UPDATE bauherren SET
-        notification_settings = $2,
-        updated_at = NOW()
-       WHERE id = $1`,
-      [req.params.id, JSON.stringify(notificationSettings)]
-    );
-    
-    res.json({ 
-      success: true, 
-      message: 'Benachrichtigungseinstellungen erfolgreich aktualisiert' 
-    });
-  } catch (err) {
-    console.error('Error updating notifications:', err);
-    res.status(500).json({ error: 'Update fehlgeschlagen' });
-  }
-});
-
-// ============================================================================
-// 5. UPDATE APPEARANCE - NEU
-// ============================================================================
-app.put('/api/bauherr/:id/appearance', async (req, res) => {
-  try {
-    const appearanceSettings = req.body;
-    
-    await query(
-      `UPDATE bauherren SET
-        appearance_settings = $2,
-        updated_at = NOW()
-       WHERE id = $1`,
-      [req.params.id, JSON.stringify(appearanceSettings)]
-    );
-    
-    res.json({ 
-      success: true, 
-      message: 'Darstellungseinstellungen erfolgreich aktualisiert' 
-    });
-  } catch (err) {
-    console.error('Error updating appearance:', err);
-    res.status(500).json({ error: 'Update fehlgeschlagen' });
-  }
-});
-
-// ============================================================================
-// 6. UPDATE PRIVACY - NEU
-// ============================================================================
-app.put('/api/bauherr/:id/privacy', async (req, res) => {
-  try {
-    const privacySettings = req.body;
-    
-    await query(
-      `UPDATE bauherren SET
-        privacy_settings = $2,
-        updated_at = NOW()
-       WHERE id = $1`,
-      [req.params.id, JSON.stringify(privacySettings)]
-    );
-    
-    res.json({ 
-      success: true, 
-      message: 'Datenschutzeinstellungen erfolgreich aktualisiert' 
-    });
-  } catch (err) {
-    console.error('Error updating privacy:', err);
-    res.status(500).json({ error: 'Update fehlgeschlagen' });
-  }
-});
-
-// ============================================================================
-// 7. TOGGLE TWO-FACTOR - VERBESSERT
-// ============================================================================
+// Toggle Two-Factor
 app.put('/api/bauherr/:id/two-factor', async (req, res) => {
   try {
-    const { enabled, method } = req.body;
-    
-    // Generate backup codes if enabling
-    let backupCodes = null;
-    if (enabled) {
-      backupCodes = Array.from({ length: 8 }, () => 
-        Math.random().toString(36).substring(2, 10).toUpperCase()
-      );
-    }
+    const { enabled } = req.body;
     
     await query(
       `UPDATE bauherren SET
         two_factor_enabled = $2,
-        two_factor_method = $3,
-        backup_codes = $4,
         updated_at = NOW()
        WHERE id = $1`,
-      [req.params.id, enabled, method || 'app', backupCodes ? JSON.stringify(backupCodes) : null]
+      [req.params.id, enabled]
     );
     
-    res.json({ 
-      success: true, 
-      message: `Zwei-Faktor-Authentifizierung ${enabled ? 'aktiviert' : 'deaktiviert'}`,
-      backupCodes: enabled ? backupCodes : null
-    });
+    res.json({ success: true });
   } catch (err) {
     console.error('Error toggling 2FA:', err);
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
 
-// ============================================================================
-// 8. RESEND VERIFICATION EMAIL - NEU
-// ============================================================================
-app.post('/api/bauherr/:id/resend-verification', async (req, res) => {
-  try {
-    const result = await query(
-      'SELECT email, email_verified FROM bauherren WHERE id = $1',
-      [req.params.id]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
-    }
-    
-    if (result.rows[0].email_verified) {
-      return res.status(400).json({ error: 'E-Mail ist bereits verifiziert' });
-    }
-    
-    // TODO: Send verification email
-    // const verificationToken = generateVerificationToken();
-    // await sendVerificationEmail(result.rows[0].email, verificationToken);
-    
-    res.json({ 
-      success: true, 
-      message: 'Verifizierungs-E-Mail wurde erneut gesendet' 
-    });
-  } catch (err) {
-    console.error('Error resending verification:', err);
-    res.status(500).json({ error: 'Versand fehlgeschlagen' });
-  }
-});
-
-// ============================================================================
-// 9. GET SESSIONS - NEU
-// ============================================================================
-app.get('/api/bauherr/:id/sessions', async (req, res) => {
-  try {
-    // TODO: Implement session tracking
-    // Placeholder response
-    const sessions = [
-      {
-        id: 1,
-        device: 'Desktop / Chrome / Windows 11',
-        location: 'Köln, Deutschland',
-        ip_address: '192.168.1.1',
-        last_activity: new Date().toISOString(),
-        is_current: true
-      }
-    ];
-    
-    res.json({ sessions });
-  } catch (err) {
-    console.error('Error fetching sessions:', err);
-    res.status(500).json({ error: 'Fehler beim Laden der Sitzungen' });
-  }
-});
-
-// ============================================================================
-// 10. LOGOUT SESSION - NEU
-// ============================================================================
-app.delete('/api/bauherr/:id/sessions/:sessionId', async (req, res) => {
-  try {
-    // TODO: Implement session management
-    res.json({ success: true, message: 'Sitzung wurde beendet' });
-  } catch (err) {
-    console.error('Error logging out session:', err);
-    res.status(500).json({ error: 'Fehler beim Beenden der Sitzung' });
-  }
-});
-
-// ============================================================================
-// 11. LOGOUT ALL OTHER SESSIONS - NEU
-// ============================================================================
-app.post('/api/bauherr/:id/sessions/logout-all', async (req, res) => {
-  try {
-    // TODO: Implement session management
-    res.json({ success: true, message: 'Alle anderen Sitzungen wurden beendet' });
-  } catch (err) {
-    console.error('Error logging out all sessions:', err);
-    res.status(500).json({ error: 'Fehler beim Beenden der Sitzungen' });
-  }
-});
-
-// ============================================================================
-// 12. GET LOGIN HISTORY - NEU
-// ============================================================================
-app.get('/api/bauherr/:id/login-history', async (req, res) => {
-  try {
-    // TODO: Implement login history tracking
-    // Placeholder response
-    const history = [
-      {
-        timestamp: new Date().toISOString(),
-        status: 'success',
-        device: 'Desktop / Chrome / Windows 11',
-        ip_address: '192.168.1.1',
-        location: 'Köln, Deutschland'
-      }
-    ];
-    
-    res.json({ history });
-  } catch (err) {
-    console.error('Error fetching login history:', err);
-    res.status(500).json({ error: 'Fehler beim Laden des Login-Verlaufs' });
-  }
-});
-
-// ============================================================================
-// 13. EXPORT DATA - ERWEITERT
-// ============================================================================
+// Export Data
 app.get('/api/bauherr/:id/export', async (req, res) => {
   try {
-    // Bauherr-Daten
-    const bauherrResult = await query(
-      'SELECT * FROM bauherren WHERE id = $1', 
-      [req.params.id]
-    );
-    
-    if (bauherrResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
-    }
-    
-    // Projekte
-    const projectsResult = await query(
-      'SELECT * FROM projects WHERE bauherr_id = $1', 
-      [req.params.id]
-    );
-    
-    // LVs
-    const lvsResult = await query(`
-      SELECT lv.* 
-      FROM lvs lv
-      JOIN projects p ON lv.project_id = p.id
-      WHERE p.bauherr_id = $1
-    `, [req.params.id]);
-    
-    // Tenders
-    const tendersResult = await query(`
-      SELECT t.* 
-      FROM tenders t
-      JOIN projects p ON t.project_id = p.id
-      WHERE p.bauherr_id = $1
-    `, [req.params.id]);
-    
-    // Offers
-    const offersResult = await query(`
-      SELECT o.* 
-      FROM offers o
-      JOIN tenders t ON o.tender_id = t.id
-      JOIN projects p ON t.project_id = p.id
-      WHERE p.bauherr_id = $1
-    `, [req.params.id]);
-    
-    // Orders
-    const ordersResult = await query(`
-      SELECT ord.* 
-      FROM orders ord
-      JOIN projects p ON ord.project_id = p.id
-      WHERE p.bauherr_id = $1
-    `, [req.params.id]);
-    
-    // Passwort-Hash entfernen
-    const bauherrData = { ...bauherrResult.rows[0] };
-    delete bauherrData.password_hash;
-    delete bauherrData.backup_codes;
+    // Get all user data
+    const bauherrResult = await query('SELECT * FROM bauherren WHERE id = $1', [req.params.id]);
+    const projectsResult = await query('SELECT * FROM projects WHERE bauherr_id = $1', [req.params.id]);
     
     const exportData = {
-      version: '1.0',
-      exportDate: new Date().toISOString(),
-      personal: bauherrData,
+      personal: bauherrResult.rows[0],
       projects: projectsResult.rows,
-      leistungsverzeichnisse: lvsResult.rows,
-      tenders: tendersResult.rows,
-      offers: offersResult.rows,
-      orders: ordersResult.rows,
-      statistics: {
-        totalProjects: projectsResult.rows.length,
-        totalLVs: lvsResult.rows.length,
-        totalTenders: tendersResult.rows.length,
-        totalOffers: offersResult.rows.length,
-        totalOrders: ordersResult.rows.length
-      }
+      exportDate: new Date().toISOString()
     };
     
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="byndl-export-${new Date().toISOString().split('T')[0]}.json"`);
+    res.setHeader('Content-Disposition', 'attachment; filename="byndl-export.json"');
     res.json(exportData);
   } catch (err) {
     console.error('Error exporting data:', err);
@@ -20044,458 +19557,48 @@ app.get('/api/bauherr/:id/export', async (req, res) => {
   }
 });
 
-// ============================================================================
-// 14. DELETE ACCOUNT - VERBESSERT (Route-Pfad korrigiert)
-// ============================================================================
-app.delete('/api/bauherr/:id/delete', async (req, res) => {
+// Delete Account
+app.delete('/api/bauherr/:id/account', async (req, res) => {
   try {
-    // Kein Passwort-Check nötig, da bereits über Prompt im Frontend gesichert
+    const { password } = req.body;
     
-    // Get bauherr to verify exists
-    const bauherrResult = await query(
-      'SELECT id FROM bauherren WHERE id = $1',
-      [req.params.id]
-    );
-    
-    if (bauherrResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Account nicht gefunden' });
-    }
-    
-    // Start transaction
-    await query('BEGIN');
-    
-    try {
-      // Get all projects
-      const projects = await query(
-        'SELECT id FROM projects WHERE bauherr_id = $1', 
-        [req.params.id]
-      );
-      
-      // Delete all related data for each project
-      for (const project of projects.rows) {
-        // Delete in correct order to respect foreign keys
-        await query('DELETE FROM file_uploads WHERE project_id = $1', [project.id]);
-        await query('DELETE FROM answers WHERE project_id = $1', [project.id]);
-        await query('DELETE FROM questions WHERE project_id = $1', [project.id]);
-        await query('DELETE FROM trade_progress WHERE project_id = $1', [project.id]);
-        
-        // Delete offers and related
-        await query(`
-          DELETE FROM offers 
-          WHERE tender_id IN (
-            SELECT id FROM tenders WHERE project_id = $1
-          )
-        `, [project.id]);
-        
-        // Delete orders and related
-        await query(`
-          DELETE FROM supplements 
-          WHERE order_id IN (
-            SELECT id FROM orders WHERE project_id = $1
-          )
-        `, [project.id]);
-        
-        await query('DELETE FROM orders WHERE project_id = $1', [project.id]);
-        await query('DELETE FROM tenders WHERE project_id = $1', [project.id]);
-        await query('DELETE FROM lvs WHERE project_id = $1', [project.id]);
-        await query('DELETE FROM project_trades WHERE project_id = $1', [project.id]);
-        await query('DELETE FROM schedules WHERE project_id = $1', [project.id]);
-      }
-      
-      // Delete all projects
-      await query('DELETE FROM projects WHERE bauherr_id = $1', [req.params.id]);
-      
-      // Finally delete bauherr
-      await query('DELETE FROM bauherren WHERE id = $1', [req.params.id]);
-      
-      // Commit transaction
-      await query('COMMIT');
-      
-      res.json({ 
-        success: true, 
-        message: 'Account und alle zugehörigen Daten wurden gelöscht' 
-      });
-    } catch (innerErr) {
-      // Rollback on error
-      await query('ROLLBACK');
-      throw innerErr;
-    }
-  } catch (err) {
-    console.error('Error deleting account:', err);
-    res.status(500).json({ error: 'Account-Löschung fehlgeschlagen' });
-  }
-});
-
-// ============================================================================
-// 15. DELETE PROJECT - VERBESSERT (aus Original übernommen)
-// ============================================================================
-app.delete('/api/projects/:id', async (req, res) => {
-  try {
-    // Verify ownership
-    const bauherrId = req.headers['x-bauherr-id']; // Falls Auth-Middleware vorhanden
-    
-    if (bauherrId) {
-      const ownerCheck = await query(
-        'SELECT id FROM projects WHERE id = $1 AND bauherr_id = $2',
-        [req.params.id, bauherrId]
-      );
-      
-      if (ownerCheck.rows.length === 0) {
-        return res.status(403).json({ error: 'Keine Berechtigung' });
-      }
-    }
-    
-    await query('BEGIN');
-    
-    try {
-      // Delete in correct order
-      await query('DELETE FROM file_uploads WHERE project_id = $1', [req.params.id]);
-      await query('DELETE FROM answers WHERE project_id = $1', [req.params.id]);
-      await query('DELETE FROM questions WHERE project_id = $1', [req.params.id]);
-      await query('DELETE FROM trade_progress WHERE project_id = $1', [req.params.id]);
-      
-      // Delete offers
-      await query(`
-        DELETE FROM offers 
-        WHERE tender_id IN (SELECT id FROM tenders WHERE project_id = $1)
-      `, [req.params.id]);
-      
-      // Delete supplements and orders
-      await query(`
-        DELETE FROM supplements 
-        WHERE order_id IN (SELECT id FROM orders WHERE project_id = $1)
-      `, [req.params.id]);
-      
-      await query('DELETE FROM orders WHERE project_id = $1', [req.params.id]);
-      await query('DELETE FROM tenders WHERE project_id = $1', [req.params.id]);
-      await query('DELETE FROM lvs WHERE project_id = $1', [req.params.id]);
-      await query('DELETE FROM project_trades WHERE project_id = $1', [req.params.id]);
-      await query('DELETE FROM schedules WHERE project_id = $1', [req.params.id]);
-      await query('DELETE FROM projects WHERE id = $1', [req.params.id]);
-      
-      await query('COMMIT');
-      
-      res.json({ 
-        success: true, 
-        message: 'Projekt erfolgreich gelöscht' 
-      });
-    } catch (innerErr) {
-      await query('ROLLBACK');
-      throw innerErr;
-    }
-  } catch (err) {
-    console.error('Error deleting project:', err);
-    res.status(500).json({ error: 'Projekt-Löschung fehlgeschlagen' });
-  }
-});
-
-// ============================================================================
-// 16. UPLOAD PROFILE IMAGE - NEU
-// ============================================================================
-app.post('/api/bauherr/:id/profile-image', async (req, res) => {
-  try {
-    const { imageData } = req.body; // Base64 image
-    
-    if (!imageData) {
-      return res.status(400).json({ error: 'Kein Bild hochgeladen' });
-    }
-    
-    // TODO: Validate image format and size
-    // TODO: Store in S3/Cloud Storage and save URL
-    
-    await query(
-      `UPDATE bauherren SET
-        profile_image = $2,
-        updated_at = NOW()
-       WHERE id = $1`,
-      [req.params.id, imageData]
-    );
-    
-    res.json({ 
-      success: true, 
-      message: 'Profilbild erfolgreich hochgeladen',
-      imageUrl: imageData // In production: return cloud URL
-    });
-  } catch (err) {
-    console.error('Error uploading profile image:', err);
-    res.status(500).json({ error: 'Upload fehlgeschlagen' });
-  }
-});
-
-// ============================================================================
-// 17. DELETE PROFILE IMAGE - NEU
-// ============================================================================
-app.delete('/api/bauherr/:id/profile-image', async (req, res) => {
-  try {
-    await query(
-      `UPDATE bauherren SET
-        profile_image = NULL,
-        updated_at = NOW()
-       WHERE id = $1`,
-      [req.params.id]
-    );
-    
-    res.json({ 
-      success: true, 
-      message: 'Profilbild erfolgreich gelöscht' 
-    });
-  } catch (err) {
-    console.error('Error deleting profile image:', err);
-    res.status(500).json({ error: 'Löschen fehlgeschlagen' });
-  }
-});
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-// Password strength calculator (for reference)
-function calculatePasswordStrength(password) {
-  let strength = 0;
-  if (password.length >= 8) strength += 20;
-  if (password.length >= 12) strength += 20;
-  if (/[a-z]/.test(password)) strength += 20;
-  if (/[A-Z]/.test(password)) strength += 20;
-  if (/[0-9]/.test(password)) strength += 10;
-  if (/[^a-zA-Z0-9]/.test(password)) strength += 10;
-  return Math.min(strength, 100);
-}
-
-// Generate verification token
-function generateVerificationToken() {
-  return require('crypto').randomBytes(32).toString('hex');
-}
-
-// ============================================================================
-// E-MAIL FUNCTIONS FÜR SETTINGS (KEINE DUPLIKATE!)
-// ============================================================================
-
-// Passwort-Änderungs-Bestätigung (NEU - nicht in Register)
-async function sendPasswordChangeConfirmation(email, userName) {
-  if (!transporter) return;
-  
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"byndl" <noreply@byndl.de>',
-      to: email,
-      subject: 'Passwort wurde geändert - byndl',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1>🔐 Passwort geändert</h1>
-          </div>
-          
-          <div style="padding: 30px; background: #f7f7f7;">
-            <p>Hallo ${userName},</p>
-            
-            <p>Ihr Passwort wurde soeben erfolgreich geändert.</p>
-            
-            <div style="background: #e0f2f1; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Zeitpunkt:</strong> ${new Date().toLocaleString('de-DE')}</p>
-            </div>
-            
-            <p style="color: #d32f2f; font-weight: bold;">
-              ⚠️ Haben Sie diese Änderung nicht vorgenommen?
-            </p>
-            
-            <p>Wenn Sie Ihr Passwort nicht geändert haben, kontaktieren Sie bitte umgehend unseren Support:</p>
-            
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="mailto:support@byndl.de" 
-                 style="display: inline-block; padding: 12px 30px; background: #d32f2f; color: white; text-decoration: none; border-radius: 5px;">
-                Support kontaktieren
-              </a>
-            </div>
-          </div>
-        </div>
-      `
-    });
-    
-    console.log(`✅ Passwort-Änderungs-Bestätigung gesendet an: ${email}`);
-  } catch (error) {
-    console.error('⚠️ Fehler beim E-Mail-Versand:', error);
-  }
-}
-
-// 2FA Aktivierungs-Bestätigung (NEU - nicht in Register)
-async function send2FAActivationEmail(email, userName, backupCodes) {
-  if (!transporter) return;
-  
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"byndl" <noreply@byndl.de>',
-      to: email,
-      subject: 'Zwei-Faktor-Authentifizierung aktiviert - byndl',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1>🔒 2FA aktiviert</h1>
-          </div>
-          
-          <div style="padding: 30px; background: #f7f7f7;">
-            <p>Hallo ${userName},</p>
-            
-            <p>Die Zwei-Faktor-Authentifizierung wurde für Ihr Konto erfolgreich aktiviert.</p>
-            
-            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
-              <p style="margin: 0; font-weight: bold;">⚠️ Wichtig: Backup-Codes</p>
-              <p style="margin: 10px 0 0 0; font-size: 14px;">
-                Bewahren Sie diese Codes sicher auf. Sie benötigen sie, falls Sie keinen Zugriff auf Ihr Authentifizierungs-Gerät haben.
-              </p>
-            </div>
-            
-            <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0;">
-              <h3 style="margin-top: 0;">Ihre Backup-Codes:</h3>
-              <div style="font-family: monospace; font-size: 16px; line-height: 2;">
-                ${backupCodes.map(code => `<div>${code}</div>`).join('')}
-              </div>
-            </div>
-            
-            <p style="font-size: 14px; color: #d32f2f;">
-              <strong>Wichtig:</strong> Jeder Code kann nur einmal verwendet werden. Speichern Sie diese Codes an einem sicheren Ort.
-            </p>
-            
-            <p style="font-size: 12px; color: #999; margin-top: 30px;">
-              Haben Sie 2FA nicht aktiviert? Kontaktieren Sie sofort unseren Support.
-            </p>
-          </div>
-        </div>
-      `
-    });
-    
-    console.log(`✅ 2FA-Aktivierungs-E-Mail gesendet an: ${email}`);
-  } catch (error) {
-    console.error('⚠️ Fehler beim E-Mail-Versand:', error);
-  }
-}
-
-// ============================================================================
-// SETTINGS ROUTEN MIT E-MAIL (OHNE DUPLIKATE)
-// ============================================================================
-
-// Passwort-Änderung MIT E-Mail-Bestätigung
-app.put('/api/bauherr/:id/password', async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Alle Felder erforderlich' });
-    }
-    
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'Mindestens 8 Zeichen' });
-    }
-    
-    // Passwort-Stärke
-    const strength = (newPassword.length >= 8 ? 20 : 0) +
-                     (newPassword.length >= 12 ? 20 : 0) +
-                     (/[a-z]/.test(newPassword) ? 20 : 0) +
-                     (/[A-Z]/.test(newPassword) ? 20 : 0) +
-                     (/[0-9]/.test(newPassword) ? 10 : 0) +
-                     (/[^a-zA-Z0-9]/.test(newPassword) ? 10 : 0);
-    
-    if (strength < 40) {
-      return res.status(400).json({ 
-        error: 'Passwort zu schwach',
-        hint: 'Verwenden Sie Groß-/Kleinbuchstaben, Zahlen und Sonderzeichen'
-      });
-    }
-    
+    // Verify password
     const result = await query(
-      'SELECT password_hash, name, email FROM bauherren WHERE id = $1',
+      'SELECT password_hash FROM bauherren WHERE id = $1',
       [req.params.id]
     );
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+      return res.status(404).json({ error: 'Account nicht gefunden' });
     }
     
-    const bauherr = result.rows[0];
-    
-    const isValid = await bcryptjs.compare(currentPassword, bauherr.password_hash);
+    const isValid = await bcryptjs.compare(password, result.rows[0].password_hash);
     if (!isValid) {
-      return res.status(401).json({ error: 'Aktuelles Passwort falsch' });
+      return res.status(401).json({ error: 'Falsches Passwort' });
     }
     
-    const isSame = await bcryptjs.compare(newPassword, bauherr.password_hash);
-    if (isSame) {
-      return res.status(400).json({ error: 'Neues Passwort darf nicht identisch sein' });
+    // Delete all related data
+    await query('BEGIN');
+    
+    // Delete projects and all related data
+    const projects = await query('SELECT id FROM projects WHERE bauherr_id = $1', [req.params.id]);
+    for (const project of projects.rows) {
+      await query('DELETE FROM questions WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM project_trades WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM lvs WHERE project_id = $1', [project.id]);
+      await query('DELETE FROM tenders WHERE project_id = $1', [project.id]);
     }
     
-    const hashedPassword = await bcryptjs.hash(newPassword, 10);
+    await query('DELETE FROM projects WHERE bauherr_id = $1', [req.params.id]);
+    await query('DELETE FROM bauherren WHERE id = $1', [req.params.id]);
     
-    await query(
-      `UPDATE bauherren SET
-        password_hash = $2,
-        last_password_change = NOW(),
-        updated_at = NOW()
-       WHERE id = $1`,
-      [req.params.id, hashedPassword]
-    );
+    await query('COMMIT');
     
-    // ✅ E-Mail-Bestätigung senden (non-blocking)
-    sendPasswordChangeConfirmation(bauherr.email, bauherr.name).catch(err => 
-      console.error('E-Mail send failed (non-critical):', err)
-    );
-    
-    res.json({ 
-      success: true, 
-      message: 'Passwort erfolgreich geändert',
-      last_password_change: new Date().toISOString() 
-    });
+    res.json({ success: true });
   } catch (err) {
-    console.error('Error changing password:', err);
-    res.status(500).json({ error: 'Passwortänderung fehlgeschlagen' });
-  }
-});
-
-// 2FA Toggle MIT E-Mail-Bestätigung
-app.put('/api/bauherr/:id/two-factor', async (req, res) => {
-  try {
-    const { enabled } = req.body;
-    
-    const bauherrResult = await query(
-      'SELECT name, email FROM bauherren WHERE id = $1',
-      [req.params.id]
-    );
-    
-    if (bauherrResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
-    }
-    
-    const bauherr = bauherrResult.rows[0];
-    
-    let backupCodes = null;
-    if (enabled) {
-      backupCodes = Array.from({ length: 8 }, () => 
-        Math.random().toString(36).substring(2, 10).toUpperCase()
-      );
-    }
-    
-    await query(
-      `UPDATE bauherren SET
-        two_factor_enabled = $2,
-        backup_codes = $3,
-        updated_at = NOW()
-       WHERE id = $1`,
-      [req.params.id, enabled, backupCodes ? JSON.stringify(backupCodes) : null]
-    );
-    
-    // ✅ E-Mail senden wenn aktiviert (non-blocking)
-    if (enabled && backupCodes) {
-      send2FAActivationEmail(bauherr.email, bauherr.name, backupCodes).catch(err =>
-        console.error('E-Mail send failed (non-critical):', err)
-      );
-    }
-    
-    res.json({ 
-      success: true,
-      message: enabled ? '2FA aktiviert' : '2FA deaktiviert',
-      backupCodes: enabled ? backupCodes : null
-    });
-  } catch (err) {
-    console.error('Error toggling 2FA:', err);
-    res.status(500).json({ error: 'Update fehlgeschlagen' });
+    await query('ROLLBACK');
+    console.error('Error deleting account:', err);
+    res.status(500).json({ error: 'Account-Löschung fehlgeschlagen' });
   }
 });
 
