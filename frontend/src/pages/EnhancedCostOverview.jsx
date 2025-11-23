@@ -515,7 +515,7 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
         {/* Budget */}
         <div>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-semibold text-blue-300">💰 Budget (geplant)</span>
+            <span className="text-sm font-semibold text-blue-300">Budget (geplant)</span>
             <span className="text-lg font-bold text-blue-400">{formatCurrency(budget)}</span>
           </div>
           <div className="relative h-12 bg-white/5 rounded-lg overflow-hidden">
@@ -539,7 +539,7 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
         {/* KI-Schätzung */}
         <div>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-semibold text-orange-300">🤖 KI-Kostenschätzung (Gesamt)</span>
+            <span className="text-sm font-semibold text-orange-300">KI-Kostenschätzung (Gesamt)</span>
             <div className="text-right">
               <span className="text-lg font-bold text-orange-400">{formatCurrency(kiEstimate)}</span>
               {kiEstimate !== budget && (
