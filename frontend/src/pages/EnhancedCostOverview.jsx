@@ -652,7 +652,7 @@ function CostComparisonBars({ budget, kiEstimate, actualCost, allTradesAwarded }
 // ============================================================================
 // KOMPONENTE: KPI-Karte
 // ============================================================================
-function KPICard({ icon, label, value, subtitle, color }) {
+function KPICard({ label, value, subtitle, color }) {
   const colorClasses = {
     blue: 'from-blue-500/20 to-blue-600/20 border-blue-500/30',
     green: 'from-green-500/20 to-green-600/20 border-green-500/30',
@@ -663,10 +663,7 @@ function KPICard({ icon, label, value, subtitle, color }) {
 
   return (
     <div className={`bg-gradient-to-br ${colorClasses[color]} border rounded-lg p-4`}>
-      <div className="flex items-center gap-3 mb-2">
-        <span className="text-2xl">{icon}</span>
-        <span className="text-sm text-gray-400">{label}</span>
-      </div>
+      <span className="text-sm text-gray-400 block mb-2">{label}</span>
       <p className="text-2xl font-bold text-white mb-1">{value}</p>
       <p className="text-xs text-gray-400">{subtitle}</p>
     </div>
