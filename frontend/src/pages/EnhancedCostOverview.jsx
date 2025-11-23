@@ -133,6 +133,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
           totalChanges={totalChanges}
           nachtraegeCount={nachtraegeCount}
           supplementsCount={supplementsCount}
+          setActiveView={setActiveView}
         />
       )}
 
@@ -162,7 +163,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
 // ============================================================================
 // VIEW: Übersicht (Dashboard mit KPIs und Charts)
 // ============================================================================
-function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges, nachtraegeCount, supplementsCount }) {
+function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges, nachtraegeCount, supplementsCount, setActiveView }) {
   // Berechne Top Einsparungen/Mehrkosten
   const completedTrades = trades.filter(t => t.status === 'vergeben' && t.vsEstimate !== undefined);
   const topSavings = completedTrades
