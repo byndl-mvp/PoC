@@ -62,14 +62,16 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
   const { project, summary, trades } = costData;
   const allTradesAwarded = summary.allTradesAwarded;
   
-  // Berechne Nachträge-Summen
-  const totalNachtraege = trades.reduce((sum, t) => sum + (t.nachtraege || 0), 0);
-  const totalSupplements = trades.reduce((sum, t) => sum + (t.supplements || 0), 0);
-  const totalChanges = totalNachtraege + totalSupplements;
+  // Berechne Nachträge-Summen nach Status
+  const approvedNachtraege = trades.reduce((sum, t) => sum + (t.approvedNachtraege || 0), 0);
+  const rejectedNachtraege = trades.reduce((sum, t) => sum + (t.rejectedNachtraege || 0), 0);
+  const pendingNachtraege = trades.reduce((sum, t) => sum + (t.pendingNachtraege || 0), 0);
+  const totalNachtraege = approvedNachtraege;
   
-  const nachtraegeCount = trades.reduce((sum, t) => sum + (t.nachtraegeCount || 0), 0);
-  const supplementsCount = trades.reduce((sum, t) => sum + (t.supplementsCount || 0), 0);
-  const pendingCount = trades.reduce((sum, t) => sum + (t.supplementsPendingCount || 0), 0);
+  const approvedCount = trades.reduce((sum, t) => sum + (t.approvedCount || 0), 0);
+  const rejectedCount = trades.reduce((sum, t) => sum + (t.rejectedCount || 0), 0);
+  const pendingCount = trades.reduce((sum, t) => sum + (t.pendingCount || 0), 0);
+  const nachtraegeCount = approvedCount;
 
   return (
     <div className="space-y-6">
@@ -98,7 +100,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
           >
             📋 Details
           </button>
-          {(nachtraegeCount > 0 || supplementsCount > 0) && (
+          {(approvedCount > 0 || rejectedCount > 0 || pendingCount > 0) && (
             <button
               onClick={() => setActiveView('nachtraege')}
               className={`px-4 py-2 rounded-lg transition-colors relative ${
@@ -130,9 +132,10 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
           summary={summary}
           trades={trades}
           allTradesAwarded={allTradesAwarded}
-          totalChanges={totalChanges}
-          nachtraegeCount={nachtraegeCount}
-          supplementsCount={supplementsCount}
+          approvedNachtraege={approvedNachtraege}
+          approvedCount={approvedCount}
+          rejectedCount={rejectedCount}
+          pendingCount={pendingCount}
           setActiveView={setActiveView}
         />
       )}
@@ -149,10 +152,11 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
       {activeView === 'nachtraege' && (
         <NachtraegeView
           trades={trades}
-          totalNachtraege={totalNachtraege}
-          totalSupplements={totalSupplements}
-          nachtraegeCount={nachtraegeCount}
-          supplementsCount={supplementsCount}
+          approvedNachtraege={approvedNachtraege}
+          rejectedNachtraege={rejectedNachtraege}
+          pendingNachtraege={pendingNachtraege}
+          approvedCount={approvedCount}
+          rejectedCount={rejectedCount}
           pendingCount={pendingCount}
         />
       )}
@@ -163,7 +167,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
 // ============================================================================
 // VIEW: Übersicht (Dashboard mit KPIs und Charts)
 // ============================================================================
-function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges, nachtraegeCount, supplementsCount, setActiveView }) {
+function OverviewView({ project, summary, trades, allTradesAwarded, approvedNachtraege, approvedCount, rejectedCount, pendingCount, setActiveView }) {
   // Berechne Top Einsparungen/Mehrkosten
   const completedTrades = trades.filter(t => t.status === 'vergeben' && t.vsEstimate !== undefined);
   const topSavings = completedTrades
@@ -218,15 +222,15 @@ function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges
       />
 
       {/* Nachträge-Warnung wenn vorhanden */}
-      {(nachtraegeCount > 0 || supplementsCount > 0) && (
+      {(approvedCount > 0 || rejectedCount > 0 || pendingCount > 0) && (
         <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
-                <p className="text-orange-300 font-semibold">Nachträge & Änderungen</p>
+                <p className="text-orange-300 font-semibold">Nachträge vorhanden</p>
                 <p className="text-orange-200 text-sm">
-                  {nachtraegeCount} Nachträge + {supplementsCount} Supplements = {formatCurrency(totalChanges)}
+                  {approvedCount} beauftragt, {rejectedCount} abgelehnt, {pendingCount} offen = {formatCurrency(approvedNachtraege)}
                 </p>
               </div>
             </div>
@@ -336,11 +340,11 @@ function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges
             </div>
 
             {/* Nachträge-Info */}
-            {totalChanges > 0 && (
+            {approvedNachtraege > 0 && (
               <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                 <p className="text-orange-300 text-sm">
-                  <span className="font-semibold">Hinweis:</span> Die Ist-Kosten enthalten {formatCurrency(totalChanges)} an Nachträgen und Änderungen 
-                  ({nachtraegeCount} Nachträge + {supplementsCount} Supplements).
+                  <span className="font-semibold">Hinweis:</span> Die Ist-Kosten enthalten {formatCurrency(approvedNachtraege)} an beauftragten Nachträgen 
+                  ({approvedCount} Nachträge).
                 </p>
               </div>
             )}
@@ -409,31 +413,34 @@ function DetailsView({ trades, expandedTrade, setExpandedTrade, allTradesAwarded
 // ============================================================================
 // VIEW: Nachträge (Detaillierte Nachtrags-Übersicht)
 // ============================================================================
-function NachtraegeView({ trades, totalNachtraege, totalSupplements, nachtraegeCount, supplementsCount, pendingCount }) {
+function NachtraegeView({ trades, approvedNachtraege, rejectedNachtraege, pendingNachtraege, approvedCount, rejectedCount, pendingCount }) {
   const tradesWithChanges = trades.filter(t =>
-    (t.nachtraegeCount > 0 || t.supplementsCount > 0) && t.status === 'vergeben'
+    (t.approvedCount > 0 || t.rejectedCount > 0 || t.pendingCount > 0) && t.status === 'vergeben'
   );
 
   return (
     <div className="space-y-6">
-      {/* Nachträge-Übersicht */}
+      {/* Nachträge-Übersicht nach Status */}
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-6">
-          <p className="text-sm text-orange-300 mb-2">Nachträge</p>
-          <p className="text-3xl font-bold text-orange-400">{nachtraegeCount}</p>
-          <p className="text-lg text-orange-300 mt-2">{formatCurrency(totalNachtraege)}</p>
+        {/* Beauftragte Nachträge */}
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
+          <p className="text-sm text-green-300 mb-2">Beauftragte Nachträge</p>
+          <p className="text-3xl font-bold text-green-400">{approvedCount}</p>
+          <p className="text-lg text-green-300 mt-2">{formatCurrency(approvedNachtraege)}</p>
         </div>
         
-        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-6">
-          <p className="text-sm text-purple-300 mb-2">Supplements</p>
-          <p className="text-3xl font-bold text-purple-400">{supplementsCount}</p>
-          <p className="text-lg text-purple-300 mt-2">{formatCurrency(totalSupplements)}</p>
-        </div>
-        
+        {/* Abgelehnte Nachträge */}
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6">
-          <p className="text-sm text-red-300 mb-2">Offen zur Prüfung</p>
-          <p className="text-3xl font-bold text-red-400">{pendingCount}</p>
-          <p className="text-xs text-red-300 mt-2">Supplements</p>
+          <p className="text-sm text-red-300 mb-2">Abgelehnte Nachträge</p>
+          <p className="text-3xl font-bold text-red-400">{rejectedCount}</p>
+          <p className="text-lg text-red-300 mt-2">{formatCurrency(rejectedNachtraege)}</p>
+        </div>
+        
+        {/* Offene Nachträge zur Prüfung */}
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-6">
+          <p className="text-sm text-orange-300 mb-2">Offen zur Prüfung</p>
+          <p className="text-3xl font-bold text-orange-400">{pendingCount}</p>
+          <p className="text-lg text-orange-300 mt-2">{formatCurrency(pendingNachtraege)}</p>
         </div>
       </div>
 
@@ -1123,12 +1130,9 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
                 <p className="text-lg text-white font-bold">
                   {formatCurrency(trade.totalCost)}
                 </p>
-                {(trade.nachtraege > 0 || trade.supplements > 0) && (
+                {trade.approvedNachtraege > 0 && (
                   <p className="text-xs text-orange-300 mt-1">
-                    (inkl. {[
-                      trade.nachtraege > 0 && `${formatCurrency(trade.nachtraege)} NT`,
-                      trade.supplements > 0 && `${formatCurrency(trade.supplements)} Suppl.`
-                    ].filter(Boolean).join(' + ')})
+                    (inkl. {formatCurrency(trade.approvedNachtraege)} Nachträge)
                   </p>
                 )}
               </div>
@@ -1176,18 +1180,12 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
                   <p className="text-teal-300 font-semibold">{trade.bundleDiscount}%</p>
                 </div>
               )}
-              {trade.nachtraegeCount > 0 && (
+              {(trade.approvedCount > 0 || trade.rejectedCount > 0 || trade.pendingCount > 0) && (
                 <div className="bg-orange-500/10 rounded p-2">
                   <p className="text-gray-400">Nachträge</p>
-                  <p className="text-orange-300 font-semibold">{trade.nachtraegeCount}</p>
-                </div>
-              )}
-              {trade.supplementsCount > 0 && (
-                <div className="bg-purple-500/10 rounded p-2">
-                  <p className="text-gray-400">Supplements</p>
-                  <p className="text-purple-300 font-semibold">
-                    {trade.supplementsCount}
-                    {trade.supplementsPendingCount > 0 && ` (${trade.supplementsPendingCount} offen)`}
+                  <p className="text-orange-300 font-semibold">
+                    {(trade.approvedCount || 0) + (trade.rejectedCount || 0) + (trade.pendingCount || 0)}
+                    {trade.pendingCount > 0 && ` (${trade.pendingCount} offen)`}
                   </p>
                 </div>
               )}
@@ -1233,6 +1231,8 @@ function OpenTradeCard({ trade }) {
 // KOMPONENTE: Nachtrags-Karte
 // ============================================================================
 function NachtrageCard({ trade }) {
+  const totalNachtraege = (trade.approvedNachtraege || 0) + (trade.rejectedNachtraege || 0) + (trade.pendingNachtraege || 0);
+  
   return (
     <div className="bg-white/5 rounded-lg p-4 border border-white/10">
       <div className="flex justify-between items-start mb-4">
@@ -1241,39 +1241,46 @@ function NachtrageCard({ trade }) {
           <p className="text-sm text-gray-400">Vergeben an: {trade.contractorName}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-gray-400">Gesamtänderungen</p>
-          <p className="text-xl font-bold text-orange-400">
-            +{formatCurrency((trade.nachtraege || 0) + (trade.supplements || 0))}
+          <p className="text-sm text-gray-400">Beauftragte Nachträge</p>
+          <p className="text-xl font-bold text-green-400">
+            +{formatCurrency(trade.approvedNachtraege || 0)}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {trade.nachtraegeCount > 0 && (
-          <div className="bg-orange-500/10 rounded p-3">
-            <p className="text-xs text-orange-300 mb-1">Nachträge</p>
-            <p className="text-lg font-bold text-orange-400">
-              {trade.nachtraegeCount}
+      <div className="grid grid-cols-3 gap-3">
+        {trade.approvedCount > 0 && (
+          <div className="bg-green-500/10 rounded p-3">
+            <p className="text-xs text-green-300 mb-1">Beauftragt</p>
+            <p className="text-lg font-bold text-green-400">
+              {trade.approvedCount}
             </p>
-            <p className="text-sm text-orange-300 mt-1">
-              {formatCurrency(trade.nachtraege)}
+            <p className="text-sm text-green-300 mt-1">
+              {formatCurrency(trade.approvedNachtraege || 0)}
             </p>
           </div>
         )}
         
-        {trade.supplementsCount > 0 && (
-          <div className="bg-purple-500/10 rounded p-3">
-            <p className="text-xs text-purple-300 mb-1">Supplements</p>
-            <p className="text-lg font-bold text-purple-400">
-              {trade.supplementsCount}
-              {trade.supplementsPendingCount > 0 && (
-                <span className="text-xs text-red-400 ml-2">
-                  ({trade.supplementsPendingCount} offen)
-                </span>
-              )}
+        {trade.rejectedCount > 0 && (
+          <div className="bg-red-500/10 rounded p-3">
+            <p className="text-xs text-red-300 mb-1">Abgelehnt</p>
+            <p className="text-lg font-bold text-red-400">
+              {trade.rejectedCount}
             </p>
-            <p className="text-sm text-purple-300 mt-1">
-              {formatCurrency(trade.supplements)}
+            <p className="text-sm text-red-300 mt-1">
+              {formatCurrency(trade.rejectedNachtraege || 0)}
+            </p>
+          </div>
+        )}
+        
+        {trade.pendingCount > 0 && (
+          <div className="bg-orange-500/10 rounded p-3">
+            <p className="text-xs text-orange-300 mb-1">Offen</p>
+            <p className="text-lg font-bold text-orange-400">
+              {trade.pendingCount}
+            </p>
+            <p className="text-sm text-orange-300 mt-1">
+              {formatCurrency(trade.pendingNachtraege || 0)}
             </p>
           </div>
         )}
@@ -1285,7 +1292,7 @@ function NachtrageCard({ trade }) {
           <p className="text-white font-semibold">{formatCurrency(trade.orderAmount)}</p>
         </div>
         <div className="text-right">
-          <p className="text-gray-400">Inkl. Änderungen</p>
+          <p className="text-gray-400">Inkl. beauftragter Nachträge</p>
           <p className="text-white font-bold">{formatCurrency(trade.totalCost)}</p>
         </div>
       </div>
