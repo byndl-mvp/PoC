@@ -1,8 +1,6 @@
 // ============================================================================
-// VERBESSERTE KOSTENÜBERSICHT-TAB KOMPONENTE
+// PREMIUM KOSTENÜBERSICHT V2.0 - Vollständig überarbeitete Version
 // ============================================================================
-// Diese Komponente ersetzt den bestehenden 'budget' Tab in BauherrenDashboardPage.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 
 // Hilfsfunktion für Währungsformatierung
@@ -15,13 +13,14 @@ function formatCurrency(value) {
 }
 
 // ============================================================================
-// HAUPTKOMPONENTE: Erweiterte Kostenübersicht
+// HAUPTKOMPONENTE: Premium Kostenübersicht
 // ============================================================================
 export function EnhancedCostOverview({ projectId, apiUrl }) {
   const [costData, setCostData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedTrade, setExpandedTrade] = useState(null);
+  const [activeView, setActiveView] = useState('overview'); // 'overview', 'details', 'nachtraege'
 
   const loadCostAnalysis = useCallback(async () => {
     try {
@@ -45,7 +44,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-white text-lg">Lade Kostenanalyse...</div>
+        <div className="text-white text-lg">Lade Premium-Kostenanalyse...</div>
       </div>
     );
   }
@@ -60,333 +59,551 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
 
   if (!costData) return null;
 
-  const { project, summary, trades, completedTrades, openTrades } = costData;
+  const { project, summary, trades } = costData;
   const allTradesAwarded = summary.allTradesAwarded;
+  
+  // Berechne Nachträge-Summen
+  const totalNachtraege = trades.reduce((sum, t) => sum + (t.nachtraege || 0), 0);
+  const totalSupplements = trades.reduce((sum, t) => sum + (t.supplements || 0), 0);
+  const totalChanges = totalNachtraege + totalSupplements;
+  
+  const nachtraegeCount = trades.reduce((sum, t) => sum + (t.nachtraegeCount || 0), 0);
+  const supplementsCount = trades.reduce((sum, t) => sum + (t.supplementsCount || 0), 0);
+  const pendingCount = trades.reduce((sum, t) => sum + (t.supplementsPendingCount || 0), 0);
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white mb-6">Kostenübersicht</h2>
-
-      {/* ====================================================================
-          STATUS-BANNER: Zeigt ob alle Gewerke vergeben sind
-          ==================================================================== */}
-      {!allTradesAwarded && (
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-2xl">ℹ️</span>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold text-blue-300 mb-2">
-                Teilweise vergebenes Projekt
-              </h3>
-              <p className="text-blue-200 text-sm mb-3">
-                Ausführlicher Gesamt-Soll/Ist-Vergleich erst nach vollständiger Vergabe aller Gewerke verfügbar.
-              </p>
-              <div className="flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-green-400 font-bold">{summary.completedTrades}</span>
-                  <span className="text-gray-400">Gewerke vergeben</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-orange-400 font-bold">{summary.openTrades}</span>
-                  <span className="text-gray-400">Gewerke offen</span>
-                </div>
-                <div className="flex-1 bg-white/10 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-green-500 to-teal-500 h-2 rounded-full transition-all"
-                    style={{ width: `${summary.completionPercentage}%` }}
-                  />
-                </div>
-                <span className="text-white font-semibold">{summary.completionPercentage}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ====================================================================
-          VISUALISIERUNG: Hauptkosten-Balken
-          ==================================================================== */}
-      <CostVisualization 
-        initialBudget={project.initialBudget}
-        kiEstimate={summary.totalKiEstimate}
-        actualCost={summary.totalCurrent}
-        allTradesAwarded={allTradesAwarded}
-      />
-
-      {/* ====================================================================
-          GEWERKE-ANALYSE: Einzelne Gewerke
-          ==================================================================== */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold text-white mb-4">
-          {allTradesAwarded ? 'Detailanalyse nach Gewerken' : 'Bereits vergebene Gewerke'}
-        </h3>
-
-        {completedTrades.length === 0 ? (
-          <div className="bg-white/5 rounded-lg p-8 text-center">
-            <p className="text-gray-400">Noch keine Gewerke vergeben.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {trades
-              .filter(t => t.status === 'vergeben')
-              .map((trade) => (
-                <TradeDetailCard 
-                  key={trade.tradeId}
-                  trade={trade}
-                  expanded={expandedTrade === trade.tradeId}
-                  onToggle={() => setExpandedTrade(
-                    expandedTrade === trade.tradeId ? null : trade.tradeId
-                  )}
-                />
-              ))}
-          </div>
-        )}
-
-        {/* Offene Gewerke anzeigen wenn nicht alle vergeben */}
-        {!allTradesAwarded && openTrades.length > 0 && (
-          <>
-            <h3 className="text-xl font-bold text-white mb-4 mt-8">Noch nicht vergebene Gewerke</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {openTrades.map((trade) => (
-                <div 
-                  key={trade.tradeId}
-                  className="bg-white/5 rounded-lg p-4 border border-white/10"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="text-white font-semibold">{trade.tradeName}</h4>
-                    <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-300 rounded-full">
-                      {trade.status === 'ausgeschrieben' ? 'Ausgeschrieben' :
-                       trade.status === 'bereit' ? 'Bereit' :
-                       trade.status === 'in_bearbeitung' ? 'In Bearbeitung' : 'Offen'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-400">KI-Schätzung:</p>
-                  <p className="text-lg text-blue-400 font-bold">
-                    {formatCurrency(trade.kiEstimate)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ====================================================================
-          GESAMTÜBERSICHT: Nur wenn alle Gewerke vergeben
-          ==================================================================== */}
-      {allTradesAwarded && (
-        <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl p-6 border border-white/20">
-          <h3 className="text-xl font-bold text-white mb-6">Gewerkeübergreifende Gesamtanalyse</h3>
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Budget vs KI-Schätzung */}
-            <ComparisonCard
-              title="Budget vs KI-Schätzung"
-              baseline={project.initialBudget}
-              actual={summary.totalKiEstimate}
-              difference={summary.budgetVsEstimate}
-              percentage={summary.budgetVsEstimatePercent}
-              type="estimate"
-            />
-
-            {/* Budget vs Ist-Kosten */}
-            <ComparisonCard
-              title="Budget vs Ist-Kosten"
-              baseline={project.initialBudget}
-              actual={summary.totalCurrent}
-              difference={summary.budgetVsActual}
-              percentage={summary.budgetVsActualPercent}
-              type="actual"
-            />
-
-            {/* KI-Schätzung vs Ist-Kosten */}
-            <ComparisonCard
-              title="KI-Schätzung vs Ist-Kosten"
-              baseline={summary.totalKiEstimate}
-              actual={summary.totalCurrent}
-              difference={summary.estimateVsActual}
-              percentage={summary.estimateVsActualPercent}
-              type="final"
-            />
-          </div>
-
-          {/* Gesamtfazit */}
-          {summary.budgetVsActual !== 0 && (
-            <div className={`mt-6 rounded-lg p-6 border ${
-              summary.budgetVsActual > 0 
-                ? 'bg-red-500/10 border-red-500/30' 
-                : 'bg-green-500/10 border-green-500/30'
-            }`}>
-              <div className="flex items-start gap-4">
-                <span className="text-3xl">
-                  {summary.budgetVsActual > 0 ? '⚠️' : '✅'}
+      {/* Header mit View-Tabs */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Kostenübersicht</h2>
+        
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveView('overview')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              activeView === 'overview'
+                ? 'bg-teal-500 text-white'
+                : 'bg-white/10 text-gray-400 hover:bg-white/20'
+            }`}
+          >
+            📊 Übersicht
+          </button>
+          <button
+            onClick={() => setActiveView('details')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              activeView === 'details'
+                ? 'bg-teal-500 text-white'
+                : 'bg-white/10 text-gray-400 hover:bg-white/20'
+            }`}
+          >
+            📋 Details
+          </button>
+          {(nachtraegeCount > 0 || supplementsCount > 0) && (
+            <button
+              onClick={() => setActiveView('nachtraege')}
+              className={`px-4 py-2 rounded-lg transition-colors relative ${
+                activeView === 'nachtraege'
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-white/10 text-gray-400 hover:bg-white/20'
+              }`}
+            >
+              ⚠️ Nachträge
+              {pendingCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {pendingCount}
                 </span>
-                <div className="flex-1">
-                  <h4 className={`text-xl font-bold mb-2 ${
-                    summary.budgetVsActual > 0 ? 'text-red-300' : 'text-green-300'
-                  }`}>
-                    {summary.budgetVsActual > 0 
-                      ? `Kostenüberschreitung: ${Math.abs(summary.budgetVsActualPercent).toFixed(1)}%`
-                      : `Gute Einsparung: ${Math.abs(summary.budgetVsActualPercent).toFixed(1)}%`
-                    }
-                  </h4>
-                  <p className={`text-lg ${
-                    summary.budgetVsActual > 0 ? 'text-red-200' : 'text-green-200'
-                  }`}>
-                    {summary.budgetVsActual > 0 
-                      ? `Die Gesamtkosten übersteigen Ihr Budget um ${formatCurrency(Math.abs(summary.budgetVsActual))}.`
-                      : `Sie sparen ${formatCurrency(Math.abs(summary.budgetVsActual))} gegenüber Ihrem Budget.`
-                    }
-                  </p>
-                  {summary.estimateVsActual !== 0 && (
-                    <p className="text-sm text-gray-300 mt-2">
-                      Gegenüber der KI-Kostenschätzung: {' '}
-                      <span className={summary.estimateVsActual > 0 ? 'text-orange-300' : 'text-green-300'}>
-                        {summary.estimateVsActual > 0 ? '+' : ''}
-                        {formatCurrency(summary.estimateVsActual)} 
-                        ({summary.estimateVsActual > 0 ? '+' : ''}
-                        {summary.estimateVsActualPercent.toFixed(1)}%)
-                      </span>
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+              )}
+            </button>
           )}
         </div>
+      </div>
+
+      {/* Status-Banner bei unvollständigen Projekten */}
+      {!allTradesAwarded && (
+        <StatusBanner summary={summary} />
+      )}
+
+      {/* View-basierter Content */}
+      {activeView === 'overview' && (
+        <OverviewView
+          project={project}
+          summary={summary}
+          trades={trades}
+          allTradesAwarded={allTradesAwarded}
+          totalChanges={totalChanges}
+          nachtraegeCount={nachtraegeCount}
+          supplementsCount={supplementsCount}
+        />
+      )}
+
+      {activeView === 'details' && (
+        <DetailsView
+          trades={trades}
+          expandedTrade={expandedTrade}
+          setExpandedTrade={setExpandedTrade}
+          allTradesAwarded={allTradesAwarded}
+        />
+      )}
+
+      {activeView === 'nachtraege' && (
+        <NachtraegeView
+          trades={trades}
+          totalNachtraege={totalNachtraege}
+          totalSupplements={totalSupplements}
+          nachtraegeCount={nachtraegeCount}
+          supplementsCount={supplementsCount}
+          pendingCount={pendingCount}
+        />
       )}
     </div>
   );
 }
 
 // ============================================================================
-// SUB-KOMPONENTE: Kostenvisualisierung mit Balken
+// VIEW: Übersicht (Dashboard mit KPIs und Charts)
 // ============================================================================
-function CostVisualization({ initialBudget, kiEstimate, actualCost, allTradesAwarded }) {
-  const maxValue = Math.max(initialBudget, kiEstimate, actualCost, 1);
-  
-  const getBarWidth = (value) => {
-    if (!value || value <= 0) return '0%';
-    return `${Math.min((value / maxValue) * 100, 100)}%`;
+function OverviewView({ project, summary, trades, allTradesAwarded, totalChanges, nachtraegeCount, supplementsCount }) {
+  // Berechne Top Einsparungen/Mehrkosten
+  const completedTrades = trades.filter(t => t.status === 'vergeben' && t.vsEstimate !== undefined);
+  const topSavings = completedTrades
+    .filter(t => t.savings > 0)
+    .sort((a, b) => b.savings - a.savings)
+    .slice(0, 3);
+  const topOverruns = completedTrades
+    .filter(t => t.vsEstimate > 0)
+    .sort((a, b) => b.vsEstimate - a.vsEstimate)
+    .slice(0, 3);
+
+  return (
+    <div className="space-y-6">
+      {/* KPI-Karten */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KPICard
+          icon="💰"
+          label="Budget"
+          value={formatCurrency(project.initialBudget)}
+          subtitle="Geplant"
+          color="blue"
+        />
+        <KPICard
+          icon="🤖"
+          label="KI-Prognose"
+          value={formatCurrency(summary.totalKiEstimate)}
+          subtitle={`${summary.budgetVsEstimatePercent > 0 ? '+' : ''}${summary.budgetVsEstimatePercent.toFixed(1)}% vs Budget`}
+          color={summary.budgetVsEstimatePercent > 0 ? 'orange' : 'blue'}
+        />
+        <KPICard
+          icon="✅"
+          label="Vergeben"
+          value={formatCurrency(summary.totalCurrent)}
+          subtitle={`${summary.budgetVsActualPercent > 0 ? '+' : ''}${summary.budgetVsActualPercent.toFixed(1)}% vs Budget`}
+          color={summary.budgetVsActualPercent > 0 ? 'red' : 'green'}
+        />
+        <KPICard
+          icon="📊"
+          label="Status"
+          value={`${summary.completedTrades}/${summary.totalTrades}`}
+          subtitle={`${summary.completionPercentage}% vergeben`}
+          color="teal"
+        />
+      </div>
+
+      {/* Nachträge-Warnung wenn vorhanden */}
+      {(nachtraegeCount > 0 || supplementsCount > 0) && (
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <p className="text-orange-300 font-semibold">Nachträge & Änderungen</p>
+                <p className="text-orange-200 text-sm">
+                  {nachtraegeCount} Nachträge + {supplementsCount} Supplements = {formatCurrency(totalChanges)}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {}}
+              className="px-4 py-2 bg-orange-500/20 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-colors"
+            >
+              Details ansehen
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Zwei-Spalten-Layout: Charts + Top Listen */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Linke Spalte: Kuchendiagramm */}
+        <CostPieChart trades={trades.filter(t => t.status === 'vergeben')} />
+
+        {/* Rechte Spalte: Top Einsparungen/Mehrkosten */}
+        <div className="space-y-4">
+          {topSavings.length > 0 && (
+            <TopList
+              title="🏆 Top Einsparungen"
+              items={topSavings}
+              type="savings"
+            />
+          )}
+          {topOverruns.length > 0 && (
+            <TopList
+              title="⚠️ Top Mehrkosten"
+              items={topOverruns}
+              type="overruns"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Wasserfalldiagramm - nur wenn alle vergeben */}
+      {allTradesAwarded && (
+        <WaterfallChart
+          budget={project.initialBudget}
+          kiEstimate={summary.totalKiEstimate}
+          ordered={summary.totalOrdered}
+          changes={totalChanges}
+          total={summary.totalCurrent}
+        />
+      )}
+
+      {/* Prognose-Indikator */}
+      {!allTradesAwarded && summary.completedTrades > 0 && (
+        <ProjectionIndicator
+          summary={summary}
+          completedTrades={completedTrades}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// VIEW: Details (Gewerke-Liste)
+// ============================================================================
+function DetailsView({ trades, expandedTrade, setExpandedTrade, allTradesAwarded }) {
+  const completedTrades = trades.filter(t => t.status === 'vergeben');
+  const openTrades = trades.filter(t => t.status !== 'vergeben');
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-xl font-bold text-white">
+        {allTradesAwarded ? 'Alle Gewerke' : 'Bereits vergebene Gewerke'}
+      </h3>
+
+      {completedTrades.length === 0 ? (
+        <div className="bg-white/5 rounded-lg p-8 text-center">
+          <p className="text-gray-400">Noch keine Gewerke vergeben.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {completedTrades.map((trade) => (
+            <TradeDetailCard
+              key={trade.tradeId}
+              trade={trade}
+              expanded={expandedTrade === trade.tradeId}
+              onToggle={() => setExpandedTrade(
+                expandedTrade === trade.tradeId ? null : trade.tradeId
+              )}
+            />
+          ))}
+        </div>
+      )}
+
+      {!allTradesAwarded && openTrades.length > 0 && (
+        <>
+          <h3 className="text-xl font-bold text-white mt-8">Noch nicht vergebene Gewerke</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {openTrades.map((trade) => (
+              <OpenTradeCard key={trade.tradeId} trade={trade} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// VIEW: Nachträge (Detaillierte Nachtrags-Übersicht)
+// ============================================================================
+function NachtraegeView({ trades, totalNachtraege, totalSupplements, nachtraegeCount, supplementsCount, pendingCount }) {
+  const tradesWithChanges = trades.filter(t =>
+    (t.nachtraegeCount > 0 || t.supplementsCount > 0) && t.status === 'vergeben'
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Nachträge-Übersicht */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-6">
+          <p className="text-sm text-orange-300 mb-2">Nachträge</p>
+          <p className="text-3xl font-bold text-orange-400">{nachtraegeCount}</p>
+          <p className="text-lg text-orange-300 mt-2">{formatCurrency(totalNachtraege)}</p>
+        </div>
+        
+        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-6">
+          <p className="text-sm text-purple-300 mb-2">Supplements</p>
+          <p className="text-3xl font-bold text-purple-400">{supplementsCount}</p>
+          <p className="text-lg text-purple-300 mt-2">{formatCurrency(totalSupplements)}</p>
+        </div>
+        
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6">
+          <p className="text-sm text-red-300 mb-2">Offen zur Prüfung</p>
+          <p className="text-3xl font-bold text-red-400">{pendingCount}</p>
+          <p className="text-xs text-red-300 mt-2">Supplements</p>
+        </div>
+      </div>
+
+      {/* Gewerke mit Nachträgen */}
+      <div>
+        <h3 className="text-xl font-bold text-white mb-4">Nachträge nach Gewerk</h3>
+        {tradesWithChanges.length === 0 ? (
+          <div className="bg-white/5 rounded-lg p-8 text-center">
+            <p className="text-gray-400">Keine Nachträge vorhanden.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {tradesWithChanges.map(trade => (
+              <NachtrageCard key={trade.tradeId} trade={trade} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONENTE: Status-Banner
+// ============================================================================
+function StatusBanner({ summary }) {
+  return (
+    <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6">
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-2xl">ℹ️</span>
+        </div>
+        <div className="flex-1">
+          <h3 className="text-xl font-semibold text-blue-300 mb-2">
+            Teilweise vergebenes Projekt
+          </h3>
+          <p className="text-blue-200 text-sm mb-3">
+            Ausführlicher Gesamt-Soll/Ist-Vergleich erst nach vollständiger Vergabe aller Gewerke verfügbar.
+          </p>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-green-400 font-bold text-lg">{summary.completedTrades}</span>
+              <span className="text-gray-400 text-sm">vergeben</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-orange-400 font-bold text-lg">{summary.openTrades}</span>
+              <span className="text-gray-400 text-sm">offen</span>
+            </div>
+            <div className="flex-1 bg-white/10 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-green-500 to-teal-500 h-3 transition-all duration-700"
+                style={{ width: `${summary.completionPercentage}%` }}
+              />
+            </div>
+            <span className="text-white font-semibold text-lg">{summary.completionPercentage}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONENTE: KPI-Karte
+// ============================================================================
+function KPICard({ icon, label, value, subtitle, color }) {
+  const colorClasses = {
+    blue: 'from-blue-500/20 to-blue-600/20 border-blue-500/30',
+    green: 'from-green-500/20 to-green-600/20 border-green-500/30',
+    red: 'from-red-500/20 to-red-600/20 border-red-500/30',
+    orange: 'from-orange-500/20 to-orange-600/20 border-orange-500/30',
+    teal: 'from-teal-500/20 to-teal-600/20 border-teal-500/30'
   };
 
   return (
-    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20">
-      <h3 className="text-2xl font-bold text-white mb-8">Visuelle Kostenübersicht</h3>
+    <div className={`bg-gradient-to-br ${colorClasses[color]} border rounded-lg p-4`}>
+      <div className="flex items-center gap-3 mb-2">
+        <span className="text-2xl">{icon}</span>
+        <span className="text-sm text-gray-400">{label}</span>
+      </div>
+      <p className="text-2xl font-bold text-white mb-1">{value}</p>
+      <p className="text-xs text-gray-400">{subtitle}</p>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONENTE: Kuchendiagramm (Simple CSS Version)
+// ============================================================================
+function CostPieChart({ trades }) {
+  if (trades.length === 0) return null;
+
+  const total = trades.reduce((sum, t) => sum + t.totalCost, 0);
+  
+  // Sortiere nach Kosten und nehme Top 5 + "Sonstige"
+  const sortedTrades = [...trades].sort((a, b) => b.totalCost - a.totalCost);
+  const topTrades = sortedTrades.slice(0, 5);
+  const otherTrades = sortedTrades.slice(5);
+  const otherTotal = otherTrades.reduce((sum, t) => sum + t.totalCost, 0);
+  
+  const chartData = topTrades.map(t => ({
+    name: t.tradeName,
+    value: t.totalCost,
+    percentage: (t.totalCost / total * 100).toFixed(1)
+  }));
+  
+  if (otherTotal > 0) {
+    chartData.push({
+      name: 'Sonstige',
+      value: otherTotal,
+      percentage: (otherTotal / total * 100).toFixed(1)
+    });
+  }
+
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'];
+
+  return (
+    <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+      <h3 className="text-lg font-semibold text-white mb-4">Kostenverteilung nach Gewerken</h3>
       
-      <div className="space-y-8">
-        {/* Budget */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded bg-blue-500"></div>
-              <span className="text-white font-semibold">Anfangsbudget</span>
+      {/* Legende */}
+      <div className="space-y-2">
+        {chartData.map((item, idx) => (
+          <div key={idx} className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1">
+              <div
+                className="w-4 h-4 rounded"
+                style={{ backgroundColor: colors[idx % colors.length] }}
+              />
+              <span className="text-sm text-gray-300 truncate">{item.name}</span>
             </div>
-            <div className="text-xl text-white font-bold">
-              {formatCurrency(initialBudget)}
-            </div>
-          </div>
-          <div className="relative h-12 bg-white/10 rounded-lg overflow-hidden">
-            <div 
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center"
-              style={{ width: getBarWidth(initialBudget) }}
-            >
-              <span className="text-white font-bold text-sm">
-                {formatCurrency(initialBudget)}
-              </span>
+            <div className="text-right ml-4">
+              <p className="text-sm text-white font-semibold">{item.percentage}%</p>
+              <p className="text-xs text-gray-400">{formatCurrency(item.value)}</p>
             </div>
           </div>
-        </div>
+        ))}
+      </div>
+      
+      {/* Simple Balken-Visualisierung */}
+      <div className="mt-4 flex h-8 rounded-lg overflow-hidden">
+        {chartData.map((item, idx) => (
+          <div
+            key={idx}
+            style={{
+              width: `${item.percentage}%`,
+              backgroundColor: colors[idx % colors.length]
+            }}
+            className="transition-all hover:opacity-80"
+            title={`${item.name}: ${item.percentage}%`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-        {/* KI-Schätzung */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded bg-yellow-500"></div>
-              <span className="text-white font-semibold">KI-Kostenschätzung (Gesamt)</span>
+// ============================================================================
+// KOMPONENTE: Top-Liste (Einsparungen/Mehrkosten)
+// ============================================================================
+function TopList({ title, items, type }) {
+  const isSavings = type === 'savings';
+  
+  return (
+    <div className={`bg-white/5 rounded-lg p-6 border ${
+      isSavings ? 'border-green-500/30' : 'border-red-500/30'
+    }`}>
+      <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
+      <div className="space-y-3">
+        {items.map((trade, idx) => (
+          <div key={trade.tradeId} className="flex items-center justify-between">
+            <div className="flex items-center gap-3 flex-1">
+              <span className={`text-2xl font-bold ${
+                isSavings ? 'text-green-400' : 'text-red-400'
+              }`}>
+                #{idx + 1}
+              </span>
+              <span className="text-sm text-gray-300 truncate">{trade.tradeName}</span>
             </div>
             <div className="text-right">
-              <div className="text-xl text-yellow-400 font-bold">
-                {formatCurrency(kiEstimate)}
-              </div>
-              <div className={`text-sm font-medium ${
-                kiEstimate > initialBudget ? 'text-orange-400' : 'text-green-400'
+              <p className={`text-lg font-bold ${
+                isSavings ? 'text-green-400' : 'text-red-400'
               }`}>
-                {kiEstimate > initialBudget ? '+' : ''}
-                {formatCurrency(kiEstimate - initialBudget)} 
-                ({((kiEstimate / initialBudget - 1) * 100).toFixed(1)}%)
-              </div>
+                {isSavings ? '-' : '+'}{formatCurrency(Math.abs(isSavings ? trade.savings : trade.vsEstimate))}
+              </p>
+              <p className="text-xs text-gray-400">
+                {Math.abs(isSavings ? trade.savingsPercent : trade.vsEstimatePercent).toFixed(1)}%
+              </p>
             </div>
           </div>
-          <div className="relative h-12 bg-white/10 rounded-lg overflow-hidden">
-            <div 
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-yellow-500 to-orange-500 flex items-center justify-center"
-              style={{ width: getBarWidth(kiEstimate) }}
-            >
-              <span className="text-white font-bold text-sm">
-                {formatCurrency(kiEstimate)}
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONENTE: Wasserfalldiagramm
+// ============================================================================
+function WaterfallChart({ budget, kiEstimate, ordered, changes, total }) {
+  const maxValue = Math.max(budget, kiEstimate, total);
+  
+  const steps = [
+    { label: 'Budget', value: budget, color: 'blue' },
+    { label: 'KI-Aufschlag', value: kiEstimate - budget, color: kiEstimate > budget ? 'orange' : 'green', cumulative: kiEstimate },
+    { label: 'Verhandlung', value: ordered - kiEstimate, color: ordered < kiEstimate ? 'green' : 'red', cumulative: ordered },
+    { label: 'Nachträge', value: changes, color: 'orange', cumulative: total },
+    { label: 'Ist-Kosten', value: total, color: total > budget ? 'red' : 'green', isFinal: true }
+  ];
+
+  return (
+    <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+      <h3 className="text-lg font-semibold text-white mb-6">Kostenverlauf</h3>
+      
+      <div className="space-y-4">
+        {steps.map((step, idx) => (
+          <WaterfallStep key={idx} step={step} maxValue={maxValue} isFirst={idx === 0} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WaterfallStep({ step, maxValue, isFirst }) {
+  const width = Math.abs(step.value) / maxValue * 100;
+  const isPositive = step.value >= 0;
+  
+  const colorClasses = {
+    blue: 'bg-blue-500',
+    green: 'bg-green-500',
+    red: 'bg-red-500',
+    orange: 'bg-orange-500'
+  };
+
+  return (
+    <div className="flex items-center gap-4">
+      <div className="w-32 text-sm text-gray-400 text-right">{step.label}</div>
+      <div className="flex-1 flex items-center gap-2">
+        {!isFirst && (
+          <span className={`text-sm ${isPositive ? 'text-red-400' : 'text-green-400'}`}>
+            {isPositive ? '+' : ''}{formatCurrency(step.value)}
+          </span>
+        )}
+        <div className="flex-1 bg-white/10 rounded h-8 overflow-hidden flex items-center">
+          <div
+            className={`${colorClasses[step.color]} h-full transition-all duration-700 flex items-center justify-center`}
+            style={{ width: `${width}%` }}
+          >
+            {width > 15 && (
+              <span className="text-white text-xs font-bold px-2">
+                {formatCurrency(step.cumulative || step.value)}
               </span>
-            </div>
-            {kiEstimate > initialBudget && (
-              <div 
-                className="absolute inset-y-0 border-l-2 border-dashed border-blue-400"
-                style={{ left: getBarWidth(initialBudget) }}
-              >
-                <div className="absolute -top-1 -left-2 w-4 h-4 bg-blue-400 rounded-full"></div>
-              </div>
             )}
-          </div>
-        </div>
-
-        {/* Ist-Kosten */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
-              <div className={`w-4 h-4 rounded ${
-                actualCost > initialBudget ? 'bg-red-500' : 'bg-green-500'
-              }`}></div>
-              <span className="text-white font-semibold">
-                {allTradesAwarded ? 'Beauftragte Summe (Ist-Kosten)' : 'Bereits vergeben'}
-              </span>
-            </div>
-            <div className="text-right">
-              <div className={`text-xl font-bold ${
-                actualCost > initialBudget ? 'text-red-400' : 'text-green-400'
-              }`}>
-                {formatCurrency(actualCost)}
-              </div>
-              <div className={`text-sm font-medium ${
-                actualCost > initialBudget ? 'text-red-400' : 'text-green-400'
-              }`}>
-                {actualCost > initialBudget ? '+' : ''}
-                {formatCurrency(actualCost - initialBudget)} 
-                ({((actualCost / initialBudget - 1) * 100).toFixed(1)}%)
-              </div>
-            </div>
-          </div>
-          <div className="relative h-12 bg-white/10 rounded-lg overflow-hidden">
-            <div 
-              className={`absolute inset-y-0 left-0 flex items-center justify-center ${
-                actualCost > initialBudget 
-                  ? 'bg-gradient-to-r from-red-500 to-red-600' 
-                  : 'bg-gradient-to-r from-green-500 to-green-600'
-              }`}
-              style={{ width: getBarWidth(actualCost) }}
-            >
-              {actualCost > initialBudget * 0.1 && (
-                <span className="text-white font-bold text-sm">
-                  {formatCurrency(actualCost)}
-                </span>
-              )}
-            </div>
-            <div 
-              className="absolute inset-y-0 border-l-2 border-dashed border-blue-400"
-              style={{ left: getBarWidth(initialBudget) }}
-            >
-              <div className="absolute -top-1 -left-2 w-4 h-4 bg-blue-400 rounded-full"></div>
-            </div>
           </div>
         </div>
       </div>
@@ -395,7 +612,64 @@ function CostVisualization({ initialBudget, kiEstimate, actualCost, allTradesAwa
 }
 
 // ============================================================================
-// SUB-KOMPONENTE: Einzelnes Gewerk mit Details
+// KOMPONENTE: Prognose-Indikator
+// ============================================================================
+function ProjectionIndicator({ summary, completedTrades }) {
+  if (completedTrades.length === 0) return null;
+  
+  // Berechne durchschnittliche Abweichung der bereits vergebenen Gewerke
+  const avgDeviation = completedTrades.reduce((sum, t) => sum + t.vsEstimatePercent, 0) / completedTrades.length;
+  
+  // Projiziere auf alle Gewerke
+  const projectedTotal = summary.totalKiEstimate * (1 + avgDeviation / 100);
+  const projectedVsBudget = ((projectedTotal - summary.initialBudget) / summary.initialBudget * 100);
+  
+  const isGood = projectedVsBudget < 0;
+
+  return (
+    <div className={`rounded-lg p-6 border ${
+      isGood
+        ? 'bg-green-500/10 border-green-500/30'
+        : 'bg-orange-500/10 border-orange-500/30'
+    }`}>
+      <div className="flex items-start gap-4">
+        <span className="text-3xl">{isGood ? '📉' : '📈'}</span>
+        <div className="flex-1">
+          <h3 className={`text-lg font-semibold mb-2 ${
+            isGood ? 'text-green-300' : 'text-orange-300'
+          }`}>
+            Prognose basierend auf bisherigen Vergaben
+          </h3>
+          <p className={`text-sm ${isGood ? 'text-green-200' : 'text-orange-200'}`}>
+            Basierend auf {completedTrades.length} vergebenen Gewerken (durchschnittlich{' '}
+            {avgDeviation > 0 ? '+' : ''}{avgDeviation.toFixed(1)}% vs. KI-Schätzung) wird das Projekt
+            voraussichtlich {isGood ? 'unter' : 'über'} Budget abschließen:
+          </p>
+          <div className="mt-3 flex items-center gap-4">
+            <div>
+              <p className="text-xs text-gray-400">Prognostizierte Gesamtkosten</p>
+              <p className={`text-xl font-bold ${isGood ? 'text-green-400' : 'text-orange-400'}`}>
+                {formatCurrency(projectedTotal)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">vs. Budget</p>
+              <p className={`text-xl font-bold ${isGood ? 'text-green-400' : 'text-orange-400'}`}>
+                {projectedVsBudget > 0 ? '+' : ''}{projectedVsBudget.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            ⚠️ Dies ist eine Schätzung basierend auf bisherigen Daten. Tatsächliche Kosten können abweichen.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONENTE: Gewerke-Detail-Karte (wie vorher)
 // ============================================================================
 function TradeDetailCard({ trade, expanded, onToggle }) {
   const hasSavings = trade.savings > 0;
@@ -403,11 +677,7 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
 
   return (
     <div className="bg-white/5 rounded-lg border border-white/10 overflow-hidden hover:bg-white/10 transition-colors">
-      {/* Header - immer sichtbar */}
-      <div 
-        className="p-4 cursor-pointer"
-        onClick={onToggle}
-      >
+      <div className="p-4 cursor-pointer" onClick={onToggle}>
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
             <h4 className="text-lg font-semibold text-white mb-1">{trade.tradeName}</h4>
@@ -416,10 +686,10 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
             )}
           </div>
           <button className="text-gray-400 hover:text-white">
-            <svg 
+            <svg
               className={`w-5 h-5 transition-transform ${expanded ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -451,11 +721,9 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
         </div>
       </div>
 
-      {/* Expanded Details */}
       {expanded && (
         <div className="border-t border-white/10 p-4 bg-white/5">
           <div className="space-y-4">
-            {/* Kosten-Breakdown */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/5 rounded p-3">
                 <p className="text-xs text-gray-400 mb-1">KI-Schätzung (Brutto)</p>
@@ -471,19 +739,18 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
                 {(trade.nachtraege > 0 || trade.supplements > 0) && (
                   <p className="text-xs text-orange-300 mt-1">
                     (inkl. {[
-                      trade.nachtraege > 0 && `${formatCurrency(trade.nachtraege)} Nachträge`,
-                      trade.supplements > 0 && `${formatCurrency(trade.supplements)} Supplements`
+                      trade.nachtraege > 0 && `${formatCurrency(trade.nachtraege)} NT`,
+                      trade.supplements > 0 && `${formatCurrency(trade.supplements)} Suppl.`
                     ].filter(Boolean).join(' + ')})
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Differenz-Anzeige */}
             {trade.vsEstimate !== 0 && (
               <div className={`rounded-lg p-4 ${
-                hasSavings 
-                  ? 'bg-green-500/20 border border-green-500/30' 
+                hasSavings
+                  ? 'bg-green-500/20 border border-green-500/30'
                   : 'bg-red-500/20 border border-red-500/30'
               }`}>
                 <div className="flex items-center justify-between">
@@ -515,7 +782,6 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
               </div>
             )}
 
-            {/* Zusatzinfos */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               {trade.bundleDiscount > 0 && (
                 <div className="bg-teal-500/10 rounded p-2">
@@ -526,16 +792,14 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
               {trade.nachtraegeCount > 0 && (
                 <div className="bg-orange-500/10 rounded p-2">
                   <p className="text-gray-400">Nachträge</p>
-                  <p className="text-orange-300 font-semibold">
-                    {trade.nachtraegeCount}
-                  </p>
+                  <p className="text-orange-300 font-semibold">{trade.nachtraegeCount}</p>
                 </div>
               )}
               {trade.supplementsCount > 0 && (
                 <div className="bg-purple-500/10 rounded p-2">
                   <p className="text-gray-400">Supplements</p>
                   <p className="text-purple-300 font-semibold">
-                    {trade.supplementsCount} 
+                    {trade.supplementsCount}
                     {trade.supplementsPendingCount > 0 && ` (${trade.supplementsPendingCount} offen)`}
                   </p>
                 </div>
@@ -557,45 +821,85 @@ function TradeDetailCard({ trade, expanded, onToggle }) {
 }
 
 // ============================================================================
-// SUB-KOMPONENTE: Vergleichs-Karte
+// KOMPONENTE: Offenes Gewerk
 // ============================================================================
-function ComparisonCard({ title, baseline, actual, difference, percentage, type }) {
-  const isOverBudget = difference > 0;
-  
-  const getColor = () => {
-    if (type === 'estimate') return isOverBudget ? 'orange' : 'blue';
-    if (type === 'actual') return isOverBudget ? 'red' : 'green';
-    return isOverBudget ? 'orange' : 'green';
-  };
-  
-  const color = getColor();
-
+function OpenTradeCard({ trade }) {
   return (
-    <div className={`bg-${color}-500/10 border border-${color}-500/30 rounded-lg p-6`}>
-      <h4 className="text-sm text-gray-300 mb-4">{title}</h4>
-      
-      <div className="space-y-3">
+    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="text-white font-semibold">{trade.tradeName}</h4>
+        <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-300 rounded-full">
+          {trade.status === 'ausgeschrieben' ? 'Ausgeschrieben' :
+           trade.status === 'bereit' ? 'Bereit' :
+           trade.status === 'in_bearbeitung' ? 'In Bearbeitung' : 'Offen'}
+        </span>
+      </div>
+      <p className="text-sm text-gray-400">KI-Schätzung:</p>
+      <p className="text-lg text-blue-400 font-bold">
+        {formatCurrency(trade.kiEstimate)}
+      </p>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONENTE: Nachtrags-Karte
+// ============================================================================
+function NachtrageCard({ trade }) {
+  return (
+    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+      <div className="flex justify-between items-start mb-4">
         <div>
-          <p className="text-xs text-gray-400">Basis</p>
-          <p className="text-lg text-white font-semibold">
-            {formatCurrency(baseline)}
+          <h4 className="text-lg font-semibold text-white mb-1">{trade.tradeName}</h4>
+          <p className="text-sm text-gray-400">Vergeben an: {trade.contractorName}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-gray-400">Gesamtänderungen</p>
+          <p className="text-xl font-bold text-orange-400">
+            +{formatCurrency((trade.nachtraege || 0) + (trade.supplements || 0))}
           </p>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {trade.nachtraegeCount > 0 && (
+          <div className="bg-orange-500/10 rounded p-3">
+            <p className="text-xs text-orange-300 mb-1">Nachträge</p>
+            <p className="text-lg font-bold text-orange-400">
+              {trade.nachtraegeCount}
+            </p>
+            <p className="text-sm text-orange-300 mt-1">
+              {formatCurrency(trade.nachtraege)}
+            </p>
+          </div>
+        )}
         
+        {trade.supplementsCount > 0 && (
+          <div className="bg-purple-500/10 rounded p-3">
+            <p className="text-xs text-purple-300 mb-1">Supplements</p>
+            <p className="text-lg font-bold text-purple-400">
+              {trade.supplementsCount}
+              {trade.supplementsPendingCount > 0 && (
+                <span className="text-xs text-red-400 ml-2">
+                  ({trade.supplementsPendingCount} offen)
+                </span>
+              )}
+            </p>
+            <p className="text-sm text-purple-300 mt-1">
+              {formatCurrency(trade.supplements)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-white/10 flex justify-between text-sm">
         <div>
-          <p className="text-xs text-gray-400">Tatsächlich</p>
-          <p className={`text-lg font-semibold text-${color}-400`}>
-            {formatCurrency(actual)}
-          </p>
+          <p className="text-gray-400">Original-Auftrag</p>
+          <p className="text-white font-semibold">{formatCurrency(trade.orderAmount)}</p>
         </div>
-        
-        <div className="pt-3 border-t border-white/10">
-          <p className={`text-2xl font-bold text-${color}-${isOverBudget ? '400' : '400'}`}>
-            {isOverBudget ? '+' : ''}{formatCurrency(difference)}
-          </p>
-          <p className={`text-sm text-${color}-300 mt-1`}>
-            {isOverBudget ? '+' : ''}{percentage.toFixed(1)}%
-          </p>
+        <div className="text-right">
+          <p className="text-gray-400">Inkl. Änderungen</p>
+          <p className="text-white font-bold">{formatCurrency(trade.totalCost)}</p>
         </div>
       </div>
     </div>
