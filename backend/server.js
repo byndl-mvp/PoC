@@ -22683,6 +22683,208 @@ function addSection(doc, title) {
   doc.fontSize(10).font('Helvetica');
 }
 
+// ============================================================================
+// NEUE BACKEND-ROUTE: Detaillierte Kostenanalyse pro Gewerk
+// ============================================================================
+// Füge diese Route zu deinem Backend hinzu (z.B. in routes/projects.js)
+
+app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // 1. Hole Projekt-Grunddaten
+    const projectData = await query(
+      `SELECT 
+        p.id,
+        p.budget as initial_budget,
+        p.bauherr_id
+       FROM projects p
+       WHERE p.id = $1`,
+      [projectId]
+    );
+    
+    if (projectData.rows.length === 0) {
+      return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    }
+    
+    const project = projectData.rows[0];
+    
+    // 2. Hole alle Gewerke mit KI-Schätzung, Auftragsstatus und Nachträgen
+    const tradeAnalysis = await query(
+      `SELECT 
+        t.id as trade_id,
+        t.name as trade_name,
+        t.code as trade_code,
+        
+        -- KI-Schätzung
+        lv.total_cost as ki_estimate_netto,
+        lv.total_cost * 1.19 as ki_estimate_brutto,
+        lv.status as lv_status,
+        
+        -- Auftragsdaten
+        o.id as order_id,
+        o.amount as order_amount_netto,
+        o.amount * 1.19 as order_amount_brutto,
+        o.status as order_status,
+        o.created_at as order_date,
+        o.bundle_discount,
+        
+        -- Handwerker-Info
+        h.company_name as contractor_name,
+        
+        -- Nachträge berechnen
+        COALESCE(SUM(s.amount), 0) as supplements_netto,
+        COALESCE(SUM(s.amount), 0) * 1.19 as supplements_brutto,
+        COALESCE(SUM(CASE WHEN s.approved THEN s.amount ELSE 0 END), 0) as supplements_approved_netto,
+        COALESCE(SUM(CASE WHEN s.approved THEN s.amount ELSE 0 END), 0) * 1.19 as supplements_approved_brutto,
+        COUNT(s.id) as supplements_count,
+        COUNT(CASE WHEN NOT s.approved THEN 1 END) as supplements_pending_count,
+        
+        -- Status-Berechnung
+        CASE 
+          WHEN o.id IS NOT NULL THEN 'vergeben'
+          WHEN lv.status = 'Fertig' AND EXISTS (
+            SELECT 1 FROM tenders tn 
+            WHERE tn.project_id = $1 AND tn.trade_id = t.id
+          ) THEN 'ausgeschrieben'
+          WHEN lv.status = 'Fertig' THEN 'bereit'
+          WHEN lv.id IS NOT NULL THEN 'in_bearbeitung'
+          ELSE 'offen'
+        END as gewerk_status
+        
+       FROM project_trades pt
+       JOIN trades t ON t.id = pt.trade_id
+       LEFT JOIN leistungsverzeichnisse lv ON lv.project_id = pt.project_id AND lv.trade_id = t.id
+       LEFT JOIN orders o ON o.project_id = pt.project_id AND o.trade_id = t.id
+       LEFT JOIN handwerker h ON h.id = o.handwerker_id
+       LEFT JOIN supplements s ON s.order_id = o.id
+       WHERE pt.project_id = $1
+       GROUP BY 
+         t.id, t.name, t.code, 
+         lv.total_cost, lv.status, lv.id,
+         o.id, o.amount, o.status, o.created_at, o.bundle_discount,
+         h.company_name
+       ORDER BY t.name`,
+      [projectId]
+    );
+    
+    // 3. Berechne Gesamt-Statistiken
+    const trades = tradeAnalysis.rows;
+    const totalTrades = trades.length;
+    const completedTrades = trades.filter(t => t.gewerk_status === 'vergeben').length;
+    const openTrades = totalTrades - completedTrades;
+    
+    // Summierung
+    const totalKiEstimate = trades.reduce((sum, t) => sum + (parseFloat(t.ki_estimate_brutto) || 0), 0);
+    const totalOrdered = trades.reduce((sum, t) => sum + (parseFloat(t.order_amount_brutto) || 0), 0);
+    const totalSupplements = trades.reduce((sum, t) => sum + (parseFloat(t.supplements_approved_brutto) || 0), 0);
+    const totalCurrent = totalOrdered + totalSupplements;
+    
+    // Berechnungen pro Status
+    const completedTradesData = trades.filter(t => t.gewerk_status === 'vergeben');
+    const openTradesData = trades.filter(t => t.gewerk_status !== 'vergeben');
+    
+    const response = {
+      project: {
+        id: project.id,
+        initialBudget: parseFloat(project.initial_budget) || 0
+      },
+      
+      summary: {
+        totalTrades,
+        completedTrades,
+        openTrades,
+        completionPercentage: totalTrades > 0 ? Math.round((completedTrades / totalTrades) * 100) : 0,
+        
+        // Gesamtkosten
+        totalKiEstimate,
+        totalOrdered,
+        totalSupplements,
+        totalCurrent,
+        
+        // Vergleiche mit Budget
+        budgetVsEstimate: totalKiEstimate - project.initial_budget,
+        budgetVsActual: totalCurrent - project.initial_budget,
+        estimateVsActual: totalCurrent - totalKiEstimate,
+        
+        // Prozentuale Abweichungen
+        budgetVsEstimatePercent: project.initial_budget > 0 
+          ? ((totalKiEstimate - project.initial_budget) / project.initial_budget * 100)
+          : 0,
+        budgetVsActualPercent: project.initial_budget > 0 
+          ? ((totalCurrent - project.initial_budget) / project.initial_budget * 100)
+          : 0,
+        estimateVsActualPercent: totalKiEstimate > 0 
+          ? ((totalCurrent - totalKiEstimate) / totalKiEstimate * 100)
+          : 0,
+        
+        // Status
+        allTradesAwarded: completedTrades === totalTrades && totalTrades > 0,
+        hasOpenTrades: openTrades > 0
+      },
+      
+      // Detaillierte Gewerke-Daten
+      trades: trades.map(trade => {
+        const kiEstimate = parseFloat(trade.ki_estimate_brutto) || 0;
+        const orderAmount = parseFloat(trade.order_amount_brutto) || 0;
+        const supplements = parseFloat(trade.supplements_approved_brutto) || 0;
+        const totalCost = orderAmount + supplements;
+        
+        return {
+          tradeId: trade.trade_id,
+          tradeName: trade.trade_name,
+          tradeCode: trade.trade_code,
+          status: trade.gewerk_status,
+          
+          // Kosten
+          kiEstimate,
+          orderAmount,
+          supplements,
+          totalCost,
+          
+          // Vergleiche (nur wenn vergeben)
+          ...(trade.gewerk_status === 'vergeben' ? {
+            vsEstimate: totalCost - kiEstimate,
+            vsEstimatePercent: kiEstimate > 0 ? ((totalCost - kiEstimate) / kiEstimate * 100) : 0,
+            savings: kiEstimate - totalCost,
+            savingsPercent: kiEstimate > 0 ? ((kiEstimate - totalCost) / kiEstimate * 100) : 0
+          } : {}),
+          
+          // Zusatzinfos
+          orderId: trade.order_id,
+          contractorName: trade.contractor_name,
+          bundleDiscount: parseFloat(trade.bundle_discount) || 0,
+          supplementsCount: parseInt(trade.supplements_count) || 0,
+          supplementsPendingCount: parseInt(trade.supplements_pending_count) || 0,
+          orderDate: trade.order_date
+        };
+      }),
+      
+      // Separate Listen für vergeben/offen
+      completedTrades: completedTradesData.map(t => ({
+        tradeId: t.trade_id,
+        tradeName: t.trade_name,
+        kiEstimate: parseFloat(t.ki_estimate_brutto) || 0,
+        totalCost: (parseFloat(t.order_amount_brutto) || 0) + (parseFloat(t.supplements_approved_brutto) || 0),
+        contractorName: t.contractor_name
+      })),
+      
+      openTrades: openTradesData.map(t => ({
+        tradeId: t.trade_id,
+        tradeName: t.trade_name,
+        status: t.gewerk_status,
+        kiEstimate: parseFloat(t.ki_estimate_brutto) || 0
+      }))
+    };
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Error in cost analysis:', error);
+    res.status(500).json({ error: 'Fehler bei der Kostenanalyse: ' + error.message });
+  }
+});
+
 // Leistung abnehmen
 app.post('/api/orders/:orderId/accept-completion', async (req, res) => {
   try {
