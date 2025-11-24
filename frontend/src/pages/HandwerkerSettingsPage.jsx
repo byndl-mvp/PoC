@@ -123,6 +123,32 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [handwerkerData]);
 
+// Stats laden wenn Profil-Tab aktiv
+useEffect(() => {
+  const loadStats = async () => {
+    if (!handwerkerData?.id) return;
+    
+    try {
+      const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/stats`));
+      if (res.ok) {
+        const data = await res.json();
+        setProfileStats({
+          activeOrders: data.activeOrders,
+          completedOrders: data.completedOrders,
+          totalRevenue: data.totalRevenue,
+          createdAt: data.createdAt
+        });
+      }
+    } catch (err) {
+      console.error('Stats laden fehlgeschlagen:', err);
+    }
+  };
+
+  if (activeTab === 'profil') {
+    loadStats();
+  }
+}, [activeTab, handwerkerData?.id]);
+  
 useEffect(() => {
   const loadRatings = async () => {
     if (!handwerkerData?.id) return;
