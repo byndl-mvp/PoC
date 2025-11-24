@@ -19422,45 +19422,65 @@ app.post('/api/conversations/add-handwerker', async (req, res) => {
 // Get Settings - liefert alle Felder inkl. first_name, last_name
 app.get('/api/bauherr/:id/settings', async (req, res) => {
   try {
+    const { id } = req.params;
+    
     const result = await query(
       `SELECT 
         id, email, name, first_name, last_name, phone,
         street, house_number, zip, city,
         email_verified, email_verified_at,
-        accepted_terms_at, accepted_privacy_at,
-        created_at, updated_at, last_login
-       FROM bauherren WHERE id = $1`,
-      [req.params.id]
+        notification_settings, two_factor_enabled,
+        created_at, last_login,
+        accepted_terms_at, accepted_privacy_at
+       FROM bauherren 
+       WHERE id = $1`,
+      [id]
     );
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+      return res.status(404).json({ error: 'Nutzer nicht gefunden' });
     }
     
     const bauherr = result.rows[0];
     
-    // Response mit camelCase für Frontend
+    // E-Mail ist verifiziert wenn email_verified = true ODER email_verified_at gesetzt ist
+    const isEmailVerified = bauherr.email_verified === true || bauherr.email_verified_at !== null;
+    
     res.json({
       id: bauherr.id,
       email: bauherr.email,
       name: bauherr.name,
       firstName: bauherr.first_name,
       lastName: bauherr.last_name,
+      first_name: bauherr.first_name,
+      last_name: bauherr.last_name,
       phone: bauherr.phone,
       street: bauherr.street,
+      house_number: bauherr.house_number,
       houseNumber: bauherr.house_number,
+      zip: bauherr.zip,
       zipCode: bauherr.zip,
       city: bauherr.city,
-      emailVerified: bauherr.email_verified,
+      // E-Mail Verifizierung - mehrere Feldnamen für Kompatibilität
+      email_verified: isEmailVerified,
+      emailVerified: isEmailVerified,
+      email_verified_at: bauherr.email_verified_at,
       emailVerifiedAt: bauherr.email_verified_at,
-      acceptedTermsAt: bauherr.accepted_terms_at,
-      acceptedPrivacyAt: bauherr.accepted_privacy_at,
+      notification_settings: bauherr.notification_settings,
+      two_factor_enabled: bauherr.two_factor_enabled,
+      // Timestamps - mehrere Feldnamen für Kompatibilität
+      created_at: bauherr.created_at,
       createdAt: bauherr.created_at,
-      updatedAt: bauherr.updated_at,
-      lastLogin: bauherr.last_login
+      last_login: bauherr.last_login,
+      lastLogin: bauherr.last_login,
+      accepted_terms_at: bauherr.accepted_terms_at,
+      acceptedTermsAt: bauherr.accepted_terms_at,
+      accepted_privacy_at: bauherr.accepted_privacy_at,
+      acceptedPrivacyAt: bauherr.accepted_privacy_at
     });
-  } catch (err) {
-    console.error('Error fetching settings:', err);
+    
+  } catch (error) {
+    console.error('Error loading settings:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Einstellungen' });
   }
 });
