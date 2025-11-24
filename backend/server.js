@@ -16884,37 +16884,46 @@ app.get('/api/bauherr/verify-email', async (req, res) => {
     const { token } = req.query;
     
     if (!token) {
-      return res.status(400).json({ error: 'Token erforderlich' });
+      return res.status(400).json({ error: 'Kein Token vorhanden' });
     }
     
+    // Finde Bauherr mit diesem Token
     const result = await query(
-      `SELECT id, name, email FROM bauherren 
-       WHERE email_verification_token = $1 
-       AND email_verification_expires > NOW()`,
+      `SELECT id, email, name, first_name, last_name, email_verification_expires 
+       FROM bauherren 
+       WHERE email_verification_token = $1`,
       [token]
     );
     
     if (result.rows.length === 0) {
-      return res.status(400).json({ 
-        error: 'Ungültiger oder abgelaufener Token' 
-      });
+      return res.status(400).json({ error: 'Ungültiger Verifizierungslink' });
     }
     
     const bauherr = result.rows[0];
     
+    // Prüfe ob Token abgelaufen
+    if (new Date() > new Date(bauherr.email_verification_expires)) {
+      return res.status(400).json({ 
+        error: 'Der Verifizierungslink ist abgelaufen. Bitte fordern Sie einen neuen an.',
+        expired: true
+      });
+    }
+    
+    // E-Mail verifizieren und Token löschen
     await query(
       `UPDATE bauherren 
-       SET email_verified = true,
+       SET email_verified = true, 
            email_verification_token = NULL,
-           email_verification_expires = NULL
+           email_verification_expires = NULL,
+           email_verified_at = NOW()
        WHERE id = $1`,
       [bauherr.id]
     );
     
-    // JWT Token generieren (andere Variable verwenden!)
-    const jwtToken = jwt.sign(  // <-- jwtToken statt token
-      {
-        id: bauherr.id,
+    // JETZT Token erstellen - erst nach Verifizierung!
+    const jwtToken = jwt.sign(
+      { 
+        id: bauherr.id, 
         type: 'bauherr',
         email: bauherr.email,
         name: bauherr.name,
@@ -16924,21 +16933,21 @@ app.get('/api/bauherr/verify-email', async (req, res) => {
       { expiresIn: '7d' }
     );
     
-    // NUR EINE Response:
-    res.json({ 
-      success: true, 
-      message: 'E-Mail erfolgreich verifiziert',
+    res.json({
+      success: true,
+      message: 'E-Mail erfolgreich verifiziert!',
+      token: jwtToken,
       id: bauherr.id,
-      name: bauherr.name,
       email: bauherr.email,
-      token: jwtToken  // JWT Token mitschicken
+      name: bauherr.name,
+      firstName: bauherr.first_name,
+      lastName: bauherr.last_name,
+      emailVerified: true
     });
     
   } catch (error) {
-    console.error('E-Mail-Verifikationsfehler:', error);
-    res.status(500).json({ 
-      error: 'Verifikation fehlgeschlagen' 
-    });
+    console.error('Email verification error:', error);
+    res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
   }
 });
 
