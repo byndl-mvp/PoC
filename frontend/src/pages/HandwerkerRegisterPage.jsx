@@ -1,4 +1,3 @@
-// src/components/HandwerkerRegisterPage.jsx
 // PROFESSIONELLE VERSION mit Vorname/Nachname, AGB-Checkbox, E-Mail-Verifizierungs-Pflicht
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -885,7 +884,7 @@ export default function HandwerkerRegisterPage() {
                       type="checkbox"
                       checked={acceptedTerms}
                       onChange={(e) => setAcceptedTerms(e.target.checked)}
-                      className="w-5 h-5 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
+                      className="w-5 h-5 min-w-[20px] min-h-[20px] flex-shrink-0 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
                     />
                     <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
                       Ich habe die{' '}
@@ -907,7 +906,7 @@ export default function HandwerkerRegisterPage() {
                       type="checkbox"
                       checked={acceptedPrivacy}
                       onChange={(e) => setAcceptedPrivacy(e.target.checked)}
-                      className="w-5 h-5 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
+                      className="w-5 h-5 min-w-[20px] min-h-[20px] flex-shrink-0 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
                     />
                     <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
                       Ich habe die{' '}
