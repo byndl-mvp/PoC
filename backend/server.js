@@ -18546,7 +18546,10 @@ app.get('/api/projects/:projectId/orders', async (req, res) => {
         h.contact_person,
         h.phone as handwerker_phone,
         h.email as handwerker_email,
-        h.address as handwerker_address,
+        h.street as handwerker_street,
+        h.house_number as handwerker_house_number,
+        h.zip_code as handwerker_zip,
+        h.city as handwerker_city,
         b.name as bauherr_name,
         b.email as bauherr_email,
         b.phone as bauherr_phone,
@@ -18567,7 +18570,14 @@ app.get('/api/projects/:projectId/orders', async (req, res) => {
       [projectId]
     );
     
-    res.json(result.rows);
+    const processedOrders = result.rows.map(order => ({
+  ...order,
+  handwerker_address: order.handwerker_street
+    ? `${order.handwerker_street} ${order.handwerker_house_number || ''}, ${order.handwerker_zip} ${order.handwerker_city}`.trim()
+    : 'Adresse nicht hinterlegt'
+}));
+
+res.json(processedOrders);
     
   } catch (error) {
     console.error('Error fetching orders:', error);
