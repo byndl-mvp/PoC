@@ -24102,14 +24102,24 @@ function calculateOptimalRoute(projects) {
 // Get Settings - liefert alle Felder inkl. contact_first_name, contact_last_name
 app.get('/api/handwerker/:id/settings', async (req, res) => {
   try {
+    const { id } = req.params;
+    
     const result = await query(
       `SELECT 
+        id,
+        company_id as "companyId",
         company_name as "companyName",
+        company_type as "companyType",
+        registration_number as "registrationNumber",
+        tax_number as "taxNumber",
         contact_person as "contactPerson",
         contact_first_name as "contactFirstName",
         contact_last_name as "contactLastName",
-        email, phone, street, house_number as "houseNumber",
-        zip_code as "zipCode", city, website,
+        email, phone, street, 
+        house_number as "houseNumber",
+        zip_code as "zipCode", 
+        city, 
+        website,
         action_radius as "actionRadius",
         min_order_value as "minOrderValue",
         hourly_rates as "hourlyRates",
@@ -24122,20 +24132,94 @@ app.get('/api/handwerker/:id/settings', async (req, res) => {
         two_factor_enabled as "twoFactorEnabled",
         excluded_areas as "excludedAreas",
         travel_cost_per_km as "travelCostPerKm",
-        email_verified as "emailVerified",
-        email_verified_at as "emailVerifiedAt",
-        accepted_terms_at as "acceptedTermsAt",
-        accepted_privacy_at as "acceptedPrivacyAt"
+        email_verified,
+        email_verified_at,
+        accepted_terms_at,
+        accepted_privacy_at,
+        verified,
+        verification_status,
+        verified_at,
+        rejection_reason,
+        logo_url,
+        created_at
        FROM handwerker WHERE id = $1`,
-      [req.params.id]
+      [id]
     );
     
-    if (result.rows.length > 0) {
-      res.json(result.rows[0]);
-    } else {
-      res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
     }
+    
+    const h = result.rows[0];
+    
+    // E-Mail ist verifiziert wenn email_verified = true ODER email_verified_at gesetzt ist
+    const isEmailVerified = h.email_verified === true || h.email_verified_at !== null;
+    
+    // Admin-Verifizierung Status
+    const isAdminVerified = h.verified === true || h.verification_status === 'verified';
+    
+    res.json({
+      // Basis-Daten
+      id: h.id,
+      companyId: h.companyId,
+      companyName: h.companyName,
+      companyType: h.companyType,
+      registrationNumber: h.registrationNumber,
+      taxNumber: h.taxNumber,
+      
+      // Kontaktdaten
+      contactPerson: h.contactPerson,
+      contactFirstName: h.contactFirstName,
+      contactLastName: h.contactLastName,
+      email: h.email,
+      phone: h.phone,
+      website: h.website,
+      
+      // Adresse
+      street: h.street,
+      houseNumber: h.houseNumber,
+      zipCode: h.zipCode,
+      city: h.city,
+      
+      // Geschäftsdaten
+      actionRadius: h.actionRadius,
+      minOrderValue: h.minOrderValue,
+      hourlyRates: h.hourlyRates,
+      paymentTerms: h.paymentTerms,
+      vacationDates: h.vacationDates,
+      excludedAreas: h.excludedAreas,
+      travelCostPerKm: h.travelCostPerKm,
+      
+      // Zahlungsdaten
+      bankIban: h.bankIban,
+      bankBic: h.bankBic,
+      invoiceAddress: h.invoiceAddress,
+      
+      // Benachrichtigungen & Sicherheit
+      notificationSettings: h.notificationSettings,
+      twoFactorEnabled: h.twoFactorEnabled,
+      
+      // E-Mail Verifizierung
+      emailVerified: isEmailVerified,
+      emailVerifiedAt: h.email_verified_at,
+      
+      // Admin-Verifizierung
+      verified: isAdminVerified,
+      verificationStatus: h.verification_status || (isAdminVerified ? 'verified' : 'pending'),
+      verifiedAt: h.verified_at,
+      rejectionReason: h.rejection_reason,
+      
+      // Logo
+      logoUrl: h.logo_url,
+      
+      // Timestamps
+      createdAt: h.created_at,
+      acceptedTermsAt: h.accepted_terms_at,
+      acceptedPrivacyAt: h.accepted_privacy_at
+    });
+    
   } catch (err) {
+    console.error('Error loading handwerker settings:', err);
     res.status(500).json({ error: 'Fehler beim Laden der Einstellungen' });
   }
 });
