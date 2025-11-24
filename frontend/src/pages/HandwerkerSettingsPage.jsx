@@ -45,6 +45,11 @@ export default function HandwerkerSettingsPage() {
     city: '',
     website: '',
 
+    // NEU: Ansprechpartner mit Vorname/Nachname getrennt
+    contactFirstName: '',
+    contactLastName: '',
+    contactPerson: '', // Für Rückwärtskompatibilität
+     
     // Gewerke
     trades: [],
     
