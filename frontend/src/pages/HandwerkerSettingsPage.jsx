@@ -678,51 +678,235 @@ const getPasswordStrengthClass = (password) => {
   </div>
 )}
 
-          {/* Mein Profil Tab */}
+{/* Mein Profil Tab */}
 {activeTab === 'profil' && (
-  <div className="space-y-4">
+  <div className="space-y-6">
     <h2 className="text-2xl font-bold text-white mb-4">Mein Profil</h2>
     
+    {/* Profil Header */}
     <div className="bg-white/5 rounded-lg p-6">
       <div className="flex items-center gap-6 mb-6">
-        <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center">
-          <span className="text-3xl">👷</span>
+        <div className="w-24 h-24 bg-gradient-to-br from-teal-500 to-teal-700 rounded-full flex items-center justify-center shadow-lg">
+          <span className="text-4xl">🏢</span>
         </div>
-        <div>
-          <h3 className="text-xl font-bold text-white">{handwerkerData?.companyName}</h3>
-          <p className="text-gray-400">ID: {handwerkerData?.companyId}</p>
-          <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm ${
-            handwerkerData?.verificationStatus === 'verified' 
-              ? 'bg-green-500/20 text-green-300' 
-              : 'bg-yellow-500/20 text-yellow-300'
-          }`}>
-            {handwerkerData?.verificationStatus === 'verified' ? '✓ Verifiziert' : '⏳ In Prüfung'}
-          </span>
+        <div className="flex-1">
+          <h3 className="text-2xl font-bold text-white">{formData.companyName || handwerkerData?.companyName}</h3>
+          <p className="text-gray-400">
+            Ansprechpartner: {formData.contactFirstName || handwerkerData?.contactFirstName} {formData.contactLastName || handwerkerData?.contactLastName}
+          </p>
+          <p className="text-gray-500 text-sm">Betriebs-ID: {handwerkerData?.companyId}</p>
+          
+          <div className="flex items-center gap-3 mt-3">
+            {/* Verifizierungsstatus */}
+            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+              handwerkerData?.verificationStatus === 'verified' 
+                ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                : handwerkerData?.verificationStatus === 'pending'
+                ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+            }`}>
+              {handwerkerData?.verificationStatus === 'verified' ? '✓ Verifiziert' : 
+               handwerkerData?.verificationStatus === 'pending' ? '⏳ In Prüfung' : '○ Nicht verifiziert'}
+            </span>
+            
+            {/* E-Mail Verifizierungsstatus */}
+            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+              formData.emailVerified 
+                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
+                : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+            }`}>
+              {formData.emailVerified ? '✉ E-Mail bestätigt' : '⚠ E-Mail nicht bestätigt'}
+            </span>
+          </div>
         </div>
       </div>
       
-      <div className="grid md:grid-cols-2 gap-4">
+      {/* Kontaktdaten Übersicht */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-white/10">
         <div>
-          <p className="text-gray-400 text-sm">Registriert seit</p>
-          <p className="text-white">{new Date(handwerkerData?.createdAt || Date.now()).toLocaleDateString('de-DE')}</p>
+          <p className="text-gray-400 text-sm">E-Mail</p>
+          <p className="text-white">{formData.email || handwerkerData?.email}</p>
         </div>
         <div>
-          <p className="text-gray-400 text-sm">Aktive Aufträge</p>
-          <p className="text-white">0</p>
+          <p className="text-gray-400 text-sm">Telefon</p>
+          <p className="text-white">{formData.phone || handwerkerData?.phone || '-'}</p>
         </div>
         <div>
-          <p className="text-gray-400 text-sm">Abgeschlossene Projekte</p>
-          <p className="text-white">0</p>
+          <p className="text-gray-400 text-sm">Website</p>
+          <p className="text-white">
+            {formData.website ? (
+              <a href={formData.website} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:text-teal-300">
+                {formData.website}
+              </a>
+            ) : '-'}
+          </p>
         </div>
-        <div>
-          <p className="text-gray-400 text-sm">Bewertung</p>
-          <p className="text-white">⭐ Noch keine Bewertungen</p>
+        <div className="md:col-span-2 lg:col-span-3">
+          <p className="text-gray-400 text-sm">Adresse</p>
+          <p className="text-white">
+            {formData.street || formData.houseNumber || formData.zipCode || formData.city ? (
+              `${formData.street || ''} ${formData.houseNumber || ''}, ${formData.zipCode || ''} ${formData.city || ''}`
+            ) : '-'}
+          </p>
         </div>
       </div>
     </div>
-  </div>
-)}
+    
+    {/* Bewertungen Sektion */}
+    <div className="bg-white/5 rounded-lg p-6">
+      <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        ⭐ Meine Bewertungen
+        {ratingSummary && ratingSummary.total_ratings > 0 && (
+          <span className="text-sm font-normal text-gray-400">
+            ({ratingSummary.total_ratings} {ratingSummary.total_ratings === 1 ? 'Bewertung' : 'Bewertungen'})
+          </span>
+        )}
+      </h3>
+      
+      {loadingRatings ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
+        </div>
+      ) : ratingSummary && parseFloat(ratingSummary.total_ratings) > 0 ? (
+        <>
+          {/* Bewertungsübersicht */}
+          <div className="grid md:grid-cols-4 gap-4 mb-6">
+            {/* Gesamtbewertung */}
+            <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-lg p-4 text-center border border-yellow-500/30">
+              <div className="text-4xl font-bold text-yellow-400">
+                {parseFloat(ratingSummary.average_rating).toFixed(1)}
+              </div>
+              <div className="text-yellow-300 text-lg">
+                {'⭐'.repeat(Math.round(parseFloat(ratingSummary.average_rating)))}
+              </div>
+              <p className="text-gray-400 text-sm mt-1">Gesamtbewertung</p>
+            </div>
+            
+            {/* Einzelne Kategorien */}
+            <div className="bg-white/5 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-white">
+                {parseFloat(ratingSummary.avg_cost).toFixed(1)}
+              </div>
+              <div className="text-yellow-400 text-sm">
+                {'⭐'.repeat(Math.round(parseFloat(ratingSummary.avg_cost)))}
+              </div>
+              <p className="text-gray-400 text-sm mt-1">💰 Kosten</p>
+            </div>
+            
+            <div className="bg-white/5 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-white">
+                {parseFloat(ratingSummary.avg_schedule).toFixed(1)}
+              </div>
+              <div className="text-yellow-400 text-sm">
+                {'⭐'.repeat(Math.round(parseFloat(ratingSummary.avg_schedule)))}
+              </div>
+              <p className="text-gray-400 text-sm mt-1">📅 Termintreue</p>
+            </div>
+            
+            <div className="bg-white/5 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-white">
+                {parseFloat(ratingSummary.avg_quality).toFixed(1)}
+              </div>
+              <div className="text-yellow-400 text-sm">
+                {'⭐'.repeat(Math.round(parseFloat(ratingSummary.avg_quality)))}
+              </div>
+              <p className="text-gray-400 text-sm mt-1">✨ Qualität</p>
+            </div>
+          </div>
           
+          {/* Einzelne Bewertungen */}
+          {ratings && ratings.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-white font-medium border-b border-white/10 pb-2">
+                Letzte Bewertungen
+              </h4>
+              {ratings.slice(0, 5).map((rating) => (
+                <div key={rating.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-white font-medium">{rating.trade_name}</p>
+                      <p className="text-gray-400 text-sm">
+                        {rating.project_zip} {rating.project_city}
+                        {rating.bauherr_name && ` • ${rating.bauherr_name}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-yellow-400">
+                        {'⭐'.repeat(Math.round(parseFloat(rating.overall_rating)))}
+                      </div>
+                      <p className="text-gray-500 text-xs">
+                        {new Date(rating.created_at).toLocaleDateString('de-DE')}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Detail-Bewertungen */}
+                  <div className="flex gap-4 text-sm text-gray-400 mt-2">
+                    <span>💰 {rating.cost_rating}/5</span>
+                    <span>📅 {rating.schedule_rating}/5</span>
+                    <span>✨ {rating.quality_rating}/5</span>
+                  </div>
+                  
+                  {/* Kommunikations-Anmerkungen */}
+                  {rating.communication_notes && (
+                    <div className="mt-3 p-3 bg-blue-500/10 border-l-2 border-blue-500 rounded-r text-sm">
+                      <p className="text-gray-400 text-xs mb-1">💬 Anmerkungen:</p>
+                      <p className="text-gray-300 italic">"{rating.communication_notes}"</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {ratings.length > 5 && (
+                <button 
+                  onClick={() => setShowAllRatings(!showAllRatings)}
+                  className="w-full py-2 text-teal-400 hover:text-teal-300 text-sm"
+                >
+                  {showAllRatings ? 'Weniger anzeigen' : `Alle ${ratings.length} Bewertungen anzeigen`}
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-8">
+          <div className="text-5xl mb-4">⭐</div>
+          <p className="text-gray-400">Noch keine Bewertungen erhalten</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Bewertungen werden nach Abschluss von Aufträgen von Bauherren vergeben.
+          </p>
+        </div>
+      )}
+    </div>
+    
+    {/* Statistiken */}
+    <div className="bg-white/5 rounded-lg p-6">
+      <h3 className="text-xl font-bold text-white mb-4">📊 Statistiken</h3>
+      
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white/5 rounded-lg p-4 text-center">
+          <p className="text-3xl font-bold text-teal-400">{profileStats.activeOrders || 0}</p>
+          <p className="text-gray-400 text-sm">Aktive Aufträge</p>
+        </div>
+        <div className="bg-white/5 rounded-lg p-4 text-center">
+          <p className="text-3xl font-bold text-green-400">{profileStats.completedOrders || 0}</p>
+          <p className="text-gray-400 text-sm">Abgeschlossen</p>
+        </div>
+        <div className="bg-white/5 rounded-lg p-4 text-center">
+          <p className="text-3xl font-bold text-blue-400">{profileStats.totalRevenue || '0 €'}</p>
+          <p className="text-gray-400 text-sm">Gesamtumsatz</p>
+        </div>
+        <div className="bg-white/5 rounded-lg p-4 text-center">
+          <p className="text-3xl font-bold text-purple-400">
+            {new Date(handwerkerData?.createdAt || Date.now()).toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })}
+          </p>
+          <p className="text-gray-400 text-sm">Dabei seit</p>
+        </div>
+      </div>
+    </div>
+</div>
+)}
+    
           {/* Einzugsgebiet Tab */}
 {(activeTab === 'einsatzgebiet' || activeTab === 'einzugsgebiet') && (
   <div className="space-y-6">
