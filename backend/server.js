@@ -15890,19 +15890,35 @@ app.post('/api/bauherr/register', async (req, res) => {
     const { 
       email, 
       password, 
-      name, 
+      firstName,      // NEU
+      lastName,       // NEU
+      name,           // Für Rückwärtskompatibilität
       phone, 
       street, 
       houseNumber, 
       zipCode, 
       city,
-      projectId
+      projectId,
+      acceptedTermsAt,    // NEU
+      acceptedPrivacyAt   // NEU
     } = req.body;
     
+    // Verwende firstName/lastName oder fallback auf name
+    const finalFirstName = firstName || (name ? name.split(' ')[0] : '');
+    const finalLastName = lastName || (name ? name.split(' ').slice(1).join(' ') : '');
+    const fullName = name || `${finalFirstName} ${finalLastName}`.trim();
+    
     // Validierung
-    if (!email || !password || !name || !phone) {
+    if (!email || !password || !fullName || !phone) {
       return res.status(400).json({ 
         error: 'Pflichtfelder fehlen' 
+      });
+    }
+    
+    // AGB und Datenschutz müssen akzeptiert sein
+    if (!acceptedTermsAt || !acceptedPrivacyAt) {
+      return res.status(400).json({ 
+        error: 'AGB und Datenschutzbestimmungen müssen akzeptiert werden' 
       });
     }
     
@@ -15927,11 +15943,15 @@ app.post('/api/bauherr/register', async (req, res) => {
     const emailVerificationExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 Stunden
     
     // Insert bauherr mit Token
+    // HINWEIS: Dank DB-Trigger wird 'name' automatisch aus first_name + last_name generiert
+    // Wir können trotzdem 'name' mitschicken für explizite Kontrolle
     const result = await query(
       `INSERT INTO bauherren (
         email, 
         password, 
-        name, 
+        name,
+        first_name,
+        last_name,
         phone, 
         street, 
         house_number, 
@@ -15940,22 +15960,31 @@ app.post('/api/bauherr/register', async (req, res) => {
         email_verified,
         email_verification_token,
         email_verification_expires,
+        accepted_terms_at,
+        accepted_privacy_at,
         created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, NOW())
-      RETURNING id, email, name`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11, $12, $13, $14, NOW())
+      RETURNING id, email, name, first_name, last_name`,
       [
         email.toLowerCase(), 
         hashedPassword, 
-        name, 
+        fullName,  // Wird auch vom DB-Trigger gesetzt, aber explizit ist sicherer
+        finalFirstName,
+        finalLastName,
         phone, 
         street || null, 
         houseNumber || null, 
         zipCode || null, 
         city || null,
         emailVerificationToken,
-        emailVerificationExpires
+        emailVerificationExpires,
+        acceptedTermsAt || new Date().toISOString(),
+        acceptedPrivacyAt || new Date().toISOString()
       ]
     );
+    
+    // Rückgabe enthält sowohl name als auch first_name/last_name
+    // Bestehender Code kann weiter bauherr.name verwenden!
     
     const bauherrId = result.rows[0].id;
     
@@ -15968,55 +15997,48 @@ app.post('/api/bauherr/register', async (req, res) => {
     }
 
     // Hole Projektdetails falls projectId vorhanden
-let projectDetails = null;
-let projectResult = null; // Außerhalb definieren!
+    let projectDetails = null;
+    let projectResult = null;
     
-  if (projectId) {
-  projectResult = await query(
-    'SELECT category, sub_category, description FROM projects WHERE id = $1',
-    [projectId]
-  );
-  
-  if (projectResult.rows.length > 0) {
-    const proj = projectResult.rows[0];
-    projectDetails = `${proj.category}${proj.sub_category ? ' - ' + proj.sub_category : ''}: ${proj.description?.substring(0, 100)}`;
-  }
-}
+    if (projectId) {
+      projectResult = await query(
+        'SELECT category, sub_category, description FROM projects WHERE id = $1',
+        [projectId]
+      );
+      
+      if (projectResult.rows.length > 0) {
+        const proj = projectResult.rows[0];
+        projectDetails = `${proj.category}${proj.sub_category ? ' - ' + proj.sub_category : ''}: ${proj.description?.substring(0, 100)}`;
+      }
+    }
     
     // E-Mail senden mit Token
     const emailService = require('./emailService');
     const emailResult = await emailService.sendBauherrRegistrationEmail({
-    id: bauherrId,
-    name: name,
-    email: email,
-    verificationToken: emailVerificationToken,
-    projectDetails: projectResult && projectResult.rows.length > 0 ? {
-    category: projectResult.rows[0].category,
-    subCategory: projectResult.rows[0].sub_category,
-    description: projectResult.rows[0].description
-  } : null
-});
+      id: bauherrId,
+      name: fullName,
+      firstName: finalFirstName,
+      email: email,
+      verificationToken: emailVerificationToken,
+      projectDetails: projectResult && projectResult.rows.length > 0 ? {
+        category: projectResult.rows[0].category,
+        subCategory: projectResult.rows[0].sub_category,
+        description: projectResult.rows[0].description
+      } : null
+    });
     
-    // JWT Token für Session (aber E-Mail noch nicht verifiziert)
-    const token = jwt.sign(
-      { 
-        id: bauherrId, 
-        type: 'bauherr',
-        email: email,
-        name: name,
-        emailVerified: false
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
+    // WICHTIG: Kein JWT Token mehr! User muss erst E-Mail verifizieren
+    // Token wird erst nach Verifizierung erstellt
     
     res.status(201).json({
       success: true,
-      token,
+      // KEIN token hier!
       user: {
         id: bauherrId,
         email: email,
-        name: name,
+        name: fullName,
+        firstName: finalFirstName,
+        lastName: finalLastName,
         emailVerified: false
       },
       message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.',
