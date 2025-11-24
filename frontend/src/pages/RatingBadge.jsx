@@ -138,7 +138,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
               {/* Kosten */}
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">💰 Kosten</span>
+                  <span className="text-gray-400">Kosteneinhaltung</span>
                   <span className="text-white font-semibold">
                     {parseFloat(ratingData?.avg_cost || 0).toFixed(1)}/5
                   </span>
@@ -154,7 +154,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
               {/* Termine */}
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">📅 Termine</span>
+                  <span className="text-gray-400">Termintreue</span>
                   <span className="text-white font-semibold">
                     {parseFloat(ratingData?.avg_schedule || 0).toFixed(1)}/5
                   </span>
@@ -170,7 +170,7 @@ export default function RatingBadge({ handwerkerId, companyName }) {
               {/* Qualität */}
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">✨ Qualität</span>
+                  <span className="text-gray-400">Ausführungsqualität</span>
                   <span className="text-white font-semibold">
                     {parseFloat(ratingData?.avg_quality || 0).toFixed(1)}/5
                   </span>
