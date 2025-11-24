@@ -116,8 +116,78 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [handwerkerData]);
 
-// useEffect zum Laden der Bewertungen wenn Profil-Tab aktiv wird:
 useEffect(() => {
+  const loadRatings = async () => {
+    if (!handwerkerData?.id) return;
+    
+    try {
+      setLoadingRatings(true);
+      
+      // Bewertungssummary laden
+      const summaryRes = await fetch(
+        apiUrl(`/api/handwerker/${handwerkerData.id}/ratings-summary`),
+        {
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+          }
+        }
+      );
+      
+      if (summaryRes.ok) {
+        const summaryData = await summaryRes.json();
+        setRatingSummary(summaryData);
+      }
+      
+      // Detaillierte Bewertungen laden
+      const ratingsRes = await fetch(
+        apiUrl(`/api/handwerker/${handwerkerData.id}/ratings`),
+        {
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+          }
+        }
+      );
+      
+      if (ratingsRes.ok) {
+        const ratingsData = await ratingsRes.json();
+        setRatings(ratingsData);
+      }
+      
+    } catch (err) {
+      console.error('Fehler beim Laden der Bewertungen:', err);
+    } finally {
+      setLoadingRatings(false);
+    }
+  };
+
+  const loadProfileStats = async () => {
+    if (!handwerkerData?.id) return;
+    
+    try {
+      const res = await fetch(
+        apiUrl(`/api/handwerker/${handwerkerData.id}/stats`),
+        {
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
+          }
+        }
+      );
+      
+      if (res.ok) {
+        const stats = await res.json();
+        setProfileStats({
+          activeOrders: stats.activeOrders || 0,
+          completedOrders: stats.completedOrders || 0,
+          totalRevenue: stats.totalRevenue 
+            ? `${parseFloat(stats.totalRevenue).toLocaleString('de-DE')} €` 
+            : '0 €'
+        });
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden der Statistiken:', err);
+    }
+  };
+
   if (activeTab === 'profil' && handwerkerData?.id) {
     loadRatings();
     loadProfileStats();
@@ -258,79 +328,6 @@ useEffect(() => {
   }
 };
 
-// Funktion zum Laden der Bewertungen:
-const loadRatings = async () => {
-  if (!handwerkerData?.id) return;
-  
-  try {
-    setLoadingRatings(true);
-    
-    // Bewertungssummary laden
-    const summaryRes = await fetch(
-      apiUrl(`/api/handwerker/${handwerkerData.id}/ratings-summary`),
-      {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
-        }
-      }
-    );
-    
-    if (summaryRes.ok) {
-      const summaryData = await summaryRes.json();
-      setRatingSummary(summaryData);
-    }
-    
-    // Detaillierte Bewertungen laden
-    const ratingsRes = await fetch(
-      apiUrl(`/api/handwerker/${handwerkerData.id}/ratings`),
-      {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
-        }
-      }
-    );
-    
-    if (ratingsRes.ok) {
-      const ratingsData = await ratingsRes.json();
-      setRatings(ratingsData);
-    }
-    
-  } catch (err) {
-    console.error('Fehler beim Laden der Bewertungen:', err);
-  } finally {
-    setLoadingRatings(false);
-  }
-};
-
-// Funktion zum Laden der Profil-Statistiken:
-const loadProfileStats = async () => {
-  if (!handwerkerData?.id) return;
-  
-  try {
-    const res = await fetch(
-      apiUrl(`/api/handwerker/${handwerkerData.id}/stats`),
-      {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
-        }
-      }
-    );
-    
-    if (res.ok) {
-      const stats = await res.json();
-      setProfileStats({
-        activeOrders: stats.activeOrders || 0,
-        completedOrders: stats.completedOrders || 0,
-        totalRevenue: stats.totalRevenue 
-          ? `${parseFloat(stats.totalRevenue).toLocaleString('de-DE')} €` 
-          : '0 €'
-      });
-    }
-  } catch (err) {
-    console.error('Fehler beim Laden der Statistiken:', err);
-  }
-};
-  
   const uploadDocument = async (file) => {
   const formData = new FormData();
   formData.append('document', file);
