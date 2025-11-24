@@ -28514,6 +28514,7 @@ app.get('/api/projects/:projectId/schedule', async (req, res) => {
   try {
     const { projectId } = req.params;
     
+    // SCHRITT 1: Lade ALLE Schedules für dieses Projekt
     const scheduleResult = await query(
       `SELECT ps.*,
         json_agg(
@@ -28534,19 +28535,24 @@ app.get('/api/projects/:projectId/schedule', async (req, res) => {
             'dependencies', se.dependencies,
             'scheduling_reason', se.scheduling_reason,
             'buffer_reason', se.buffer_reason,
-            'risks', se.risks
+            'risks', se.risks,
+            'is_manual', ps.created_by_type = 'handwerker'
           ) ORDER BY se.planned_start
         ) FILTER (WHERE se.id IS NOT NULL) as entries
        FROM project_schedules ps
        LEFT JOIN (
-         -- ✅ Hole nur die neuesten Einträge pro trade/phase
+         -- Hole nur die neuesten Einträge pro trade/phase
          SELECT DISTINCT ON (schedule_id, trade_id, phase_number) *
          FROM schedule_entries
          ORDER BY schedule_id, trade_id, phase_number, updated_at DESC
        ) se ON ps.id = se.schedule_id
        LEFT JOIN trades t ON se.trade_id = t.id
        WHERE ps.project_id = $1
-       GROUP BY ps.id`,
+         AND ps.status IN ('draft', 'pending_approval', 'active', 'locked', 'completed')
+       GROUP BY ps.id
+       ORDER BY 
+         CASE WHEN ps.created_by_type = 'handwerker' THEN 2 ELSE 1 END,
+         ps.created_at DESC`,
       [projectId]
     );
     
@@ -28554,7 +28560,63 @@ app.get('/api/projects/:projectId/schedule', async (req, res) => {
       return res.status(404).json({ error: 'Kein Terminplan gefunden' });
     }
     
-    res.json(scheduleResult.rows[0]);
+    // SCHRITT 2: Separiere Bauherr- und Handwerker-Schedules
+    const bauherrSchedule = scheduleResult.rows.find(s => 
+      s.created_by_type !== 'handwerker' || s.created_by_type === null
+    );
+    const handwerkerSchedules = scheduleResult.rows.filter(s => 
+      s.created_by_type === 'handwerker'
+    );
+    
+    console.log('[SCHEDULE] Found schedules:', {
+      bauherr: bauherrSchedule ? 1 : 0,
+      handwerker: handwerkerSchedules.length,
+      totalEntries: scheduleResult.rows.reduce((sum, s) => sum + (s.entries?.length || 0), 0)
+    });
+    
+    // SCHRITT 3: Kombiniere die Schedules
+    let responseSchedule;
+    
+    if (bauherrSchedule) {
+      // Bauherr-Schedule als Basis verwenden
+      responseSchedule = { ...bauherrSchedule };
+      
+      // Handwerker-Einträge hinzufügen (für Gewerke die NICHT im Bauherr-Schedule sind)
+      if (handwerkerSchedules.length > 0) {
+        const bauherrTradeCodes = new Set(
+          (bauherrSchedule.entries || []).map(e => e.trade_code)
+        );
+        
+        const additionalEntries = handwerkerSchedules
+          .flatMap(s => s.entries || [])
+          .filter(e => !bauherrTradeCodes.has(e.trade_code));
+        
+        responseSchedule.entries = [
+          ...(bauherrSchedule.entries || []),
+          ...additionalEntries
+        ].sort((a, b) => new Date(a.planned_start) - new Date(b.planned_start));
+        
+        console.log('[SCHEDULE] Merged', additionalEntries.length, 'handwerker entries');
+      }
+      
+    } else if (handwerkerSchedules.length > 0) {
+      // Nur Handwerker-Schedules vorhanden - kombiniere alle Entries
+      const allEntries = handwerkerSchedules
+        .flatMap(s => s.entries || [])
+        .sort((a, b) => new Date(a.planned_start) - new Date(b.planned_start));
+      
+      responseSchedule = {
+        ...handwerkerSchedules[0],
+        entries: allEntries
+      };
+      
+      console.log('[SCHEDULE] Using combined handwerker schedule with', allEntries.length, 'entries');
+      
+    } else {
+      return res.status(404).json({ error: 'Kein Terminplan gefunden' });
+    }
+    
+    res.json(responseSchedule);
     
   } catch (err) {
     console.error('[SCHEDULE] Fetch failed:', err);
