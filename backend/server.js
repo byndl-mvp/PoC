@@ -32017,12 +32017,13 @@ app.get('/api/handwerker/:handwerkerId/ratings', async (req, res) => {
         r.*,
         t.name as trade_name,
         b.name as bauherr_name,
-        o.project_zip,
-        o.project_city
+        p.zip as project_zip,
+        p.city as project_city
        FROM ratings r
        JOIN trades t ON r.trade_id = t.id
        LEFT JOIN bauherren b ON r.bauherr_id = b.id
        LEFT JOIN orders o ON r.order_id = o.id
+       LEFT JOIN projects p ON o.project_id = p.id
        WHERE r.handwerker_id = $1
        ORDER BY r.created_at DESC`,
       [handwerkerId]
