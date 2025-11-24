@@ -28761,59 +28761,71 @@ app.post('/api/schedule-entries/confirm', async (req, res) => {
       let tradeId = null;
       
       if (manualEntries && manualEntries.length > 0) {
-        // Hole Project + Trade vom Offer
-        const offerResult = await query(
-          `SELECT o.*, tn.trade_id, tn.project_id
-           FROM offers o
-           JOIN tenders tn ON o.tender_id = tn.id
-           WHERE o.id = $1`,
-          [offerId]
-        );
-        
-        if (offerResult.rows.length === 0) {
-          await query('ROLLBACK');
-          return res.status(404).json({ error: 'Angebot nicht gefunden' });
-        }
-        
-        const offer = offerResult.rows[0];
-        projectId = offer.project_id;
-        tradeId = offer.trade_id;
-        isManualSchedule = true;
-        
-        // ====================================================================
-        // NEU: ERSTELLE HANDWERKER-SCHEDULE für dieses Projekt + Trade
-        // ====================================================================
-        let scheduleId;
-
-const existingScheduleResult = await query(
-  `SELECT id FROM project_schedules 
-   WHERE project_id = $1 
-     AND created_by_type = 'handwerker'
-     AND created_by_id = $2
-     AND status = 'active'
-   ORDER BY created_at DESC
-   LIMIT 1`,
-  [projectId, handwerkerId]
-);
-
-if (existingScheduleResult.rows.length > 0) {
-  scheduleId = existingScheduleResult.rows[0].id;
-  console.log('[MANUAL_SCHEDULE] ♻️ Reusing existing schedule:', scheduleId);
-  
-  await query('DELETE FROM schedule_entries WHERE schedule_id = $1', [scheduleId]);
-  console.log('[MANUAL_SCHEDULE] 🗑️ Cleared old entries');
-} else {
-  const scheduleResult = await query(
-    `INSERT INTO project_schedules 
-     (project_id, created_by_type, created_by_id, status, created_at, updated_at)
-     VALUES ($1, 'handwerker', $2, 'active', NOW(), NOW())
-     RETURNING id`,
-    [projectId, handwerkerId]
+  // Hole Project + Trade vom Offer
+  const offerResult = await query(
+    `SELECT o.*, tn.trade_id, tn.project_id
+     FROM offers o
+     JOIN tenders tn ON o.tender_id = tn.id
+     WHERE o.id = $1`,
+    [offerId]
   );
   
-  scheduleId = scheduleResult.rows[0].id;
-  console.log('[MANUAL_SCHEDULE] ✅ Created new schedule:', scheduleId);
-}
+  if (offerResult.rows.length === 0) {
+    await query('ROLLBACK');
+    return res.status(404).json({ error: 'Angebot nicht gefunden' });
+  }
+  
+  const offer = offerResult.rows[0];
+  projectId = offer.project_id;
+  tradeId = offer.trade_id;
+  isManualSchedule = true;
+  
+  // ====================================================================
+  // FIX: SUCHE NACH IRGENDEINEM HANDWERKER-SCHEDULE FÜR DAS PROJEKT
+  // (nicht handwerkerspezifisch!)
+  // ====================================================================
+  let scheduleId;
+
+  // SCHRITT 1: Prüfe ob bereits ein Handwerker-Schedule für dieses Projekt existiert
+  const existingProjectScheduleResult = await query(
+    `SELECT id FROM project_schedules 
+     WHERE project_id = $1 
+       AND created_by_type = 'handwerker'
+       AND status = 'active'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [projectId]  // ← KEIN handwerkerId mehr hier!
+  );
+
+  if (existingProjectScheduleResult.rows.length > 0) {
+    // Es existiert bereits ein Handwerker-Schedule für dieses Projekt
+    scheduleId = existingProjectScheduleResult.rows[0].id;
+    console.log('[MANUAL_SCHEDULE] ♻️ Using existing project schedule:', scheduleId);
+    
+    // WICHTIG: Lösche NUR die Einträge DIESES Handwerkers für DIESES Gewerk
+    // (nicht alle Einträge des Schedules!)
+    const deleteResult = await query(
+      `DELETE FROM schedule_entries 
+       WHERE schedule_id = $1 
+         AND trade_id = $2 
+         AND confirmed_by = $3`,
+      [scheduleId, tradeId, handwerkerId]
+    );
+    console.log('[MANUAL_SCHEDULE] 🗑️ Cleared', deleteResult.rowCount, 'old entries for this handwerker + trade');
+    
+  } else {
+    // Kein Handwerker-Schedule vorhanden → Erstelle neuen
+    const scheduleResult = await query(
+      `INSERT INTO project_schedules 
+       (project_id, created_by_type, created_by_id, status, created_at, updated_at)
+       VALUES ($1, 'handwerker', $2, 'active', NOW(), NOW())
+       RETURNING id`,
+      [projectId, handwerkerId]
+    );
+    
+    scheduleId = scheduleResult.rows[0].id;
+    console.log('[MANUAL_SCHEDULE] ✅ Created new schedule:', scheduleId);
+  }
         
         // ====================================================================
         // NEU: ERSTELLE SCHEDULE_ENTRIES für jede manuelle Eingabe
