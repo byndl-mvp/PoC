@@ -11781,7 +11781,7 @@ Analysiere und empfehle benötigte Gewerke.`;
     const raw = await llmWithPolicy('summary', [
       { role: 'system', content: system },
       { role: 'user', content: user }
-    ], { maxTokens: 4000, temperature: 0.3, jsonMode: true });
+    ], { maxTokens: 6000, temperature: 0.3, jsonMode: true });
 
     const cleanedResponse = raw
       .replace(/```json\n?/g, '')
