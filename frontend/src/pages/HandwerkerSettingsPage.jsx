@@ -556,103 +556,127 @@ const getPasswordStrengthClass = (password) => {
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
           
           {/* Firmendaten Tab */}
-          {activeTab === 'firmendaten' && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white mb-4">Firmendaten</h2>
-              
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-white font-medium mb-2">Firmenname</label>
-                  <input
-                    type="text"
-                    value={formData.companyName}
-                    onChange={(e) => handleChange('companyName', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">E-Mail</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">Telefon</label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">Website</label>
-                  <input
-                    type="url"
-                    value={formData.website}
-                    onChange={(e) => handleChange('website', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid md:grid-cols-4 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-white font-medium mb-2">Straße</label>
-                  <input
-                    type="text"
-                    value={formData.street}
-                    onChange={(e) => handleChange('street', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">Hausnummer</label>
-                  <input
-                    type="text"
-                    value={formData.houseNumber}
-                    onChange={(e) => handleChange('houseNumber', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">PLZ</label>
-                  <input
-                    type="text"
-                    value={formData.zipCode}
-                    onChange={(e) => handleChange('zipCode', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-white font-medium mb-2">Stadt</label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => handleChange('city', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-              </div>
-              
-              <button
-                onClick={() => handleSave('firmendaten')}
-                disabled={loading}
-                className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
-              >
-                Speichern
-              </button>
-            </div>
-          )}
+{activeTab === 'firmendaten' && (
+  <div className="space-y-4">
+    <h2 className="text-2xl font-bold text-white mb-4">Firmendaten</h2>
+    
+    <div className="grid md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-white font-medium mb-2">Firmenname</label>
+        <input
+          type="text"
+          value={formData.companyName}
+          onChange={(e) => handleChange('companyName', e.target.value)}
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">E-Mail</label>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={(e) => handleChange('email', e.target.value)}
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+        />
+      </div>
+      
+      {/* NEU: Ansprechpartner aufgeteilt in Vorname und Nachname */}
+      <div>
+        <label className="block text-white font-medium mb-2">Ansprechpartner Vorname *</label>
+        <input
+          type="text"
+          value={formData.contactFirstName || ''}
+          onChange={(e) => handleChange('contactFirstName', e.target.value)}
+          placeholder="Vorname"
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white placeholder-white/50"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">Ansprechpartner Nachname *</label>
+        <input
+          type="text"
+          value={formData.contactLastName || ''}
+          onChange={(e) => handleChange('contactLastName', e.target.value)}
+          placeholder="Nachname"
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white placeholder-white/50"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">Telefon</label>
+        <input
+          type="tel"
+          value={formData.phone}
+          onChange={(e) => handleChange('phone', e.target.value)}
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">Website</label>
+        <input
+          type="url"
+          value={formData.website}
+          onChange={(e) => handleChange('website', e.target.value)}
+          placeholder="https://www.beispiel.de"
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white placeholder-white/50"
+        />
+      </div>
+    </div>
+    
+    <div className="grid md:grid-cols-4 gap-4">
+      <div className="md:col-span-2">
+        <label className="block text-white font-medium mb-2">Straße</label>
+        <input
+          type="text"
+          value={formData.street}
+          onChange={(e) => handleChange('street', e.target.value)}
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">Hausnummer</label>
+        <input
+          type="text"
+          value={formData.houseNumber}
+          onChange={(e) => handleChange('houseNumber', e.target.value)}
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white font-medium mb-2">PLZ</label>
+        <input
+          type="text"
+          value={formData.zipCode}
+          onChange={(e) => handleChange('zipCode', e.target.value)}
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+        />
+      </div>
+      
+      <div className="md:col-span-2">
+        <label className="block text-white font-medium mb-2">Stadt</label>
+        <input
+          type="text"
+          value={formData.city}
+          onChange={(e) => handleChange('city', e.target.value)}
+          className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
+        />
+      </div>
+    </div>
+    
+    <button
+      onClick={() => handleSave('firmendaten')}
+      disabled={loading}
+      className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {loading ? 'Speichern...' : 'Speichern'}
+    </button>
+  </div>
+)}
 
           {/* Mein Profil Tab */}
 {activeTab === 'profil' && (
