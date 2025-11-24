@@ -1,7 +1,7 @@
 // src/components/HandwerkerRegisterPage.jsx
 // PROFESSIONELLE VERSION mit Vorname/Nachname, AGB-Checkbox, E-Mail-Verifizierungs-Pflicht
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 import { EmailVerificationModal } from './EmailVerificationModal';
 
@@ -42,7 +42,6 @@ const CERTIFICATIONS = [
 ];
 
 export default function HandwerkerRegisterPage() {
-  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
