@@ -16670,7 +16670,7 @@ app.post('/api/bauherr/login', async (req, res) => {
     }
     
     const result = await query(
-      `SELECT id, name, email, password, phone, 
+      `SELECT id, name, first_name, last_name, email, password, phone, 
        street, house_number, zip, city,
        email_verified, last_login
        FROM bauherren WHERE LOWER(email) = LOWER($1)`,
@@ -16699,6 +16699,16 @@ app.post('/api/bauherr/login', async (req, res) => {
       });
     }
     // Wenn kein Passwort gesetzt (alte Accounts), erlaube Login nur mit E-Mail
+    
+    // NEU: E-Mail-Verifizierung prüfen (nur für neue Accounts mit Passwort)
+    // Alte Accounts ohne Passwort sind davon ausgenommen
+    if (bauherr.password && bauherr.email_verified === false) {
+      return res.status(403).json({
+        error: 'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse. Prüfen Sie Ihren Posteingang.',
+        requiresVerification: true,
+        email: bauherr.email
+      });
+    }
     
     // Update last_login
     await query(
@@ -16730,6 +16740,8 @@ app.post('/api/bauherr/login', async (req, res) => {
       user: {
         id: bauherr.id,
         name: bauherr.name,
+        firstName: bauherr.first_name,
+        lastName: bauherr.last_name,
         email: bauherr.email,
         phone: bauherr.phone,
         emailVerified: bauherr.email_verified,
