@@ -1,5 +1,3 @@
-// src/components/BauherrenSettingsPage.jsx
-// PROFESSIONELLE VERSION mit Vorname/Nachname getrennt
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
