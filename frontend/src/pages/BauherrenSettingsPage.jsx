@@ -1,3 +1,4 @@
+// PROFESSIONELLE VERSION mit Vorname/Nachname getrennt
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
@@ -90,8 +91,12 @@ export default function BauherrenSettingsPage() {
           if (data.billing_address) {
             setBillingAddress(data.billing_address);
           }
-          setEmailVerified(data.email_verified || false);
-          setCreatedAt(data.created_at);
+          // E-Mail Verified Status - prüfe verschiedene mögliche Feldnamen
+          const isVerified = data.email_verified || data.emailVerified || 
+                            data.email_verified_at !== null || data.emailVerifiedAt !== null || false;
+          setEmailVerified(isVerified);
+          // Created At - prüfe verschiedene mögliche Feldnamen
+          setCreatedAt(data.created_at || data.createdAt || data.registered_at || data.registeredAt);
         }
       } catch (err) {
         setError('Fehler beim Laden der Einstellungen');
@@ -1219,45 +1224,184 @@ export default function BauherrenSettingsPage() {
                 <h2 className="text-2xl font-bold text-white mb-6">Hilfe & Support</h2>
                 
                 <div className="space-y-6">
-                  {/* FAQ */}
+                  {/* FAQ Suche */}
                   <div className="bg-white/5 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Häufig gestellte Fragen</h3>
+                    <label className="block text-white/90 text-sm font-medium mb-2">FAQ durchsuchen</label>
+                    <input
+                      type="search"
+                      placeholder="Frage oder Stichwort eingeben..."
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  {/* Erste Schritte */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Erste Schritte</h3>
                     <div className="space-y-3">
-                      <details className="group">
-                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors">
-                          Wie erstelle ich ein neues Projekt?
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Was ist byndl und wie funktioniert es?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                         </summary>
-                        <p className="mt-2 text-gray-400 text-sm pl-4">
-                          Klicken Sie auf "Neues Projekt" im Dashboard und folgen Sie dem Assistenten zur Projekterstellung.
+                        <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                          <p>byndl ist Ihre digitale Plattform für Bauprojekte. Wir helfen Ihnen vom ersten Projektgedanken bis zur fertigen Baustelle.</p>
+                          <p className="font-medium text-white">Die Vorteile auf einen Blick:</p>
+                          <ul className="list-none space-y-1">
+                            <li>✓ Zeitersparnis: Keine mühsame LV-Erstellung per Hand</li>
+                            <li>✓ Transparenz: Klare Preise und vergleichbare Angebote</li>
+                            <li>✓ Sicherheit: VOB-konforme Verträge und geprüfte Handwerker</li>
+                            <li>✓ Unterstützung: KI-gestützte Bewertung und Terminplanung</li>
+                            <li>✓ Alles an einem Ort: Von der Planung bis zur Abnahme</li>
+                          </ul>
+                        </div>
+                      </details>
+                      
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Wie starte ich mein erstes Projekt?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                          <p><strong className="text-white">1. Projekt anlegen (5-10 Minuten)</strong></p>
+                          <ul className="list-disc list-inside ml-2">
+                            <li>Projektadresse eingeben</li>
+                            <li>Kategorien wählen</li>
+                            <li>Vorhaben beschreiben</li>
+                          </ul>
+                          <p><strong className="text-white">2. KI-Gewerkeerkennung (automatisch)</strong></p>
+                          <ul className="list-disc list-inside ml-2">
+                            <li>KI analysiert Ihre Beschreibung</li>
+                            <li>Erkennt benötigte Gewerke</li>
+                          </ul>
+                          <p><strong className="text-white">3. Fragen beantworten (10-30 Min. pro Gewerk)</strong></p>
+                          <p><strong className="text-white">4. LV-Generierung & Ausschreibung (automatisch)</strong></p>
+                        </div>
+                      </details>
+                    </div>
+                  </div>
+
+                  {/* Leistungsverzeichnisse */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Leistungsverzeichnisse</h3>
+                    <div className="space-y-3">
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Was ist ein Leistungsverzeichnis?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <p className="mt-3 text-gray-300 text-sm pl-4">
+                          Ein Leistungsverzeichnis (LV) ist die detaillierte Auflistung aller Bauleistungen. 
+                          Es ist die Grundlage für vergleichbare Angebote und verbindliche Verträge.
                         </p>
                       </details>
-                      <details className="group">
-                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors">
-                          Wie funktioniert die Ausschreibung?
+                      
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Kann ich das LV nachträglich ändern?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                         </summary>
-                        <p className="mt-2 text-gray-400 text-sm pl-4">
-                          Nach Erstellung der Leistungsverzeichnisse können Sie diese an passende Handwerker in Ihrer Region senden.
+                        <p className="mt-3 text-gray-300 text-sm pl-4">
+                          Ja! Sie können Positionen bearbeiten, löschen oder neue hinzufügen. 
+                          Nach der Ausschreibung ist das LV fixiert. Änderungen sind dann nur über Nachträge möglich.
                         </p>
                       </details>
-                      <details className="group">
-                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors">
-                          Was kostet der Service?
+                      
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Wie funktioniert die Ausschreibung?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                         </summary>
-                        <p className="mt-2 text-gray-400 text-sm pl-4">
-                          byndl arbeitet mit erfolgsbasierten Provisionen. Die Nutzung der Plattform ist für Bauherren kostenfrei.
+                        <p className="mt-3 text-gray-300 text-sm pl-4">
+                          Nach Erstellung der Leistungsverzeichnisse werden diese automatisch an passende, 
+                          verifizierte Handwerker in Ihrer Region gesendet. Diese können dann Angebote abgeben, 
+                          die Sie direkt vergleichen können.
                         </p>
                       </details>
                     </div>
                   </div>
-                  
-                  {/* Contact Support */}
+
+                  {/* Kosten */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Kosten & Preise</h3>
+                    <div className="space-y-3">
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Was kostet byndl?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                          <p className="font-medium text-white">Einmalige Gebühr pro Projekt:</p>
+                          <ul className="list-none space-y-1">
+                            <li>• 1-2 Gewerke: <span className="text-teal-400 font-semibold">29,90 €</span></li>
+                            <li>• 3-5 Gewerke: <span className="text-teal-400 font-semibold">59,90 €</span></li>
+                            <li>• Ab 6 Gewerken: <span className="text-teal-400 font-semibold">99,90 €</span></li>
+                          </ul>
+                          <p className="text-green-400 font-medium mt-2">KEINE Provisionen, KEINE versteckten Kosten!</p>
+                        </div>
+                      </details>
+                      
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Wann muss ich bezahlen?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <p className="mt-3 text-gray-300 text-sm pl-4">
+                          Die Zahlung erfolgt erst nach erfolgreicher Erstellung Ihres Leistungsverzeichnisses, 
+                          bevor die Ausschreibung an Handwerker gesendet wird.
+                        </p>
+                      </details>
+                    </div>
+                  </div>
+
+                  {/* Handwerker & Angebote */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Handwerker & Angebote</h3>
+                    <div className="space-y-3">
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Wie werden Handwerker ausgewählt?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <p className="mt-3 text-gray-300 text-sm pl-4">
+                          Alle Handwerker auf byndl sind verifiziert. Wir prüfen Gewerbeanmeldung, 
+                          Handwerkskammer-Eintragung und Versicherungen. Angebote werden basierend auf 
+                          Fachgebiet, Standort und Verfügbarkeit zugeordnet.
+                        </p>
+                      </details>
+                      
+                      <details className="group border-b border-white/10 pb-3">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                          <span>Wie vergleiche ich Angebote?</span>
+                          <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                        </summary>
+                        <p className="mt-3 text-gray-300 text-sm pl-4">
+                          In Ihrem Dashboard sehen Sie alle eingegangenen Angebote übersichtlich. 
+                          Sie können Preise, Bewertungen und Verfügbarkeit direkt vergleichen. 
+                          Die KI hilft bei der Einschätzung der Angebote.
+                        </p>
+                      </details>
+                    </div>
+                  </div>
+
+                  {/* Support kontaktieren */}
                   <div className="bg-white/5 rounded-lg p-6">
                     <h3 className="text-lg font-semibold text-white mb-4">Support kontaktieren</h3>
                     <div className="space-y-4">
+                      <a href="mailto:info@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300 transition-colors">
+                        <span className="text-xl">📧</span>
+                        <span>info@byndl.de</span>
+                      </a>
                       <a href="mailto:support@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300 transition-colors">
                         <span className="text-xl">📧</span>
                         <span>support@byndl.de</span>
                       </a>
+                      <p className="flex items-center gap-3 text-gray-300">
+                        <span className="text-xl">📞</span>
+                        <span>+49 221 / 123 456 789 (Mo-Fr 9-17 Uhr)</span>
+                      </p>
+                      <p className="text-gray-400 text-sm mt-2">
+                        Antwort innerhalb 24 Stunden (werktags)
+                      </p>
                     </div>
                   </div>
                   
