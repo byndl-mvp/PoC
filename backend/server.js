@@ -24079,12 +24079,15 @@ function calculateOptimalRoute(projects) {
 // HANDWERKER SETTINGS ENDPOINTS
 // ============================================
 
-// Settings laden
+// Get Settings - liefert alle Felder inkl. contact_first_name, contact_last_name
 app.get('/api/handwerker/:id/settings', async (req, res) => {
   try {
     const result = await query(
       `SELECT 
         company_name as "companyName",
+        contact_person as "contactPerson",
+        contact_first_name as "contactFirstName",
+        contact_last_name as "contactLastName",
         email, phone, street, house_number as "houseNumber",
         zip_code as "zipCode", city, website,
         action_radius as "actionRadius",
@@ -24098,7 +24101,11 @@ app.get('/api/handwerker/:id/settings', async (req, res) => {
         invoice_address as "invoiceAddress",
         two_factor_enabled as "twoFactorEnabled",
         excluded_areas as "excludedAreas",
-        travel_cost_per_km as "travelCostPerKm"
+        travel_cost_per_km as "travelCostPerKm",
+        email_verified as "emailVerified",
+        email_verified_at as "emailVerifiedAt",
+        accepted_terms_at as "acceptedTermsAt",
+        accepted_privacy_at as "acceptedPrivacyAt"
        FROM handwerker WHERE id = $1`,
       [req.params.id]
     );
@@ -24113,10 +24120,31 @@ app.get('/api/handwerker/:id/settings', async (req, res) => {
   }
 });
 
-// Firmendaten updaten
+// Firmendaten updaten - akzeptiert contactFirstName/contactLastName ODER contactPerson
 app.put('/api/handwerker/:id/firmendaten', async (req, res) => {
   try {
-    const { companyName, email, phone, street, houseNumber, zipCode, city, website } = req.body;
+    const { 
+      companyName, email, phone, street, houseNumber, zipCode, city, website,
+      contactPerson, contactFirstName, contactLastName 
+    } = req.body;
+    
+    // Wenn contactFirstName/contactLastName übergeben werden, diese verwenden
+    // Der DB-Trigger synchronisiert automatisch das contact_person-Feld
+    // Wenn nur contactPerson übergeben wird (Rückwärtskompatibilität), 
+    // synchronisiert der Trigger contact_first_name/contact_last_name
+    
+    let finalContactFirstName = contactFirstName;
+    let finalContactLastName = contactLastName;
+    let finalContactPerson = contactPerson;
+    
+    // Wenn contactFirstName/contactLastName vorhanden, contactPerson daraus generieren
+    if (contactFirstName !== undefined || contactLastName !== undefined) {
+      finalContactFirstName = contactFirstName || '';
+      finalContactLastName = contactLastName || '';
+      finalContactPerson = `${finalContactFirstName} ${finalContactLastName}`.trim();
+    }
+    // Wenn nur contactPerson vorhanden (alter Code), wird der DB-Trigger 
+    // contact_first_name/contact_last_name automatisch setzen
     
     await query(
       `UPDATE handwerker SET
@@ -24127,13 +24155,44 @@ app.put('/api/handwerker/:id/firmendaten', async (req, res) => {
         house_number = $6,
         zip_code = $7,
         city = $8,
-        website = $9
+        website = $9,
+        contact_person = $10,
+        contact_first_name = $11,
+        contact_last_name = $12
        WHERE id = $1`,
-      [req.params.id, companyName, email, phone, street, houseNumber, zipCode, city, website]
+      [req.params.id, companyName, email, phone, street, houseNumber, zipCode, city, website,
+       finalContactPerson, finalContactFirstName, finalContactLastName]
     );
     
-    res.json({ success: true });
+    // Aktualisierte Daten zurückgeben
+    const result = await query(
+      `SELECT 
+        company_name, contact_person, contact_first_name, contact_last_name,
+        email, phone, street, house_number, zip_code, city, website
+       FROM handwerker WHERE id = $1`,
+      [req.params.id]
+    );
+    
+    const updated = result.rows[0];
+    
+    res.json({ 
+      success: true,
+      handwerker: {
+        companyName: updated.company_name,
+        contactPerson: updated.contact_person,
+        contactFirstName: updated.contact_first_name,
+        contactLastName: updated.contact_last_name,
+        email: updated.email,
+        phone: updated.phone,
+        street: updated.street,
+        houseNumber: updated.house_number,
+        zipCode: updated.zip_code,
+        city: updated.city,
+        website: updated.website
+      }
+    });
   } catch (err) {
+    console.error('Error updating firmendaten:', err);
     res.status(500).json({ error: 'Update fehlgeschlagen' });
   }
 });
