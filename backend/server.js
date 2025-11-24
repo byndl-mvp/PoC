@@ -16063,6 +16063,8 @@ app.post('/api/handwerker/register', async (req, res) => {
       password,
       phone, 
       contactPerson,
+      contactFirstName,   // NEU
+      contactLastName,    // NEU
       street, 
       houseNumber, 
       zipCode,
@@ -16078,13 +16080,27 @@ app.post('/api/handwerker/register', async (req, res) => {
       availableFrom,
       employees, 
       insurances, 
-      certifications
+      certifications,
+      acceptedTermsAt,    // NEU
+      acceptedPrivacyAt   // NEU
     } = req.body;
     
+    // Verwende contactFirstName/contactLastName oder fallback auf contactPerson
+    const finalFirstName = contactFirstName || (contactPerson ? contactPerson.split(' ')[0] : '');
+    const finalLastName = contactLastName || (contactPerson ? contactPerson.split(' ').slice(1).join(' ') : '');
+    const fullContactPerson = contactPerson || `${finalFirstName} ${finalLastName}`.trim();
+    
     // Validierung
-    if (!companyName || !email || !password || !phone || !contactPerson) {
+    if (!companyName || !email || !password || !phone || !fullContactPerson) {
       return res.status(400).json({ 
         error: 'Pflichtfelder fehlen' 
+      });
+    }
+    
+    // AGB und Datenschutz müssen akzeptiert sein
+    if (!acceptedTermsAt || !acceptedPrivacyAt) {
+      return res.status(400).json({ 
+        error: 'AGB und Datenschutzbestimmungen müssen akzeptiert werden' 
       });
     }
     
@@ -16117,14 +16133,16 @@ app.post('/api/handwerker/register', async (req, res) => {
     await query('BEGIN');
     
     try {
-      // Insert handwerker mit E-Mail-Token
+      // Insert handwerker mit E-Mail-Token - NEU: contact_first_name und contact_last_name
       const result = await query(
         `INSERT INTO handwerker (
           company_id, 
           email, 
           password_hash,
           company_name, 
-          contact_person, 
+          contact_person,
+          contact_first_name,
+          contact_last_name,
           phone,
           street, 
           house_number, 
@@ -16143,13 +16161,15 @@ app.post('/api/handwerker/register', async (req, res) => {
           email_verified,
           email_verification_token,
           email_verification_expires,
+          accepted_terms_at,
+          accepted_privacy_at,
           active,
           created_at,
           updated_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
-          $11, $12, $13, $14, $15, $16, $17, $18, $19,
-          'pending', false, $20, $21, true, NOW(), NOW()
+          $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+          $21, 'pending', false, $22, $23, $24, $25, true, NOW(), NOW()
         )
         RETURNING id, company_id, company_name, email`,
         [
@@ -16157,7 +16177,9 @@ app.post('/api/handwerker/register', async (req, res) => {
           email.toLowerCase(), 
           hashedPassword,
           companyName, 
-          contactPerson, 
+          fullContactPerson,
+          finalFirstName,
+          finalLastName,
           phone,
           street, 
           houseNumber, 
@@ -16173,37 +16195,31 @@ app.post('/api/handwerker/register', async (req, res) => {
           employees || null,
           references || null,
           emailVerificationToken,
-          emailVerificationExpires
+          emailVerificationExpires,
+          acceptedTermsAt || new Date().toISOString(),
+          acceptedPrivacyAt || new Date().toISOString()
         ]
       );
       
       const handwerkerId = result.rows[0].id;
-
-      // HIER EINFÜGEN - direkt nach der handwerkerId Zuweisung:
-await query(
-  `UPDATE handwerker SET 
-    street = $1, house_number = $2, zip_code = $3, city = $4, action_radius = $5
-   WHERE id = $6`,
-  [street, houseNumber, zipCode, city, actionRadius || 25, handwerkerId]
-);
       
       // Insert trades
       if (trades && trades.length > 0) {
-  for (const tradeCode of trades) {
-    const tradeInfo = await query(
-      'SELECT id, name FROM trades WHERE code = $1',
-      [tradeCode]
-    );
-    
-    if (tradeInfo.rows.length > 0) {
-      const trade = tradeInfo.rows[0];
-      await query(
-        'INSERT INTO handwerker_trades (handwerker_id, trade_id, trade_code, trade_name) VALUES ($1, $2, $3, $4)',
-        [handwerkerId, trade.id, tradeCode, trade.name]
-      );
-    }
-  }
-}
+        for (const tradeCode of trades) {
+          const tradeInfo = await query(
+            'SELECT id, name FROM trades WHERE code = $1',
+            [tradeCode]
+          );
+          
+          if (tradeInfo.rows.length > 0) {
+            const trade = tradeInfo.rows[0];
+            await query(
+              'INSERT INTO handwerker_trades (handwerker_id, trade_id, trade_code, trade_name) VALUES ($1, $2, $3, $4)',
+              [handwerkerId, trade.id, tradeCode, trade.name]
+            );
+          }
+        }
+      }
       
       // Insert insurances
       if (insurances && insurances.length > 0) {
@@ -16235,32 +16251,25 @@ await query(
         companyId: companyId,
         companyName: companyName,
         email: email,
-        contactPerson: contactPerson,
+        contactPerson: fullContactPerson,
+        contactFirstName: finalFirstName,
         verificationToken: emailVerificationToken
       });
       
-      // JWT Token erstellen (aber E-Mail noch nicht verifiziert)
-      const token = jwt.sign(
-        {
-          id: handwerkerId,
-          companyId: companyId,
-          email: email,
-          companyName: companyName,
-          emailVerified: false
-        },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '24h' }
-      );
+      // WICHTIG: Kein JWT Token mehr! User muss erst E-Mail verifizieren
       
       res.status(201).json({
         success: true,
         companyId,
-        token,
+        // KEIN token hier!
         handwerker: {
           id: handwerkerId,
           companyId: companyId,
           companyName: companyName,
           email: result.rows[0].email,
+          contactPerson: fullContactPerson,
+          contactFirstName: finalFirstName,
+          contactLastName: finalLastName,
           emailVerified: false
         },
         message: 'Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.',
