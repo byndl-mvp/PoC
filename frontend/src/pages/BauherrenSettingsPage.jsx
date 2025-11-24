@@ -43,8 +43,9 @@ export default function BauherrenSettingsPage() {
     country: 'DE',
     vatId: ''
   });
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPaymentType, setSelectedPaymentType] = useState(null);
+  // Für spätere Stripe-Integration:
+  // const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // const [selectedPaymentType, setSelectedPaymentType] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -292,11 +293,18 @@ export default function BauherrenSettingsPage() {
   // ============ PAYMENT FUNKTIONEN ============
   
   const openPaymentModal = (type) => {
-    setSelectedPaymentType(type);
-    setShowPaymentModal(true);
     // Hier wird später Stripe Elements integriert
     // Für jetzt zeigen wir eine Info-Meldung
-    alert(`${type.toUpperCase()} Zahlungsmethode wird in Kürze über Stripe verfügbar sein.`);
+    const typeNames = {
+      card: 'Kreditkarte',
+      paypal: 'PayPal',
+      sepa: 'SEPA-Lastschrift',
+      giropay: 'Giropay',
+      sofort: 'Sofortüberweisung',
+      apple_pay: 'Apple Pay',
+      google_pay: 'Google Pay'
+    };
+    alert(`${typeNames[type] || type} wird in Kürze über Stripe verfügbar sein.`);
   };
   
   const setDefaultPaymentMethod = async (methodId) => {
