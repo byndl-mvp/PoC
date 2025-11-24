@@ -32,15 +32,9 @@ export default function HandwerkerSettingsPage() {
   const [profileStats, setProfileStats] = useState({
   activeOrders: 0,
   completedOrders: 0,
-  totalRevenue: '0 €'
-  });
-
-  const [profileStats, setProfileStats] = useState({
-  activeOrders: 0,
-  completedOrders: 0,
   totalRevenue: 0,
   createdAt: null
-});
+ });
   
   // HIER NEU:
   const [documents, setDocuments] = useState({
