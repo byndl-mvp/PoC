@@ -17023,11 +17023,12 @@ app.post('/api/handwerker/login', async (req, res) => {
       });
     }
 
-    // Handwerker finden
+    // Handwerker finden - NEU: contact_first_name, contact_last_name hinzugefügt
     const result = await query(
       `SELECT 
         id, company_id, company_name, email, password_hash,
-        phone, contact_person, street, house_number, zip_code, city,
+        phone, contact_person, contact_first_name, contact_last_name,
+        street, house_number, zip_code, city,
         action_radius, verification_status, two_factor_enabled,
         active, email_verified, login_notification_enabled
        FROM handwerker 
@@ -17058,12 +17059,6 @@ app.post('/api/handwerker/login', async (req, res) => {
       });
     }
 
-    // E-Mail-Verifikation prüfen (optional - je nach Anforderung)
-    if (!handwerker.email_verified) {
-      // Trotzdem Login erlauben, aber mit Warnung
-      console.log('Login ohne E-Mail-Verifikation:', email);
-    }
-
     // Passwort prüfen
     const isPasswordValid = await bcrypt.compare(password, handwerker.password_hash);
     
@@ -17077,6 +17072,15 @@ app.post('/api/handwerker/login', async (req, res) => {
       
       return res.status(401).json({ 
         error: 'Ungültige E-Mail oder Passwort' 
+      });
+    }
+
+    // NEU: E-Mail-Verifikation STRIKT prüfen - kein Login ohne Verifizierung
+    if (handwerker.email_verified === false) {
+      return res.status(403).json({
+        error: 'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse. Prüfen Sie Ihren Posteingang.',
+        requiresVerification: true,
+        email: handwerker.email
       });
     }
 
@@ -17119,7 +17123,7 @@ app.post('/api/handwerker/login', async (req, res) => {
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
           loginTime: new Date(),
-          location: 'Deutschland' // Kann mit IP-Geolocation Service erweitert werden
+          location: 'Deutschland'
         }
       );
     }
@@ -17138,7 +17142,7 @@ app.post('/api/handwerker/login', async (req, res) => {
       { expiresIn: tokenExpiry }
     );
 
-    // Response
+    // Response - NEU: contactFirstName, contactLastName hinzugefügt
     res.json({
       success: true,
       token,
@@ -17149,6 +17153,8 @@ app.post('/api/handwerker/login', async (req, res) => {
         email: handwerker.email,
         phone: handwerker.phone,
         contactPerson: handwerker.contact_person,
+        contactFirstName: handwerker.contact_first_name,
+        contactLastName: handwerker.contact_last_name,
         address: {
           street: handwerker.street,
           houseNumber: handwerker.house_number,
@@ -17159,8 +17165,7 @@ app.post('/api/handwerker/login', async (req, res) => {
         verificationStatus: handwerker.verification_status,
         emailVerified: handwerker.email_verified,
         twoFactorEnabled: handwerker.two_factor_enabled
-      },
-      warnings: !handwerker.email_verified ? ['E-Mail-Adresse noch nicht verifiziert'] : []
+      }
     });
 
   } catch (err) {
