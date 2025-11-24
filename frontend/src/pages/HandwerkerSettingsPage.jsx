@@ -173,7 +173,7 @@ useEffect(() => {
   }
 };
 
-  const handleSave = async (section) => {
+ const handleSave = async (section) => {
   try {
     setSaving(true);
     setLoading(true);
@@ -193,6 +193,14 @@ useEffect(() => {
       'account': 'account'
     };
     
+    // Bei firmendaten: contactPerson aus Vorname/Nachname generieren
+    let dataToSend = { ...formData };
+    if (section === 'firmendaten') {
+      dataToSend.contactPerson = `${formData.contactFirstName || ''} ${formData.contactLastName || ''}`.trim();
+      dataToSend.contactFirstName = formData.contactFirstName || '';
+      dataToSend.contactLastName = formData.contactLastName || '';
+    }
+    
     const endpointSection = endpointMap[section] || section;
     const endpoint = `/api/handwerker/${handwerkerData.id || handwerkerData.companyId}/${endpointSection}`;
     
@@ -202,10 +210,24 @@ useEffect(() => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
       },
-      body: JSON.stringify(formData)
+      body: JSON.stringify(dataToSend)
     });
     
     if (res.ok) {
+      // Session Storage aktualisieren bei firmendaten
+      if (section === 'firmendaten') {
+        const updatedData = {
+          ...handwerkerData,
+          companyName: formData.companyName,
+          contactPerson: dataToSend.contactPerson,
+          contactFirstName: formData.contactFirstName,
+          contactLastName: formData.contactLastName,
+          email: formData.email,
+          phone: formData.phone
+        };
+        sessionStorage.setItem('handwerkerData', JSON.stringify(updatedData));
+      }
+      
       setMessage('Einstellungen gespeichert!');
       setTimeout(() => setMessage(''), 3000);
     } else {
@@ -218,7 +240,7 @@ useEffect(() => {
     setLoading(false);
   }
 };
-
+  
   const uploadDocument = async (file) => {
   const formData = new FormData();
   formData.append('document', file);
