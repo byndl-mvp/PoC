@@ -19419,11 +19419,17 @@ app.post('/api/conversations/add-handwerker', async (req, res) => {
 
 // Bauherr Settings Endpoints
 
-// Get Bauherr Settings
+// Get Settings - liefert alle Felder inkl. first_name, last_name
 app.get('/api/bauherr/:id/settings', async (req, res) => {
   try {
     const result = await query(
-      `SELECT * FROM bauherren WHERE id = $1`,
+      `SELECT 
+        id, email, name, first_name, last_name, phone,
+        street, house_number, zip, city,
+        email_verified, email_verified_at,
+        accepted_terms_at, accepted_privacy_at,
+        created_at, updated_at, last_login
+       FROM bauherren WHERE id = $1`,
       [req.params.id]
     );
     
@@ -19431,33 +19437,98 @@ app.get('/api/bauherr/:id/settings', async (req, res) => {
       return res.status(404).json({ error: 'Bauherr nicht gefunden' });
     }
     
-    res.json(result.rows[0]);
+    const bauherr = result.rows[0];
+    
+    // Response mit camelCase für Frontend
+    res.json({
+      id: bauherr.id,
+      email: bauherr.email,
+      name: bauherr.name,
+      firstName: bauherr.first_name,
+      lastName: bauherr.last_name,
+      phone: bauherr.phone,
+      street: bauherr.street,
+      houseNumber: bauherr.house_number,
+      zipCode: bauherr.zip,
+      city: bauherr.city,
+      emailVerified: bauherr.email_verified,
+      emailVerifiedAt: bauherr.email_verified_at,
+      acceptedTermsAt: bauherr.accepted_terms_at,
+      acceptedPrivacyAt: bauherr.accepted_privacy_at,
+      createdAt: bauherr.created_at,
+      updatedAt: bauherr.updated_at,
+      lastLogin: bauherr.last_login
+    });
   } catch (err) {
     console.error('Error fetching settings:', err);
     res.status(500).json({ error: 'Fehler beim Laden der Einstellungen' });
   }
 });
 
-// Update Personal Data
+// Update Personal Data - akzeptiert firstName/lastName ODER name
 app.put('/api/bauherr/:id/personal', async (req, res) => {
   try {
-    const { name, email, phone, street, houseNumber, zipCode, city } = req.body;
+    const { firstName, lastName, name, email, phone, street, houseNumber, zipCode, city } = req.body;
+    
+    // Wenn firstName/lastName übergeben werden, diese verwenden
+    // Der DB-Trigger synchronisiert automatisch das name-Feld
+    // Wenn nur name übergeben wird (Rückwärtskompatibilität), 
+    // synchronisiert der Trigger first_name/last_name
+    
+    let finalFirstName = firstName;
+    let finalLastName = lastName;
+    let finalName = name;
+    
+    // Wenn firstName/lastName vorhanden, name daraus generieren
+    if (firstName !== undefined || lastName !== undefined) {
+      finalFirstName = firstName || '';
+      finalLastName = lastName || '';
+      finalName = `${finalFirstName} ${finalLastName}`.trim();
+    }
+    // Wenn nur name vorhanden (alter Code), wird der DB-Trigger 
+    // first_name/last_name automatisch setzen
     
     await query(
       `UPDATE bauherren SET
         name = $2,
-        email = $3,
-        phone = $4,
-        street = $5,
-        house_number = $6,
-        zip = $7,
-        city = $8,
+        first_name = $3,
+        last_name = $4,
+        email = $5,
+        phone = $6,
+        street = $7,
+        house_number = $8,
+        zip = $9,
+        city = $10,
         updated_at = NOW()
        WHERE id = $1`,
-      [req.params.id, name, email, phone, street, houseNumber, zipCode, city]
+      [req.params.id, finalName, finalFirstName, finalLastName, email, phone, street, houseNumber, zipCode, city]
     );
     
-    res.json({ success: true });
+    // Aktualisierte Daten zurückgeben
+    const result = await query(
+      `SELECT id, name, first_name, last_name, email, phone, 
+              street, house_number, zip, city
+       FROM bauherren WHERE id = $1`,
+      [req.params.id]
+    );
+    
+    const updated = result.rows[0];
+    
+    res.json({ 
+      success: true,
+      user: {
+        id: updated.id,
+        name: updated.name,
+        firstName: updated.first_name,
+        lastName: updated.last_name,
+        email: updated.email,
+        phone: updated.phone,
+        street: updated.street,
+        houseNumber: updated.house_number,
+        zipCode: updated.zip,
+        city: updated.city
+      }
+    });
   } catch (err) {
     console.error('Error updating personal data:', err);
     res.status(500).json({ error: 'Update fehlgeschlagen' });
