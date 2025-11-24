@@ -21843,10 +21843,14 @@ app.get('/api/projects/:projectId/cost-analysis', async (req, res) => {
         lvs.id as lv_id,
         lvs.content as lv_data,
         
-        -- Auftragsdaten
+        -- Auftragsdaten (MIT Rabatt-Berechnung)
         o.id as order_id,
-        o.amount as order_amount_netto,
-        o.amount * 1.19 as order_amount_brutto,
+        o.amount as order_amount_netto_raw,
+        o.bundle_discount,
+        -- Netto nach Rabatt
+        (o.amount - COALESCE(o.amount * o.bundle_discount / 100, 0)) as order_amount_netto,
+        -- Brutto nach Rabatt
+        (o.amount - COALESCE(o.amount * o.bundle_discount / 100, 0)) * 1.19 as order_amount_brutto,
         o.status as order_status,
         o.created_at as order_date,
         o.bundle_discount,
