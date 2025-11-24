@@ -581,6 +581,69 @@ const handleAccountDelete = async () => {
   }
 };
 
+// Logo hochladen
+const handleLogoUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  // Validierung
+  if (!file.type.startsWith('image/')) {
+    alert('Bitte nur Bilddateien hochladen');
+    return;
+  }
+  
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Datei ist zu groß (max. 5MB)');
+    return;
+  }
+  
+  const formDataUpload = new FormData();
+  formDataUpload.append('logo', file);
+  
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/logo`), {
+      method: 'POST',
+      body: formDataUpload
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      setFormData(prev => ({ ...prev, logoUrl: data.logoUrl }));
+      setMessage('Logo erfolgreich hochgeladen');
+      setTimeout(() => setMessage(''), 3000);
+    } else {
+      throw new Error('Upload fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Fehler beim Hochladen des Logos');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Logo löschen
+const handleLogoDelete = async () => {
+  if (!window.confirm('Logo wirklich entfernen?')) return;
+  
+  try {
+    setLoading(true);
+    const res = await fetch(apiUrl(`/api/handwerker/${handwerkerData.id}/logo`), {
+      method: 'DELETE'
+    });
+    
+    if (res.ok) {
+      setFormData(prev => ({ ...prev, logoUrl: null }));
+      setMessage('Logo entfernt');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  } catch (err) {
+    setError('Fehler beim Löschen des Logos');
+  } finally {
+    setLoading(false);
+  }
+};
+  
   // Passwort-Stärke-Funktionen
 const getPasswordStrength = (password) => {
   let strength = 0;
