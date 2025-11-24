@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
 // Wiederverwendbare E-Mail Verifizierungs-Modal Komponente
+// AKTUALISIERT: Kein Dashboard-Zugang vor E-Mail-Verifizierung
 export function EmailVerificationModal({ 
   isOpen, 
   email, 
   userName, 
+  companyId,  // NEU: Optional für Handwerker
   onResendEmail, 
   onClose,
   userType = 'bauherr' // 'bauherr' oder 'handwerker'
@@ -47,7 +49,7 @@ export function EmailVerificationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl max-w-lg w-full my-8 max-h-[90vh] overflow-y-auto p-8 border border-white/20">
         
         {/* Header mit animiertem E-Mail Icon */}
@@ -60,17 +62,25 @@ export function EmailVerificationModal({
           </div>
           
           <h2 className="text-3xl font-bold text-white mb-2">
-            Fast geschafft!
+            Registrierung erfolgreich!
           </h2>
           <p className="text-gray-300">
             Willkommen bei byndl, {userName}!
           </p>
         </div>
 
-        {/* Hauptnachricht */}
-        <div className="bg-yellow-500/10 border-l-4 border-yellow-500 rounded-lg p-4 mb-6">
+        {/* Betriebs-ID Anzeige (nur für Handwerker) */}
+        {companyId && (
+          <div className="bg-teal-500/20 border border-teal-500/50 rounded-lg p-4 mb-6">
+            <p className="text-teal-300 text-sm mb-1">Ihre Betriebs-ID:</p>
+            <p className="text-white font-mono text-lg font-bold">{companyId}</p>
+          </div>
+        )}
+
+        {/* E-Mail Bestätigung erforderlich */}
+        <div className="bg-yellow-500/20 border-l-4 border-yellow-500 rounded-lg p-4 mb-6">
           <h3 className="text-yellow-300 font-semibold mb-2">
-            📧 E-Mail-Bestätigung erforderlich
+            E-Mail-Bestätigung erforderlich
           </h3>
           <p className="text-gray-300 text-sm mb-3">
             Wir haben eine Bestätigungs-E-Mail an folgende Adresse gesendet:
@@ -83,7 +93,9 @@ export function EmailVerificationModal({
         {/* Anweisungen */}
         <div className="space-y-4 mb-6">
           <div className="flex items-start space-x-3">
-            <span className="text-teal-400 text-xl">1.</span>
+            <div className="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-teal-400 font-bold">1</span>
+            </div>
             <div>
               <p className="text-white font-medium">Öffnen Sie Ihr E-Mail-Postfach</p>
               <p className="text-gray-400 text-sm">Prüfen Sie auch den Spam-Ordner</p>
@@ -91,7 +103,9 @@ export function EmailVerificationModal({
           </div>
           
           <div className="flex items-start space-x-3">
-            <span className="text-teal-400 text-xl">2.</span>
+            <div className="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-teal-400 font-bold">2</span>
+            </div>
             <div>
               <p className="text-white font-medium">Klicken Sie auf den Bestätigungslink</p>
               <p className="text-gray-400 text-sm">Der Link ist 48 Stunden gültig</p>
@@ -99,12 +113,22 @@ export function EmailVerificationModal({
           </div>
           
           <div className="flex items-start space-x-3">
-            <span className="text-teal-400 text-xl">3.</span>
+            <div className="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-teal-400 font-bold">3</span>
+            </div>
             <div>
               <p className="text-white font-medium">Melden Sie sich an</p>
               <p className="text-gray-400 text-sm">Nach der Bestätigung können Sie alle Funktionen nutzen</p>
             </div>
           </div>
+        </div>
+
+        {/* WICHTIG: Kein Dashboard-Zugang ohne Verifizierung */}
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+          <p className="text-red-300 text-sm">
+            <strong>Wichtig:</strong> Sie können sich erst nach der E-Mail-Bestätigung anmelden. 
+            Dies dient Ihrer Sicherheit und schützt vor unbefugtem Zugriff.
+          </p>
         </div>
 
         {/* E-Mail erneut senden */}
@@ -146,34 +170,23 @@ export function EmailVerificationModal({
           )}
         </div>
 
-        {/* Info Box */}
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-          <p className="text-blue-300 text-sm">
-            <strong>💡 Hinweis:</strong> Sie können sich bereits einloggen und Ihr Dashboard besuchen, 
-            haben aber eingeschränkte Funktionen bis zur E-Mail-Bestätigung.
-          </p>
-        </div>
-
-        {/* Action Buttons */}
+        {/* Action Button - NUR Login, kein Dashboard */}
         <div className="space-y-3">
-          <button
-            onClick={() => {
-              onClose();
-              window.location.href = `/${userType}/dashboard`;
-            }}
-            className="w-full px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
-          >
-            Zum Dashboard (eingeschränkt)
-          </button>
-          
           <button
             onClick={() => {
               onClose();
               window.location.href = `/${userType}/login`;
             }}
-            className="w-full px-6 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
+            className="w-full px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold"
           >
             Zum Login
+          </button>
+          
+          <button
+            onClick={onClose}
+            className="w-full px-6 py-3 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
+          >
+            Schließen
           </button>
         </div>
         
@@ -186,38 +199,4 @@ export function EmailVerificationModal({
   );
 }
 
-// Demo-Komponente zur Verwendung
-export default function EmailVerificationDemo() {
-  const [showModal, setShowModal] = useState(false);
-  
-  const handleResendEmail = async () => {
-    // Simuliere API-Call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In echter Implementierung:
-    // const response = await fetch('/api/resend-verification', {...});
-    // return response.json();
-    
-    return { success: true };
-  };
-  
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-      <button
-        onClick={() => setShowModal(true)}
-        className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all font-semibold"
-      >
-        Zeige E-Mail Verifizierungs-Modal
-      </button>
-      
-      <EmailVerificationModal
-        isOpen={showModal}
-        email="max.mustermann@email.de"
-        userName="Max Mustermann"
-        onResendEmail={handleResendEmail}
-        onClose={() => setShowModal(false)}
-        userType="bauherr"
-      />
-    </div>
-  );
-}
+export default EmailVerificationModal;
