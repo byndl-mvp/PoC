@@ -16561,43 +16561,43 @@ app.get('/api/handwerker/verify-email', async (req, res) => {
     const { token } = req.query;
     
     if (!token) {
-      return res.status(400).json({ error: 'Token erforderlich' });
+      return res.status(400).json({ error: 'Kein Token vorhanden' });
     }
     
-    // Handwerker mit Token finden
+    // Finde Handwerker mit diesem Token
     const result = await query(
-      `SELECT id, company_id, company_name, email FROM handwerker 
-       WHERE email_verification_token = $1 
-       AND email_verification_expires > NOW()`,
+      `SELECT id, company_id, email, company_name, contact_person, contact_first_name, contact_last_name, email_verification_expires 
+       FROM handwerker 
+       WHERE email_verification_token = $1`,
       [token]
     );
     
     if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Ungültiger oder abgelaufener Token' });
+      return res.status(400).json({ error: 'Ungültiger Verifizierungslink' });
     }
     
     const handwerker = result.rows[0];
     
-    // E-Mail als verifiziert markieren
+    // Prüfe ob Token abgelaufen
+    if (new Date() > new Date(handwerker.email_verification_expires)) {
+      return res.status(400).json({ 
+        error: 'Der Verifizierungslink ist abgelaufen. Bitte fordern Sie einen neuen an.',
+        expired: true
+      });
+    }
+    
+    // E-Mail verifizieren und Token löschen
     await query(
       `UPDATE handwerker 
-       SET email_verified = true,
+       SET email_verified = true, 
            email_verification_token = NULL,
            email_verification_expires = NULL,
-           verification_status = 'verified',
-           updated_at = NOW()
+           email_verified_at = NOW()
        WHERE id = $1`,
       [handwerker.id]
     );
     
-    // Log erstellen
-    await query(
-      `INSERT INTO email_logs (recipient_email, email_type, subject, status, handwerker_id, sent_at)
-       VALUES ($1, 'verification_success', 'E-Mail verifiziert', 'sent', $2, NOW())`,
-      [handwerker.email, handwerker.id]
-    );
-    
-    // JWT Token generieren
+    // JETZT Token erstellen - erst nach Verifizierung!
     const jwtToken = jwt.sign(
       {
         id: handwerker.id,
@@ -16610,19 +16610,23 @@ app.get('/api/handwerker/verify-email', async (req, res) => {
       { expiresIn: '24h' }
     );
     
-    res.json({ 
-      success: true, 
-      message: 'E-Mail erfolgreich verifiziert. Sie können sich jetzt anmelden.',
+    res.json({
+      success: true,
+      message: 'E-Mail erfolgreich verifiziert!',
+      token: jwtToken,
       id: handwerker.id,
       companyId: handwerker.company_id,
-      companyName: handwerker.company_name,
       email: handwerker.email,
-      token: jwtToken  // JWT Token mitschicken
+      companyName: handwerker.company_name,
+      contactPerson: handwerker.contact_person,
+      contactFirstName: handwerker.contact_first_name,
+      contactLastName: handwerker.contact_last_name,
+      emailVerified: true
     });
     
   } catch (error) {
-    console.error('E-Mail-Verifikationsfehler:', error);
-    res.status(500).json({ error: 'Verifikation fehlgeschlagen' });
+    console.error('Email verification error:', error);
+    res.status(500).json({ error: 'Verifizierung fehlgeschlagen' });
   }
 });
 
