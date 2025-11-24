@@ -855,6 +855,11 @@ const getPasswordStrengthClass = (password) => {
   </div>
 )}
 
+{/* Mein Profil Tab */}
+    {activeTab === 'profil' && (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white mb-4">Mein Profil</h2>
+        
 {/* Profil Header */}
 <div className="bg-white/5 rounded-lg p-6">
   <div className="flex items-center gap-6 mb-6">
