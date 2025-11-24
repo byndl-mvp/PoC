@@ -1,4 +1,5 @@
 // src/components/BauherrRegisterPage.jsx
+// PROFESSIONELLE VERSION mit Vorname/Nachname, AGB-Checkbox, E-Mail-Verifizierungs-Pflicht
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { apiUrl } from '../api';
@@ -11,13 +12,19 @@ export default function BauherrRegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    name: '',
+    firstName: '',      // NEU: Vorname
+    lastName: '',       // NEU: Nachname
     phone: '',
     street: '',
     houseNumber: '',
     zipCode: '',
     city: ''
   });
+  
+  // NEU: AGB und Datenschutz Akzeptanz
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,7 +37,6 @@ export default function BauherrRegisterPage() {
   const fromTradeConfirmation = location.state?.fromTradeConfirmation;
   
   useEffect(() => {
-    // Wenn kein Projekt vorhanden und nicht von TradeConfirmation, redirect
     if (!projectId && !fromTradeConfirmation) {
       console.log('Info: Direkte Registrierung ohne Projekt');
     }
@@ -78,30 +84,45 @@ export default function BauherrRegisterPage() {
     return 'bg-green-600';
   };
 
-  // NEU HINZUFÜGEN:
-const handleResendVerificationEmail = async () => {
-  try {
-    const res = await fetch(apiUrl('/api/bauherr/resend-verification'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        email: registrationData?.user?.email 
-      })
-    });
-    
-    await res.json(); // data nicht benötigt
-    return { success: res.ok };
-  } catch (error) {
-    console.error('Resend email error:', error);
-    return { success: false };
-  }
-};
+  // Prüfen ob Formular vollständig ist
+  const isFormValid = () => {
+    return (
+      formData.email &&
+      formData.password &&
+      formData.confirmPassword &&
+      formData.firstName &&
+      formData.lastName &&
+      formData.phone &&
+      formData.password === formData.confirmPassword &&
+      formData.password.length >= 8 &&
+      acceptedTerms &&
+      acceptedPrivacy
+    );
+  };
+
+  const handleResendVerificationEmail = async () => {
+    try {
+      const res = await fetch(apiUrl('/api/bauherr/resend-verification'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: registrationData?.user?.email 
+        })
+      });
+      
+      await res.json();
+      return { success: res.ok };
+    } catch (error) {
+      console.error('Resend email error:', error);
+      return { success: false };
+    }
+  };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validierung
-    if (!formData.email || !formData.password || !formData.name || !formData.phone) {
+    if (!formData.email || !formData.password || !formData.firstName || !formData.lastName || !formData.phone) {
       setError('Bitte füllen Sie alle Pflichtfelder aus.');
       return;
     }
@@ -121,6 +142,12 @@ const handleResendVerificationEmail = async () => {
       setError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
       return;
     }
+
+    // NEU: AGB und Datenschutz Prüfung
+    if (!acceptedTerms || !acceptedPrivacy) {
+      setError('Bitte akzeptieren Sie die AGB und Datenschutzbestimmungen.');
+      return;
+    }
     
     setLoading(true);
     setError('');
@@ -131,65 +158,61 @@ const handleResendVerificationEmail = async () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          projectId: projectId // Projekt-ID mitschicken wenn vorhanden
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          // Kombinierter Name für Rückwärtskompatibilität
+          name: `${formData.firstName} ${formData.lastName}`,
+          phone: formData.phone,
+          street: formData.street,
+          houseNumber: formData.houseNumber,
+          zipCode: formData.zipCode,
+          city: formData.city,
+          projectId: projectId,
+          acceptedTermsAt: new Date().toISOString(),
+          acceptedPrivacyAt: new Date().toISOString()
         })
       });
       
       const data = await res.json();
       
       if (res.ok) {
-        // Token und Daten speichern
-        if (data.token) {
-  sessionStorage.setItem('bauherrToken', data.token);
-  sessionStorage.setItem('bauherrData', JSON.stringify({
-    id: data.user.id,
-    name: data.user.name,
-    email: data.user.email,
-    emailVerified: false
-  }));
-  // Für Rückwärtskompatibilität:
-  sessionStorage.setItem('userData', JSON.stringify({
-    id: data.user.id,
-    name: data.user.name,
-    email: data.user.email,
-    emailVerified: false
-  }));
-}
+        // WICHTIG: Token wird NICHT gespeichert - User muss erst E-Mail verifizieren!
+        // Kein sessionStorage.setItem hier!
         
-        // Projekt-ID für Dashboard speichern falls vorhanden
+        // Projekt-ID für später speichern falls vorhanden
         if (projectId) {
           sessionStorage.setItem('pendingLvProject', projectId);
         }
         
-        // Zeige Success Modal
+        // Zeige Verification Modal
         setRegistrationData(data);
-        setShowVerificationModal(true); // NUR Verification Modal, KEIN Success
+        setShowVerificationModal(true);
         
       } else {
-        // Fehler vom Server
         setError(data.error || 'Registrierung fehlgeschlagen');
       }
     } catch (err) {
-      // Netzwerk- oder andere Fehler
       console.error('Registrierungsfehler:', err);
       setError('Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
     } finally {
       setLoading(false);
     }
-  }; // Ende der handleSubmit Funktion
+  };
 
   return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-    {/* EmailVerificationModal HIER */}
-    <EmailVerificationModal
-      isOpen={showVerificationModal}
-      email={registrationData?.user?.email}
-      userName={registrationData?.user?.name}
-      onResendEmail={handleResendVerificationEmail}
-      onClose={() => setShowVerificationModal(false)}
-      userType="bauherr"
-    />  
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      {/* E-Mail Verification Modal */}
+      <EmailVerificationModal
+        isOpen={showVerificationModal}
+        email={registrationData?.user?.email || formData.email}
+        userName={registrationData?.user?.name || formData.firstName}
+        onResendEmail={handleResendVerificationEmail}
+        onClose={() => setShowVerificationModal(false)}
+        userType="bauherr"
+      />
+      
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-20 left-10 w-72 h-72 bg-teal-500 rounded-full filter blur-3xl"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-600 rounded-full filter blur-3xl"></div>
@@ -201,34 +224,47 @@ const handleResendVerificationEmail = async () => {
             <h1 className="text-4xl font-bold text-white hover:text-teal-400 transition-colors">byndl</h1>
           </Link>
           <h2 className="text-2xl text-white mt-4">Bauherren-Registrierung</h2>
-          {projectId && (
-            <p className="text-teal-300 mt-2">Registrieren Sie sich, um Ihr Projekt fortzusetzen</p>
-          )}
+          <p className="text-gray-400 mt-2">Erstellen Sie Ihr kostenloses Konto</p>
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Kontaktdaten */}
+            {/* Persönliche Daten - NEU: Vorname und Nachname getrennt */}
             <div>
               <h3 className="text-lg font-semibold text-white mb-4">Persönliche Daten</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-white font-medium mb-2">
-                    Vollständiger Name *
+                    Vorname *
                   </label>
                   <input
                     type="text"
-                    name="name"
-                    value={formData.name}
+                    name="firstName"
+                    value={formData.firstName}
                     onChange={handleChange}
-                    placeholder="Max Mustermann"
+                    placeholder="Max"
                     className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
                     required
                   />
                 </div>
                 
                 <div>
+                  <label className="block text-white font-medium mb-2">
+                    Nachname *
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    placeholder="Mustermann"
+                    className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
                   <label className="block text-white font-medium mb-2">
                     Telefon *
                   </label>
@@ -237,7 +273,7 @@ const handleResendVerificationEmail = async () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="0171 1234567"
+                    placeholder="+49 221 12345678"
                     className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
                     required
                   />
@@ -285,7 +321,16 @@ const handleResendVerificationEmail = async () => {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
                     >
-                      {showPassword ? '👁' : '👁‍🗨'}
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                   
@@ -326,11 +371,23 @@ const handleResendVerificationEmail = async () => {
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
                     >
-                      {showConfirmPassword ? '👁' : '👁‍🗨'}
+                      {showConfirmPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                   {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
                     <p className="text-red-400 text-xs mt-1">Passwörter stimmen nicht überein</p>
+                  )}
+                  {formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && (
+                    <p className="text-green-400 text-xs mt-1">✓ Passwörter stimmen überein</p>
                   )}
                 </div>
               </div>
@@ -394,6 +451,62 @@ const handleResendVerificationEmail = async () => {
               </div>
             </div>
 
+            {/* NEU: AGB und Datenschutz Checkboxen */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white mb-4">Rechtliches</h3>
+              
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="w-5 h-5 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
+                />
+                <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
+                  Ich habe die{' '}
+                  <Link 
+                    to="/AGB" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-teal-400 hover:text-teal-300 underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Allgemeinen Geschäftsbedingungen (AGB)
+                  </Link>{' '}
+                  gelesen und akzeptiere diese. *
+                </span>
+              </label>
+              
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptedPrivacy}
+                  onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                  className="w-5 h-5 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
+                />
+                <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
+                  Ich habe die{' '}
+                  <Link 
+                    to="/datenschutz" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-teal-400 hover:text-teal-300 underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Datenschutzbestimmungen
+                  </Link>{' '}
+                  gelesen und stimme der Verarbeitung meiner Daten gemäß dieser Bestimmungen zu. *
+                </span>
+              </label>
+              
+              <p className="text-gray-500 text-xs mt-2">
+                Weitere Informationen finden Sie auch in unserem{' '}
+                <Link to="/disclaimer" target="_blank" className="text-teal-400 hover:text-teal-300 underline">
+                  Disclaimer / Haftungsausschluss
+                </Link>
+              </p>
+            </div>
+
             {error && (
               <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4">
                 <p className="text-red-200">{error}</p>
@@ -412,12 +525,23 @@ const handleResendVerificationEmail = async () => {
               
               <button
                 type="submit"
-                disabled={loading}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all font-semibold disabled:opacity-50"
+                disabled={loading || !isFormValid()}
+                className={`flex-1 px-6 py-3 rounded-lg shadow-lg font-semibold transition-all ${
+                  isFormValid()
+                    ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white hover:shadow-xl transform hover:scale-[1.02]'
+                    : 'bg-gray-500/50 text-gray-400 cursor-not-allowed'
+                }`}
               >
                 {loading ? 'Registrierung läuft...' : 'Registrieren'}
               </button>
             </div>
+            
+            {/* Hinweis warum Button deaktiviert */}
+            {!isFormValid() && (
+              <p className="text-gray-400 text-xs text-center">
+                Bitte füllen Sie alle Pflichtfelder aus und akzeptieren Sie die AGB sowie Datenschutzbestimmungen.
+              </p>
+            )}
           </form>
 
           <div className="mt-8 pt-6 border-t border-white/20">
@@ -433,7 +557,7 @@ const handleResendVerificationEmail = async () => {
         {projectId && (
           <div className="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
             <p className="text-blue-300 text-sm">
-              <strong>ℹ️ Hinweis:</strong> Nach der Registrierung können Sie direkt mit Ihrem Projekt fortfahren 
+              <strong>Hinweis:</strong> Nach der Registrierung und E-Mail-Bestätigung können Sie direkt mit Ihrem Projekt fortfahren 
               und die KI-generierte Ausschreibung erstellen.
             </p>
           </div>
