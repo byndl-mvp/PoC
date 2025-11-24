@@ -9623,11 +9623,8 @@ lv.positions = lv.positions.map(pos => {
       }
     }
   }
-  
-  return pos;
-});
 
-  // SPEZIAL-REGEL FÜR BODENBELAGSARBEITEN
+// SPEZIAL-REGEL FÜR BODENBELAGSARBEITEN
 if (tradeCode === 'BOD') {
   // ============ KRITISCH: Fußbodenheizungsprüfung gehört NICHT zum Bodenleger ============
   if (titleLower.includes('fußboden') && titleLower.includes('heiz') && 
@@ -9679,7 +9676,10 @@ if (tradeCode === 'BOD') {
     }
   }
 }
- 
+  
+  return pos;
+});
+
 // ROH-spezifisch: Entferne falsche Holzbau-Positionen
 if (trade.code === 'ROH' && lv.positions) {
   console.log('[ROH] Prüfe auf falsche Holzbau-Positionen...');
