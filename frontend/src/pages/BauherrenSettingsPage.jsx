@@ -1,3 +1,5 @@
+// src/components/BauherrenSettingsPage.jsx
+// PROFESSIONELLE VERSION mit Vorname/Nachname getrennt
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
@@ -9,9 +11,11 @@ export default function BauherrenSettingsPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   
-  // Form States
+  // Form States - NEU: firstName und lastName getrennt
   const [personalData, setPersonalData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
+    name: '',  // Für Rückwärtskompatibilität
     email: '',
     phone: '',
     street: '',
@@ -29,69 +33,113 @@ export default function BauherrenSettingsPage() {
   });
   
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [billingAddressSameAsPersonal, setBillingAddressSameAsPersonal] = useState(true);
+  const [billingAddress, setBillingAddress] = useState({
+    companyName: '',
+    fullName: '',
+    street: '',
+    houseNumber: '',
+    zipCode: '',
+    city: '',
+    country: 'DE',
+    vatId: ''
+  });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentType, setSelectedPaymentType] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [createdAt, setCreatedAt] = useState(null);
   
   useEffect(() => {
-  const userData = sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData');
-  if (!userData) {
-    navigate('/bauherr/login');
-    return;
-  }
-  
-  const user = JSON.parse(userData);
-  
-  // loadSettings direkt im useEffect definieren
-  const loadSettings = async (userId) => {
-    try {
-      setLoading(true);
-      const res = await fetch(apiUrl(`/api/bauherr/${userId}/settings`));
-      if (res.ok) {
-        const data = await res.json();
-        setPersonalData({
-          name: data.name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          street: data.street || '',
-          houseNumber: data.house_number || '',
-          zipCode: data.zip || '',
-          city: data.city || ''
-        });
-        setNotifications(data.notification_settings || notifications);
-        setTwoFactorEnabled(data.two_factor_enabled || false);
-        setPaymentMethods(data.payment_methods || []);
-      }
-    } catch (err) {
-      setError('Fehler beim Laden der Einstellungen');
-    } finally {
-      setLoading(false);
+    const userData = sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData');
+    if (!userData) {
+      navigate('/bauherr/login');
+      return;
     }
-  };
-  
-  loadSettings(user.id);
-}, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+    
+    const user = JSON.parse(userData);
+    
+    const loadSettings = async (userId) => {
+      try {
+        setLoading(true);
+        const res = await fetch(apiUrl(`/api/bauherr/${userId}/settings`));
+        if (res.ok) {
+          const data = await res.json();
+          
+          // NEU: firstName und lastName korrekt mappen
+          setPersonalData({
+            firstName: data.firstName || data.first_name || (data.name ? data.name.split(' ')[0] : ''),
+            lastName: data.lastName || data.last_name || (data.name ? data.name.split(' ').slice(1).join(' ') : ''),
+            name: data.name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            street: data.street || '',
+            houseNumber: data.house_number || data.houseNumber || '',
+            zipCode: data.zip || data.zipCode || '',
+            city: data.city || ''
+          });
+          
+          setNotifications(data.notification_settings || notifications);
+          setTwoFactorEnabled(data.two_factor_enabled || false);
+          setPaymentMethods(data.payment_methods || []);
+          setPaymentHistory(data.payment_history || []);
+          setBillingAddressSameAsPersonal(data.billing_address_same_as_personal !== false);
+          if (data.billing_address) {
+            setBillingAddress(data.billing_address);
+          }
+          setEmailVerified(data.email_verified || false);
+          setCreatedAt(data.created_at);
+        }
+      } catch (err) {
+        setError('Fehler beim Laden der Einstellungen');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSettings(user.id);
+  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const savePersonalData = async () => {
     try {
       setLoading(true);
+      setError('');
       const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+      
+      // Kombiniere firstName und lastName für Rückwärtskompatibilität
+      const dataToSend = {
+        ...personalData,
+        name: `${personalData.firstName} ${personalData.lastName}`.trim()
+      };
       
       const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/personal`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(personalData)
+        body: JSON.stringify(dataToSend)
       });
       
       if (res.ok) {
-        setMessage('Persönliche Daten gespeichert');
+        // Session Storage aktualisieren
+        const updatedUserData = {
+          ...userData,
+          name: dataToSend.name,
+          firstName: personalData.firstName,
+          lastName: personalData.lastName
+        };
+        sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
+        sessionStorage.setItem('bauherrData', JSON.stringify(updatedUserData));
+        
+        setMessage('Persönliche Daten erfolgreich gespeichert');
         setTimeout(() => setMessage(''), 3000);
       } else {
         throw new Error('Speichern fehlgeschlagen');
       }
     } catch (err) {
-      setError('Fehler beim Speichern');
+      setError('Fehler beim Speichern der Daten');
     } finally {
       setLoading(false);
     }
@@ -132,6 +180,7 @@ export default function BauherrenSettingsPage() {
     
     try {
       setLoading(true);
+      setError('');
       const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
       
       const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/password`), {
@@ -151,10 +200,11 @@ export default function BauherrenSettingsPage() {
         setConfirmPassword('');
         setTimeout(() => setMessage(''), 3000);
       } else {
-        throw new Error('Passwortänderung fehlgeschlagen');
+        const data = await res.json();
+        throw new Error(data.error || 'Passwortänderung fehlgeschlagen');
       }
     } catch (err) {
-      setError('Fehler beim Ändern des Passworts');
+      setError(err.message || 'Fehler beim Ändern des Passworts');
     } finally {
       setLoading(false);
     }
@@ -208,33 +258,31 @@ export default function BauherrenSettingsPage() {
   };
   
   const deleteAccount = async () => {
-    const confirmText = prompt('Bitte geben Sie "LÖSCHEN" ein, um Ihren Account unwiderruflich zu löschen:');
-    if (confirmText !== 'LÖSCHEN') {
-      setError('Löschvorgang abgebrochen');
-      return;
-    }
+    const confirmed = window.confirm(
+      'Sind Sie sicher, dass Sie Ihren Account unwiderruflich löschen möchten? ' +
+      'Alle Ihre Daten werden permanent gelöscht.'
+    );
     
-    const password = prompt('Bitte geben Sie Ihr Passwort zur Bestätigung ein:');
-    if (!password) {
-      setError('Passwort erforderlich');
-      return;
-    }
+    if (!confirmed) return;
+    
+    const doubleConfirmed = window.confirm(
+      'Diese Aktion kann NICHT rückgängig gemacht werden. ' +
+      'Wirklich löschen?'
+    );
+    
+    if (!doubleConfirmed) return;
     
     try {
       setLoading(true);
       const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
       
-      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/account`), {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}`), {
+        method: 'DELETE'
       });
       
       if (res.ok) {
         sessionStorage.clear();
         navigate('/');
-      } else {
-        throw new Error('Account-Löschung fehlgeschlagen');
       }
     } catch (err) {
       setError('Fehler beim Löschen des Accounts');
@@ -243,449 +291,986 @@ export default function BauherrenSettingsPage() {
     }
   };
 
+  // ============ PAYMENT FUNKTIONEN ============
+  
+  const openPaymentModal = (type) => {
+    setSelectedPaymentType(type);
+    setShowPaymentModal(true);
+    // Hier wird später Stripe Elements integriert
+    // Für jetzt zeigen wir eine Info-Meldung
+    alert(`${type.toUpperCase()} Zahlungsmethode wird in Kürze über Stripe verfügbar sein.`);
+  };
+  
+  const setDefaultPaymentMethod = async (methodId) => {
+    try {
+      setLoading(true);
+      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+      
+      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/payment-methods/${methodId}/default`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (res.ok) {
+        // Update lokalen State
+        setPaymentMethods(prev => prev.map(method => ({
+          ...method,
+          isDefault: method.id === methodId
+        })));
+        setMessage('Standard-Zahlungsmethode aktualisiert');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (err) {
+      setError('Fehler beim Setzen der Standard-Zahlungsmethode');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const removePaymentMethod = async (methodId) => {
+    const confirmed = window.confirm('Möchten Sie diese Zahlungsmethode wirklich entfernen?');
+    if (!confirmed) return;
+    
+    try {
+      setLoading(true);
+      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+      
+      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/payment-methods/${methodId}`), {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        setPaymentMethods(prev => prev.filter(method => method.id !== methodId));
+        setMessage('Zahlungsmethode entfernt');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (err) {
+      setError('Fehler beim Entfernen der Zahlungsmethode');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const saveBillingAddress = async () => {
+    try {
+      setLoading(true);
+      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+      
+      const addressToSave = billingAddressSameAsPersonal ? {
+        sameAsPersonal: true
+      } : {
+        sameAsPersonal: false,
+        ...billingAddress
+      };
+      
+      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/billing-address`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addressToSave)
+      });
+      
+      if (res.ok) {
+        setMessage('Rechnungsadresse gespeichert');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (err) {
+      setError('Fehler beim Speichern der Rechnungsadresse');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const downloadInvoices = async () => {
+    try {
+      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+      
+      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/invoices/download-all`));
+      
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rechnungen_${new Date().toISOString().split('T')[0]}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      setError('Fehler beim Herunterladen der Rechnungen');
+    }
+  };
+
   const tabs = [
     { id: 'personal', label: 'Persönliche Daten', icon: '👤' },
-    { id: 'payment', label: 'Zahlungen', icon: '💳' },
+    { id: 'payment', label: 'Zahlungsmethoden', icon: '💳' },
     { id: 'notifications', label: 'Benachrichtigungen', icon: '🔔' },
     { id: 'security', label: 'Sicherheit', icon: '🔒' },
     { id: 'privacy', label: 'Datenschutz', icon: '🛡️' },
-    { id: 'help', label: 'Hilfe & Support', icon: '❓' }
+    { id: 'help', label: 'Hilfe', icon: '❓' }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
-      <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <nav className="bg-black/30 backdrop-blur-lg border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
+            <Link to="/bauherr/dashboard" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+              byndl
+            </Link>
             <div className="flex items-center gap-4">
-              <Link to="/bauherr/dashboard" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+              <Link 
+                to="/bauherr/dashboard" 
+                className="text-gray-300 hover:text-white transition-colors"
+              >
                 ← Zurück zum Dashboard
               </Link>
             </div>
-            <h1 className="text-xl text-white">Mein Profil & Einstellungen</h1>
           </div>
         </div>
-      </header>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Messages */}
+      </nav>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-white mb-8">Einstellungen</h1>
+        
+        {/* Success/Error Messages */}
         {message && (
-          <div className="mb-4 bg-green-500/20 border border-green-500/50 rounded-lg px-4 py-3">
+          <div className="mb-6 bg-green-500/20 border border-green-500/50 rounded-lg p-4">
             <p className="text-green-300">{message}</p>
           </div>
         )}
         
         {error && (
-          <div className="mb-4 bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-3">
+          <div className="mb-6 bg-red-500/20 border border-red-500/50 rounded-lg p-4">
             <p className="text-red-300">{error}</p>
           </div>
         )}
-        
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-8 overflow-x-auto">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-teal-500 text-white'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20'
-              }`}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-        
-        {/* Content */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-          
-          {/* Personal Data Tab */}
-          {activeTab === 'personal' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Persönliche Daten</h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-white/70 text-sm mb-2">Name</label>
-                  <input
-                    type="text"
-                    value={personalData.name}
-                    onChange={(e) => setPersonalData({...personalData, name: e.target.value})}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/70 text-sm mb-2">E-Mail</label>
-                  <input
-                    type="email"
-                    value={personalData.email}
-                    onChange={(e) => setPersonalData({...personalData, email: e.target.value})}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/70 text-sm mb-2">Telefon</label>
-                  <input
-                    type="tel"
-                    value={personalData.phone}
-                    onChange={(e) => setPersonalData({...personalData, phone: e.target.value})}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/70 text-sm mb-2">Straße</label>
-                  <input
-                    type="text"
-                    value={personalData.street}
-                    onChange={(e) => setPersonalData({...personalData, street: e.target.value})}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/70 text-sm mb-2">Hausnummer</label>
-                  <input
-                    type="text"
-                    value={personalData.houseNumber}
-                    onChange={(e) => setPersonalData({...personalData, houseNumber: e.target.value})}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/70 text-sm mb-2">PLZ</label>
-                  <input
-                    type="text"
-                    value={personalData.zipCode}
-                    onChange={(e) => setPersonalData({...personalData, zipCode: e.target.value})}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/70 text-sm mb-2">Stadt</label>
-                  <input
-                    type="text"
-                    value={personalData.city}
-                    onChange={(e) => setPersonalData({...personalData, city: e.target.value})}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={savePersonalData}
-                disabled={loading}
-                className="mt-6 px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
-              >
-                {loading ? 'Speichern...' : 'Speichern'}
-              </button>
+
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Sidebar Navigation */}
+          <div className="md:w-64 flex-shrink-0">
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
+              <nav className="space-y-2">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                      activeTab === tab.id 
+                        ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' 
+                        : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
             </div>
-          )}
-          
-          {/* Payment Tab */}
-          {activeTab === 'payment' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Zahlungsmethoden</h2>
-              
-              <div className="space-y-4 mb-6">
-                {paymentMethods.length === 0 ? (
-                  <p className="text-gray-400">Keine Zahlungsmethoden hinterlegt</p>
-                ) : (
-                  paymentMethods.map((method, idx) => (
-                    <div key={idx} className="bg-white/5 rounded-lg p-4 flex justify-between items-center">
-                      <div>
-                        <p className="text-white font-medium">{method.type}</p>
-                        <p className="text-gray-400 text-sm">{method.details}</p>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+            
+            {/* Personal Data Tab */}
+            {activeTab === 'personal' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-6">Persönliche Daten</h2>
+                
+                {/* E-Mail Verifizierungsstatus */}
+                <div className={`mb-6 p-4 rounded-lg ${
+                  emailVerified 
+                    ? 'bg-green-500/10 border border-green-500/30' 
+                    : 'bg-yellow-500/10 border border-yellow-500/30'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className={emailVerified ? 'text-green-400' : 'text-yellow-400'}>
+                      {emailVerified ? '✓' : '⚠'}
+                    </span>
+                    <span className={emailVerified ? 'text-green-300' : 'text-yellow-300'}>
+                      {emailVerified 
+                        ? 'E-Mail-Adresse verifiziert' 
+                        : 'E-Mail-Adresse noch nicht verifiziert'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* NEU: Vorname und Nachname getrennt */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-white/70 text-sm mb-2">Vorname</label>
+                      <input
+                        type="text"
+                        value={personalData.firstName}
+                        onChange={(e) => setPersonalData({...personalData, firstName: e.target.value})}
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="Max"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-white/70 text-sm mb-2">Nachname</label>
+                      <input
+                        type="text"
+                        value={personalData.lastName}
+                        onChange={(e) => setPersonalData({...personalData, lastName: e.target.value})}
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="Mustermann"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-white/70 text-sm mb-2">E-Mail</label>
+                    <input
+                      type="email"
+                      value={personalData.email}
+                      disabled
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 cursor-not-allowed"
+                    />
+                    <p className="text-gray-500 text-xs mt-1">
+                      E-Mail-Adresse kann nicht geändert werden
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-white/70 text-sm mb-2">Telefon</label>
+                    <input
+                      type="tel"
+                      value={personalData.phone}
+                      onChange={(e) => setPersonalData({...personalData, phone: e.target.value})}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      placeholder="+49 221 12345678"
+                    />
+                  </div>
+                  
+                  <hr className="border-white/20" />
+                  
+                  <h3 className="text-lg font-semibold text-white">Adresse</h3>
+                  
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-white/70 text-sm mb-2">Straße</label>
+                      <input
+                        type="text"
+                        value={personalData.street}
+                        onChange={(e) => setPersonalData({...personalData, street: e.target.value})}
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="Musterstraße"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-white/70 text-sm mb-2">Hausnummer</label>
+                      <input
+                        type="text"
+                        value={personalData.houseNumber}
+                        onChange={(e) => setPersonalData({...personalData, houseNumber: e.target.value})}
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="12a"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-white/70 text-sm mb-2">PLZ</label>
+                      <input
+                        type="text"
+                        value={personalData.zipCode}
+                        onChange={(e) => setPersonalData({...personalData, zipCode: e.target.value})}
+                        maxLength="5"
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="50667"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-white/70 text-sm mb-2">Stadt</label>
+                      <input
+                        type="text"
+                        value={personalData.city}
+                        onChange={(e) => setPersonalData({...personalData, city: e.target.value})}
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="Köln"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={savePersonalData}
+                  disabled={loading}
+                  className="mt-6 px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all font-semibold disabled:opacity-50"
+                >
+                  {loading ? 'Speichern...' : 'Änderungen speichern'}
+                </button>
+              </div>
+            )}
+            
+            {/* Payment Tab */}
+            {activeTab === 'payment' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-6">Zahlungsmethoden</h2>
+                
+                <div className="space-y-6">
+                  {/* Gespeicherte Zahlungsmethoden */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Gespeicherte Zahlungsmethoden</h3>
+                    
+                    {paymentMethods.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="text-4xl mb-3">💳</div>
+                        <p className="text-gray-400">Keine Zahlungsmethoden hinterlegt</p>
+                        <p className="text-gray-500 text-sm mt-1">Fügen Sie eine Zahlungsmethode hinzu, um Zahlungen zu tätigen.</p>
                       </div>
-                      <button className="text-red-400 hover:text-red-300">
-                        Entfernen
+                    ) : (
+                      <div className="space-y-3">
+                        {paymentMethods.map((method, index) => (
+                          <div key={index} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                            <div className="flex items-center gap-4">
+                              <div className="text-2xl">
+                                {method.type === 'card' && '💳'}
+                                {method.type === 'paypal' && '🅿️'}
+                                {method.type === 'sepa' && '🏦'}
+                                {method.type === 'giropay' && '🔵'}
+                                {method.type === 'sofort' && '🟠'}
+                              </div>
+                              <div>
+                                <p className="text-white font-medium">
+                                  {method.type === 'card' && `•••• •••• •••• ${method.last4}`}
+                                  {method.type === 'paypal' && method.email}
+                                  {method.type === 'sepa' && `IBAN: •••• ${method.last4}`}
+                                  {method.type === 'giropay' && 'Giropay'}
+                                  {method.type === 'sofort' && 'Sofortüberweisung'}
+                                </p>
+                                <p className="text-gray-400 text-sm">
+                                  {method.type === 'card' && `${method.brand} • Gültig bis ${method.expMonth}/${method.expYear}`}
+                                  {method.type === 'sepa' && method.bankName}
+                                  {method.isDefault && <span className="text-teal-400 ml-2">★ Standard</span>}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!method.isDefault && (
+                                <button
+                                  onClick={() => setDefaultPaymentMethod(method.id)}
+                                  className="px-3 py-1 text-sm text-teal-400 hover:text-teal-300 transition-colors"
+                                >
+                                  Als Standard
+                                </button>
+                              )}
+                              <button
+                                onClick={() => removePaymentMethod(method.id)}
+                                className="px-3 py-1 text-sm text-red-400 hover:text-red-300 transition-colors"
+                              >
+                                Entfernen
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Neue Zahlungsmethode hinzufügen */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Zahlungsmethode hinzufügen</h3>
+                    
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Kreditkarte */}
+                      <button
+                        onClick={() => openPaymentModal('card')}
+                        className="p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/20 hover:border-teal-500/50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">💳</span>
+                          <span className="text-white font-medium group-hover:text-teal-400 transition-colors">Kreditkarte</span>
+                        </div>
+                        <p className="text-gray-400 text-sm text-left">Visa, Mastercard, American Express</p>
+                        <div className="flex gap-2 mt-3">
+                          <img src="https://cdn.jsdelivr.net/gh/nicoprofe/logos@main/visa.svg" alt="Visa" className="h-6 opacity-60" onError={(e) => e.target.style.display='none'} />
+                          <img src="https://cdn.jsdelivr.net/gh/nicoprofe/logos@main/mastercard.svg" alt="Mastercard" className="h-6 opacity-60" onError={(e) => e.target.style.display='none'} />
+                          <img src="https://cdn.jsdelivr.net/gh/nicoprofe/logos@main/amex.svg" alt="Amex" className="h-6 opacity-60" onError={(e) => e.target.style.display='none'} />
+                        </div>
+                      </button>
+                      
+                      {/* PayPal */}
+                      <button
+                        onClick={() => openPaymentModal('paypal')}
+                        className="p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/20 hover:border-teal-500/50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">🅿️</span>
+                          <span className="text-white font-medium group-hover:text-teal-400 transition-colors">PayPal</span>
+                        </div>
+                        <p className="text-gray-400 text-sm text-left">Schnell und sicher bezahlen</p>
+                        <div className="flex gap-2 mt-3">
+                          <div className="px-3 py-1 bg-[#003087] rounded text-white text-xs font-bold">PayPal</div>
+                        </div>
+                      </button>
+                      
+                      {/* SEPA Lastschrift */}
+                      <button
+                        onClick={() => openPaymentModal('sepa')}
+                        className="p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/20 hover:border-teal-500/50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">🏦</span>
+                          <span className="text-white font-medium group-hover:text-teal-400 transition-colors">SEPA-Lastschrift</span>
+                        </div>
+                        <p className="text-gray-400 text-sm text-left">Direkt vom Bankkonto abbuchen</p>
+                        <div className="flex gap-2 mt-3">
+                          <div className="px-3 py-1 bg-blue-600 rounded text-white text-xs font-bold">SEPA</div>
+                        </div>
+                      </button>
+                      
+                      {/* Giropay */}
+                      <button
+                        onClick={() => openPaymentModal('giropay')}
+                        className="p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/20 hover:border-teal-500/50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">🔵</span>
+                          <span className="text-white font-medium group-hover:text-teal-400 transition-colors">Giropay</span>
+                        </div>
+                        <p className="text-gray-400 text-sm text-left">Online-Überweisung mit Ihrer Bank</p>
+                        <div className="flex gap-2 mt-3">
+                          <div className="px-3 py-1 bg-[#003a7d] rounded text-white text-xs font-bold">giropay</div>
+                        </div>
+                      </button>
+                      
+                      {/* Sofortüberweisung / Klarna */}
+                      <button
+                        onClick={() => openPaymentModal('sofort')}
+                        className="p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/20 hover:border-teal-500/50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">🟠</span>
+                          <span className="text-white font-medium group-hover:text-teal-400 transition-colors">Sofortüberweisung</span>
+                        </div>
+                        <p className="text-gray-400 text-sm text-left">Powered by Klarna</p>
+                        <div className="flex gap-2 mt-3">
+                          <div className="px-3 py-1 bg-[#ff6900] rounded text-white text-xs font-bold">Klarna</div>
+                        </div>
+                      </button>
+                      
+                      {/* Apple Pay */}
+                      <button
+                        onClick={() => openPaymentModal('apple_pay')}
+                        className="p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/20 hover:border-teal-500/50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">🍎</span>
+                          <span className="text-white font-medium group-hover:text-teal-400 transition-colors">Apple Pay</span>
+                        </div>
+                        <p className="text-gray-400 text-sm text-left">Schnell mit Apple Geräten</p>
+                        <div className="flex gap-2 mt-3">
+                          <div className="px-3 py-1 bg-black rounded text-white text-xs font-bold"> Pay</div>
+                        </div>
+                      </button>
+                      
+                      {/* Google Pay */}
+                      <button
+                        onClick={() => openPaymentModal('google_pay')}
+                        className="p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/20 hover:border-teal-500/50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">🔷</span>
+                          <span className="text-white font-medium group-hover:text-teal-400 transition-colors">Google Pay</span>
+                        </div>
+                        <p className="text-gray-400 text-sm text-left">Schnell mit Google bezahlen</p>
+                        <div className="flex gap-2 mt-3">
+                          <div className="px-3 py-1 bg-white rounded text-gray-800 text-xs font-bold">G Pay</div>
+                        </div>
                       </button>
                     </div>
-                  ))
-                )}
-              </div>
-              
-              <button className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
-                + Zahlungsmethode hinzufügen
-              </button>
-            </div>
-          )}
-          
-          {/* Notifications Tab */}
-          {activeTab === 'notifications' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Benachrichtigungen</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                  <div>
-                    <p className="text-white font-medium">E-Mail-Benachrichtigungen</p>
-                    <p className="text-gray-400 text-sm">Erhalten Sie Updates per E-Mail</p>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  
+                  {/* Rechnungsadresse */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Rechnungsadresse</h3>
+                    
+                    <div className="space-y-4">
+                      <label className="flex items-center gap-3 text-white cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={billingAddressSameAsPersonal}
+                          onChange={(e) => setBillingAddressSameAsPersonal(e.target.checked)}
+                          className="w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded" 
+                        />
+                        <span>Gleiche Adresse wie persönliche Daten</span>
+                      </label>
+                      
+                      {!billingAddressSameAsPersonal && (
+                        <div className="grid md:grid-cols-2 gap-4 mt-4">
+                          <div>
+                            <label className="block text-white/70 text-sm mb-2">Firmenname (optional)</label>
+                            <input
+                              type="text"
+                              value={billingAddress.companyName}
+                              onChange={(e) => setBillingAddress({...billingAddress, companyName: e.target.value})}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              placeholder="Firma GmbH"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-white/70 text-sm mb-2">Vollständiger Name</label>
+                            <input
+                              type="text"
+                              value={billingAddress.fullName}
+                              onChange={(e) => setBillingAddress({...billingAddress, fullName: e.target.value})}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              placeholder="Max Mustermann"
+                            />
+                          </div>
+                          
+                          <div className="md:col-span-2 grid md:grid-cols-3 gap-4">
+                            <div className="md:col-span-2">
+                              <label className="block text-white/70 text-sm mb-2">Straße</label>
+                              <input
+                                type="text"
+                                value={billingAddress.street}
+                                onChange={(e) => setBillingAddress({...billingAddress, street: e.target.value})}
+                                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-white/70 text-sm mb-2">Hausnummer</label>
+                              <input
+                                type="text"
+                                value={billingAddress.houseNumber}
+                                onChange={(e) => setBillingAddress({...billingAddress, houseNumber: e.target.value})}
+                                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-white/70 text-sm mb-2">PLZ</label>
+                            <input
+                              type="text"
+                              value={billingAddress.zipCode}
+                              onChange={(e) => setBillingAddress({...billingAddress, zipCode: e.target.value})}
+                              maxLength="5"
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-white/70 text-sm mb-2">Stadt</label>
+                            <input
+                              type="text"
+                              value={billingAddress.city}
+                              onChange={(e) => setBillingAddress({...billingAddress, city: e.target.value})}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-white/70 text-sm mb-2">Land</label>
+                            <select
+                              value={billingAddress.country}
+                              onChange={(e) => setBillingAddress({...billingAddress, country: e.target.value})}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            >
+                              <option value="DE">Deutschland</option>
+                              <option value="AT">Österreich</option>
+                              <option value="CH">Schweiz</option>
+                            </select>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-white/70 text-sm mb-2">USt-IdNr. (optional)</label>
+                            <input
+                              type="text"
+                              value={billingAddress.vatId}
+                              onChange={(e) => setBillingAddress({...billingAddress, vatId: e.target.value})}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              placeholder="DE123456789"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      <button
+                        onClick={saveBillingAddress}
+                        disabled={loading}
+                        className="mt-4 px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Rechnungsadresse speichern
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Zahlungshistorie */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-white">Zahlungshistorie</h3>
+                      <button
+                        onClick={downloadInvoices}
+                        className="text-teal-400 hover:text-teal-300 text-sm transition-colors"
+                      >
+                        Alle Rechnungen herunterladen
+                      </button>
+                    </div>
+                    
+                    {paymentHistory.length === 0 ? (
+                      <p className="text-gray-400 text-center py-4">Noch keine Zahlungen getätigt</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="text-left text-gray-400 text-sm border-b border-white/10">
+                              <th className="pb-3">Datum</th>
+                              <th className="pb-3">Beschreibung</th>
+                              <th className="pb-3">Betrag</th>
+                              <th className="pb-3">Status</th>
+                              <th className="pb-3">Rechnung</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paymentHistory.map((payment, index) => (
+                              <tr key={index} className="border-b border-white/5">
+                                <td className="py-3 text-gray-300">
+                                  {new Date(payment.date).toLocaleDateString('de-DE')}
+                                </td>
+                                <td className="py-3 text-white">{payment.description}</td>
+                                <td className="py-3 text-white font-medium">
+                                  {payment.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                                </td>
+                                <td className="py-3">
+                                  <span className={`px-2 py-1 rounded-full text-xs ${
+                                    payment.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                    payment.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                    payment.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                                    'bg-gray-500/20 text-gray-400'
+                                  }`}>
+                                    {payment.status === 'completed' ? 'Bezahlt' :
+                                     payment.status === 'pending' ? 'Ausstehend' :
+                                     payment.status === 'failed' ? 'Fehlgeschlagen' :
+                                     payment.status === 'refunded' ? 'Erstattet' : payment.status}
+                                  </span>
+                                </td>
+                                <td className="py-3">
+                                  {payment.invoiceUrl && (
+                                    <a
+                                      href={payment.invoiceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-teal-400 hover:text-teal-300 text-sm"
+                                    >
+                                      PDF ↓
+                                    </a>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Sicherheitshinweis */}
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">🔒</span>
+                      <div>
+                        <p className="text-blue-300 font-medium">Sichere Zahlungsabwicklung</p>
+                        <p className="text-blue-200/70 text-sm mt-1">
+                          Alle Zahlungen werden über Stripe abgewickelt. Ihre Zahlungsdaten werden verschlüsselt übertragen 
+                          und niemals auf unseren Servern gespeichert. Stripe ist PCI DSS Level 1 zertifiziert.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Notifications Tab */}
+            {activeTab === 'notifications' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-6">Benachrichtigungen</h2>
+                
+                <div className="space-y-4">
+                  <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+                    <div>
+                      <p className="text-white font-medium">E-Mail-Benachrichtigungen</p>
+                      <p className="text-gray-400 text-sm">Erhalten Sie wichtige Updates per E-Mail</p>
+                    </div>
                     <input
                       type="checkbox"
                       checked={notifications.emailNotifications}
                       onChange={(e) => setNotifications({...notifications, emailNotifications: e.target.checked})}
-                      className="sr-only peer"
+                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
                     />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
                   </label>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                  <div>
-                    <p className="text-white font-medium">SMS-Benachrichtigungen</p>
-                    <p className="text-gray-400 text-sm">Wichtige Updates per SMS</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={notifications.smsNotifications}
-                      onChange={(e) => setNotifications({...notifications, smsNotifications: e.target.checked})}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
-                  </label>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                  <div>
-                    <p className="text-white font-medium">Projekt-Updates</p>
-                    <p className="text-gray-400 text-sm">Fortschritte und Änderungen in Ihren Projekten</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  
+                  <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+                    <div>
+                      <p className="text-white font-medium">Projekt-Updates</p>
+                      <p className="text-gray-400 text-sm">Benachrichtigungen bei Änderungen an Ihren Projekten</p>
+                    </div>
                     <input
                       type="checkbox"
                       checked={notifications.projectUpdates}
                       onChange={(e) => setNotifications({...notifications, projectUpdates: e.target.checked})}
-                      className="sr-only peer"
+                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
                     />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
                   </label>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                  <div>
-                    <p className="text-white font-medium">Angebots-Benachrichtigungen</p>
-                    <p className="text-gray-400 text-sm">Neue Angebote von Handwerkern</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  
+                  <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+                    <div>
+                      <p className="text-white font-medium">Angebots-Benachrichtigungen</p>
+                      <p className="text-gray-400 text-sm">Sofortige Benachrichtigung bei neuen Angeboten</p>
+                    </div>
                     <input
                       type="checkbox"
                       checked={notifications.offerAlerts}
                       onChange={(e) => setNotifications({...notifications, offerAlerts: e.target.checked})}
-                      className="sr-only peer"
+                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
                     />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+                    <div>
+                      <p className="text-white font-medium">Wöchentliche Zusammenfassung</p>
+                      <p className="text-gray-400 text-sm">Erhalten Sie eine wöchentliche Übersicht</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notifications.weeklyDigest}
+                      onChange={(e) => setNotifications({...notifications, weeklyDigest: e.target.checked})}
+                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
+                    />
                   </label>
                 </div>
-              </div>
-              
-              <button
-                onClick={saveNotifications}
-                disabled={loading}
-                className="mt-6 px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
-              >
-                {loading ? 'Speichern...' : 'Einstellungen speichern'}
-              </button>
-            </div>
-          )}
-          
-          {/* Security Tab */}
-          {activeTab === 'security' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Sicherheit</h2>
-              
-              <div className="space-y-6">
-                {/* Password Change */}
-                <div className="bg-white/5 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Passwort ändern</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-white/70 text-sm mb-2">Aktuelles Passwort</label>
-                      <input
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-white/70 text-sm mb-2">Neues Passwort</label>
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-white/70 text-sm mb-2">Passwort bestätigen</label>
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                      />
-                    </div>
-                    <button
-                      onClick={changePassword}
-                      disabled={loading || !currentPassword || !newPassword}
-                      className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      Passwort ändern
-                    </button>
-                  </div>
-                </div>
                 
-                {/* Two-Factor Authentication */}
-                <div className="bg-white/5 rounded-lg p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-2">Zwei-Faktor-Authentifizierung</h3>
-                      <p className="text-gray-400 text-sm">
-                        Erhöhen Sie die Sicherheit Ihres Accounts mit 2FA
+                <button
+                  onClick={saveNotifications}
+                  disabled={loading}
+                  className="mt-6 px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all font-semibold disabled:opacity-50"
+                >
+                  {loading ? 'Speichern...' : 'Einstellungen speichern'}
+                </button>
+              </div>
+            )}
+            
+            {/* Security Tab */}
+            {activeTab === 'security' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-6">Sicherheit</h2>
+                
+                <div className="space-y-6">
+                  {/* Password Change */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Passwort ändern</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-white/70 text-sm mb-2">Aktuelles Passwort</label>
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-white/70 text-sm mb-2">Neues Passwort</label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-white/70 text-sm mb-2">Passwort bestätigen</label>
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                      <button
+                        onClick={changePassword}
+                        disabled={loading || !currentPassword || !newPassword}
+                        className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Passwort ändern
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Two-Factor Authentication */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-lg font-semibold text-white mb-2">Zwei-Faktor-Authentifizierung</h3>
+                        <p className="text-gray-400 text-sm">
+                          Erhöhen Sie die Sicherheit Ihres Accounts mit 2FA
+                        </p>
+                      </div>
+                      <button
+                        onClick={toggleTwoFactor}
+                        disabled={loading}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          twoFactorEnabled
+                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                            : 'bg-teal-500 hover:bg-teal-600 text-white'
+                        }`}
+                      >
+                        {twoFactorEnabled ? 'Deaktivieren' : 'Aktivieren'}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Account Info */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Account-Informationen</h3>
+                    <div className="space-y-2 text-gray-300">
+                      <p>
+                        <span className="text-gray-500">Registriert am:</span>{' '}
+                        {createdAt ? new Date(createdAt).toLocaleDateString('de-DE') : '-'}
+                      </p>
+                      <p>
+                        <span className="text-gray-500">E-Mail Status:</span>{' '}
+                        <span className={emailVerified ? 'text-green-400' : 'text-yellow-400'}>
+                          {emailVerified ? 'Verifiziert' : 'Nicht verifiziert'}
+                        </span>
                       </p>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Privacy Tab */}
+            {activeTab === 'privacy' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-6">Datenschutz</h2>
+                
+                <div className="space-y-6">
+                  {/* Data Export */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-2">Datenexport (DSGVO)</h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Laden Sie alle Ihre gespeicherten Daten herunter
+                    </p>
                     <button
-                      onClick={toggleTwoFactor}
+                      onClick={exportData}
                       disabled={loading}
-                      className={`px-4 py-2 rounded-lg transition-colors ${
-                        twoFactorEnabled
-                          ? 'bg-red-500 hover:bg-red-600 text-white'
-                          : 'bg-teal-500 hover:bg-teal-600 text-white'
-                      }`}
+                      className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
                     >
-                      {twoFactorEnabled ? 'Deaktivieren' : 'Aktivieren'}
+                      Daten exportieren
+                    </button>
+                  </div>
+                  
+                  {/* Privacy Settings */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Datenschutzeinstellungen</h3>
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3 text-white cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded" />
+                        <span>Anonyme Nutzungsstatistiken teilen</span>
+                      </label>
+                      <label className="flex items-center gap-3 text-white cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded" />
+                        <span>Personalisierte Empfehlungen</span>
+                      </label>
+                      <label className="flex items-center gap-3 text-white cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded" />
+                        <span>Marketing-Kommunikation</span>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {/* Account Deletion */}
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-red-400 mb-2">Account löschen</h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Diese Aktion kann nicht rückgängig gemacht werden. Alle Ihre Daten werden permanent gelöscht.
+                    </p>
+                    <button
+                      onClick={deleteAccount}
+                      disabled={loading}
+                      className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Account unwiderruflich löschen
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {/* Privacy Tab */}
-          {activeTab === 'privacy' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Datenschutz</h2>
-              
-              <div className="space-y-6">
-                {/* Data Export */}
-                <div className="bg-white/5 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-2">Datenexport (DSGVO)</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Laden Sie alle Ihre gespeicherten Daten herunter
-                  </p>
-                  <button
-                    onClick={exportData}
-                    disabled={loading}
-                    className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    Daten exportieren
-                  </button>
-                </div>
+            )}
+            
+            {/* Help Tab */}
+            {activeTab === 'help' && (
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-6">Hilfe & Support</h2>
                 
-                {/* Privacy Settings */}
-                <div className="bg-white/5 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Datenschutzeinstellungen</h3>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 text-white">
-                      <input type="checkbox" className="w-4 h-4" />
-                      <span>Anonyme Nutzungsstatistiken teilen</span>
-                    </label>
-                    <label className="flex items-center gap-3 text-white">
-                      <input type="checkbox" className="w-4 h-4" />
-                      <span>Personalisierte Empfehlungen</span>
-                    </label>
-                    <label className="flex items-center gap-3 text-white">
-                      <input type="checkbox" className="w-4 h-4" />
-                      <span>Marketing-Kommunikation</span>
-                    </label>
+                <div className="space-y-6">
+                  {/* FAQ */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Häufig gestellte Fragen</h3>
+                    <div className="space-y-3">
+                      <details className="group">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors">
+                          Wie erstelle ich ein neues Projekt?
+                        </summary>
+                        <p className="mt-2 text-gray-400 text-sm pl-4">
+                          Klicken Sie auf "Neues Projekt" im Dashboard und folgen Sie dem Assistenten zur Projekterstellung.
+                        </p>
+                      </details>
+                      <details className="group">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors">
+                          Wie funktioniert die Ausschreibung?
+                        </summary>
+                        <p className="mt-2 text-gray-400 text-sm pl-4">
+                          Nach Erstellung der Leistungsverzeichnisse können Sie diese an passende Handwerker in Ihrer Region senden.
+                        </p>
+                      </details>
+                      <details className="group">
+                        <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors">
+                          Was kostet der Service?
+                        </summary>
+                        <p className="mt-2 text-gray-400 text-sm pl-4">
+                          byndl arbeitet mit erfolgsbasierten Provisionen. Die Nutzung der Plattform ist für Bauherren kostenfrei.
+                        </p>
+                      </details>
+                    </div>
                   </div>
-                </div>
-                
-                {/* Account Deletion */}
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-red-400 mb-2">Account löschen</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Diese Aktion kann nicht rückgängig gemacht werden. Alle Ihre Daten werden permanent gelöscht.
-                  </p>
-                  <button
-                    onClick={deleteAccount}
-                    disabled={loading}
-                    className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    Account unwiderruflich löschen
-                  </button>
+                  
+                  {/* Contact Support */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Support kontaktieren</h3>
+                    <div className="space-y-4">
+                      <a href="mailto:support@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300 transition-colors">
+                        <span className="text-xl">📧</span>
+                        <span>support@byndl.de</span>
+                      </a>
+                    </div>
+                  </div>
+                  
+                  {/* Feedback */}
+                  <div className="bg-white/5 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Feedback senden</h3>
+                    <textarea
+                      placeholder="Ihr Feedback hilft uns, byndl zu verbessern..."
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <button className="mt-4 px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
+                      Feedback senden
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {/* Help Tab */}
-          {activeTab === 'help' && (
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Hilfe & Support</h2>
-              
-              <div className="space-y-6">
-                {/* FAQ */}
-                <div className="bg-white/5 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Häufig gestellte Fragen</h3>
-                  <div className="space-y-3">
-                    <details className="group">
-                      <summary className="cursor-pointer text-white hover:text-teal-400">
-                        Wie erstelle ich ein neues Projekt?
-                      </summary>
-                      <p className="mt-2 text-gray-400 text-sm pl-4">
-                        Klicken Sie auf "Neues Projekt" im Dashboard und folgen Sie dem Assistenten...
-                      </p>
-                    </details>
-                    <details className="group">
-                      <summary className="cursor-pointer text-white hover:text-teal-400">
-                        Wie funktioniert die Ausschreibung?
-                      </summary>
-                      <p className="mt-2 text-gray-400 text-sm pl-4">
-                        Nach Erstellung der LVs können Sie diese an passende Handwerker senden...
-                      </p>
-                    </details>
-                    <details className="group">
-                      <summary className="cursor-pointer text-white hover:text-teal-400">
-                        Was kostet der Service?
-                      </summary>
-                      <p className="mt-2 text-gray-400 text-sm pl-4">
-                        Byndl arbeitet mit erfolgsbasierten Provisionen...
-                      </p>
-                    </details>
-                  </div>
-                </div>
-                
-                {/* Contact Support */}
-                <div className="bg-white/5 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Support kontaktieren</h3>
-                  <div className="space-y-4">
-                    <a href="mailto:info@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300">
-                      <span>📧</span>
-                      <span>info@byndl.de</span>
-                    </a>
-                  </div>
-                </div>
-                
-                {/* Feedback */}
-                <div className="bg-white/5 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Feedback senden</h3>
-                  <textarea
-                    placeholder="Ihr Feedback hilft uns, byndl zu verbessern..."
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white h-32"
-                  />
-                  <button className="mt-4 px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
-                    Feedback senden
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          
+            )}
+            
+          </div>
         </div>
       </div>
     </div>
