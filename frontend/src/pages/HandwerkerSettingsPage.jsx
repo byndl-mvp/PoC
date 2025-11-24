@@ -102,7 +102,7 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [handwerkerData]);
 
-  const loadSettings = async (handwerkerId) => {
+ const loadSettings = async (handwerkerId) => {
   try {
     setLoading(true);
     
@@ -115,13 +115,38 @@ useEffect(() => {
     
     if (res.ok) {
       const settings = await res.json();
+      
       setFormData(prev => ({
         ...prev,
-        ...settings
+        ...settings,
+        // NEU: contactFirstName und contactLastName - Backend liefert jetzt direkt
+        contactFirstName: settings.contactFirstName || 
+                         (settings.contactPerson ? settings.contactPerson.split(' ')[0] : ''),
+        contactLastName: settings.contactLastName || 
+                        (settings.contactPerson ? settings.contactPerson.split(' ').slice(1).join(' ') : ''),
+        contactPerson: settings.contactPerson || '',
+        // Restliche Felder
+        companyName: settings.companyName || '',
+        email: settings.email || '',
+        phone: settings.phone || '',
+        website: settings.website || '',
+        street: settings.street || '',
+        houseNumber: settings.houseNumber || '',
+        zipCode: settings.zipCode || '',
+        city: settings.city || '',
+        companyType: settings.companyType || '',
+        registrationNumber: settings.registrationNumber || '',
+        taxNumber: settings.taxNumber || '',
+        actionRadius: settings.actionRadius || 25,
+        // NEU: Verifizierungs- und AGB-Status
+        emailVerified: settings.emailVerified || false,
+        emailVerifiedAt: settings.emailVerifiedAt || null,
+        acceptedTermsAt: settings.acceptedTermsAt || null,
+        acceptedPrivacyAt: settings.acceptedPrivacyAt || null
       }));
     }
     
-    // Gewerke laden - NEU
+    // Gewerke laden
     const tradesRes = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/trades`), {
       headers: {
         'Authorization': `Bearer ${sessionStorage.getItem('handwerkerToken')}`
