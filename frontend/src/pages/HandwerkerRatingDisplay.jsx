@@ -117,7 +117,6 @@ export default function HandwerkerRatingDisplay({ handwerkerId, companyName }) {
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">💰</span>
                     <span className="text-white font-medium">Kosten</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -151,7 +150,6 @@ export default function HandwerkerRatingDisplay({ handwerkerId, companyName }) {
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">📅</span>
                     <span className="text-white font-medium">Termine</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -185,7 +183,6 @@ export default function HandwerkerRatingDisplay({ handwerkerId, companyName }) {
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">✨</span>
                     <span className="text-white font-medium">Qualität</span>
                   </div>
                   <div className="flex items-center gap-2">
