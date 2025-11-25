@@ -24569,7 +24569,7 @@ await query(
     street = $5,           
     house_number = $6,     
     zip_code = $7,         
-    city = $8,                  
+    city = $8                  
    WHERE id = $1`,
   [
     handwerkerId, 
