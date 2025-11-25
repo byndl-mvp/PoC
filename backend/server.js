@@ -24569,9 +24569,7 @@ await query(
     street = $5,           
     house_number = $6,     
     zip_code = $7,         
-    city = $8,             
-    latitude = $9,         
-    longitude = $10        
+    city = $8,                  
    WHERE id = $1`,
   [
     handwerkerId, 
@@ -24581,9 +24579,7 @@ await query(
     req.body.street || null,        
     req.body.house_number || null,  
     req.body.zip_code || null,      
-    req.body.city || null,          
-    latitude || null,               
-    longitude || null               
+    req.body.city || null                      
   ]
 );
     
