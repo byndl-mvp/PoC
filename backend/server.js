@@ -25047,62 +25047,6 @@ app.get('/api/handwerker/:id/settings', async (req, res) => {
   }
 });
 
-// Logo hochladen (mit Löschung des alten)
-app.post('/api/handwerker/:id/logo', upload.single('logo'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    if (!req.file) {
-      return res.status(400).json({ error: 'Keine Datei hochgeladen' });
-    }
-    
-    // Lösche altes Logo falls vorhanden
-    const oldResult = await query('SELECT logo_url FROM handwerker WHERE id = $1', [id]);
-    if (oldResult.rows[0]?.logo_url) {
-      const oldPath = path.join(__dirname, 'public', oldResult.rows[0].logo_url);
-      fs.unlink(oldPath, () => {}); // Ignoriere Fehler
-    }
-    
-    const logoUrl = `/uploads/logos/${req.file.filename}`;
-    
-    await query('UPDATE handwerker SET logo_url = $1 WHERE id = $2', [logoUrl, id]);
-    
-    res.json({ success: true, logoUrl });
-    
-  } catch (error) {
-    console.error('Logo upload error:', error);
-    res.status(500).json({ error: 'Upload fehlgeschlagen' });
-  }
-});
-
-// Logo löschen
-app.delete('/api/handwerker/:id/logo', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Hole alten Logo-Pfad zum Löschen der Datei
-    const result = await query('SELECT logo_url FROM handwerker WHERE id = $1', [id]);
-    const oldLogoUrl = result.rows[0]?.logo_url;
-    
-    // Lösche Datei vom Server (optional, falls du Speicherplatz freigeben willst)
-    if (oldLogoUrl) {
-      const filePath = path.join(__dirname, 'public', oldLogoUrl);
-      fs.unlink(filePath, (err) => {
-        if (err) console.log('Logo-Datei nicht gefunden oder bereits gelöscht');
-      });
-    }
-    
-    // Setze logo_url auf NULL
-    await query('UPDATE handwerker SET logo_url = NULL WHERE id = $1', [id]);
-    
-    res.json({ success: true, message: 'Logo gelöscht' });
-    
-  } catch (error) {
-    console.error('Logo delete error:', error);
-    res.status(500).json({ error: 'Löschen fehlgeschlagen' });
-  }
-});
-
 // Handwerker Statistiken
 app.get('/api/handwerker/:id/stats', async (req, res) => {
   try {
