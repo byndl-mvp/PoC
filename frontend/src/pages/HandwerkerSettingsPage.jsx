@@ -42,6 +42,9 @@ export default function HandwerkerSettingsPage() {
     handwerkskarte: null,
     others: []
   });
+
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
   
   const [handwerkerData, setHandwerkerData] = useState(null);
   const [formData, setFormData] = useState({
@@ -467,7 +470,8 @@ const loadDocuments = async () => {
     { id: 'benachrichtigungen', label: 'Benachrichtigungen', icon: '🔔' },
     { id: 'zahlungsdaten', label: 'Zahlungsdaten', icon: '🏦' },
     { id: 'dokumente', label: 'Dokumente', icon: '📄' },
-    { id: 'account', label: 'Account', icon: '⚙️' }
+    { id: 'account', label: 'Account', icon: '⚙️' },
+    { id: 'hilfe', label: 'Hilfe & Feedback', icon: '💬' }
   ];
 
   const handlePasswordChange = async () => {
@@ -641,6 +645,47 @@ const handleLogoDelete = async () => {
     setError('Fehler beim Löschen des Logos');
   } finally {
     setLoading(false);
+  }
+};
+
+// Feedback senden
+const sendFeedback = async () => {
+  if (!feedbackText.trim()) {
+    setError('Bitte geben Sie ein Feedback ein');
+    setTimeout(() => setError(''), 3000);
+    return;
+  }
+  
+  try {
+    setFeedbackLoading(true);
+    setError('');
+    const storedData = sessionStorage.getItem('handwerkerData');
+    const userData = JSON.parse(storedData);
+    
+    const res = await fetch(apiUrl('/api/feedback'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userData.id,
+        userName: userData.companyName || formData.companyName,
+        userEmail: userData.email || formData.email,
+        userType: 'handwerker',
+        feedbackText: feedbackText
+      })
+    });
+    
+    if (res.ok) {
+      setMessage('Vielen Dank für Ihr Feedback! Wir haben Ihre Nachricht erhalten und Sie bekommen eine Bestätigung per E-Mail.');
+      setFeedbackText('');
+      setTimeout(() => setMessage(''), 5000);
+    } else {
+      throw new Error('Senden fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Fehler beim Senden des Feedbacks. Bitte versuchen Sie es später erneut.');
+    setTimeout(() => setError(''), 5000);
+  } finally {
+    setFeedbackLoading(false);
   }
 };
   
@@ -2131,6 +2176,124 @@ const getPasswordStrengthClass = (password) => {
   </div>
 )}
 
+           {/* Hilfe & Feedback Tab */}
+          {activeTab === 'hilfe' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white mb-6">Hilfe & Feedback</h2>
+              
+              <div className="grid gap-6">
+                {/* FAQ Bereich */}
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Häufig gestellte Fragen</h3>
+                  <div className="space-y-3">
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie funktioniert die Projektvergabe auf byndl?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <p className="mt-3 text-gray-300 text-sm pl-4">
+                        Sie erhalten qualifizierte Anfragen mit vollständigen Leistungsverzeichnissen basierend auf Ihrem Fachgebiet und Einsatzgebiet. 
+                        Sie können dann Angebote abgeben und Bauherren wählen das beste Angebot aus.
+                      </p>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Was kostet die Nutzung von byndl?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <p className="mt-3 text-gray-300 text-sm pl-4">
+                        Die Registrierung und das Erstellen von Angeboten sind kostenlos. 
+                        Bei erfolgreicher Auftragsvergabe fällt eine Provision von 3-5% auf die Auftragssumme an.
+                      </p>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie ändere ich mein Einsatzgebiet?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <p className="mt-3 text-gray-300 text-sm pl-4">
+                        Gehen Sie zum Tab "Einsatzgebiet" und passen Sie Ihren Radius oder ausgeschlossene Bereiche an. 
+                        Die Änderungen werden sofort gespeichert und beeinflussen zukünftige Projektvorschläge.
+                      </p>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie werden Projekte regional gebündelt?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <p className="mt-3 text-gray-300 text-sm pl-4">
+                        byndl analysiert automatisch Projekte in Ihrer Region und schlägt Ihnen Aufträge vor, 
+                        die Sie effizient kombinieren können. So optimieren Sie Fahrtzeiten und Auslastung.
+                      </p>
+                    </details>
+                  </div>
+                </div>
+
+                {/* Support kontaktieren */}
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Support kontaktieren</h3>
+                  <div className="space-y-4">
+                    <a href="mailto:info@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300 transition-colors">
+                      <span className="text-xl">📧</span>
+                      <span>info@byndl.de</span>
+                    </a>
+                    <a href="mailto:support@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300 transition-colors">
+                      <span className="text-xl">📧</span>
+                      <span>support@byndl.de</span>
+                    </a>
+                    <p className="flex items-center gap-3 text-gray-300">
+                      <span className="text-xl">📞</span>
+                      <span>+49 221 / 123 456 789 (Mo-Fr 9-17 Uhr)</span>
+                    </p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      Antwort innerhalb 24 Stunden (werktags)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feedback senden */}
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Feedback senden</h3>
+                  <p className="text-gray-300 text-sm mb-4">
+                    Ihre Meinung ist uns wichtig! Teilen Sie uns mit, wie wir byndl für Sie verbessern können.
+                  </p>
+                  <textarea
+                    placeholder="Ihr Feedback hilft uns, byndl zu verbessern..."
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    disabled={feedbackLoading}
+                  />
+                  <button 
+                    onClick={sendFeedback}
+                    disabled={feedbackLoading || !feedbackText.trim()}
+                    className="mt-4 px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                  >
+                    {feedbackLoading ? 'Wird gesendet...' : 'Feedback senden'}
+                  </button>
+                </div>
+
+                {/* Nützliche Links */}
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Nützliche Links</h3>
+                  <div className="space-y-2">
+                    <a href="/agb" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
+                      → Allgemeine Geschäftsbedingungen
+                    </a>
+                    <a href="/datenschutz" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
+                      → Datenschutzerklärung
+                    </a>
+                    <a href="/impressum" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
+                      → Impressum
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}         
         </div>
       </div>
     </div>
