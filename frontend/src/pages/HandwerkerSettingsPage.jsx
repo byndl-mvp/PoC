@@ -845,44 +845,6 @@ const getPasswordStrengthClass = (password) => {
 {/* Profil Header */}
 <div className="bg-white/5 rounded-lg p-6">
   <div className="flex items-center gap-6 mb-6">
-    {/* Logo mit Upload-Funktion */}
-    <div className="relative group">
-      <div className="w-24 h-24 bg-gradient-to-br from-teal-500 to-teal-700 rounded-full flex items-center justify-center shadow-lg overflow-hidden">
-        {formData.logoUrl ? (
-          <img 
-            src={apiUrl(formData.logoUrl)} 
-            alt="Firmenlogo" 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <span className="text-4xl">🏢</span>
-        )}
-      </div>
-      
-      {/* Upload Overlay */}
-      <label className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleLogoUpload}
-          className="hidden"
-        />
-        <span className="text-white text-xs text-center px-2">
-          {formData.logoUrl ? '📷 Ändern' : '📷 Logo hochladen'}
-        </span>
-      </label>
-      
-      {/* Löschen Button (nur wenn Logo vorhanden) */}
-      {formData.logoUrl && (
-        <button
-          onClick={handleLogoDelete}
-          className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Logo entfernen"
-        >
-          ✕
-        </button>
-      )}
-    </div>
         <div className="flex-1">
           <h3 className="text-2xl font-bold text-white">{formData.companyName || handwerkerData?.companyName}</h3>
           <p className="text-gray-400">
