@@ -53,6 +53,8 @@ export default function BauherrenSettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [createdAt, setCreatedAt] = useState(null);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
   
   useEffect(() => {
     const userData = sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData');
@@ -295,6 +297,45 @@ export default function BauherrenSettingsPage() {
     }
   };
 
+  const sendFeedback = async () => {
+  if (!feedbackText.trim()) {
+    setError('Bitte geben Sie ein Feedback ein');
+    setTimeout(() => setError(''), 3000);
+    return;
+  }
+  
+  try {
+    setFeedbackLoading(true);
+    setError('');
+    const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+    
+    const res = await fetch(apiUrl('/api/feedback'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userData.id,
+        userName: userData.name || `${userData.firstName} ${userData.lastName}`,
+        userEmail: userData.email,
+        userType: 'bauherr',
+        feedbackText: feedbackText
+      })
+    });
+    
+    if (res.ok) {
+      setMessage('Vielen Dank für Ihr Feedback! Wir haben Ihre Nachricht erhalten.');
+      setFeedbackText('');
+      setTimeout(() => setMessage(''), 5000);
+    } else {
+      throw new Error('Senden fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Fehler beim Senden des Feedbacks. Bitte versuchen Sie es später erneut.');
+    setTimeout(() => setError(''), 5000);
+  } finally {
+    setFeedbackLoading(false);
+  }
+};
+  
   // ============ PAYMENT FUNKTIONEN ============
   
   const openPaymentModal = (type) => {
@@ -1405,16 +1446,23 @@ export default function BauherrenSettingsPage() {
                   </div>
                   
                   {/* Feedback */}
-                  <div className="bg-white/5 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Feedback senden</h3>
-                    <textarea
-                      placeholder="Ihr Feedback hilft uns, byndl zu verbessern..."
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
-                    <button className="mt-4 px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
-                      Feedback senden
-                    </button>
-                  </div>
+<div className="bg-white/5 rounded-lg p-6">
+  <h3 className="text-lg font-semibold text-white mb-4">Feedback senden</h3>
+  <textarea
+    placeholder="Ihr Feedback hilft uns, byndl zu verbessern..."
+    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-teal-500"
+    value={feedbackText}
+    onChange={(e) => setFeedbackText(e.target.value)}
+    disabled={feedbackLoading}
+  />
+  <button 
+    onClick={sendFeedback}
+    disabled={feedbackLoading || !feedbackText.trim()}
+    className="mt-4 px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+  >
+    {feedbackLoading ? 'Wird gesendet...' : 'Feedback senden'}
+  </button>
+</div>
                 </div>
               </div>
             )}
