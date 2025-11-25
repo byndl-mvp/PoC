@@ -461,18 +461,18 @@ const loadDocuments = async () => {
   };
 
   const tabs = [
-    { id: 'profil', label: 'Mein Profil', icon: '👤' }, // NEU
-    { id: 'gewerke', label: 'Meine Gewerke', icon: '🔧' },
-    { id: 'firmendaten', label: 'Firmendaten', icon: '🏢' },
-    { id: 'einsatzgebiet', label: 'Einsatzgebiet', icon: '📍' },
-    { id: 'verfuegbarkeit', label: 'Verfügbarkeit', icon: '📅' },
-    { id: 'preise', label: 'Preise', icon: '💰' },
-    { id: 'benachrichtigungen', label: 'Benachrichtigungen', icon: '🔔' },
-    { id: 'zahlungsdaten', label: 'Zahlungsdaten', icon: '🏦' },
-    { id: 'dokumente', label: 'Dokumente', icon: '📄' },
-    { id: 'account', label: 'Account', icon: '⚙️' },
-    { id: 'hilfe', label: 'Hilfe & Feedback', icon: '💬' }
-  ];
+  { id: 'profil', label: 'Mein Profil' },
+  { id: 'gewerke', label: 'Meine Gewerke' },
+  { id: 'firmendaten', label: 'Firmendaten' },
+  { id: 'einsatzgebiet', label: 'Einsatzgebiet' },
+  { id: 'verfuegbarkeit', label: 'Verfügbarkeit' },
+  { id: 'preise', label: 'Preise' },
+  { id: 'benachrichtigungen', label: 'Benachrichtigungen' },
+  { id: 'zahlungsdaten', label: 'Zahlungsdaten' },
+  { id: 'dokumente', label: 'Dokumente' },
+  { id: 'account', label: 'Account' },
+  { id: 'hilfe', label: 'Hilfe & Feedback' }
+];
 
   const handlePasswordChange = async () => {
   if (!formData.currentPassword || !formData.newPassword || !formData.confirmPassword) {
