@@ -693,7 +693,6 @@ const getPasswordStrengthClass = (password) => {
                   : 'bg-white/10 text-white/70 hover:bg-white/20'
               }`}
             >
-              <span className="mr-2">{tab.icon}</span>
               {tab.label}
             </button>
           ))}
