@@ -1346,8 +1346,8 @@ export default function BauherrenSettingsPage() {
                           <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                         </summary>
                         <p className="mt-3 text-gray-300 text-sm pl-4">
-                          Die Zahlung erfolgt erst nach erfolgreicher Erstellung Ihres Leistungsverzeichnisses, 
-                          bevor die Ausschreibung an Handwerker gesendet wird.
+                          Die Zahlung erfolgt erst nach erfolgreicher Gewerkeerkennung und Empfehlungen zu Ihrem Projekt, 
+                          aber bevor die Leistungsverzeichnisse zu Ihrem Projekt erstellt werden können.
                         </p>
                       </details>
                     </div>
@@ -1363,9 +1363,8 @@ export default function BauherrenSettingsPage() {
                           <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                         </summary>
                         <p className="mt-3 text-gray-300 text-sm pl-4">
-                          Alle Handwerker auf byndl sind verifiziert. Wir prüfen Gewerbeanmeldung, 
-                          Handwerkskammer-Eintragung und Versicherungen. Angebote werden basierend auf 
-                          Fachgebiet, Standort und Verfügbarkeit zugeordnet.
+                          Alle Handwerker auf byndl durchlaufen einen strengen Verifizierungsprozess und weisen qualifizierte Nachweise vor – 
+                          darunter Handwerkskammer-Eintragung und Betriebshaftpflichtversicherung. Die intelligente Zuordnung von Projekten erfolgt nach Fachgebiet, Standort und Verfügbarkeit, um eine optimale Vermittlung zu gewährleisten.
                         </p>
                       </details>
                       
