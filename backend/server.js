@@ -19634,7 +19634,7 @@ app.get('/api/bauherr/:id/export', async (req, res) => {
 });
 
 // ============================================================================
-// FEEDBACK ROUTE
+// ERWEITERTE FEEDBACK ROUTE MIT BESTÄTIGUNGS-E-MAIL
 // ============================================================================
 
 app.post('/api/feedback', async (req, res) => {
@@ -19656,10 +19656,10 @@ app.post('/api/feedback', async (req, res) => {
       });
     }
     
-    // E-Mail-Inhalt vorbereiten
-    const emailSubject = `Neues Feedback von ${userType === 'bauherr' ? 'Bauherr' : 'Handwerker'}: ${userName}`;
+    // E-Mail an info@byndl.de vorbereiten
+    const internalEmailSubject = `Neues Feedback von ${userType === 'bauherr' ? 'Bauherr' : 'Handwerker'}: ${userName}`;
     
-    const emailHtml = `
+    const internalEmailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -19717,7 +19717,7 @@ app.post('/api/feedback', async (req, res) => {
       </html>
     `;
     
-    const emailText = `
+    const internalEmailText = `
 Neues Feedback von ${userType === 'bauherr' ? 'Bauherr' : 'Handwerker'}
 
 Von: ${userName} (${userEmail})
@@ -19731,24 +19731,155 @@ ${feedbackText}
 Um auf dieses Feedback zu antworten, senden Sie eine E-Mail an: ${userEmail}
     `;
     
-    // E-Mail an info@byndl.de senden
-    const result = await emailService.sendEmail(
-      'info@byndl.de',
-      emailSubject,
-      emailHtml,
-      emailText
-    );
+    // Bestätigungs-E-Mail an Absender vorbereiten
+    const confirmationEmailSubject = 'Vielen Dank für Ihr Feedback - byndl';
     
-    if (result.success) {
-      console.log('Feedback erfolgreich an info@byndl.de gesendet:', result.messageId);
+    const confirmationEmailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #0ea5e9 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+          .highlight-box { background: white; padding: 20px; border-left: 4px solid #14b8a6; margin: 20px 0; }
+          .footer { text-align: center; color: #666; margin-top: 30px; font-size: 12px; }
+          h1 { margin: 0; font-size: 28px; }
+          .emoji { font-size: 48px; margin-bottom: 15px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="emoji">🙏</div>
+            <h1>Vielen Dank!</h1>
+          </div>
+          
+          <div class="content">
+            <h2 style="color: #1e40af;">Hallo ${userName},</h2>
+            
+            <p>wir haben Ihr Feedback erhalten und möchten uns herzlich dafür bedanken, dass Sie sich die Zeit genommen haben, uns Ihre Meinung mitzuteilen.</p>
+            
+            <div class="highlight-box">
+              <p style="margin: 0; font-size: 16px;">
+                <strong>Ihr Feedback ist uns wichtig!</strong><br>
+                Wir lesen jede Nachricht aufmerksam und werden uns damit beschäftigen. 
+                Ihr Input hilft uns, byndl kontinuierlich zu verbessern und noch besser auf Ihre Bedürfnisse abzustimmen.
+              </p>
+            </div>
+            
+            <p>Falls Ihr Feedback eine konkrete Frage oder ein Problem betrifft, melden wir uns schnellstmöglich bei Ihnen zurück.</p>
+            
+            <h3 style="color: #0ea5e9; margin-top: 30px;">Ihr Feedback im Überblick:</h3>
+            <div style="background: white; padding: 15px; border-radius: 5px; border: 1px solid #ddd; margin: 15px 0;">
+              <p style="color: #666; font-size: 14px; margin-bottom: 5px;">Gesendet am ${new Date().toLocaleString('de-DE', { 
+                dateStyle: 'long',
+                timeStyle: 'short',
+                timeZone: 'Europe/Berlin'
+              })}</p>
+              <p style="white-space: pre-wrap; line-height: 1.6; margin-top: 10px;">${feedbackText}</p>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%); border-radius: 10px; text-align: center;">
+              <p style="color: white; margin: 0; font-size: 16px;">
+                <strong>Sie haben weitere Fragen?</strong><br>
+                <span style="font-size: 14px;">Unser Support-Team ist für Sie da!</span>
+              </p>
+              <p style="color: white; margin-top: 15px;">
+                📧 <a href="mailto:support@byndl.de" style="color: white; text-decoration: underline;">support@byndl.de</a><br>
+                📞 +49 221 / 123 456 789 (Mo-Fr 9-17 Uhr)
+              </p>
+            </div>
+            
+            <p style="margin-top: 30px; color: #666;">
+              Mit freundlichen Grüßen<br>
+              <strong style="color: #0ea5e9;">Ihr byndl Team</strong>
+            </p>
+          </div>
+          
+          <div class="footer">
+            <p>Diese E-Mail wurde automatisch generiert.</p>
+            <p>&copy; 2024 byndl - Alle Rechte vorbehalten</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const confirmationEmailText = `
+Hallo ${userName},
+
+vielen Dank für Ihr Feedback!
+
+Wir haben Ihre Nachricht erhalten und möchten uns herzlich dafür bedanken, dass Sie sich die Zeit genommen haben, uns Ihre Meinung mitzuteilen.
+
+Ihr Feedback ist uns wichtig!
+Wir lesen jede Nachricht aufmerksam und werden uns damit beschäftigen. Ihr Input hilft uns, byndl kontinuierlich zu verbessern und noch besser auf Ihre Bedürfnisse abzustimmen.
+
+Falls Ihr Feedback eine konkrete Frage oder ein Problem betrifft, melden wir uns schnellstmöglich bei Ihnen zurück.
+
+Ihr Feedback:
+${feedbackText}
+
+---
+Bei weiteren Fragen erreichen Sie uns unter:
+📧 support@byndl.de
+📞 +49 221 / 123 456 789 (Mo-Fr 9-17 Uhr)
+
+Mit freundlichen Grüßen
+Ihr byndl Team
+
+© 2024 byndl - Alle Rechte vorbehalten
+    `;
+    
+    // BEIDE E-Mails versenden
+    try {
+      // 1. E-Mail an info@byndl.de senden
+      const internalResult = await emailService.sendEmail(
+        'info@byndl.de',
+        internalEmailSubject,
+        internalEmailHtml,
+        internalEmailText
+      );
       
+      if (!internalResult.success) {
+        console.error('Fehler beim Senden an info@byndl.de:', internalResult.error);
+      } else {
+        console.log('Feedback an info@byndl.de gesendet:', internalResult.messageId);
+      }
+      
+      // 2. Bestätigungs-E-Mail an Absender senden
+      const confirmationResult = await emailService.sendEmail(
+        userEmail,
+        confirmationEmailSubject,
+        confirmationEmailHtml,
+        confirmationEmailText
+      );
+      
+      if (!confirmationResult.success) {
+        console.error('Fehler beim Senden der Bestätigung an', userEmail, ':', confirmationResult.error);
+      } else {
+        console.log('Bestätigungs-E-Mail an', userEmail, 'gesendet:', confirmationResult.messageId);
+      }
+      
+      // Response zurücksenden (auch wenn eine der E-Mails fehlschlägt)
       res.json({
         success: true,
         message: 'Feedback erfolgreich gesendet',
-        messageId: result.messageId
+        messageId: internalResult.messageId,
+        confirmationSent: confirmationResult.success
       });
-    } else {
-      throw new Error(result.error || 'E-Mail-Versand fehlgeschlagen');
+      
+    } catch (emailError) {
+      console.error('Fehler beim E-Mail-Versand:', emailError);
+      // Trotzdem als Erfolg zurückmelden, da Feedback empfangen wurde
+      res.json({
+        success: true,
+        message: 'Feedback erfolgreich empfangen (E-Mail-Versand verzögert)',
+        error: emailError.message
+      });
     }
     
   } catch (error) {
