@@ -19633,6 +19633,133 @@ app.get('/api/bauherr/:id/export', async (req, res) => {
   }
 });
 
+// ============================================================================
+// FEEDBACK ROUTE
+// ============================================================================
+
+app.post('/api/feedback', async (req, res) => {
+  try {
+    const { userId, userName, userEmail, userType, feedbackText } = req.body;
+    
+    // Validierung
+    if (!feedbackText || !feedbackText.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Feedback-Text ist erforderlich' 
+      });
+    }
+    
+    if (!userEmail || !userName) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Benutzerinformationen fehlen' 
+      });
+    }
+    
+    // E-Mail-Inhalt vorbereiten
+    const emailSubject = `Neues Feedback von ${userType === 'bauherr' ? 'Bauherr' : 'Handwerker'}: ${userName}`;
+    
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #0ea5e9 0%, #1e40af 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+          .info-box { background: white; padding: 15px; border-left: 4px solid #14b8a6; margin: 15px 0; }
+          .feedback-box { background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin: 20px 0; }
+          .label { font-weight: bold; color: #0ea5e9; margin-bottom: 5px; }
+          h2 { color: #1e40af; margin-top: 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin: 0;">byndl Feedback</h1>
+          </div>
+          
+          <div class="content">
+            <h2>Neues Feedback erhalten</h2>
+            
+            <div class="info-box">
+              <div class="label">Von:</div>
+              <div>${userName} (${userEmail})</div>
+              
+              <div class="label" style="margin-top: 10px;">Benutzertyp:</div>
+              <div>${userType === 'bauherr' ? '🏠 Bauherr' : '🔨 Handwerker'}</div>
+              
+              <div class="label" style="margin-top: 10px;">Benutzer-ID:</div>
+              <div>${userId || 'Nicht verfügbar'}</div>
+              
+              <div class="label" style="margin-top: 10px;">Zeitpunkt:</div>
+              <div>${new Date().toLocaleString('de-DE', { 
+                dateStyle: 'full', 
+                timeStyle: 'long',
+                timeZone: 'Europe/Berlin'
+              })}</div>
+            </div>
+            
+            <div class="feedback-box">
+              <div class="label">Feedback:</div>
+              <div style="white-space: pre-wrap; margin-top: 10px; line-height: 1.8;">${feedbackText}</div>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+              Um auf dieses Feedback zu antworten, senden Sie eine E-Mail direkt an: 
+              <a href="mailto:${userEmail}" style="color: #0ea5e9;">${userEmail}</a>
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const emailText = `
+Neues Feedback von ${userType === 'bauherr' ? 'Bauherr' : 'Handwerker'}
+
+Von: ${userName} (${userEmail})
+Benutzer-ID: ${userId || 'Nicht verfügbar'}
+Zeitpunkt: ${new Date().toLocaleString('de-DE')}
+
+Feedback:
+${feedbackText}
+
+---
+Um auf dieses Feedback zu antworten, senden Sie eine E-Mail an: ${userEmail}
+    `;
+    
+    // E-Mail an info@byndl.de senden
+    const result = await emailService.sendEmail(
+      'info@byndl.de',
+      emailSubject,
+      emailHtml,
+      emailText
+    );
+    
+    if (result.success) {
+      console.log('Feedback erfolgreich an info@byndl.de gesendet:', result.messageId);
+      
+      res.json({
+        success: true,
+        message: 'Feedback erfolgreich gesendet',
+        messageId: result.messageId
+      });
+    } else {
+      throw new Error(result.error || 'E-Mail-Versand fehlgeschlagen');
+    }
+    
+  } catch (error) {
+    console.error('Fehler beim Verarbeiten des Feedbacks:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Interner Serverfehler beim Senden des Feedbacks'
+    });
+  }
+});
+
 // Delete Account
 app.delete('/api/bauherr/:id/account', async (req, res) => {
   try {
