@@ -24544,32 +24544,48 @@ app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
     console.log('Update Einsatzgebiet für Handwerker ID:', handwerkerId);
     
     const { 
-      actionRadius,
-      excludedAreas,
-      travelCostPerKm,
-      preferredZipCodes,
-      minOrderValue10km,
-      minOrderValue25km,
-      minOrderValue50km,
-      minOrderValueOver50km,
-      latitude,
-      longitude
-    } = req.body;
+  actionRadius,
+  excludedAreas,
+  travelCostPerKm,
+  preferredZipCodes,
+  minOrderValue10km,
+  minOrderValue25km,
+  minOrderValue50km,
+  minOrderValueOver50km,
+  latitude,
+  longitude,
+  street,        
+  house_number,  
+  zip_code,      
+  city           
+} = req.body;
     
-    // Basis-Update - WICHTIG: excluded_areas ist JSONB, nicht TEXT!
-    await query(
-      `UPDATE handwerker SET
-        action_radius = $2,
-        excluded_areas = $3::jsonb,  -- Cast zu JSONB
-        travel_cost_per_km = $4
-       WHERE id = $1`,
-      [
-        handwerkerId, 
-        actionRadius || 25,
-        JSON.stringify(excludedAreas || []),  // JSON.stringify für JSONB
-        travelCostPerKm || 0.5
-      ]
-    );
+   // Basis-Update - MIT ADRESSE
+await query(
+  `UPDATE handwerker SET
+    action_radius = $2,
+    excluded_areas = $3::jsonb,
+    travel_cost_per_km = $4,
+    street = $5,           
+    house_number = $6,     
+    zip_code = $7,         
+    city = $8,             
+    latitude = $9,         
+    longitude = $10        
+   WHERE id = $1`,
+  [
+    handwerkerId, 
+    actionRadius || 25,
+    JSON.stringify(excludedAreas || []),
+    travelCostPerKm || 0.5,
+    req.body.street || null,        
+    req.body.house_number || null,  
+    req.body.zip_code || null,      
+    req.body.city || null,          
+    latitude || null,               
+    longitude || null               
+  ]
+);
     
     // Erweiterte Einstellungen
     const coverageSettings = {
