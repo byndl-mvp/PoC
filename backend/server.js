@@ -25934,6 +25934,33 @@ app.post('/api/tenders/:tenderId/submit-offer', async (req, res) => {
       bundleDiscount = isBundleOffer ? (bundleDiscount || 0) : 0  
     } = req.body;
 
+// ✅ VERIFIZIERUNGS-CHECK
+    const verificationCheck = await query(
+      `SELECT verified, verification_status, company_name 
+       FROM handwerker 
+       WHERE id = $1`,
+      [handwerkerId]
+    );
+    
+    if (verificationCheck.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden',
+        requiresVerification: true
+      });
+    }
+    
+    const handwerker = verificationCheck.rows[0];
+    
+    if (!handwerker.verified || handwerker.verification_status !== 'verified') {
+      return res.status(403).json({ 
+        error: 'Ihr Account muss erst verifiziert werden, bevor Sie Angebote erstellen können. Die Prüfung dauert in der Regel 1-2 Werktage.',
+        requiresVerification: true,
+        verificationStatus: handwerker.verification_status || 'pending'
+      });
+    }
+    
+    console.log(`✅ Verifizierter Handwerker ${handwerkerId} (${handwerker.company_name}) erstellt Angebot für Tender ${tenderId}`);
+    
     // ✅ FIX: Berechne totalSum korrekt unter Berücksichtigung von NEP
 let correctTotalSum = totalSum; // Fallback
 
