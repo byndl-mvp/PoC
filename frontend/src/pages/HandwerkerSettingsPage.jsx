@@ -270,7 +270,7 @@ useEffect(() => {
     
     if (res.ok) {
       const settings = await res.json();
-      
+      setHandwerkerData(prev => ({ ...prev, ...settings }));
       setFormData(prev => ({
         ...prev,
         ...settings,
