@@ -24589,11 +24589,11 @@ await query(
 // Dann VOR coverageSettings:
 const plzValue = preferredZipCodes || preferred_zip_codes;
     
-    // Erweiterte Einstellungen
+ // Und in coverageSettings:
 const coverageSettings = {
-  preferred_zip_codes: typeof preferredZipCodes === 'string' 
-    ? preferredZipCodes.split(',').map(s => s.trim()).filter(Boolean)
-    : (preferredZipCodes || []),
+  preferred_zip_codes: typeof plzValue === 'string' 
+    ? plzValue.split(',').map(s => s.trim()).filter(Boolean)
+    : (plzValue || []),
   min_order_values: {
     up_to_10km: minOrderValue10km || 0,
     up_to_25km: minOrderValue25km || 0,
