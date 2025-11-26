@@ -145,6 +145,39 @@ useEffect(() => {
     loadStats();
   }
 }, [activeTab, handwerkerData?.id]);
+
+// Automatisches Geocoding beim Laden des Einsatzgebiet-Tabs
+useEffect(() => {
+  const geocodeAddress = async () => {
+    // Nur wenn Adresse vorhanden und noch keine Koordinaten
+    if (
+      (activeTab === 'einsatzgebiet' || activeTab === 'einzugsgebiet') &&
+      formData.street && 
+      formData.zipCode && 
+      formData.city &&
+      (!formData.latitude || !formData.longitude)
+    ) {
+      const address = `${formData.street} ${formData.houseNumber || ''}, ${formData.zipCode} ${formData.city}, Germany`;
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
+        );
+        const data = await response.json();
+        if (data && data[0]) {
+          setFormData(prev => ({
+            ...prev,
+            latitude: data[0].lat,
+            longitude: data[0].lon
+          }));
+        }
+      } catch (err) {
+        console.error('Geocoding failed:', err);
+      }
+    }
+  };
+  
+  geocodeAddress();
+}, [activeTab, formData.street, formData.houseNumber, formData.zipCode, formData.city]);
   
 useEffect(() => {
   const loadRatings = async () => {
@@ -189,39 +222,6 @@ useEffect(() => {
       setLoadingRatings(false);
     }
   };
-
-  // Automatisches Geocoding beim Laden des Einsatzgebiet-Tabs
-useEffect(() => {
-  const geocodeAddress = async () => {
-    // Nur wenn Adresse vorhanden und noch keine Koordinaten
-    if (
-      (activeTab === 'einsatzgebiet' || activeTab === 'einzugsgebiet') &&
-      formData.street && 
-      formData.zipCode && 
-      formData.city &&
-      (!formData.latitude || !formData.longitude)
-    ) {
-      const address = `${formData.street} ${formData.houseNumber || ''}, ${formData.zipCode} ${formData.city}, Germany`;
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
-        );
-        const data = await response.json();
-        if (data && data[0]) {
-          setFormData(prev => ({
-            ...prev,
-            latitude: data[0].lat,
-            longitude: data[0].lon
-          }));
-        }
-      } catch (err) {
-        console.error('Geocoding failed:', err);
-      }
-    }
-  };
-  
-  geocodeAddress();
-}, [activeTab, formData.street, formData.houseNumber, formData.zipCode, formData.city]);
   
   const loadProfileStats = async () => {
     if (!handwerkerData?.id) return;
