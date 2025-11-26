@@ -24932,16 +24932,6 @@ app.delete('/api/handwerker/:id/account', async (req, res) => {
       await query('DELETE FROM handwerker_certifications WHERE handwerker_id = $1', [req.params.id]);
       await query('DELETE FROM handwerker_documents WHERE handwerker_id = $1', [req.params.id]);
       
-      // Optional: Soft Delete (markiere als gelöscht statt zu löschen)
-      // await query(
-      //   `UPDATE handwerker 
-      //    SET deleted_at = CURRENT_TIMESTAMP,
-      //        active = false,
-      //        email = CONCAT(email, '_deleted_', $2)
-      //    WHERE id = $1`,
-      //   [req.params.id, Date.now()]
-      // );
-      
       // Hard Delete - endgültiges Löschen
       await query('DELETE FROM handwerker WHERE id = $1', [req.params.id]);
       
@@ -25048,41 +25038,10 @@ app.get('/api/handwerker/:id/stats', async (req, res) => {
   }
 });
 
-// Dokument hochladen
-app.post('/api/handwerker/documents/upload', upload.single('document'), async (req, res) => {
-  try {
-    const handwerkerId = req.params.id;
-    if (!handwerkerId) {
-      return res.status(401).json({ error: 'Nicht authentifiziert' });
-    }
-    
-    const { document_type } = req.body;
-    const file = req.file;
-    
-    if (!file) {
-      return res.status(400).json({ error: 'Keine Datei hochgeladen' });
-    }
-    
-    // Speichere in DB
-    const result = await query(
-      `INSERT INTO handwerker_documents 
-       (handwerker_id, document_type, file_name, file_data, uploaded_at)
-       VALUES ($1, $2, $3, $4, NOW())
-       RETURNING id, document_type, file_name, uploaded_at`,
-      [handwerkerId, document_type, file.originalname, file.buffer]
-    );
-    
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Upload error:', err);
-    res.status(500).json({ error: 'Upload fehlgeschlagen' });
-  }
-});
-
-// Dokumente abrufen - KORRIGIERT
+// Dokumente abrufen - OK, keine Änderung nötig
 app.get('/api/handwerker/:id/documents', async (req, res) => {
   try {
-    const handwerkerId = req.params.id; // :id aus der URL
+    const handwerkerId = req.params.id;
     
     const result = await query(
       `SELECT id, document_type, file_name, uploaded_at
@@ -25099,10 +25058,10 @@ app.get('/api/handwerker/:id/documents', async (req, res) => {
   }
 });
 
-// Dokument hochladen - KORRIGIERT
+// Dokument hochladen - ERWEITERT mit Verifizierungs-Reset
 app.post('/api/handwerker/:id/documents/upload', upload.single('document'), async (req, res) => {
   try {
-    const handwerkerId = req.params.id; // :id aus der URL
+    const handwerkerId = req.params.id;
     const { document_type } = req.body;
     const file = req.file;
     
@@ -25110,6 +25069,19 @@ app.post('/api/handwerker/:id/documents/upload', upload.single('document'), asyn
       return res.status(400).json({ error: 'Keine Datei hochgeladen' });
     }
     
+    // Prüfe ob Handwerker existiert
+    const handwerkerCheck = await query(
+      'SELECT id, verified, verification_status, company_name FROM handwerker WHERE id = $1',
+      [handwerkerId]
+    );
+    
+    if (handwerkerCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerker = handwerkerCheck.rows[0];
+    
+    // Dokument einfügen
     const result = await query(
       `INSERT INTO handwerker_documents 
        (handwerker_id, document_type, file_name, file_data, uploaded_at)
@@ -25118,14 +25090,40 @@ app.post('/api/handwerker/:id/documents/upload', upload.single('document'), asyn
       [handwerkerId, document_type, file.originalname, file.buffer]
     );
     
-    res.json(result.rows[0]);
+    console.log(`✓ Dokument hochgeladen: ${document_type} für Handwerker ${handwerkerId} (${handwerker.company_name})`);
+    
+    // WICHTIG: Wenn Handwerker bereits verifiziert war UND es ein Pflichtdokument ist
+    // -> Status zurück auf pending setzen für erneute Prüfung
+    let requiresReverification = false;
+    
+    if ((handwerker.verified === true || handwerker.verification_status === 'verified') && 
+        ['gewerbeschein', 'handwerkskarte'].includes(document_type)) {
+      
+      await query(
+        `UPDATE handwerker 
+         SET verification_status = 'pending',
+             verified = false,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [handwerkerId]
+      );
+      
+      requiresReverification = true;
+      console.log(`⚠️ Handwerker ${handwerkerId} Status auf PENDING gesetzt (neues Pflichtdokument: ${document_type})`);
+    }
+    
+    res.json({
+      ...result.rows[0],
+      requiresReverification: requiresReverification
+    });
+    
   } catch (err) {
     console.error('Upload error:', err);
     res.status(500).json({ error: 'Upload fehlgeschlagen' });
   }
 });
 
-// Dokument herunterladen - KORRIGIERT
+// Dokument herunterladen - OK, keine Änderung nötig
 app.get('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) => {
   try {
     const { handwerkerId, docId } = req.params;
@@ -25151,17 +25149,70 @@ app.get('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) => {
   }
 });
 
-// Dokument löschen - KORRIGIERT
+// Dokument löschen - ERWEITERT mit Verifizierungs-Reset
 app.delete('/api/handwerker/:handwerkerId/documents/:docId', async (req, res) => {
   try {
     const { handwerkerId, docId } = req.params;
     
+    // Erst Dokument-Typ ermitteln
+    const docResult = await query(
+      'SELECT document_type FROM handwerker_documents WHERE id = $1 AND handwerker_id = $2',
+      [docId, handwerkerId]
+    );
+    
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Dokument nicht gefunden' });
+    }
+    
+    const documentType = docResult.rows[0].document_type;
+    
+    // Handwerker-Status prüfen
+    const handwerkerResult = await query(
+      'SELECT verified, verification_status, company_name FROM handwerker WHERE id = $1',
+      [handwerkerId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerker = handwerkerResult.rows[0];
+    
+    // Dokument löschen
     await query(
       'DELETE FROM handwerker_documents WHERE id = $1 AND handwerker_id = $2',
       [docId, handwerkerId]
     );
     
-    res.json({ success: true });
+    console.log(`🗑️ Dokument gelöscht: ${documentType} von Handwerker ${handwerkerId} (${handwerker.company_name})`);
+    
+    // WICHTIG: Wenn Pflichtdokument gelöscht wurde -> Status zurücksetzen
+    let requiresReverification = false;
+    
+    if ((handwerker.verified === true || handwerker.verification_status === 'verified') && 
+        ['gewerbeschein', 'handwerkskarte'].includes(documentType)) {
+      
+      await query(
+        `UPDATE handwerker 
+         SET verification_status = 'pending',
+             verified = false,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [handwerkerId]
+      );
+      
+      requiresReverification = true;
+      console.log(`⚠️ Handwerker ${handwerkerId} Status auf PENDING gesetzt (Pflichtdokument gelöscht: ${documentType})`);
+    }
+    
+    res.json({ 
+      success: true,
+      requiresReverification: requiresReverification,
+      message: requiresReverification 
+        ? 'Dokument gelöscht - Ihr Account muss erneut verifiziert werden' 
+        : 'Dokument erfolgreich gelöscht'
+    });
+    
   } catch (err) {
     console.error('Delete error:', err);
     res.status(500).json({ error: 'Löschen fehlgeschlagen' });
