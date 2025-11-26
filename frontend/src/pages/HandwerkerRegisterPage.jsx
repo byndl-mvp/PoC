@@ -85,6 +85,7 @@ export default function HandwerkerRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [uploadedDocuments, setUploadedDocuments] = useState({});
+  const [uploadedFiles, setUploadedFiles] = useState({});
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -256,12 +257,17 @@ export default function HandwerkerRegisterPage() {
       return;
     }
     
-    // Speichere nur lokal, Upload erfolgt nach Registrierung
-    setUploadedDocuments(prev => ({
-      ...prev,
-      [documentType]: file.name
-    }));
-  };
+   // Speichere File-Objekt UND Dateinamen
+  setUploadedFiles(prev => ({
+    ...prev,
+    [documentType]: file
+  }));
+  
+  setUploadedDocuments(prev => ({
+    ...prev,
+    [documentType]: file.name
+  }));
+};
 
   const handleResendVerificationEmail = async () => {
     try {
@@ -282,59 +288,92 @@ export default function HandwerkerRegisterPage() {
   };
   
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  if (!validateStep()) return;
+  
+  setLoading(true);
+  setError('');
+  
+  try {
+    const companyId = generateCompanyId();
+    const contactPerson = `${formData.contactFirstName} ${formData.contactLastName}`;
+    const { confirmPassword, ...submitDataWithoutConfirm } = formData;
     
-    if (!validateStep()) return;
+    const submitData = {
+      ...submitDataWithoutConfirm,
+      contactPerson,
+      contactFirstName: formData.contactFirstName,
+      contactLastName: formData.contactLastName,
+      trades: formData.trades,
+      companyId,
+      registeredAt: new Date().toISOString(),
+      acceptedTermsAt: new Date().toISOString(),
+      acceptedPrivacyAt: new Date().toISOString()
+    };
     
-    setLoading(true);
-    setError('');
+    // 1. REGISTRIERUNG
+    const res = await fetch(apiUrl('/api/handwerker/register'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(submitData)
+    });
     
+    if (res.ok) {
+      const data = await res.json();
+      const handwerkerId = data.handwerker.id;
+      
+      // 2. DOKUMENTE HOCHLADEN (bevor Modal angezeigt wird!)
+      if (Object.keys(uploadedFiles).length > 0) {
+        console.log('Lade Dokumente hoch für Handwerker-ID:', handwerkerId);
+        await uploadDocumentsForRegistration(handwerkerId, uploadedFiles);
+      }
+      
+      // 3. ERST JETZT Modal anzeigen
+      setRegistrationData(data);
+      setShowVerificationModal(true);
+      
+    } else {
+      const errorData = await res.json();
+      throw new Error(errorData.error || errorData.message || 'Registrierung fehlgeschlagen');
+    }
+  } catch (err) {
+    console.error('Registrierungsfehler:', err);
+    setError(err.message || 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// NEU: Funktion zum Hochladen der Dokumente bei Registrierung
+const uploadDocumentsForRegistration = async (handwerkerId, files) => {
+  const typeMapping = {
+    'meisterbrief': 'handwerkskarte',
+    'versicherung': 'versicherungsnachweis'
+  };
+  
+  for (const [key, file] of Object.entries(files)) {
     try {
-      const companyId = generateCompanyId();
+      const formData = new FormData();
+      formData.append('document', file);
+      formData.append('document_type', typeMapping[key] || key);
       
-      // Kombiniere Vorname und Nachname für Rückwärtskompatibilität
-      const contactPerson = `${formData.contactFirstName} ${formData.contactLastName}`;
-      
-      const { confirmPassword, ...submitDataWithoutConfirm } = formData;
-      
-      const submitData = {
-        ...submitDataWithoutConfirm,
-        contactPerson,
-        contactFirstName: formData.contactFirstName,
-        contactLastName: formData.contactLastName,
-        trades: formData.trades,
-        companyId,
-        registeredAt: new Date().toISOString(),
-        acceptedTermsAt: new Date().toISOString(),
-        acceptedPrivacyAt: new Date().toISOString()
-      };
-      
-      const res = await fetch(apiUrl('/api/handwerker/register'), {
+      const uploadRes = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/documents/upload`), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submitData)
+        body: formData
       });
       
-      if (res.ok) {
-        const data = await res.json();
-        
-        // WICHTIG: Token wird NICHT gespeichert - User muss erst E-Mail verifizieren!
-        // Kein sessionStorage.setItem hier!
-        
-        setRegistrationData(data);
-        setShowVerificationModal(true);
-        
+      if (uploadRes.ok) {
+        console.log(`✓ Dokument ${key} erfolgreich hochgeladen`);
       } else {
-        const errorData = await res.json();
-        throw new Error(errorData.error || errorData.message || 'Registrierung fehlgeschlagen');
+        console.error(`✗ Fehler beim Upload von ${key}`);
       }
     } catch (err) {
-      console.error('Registrierungsfehler:', err);
-      setError(err.message || 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
-    } finally {
-      setLoading(false);
+      console.error(`Fehler beim Upload von ${key}:`, err);
+      // Nicht abbrechen, versuche nächstes Dokument
     }
-  };
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
