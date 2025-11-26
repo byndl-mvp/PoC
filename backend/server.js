@@ -33021,7 +33021,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
   if (transporter) {
     try {
       await transporter.sendMail({
-        from: process.env.EMAIL_USER, // ← WICHTIG: from Feld!
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
         to: handwerker.email,
         subject: '✅ Ihr byndl Account wurde verifiziert!',
         html: `
@@ -33150,7 +33150,7 @@ case 'reject':
   if (transporter) {
     try {
       await transporter.sendMail({
-        from: process.env.EMAIL_USER, // ← WICHTIG: from Feld!
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
         to: handwerker.email,
         subject: '⚠️ Ihre byndl Registrierung - Nachbesserung erforderlich',
         html: `
@@ -33273,7 +33273,7 @@ case 'delete':
   if (transporter) {
     try {
       await transporter.sendMail({
-        from: process.env.EMAIL_USER, // ← WICHTIG: from Feld!
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
         to: handwerker.email,
         subject: '❌ Ihre byndl Registrierung wurde abgelehnt',
         html: `
