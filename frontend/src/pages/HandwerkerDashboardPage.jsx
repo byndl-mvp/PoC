@@ -32,6 +32,7 @@ export default function HandwerkerDashboardPage() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [orderTotals, setOrderTotals] = useState({}); 
   const [notifications, setNotifications] = useState([]);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [lastViewedTabs, setLastViewedTabs] = useState({
   ausschreibungen: null,
   bundles: null,
@@ -275,6 +276,20 @@ const loadOrderTotals = async (orderIds) => {
   }
 };
 
+// NEU: Verifizierung prüfen vor Navigation
+const checkVerificationAndNavigate = (callback) => {
+  const handwerkerData = JSON.parse(sessionStorage.getItem('handwerkerData'));
+  
+  if (!handwerkerData.verified || handwerkerData.verification_status !== 'verified') {
+    setShowVerificationModal(true);
+    return false;
+  }
+  
+  // Wenn verifiziert, führe die Callback-Funktion aus
+  callback();
+  return true;
+};
+  
   const handleLogout = () => {
     sessionStorage.removeItem('handwerkerData');
     navigate('/');
