@@ -24539,6 +24539,8 @@ app.put('/api/handwerker/:id/firmendaten', async (req, res) => {
 
 // ERSETZE die bestehende Einsatzgebiet-Route mit dieser:
 app.put('/api/handwerker/:id/einsatzgebiet', async (req, res) => {
+  console.log('🔍 EMPFANGENE DATEN:', JSON.stringify(req.body, null, 2));
+  
   try {
     const handwerkerId = req.params.id;
     console.log('Update Einsatzgebiet für Handwerker ID:', handwerkerId);
