@@ -1750,6 +1750,88 @@ const badgeCounts = {
     }}
   />
 )}   
+
+   {/* Verifizierungs-Modal */}
+      {showVerificationModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 max-w-lg w-full border border-white/20 shadow-2xl">
+            <div className="text-center">
+              {/* Icon */}
+              <div className="mb-6">
+                <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto">
+                  <span className="text-5xl">⏳</span>
+                </div>
+              </div>
+              
+              {/* Titel */}
+              <h3 className="text-2xl font-bold text-white mb-3">
+                Verifizierung ausstehend
+              </h3>
+              
+              {/* Beschreibung */}
+              <p className="text-gray-300 mb-6 text-lg">
+                Ihr Account wird derzeit von unserem Team geprüft. Sie können erst Angebote erstellen, 
+                nachdem die Verifizierung abgeschlossen ist.
+              </p>
+              
+              {/* Info Box */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-5 mb-6 text-left">
+                <p className="text-blue-300 text-sm">
+                  <strong className="text-blue-200 text-base">ℹ️ Was wird geprüft?</strong>
+                </p>
+                <ul className="mt-3 space-y-2 text-blue-200 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>Gewerbeschein / Gewerbeanmeldung</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>Handwerkskarte / Meisterbrief / Qualifikationen</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>Kontaktdaten und Firmendaten</span>
+                  </li>
+                </ul>
+                <div className="mt-4 pt-4 border-t border-blue-500/30">
+                  <p className="text-blue-200 text-sm">
+                    ⏱️ Die Prüfung dauert in der Regel <strong>1-2 Werktage</strong>.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Status Info */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
+                <p className="text-yellow-200 text-sm">
+                  Sie erhalten eine E-Mail, sobald Ihr Account verifiziert wurde.
+                </p>
+              </div>
+              
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowVerificationModal(false)}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white rounded-lg font-semibold transition-all transform hover:scale-[1.02]"
+                >
+                  Verstanden
+                </button>
+                <button
+                  onClick={() => {
+                    setShowVerificationModal(false);
+                    setActiveTab('einstellungen'); // Navigiere zu Einstellungen
+                  }}
+                  className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all border border-white/20"
+                >
+                  Zu Einstellungen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}         
     </div>
   );
 }
