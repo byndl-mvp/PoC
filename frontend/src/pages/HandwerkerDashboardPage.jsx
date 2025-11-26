@@ -822,9 +822,9 @@ const badgeCounts = {
                 
                 {/* Action Button */}
                 <button
-                  onClick={() => navigate(`/handwerker/bundle/${bundle.id}/offer`)}
-                  className="w-full px-8 py-4 bg-gradient-to-r from-teal-500 to-blue-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-                >
+  onClick={() => checkVerificationAndNavigate(() => navigate(`/handwerker/bundle/${bundle.id}/offer`))}
+  className="w-full px-8 py-4 bg-gradient-to-r from-teal-500 to-blue-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+>
                   🎯 Bündelangebot erstellen
                 </button>
               </div>
