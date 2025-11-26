@@ -1248,8 +1248,8 @@ const getPasswordStrengthClass = (password) => {
           Bevorzugte PLZ-Bereiche
         </label>
         <textarea
-          value={formData.preferred_zipCodes || ''}
-          onChange={(e) => setFormData({...formData, preferred_zipCodes: e.target.value})}
+          value={formData.preferredZipCodes || ''}
+          onChange={(e) => setFormData({...formData, preferredZipCodes: e.target.value})}
           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
           rows="2"
           placeholder="z.B. 50667, 50668, 50670-50679"
