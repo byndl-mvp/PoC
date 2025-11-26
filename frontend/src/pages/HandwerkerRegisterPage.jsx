@@ -877,107 +877,194 @@ const uploadDocumentsForRegistration = async (handwerkerId, files) => {
             )}
 
             {/* Step 5: Dokumente & AGB */}
-            {step === 5 && (
-              <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-white mb-4">Schritt 5: Nachweise & Abschluss</h3>
-                
-                {/* Dokument-Upload */}
-                <div className="space-y-4">
-                  <div className="bg-white/5 rounded-lg p-4">
-                    <label className="block text-white font-medium mb-2">
-                      Meisterbrief / Gesellenbrief
-                    </label>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileUpload(e, 'meisterbrief')}
-                      className="w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-500 file:text-white hover:file:bg-teal-600"
-                    />
-                    {uploadedDocuments.meisterbrief && (
-                      <p className="text-green-400 text-sm mt-2">✔ {uploadedDocuments.meisterbrief}</p>
-                    )}
-                  </div>
-                  
-                  <div className="bg-white/5 rounded-lg p-4">
-                    <label className="block text-white font-medium mb-2">
-                      Betriebshaftpflichtversicherung
-                    </label>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileUpload(e, 'versicherung')}
-                      className="w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-500 file:text-white hover:file:bg-teal-600"
-                    />
-                    {uploadedDocuments.versicherung && (
-                      <p className="text-green-400 text-sm mt-2">✔ {uploadedDocuments.versicherung}</p>
-                    )}
-                  </div>
-                </div>
+{step === 5 && (
+  <div className="space-y-6">
+    <h3 className="text-xl font-semibold text-white mb-4">Schritt 5: Nachweise & Abschluss</h3>
+    
+    {/* Wichtiger Hinweis */}
+    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+      <p className="text-blue-300 text-sm">
+        <strong>ℹ️ Wichtig:</strong> Diese Dokumente werden für die Verifizierung durch unser Team benötigt. 
+        Sie können erst auf Ausschreibungen zugreifen und Angebote erstellen, nachdem Ihr Account verifiziert wurde. 
+        Die Prüfung dauert in der Regel 1-2 Werktage.
+      </p>
+    </div>
+    
+    {/* Dokument-Upload */}
+    <div className="space-y-4">
+      {/* Gewerbeschein - PFLICHT */}
+      <div className="bg-white/5 rounded-lg p-4 border-l-4 border-red-500">
+        <label className="block text-white font-medium mb-2">
+          Gewerbeschein / Gewerbeanmeldung *
+          <span className="text-gray-400 text-sm block mt-1">
+            Erforderlich - Nachweis der Gewerbeanmeldung
+          </span>
+        </label>
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => handleFileUpload(e, 'gewerbeschein')}
+          className="w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-500 file:text-white hover:file:bg-teal-600 cursor-pointer"
+        />
+        {uploadedDocuments.gewerbeschein && (
+          <p className="text-green-400 text-sm mt-2 flex items-center gap-2">
+            <span>✔</span>
+            <span>{uploadedDocuments.gewerbeschein}</span>
+          </p>
+        )}
+        {!uploadedDocuments.gewerbeschein && (
+          <p className="text-red-400 text-xs mt-2">⚠️ Pflichtdokument</p>
+        )}
+      </div>
+      
+      {/* Handwerkskarte/Meisterbrief - PFLICHT */}
+      <div className="bg-white/5 rounded-lg p-4 border-l-4 border-red-500">
+        <label className="block text-white font-medium mb-2">
+          Handwerkskarte / Meisterbrief *
+          <span className="text-gray-400 text-sm block mt-1">
+            Erforderlich - Je nach Gewerk: Meisterbrief, Gesellenbrief oder §7b-Bescheinigung
+          </span>
+        </label>
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => handleFileUpload(e, 'handwerkskarte')}
+          className="w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-500 file:text-white hover:file:bg-teal-600 cursor-pointer"
+        />
+        {uploadedDocuments.handwerkskarte && (
+          <p className="text-green-400 text-sm mt-2 flex items-center gap-2">
+            <span>✔</span>
+            <span>{uploadedDocuments.handwerkskarte}</span>
+          </p>
+        )}
+        {!uploadedDocuments.handwerkskarte && (
+          <p className="text-red-400 text-xs mt-2">⚠️ Pflichtdokument</p>
+        )}
+      </div>
+      
+      {/* Betriebshaftpflicht - EMPFOHLEN */}
+      <div className="bg-white/5 rounded-lg p-4 border-l-4 border-yellow-500">
+        <label className="block text-white font-medium mb-2">
+          Betriebshaftpflichtversicherung
+          <span className="text-gray-400 text-sm block mt-1">
+            Stark empfohlen - Erhöht das Vertrauen der Bauherren erheblich
+          </span>
+        </label>
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => handleFileUpload(e, 'versicherung')}
+          className="w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-500 file:text-white hover:file:bg-teal-600 cursor-pointer"
+        />
+        {uploadedDocuments.versicherung && (
+          <p className="text-green-400 text-sm mt-2 flex items-center gap-2">
+            <span>✔</span>
+            <span>{uploadedDocuments.versicherung}</span>
+          </p>
+        )}
+        {!uploadedDocuments.versicherung && (
+          <p className="text-yellow-400 text-xs mt-2">💡 Optional, aber empfohlen</p>
+        )}
+      </div>
+      
+      {/* Weitere Nachweise - OPTIONAL */}
+      <div className="bg-white/5 rounded-lg p-4">
+        <label className="block text-white font-medium mb-2">
+          Weitere Nachweise (optional)
+          <span className="text-gray-400 text-sm block mt-1">
+            z.B. Zertifizierungen (ISO 9001), Berufsgenossenschaft-Nachweis, Referenzen
+          </span>
+        </label>
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => handleFileUpload(e, 'weitere')}
+          className="w-full text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-teal-500 file:text-white hover:file:bg-teal-600 cursor-pointer"
+        />
+        {uploadedDocuments.weitere && (
+          <p className="text-green-400 text-sm mt-2 flex items-center gap-2">
+            <span>✔</span>
+            <span>{uploadedDocuments.weitere}</span>
+          </p>
+        )}
+      </div>
+    </div>
 
-                {/* AGB und Datenschutz Checkboxen */}
-                <div className="space-y-4 pt-6 border-t border-white/20">
-                  <h4 className="text-lg font-semibold text-white">Rechtliches</h4>
-                  
-                  <label className="flex items-start gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={acceptedTerms}
-                      onChange={(e) => setAcceptedTerms(e.target.checked)}
-                      className="w-5 h-5 min-w-[20px] min-h-[20px] flex-shrink-0 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
-                    />
-                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
-                      Ich habe die{' '}
-                      <Link 
-                        to="/AGB" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-teal-400 hover:text-teal-300 underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Allgemeinen Geschäftsbedingungen (AGB)
-                      </Link>{' '}
-                      gelesen und akzeptiere diese. *
-                    </span>
-                  </label>
-                  
-                  <label className="flex items-start gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={acceptedPrivacy}
-                      onChange={(e) => setAcceptedPrivacy(e.target.checked)}
-                      className="w-5 h-5 min-w-[20px] min-h-[20px] flex-shrink-0 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
-                    />
-                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
-                      Ich habe die{' '}
-                      <Link 
-                        to="/datenschutz" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-teal-400 hover:text-teal-300 underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Datenschutzbestimmungen
-                      </Link>{' '}
-                      gelesen und stimme der Verarbeitung meiner Daten gemäß dieser Bestimmungen zu. *
-                    </span>
-                  </label>
-                  
-                  <p className="text-gray-500 text-xs mt-2">
-                    Weitere Informationen finden Sie auch in unserem{' '}
-                    <Link to="/disclaimer" target="_blank" className="text-teal-400 hover:text-teal-300 underline">
-                      Disclaimer / Haftungsausschluss
-                    </Link>
-                  </p>
-                </div>
+    {/* Hinweis zu fehlenden Dokumenten */}
+    {(!uploadedDocuments.gewerbeschein || !uploadedDocuments.handwerkskarte) && (
+      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+        <p className="text-red-300 text-sm">
+          <strong>⚠️ Pflichtdokumente fehlen:</strong> Bitte laden Sie mindestens den Gewerbeschein 
+          und die Handwerkskarte hoch, um die Registrierung abzuschließen.
+        </p>
+      </div>
+    )}
 
-                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                  <p className="text-green-300 text-sm">
-                    <strong>Fast geschafft!</strong> Nach der Registrierung erhalten Sie eine E-Mail zur Bestätigung Ihrer Adresse.
-                    Erst nach der Bestätigung können Sie sich anmelden und auf passende Ausschreibungen zugreifen.
-                  </p>
-                </div>
-              </div>
-            )}
+    {/* AGB und Datenschutz Checkboxen */}
+    <div className="space-y-4 pt-6 border-t border-white/20">
+      <h4 className="text-lg font-semibold text-white">Rechtliches</h4>
+      
+      <label className="flex items-start gap-3 cursor-pointer group">
+        <input
+          type="checkbox"
+          checked={acceptedTerms}
+          onChange={(e) => setAcceptedTerms(e.target.checked)}
+          className="w-5 h-5 min-w-[20px] min-h-[20px] flex-shrink-0 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
+        />
+        <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
+          Ich habe die{' '}
+          <Link 
+            to="/AGB" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-teal-400 hover:text-teal-300 underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Allgemeinen Geschäftsbedingungen (AGB)
+          </Link>{' '}
+          gelesen und akzeptiere diese. *
+        </span>
+      </label>
+      
+      <label className="flex items-start gap-3 cursor-pointer group">
+        <input
+          type="checkbox"
+          checked={acceptedPrivacy}
+          onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+          className="w-5 h-5 min-w-[20px] min-h-[20px] flex-shrink-0 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
+        />
+        <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
+          Ich habe die{' '}
+          <Link 
+            to="/datenschutz" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-teal-400 hover:text-teal-300 underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Datenschutzbestimmungen
+          </Link>{' '}
+          gelesen und stimme der Verarbeitung meiner Daten gemäß dieser Bestimmungen zu. *
+        </span>
+      </label>
+      
+      <p className="text-gray-500 text-xs mt-2">
+        Weitere Informationen finden Sie auch in unserem{' '}
+        <Link to="/disclaimer" target="_blank" className="text-teal-400 hover:text-teal-300 underline">
+          Disclaimer / Haftungsausschluss
+        </Link>
+      </p>
+    </div>
+
+    {/* Erfolgshinweis */}
+    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+      <p className="text-green-300 text-sm">
+        <strong>✓ Fast geschafft!</strong> Nach der Registrierung erhalten Sie eine E-Mail zur Bestätigung Ihrer Adresse.
+        Sobald unser Team Ihre Dokumente geprüft hat (1-2 Werktage), können Sie sich anmelden und auf passende Ausschreibungen zugreifen.
+      </p>
+    </div>
+  </div>
+)}
             
             {/* Error Message */}
             {error && (
