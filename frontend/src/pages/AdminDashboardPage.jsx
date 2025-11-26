@@ -1064,7 +1064,7 @@ const verifyHandwerker = async (id, action, reason = '') => {
             )}
 
             {/* Handwerker Verification Tab */}
-            {activeTab === 'handwerker-verify' && (
+{activeTab === 'handwerker-verify' && (
   <div>
     <h2 className="text-2xl font-bold text-white mb-4">Handwerker-Verifizierungen</h2>
     
@@ -1074,121 +1074,251 @@ const verifyHandwerker = async (id, action, reason = '') => {
       </div>
     ) : (
       <div className="grid gap-4">
-        {pendingHandwerker.map((hw) => (
-          <div key={hw.id} className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h3 className="font-semibold text-white text-lg">{hw.company_name}</h3>
-                <div className="mt-2 space-y-1">
-                  <p className="text-white/70 text-sm">ID: {hw.company_id || 'PENDING'}</p>
-                  <p className="text-white/70 text-sm">Kontakt: {hw.contact_person}</p>
-                  <p className="text-white/70 text-sm">E-Mail: {hw.email}</p>
-                  <p className="text-white/70 text-sm">Telefon: {hw.phone}</p>
-                  <p className="text-white/70 text-sm">
-                    Registriert: {new Date(hw.created_at).toLocaleDateString('de-DE')}
-                  </p>
-                  {hw.rejection_reason && (
-                    <div className="mt-2 p-2 bg-red-500/20 rounded">
-                      <p className="text-red-300 text-sm">
-                        <span className="font-semibold">Vorheriger Grund:</span> {hw.rejection_reason}
-                      </p>
-                    </div>
-                  )}
+        {pendingHandwerker.map((hw) => {
+          const docs = handwerkerDocuments[hw.id] || [];
+          const hasGewerbeschein = docs.some(d => d.document_type === 'gewerbeschein');
+          const hasHandwerkskarte = docs.some(d => d.document_type === 'handwerkskarte');
+          const missingDocs = !hasGewerbeschein || !hasHandwerkskarte;
+          
+          return (
+            <div key={hw.id} className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+              {/* Kopfbereich */}
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white text-lg">{hw.company_name}</h3>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-white/70 text-sm">ID: {hw.company_id || 'PENDING'}</p>
+                    <p className="text-white/70 text-sm">Kontakt: {hw.contact_person}</p>
+                    <p className="text-white/70 text-sm">E-Mail: {hw.email}</p>
+                    <p className="text-white/70 text-sm">Telefon: {hw.phone}</p>
+                    <p className="text-white/70 text-sm">
+                      Adresse: {hw.street} {hw.house_number}, {hw.zip_code} {hw.city}
+                    </p>
+                    <p className="text-white/70 text-sm">
+                      Gewerke: {hw.trade_names?.join(', ') || 'Keine'}
+                    </p>
+                    <p className="text-white/70 text-sm">
+                      Registriert: {new Date(hw.created_at).toLocaleDateString('de-DE')}
+                    </p>
+                    {hw.rejection_reason && (
+                      <div className="mt-2 p-2 bg-red-500/20 rounded">
+                        <p className="text-red-300 text-sm">
+                          <span className="font-semibold">Vorheriger Grund:</span> {hw.rejection_reason}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
+                
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => verifyHandwerker(hw.id, 'approve')}
+                    disabled={missingDocs}
+                    className="px-6 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                    title={missingDocs ? 'Pflichtdokumente fehlen!' : 'Handwerker genehmigen'}
+                  >
+                    ✓ Genehmigen
+                  </button>
+                  
+                  <button
+                    onClick={() => setRejectDialogs({...rejectDialogs, [hw.id]: true})}
+                    className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg"
+                  >
+                    ⚠ Nachbesserung
+                  </button>
+                  
+                  <button
+                    onClick={() => setDeleteDialogs({...deleteDialogs, [hw.id]: true})}
+                    className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                  >
+                    ✗ Löschen
+                  </button>
+                </div>
+              </div>
+
+              {/* NEU: Dokumente-Bereich */}
+              <div className="mt-4 pt-4 border-t border-white/20">
+                <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  📄 Hochgeladene Dokumente
+                  {missingDocs && (
+                    <span className="text-red-400 text-xs bg-red-500/20 px-2 py-1 rounded">
+                      ⚠️ Pflichtdokumente fehlen
+                    </span>
+                  )}
+                </h4>
+                
+                {docs.length === 0 ? (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                    <p className="text-red-300 text-sm">
+                      ⚠️ Keine Dokumente hochgeladen
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {/* Gewerbeschein */}
+                    <div className={`bg-white/5 rounded-lg p-4 border-l-4 ${
+                      hasGewerbeschein ? 'border-green-500' : 'border-red-500'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-white font-medium text-sm">
+                            {hasGewerbeschein ? '✓' : '✗'} Gewerbeschein
+                          </p>
+                          {docs.filter(d => d.document_type === 'gewerbeschein').map(doc => (
+                            <div key={doc.id} className="mt-2">
+                              <p className="text-white/60 text-xs">{doc.file_name}</p>
+                              <p className="text-white/40 text-xs">
+                                {new Date(doc.uploaded_at).toLocaleDateString('de-DE')}
+                              </p>
+                            </div>
+                          ))}
+                          {!hasGewerbeschein && (
+                            <p className="text-red-300 text-xs mt-1">Pflichtdokument fehlt</p>
+                          )}
+                        </div>
+                        {hasGewerbeschein && (
+                          <button
+                            onClick={() => {
+                              const doc = docs.find(d => d.document_type === 'gewerbeschein');
+                              downloadDocument(hw.id, doc.id, doc.file_name);
+                            }}
+                            className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-xs transition-colors"
+                          >
+                            📥 Download
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Handwerkskarte */}
+                    <div className={`bg-white/5 rounded-lg p-4 border-l-4 ${
+                      hasHandwerkskarte ? 'border-green-500' : 'border-red-500'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-white font-medium text-sm">
+                            {hasHandwerkskarte ? '✓' : '✗'} Handwerkskarte
+                          </p>
+                          {docs.filter(d => d.document_type === 'handwerkskarte').map(doc => (
+                            <div key={doc.id} className="mt-2">
+                              <p className="text-white/60 text-xs">{doc.file_name}</p>
+                              <p className="text-white/40 text-xs">
+                                {new Date(doc.uploaded_at).toLocaleDateString('de-DE')}
+                              </p>
+                            </div>
+                          ))}
+                          {!hasHandwerkskarte && (
+                            <p className="text-red-300 text-xs mt-1">Pflichtdokument fehlt</p>
+                          )}
+                        </div>
+                        {hasHandwerkskarte && (
+                          <button
+                            onClick={() => {
+                              const doc = docs.find(d => d.document_type === 'handwerkskarte');
+                              downloadDocument(hw.id, doc.id, doc.file_name);
+                            }}
+                            className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-xs transition-colors"
+                          >
+                            📥 Download
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Weitere Dokumente */}
+                    {docs.filter(d => !['gewerbeschein', 'handwerkskarte'].includes(d.document_type)).map(doc => (
+                      <div key={doc.id} className="bg-white/5 rounded-lg p-4 border-l-4 border-blue-500">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-white font-medium text-sm">
+                              📎 {doc.document_type}
+                            </p>
+                            <p className="text-white/60 text-xs mt-1">{doc.file_name}</p>
+                            <p className="text-white/40 text-xs">
+                              {new Date(doc.uploaded_at).toLocaleDateString('de-DE')}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => downloadDocument(hw.id, doc.id, doc.file_name)}
+                            className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-xs transition-colors"
+                          >
+                            📥 Download
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => verifyHandwerker(hw.id, 'approve')}
-                  className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
-                >
-                  ✓ Genehmigen
-                </button>
-                
-                <button
-                  onClick={() => setRejectDialogs({...rejectDialogs, [hw.id]: true})}
-                  className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg"
-                >
-                  ⚠ Nachbesserung
-                </button>
-                
-                <button
-                  onClick={() => setDeleteDialogs({...deleteDialogs, [hw.id]: true})}
-                  className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
-                >
-                  ✗ Löschen
-                </button>
-              </div>
+              {/* Dialoge bleiben gleich */}
+              {rejectDialogs[hw.id] && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
+                    <h3 className="text-xl font-bold text-white mb-4">Nachbesserung erforderlich</h3>
+                    <textarea
+                      value={rejectReasons[hw.id] || ''}
+                      onChange={(e) => setRejectReasons({...rejectReasons, [hw.id]: e.target.value})}
+                      placeholder="z.B. Gewerbeschein fehlt..."
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                      rows="4"
+                    />
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={() => verifyHandwerker(hw.id, 'reject', rejectReasons[hw.id])}
+                        disabled={!rejectReasons[hw.id]?.trim()}
+                        className="flex-1 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white rounded-lg"
+                      >
+                        Ablehnen
+                      </button>
+                      <button
+                        onClick={() => setRejectDialogs({...rejectDialogs, [hw.id]: false})}
+                        className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {deleteDialogs[hw.id] && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
+                    <h3 className="text-xl font-bold text-red-400 mb-4">⚠️ Handwerker löschen?</h3>
+                    <p className="text-white mb-4">{hw.company_name} wird vollständig entfernt.</p>
+                    <textarea
+                      value={deleteReasons[hw.id] || ''}
+                      onChange={(e) => setDeleteReasons({...deleteReasons, [hw.id]: e.target.value})}
+                      placeholder="Optional: Grund..."
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
+                      rows="3"
+                    />
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={() => verifyHandwerker(hw.id, 'delete', deleteReasons[hw.id])}
+                        className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                      >
+                        Löschen
+                      </button>
+                      <button
+                        onClick={() => setDeleteDialogs({...deleteDialogs, [hw.id]: false})}
+                        className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            {/* Ablehnungs-Dialog */}
-            {rejectDialogs[hw.id] && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
-                  <h3 className="text-xl font-bold text-white mb-4">Nachbesserung erforderlich</h3>
-                  <textarea
-                    value={rejectReasons[hw.id] || ''}
-                    onChange={(e) => setRejectReasons({...rejectReasons, [hw.id]: e.target.value})}
-                    placeholder="z.B. Gewerbeschein fehlt..."
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                    rows="4"
-                  />
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => verifyHandwerker(hw.id, 'reject', rejectReasons[hw.id])}
-                      disabled={!rejectReasons[hw.id]?.trim()}
-                      className="flex-1 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white rounded-lg"
-                    >
-                      Ablehnen
-                    </button>
-                    <button
-                      onClick={() => setRejectDialogs({...rejectDialogs, [hw.id]: false})}
-                      className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
-                    >
-                      Abbrechen
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Lösch-Dialog */}
-            {deleteDialogs[hw.id] && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
-                  <h3 className="text-xl font-bold text-red-400 mb-4">⚠️ Handwerker löschen?</h3>
-                  <p className="text-white mb-4">{hw.company_name} wird vollständig entfernt.</p>
-                  <textarea
-                    value={deleteReasons[hw.id] || ''}
-                    onChange={(e) => setDeleteReasons({...deleteReasons, [hw.id]: e.target.value})}
-                    placeholder="Optional: Grund..."
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-                    rows="3"
-                  />
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => verifyHandwerker(hw.id, 'delete', deleteReasons[hw.id])}
-                      className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
-                    >
-                      Löschen
-                    </button>
-                    <button
-                      onClick={() => setDeleteDialogs({...deleteDialogs, [hw.id]: false})}
-                      className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
-                    >
-                      Abbrechen
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     )}
   </div>
 )}
-
+            
             {/* Users Tab */}
             {activeTab === 'users' && (
   <div className="space-y-6">
