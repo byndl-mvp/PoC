@@ -1241,25 +1241,6 @@ const getPasswordStrengthClass = (password) => {
         📍 Adresse auf Karte anzeigen
       </button>
 
-      {/* Fahrtkosten */}
-      <div className="mb-6">
-        <label className="block text-white font-medium mb-2">
-          Fahrtkosten pro Kilometer
-        </label>
-        <div className="flex items-center gap-4">
-          <input
-            type="number"
-            min="0"
-            max="5"
-            step="0.1"
-            value={formData.travelCostPerKm || 0.5}
-            onChange={(e) => setFormData({...formData, travelCostPerKm: parseFloat(e.target.value)})}
-            className="w-32 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-          />
-          <span className="text-white">€/km</span>
-        </div>
-      </div>
-
       {/* Speichern Button */}
       <div className="flex justify-end">
         <button
