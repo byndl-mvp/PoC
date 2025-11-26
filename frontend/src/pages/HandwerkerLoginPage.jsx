@@ -67,15 +67,17 @@ export default function HandwerkerLoginPage() {
         }
         
         // Speichere Handwerker-Daten
-        const handwerkerData = {
-          id: data.id || data.handwerker?.id,
-          companyId: data.companyId,
-          companyName: data.companyName,
-          email: data.email,
-          trades: data.trades || [],
-          region: data.region,
-          actionRadius: data.actionRadius
-        };
+const handwerkerData = {
+  id: data.id || data.handwerker?.id,
+  companyId: data.companyId,
+  companyName: data.companyName,
+  email: data.email,
+  trades: data.trades || [],
+  region: data.region,
+  actionRadius: data.actionRadius,
+  verified: data.verified,                           
+  verification_status: data.verification_status      
+};
         
         sessionStorage.setItem('handwerkerData', JSON.stringify(handwerkerData));
         
