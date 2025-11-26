@@ -75,11 +75,6 @@ export default function HandwerkerSettingsPage() {
     earliestStart: '',
     capacity: 100,
     
-    // Preise
-    minOrderValue: '',
-    travelCostPerKm: 0.50,
-    hourlyRates: {},
-    
     // Benachrichtigungen
     emailNotifications: true,
     smsNotifications: false,
