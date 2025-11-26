@@ -632,9 +632,9 @@ const badgeCounts = {
                           {!tender.offer_status ? (
                             <div className="flex gap-2">  
                               <button
-                                onClick={() => handleOpenTender(tender)}
-                                className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
-                              >
+  onClick={() => checkVerificationAndNavigate(() => handleOpenTender(tender))}
+  className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+>
                                 <div>
                                   <div className="font-semibold">Angebot vorläufig abgeben</div>
                                   <div className="text-xs mt-1">Mit Vertragsanbahnung</div>
