@@ -1248,8 +1248,8 @@ const getPasswordStrengthClass = (password) => {
             min="0"
             max="5"
             step="0.1"
-            value={formData.travel_cost_per_km || 0.5}
-            onChange={(e) => setFormData({...formData, travel_cost_per_km: parseFloat(e.target.value)})}
+            value={formData.travelCostPerKm || 0.5}
+            onChange={(e) => setFormData({...formData, travelCostPerKm: parseFloat(e.target.value)})}
             className="w-32 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
           />
           <span className="text-white">€/km</span>
