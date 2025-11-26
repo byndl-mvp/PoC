@@ -1079,8 +1079,8 @@ const getPasswordStrengthClass = (password) => {
             type="range"
             min="5"
             max="200"
-            value={formData.action_radius || 25}
-            onChange={(e) => setFormData({...formData, action_radius: parseInt(e.target.value)})}
+            value={formData.actionRadius || 25}
+            onChange={(e) => setFormData({...formData, actionRadius: parseInt(e.target.value)})}
             className="flex-1"
           />
           <div className="flex items-center gap-2">
@@ -1088,8 +1088,8 @@ const getPasswordStrengthClass = (password) => {
               type="number"
               min="5"
               max="200"
-              value={formData.action_radius || 25}
-              onChange={(e) => setFormData({...formData, action_radius: parseInt(e.target.value)})}
+              value={formData.actionRadius || 25}
+              onChange={(e) => setFormData({...formData, actionRadius: parseInt(e.target.value)})}
               className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-center"
             />
             <span className="text-white">km</span>
@@ -1120,8 +1120,8 @@ const getPasswordStrengthClass = (password) => {
               parseFloat(formData.longitude) || 6.9603
             ]}>
               <Popup>
-                <strong>{formData.company_name}</strong><br />
-                {formData.street} {formData.house_number}<br />
+                <strong>{formData.companyName}</strong><br />
+                {formData.street} {formData.houseNumber}<br />
                 {formData.zip_code} {formData.city}
               </Popup>
             </Marker>
@@ -1132,7 +1132,7 @@ const getPasswordStrengthClass = (password) => {
                 parseFloat(formData.latitude) || 50.9375,
                 parseFloat(formData.longitude) || 6.9603
               ]}
-              radius={(formData.action_radius || 25) * 1000}
+              radius={(formData.actionRadius || 25) * 1000}
               fillColor="#14b8a6"
               fillOpacity={0.2}
               color="#14b8a6"
@@ -1187,7 +1187,7 @@ const getPasswordStrengthClass = (password) => {
       {/* Button zum Geocoding */}
       <button
         onClick={async () => {
-          const address = `${formData.street} ${formData.house_number}, ${formData.zip_code} ${formData.city}, Germany`;
+          const address = `${formData.street} ${formData.houseNumber}, ${formData.zipCode} ${formData.city}, Germany`;
           try {
             const response = await fetch(
               `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
@@ -1215,8 +1215,8 @@ const getPasswordStrengthClass = (password) => {
           Bevorzugte PLZ-Bereiche
         </label>
         <textarea
-          value={formData.preferred_zip_codes || ''}
-          onChange={(e) => setFormData({...formData, preferred_zip_codes: e.target.value})}
+          value={formData.preferred_zipCodes || ''}
+          onChange={(e) => setFormData({...formData, preferred_zipCodes: e.target.value})}
           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
           rows="2"
           placeholder="z.B. 50667, 50668, 50670-50679"
@@ -1229,8 +1229,8 @@ const getPasswordStrengthClass = (password) => {
           Ausgeschlossene Gebiete
         </label>
         <textarea
-          value={formData.excluded_areas || ''}
-          onChange={(e) => setFormData({...formData, excluded_areas: e.target.value})}
+          value={formData.excludedAreas || ''}
+          onChange={(e) => setFormData({...formData, excludedAreas: e.target.value})}
           className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
           rows="2"
           placeholder="z.B. Stadtteile oder PLZ-Bereiche"
