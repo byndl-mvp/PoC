@@ -17004,10 +17004,10 @@ app.post('/api/handwerker/login', async (req, res) => {
     // Handwerker finden - NEU: contact_first_name, contact_last_name hinzugefügt
     const result = await query(
       `SELECT 
-        id, company_id, company_name, email, password_hash,
+        id, verified, company_id, company_name, email, password_hash,
         phone, contact_person, contact_first_name, contact_last_name,
         street, house_number, zip_code, city,
-        action_radius, verified, verification_status, two_factor_enabled,
+        action_radius, verification_status, two_factor_enabled,
         active, email_verified, login_notification_enabled
        FROM handwerker 
        WHERE LOWER(email) = LOWER($1) 
@@ -17122,31 +17122,30 @@ app.post('/api/handwerker/login', async (req, res) => {
 
     // Response - NEU: contactFirstName, contactLastName hinzugefügt
     res.json({
-      success: true,
-      token,
-      handwerker: {
-        id: handwerker.id,
-        companyId: handwerker.company_id,
-        companyName: handwerker.company_name,
-        email: handwerker.email,
-        phone: handwerker.phone,
-        contactPerson: handwerker.contact_person,
-        contactFirstName: handwerker.contact_first_name,
-        contactLastName: handwerker.contact_last_name,
-        address: {
-          street: handwerker.street,
-          houseNumber: handwerker.house_number,
-          zipCode: handwerker.zip_code,
-          city: handwerker.city
-        },
-        actionRadius: handwerker.action_radius,
-        verified: handwerker.verified, 
-        verificationStatus: handwerker.verification_status,
-        verification_status: handwerker.verification_status,
-        emailVerified: handwerker.email_verified,
-        twoFactorEnabled: handwerker.two_factor_enabled
-      }
-    });
+  success: true,
+  token,
+  handwerker: {
+    id: handwerker.id,
+    verified: handwerker.verified,                      
+    verification_status: handwerker.verification_status, 
+    companyId: handwerker.company_id,
+    companyName: handwerker.company_name,
+    email: handwerker.email,
+    phone: handwerker.phone,
+    contactPerson: handwerker.contact_person,
+    contactFirstName: handwerker.contact_first_name,
+    contactLastName: handwerker.contact_last_name,
+    address: {
+      street: handwerker.street,
+      houseNumber: handwerker.house_number,
+      zipCode: handwerker.zip_code,
+      city: handwerker.city
+    },
+    actionRadius: handwerker.action_radius,
+    emailVerified: handwerker.email_verified,
+    twoFactorEnabled: handwerker.two_factor_enabled
+  }
+});
 
   } catch (err) {
     console.error('Login-Fehler:', err);
