@@ -1318,47 +1318,6 @@ const getPasswordStrengthClass = (password) => {
   </div>
 )}
           
-          {/* Verfügbarkeit Tab */}
-          {activeTab === 'verfuegbarkeit' && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white mb-4">Verfügbarkeit</h2>
-              
-              <div>
-                <label className="block text-white font-medium mb-2">
-                  Frühester Arbeitsbeginn
-                </label>
-                <input
-                  type="date"
-                  value={formData.earliestStart}
-                  onChange={(e) => handleChange('earliestStart', e.target.value)}
-                  className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-white font-medium mb-2">
-                  Kapazitätsauslastung: {formData.capacity}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={formData.capacity}
-                  onChange={(e) => handleChange('capacity', e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              
-              <button
-                onClick={() => handleSave('verfuegbarkeit')}
-                disabled={loading}
-                className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
-              >
-                Speichern
-              </button>
-            </div>
-          )}
-
           {/* Benachrichtigungen Tab */}
 {activeTab === 'benachrichtigungen' && (
   <div className="space-y-4">
@@ -1426,23 +1385,6 @@ const getPasswordStrengthClass = (password) => {
         <label className="flex items-center text-white cursor-pointer hover:text-teal-300 transition-colors">
           <input
             type="checkbox"
-            checked={formData.smsNotifications}
-            onChange={(e) => handleChange('smsNotifications', e.target.checked)}
-            disabled={!formData.notificationPhone}
-            className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500 disabled:opacity-50"
-          />
-          <div>
-            <span className="font-medium">SMS-Benachrichtigungen</span>
-            <p className="text-white/60 text-sm">
-              Für dringende Anfragen und zeitkritische Projekte
-              {!formData.notificationPhone && <span className="text-yellow-300"> (Telefonnummer erforderlich)</span>}
-            </p>
-          </div>
-        </label>
-        
-        <label className="flex items-center text-white cursor-pointer hover:text-teal-300 transition-colors">
-          <input
-            type="checkbox"
             checked={formData.newsletterSubscribed}
             onChange={(e) => handleChange('newsletterSubscribed', e.target.checked)}
             className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
@@ -1453,40 +1395,6 @@ const getPasswordStrengthClass = (password) => {
           </div>
         </label>
       </div>
-    </div>
-    
-    {/* Benachrichtigungszeiten */}
-    <div className="bg-white/5 rounded-lg p-4">
-      <h3 className="text-lg font-semibold text-white mb-4">Benachrichtigungszeiten</h3>
-      
-      <div className="grid md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-white font-medium mb-2">
-            Früheste Benachrichtigung
-          </label>
-          <input
-            type="time"
-            value={formData.notificationStartTime || '08:00'}
-            onChange={(e) => handleChange('notificationStartTime', e.target.value)}
-            className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-white font-medium mb-2">
-            Späteste Benachrichtigung
-          </label>
-          <input
-            type="time"
-            value={formData.notificationEndTime || '18:00'}
-            onChange={(e) => handleChange('notificationEndTime', e.target.value)}
-            className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-          />
-        </div>
-      </div>
-      <p className="text-white/60 text-sm mt-2">
-        Außerhalb dieser Zeiten werden nur kritische Benachrichtigungen versendet
-      </p>
     </div>
     
     {/* Speichern Button */}
