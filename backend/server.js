@@ -24368,6 +24368,7 @@ app.get('/api/handwerker/:id/settings', async (req, res) => {
         two_factor_enabled as "twoFactorEnabled",
         excluded_areas as "excludedAreas",
         travel_cost_per_km as "travelCostPerKm",
+        coverage_settings as "coverageSettings",
         email_verified,
         email_verified_at,
         accepted_terms_at,
@@ -24425,6 +24426,7 @@ app.get('/api/handwerker/:id/settings', async (req, res) => {
       vacationDates: h.vacationDates,
       excludedAreas: h.excludedAreas,
       travelCostPerKm: h.travelCostPerKm,
+      coverageSettings: h.coverageSettings,
       
       // Zahlungsdaten
       bankIban: h.bankIban,
