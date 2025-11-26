@@ -70,11 +70,6 @@ export default function HandwerkerSettingsPage() {
     actionRadius: 25,
     excludedAreas: [],
     
-    // Verfügbarkeit
-    vacationDates: [],
-    earliestStart: '',
-    capacity: 100,
-    
     // Benachrichtigungen
     emailNotifications: true,
     smsNotifications: false,
@@ -492,7 +487,6 @@ const loadDocuments = async () => {
   { id: 'gewerke', label: 'Meine Gewerke' },
   { id: 'firmendaten', label: 'Firmendaten' },
   { id: 'einsatzgebiet', label: 'Einsatzgebiet' },
-  { id: 'verfuegbarkeit', label: 'Verfügbarkeit' },
   { id: 'benachrichtigungen', label: 'Benachrichtigungen' },
   { id: 'zahlungsdaten', label: 'Zahlungsdaten' },
   { id: 'dokumente', label: 'Dokumente' },
