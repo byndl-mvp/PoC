@@ -498,7 +498,6 @@ const loadDocuments = async () => {
   { id: 'firmendaten', label: 'Firmendaten' },
   { id: 'einsatzgebiet', label: 'Einsatzgebiet' },
   { id: 'verfuegbarkeit', label: 'Verfügbarkeit' },
-  { id: 'preise', label: 'Preise' },
   { id: 'benachrichtigungen', label: 'Benachrichtigungen' },
   { id: 'zahlungsdaten', label: 'Zahlungsdaten' },
   { id: 'dokumente', label: 'Dokumente' },
