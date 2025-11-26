@@ -280,12 +280,34 @@ const loadOrderTotals = async (orderIds) => {
 const checkVerificationAndNavigate = (callback) => {
   const handwerkerData = JSON.parse(sessionStorage.getItem('handwerkerData'));
   
-  if (!handwerkerData.verified || handwerkerData.verification_status !== 'verified') {
+  // Sicherheitscheck: Falls keine Daten vorhanden
+  if (!handwerkerData) {
+    console.error('Keine Handwerker-Daten gefunden');
+    return false;
+  }
+  
+  // Debug-Ausgabe (temporär)
+  console.log('🔍 Verifizierungsstatus Check:', {
+    verified: handwerkerData.verified,
+    verification_status: handwerkerData.verification_status,
+    typeof_verified: typeof handwerkerData.verified,
+    typeof_status: typeof handwerkerData.verification_status
+  });
+  
+  // WICHTIG: Prüfe beide Felder richtig
+  // verified kann true/false oder 1/0 sein (je nach DB)
+  // verification_status muss 'verified' sein (String)
+  const isVerified = (handwerkerData.verified === true || handwerkerData.verified === 1) && 
+                     handwerkerData.verification_status === 'verified';
+  
+  if (!isVerified) {
+    console.log('❌ Nicht verifiziert - Modal öffnen');
     setShowVerificationModal(true);
     return false;
   }
   
   // Wenn verifiziert, führe die Callback-Funktion aus
+  console.log('✅ Verifiziert - Navigation erlaubt');
   callback();
   return true;
 };
