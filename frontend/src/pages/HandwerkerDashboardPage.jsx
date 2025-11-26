@@ -1832,6 +1832,3 @@ const badgeCounts = {
     </div>
   );
 }         
-    </div>
-  );
-}
