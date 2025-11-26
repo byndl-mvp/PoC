@@ -354,8 +354,10 @@ export default function HandwerkerRegisterPage() {
 // NEU: Funktion zum Hochladen der Dokumente bei Registrierung
 const uploadDocumentsForRegistration = async (handwerkerId, files) => {
   const typeMapping = {
-    'meisterbrief': 'handwerkskarte',
-    'versicherung': 'versicherungsnachweis'
+    'gewerbeschein': 'gewerbeschein',        // Bleibt gleich
+    'handwerkskarte': 'handwerkskarte',      // Bleibt gleich
+    'versicherung': 'versicherungsnachweis', // Optional
+    'weitere': 'weitere'                      // Optional
   };
   
   for (const [key, file] of Object.entries(files)) {
