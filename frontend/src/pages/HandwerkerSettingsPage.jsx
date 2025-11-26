@@ -1312,7 +1312,7 @@ const getPasswordStrengthClass = (password) => {
   </div>
 )}
           
-          {/* Benachrichtigungen Tab */}
+           {/* Benachrichtigungen Tab */}
 {activeTab === 'benachrichtigungen' && (
   <div className="space-y-4">
     <h2 className="text-2xl font-bold text-white mb-4">Benachrichtigungen</h2>
@@ -1373,6 +1373,23 @@ const getPasswordStrengthClass = (password) => {
           <div>
             <span className="font-medium">E-Mail-Benachrichtigungen</span>
             <p className="text-white/60 text-sm">Erhalten Sie E-Mails bei neuen Ausschreibungen in Ihrem Bereich</p>
+          </div>
+        </label>
+        
+        <label className="flex items-center text-white cursor-pointer hover:text-teal-300 transition-colors">
+          <input
+            type="checkbox"
+            checked={formData.smsNotifications}
+            onChange={(e) => handleChange('smsNotifications', e.target.checked)}
+            disabled={!formData.notificationPhone}
+            className="mr-3 w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500 disabled:opacity-50"
+          />
+          <div>
+            <span className="font-medium">SMS-Benachrichtigungen</span>
+            <p className="text-white/60 text-sm">
+              Für dringende Anfragen und zeitkritische Projekte
+              {!formData.notificationPhone && <span className="text-yellow-300"> (Telefonnummer erforderlich)</span>}
+            </p>
           </div>
         </label>
         
