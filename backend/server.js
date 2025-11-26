@@ -23757,7 +23757,35 @@ app.post('/api/bundles/:bundleId/submit-offer', async (req, res) => {
       }
       handwerkerId = handwerkerResult.rows[0].id;
     }
+
+    // ✅ VERIFIZIERUNGS-CHECK
+    const verificationCheck = await query(
+      `SELECT verified, verification_status, company_name 
+       FROM handwerker 
+       WHERE id = $1`,
+      [handwerkerId]
+    );
     
+    if (verificationCheck.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ 
+        error: 'Handwerker nicht gefunden',
+        requiresVerification: true
+      });
+    }
+    
+    const handwerker = verificationCheck.rows[0];
+    
+    if (!handwerker.verified || handwerker.verification_status !== 'verified') {
+      await query('ROLLBACK');
+      return res.status(403).json({ 
+        error: 'Ihr Account muss erst verifiziert werden, bevor Sie Angebote erstellen können. Die Prüfung dauert in der Regel 1-2 Werktage.',
+        requiresVerification: true,
+        verificationStatus: handwerker.verification_status || 'pending'
+      });
+    }
+    
+    console.log(`✅ Verifizierter Handwerker ${handwerkerId} (${handwerker.company_name}) erstellt Bündel-Angebot für Bundle ${bundleId}`);
     console.log(`✅ Handwerker ID: ${handwerkerId}, Discount: ${discountValue}%`);
     
     // Tenders für dieses Bundle laden
