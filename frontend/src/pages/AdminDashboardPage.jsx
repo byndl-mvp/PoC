@@ -277,12 +277,6 @@ const downloadDocument = async (handwerkerId, docId, fileName) => {
             break;
          case 'handwerker-verify':
             await fetchPendingHandwerker();
-            // NEU: Lade Dokumente für alle pendenden Handwerker
-            if (pendingHandwerker.length > 0) {
-              for (const hw of pendingHandwerker) {
-                await fetchHandwerkerDocuments(hw.id);
-              }
-            }
             break;
           case 'orders':
             await fetchOrders();
@@ -306,6 +300,20 @@ const downloadDocument = async (handwerkerId, docId, fileName) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, filterStatus, token]);
 
+// NEU: Dokumente laden wenn pendingHandwerker sich ändern
+useEffect(() => {
+  const loadDocumentsForPending = async () => {
+    if (activeTab === 'handwerker-verify' && pendingHandwerker.length > 0) {
+      console.log('Lade Dokumente für', pendingHandwerker.length, 'Handwerker');
+      for (const hw of pendingHandwerker) {
+        await fetchHandwerkerDocuments(hw.id);
+      }
+    }
+  };
+  
+  loadDocumentsForPending();
+}, [pendingHandwerker, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  
 const fetchHandwerkerDetails = async (id) => {
   setLoading(true);
   try {
