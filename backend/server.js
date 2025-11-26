@@ -32976,7 +32976,6 @@ app.get('/api/admin/pending-handwerker', requireAdmin, async (req, res) => {
 });
 
 // Handwerker verifizieren, ablehnen oder löschen
-// Diese Route ersetzt die komplette app.post('/api/admin/verify-handwerker/:id' Route in server.js
 app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -32998,167 +32997,367 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
     
     switch(action) {
       case 'approve':
-        // === GENEHMIGUNG ===
-        let finalId = handwerker.company_id;
-        
-        if (!finalId || finalId === 'PENDING') {
-          const year = new Date().getFullYear();
-          const random = Math.floor(Math.random() * 9000) + 1000;
-          finalId = `HW-${year}-${random}`;
-        }
-        
-        await query(
-          `UPDATE handwerker 
-           SET verified = true,
-               verification_status = 'verified',
-               company_id = $2,
-               verified_at = NOW(),
-               rejection_reason = NULL
-           WHERE id = $1`,
-          [id, finalId]
-        );
-        
-        // Bestätigungs-E-Mail
-        if (transporter) {
-          try {
-            await transporter.sendMail({
-              to: handwerker.email,
-              subject: 'Ihre Registrierung bei byndl wurde bestätigt',
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px;">
-                  <h2 style="color: #14b8a6;">Willkommen bei byndl!</h2>
-                  <p>Sehr geehrte/r ${handwerker.contact_person},</p>
-                  <p>Ihre Registrierung für <strong>${handwerker.company_name}</strong> wurde erfolgreich verifiziert.</p>
-                  <p><strong>Ihre Handwerker-ID:</strong> ${finalId}</p>
-                  <p>Sie können sich nun in Ihr Dashboard einloggen und auf Ausschreibungen zugreifen.</p>
-                  <a href="https://byndl.de/handwerker/login" style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #14b8a6; color: white; text-decoration: none; border-radius: 6px;">Zum Dashboard</a>
+  // === GENEHMIGUNG ===
+  let finalId = handwerker.company_id;
+  
+  if (!finalId || finalId === 'PENDING') {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 9000) + 1000;
+    finalId = `HW-${year}-${random}`;
+  }
+  
+  await query(
+    `UPDATE handwerker 
+     SET verified = true,
+         verification_status = 'verified',
+         company_id = $2,
+         verified_at = NOW(),
+         rejection_reason = NULL
+     WHERE id = $1`,
+    [id, finalId]
+  );
+  
+  // ✅ VERBESSERTE BESTÄTIGUNGS-E-MAIL
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER, // ← WICHTIG: from Feld!
+        to: handwerker.email,
+        subject: '✅ Ihr byndl Account wurde verifiziert!',
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4;">
+            <div style="max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; padding: 40px 30px; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px; font-weight: 700;">🎉 Willkommen bei byndl!</h1>
+              </div>
+              
+              <!-- Content -->
+              <div style="padding: 40px 30px;">
+                <div style="text-align: center; font-size: 64px; margin-bottom: 20px;">✅</div>
+                
+                <p style="font-size: 18px; color: #0891b2; font-weight: 600; margin-bottom: 10px;">
+                  Hallo ${handwerker.contact_person},
+                </p>
+                
+                <p style="color: #555; margin-bottom: 30px; font-size: 16px;">
+                  großartige Neuigkeiten! Ihr Account <strong>${handwerker.company_name}</strong> wurde erfolgreich verifiziert 
+                  und ist jetzt vollständig freigeschaltet.
+                </p>
+                
+                <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                  <strong>🚀 Sie können ab sofort Angebote auf Ausschreibungen abgeben!</strong>
                 </div>
-              `
-            });
-            console.log(`Bestätigungs-E-Mail gesendet an: ${handwerker.email}`);
-          } catch (emailError) {
-            console.log('E-Mail-Versand fehlgeschlagen:', emailError.message);
-          }
-        }
-        
-        console.log(`Handwerker ${id} (${handwerker.company_name}) genehmigt mit ID: ${finalId}`);
-        res.json({ 
-          success: true, 
-          message: 'Handwerker erfolgreich verifiziert',
-          handwerkerId: finalId
-        });
-        break;
-        
-      case 'reject':
-        // === ABLEHNUNG MIT BEGRÜNDUNG (NICHT LÖSCHEN) ===
-        if (!reason || reason.trim() === '') {
-          return res.status(400).json({ error: 'Begründung für Ablehnung erforderlich' });
-        }
-        
-        await query(
-          `UPDATE handwerker 
-           SET verified = false,
-               verification_status = 'rejected',
-               rejection_reason = $2
-           WHERE id = $1`,
-          [id, reason]
-        );
-        
-        // Ablehnungs-E-Mail mit Begründung
-        if (transporter) {
-          try {
-            await transporter.sendMail({
-              to: handwerker.email,
-              subject: 'Ihre Registrierung bei byndl - Nachbesserung erforderlich',
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px;">
-                  <h2 style="color: #dc2626;">Nachbesserung erforderlich</h2>
-                  <p>Sehr geehrte/r ${handwerker.contact_person},</p>
-                  <p>Ihre Registrierung für <strong>${handwerker.company_name}</strong> konnte noch nicht genehmigt werden.</p>
-                  
-                  <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <p><strong>Grund:</strong></p>
-                    <p>${reason}</p>
+                
+                <div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                  <h3 style="margin: 0 0 15px 0; color: #0891b2; font-size: 16px;">📋 Was Sie jetzt tun können:</h3>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li style="margin: 8px 0; color: #555;"><strong>Ausschreibungen durchsuchen</strong> – Finden Sie passende Projekte in Ihrer Region</li>
+                    <li style="margin: 8px 0; color: #555;"><strong>Angebote erstellen</strong> – Geben Sie Ihre Preise und Leistungen an</li>
+                    <li style="margin: 8px 0; color: #555;"><strong>Projektbündel nutzen</strong> – Kombinieren Sie mehrere Aufträge und sparen Sie Fahrzeit</li>
+                    <li style="margin: 8px 0; color: #555;"><strong>Aufträge erhalten</strong> – Nach Beauftragung erhalten Sie alle Kontaktdaten</li>
+                  </ul>
+                </div>
+                
+                <div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                  <h3 style="margin: 0 0 15px 0; color: #0891b2; font-size: 16px;">💡 So funktioniert byndl:</h3>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li style="margin: 8px 0; color: #555;"><strong>1.</strong> Passende Ausschreibungen werden Ihnen automatisch angezeigt</li>
+                    <li style="margin: 8px 0; color: #555;"><strong>2.</strong> Sie erstellen ein vorläufiges Angebot mit Ihrer Preiskalkulation</li>
+                    <li style="margin: 8px 0; color: #555;"><strong>3.</strong> Der Bauherr wählt das beste Angebot aus</li>
+                    <li style="margin: 8px 0; color: #555;"><strong>4.</strong> Bei Beauftragung erhalten Sie alle Details und können loslegen</li>
+                  </ul>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    🎯 Jetzt Ausschreibungen ansehen
+                  </a>
+                </div>
+                
+                <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 30px 0; border-left: 4px solid #f59e0b;">
+                  <strong>⭐ Tipp:</strong> Aktivieren Sie Benachrichtigungen in Ihren Einstellungen, 
+                  um keine passenden Ausschreibungen zu verpassen!
+                </div>
+                
+                <p style="color: #555; margin-top: 30px; font-size: 16px;">
+                  <strong>Ihre Handwerker-ID:</strong> ${finalId}
+                </p>
+                
+                <p style="color: #555; margin-top: 30px; font-size: 16px;">
+                  Bei Fragen oder Problemen steht Ihnen unser Support-Team jederzeit zur Verfügung.
+                </p>
+                
+                <p style="color: #555; font-size: 16px;">
+                  Viel Erfolg und gute Aufträge wünscht Ihnen<br>
+                  <strong>Ihr byndl-Team</strong>
+                </p>
+              </div>
+              
+              <!-- Footer -->
+              <div style="background: #f9fafb; padding: 30px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb;">
+                <p style="margin: 0 0 10px 0;">
+                  <strong>byndl</strong> – Die smarte Plattform für Handwerker und Bauherren<br>
+                  <a href="https://byndl.de" style="color: #0891b2; text-decoration: none;">www.byndl.de</a> | 
+                  <a href="mailto:support@byndl.de" style="color: #0891b2; text-decoration: none;">support@byndl.de</a>
+                </p>
+                <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                  Sie erhalten diese E-Mail, weil Sie sich bei byndl registriert haben.
+                </p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      });
+      console.log(`✅ Verifizierungs-E-Mail gesendet an: ${handwerker.email}`);
+    } catch (emailError) {
+      console.error('E-Mail-Versand fehlgeschlagen:', emailError);
+    }
+  }
+  
+  console.log(`Handwerker ${id} (${handwerker.company_name}) genehmigt mit ID: ${finalId}`);
+  res.json({ 
+    success: true, 
+    message: 'Handwerker erfolgreich verifiziert',
+    handwerkerId: finalId
+  });
+  break;
+  
+case 'reject':
+  // === ABLEHNUNG MIT BEGRÜNDUNG (NACHBESSERUNG) ===
+  if (!reason || reason.trim() === '') {
+    return res.status(400).json({ error: 'Begründung für Ablehnung erforderlich' });
+  }
+  
+  await query(
+    `UPDATE handwerker 
+     SET verified = false,
+         verification_status = 'rejected',
+         rejection_reason = $2
+     WHERE id = $1`,
+    [id, reason]
+  );
+  
+  // ✅ VERBESSERTE NACHBESSERUNGS-E-MAIL
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER, // ← WICHTIG: from Feld!
+        to: handwerker.email,
+        subject: '⚠️ Ihre byndl Registrierung - Nachbesserung erforderlich',
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4;">
+            <div style="max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 40px 30px; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px; font-weight: 700;">⚠️ Nachbesserung erforderlich</h1>
+              </div>
+              
+              <!-- Content -->
+              <div style="padding: 40px 30px;">
+                <div style="text-align: center; font-size: 64px; margin-bottom: 20px;">📝</div>
+                
+                <p style="font-size: 18px; color: #d97706; font-weight: 600; margin-bottom: 10px;">
+                  Hallo ${handwerker.contact_person},
+                </p>
+                
+                <p style="color: #555; margin-bottom: 30px; font-size: 16px;">
+                  vielen Dank für Ihre Registrierung bei byndl als <strong>${handwerker.company_name}</strong>.
+                </p>
+                
+                <p style="color: #555; margin-bottom: 20px; font-size: 16px;">
+                  Bei der Prüfung Ihrer Unterlagen haben wir festgestellt, dass noch Informationen fehlen 
+                  oder nachgebessert werden müssen.
+                </p>
+                
+                <!-- Grund Box -->
+                <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                  <h3 style="margin: 0 0 10px 0; color: #dc2626; font-size: 16px;">📋 Was muss nachgebessert werden:</h3>
+                  <p style="color: #555; margin: 0; white-space: pre-line;">${reason}</p>
+                </div>
+                
+                <!-- Nächste Schritte -->
+                <div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                  <h3 style="margin: 0 0 15px 0; color: #0891b2; font-size: 16px;">✅ Nächste Schritte:</h3>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li style="margin: 8px 0; color: #555;">Loggen Sie sich in Ihr Dashboard ein</li>
+                    <li style="margin: 8px 0; color: #555;">Gehen Sie zu "Einstellungen" → "Dokumente"</li>
+                    <li style="margin: 8px 0; color: #555;">Laden Sie die fehlenden oder korrigierten Dokumente hoch</li>
+                    <li style="margin: 8px 0; color: #555;">Wir prüfen Ihre Unterlagen erneut innerhalb von 1-2 Werktagen</li>
+                  </ul>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    📤 Dokumente hochladen
+                  </a>
+                </div>
+                
+                <!-- Info Box -->
+                <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                  <p style="color: #92400e; margin: 0; font-size: 14px;">
+                    <strong>💡 Hinweis:</strong> Sobald Sie die Unterlagen nachgereicht haben, 
+                    wird Ihr Account automatisch zur erneuten Prüfung vorgelegt.
+                  </p>
+                </div>
+                
+                <p style="color: #555; margin-top: 30px; font-size: 16px;">
+                  Bei Fragen oder Unklarheiten können Sie uns gerne kontaktieren:<br>
+                  📧 <a href="mailto:verifizierung@byndl.de" style="color: #0891b2; text-decoration: none;">verifizierung@byndl.de</a>
+                </p>
+                
+                <p style="color: #555; font-size: 16px; margin-top: 30px;">
+                  Mit freundlichen Grüßen<br>
+                  <strong>Ihr byndl-Team</strong>
+                </p>
+              </div>
+              
+              <!-- Footer -->
+              <div style="background: #f9fafb; padding: 30px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb;">
+                <p style="margin: 0 0 10px 0;">
+                  <strong>byndl</strong> – Die smarte Plattform für Handwerker und Bauherren<br>
+                  <a href="https://byndl.de" style="color: #0891b2; text-decoration: none;">www.byndl.de</a> | 
+                  <a href="mailto:support@byndl.de" style="color: #0891b2; text-decoration: none;">support@byndl.de</a>
+                </p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      });
+      console.log(`⚠️ Nachbesserungs-E-Mail gesendet an: ${handwerker.email}`);
+    } catch (emailError) {
+      console.error('E-Mail-Versand fehlgeschlagen:', emailError);
+    }
+  }
+  
+  console.log(`Handwerker ${id} (${handwerker.company_name}) abgelehnt. Grund: ${reason}`);
+  res.json({ 
+    success: true, 
+    message: 'Handwerker wurde zur Nachbesserung aufgefordert',
+    reason: reason
+  });
+  break;
+  
+case 'delete':
+  // === VOLLSTÄNDIGE LÖSCHUNG ===
+  console.log(`LÖSCHE Handwerker ${id} (${handwerker.company_name}) vollständig...`);
+  
+  // Lösche alle abhängigen Einträge
+  await query('DELETE FROM handwerker_trades WHERE handwerker_id = $1', [id]).catch(() => {});
+  await query('DELETE FROM handwerker_documents WHERE handwerker_id = $1', [id]).catch(() => {});
+  await query('DELETE FROM handwerker_certifications WHERE handwerker_id = $1', [id]).catch(() => {});
+  await query('DELETE FROM handwerker_insurances WHERE handwerker_id = $1', [id]).catch(() => {});
+  await query('DELETE FROM offers WHERE handwerker_id = $1', [id]).catch(() => {});
+  await query('DELETE FROM orders WHERE handwerker_id = $1', [id]).catch(() => {});
+  
+  // Lösche den Handwerker selbst
+  await query('DELETE FROM handwerker WHERE id = $1', [id]);
+  
+  // ✅ VERBESSERTE LÖSCH-E-MAIL
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER, // ← WICHTIG: from Feld!
+        to: handwerker.email,
+        subject: '❌ Ihre byndl Registrierung wurde abgelehnt',
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4;">
+            <div style="max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 40px 30px; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px; font-weight: 700;">Registrierung abgelehnt</h1>
+              </div>
+              
+              <!-- Content -->
+              <div style="padding: 40px 30px;">
+                <div style="text-align: center; font-size: 64px; margin-bottom: 20px;">❌</div>
+                
+                <p style="font-size: 18px; color: #dc2626; font-weight: 600; margin-bottom: 10px;">
+                  Hallo ${handwerker.contact_person},
+                </p>
+                
+                <p style="color: #555; margin-bottom: 30px; font-size: 16px;">
+                  vielen Dank für Ihr Interesse an byndl.
+                </p>
+                
+                <p style="color: #555; margin-bottom: 20px; font-size: 16px;">
+                  Nach sorgfältiger Prüfung müssen wir Ihnen leider mitteilen, dass wir Ihre Registrierung 
+                  für <strong>${handwerker.company_name}</strong> nicht genehmigen können.
+                </p>
+                
+                ${reason ? `
+                  <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                    <h3 style="margin: 0 0 10px 0; color: #dc2626; font-size: 16px;">Grund der Ablehnung:</h3>
+                    <p style="color: #555; margin: 0; white-space: pre-line;">${reason}</p>
                   </div>
-                  
-                  <h3>Was können Sie tun?</h3>
-                  <p>Bitte beheben Sie die genannten Punkte und ergänzen Sie Ihre Unterlagen entsprechend. 
-                     Sie können die fehlenden Dokumente in Ihrem Dashboard hochladen.</p>
-                  
-                  <a href="https://byndl.de/handwerker/login" style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #14b8a6; color: white; text-decoration: none; border-radius: 6px;">Zum Dashboard</a>
-                  
-                  <p style="margin-top: 30px; color: #666;">Bei Fragen wenden Sie sich an: verifizierung@byndl.de</p>
+                ` : ''}
+                
+                <div style="background: #f3f4f6; border-left: 4px solid #6b7280; padding: 20px; margin: 25px 0; border-radius: 4px;">
+                  <p style="color: #555; margin: 0; font-size: 14px;">
+                    <strong>ℹ️ Hinweis:</strong> Ihre Daten wurden vollständig aus unserem System entfernt.
+                  </p>
                 </div>
-              `
-            });
-            console.log(`Ablehnungs-E-Mail gesendet an: ${handwerker.email}`);
-          } catch (emailError) {
-            console.log('E-Mail-Versand fehlgeschlagen:', emailError.message);
-          }
-        }
-        
-        console.log(`Handwerker ${id} (${handwerker.company_name}) abgelehnt. Grund: ${reason}`);
-        res.json({ 
-          success: true, 
-          message: 'Handwerker wurde zur Nachbesserung aufgefordert',
-          reason: reason
-        });
-        break;
-        
-      case 'delete':
-        // === VOLLSTÄNDIGE LÖSCHUNG (NUR BEI VÖLLIG UNGEEIGNET) ===
-        console.log(`LÖSCHE Handwerker ${id} (${handwerker.company_name}) vollständig...`);
-        
-        // Lösche alle abhängigen Einträge
-        await query('DELETE FROM handwerker_trades WHERE handwerker_id = $1', [id])
-          .catch(() => {});
-        await query('DELETE FROM handwerker_documents WHERE handwerker_id = $1', [id])
-          .catch(() => {});
-        await query('DELETE FROM handwerker_certifications WHERE handwerker_id = $1', [id])
-          .catch(() => {});
-        await query('DELETE FROM handwerker_insurances WHERE handwerker_id = $1', [id])
-          .catch(() => {});
-        await query('DELETE FROM offers WHERE handwerker_id = $1', [id])
-          .catch(() => {});
-        await query('DELETE FROM orders WHERE handwerker_id = $1', [id])
-          .catch(() => {});
-        
-        // Lösche den Handwerker selbst
-        await query('DELETE FROM handwerker WHERE id = $1', [id]);
-        
-        // Lösch-E-Mail
-        if (transporter) {
-          try {
-            await transporter.sendMail({
-              to: handwerker.email,
-              subject: 'Ihre Registrierung bei byndl wurde abgelehnt',
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px;">
-                  <h2 style="color: #dc2626;">Registrierung abgelehnt</h2>
-                  <p>Sehr geehrte/r ${handwerker.contact_person},</p>
-                  <p>Ihre Registrierung für <strong>${handwerker.company_name}</strong> wurde abgelehnt.</p>
-                  ${reason ? `
-                    <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                      <p><strong>Grund:</strong> ${reason}</p>
-                    </div>
-                  ` : ''}
-                  <p>Ihre Daten wurden aus unserem System entfernt.</p>
-                  <p style="margin-top: 30px; color: #666;">Bei Fragen wenden Sie sich an: support@byndl.de</p>
-                </div>
-              `
-            });
-          } catch (emailError) {
-            console.log('E-Mail-Versand fehlgeschlagen:', emailError.message);
-          }
-        }
-        
-        console.log(`✓ Handwerker ${handwerker.company_name} vollständig gelöscht`);
-        res.json({ 
-          success: true, 
-          message: 'Handwerker vollständig aus dem System entfernt',
-          deletedCompany: handwerker.company_name
-        });
-        break;
+                
+                <p style="color: #555; margin-top: 30px; font-size: 16px;">
+                  Bei Fragen zu dieser Entscheidung können Sie uns gerne kontaktieren:<br>
+                  📧 <a href="mailto:support@byndl.de" style="color: #0891b2; text-decoration: none;">support@byndl.de</a>
+                </p>
+                
+                <p style="color: #555; font-size: 16px; margin-top: 30px;">
+                  Mit freundlichen Grüßen<br>
+                  <strong>Ihr byndl-Team</strong>
+                </p>
+              </div>
+              
+              <!-- Footer -->
+              <div style="background: #f9fafb; padding: 30px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb;">
+                <p style="margin: 0 0 10px 0;">
+                  <strong>byndl</strong> – Die smarte Plattform für Handwerker und Bauherren<br>
+                  <a href="https://byndl.de" style="color: #0891b2; text-decoration: none;">www.byndl.de</a> | 
+                  <a href="mailto:support@byndl.de" style="color: #0891b2; text-decoration: none;">support@byndl.de</a>
+                </p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      });
+      console.log(`❌ Lösch-E-Mail gesendet an: ${handwerker.email}`);
+    } catch (emailError) {
+      console.error('E-Mail-Versand fehlgeschlagen:', emailError);
+    }
+  }
+  
+  console.log(`✓ Handwerker ${handwerker.company_name} vollständig gelöscht`);
+  res.json({ 
+    success: true, 
+    message: 'Handwerker vollständig aus dem System entfernt',
+    deletedCompany: handwerker.company_name
+  });
+  break;
         
       default:
         return res.status(400).json({ error: 'Ungültige Aktion. Verwende: approve, reject oder delete' });
