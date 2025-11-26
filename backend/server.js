@@ -24579,8 +24579,8 @@ await query(
     JSON.stringify(excludedAreas || []),
     travelCostPerKm || 0.5,
     req.body.street || null,        
-    req.body.house_number || null,  
-    req.body.zip_code || null,      
+    req.body.houseNumber || null,  
+    req.body.zipCode || null,      
     req.body.city || null                      
   ]
 );
