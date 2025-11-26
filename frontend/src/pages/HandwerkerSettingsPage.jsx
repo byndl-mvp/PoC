@@ -337,7 +337,6 @@ useEffect(() => {
       'dokumente': 'documents',
       'firmendaten': 'firmendaten',
       'verfuegbarkeit': 'verfuegbarkeit',
-      'preise': 'preise',
       'benachrichtigungen': 'benachrichtigungen',
       'zahlungsdaten': 'zahlungsdaten',
       'account': 'account'
@@ -1242,34 +1241,6 @@ const getPasswordStrengthClass = (password) => {
         📍 Adresse auf Karte anzeigen
       </button>
 
-      {/* Bevorzugte PLZ-Bereiche */}
-      <div className="mb-6">
-        <label className="block text-white font-medium mb-2">
-          Bevorzugte PLZ-Bereiche
-        </label>
-        <textarea
-          value={formData.preferredZipCodes || ''}
-          onChange={(e) => setFormData({...formData, preferredZipCodes: e.target.value})}
-          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-          rows="2"
-          placeholder="z.B. 50667, 50668, 50670-50679"
-        />
-      </div>
-
-      {/* Ausgeschlossene Gebiete */}
-      <div className="mb-6">
-        <label className="block text-white font-medium mb-2">
-          Ausgeschlossene Gebiete
-        </label>
-        <textarea
-          value={formData.excludedAreas || ''}
-          onChange={(e) => setFormData({...formData, excludedAreas: e.target.value})}
-          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
-          rows="2"
-          placeholder="z.B. Stadtteile oder PLZ-Bereiche"
-        />
-      </div>
-
       {/* Fahrtkosten */}
       <div className="mb-6">
         <label className="block text-white font-medium mb-2">
@@ -1405,48 +1376,6 @@ const getPasswordStrengthClass = (password) => {
               
               <button
                 onClick={() => handleSave('verfuegbarkeit')}
-                disabled={loading}
-                className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
-              >
-                Speichern
-              </button>
-            </div>
-          )}
-
-          {/* Preise Tab */}
-          {activeTab === 'preise' && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white mb-4">Preiseinstellungen</h2>
-              
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-white font-medium mb-2">
-                    Mindestauftragswert (€)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.minOrderValue}
-                    onChange={(e) => handleChange('minOrderValue', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-white font-medium mb-2">
-                    Anfahrtskosten pro km (€)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.10"
-                    value={formData.travelCostPerKm}
-                    onChange={(e) => handleChange('travelCostPerKm', e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white"
-                  />
-                </div>
-              </div>
-              
-              <button
-                onClick={() => handleSave('preise')}
                 disabled={loading}
                 className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors"
               >
