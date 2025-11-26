@@ -1156,8 +1156,8 @@ const getPasswordStrengthClass = (password) => {
             />
             <input
               type="text"
-              value={formData.house_number || ''}
-              onChange={(e) => setFormData({...formData, house_number: e.target.value})}
+              value={formData.houseNumber || ''}
+              onChange={(e) => setFormData({...formData, houseNumber: e.target.value})}
               className="w-24 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
               placeholder="Nr."
             />
@@ -1168,8 +1168,8 @@ const getPasswordStrengthClass = (password) => {
           <div className="flex gap-2">
             <input
               type="text"
-              value={formData.zip_code || ''}
-              onChange={(e) => setFormData({...formData, zip_code: e.target.value})}
+              value={formData.zipCode || ''}
+              onChange={(e) => setFormData({...formData, zipCode: e.target.value})}
               className="w-24 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white"
               placeholder="PLZ"
             />
