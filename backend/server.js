@@ -24585,6 +24585,9 @@ await query(
     req.body.city || null                      
   ]
 );
+
+// Dann VOR coverageSettings:
+const plzValue = preferredZipCodes || preferred_zip_codes;
     
     // Erweiterte Einstellungen
 const coverageSettings = {
