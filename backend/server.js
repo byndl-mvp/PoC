@@ -24588,7 +24588,10 @@ await query(
     
     // Erweiterte Einstellungen
     const coverageSettings = {
-      preferred_zip_codes: preferredZipCodes || preferred_zip_codes || [],
+      const coverageSettings = {
+  preferred_zip_codes: typeof preferredZipCodes === 'string' 
+    ? preferredZipCodes.split(',').map(s => s.trim()).filter(Boolean)
+    : (preferredZipCodes || []),
       min_order_values: {
         up_to_10km: minOrderValue10km || 0,
         up_to_25km: minOrderValue25km || 0,
