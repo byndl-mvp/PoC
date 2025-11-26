@@ -177,7 +177,7 @@ useEffect(() => {
   };
   
   geocodeAddress();
-}, [activeTab, formData.street, formData.houseNumber, formData.zipCode, formData.city]);
+}, [activeTab, formData.street, formData.houseNumber, formData.zipCode, formData.city]); // eslint-disable-line react-hooks/exhaustive-deps
   
 useEffect(() => {
   const loadRatings = async () => {
