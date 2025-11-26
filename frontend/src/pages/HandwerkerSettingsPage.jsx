@@ -1122,7 +1122,7 @@ const getPasswordStrengthClass = (password) => {
               <Popup>
                 <strong>{formData.companyName}</strong><br />
                 {formData.street} {formData.houseNumber}<br />
-                {formData.zip_code} {formData.city}
+                {formData.zipCode} {formData.city}
               </Popup>
             </Marker>
             
