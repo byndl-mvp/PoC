@@ -24587,22 +24587,21 @@ await query(
 );
     
     // Erweiterte Einstellungen
-    const coverageSettings = {
-      const coverageSettings = {
+const coverageSettings = {
   preferred_zip_codes: typeof preferredZipCodes === 'string' 
     ? preferredZipCodes.split(',').map(s => s.trim()).filter(Boolean)
     : (preferredZipCodes || []),
-      min_order_values: {
-        up_to_10km: minOrderValue10km || 0,
-        up_to_25km: minOrderValue25km || 0,
-        up_to_50km: minOrderValue50km || 0,
-        over_50km: minOrderValueOver50km || 0
-      },
-      coordinates: { 
-        latitude: latitude || null, 
-        longitude: longitude || null 
-      }
-    };
+  min_order_values: {
+    up_to_10km: minOrderValue10km || 0,
+    up_to_25km: minOrderValue25km || 0,
+    up_to_50km: minOrderValue50km || 0,
+    over_50km: minOrderValueOver50km || 0
+  },
+  coordinates: { 
+    latitude: latitude || null, 
+    longitude: longitude || null 
+  }
+};
     
     // Update coverage_settings (auch JSONB)
     await query(
