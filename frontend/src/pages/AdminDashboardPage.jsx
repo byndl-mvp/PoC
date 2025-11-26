@@ -46,6 +46,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [handwerkerDocuments, setHandwerkerDocuments] = useState({});
   
   const token = localStorage.getItem('adminToken');
 
@@ -177,6 +178,48 @@ export default function AdminDashboardPage() {
     }
   }, [token]);
 
+const fetchHandwerkerDocuments = async (handwerkerId) => {
+  try {
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/handwerker/${handwerkerId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Fehler beim Laden der Dokumente');
+    const data = await res.json();
+    
+    setHandwerkerDocuments(prev => ({
+      ...prev,
+      [handwerkerId]: data.documents || []
+    }));
+  } catch (err) {
+    console.error('Fehler beim Laden der Dokumente:', err);
+  }
+};
+
+const downloadDocument = async (handwerkerId, docId, fileName) => {
+  try {
+    const res = await fetch(
+      `https://poc-rvrj.onrender.com/api/handwerker/${handwerkerId}/documents/${docId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    
+    if (!res.ok) throw new Error('Download fehlgeschlagen');
+    
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    setError('Download fehlgeschlagen: ' + err.message);
+  }
+};
+  
   const fetchOrders = useCallback(async () => {
     try {
       const res = await fetch('https://poc-rvrj.onrender.com/api/admin/orders', {
@@ -232,8 +275,14 @@ export default function AdminDashboardPage() {
           case 'payments':
             await fetchPayments();
             break;
-          case 'handwerker-verify':
+         case 'handwerker-verify':
             await fetchPendingHandwerker();
+            // NEU: Lade Dokumente für alle pendenden Handwerker
+            if (pendingHandwerker.length > 0) {
+              for (const hw of pendingHandwerker) {
+                await fetchHandwerkerDocuments(hw.id);
+              }
+            }
             break;
           case 'orders':
             await fetchOrders();
