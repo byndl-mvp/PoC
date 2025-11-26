@@ -69,14 +69,14 @@ export default function HandwerkerLoginPage() {
         // Speichere Handwerker-Daten
 const handwerkerData = {
   id: data.handwerker.id,
+  verified: data.handwerker.verified,                         
+  verification_status: data.handwerker.verification_status,  
   companyId: data.handwerker.companyId,
   companyName: data.handwerker.companyName,
   email: data.handwerker.email,
   trades: data.trades || [],
   region: data.handwerker.address?.city,
-  actionRadius: data.handwerker.actionRadius,
-  verified: data.handwerker.verified,                         
-  verification_status: data.handwerker.verification_status     
+  actionRadius: data.handwerker.actionRadius   
 };
         
         sessionStorage.setItem('handwerkerData', JSON.stringify(handwerkerData));
