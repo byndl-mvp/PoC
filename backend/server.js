@@ -17508,9 +17508,9 @@ const processedOffers = offers.rows.map(offer => {
   if (offer.status !== 'preliminary' && offer.status !== 'confirmed' && offer.status !== 'accepted') {
     return {
       ...offer,
-      email: 'Nach Beauftragung sichtbar',
-      phone: 'Nach Beauftragung sichtbar',
-      address: 'Nach Beauftragung sichtbar'  
+      email: 'Nach vorläufiger Beauftragung sichtbar',
+      phone: 'Nach vorläufiger Beauftragung sichtbar',
+      address: 'Nach vorläufiger Beauftragung sichtbar'  
     };
   }
   return {
