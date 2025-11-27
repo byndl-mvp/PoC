@@ -1584,7 +1584,15 @@ const getPasswordStrengthClass = (password) => {
   <p className="text-white/60 text-sm">Letzter Login</p>
   <p className="text-white">
     {handwerkerData?.lastLogin 
-      ? new Date(handwerkerData.lastLogin).toLocaleString('de-DE')
+      ? (() => {
+          const loginDate = new Date(handwerkerData.lastLogin);
+          const today = new Date();
+          const isToday = loginDate.toDateString() === today.toDateString();
+          
+          return isToday 
+            ? `Heute um ${loginDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
+            : `${loginDate.toLocaleDateString('de-DE')} um ${loginDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
+        })()
       : 'Nie eingeloggt'}
   </p>
 </div>
