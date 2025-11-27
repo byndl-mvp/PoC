@@ -14,8 +14,9 @@ export default function BauherrenSettingsPage() {
   const [personalData, setPersonalData] = useState({
     firstName: '',
     lastName: '',
-    name: '',  // Für Rückwärtskompatibilität
+    name: '',  
     email: '',
+    confirmEmail: '',
     phone: '',
     street: '',
     houseNumber: '',
@@ -544,17 +545,29 @@ export default function BauherrenSettingsPage() {
                   </div>
                   
                   <div>
-                    <label className="block text-white/70 text-sm mb-2">E-Mail</label>
-                    <input
-                      type="email"
-                      value={personalData.email}
-                      onChange={(e) => setPersonalData({...personalData, email: e.target.value})}
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 cursor-not-allowed"
-                    />
-                    <p className="text-gray-500 text-xs mt-1">
-                      E-Mail-Adresse kann nicht geändert werden
-                    </p>
-                  </div>
+  <label className="block text-white/70 text-sm mb-2">E-Mail</label>
+  <input
+    type="email"
+    value={personalData.email}
+    onChange={(e) => setPersonalData({...personalData, email: e.target.value})}
+    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+    placeholder="ihre@email.de"
+  />
+</div>
+
+<div>
+  <label className="block text-white/70 text-sm mb-2">E-Mail bestätigen</label>
+  <input
+    type="email"
+    value={personalData.confirmEmail || ''}
+    onChange={(e) => setPersonalData({...personalData, confirmEmail: e.target.value})}
+    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+    placeholder="ihre@email.de"
+  />
+  <p className="text-gray-500 text-xs mt-1">
+    Bitte bestätigen Sie Ihre E-Mail-Adresse
+  </p>
+</div>
                   
                   <div>
                     <label className="block text-white/70 text-sm mb-2">Telefon</label>
