@@ -23,14 +23,6 @@ export default function BauherrenSettingsPage() {
     city: ''
   });
   
-  const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    projectUpdates: true,
-    offerAlerts: true,
-    weeklyDigest: false
-  });
-  
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [billingAddressSameAsPersonal, setBillingAddressSameAsPersonal] = useState(true);
@@ -85,7 +77,6 @@ export default function BauherrenSettingsPage() {
             city: data.city || ''
           });
           
-          setNotifications(data.notification_settings || notifications);
           setTwoFactorEnabled(data.two_factor_enabled || false);
           setPaymentMethods(data.payment_methods || []);
           setPaymentHistory(data.payment_history || []);
@@ -146,28 +137,6 @@ export default function BauherrenSettingsPage() {
       }
     } catch (err) {
       setError('Fehler beim Speichern der Daten');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const saveNotifications = async () => {
-    try {
-      setLoading(true);
-      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
-      
-      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/notifications`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notifications)
-      });
-      
-      if (res.ok) {
-        setMessage('Benachrichtigungen aktualisiert');
-        setTimeout(() => setMessage(''), 3000);
-      }
-    } catch (err) {
-      setError('Fehler beim Speichern');
     } finally {
       setLoading(false);
     }
