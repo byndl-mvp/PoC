@@ -76,7 +76,8 @@ const handwerkerData = {
   email: data.handwerker.email,
   trades: data.trades || [],
   region: data.handwerker.address?.city,
-  actionRadius: data.handwerker.actionRadius   
+  actionRadius: data.handwerker.actionRadius,
+  lastLogin: data.handwerker.lastLogin
 };
         
         sessionStorage.setItem('handwerkerData', JSON.stringify(handwerkerData));
