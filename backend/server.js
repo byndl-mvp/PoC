@@ -17750,8 +17750,8 @@ app.get('/api/projects/:projectId/offers/:offerId', async (req, res) => {
 const offer = result.rows[0];
 if (!['preliminary', 'confirmed', 'accepted'].includes(offer.status)) {
   // Kontaktdaten nur bei vorläufiger/finaler Beauftragung sichtbar
-  offer.email = 'Wird nach Beauftragung freigegeben';
-  offer.phone = 'Wird nach Beauftragung freigegeben';
+  offer.email = 'Wird nach vorläufiger Beauftragung freigegeben';
+  offer.phone = 'Wird nach vorläufiger Beauftragung freigegeben';
   offer.street = null;
   offer.house_number = null;
 }
