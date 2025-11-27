@@ -17077,6 +17077,7 @@ app.post('/api/handwerker/login', async (req, res) => {
       [handwerker.id]
     );
 
+    /* LOGIN-BENACHRICHTIGUNG DEAKTIVIERT
     // Prüfe auf verdächtigen Login (neue IP, neue Location, etc.)
     const previousLogins = await query(
       `SELECT DISTINCT ip_address 
@@ -17105,7 +17106,8 @@ app.post('/api/handwerker/login', async (req, res) => {
         }
       );
     }
-
+    */
+    
     // JWT Token generieren
     const tokenExpiry = rememberMe ? '30d' : '24h';
     const token = jwt.sign(
