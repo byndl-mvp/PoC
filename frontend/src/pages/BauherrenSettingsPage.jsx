@@ -457,7 +457,6 @@ export default function BauherrenSettingsPage() {
   const tabs = [
     { id: 'personal', label: 'Persönliche Daten', icon: '👤' },
     { id: 'payment', label: 'Zahlungsmethoden', icon: '💳' },
-    { id: 'notifications', label: 'Benachrichtigungen', icon: '🔔' },
     { id: 'security', label: 'Sicherheit', icon: '🔒' },
     { id: 'privacy', label: 'Datenschutz', icon: '🛡️' },
     { id: 'help', label: 'Hilfe', icon: '❓' }
@@ -1042,75 +1041,6 @@ export default function BauherrenSettingsPage() {
               </div>
             )}
             
-            {/* Notifications Tab */}
-            {activeTab === 'notifications' && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-6">Benachrichtigungen</h2>
-                
-                <div className="space-y-4">
-                  <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-                    <div>
-                      <p className="text-white font-medium">E-Mail-Benachrichtigungen</p>
-                      <p className="text-gray-400 text-sm">Erhalten Sie wichtige Updates per E-Mail</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={notifications.emailNotifications}
-                      onChange={(e) => setNotifications({...notifications, emailNotifications: e.target.checked})}
-                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
-                    />
-                  </label>
-                  
-                  <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-                    <div>
-                      <p className="text-white font-medium">Projekt-Updates</p>
-                      <p className="text-gray-400 text-sm">Benachrichtigungen bei Änderungen an Ihren Projekten</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={notifications.projectUpdates}
-                      onChange={(e) => setNotifications({...notifications, projectUpdates: e.target.checked})}
-                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
-                    />
-                  </label>
-                  
-                  <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-                    <div>
-                      <p className="text-white font-medium">Angebots-Benachrichtigungen</p>
-                      <p className="text-gray-400 text-sm">Sofortige Benachrichtigung bei neuen Angeboten</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={notifications.offerAlerts}
-                      onChange={(e) => setNotifications({...notifications, offerAlerts: e.target.checked})}
-                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
-                    />
-                  </label>
-
-                 <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-                    <div>
-                      <p className="text-white font-medium">Wöchentliche Zusammenfassung</p>
-                      <p className="text-gray-400 text-sm">Erhalten Sie eine wöchentliche Übersicht</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={notifications.weeklyDigest}
-                      onChange={(e) => setNotifications({...notifications, weeklyDigest: e.target.checked})}
-                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
-                    />
-                  </label>
-                </div>
-                  
-                <button
-                  onClick={saveNotifications}
-                  disabled={loading}
-                  className="mt-6 px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all font-semibold disabled:opacity-50"
-                >
-                  {loading ? 'Speichern...' : 'Einstellungen speichern'}
-                </button>
-              </div>
-            )}
-            
             {/* Security Tab */}
             {activeTab === 'security' && (
               <div>
@@ -1158,7 +1088,7 @@ export default function BauherrenSettingsPage() {
                     </div>
                   </div>
                   
-                  {/* Two-Factor Authentication */}
+                  {/* Two-Factor Authentication 
                   <div className="bg-white/5 rounded-lg p-6">
                     <div className="flex justify-between items-start">
                       <div>
@@ -1180,6 +1110,7 @@ export default function BauherrenSettingsPage() {
                       </button>
                     </div>
                   </div>
+                  */}
                   
                   {/* Account Info */}
                   <div className="bg-white/5 rounded-lg p-6">
