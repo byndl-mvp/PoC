@@ -1581,13 +1581,13 @@ const getPasswordStrengthClass = (password) => {
           </p>
         </div>
         <div>
-          <p className="text-white/60 text-sm">Letzter Login</p>
-          <p className="text-white">
-            {formData.lastLogin 
-              ? new Date(formData.lastLogin).toLocaleString('de-DE')
-              : 'Keine Daten vorhanden'}
-          </p>
-        </div>
+  <p className="text-white/60 text-sm">Letzter Login</p>
+  <p className="text-white">
+    {handwerkerData?.lastLogin 
+      ? new Date(handwerkerData.lastLogin).toLocaleString('de-DE')
+      : 'Nie eingeloggt'}
+  </p>
+</div>
         <div>
           <p className="text-white/60 text-sm">Account erstellt</p>
           <p className="text-white">
