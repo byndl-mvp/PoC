@@ -185,6 +185,7 @@ export default function BauherrenSettingsPage() {
     }
   };
   
+  /*
   const toggleTwoFactor = async () => {
     try {
       setLoading(true);
@@ -207,7 +208,7 @@ export default function BauherrenSettingsPage() {
       setLoading(false);
     }
   };
-  
+  */
   const exportData = async () => {
     try {
       setLoading(true);
