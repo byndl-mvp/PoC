@@ -1517,7 +1517,7 @@ const getPasswordStrengthClass = (password) => {
       </div>
     </div>
     
-    {/* Zwei-Faktor-Authentifizierung */}
+    {/* Zwei-Faktor-Authentifizierung - deaktiviert
     <div className="bg-white/5 rounded-lg p-6">
       <h3 className="text-lg font-semibold text-white mb-4">Zwei-Faktor-Authentifizierung</h3>
       
@@ -1559,6 +1559,7 @@ const getPasswordStrengthClass = (password) => {
         )}
       </div>
     </div>
+    */}
     
     {/* Login-Informationen */}
     <div className="bg-white/5 rounded-lg p-6">
