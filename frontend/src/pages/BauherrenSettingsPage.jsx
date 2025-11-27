@@ -42,7 +42,6 @@ export default function BauherrenSettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false); // eslint-disable-line react-hooks/exhaustive-deps
   const [emailVerified, setEmailVerified] = useState(false);
   const [createdAt, setCreatedAt] = useState(null);
   const [feedbackText, setFeedbackText] = useState('');
