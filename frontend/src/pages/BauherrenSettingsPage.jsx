@@ -1087,6 +1087,20 @@ export default function BauherrenSettingsPage() {
                     />
                   </label>
 
+                 <label className="flex items-center justify-between p-4 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+                    <div>
+                      <p className="text-white font-medium">Wöchentliche Zusammenfassung</p>
+                      <p className="text-gray-400 text-sm">Erhalten Sie eine wöchentliche Übersicht</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notifications.weeklyDigest}
+                      onChange={(e) => setNotifications({...notifications, weeklyDigest: e.target.checked})}
+                      className="w-5 h-5 text-teal-500 bg-white/20 border-white/30 rounded focus:ring-teal-500"
+                    />
+                  </label>
+                </div>
+                  
                 <button
                   onClick={saveNotifications}
                   disabled={loading}
