@@ -42,6 +42,7 @@ export default function BauherrenSettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [createdAt, setCreatedAt] = useState(null);
   const [feedbackText, setFeedbackText] = useState('');
@@ -76,6 +77,7 @@ export default function BauherrenSettingsPage() {
             city: data.city || ''
           });
           
+          setTwoFactorEnabled(data.two_factor_enabled || false);
           setPaymentMethods(data.payment_methods || []);
           setPaymentHistory(data.payment_history || []);
           setBillingAddressSameAsPersonal(data.billing_address_same_as_personal !== false);
@@ -183,7 +185,7 @@ export default function BauherrenSettingsPage() {
     }
   };
   
-  /*
+  /* Coming Soon
   const toggleTwoFactor = async () => {
     try {
       setLoading(true);
@@ -207,6 +209,8 @@ export default function BauherrenSettingsPage() {
     }
   };
   */
+  
+  /* Moved to Admin Panel
   const exportData = async () => {
     try {
       setLoading(true);
@@ -230,6 +234,7 @@ export default function BauherrenSettingsPage() {
       setLoading(false);
     }
   };
+  */
   
   const deleteAccount = async () => {
     const confirmed = window.confirm(
@@ -425,8 +430,7 @@ export default function BauherrenSettingsPage() {
   const tabs = [
     { id: 'personal', label: 'Persönliche Daten', icon: '👤' },
     { id: 'payment', label: 'Zahlungsmethoden', icon: '💳' },
-    { id: 'security', label: 'Sicherheit', icon: '🔒' },
-    { id: 'privacy', label: 'Datenschutz', icon: '🛡️' },
+    { id: 'account', label: 'Account', icon: '🔒' },
     { id: 'help', label: 'Hilfe', icon: '❓' }
   ];
 
@@ -1010,9 +1014,9 @@ export default function BauherrenSettingsPage() {
             )}
             
             {/* Security Tab */}
-            {activeTab === 'security' && (
+            {activeTab === 'account' && (
               <div>
-                <h2 className="text-2xl font-bold text-white mb-6">Sicherheit</h2>
+                <h2 className="text-2xl font-bold text-white mb-6">Account</h2>
                 
                 <div className="space-y-6">
                   {/* Password Change */}
@@ -1056,7 +1060,7 @@ export default function BauherrenSettingsPage() {
                     </div>
                   </div>
                   
-                  {/* Two-Factor Authentication 
+                  {/* Two-Factor Authentication - Coming Soon
                   <div className="bg-white/5 rounded-lg p-6">
                     <div className="flex justify-between items-start">
                       <div>
@@ -1096,48 +1100,19 @@ export default function BauherrenSettingsPage() {
                       </p>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Privacy Tab */}
-            {activeTab === 'privacy' && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-6">Datenschutz</h2>
-                
-                <div className="space-y-6">
-                  {/* Data Export */}
-                  <div className="bg-white/5 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-white mb-2">Datenexport (DSGVO)</h3>
-                    <p className="text-gray-400 text-sm mb-4">
-                      Laden Sie alle Ihre gespeicherten Daten herunter
-                    </p>
-                    <button
-                      onClick={exportData}
-                      disabled={loading}
-                      className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      Daten exportieren
-                    </button>
-                  </div>
                   
-                  {/* Privacy Settings */}
-                  <div className="bg-white/5 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Datenschutzeinstellungen</h3>
-                    <div className="space-y-3">
-                      <label className="flex items-center gap-3 text-white cursor-pointer">
-                        <input type="checkbox" className="w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded" />
-                        <span>Anonyme Nutzungsstatistiken teilen</span>
-                      </label>
-                      <label className="flex items-center gap-3 text-white cursor-pointer">
-                        <input type="checkbox" className="w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded" />
-                        <span>Personalisierte Empfehlungen</span>
-                      </label>
-                      <label className="flex items-center gap-3 text-white cursor-pointer">
-                        <input type="checkbox" className="w-4 h-4 text-teal-500 bg-white/20 border-white/30 rounded" />
-                        <span>Marketing-Kommunikation</span>
-                      </label>
-                    </div>
+                  {/* DSGVO Hinweis */}
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-blue-400 mb-2">Datenauskunft (DSGVO)</h3>
+                    <p className="text-gray-300 text-sm mb-3">
+                      Sie haben das Recht auf Auskunft über Ihre gespeicherten personenbezogenen Daten gemäß Art. 15 DSGVO.
+                    </p>
+                    <p className="text-gray-300 text-sm">
+                      Für Anfragen zur Datenauskunft oder zum Datenexport senden Sie bitte eine E-Mail an:{' '}
+                      <a href="mailto:info@byndl.de" className="text-teal-400 hover:text-teal-300 font-semibold">
+                        info@byndl.de
+                      </a>
+                    </p>
                   </div>
                   
                   {/* Account Deletion */}
