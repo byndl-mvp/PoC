@@ -180,7 +180,14 @@ export default function ExecutionTimesSection({
               type="date"
               className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
               value={formData.execution_start}
-              onChange={(e) => setFormData({...formData, execution_start: e.target.value})}
+              onChange={(e) => {
+  const newStart = e.target.value;
+  setFormData({
+    ...formData, 
+    execution_start: newStart,
+    execution_end: newStart  // Automatisch auf gleichen Wert setzen
+  });
+}}
               required
             />
           </div>
@@ -190,7 +197,19 @@ export default function ExecutionTimesSection({
               type="date"
               className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white"
               value={formData.execution_end}
-              onChange={(e) => setFormData({...formData, execution_end: e.target.value})}
+              onChange={(e) => {
+  const newEnd = e.target.value;
+  const startDate = new Date(formData.execution_start);
+  const endDate = new Date(newEnd);
+  
+  // Prüfe ob Endtermin vor Starttermin liegt
+  if (endDate < startDate) {
+    alert('Der Endtermin kann nicht vor dem Starttermin liegen.');
+    return; // Keine Änderung
+  }
+  
+  setFormData({...formData, execution_end: newEnd});
+}}
               required
             />
           </div>
