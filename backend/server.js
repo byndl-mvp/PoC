@@ -19637,6 +19637,79 @@ app.get('/api/bauherr/:id/export', async (req, res) => {
   }
 });
 
+// Export Handwerker Data (DSGVO)
+app.get('/api/handwerker/:id/export', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Handwerker Basisdaten
+    const handwerkerResult = await query(
+      'SELECT * FROM handwerker WHERE id = $1', 
+      [id]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    // Alle zugehörigen Daten laden
+    const tradesResult = await query(
+      'SELECT * FROM handwerker_trades WHERE handwerker_id = $1', 
+      [id]
+    );
+    
+    const documentsResult = await query(
+      'SELECT * FROM handwerker_documents WHERE handwerker_id = $1', 
+      [id]
+    );
+    
+    const insurancesResult = await query(
+      'SELECT * FROM handwerker_insurances WHERE handwerker_id = $1', 
+      [id]
+    );
+    
+    const certificationsResult = await query(
+      'SELECT * FROM handwerker_certifications WHERE handwerker_id = $1', 
+      [id]
+    );
+    
+    const referencesResult = await query(
+      'SELECT * FROM handwerker_references WHERE handwerker_id = $1', 
+      [id]
+    );
+    
+    const offersResult = await query(
+      'SELECT * FROM offers WHERE handwerker_id = $1', 
+      [id]
+    );
+    
+    const ordersResult = await query(
+      'SELECT * FROM orders WHERE handwerker_id = $1', 
+      [id]
+    );
+    
+    const exportData = {
+      personal: handwerkerResult.rows[0],
+      trades: tradesResult.rows,
+      documents: documentsResult.rows,
+      insurances: insurancesResult.rows,
+      certifications: certificationsResult.rows,
+      references: referencesResult.rows,
+      offers: offersResult.rows,
+      orders: ordersResult.rows,
+      exportDate: new Date().toISOString()
+    };
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="byndl-handwerker-export.json"');
+    res.json(exportData);
+    
+  } catch (err) {
+    console.error('Error exporting handwerker data:', err);
+    res.status(500).json({ error: 'Export fehlgeschlagen' });
+  }
+});
+
 // ============================================================================
 // ERWEITERTE FEEDBACK ROUTE MIT BESTÄTIGUNGS-E-MAIL
 // ============================================================================
