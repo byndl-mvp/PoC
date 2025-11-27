@@ -76,7 +76,6 @@ export default function BauherrenSettingsPage() {
             city: data.city || ''
           });
           
-          setTwoFactorEnabled(data.two_factor_enabled || false);
           setPaymentMethods(data.payment_methods || []);
           setPaymentHistory(data.payment_history || []);
           setBillingAddressSameAsPersonal(data.billing_address_same_as_personal !== false);
