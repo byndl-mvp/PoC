@@ -17008,7 +17008,7 @@ app.post('/api/handwerker/login', async (req, res) => {
         phone, contact_person, contact_first_name, contact_last_name,
         street, house_number, zip_code, city,
         action_radius, verification_status, two_factor_enabled,
-        active, email_verified, login_notification_enabled
+        active, email_verified, login_notification_enabled, last_login
        FROM handwerker 
        WHERE LOWER(email) = LOWER($1) 
        AND deleted_at IS NULL`,
@@ -17145,7 +17145,8 @@ app.post('/api/handwerker/login', async (req, res) => {
     },
     actionRadius: handwerker.action_radius,
     emailVerified: handwerker.email_verified,
-    twoFactorEnabled: handwerker.two_factor_enabled
+    twoFactorEnabled: handwerker.two_factor_enabled,
+    lastLogin: handwerker.last_login
   }
 });
 
