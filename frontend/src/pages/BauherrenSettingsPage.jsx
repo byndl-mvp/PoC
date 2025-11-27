@@ -16,7 +16,6 @@ export default function BauherrenSettingsPage() {
     lastName: '',
     name: '',  
     email: '',
-    confirmEmail: '',
     phone: '',
     street: '',
     houseNumber: '',
@@ -47,6 +46,9 @@ export default function BauherrenSettingsPage() {
   const [createdAt, setCreatedAt] = useState(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [confirmNewEmail, setConfirmNewEmail] = useState('');
   
   useEffect(() => {
     const userData = sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData');
@@ -99,20 +101,78 @@ export default function BauherrenSettingsPage() {
     
     loadSettings(user.id);
   }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Vor savePersonalData() einfügen:
+const changeEmail = async () => {
+  // Validierung
+  if (!newEmail.trim()) {
+    setError('Bitte geben Sie eine neue E-Mail-Adresse ein');
+    setTimeout(() => setError(''), 3000);
+    return;
+  }
+  
+  if (newEmail !== confirmNewEmail) {
+    setError('Die E-Mail-Adressen stimmen nicht überein');
+    setTimeout(() => setError(''), 3000);
+    return;
+  }
+  
+  // E-Mail Format validieren
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(newEmail)) {
+    setError('Ungültige E-Mail-Adresse');
+    setTimeout(() => setError(''), 3000);
+    return;
+  }
+  
+  try {
+    setLoading(true);
+    setError('');
+    const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+    
+    const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/personal`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...personalData,
+        email: newEmail
+      })
+    });
+    
+    if (res.ok) {
+      // Update local state
+      setPersonalData({...personalData, email: newEmail});
+      
+      // Session Storage aktualisieren
+      const updatedUserData = {
+        ...userData,
+        email: newEmail
+      };
+      sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
+      sessionStorage.setItem('bauherrData', JSON.stringify(updatedUserData));
+      
+      // Felder zurücksetzen und ausblenden
+      setNewEmail('');
+      setConfirmNewEmail('');
+      setShowEmailChange(false);
+      
+      setMessage('✅ E-Mail-Adresse erfolgreich geändert');
+      setTimeout(() => setMessage(''), 3000);
+    } else {
+      throw new Error('Speichern fehlgeschlagen');
+    }
+  } catch (err) {
+    setError('Fehler beim Ändern der E-Mail-Adresse');
+  } finally {
+    setLoading(false);
+  }
+};
   
   const savePersonalData = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // E-Mail Validierung
-    if (personalData.email !== personalData.confirmEmail) {
-      setError('Die E-Mail-Adressen stimmen nicht überein');
-      setTimeout(() => setError(''), 3000);
-      setLoading(false);
-      return;
-    }
-      
       const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
       
       // Kombiniere firstName und lastName für Rückwärtskompatibilität
@@ -555,27 +615,57 @@ export default function BauherrenSettingsPage() {
                   
                   <div>
   <label className="block text-white/70 text-sm mb-2">E-Mail</label>
-  <input
-    type="email"
-    value={personalData.email}
-    onChange={(e) => setPersonalData({...personalData, email: e.target.value})}
-    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-    placeholder="ihre@email.de"
-  />
-</div>
-
-<div>
-  <label className="block text-white/70 text-sm mb-2">E-Mail bestätigen</label>
-  <input
-    type="email"
-    value={personalData.confirmEmail || ''}
-    onChange={(e) => setPersonalData({...personalData, confirmEmail: e.target.value})}
-    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-    placeholder="ihre@email.de"
-  />
-  <p className="text-gray-500 text-xs mt-1">
-    Bitte bestätigen Sie Ihre E-Mail-Adresse
-  </p>
+  <div className="flex gap-2">
+    <input
+      type="email"
+      value={personalData.email}
+      disabled
+      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400"
+    />
+    <button
+      type="button"
+      onClick={() => setShowEmailChange(!showEmailChange)}
+      className="px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors whitespace-nowrap"
+    >
+      {showEmailChange ? 'Abbrechen' : 'E-Mail-Adresse ändern'}
+    </button>
+  </div>
+  
+  {/* Zusätzliche Felder wenn showEmailChange = true */}
+  {showEmailChange && (
+    <div className="mt-4 p-4 bg-white/5 rounded-lg border border-white/10 space-y-4">
+      <div>
+        <label className="block text-white/70 text-sm mb-2">Neue E-Mail-Adresse</label>
+        <input
+          type="email"
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+          placeholder="neue@email.de"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-white/70 text-sm mb-2">Neue E-Mail-Adresse bestätigen</label>
+        <input
+          type="email"
+          value={confirmNewEmail}
+          onChange={(e) => setConfirmNewEmail(e.target.value)}
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+          placeholder="neue@email.de"
+        />
+      </div>
+      
+      <button
+        type="button"
+        onClick={changeEmail}
+        disabled={loading || !newEmail || !confirmNewEmail}
+        className="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+      >
+        ✓ Änderung bestätigen
+      </button>
+    </div>
+  )}
 </div>
                   
                   <div>
