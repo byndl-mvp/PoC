@@ -33063,7 +33063,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                     <li style="margin: 8px 0; color: #555;"><strong>Ausschreibungen durchsuchen</strong> – Finden Sie passende Projekte in Ihrer Region</li>
                     <li style="margin: 8px 0; color: #555;"><strong>Angebote erstellen</strong> – Geben Sie Ihre Preise und Leistungen an</li>
                     <li style="margin: 8px 0; color: #555;"><strong>Projektbündel nutzen</strong> – Kombinieren Sie mehrere Aufträge und sparen Sie Fahrzeit</li>
-                    <li style="margin: 8px 0; color: #555;"><strong>Aufträge erhalten</strong> – Nach Beauftragung erhalten Sie alle Kontaktdaten</li>
+                    <li style="margin: 8px 0; color: #555;"><strong>Aufträge erhalten</strong> – Nach vorläufiger Beauftragung erhalten Sie alle Kontaktdaten</li>
                   </ul>
                 </div>
                 
