@@ -541,6 +541,7 @@ const loadDocuments = async () => {
   }
 };
 
+/* 2FA FUNKTION - VORERST DEAKTIVIERT  
 const handleSaveTwoFactor = async (enabled) => {
   try {
     setSaving(true);
@@ -564,7 +565,8 @@ const handleSaveTwoFactor = async (enabled) => {
     setSaving(false);
   }
 };
-
+*/
+  
 const handleAccountDelete = async () => {
   if (!deletePassword) {
     setError('Bitte geben Sie Ihr Passwort ein');
