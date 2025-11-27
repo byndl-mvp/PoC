@@ -2454,8 +2454,8 @@ if (selectedProject) {
                           
                           {offer.notes && (
   <div className="mt-3 p-3 bg-white/5 rounded">
-    <p className="text-xs text-gray-500 mb-1">Anmerkungen:</p>
-    <p className="text-sm text-gray-300">{offer.notes}</p>
+    <p className="text-xs text-gray-300 mb-1">Anmerkungen:</p>
+    <p className="text-sm text-gray-200">{offer.notes}</p>
   </div>
 )}
 </div>
