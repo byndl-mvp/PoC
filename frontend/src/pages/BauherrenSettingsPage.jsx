@@ -548,7 +548,7 @@ export default function BauherrenSettingsPage() {
                     <input
                       type="email"
                       value={personalData.email}
-                      disabled
+                      onChange={(e) => setPersonalData({...personalData, email: e.target.value})}
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-400 cursor-not-allowed"
                     />
                     <p className="text-gray-500 text-xs mt-1">
