@@ -104,6 +104,15 @@ export default function BauherrenSettingsPage() {
     try {
       setLoading(true);
       setError('');
+
+      // E-Mail Validierung
+    if (personalData.email !== personalData.confirmEmail) {
+      setError('Die E-Mail-Adressen stimmen nicht überein');
+      setTimeout(() => setError(''), 3000);
+      setLoading(false);
+      return;
+    }
+      
       const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
       
       // Kombiniere firstName und lastName für Rückwärtskompatibilität
