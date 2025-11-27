@@ -396,6 +396,70 @@ const updateBauherr = async () => {
   }
 };
 
+// Export User Data (DSGVO)
+const exportBauherrData = async (bauherrId) => {
+  try {
+    setLoading(true);
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/bauherr/${bauherrId}/export`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (!res.ok) throw new Error('Export fehlgeschlagen');
+    
+    const data = await res.json();
+    
+    // Konvertiere JSON zu strukturiertem Excel-Format
+    // Für jetzt: Download als JSON (Excel-Export kann später implementiert werden)
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bauherr-${bauherrId}-daten-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    setMessage('✅ Daten erfolgreich exportiert');
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    setError('Fehler beim Datenexport');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const exportHandwerkerData = async (handwerkerId) => {
+  try {
+    setLoading(true);
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/handwerker/${handwerkerId}/export`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (!res.ok) throw new Error('Export fehlgeschlagen');
+    
+    const data = await res.json();
+    
+    // Download als JSON
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `handwerker-${handwerkerId}-daten-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    setMessage('✅ Daten erfolgreich exportiert');
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    setError('Fehler beim Datenexport');
+  } finally {
+    setLoading(false);
+  }
+};
+
 const deleteHandwerker = async (id, companyName) => {
   if (!window.confirm(`Wirklich löschen?\n\nFirma: ${companyName}\n\nAlle Daten werden unwiderruflich gelöscht!`)) {
     return;
@@ -1422,6 +1486,12 @@ const verifyHandwerker = async (id, action, reason = '') => {
                 Bearbeiten
               </button>
               <button
+                onClick={() => exportHandwerkerData(selectedHandwerker.handwerker.id)}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+              >
+                📊 Daten exportieren
+              </button>
+              <button
                 onClick={() => deleteHandwerker(
                   selectedHandwerker.handwerker.id,
                   selectedHandwerker.handwerker.company_name
@@ -1610,6 +1680,12 @@ const verifyHandwerker = async (id, action, reason = '') => {
                 className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
               >
                 Bearbeiten
+              </button>
+              <button
+                onClick={() => exportBauherrData(selectedBauherr.bauherr.id)}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+              >
+                📊 Daten exportieren
               </button>
               <button
                 onClick={() => deleteBauherr(
