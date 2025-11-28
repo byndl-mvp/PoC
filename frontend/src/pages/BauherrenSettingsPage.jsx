@@ -1553,10 +1553,17 @@ const changeEmail = async () => {
                           <span>Welche Zahlungsmethoden werden akzeptiert?</span>
                           <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                         </summary>
-                        <p className="mt-3 text-gray-300 text-sm pl-4">
-                          Aktuell unterstützen wir Zahlung per Kreditkarte (Visa, Mastercard), PayPal und SEPA-Lastschrift. 
-                          Alle Zahlungen werden sicher über unseren Zahlungsdienstleister abgewickelt.
-                        </p>
+                        <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                          <p>Wir bieten alle gängigen Zahlungsmethoden über unseren sicheren Zahlungsdienstleister Stripe:</p>
+                          <ul className="list-disc list-inside ml-2">
+                            <li>Kreditkarte (Visa, Mastercard, American Express)</li>
+                            <li>SEPA-Lastschrift</li>
+                            <li>Apple Pay & Google Pay</li>
+                            <li>Klarna (Sofortüberweisung)</li>
+                            <li>giropay</li>
+                          </ul>
+                          <p className="text-gray-400 text-xs mt-2">Ihre Zahlungsmethoden können Sie unter "Zahlungsmethoden" verwalten.</p>
+                        </div>
                       </details>
                     </div>
                   </div>
