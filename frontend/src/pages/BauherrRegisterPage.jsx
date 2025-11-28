@@ -473,6 +473,16 @@ export default function BauherrRegisterPage() {
                   >
                     Allgemeinen Geschäftsbedingungen (AGB)
                   </Link>{' '}
+                  und die{' '}
+                  <Link 
+                    to="/nutzungsbedingungen" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-teal-400 hover:text-teal-300 underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Nutzungsbedingungen
+                  </Link>{' '}
                   gelesen und akzeptiere diese. *
                 </span>
               </label>
