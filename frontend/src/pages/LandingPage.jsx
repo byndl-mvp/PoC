@@ -101,7 +101,7 @@ export default function LandingPage() {
                   Für Bauherren
                 </span>
                 <span className="block text-sm font-normal mt-1 opacity-90">
-                  Jetzt als Bauherr registrieren und Projekt starten
+                  Jetzt registrieren und Projekt starten
                 </span>
               </Link>
               
