@@ -1858,6 +1858,18 @@ const getPasswordStrengthClass = (password) => {
           {activeTab === 'hilfe' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white mb-6">Hilfe & Support</h2>
+
+              {/* HIER EINFÜGEN */}
+              {message && (
+                <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-4 mb-4">
+                  <p className="text-green-300">{message}</p>
+                </div>
+              )}
+              {error && (
+                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-4">
+                  <p className="text-red-300">{error}</p>
+                </div>
+              )}
               
               <div className="grid gap-6">
                 {/* FAQ Suche - Funktional */}
