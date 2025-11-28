@@ -7,6 +7,7 @@ import AGB from './pages/AGB';
 import Impressum from './pages/Impressum';
 import Datenschutz from './pages/Datenschutz';
 import Disclaimer from './pages/Disclaimer';
+import Nutzungsbedingungen from './pages/Nutzungsbedingungen';
 import BauherrLoginPage from './pages/BauherrenLoginPage';
 import BauherrRegisterPage from './pages/BauherrRegisterPage';
 import BauherrEmailVerification from './pages/BauherrEmailVerification';
@@ -126,6 +127,7 @@ function App() {
           <Route path="/impressum" element={<Impressum />} />
           <Route path="/datenschutz" element={<Datenschutz />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
+          <Route path="/nutzungsbedingungen" element={<Nutzungsbedingungen />} />
           
           {/* ============= Bauherren Routen ============= */}
           {/* Auth-Routen */}
