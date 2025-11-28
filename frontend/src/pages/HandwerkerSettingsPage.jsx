@@ -45,6 +45,9 @@ export default function HandwerkerSettingsPage() {
 
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [faqSearchTerm, setFaqSearchTerm] = useState('');
+  const [supportForm, setSupportForm] = useState({ subject: '', message: '' });
+  const [supportLoading, setSupportLoading] = useState(false);
   
   const [handwerkerData, setHandwerkerData] = useState(null);
   const [formData, setFormData] = useState({
@@ -640,6 +643,46 @@ const sendFeedback = async () => {
     setFeedbackLoading(false);
   }
 };
+
+// Support-Anfrage senden
+  const sendSupportRequest = async () => {
+    if (!supportForm.subject.trim() || !supportForm.message.trim()) {
+      setError('Bitte füllen Sie Betreff und Nachricht aus.');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+    
+    try {
+      setSupportLoading(true);
+      
+      const res = await fetch(apiUrl('/api/feedback'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: handwerkerData?.id,
+          userType: 'handwerker',
+          userName: formData.companyName || `${formData.contactFirstName} ${formData.contactLastName}`,
+          userEmail: formData.email,
+          subject: supportForm.subject,
+          message: supportForm.message,
+          type: 'support'
+        })
+      });
+      
+      if (res.ok) {
+        setSupportForm({ subject: '', message: '' });
+        setMessage('✅ Support-Anfrage erfolgreich gesendet! Wir melden uns innerhalb von 24 Stunden.');
+        setTimeout(() => setMessage(''), 5000);
+      } else {
+        throw new Error('Senden fehlgeschlagen');
+      }
+    } catch (err) {
+      setError('Fehler beim Senden der Anfrage. Bitte versuchen Sie es erneut.');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setSupportLoading(false);
+    }
+  };
   
   // Passwort-Stärke-Funktionen
 const getPasswordStrength = (password) => {
@@ -1816,90 +1859,447 @@ const getPasswordStrengthClass = (password) => {
            {/* Hilfe & Feedback Tab */}
           {activeTab === 'hilfe' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Hilfe & Feedback</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">Hilfe & Support</h2>
               
               <div className="grid gap-6">
-                {/* FAQ Bereich */}
+                {/* FAQ Suche - Funktional */}
                 <div className="bg-white/5 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Häufig gestellte Fragen</h3>
+                  <label className="block text-white/90 text-sm font-medium mb-2">FAQ durchsuchen</label>
+                  <div className="relative">
+                    <input
+                      type="search"
+                      placeholder="Frage oder Stichwort eingeben..."
+                      value={faqSearchTerm}
+                      onChange={(e) => setFaqSearchTerm(e.target.value)}
+                      className="w-full px-4 py-3 pl-10 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                  </div>
+                  {faqSearchTerm && (
+                    <p className="text-gray-400 text-sm mt-2">
+                      Zeige Ergebnisse für: <span className="text-teal-400">"{faqSearchTerm}"</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Plattform-Vorteile für Handwerker */}
+                {(!faqSearchTerm || 'vorteile plattform byndl warum'.includes(faqSearchTerm.toLowerCase())) && (
+                <div className="bg-gradient-to-br from-teal-900/30 to-blue-900/30 border border-teal-500/30 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-teal-400 mb-4">Warum byndl für Handwerker?</h3>
                   <div className="space-y-3">
-                    <details className="group border-b border-white/10 pb-3">
+                    <details className="group border-b border-white/10 pb-3" open>
                       <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
-                        <span>Wie funktioniert die Projektvergabe auf byndl?</span>
+                        <span>Was unterscheidet byndl von anderen Plattformen?</span>
                         <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                       </summary>
-                      <p className="mt-3 text-gray-300 text-sm pl-4">
-                        Sie erhalten qualifizierte Anfragen mit vollständigen Leistungsverzeichnissen basierend auf Ihrem Fachgebiet und Einsatzgebiet. 
-                        Sie können dann Angebote abgeben und Bauherren wählen das beste Angebot aus.
-                      </p>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-3">
+                        <p>byndl wurde entwickelt, um die typischen Probleme anderer Handwerkerplattformen zu lösen:</p>
+                        
+                        <div className="bg-white/5 rounded-lg p-3">
+                          <p className="font-medium text-teal-400 mb-2">📋 Professionelle Leistungsverzeichnisse statt vager Anfragen</p>
+                          <p>Sie erhalten keine "Ich brauche mal jemanden fürs Bad"-Anfragen mehr. Jedes Projekt kommt mit einem detaillierten, KI-erstellten Leistungsverzeichnis nach VOB-Standard. Sie wissen exakt, was zu tun ist.</p>
+                        </div>
+                        
+                        <div className="bg-white/5 rounded-lg p-3">
+                          <p className="font-medium text-teal-400 mb-2">🤝 Zweistufige Vergabe – Keine Ortstermne ohne Auftrag</p>
+                          <p>Schluss mit kostenlosen Besichtigungen bei unentschlossenen Interessenten! Bei byndl gibt es erst einen Ortstermin, wenn der Bauherr Sie bereits vorläufig beauftragt hat.</p>
+                        </div>
+                        
+                        <div className="bg-white/5 rounded-lg p-3">
+                          <p className="font-medium text-teal-400 mb-2">📦 Projektbündelung – Weniger Fahrzeit, mehr Umsatz</p>
+                          <p>Ähnliche Projekte in Ihrer Region werden intelligent gebündelt. Bearbeiten Sie mehrere Aufträge in einer Tour und sparen Sie wertvolle Zeit und Fahrtkosten.</p>
+                        </div>
+                        
+                        <div className="bg-white/5 rounded-lg p-3">
+                          <p className="font-medium text-teal-400 mb-2">💰 Faire Erfolgsprovision – Nur zahlen wenn Sie verdienen</p>
+                          <p>Registrierung, Profil und Angebotsabgabe sind komplett kostenlos. Provision fällt nur bei tatsächlicher Beauftragung an – und ist gestaffelt nach Auftragswert.</p>
+                        </div>
+                        
+                        <div className="bg-white/5 rounded-lg p-3">
+                          <p className="font-medium text-teal-400 mb-2">✅ Qualifizierte Bauherren</p>
+                          <p>Bauherren haben bereits für die LV-Erstellung bezahlt – das zeigt echtes Interesse. Keine Zeitverschwendung mit unverbindlichen Anfragen.</p>
+                        </div>
+                      </div>
                     </details>
                     
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie funktioniert die zweistufige Vergabe?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <p className="font-medium text-white">Stufe 1: Vorläufige Beauftragung</p>
+                        <ul className="list-disc list-inside ml-2 mb-3">
+                          <li>Der Bauherr wählt Ihr Angebot aus</li>
+                          <li>Kontaktdaten werden freigeschaltet</li>
+                          <li>Jetzt erst erfolgt der Ortstermin oder Videocall</li>
+                          <li>Sie können Ihr Angebot nach der Besichtigung anpassen</li>
+                          <li>Beide Seiten können noch zurücktreten</li>
+                        </ul>
+                        <p className="font-medium text-white">Stufe 2: Verbindliche Beauftragung</p>
+                        <ul className="list-disc list-inside ml-2 mb-3">
+                          <li>Sie bestätigen Ihr finales Angebot</li>
+                          <li>Der Bauherr erteilt den verbindlichen Auftrag</li>
+                          <li>Der Werkvertrag kommt zustande</li>
+                          <li>Erst jetzt wird die Provision fällig</li>
+                        </ul>
+                        <div className="bg-teal-900/30 border border-teal-500/30 rounded-lg p-3 mt-3">
+                          <p className="text-teal-400 font-medium">Ihr Vorteil: Keine unbezahlten Ortstermne mehr! Sie fahren nur noch zu Kunden, die bereits echtes Interesse gezeigt haben.</p>
+                        </div>
+                      </div>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Was bringt mir die Projektbündelung?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <p>Die intelligente Projektbündelung optimiert Ihre Auslastung:</p>
+                        <ul className="list-disc list-inside ml-2">
+                          <li><strong>Regionale Bündelung:</strong> Projekte in Ihrer Nähe werden zusammengefasst angezeigt</li>
+                          <li><strong>Zeitliche Bündelung:</strong> Aufträge mit ähnlichem Zeitrahmen werden kombiniert</li>
+                          <li><strong>Effizienzbonus:</strong> Weniger Anfahrten = höhere Marge pro Projekt</li>
+                          <li><strong>Bundle-Angebote:</strong> Bieten Sie auf mehrere Projekte gleichzeitig mit Mengenrabatt</li>
+                        </ul>
+                        <p className="text-gray-400 mt-2">Beispiel: Drei Badsanierungen im selben Stadtteil innerhalb eines Monats – einmal Material bestellen, Fahrtwege optimieren.</p>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+                )}
+
+                {/* Kosten & Provision */}
+                {(!faqSearchTerm || 'kosten provision gebühr zahlung prozent'.includes(faqSearchTerm.toLowerCase())) && (
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Kosten & Provision</h3>
+                  <div className="space-y-3">
                     <details className="group border-b border-white/10 pb-3">
                       <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
                         <span>Was kostet die Nutzung von byndl?</span>
                         <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                       </summary>
-                      <p className="mt-3 text-gray-300 text-sm pl-4">
-                        Die Registrierung und das Erstellen von Angeboten sind kostenlos. 
-                        Bei erfolgreicher Auftragsvergabe fällt eine Provision von 3-5% auf die Auftragssumme an.
-                      </p>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <p className="text-green-400 font-medium mb-3">✓ Registrierung, Profilerstellung und Angebotsabgabe sind komplett kostenlos!</p>
+                        
+                        <p className="font-medium text-white">Erfolgsprovision (nur bei verbindlicher Beauftragung):</p>
+                        <div className="bg-white/5 rounded-lg p-3 space-y-2 mt-2">
+                          <div className="flex justify-between items-center">
+                            <span>Aufträge bis 10.000 € netto:</span>
+                            <span className="text-teal-400 font-semibold">3,0 %</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>Aufträge 10.001 - 20.000 € netto:</span>
+                            <span className="text-teal-400 font-semibold">2,0 %</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>Aufträge ab 20.001 € netto:</span>
+                            <span className="text-teal-400 font-semibold">1,5 %</span>
+                          </div>
+                        </div>
+                        
+                        <p className="text-gray-400 text-xs mt-3">
+                          Beispiel: Auftrag über 15.000 € netto = 300 € Provision (2%)
+                        </p>
+                      </div>
                     </details>
                     
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wann wird die Provision fällig?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <p>Die Provision wird erst fällig, wenn:</p>
+                        <ul className="list-disc list-inside ml-2">
+                          <li>Die zweite Stufe (verbindliche Beauftragung) abgeschlossen ist</li>
+                          <li>Beide Seiten den Werkvertrag bestätigt haben</li>
+                        </ul>
+                        <p className="mt-2">Sie erhalten eine Rechnung nach Auftragsbestätigung mit 14 Tagen Zahlungsziel.</p>
+                        <p className="text-green-400 font-medium mt-2">Bei vorläufiger Beauftragung ohne Zustandekommen des Auftrags: Keine Kosten!</p>
+                      </div>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie wird die Provision berechnet?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <p>Berechnungsgrundlage ist die Netto-Auftragssumme aus dem verbindlichen Werkvertrag (ohne Umsatzsteuer).</p>
+                        <p className="mt-2">Bei Nachträgen: Nachträge werden separat berechnet und erhöhen die Provision entsprechend.</p>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+                )}
+
+                {/* Angebote & Aufträge */}
+                {(!faqSearchTerm || 'angebot auftrag projekt vergabe'.includes(faqSearchTerm.toLowerCase())) && (
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Angebote & Aufträge</h3>
+                  <div className="space-y-3">
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie erhalte ich Projektanfragen?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <p>Projekte werden Ihnen automatisch zugeordnet basierend auf:</p>
+                        <ul className="list-disc list-inside ml-2">
+                          <li><strong>Ihre Gewerke:</strong> Nur passende Fachgebiete</li>
+                          <li><strong>Ihr Einsatzgebiet:</strong> Nur Projekte in Ihrem definierten Radius</li>
+                          <li><strong>Ihre Verfügbarkeit:</strong> Basierend auf aktiven Aufträgen</li>
+                        </ul>
+                        <p className="mt-2">Sie werden per E-Mail und im Dashboard über neue Projekte informiert.</p>
+                      </div>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie gebe ich ein Angebot ab?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <ol className="list-decimal list-inside ml-2">
+                          <li>Öffnen Sie das Projekt im Dashboard</li>
+                          <li>Prüfen Sie das Leistungsverzeichnis</li>
+                          <li>Tragen Sie Ihre Preise pro Position ein</li>
+                          <li>Geben Sie Ihre Verfügbarkeit an</li>
+                          <li>Senden Sie das Angebot ab</li>
+                        </ol>
+                        <p className="text-teal-400 mt-2">Tipp: Detaillierte, realistische Angebote haben höhere Erfolgschancen als Billigangebote.</p>
+                      </div>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Was passiert nach der vorläufigen Beauftragung?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <ol className="list-decimal list-inside ml-2">
+                          <li>Sie erhalten die Kontaktdaten des Bauherrn</li>
+                          <li>Vereinbaren Sie einen Ortstermin oder Videocall</li>
+                          <li>Prüfen Sie die Gegebenheiten vor Ort</li>
+                          <li>Passen Sie Ihr Angebot bei Bedarf an</li>
+                          <li>Bestätigen Sie Ihr finales Angebot</li>
+                          <li>Der Bauherr erteilt die verbindliche Beauftragung</li>
+                        </ol>
+                      </div>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Kann ich mein Angebot nach dem Ortstermin ändern?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <p className="mt-3 text-gray-300 text-sm pl-4">
+                        Ja! Genau dafür ist die zweistufige Vergabe da. Nach dem Ortstermin können Sie Ihr Angebot anpassen, 
+                        wenn Sie vor Ort Abweichungen feststellen. Der Bauherr sieht das aktualisierte Angebot und entscheidet dann über die verbindliche Beauftragung.
+                      </p>
+                    </details>
+                  </div>
+                </div>
+                )}
+
+                {/* Nachträge */}
+                {(!faqSearchTerm || 'nachtrag zusatz änderung mehr'.includes(faqSearchTerm.toLowerCase())) && (
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Nachträge</h3>
+                  <div className="space-y-3">
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie stelle ich einen Nachtrag?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <ol className="list-decimal list-inside ml-2">
+                          <li>Öffnen Sie den Auftrag im Dashboard</li>
+                          <li>Klicken Sie auf "Nachtrag erstellen"</li>
+                          <li>Beschreiben Sie die zusätzliche Leistung</li>
+                          <li>Geben Sie eine Begründung an (z.B. versteckter Schaden)</li>
+                          <li>Tragen Sie den Preis ein</li>
+                          <li>Senden Sie den Nachtrag zur Genehmigung</li>
+                        </ol>
+                        <p className="text-gray-400 mt-2">Der Bauherr wird benachrichtigt und kann den Nachtrag prüfen und genehmigen.</p>
+                      </div>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Was passiert wenn ein Nachtrag abgelehnt wird?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <p className="mt-3 text-gray-300 text-sm pl-4">
+                        Sie können den Nachtrag überarbeiten und erneut einreichen, oder direkt mit dem Bauherrn kommunizieren. 
+                        Alle Nachträge werden dokumentiert – bei Streitigkeiten haben Sie einen lückenlosen Nachweis.
+                      </p>
+                    </details>
+                  </div>
+                </div>
+                )}
+
+                {/* Einstellungen & Profil */}
+                {(!faqSearchTerm || 'einstellung profil einsatzgebiet radius gewerk'.includes(faqSearchTerm.toLowerCase())) && (
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Einstellungen & Profil</h3>
+                  <div className="space-y-3">
                     <details className="group border-b border-white/10 pb-3">
                       <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
                         <span>Wie ändere ich mein Einsatzgebiet?</span>
                         <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                       </summary>
                       <p className="mt-3 text-gray-300 text-sm pl-4">
-                        Gehen Sie zum Tab "Einsatzgebiet" und passen Sie Ihren Radius oder ausgeschlossene Bereiche an. 
-                        Die Änderungen werden sofort gespeichert und beeinflussen zukünftige Projektvorschläge.
+                        Gehen Sie zum Tab "Einsatzgebiet" und passen Sie Ihren Radius mit dem Schieberegler an (5-100 km). 
+                        Sie können auch einzelne PLZ-Bereiche ausschließen. Änderungen wirken sich sofort auf neue Projektvorschläge aus.
                       </p>
                     </details>
                     
                     <details className="group border-b border-white/10 pb-3">
                       <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
-                        <span>Wie werden Projekte regional gebündelt?</span>
+                        <span>Wie füge ich weitere Gewerke hinzu?</span>
                         <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
                       </summary>
                       <p className="mt-3 text-gray-300 text-sm pl-4">
-                        byndl analysiert automatisch Projekte in Ihrer Region und schlägt Ihnen Aufträge vor, 
-                        die Sie effizient kombinieren können. So optimieren Sie Fahrtzeiten und Auslastung.
+                        Im Tab "Gewerke" können Sie Ihre Fachgebiete verwalten. Wählen Sie aus der Liste die Gewerke aus, 
+                        für die Sie qualifiziert sind. Bei zulassungspflichtigen Gewerken kann ein Nachweis angefordert werden.
+                      </p>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Welche Dokumente sollte ich hochladen?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <p className="font-medium text-white">Pflichtdokumente:</p>
+                        <ul className="list-disc list-inside ml-2">
+                          <li>Gewerbeanmeldung / Gewerbeschein</li>
+                        </ul>
+                        <p className="font-medium text-white mt-2">Empfohlene Dokumente (erhöhen Vertrauen):</p>
+                        <ul className="list-disc list-inside ml-2">
+                          <li>Handwerkskarte (bei zulassungspflichtigen Gewerken)</li>
+                          <li>Betriebshaftpflichtversicherung</li>
+                          <li>Meisterbrief / Qualifikationsnachweise</li>
+                          <li>Referenzprojekte</li>
+                        </ul>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+                )}
+
+                {/* Bewertungen */}
+                {(!faqSearchTerm || 'bewertung stern rezension kunde'.includes(faqSearchTerm.toLowerCase())) && (
+                <div className="bg-white/5 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Bewertungen</h3>
+                  <div className="space-y-3">
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Wie funktioniert das Bewertungssystem?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <div className="mt-3 text-gray-300 text-sm pl-4 space-y-2">
+                        <p>Nach Abschluss eines Auftrags kann der Bauherr Sie bewerten:</p>
+                        <ul className="list-disc list-inside ml-2">
+                          <li>Sternebewertung (1-5 Sterne)</li>
+                          <li>Bewertung in Kategorien (Qualität, Termintreue, Kommunikation, Preis-Leistung)</li>
+                          <li>Optionaler Kommentar</li>
+                        </ul>
+                        <p className="mt-2">Ihre Gesamtbewertung wird in Ihrem Profil angezeigt und beeinflusst Ihre Sichtbarkeit bei neuen Projekten.</p>
+                      </div>
+                    </details>
+                    
+                    <details className="group border-b border-white/10 pb-3">
+                      <summary className="cursor-pointer text-white hover:text-teal-400 transition-colors font-medium flex justify-between items-center">
+                        <span>Kann ich auf Bewertungen antworten?</span>
+                        <span className="text-teal-400 group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <p className="mt-3 text-gray-300 text-sm pl-4">
+                        Ja, Sie können auf jede Bewertung eine öffentliche Antwort verfassen. 
+                        Bei offensichtlich falschen oder beleidigenden Bewertungen können Sie diese an den Support melden.
                       </p>
                     </details>
                   </div>
                 </div>
+                )}
 
                 {/* Support kontaktieren */}
                 <div className="bg-white/5 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Support kontaktieren</h3>
-                  <div className="space-y-4">
-                    <a href="mailto:info@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300 transition-colors">
-                      <span className="text-xl">📧</span>
-                      <span>info@byndl.de</span>
-                    </a>
-                    <a href="mailto:support@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300 transition-colors">
-                      <span className="text-xl">📧</span>
+                  
+                  {/* Kontakt-Info */}
+                  <div className="mb-6 p-4 bg-teal-900/20 border border-teal-500/30 rounded-lg">
+                    <a href="mailto:support@byndl.de" className="flex items-center gap-3 text-teal-400 hover:text-teal-300 transition-colors text-lg font-medium">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                      </svg>
                       <span>support@byndl.de</span>
                     </a>
-                    <p className="flex items-center gap-3 text-gray-300">
-                      <span className="text-xl">📞</span>
-                      <span>+49 221 / 123 456 789 (Mo-Fr 9-17 Uhr)</span>
+                    <p className="text-gray-400 text-sm mt-2 ml-9">
+                      Antwort innerhalb von 24 Stunden (werktags)
                     </p>
-                    <p className="text-gray-400 text-sm mt-2">
-                      Antwort innerhalb 24 Stunden (werktags)
-                    </p>
+                  </div>
+                  
+                  {/* Support-Formular */}
+                  <div className="space-y-4">
+                    <h4 className="text-white font-medium">Oder senden Sie uns direkt eine Nachricht:</h4>
+                    
+                    <div>
+                      <label className="block text-gray-300 text-sm mb-1">Betreff</label>
+                      <select
+                        value={supportForm.subject}
+                        onChange={(e) => setSupportForm({...supportForm, subject: e.target.value})}
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        <option value="" className="bg-slate-800">Bitte wählen...</option>
+                        <option value="Technisches Problem" className="bg-slate-800">Technisches Problem</option>
+                        <option value="Frage zur Nutzung" className="bg-slate-800">Frage zur Nutzung</option>
+                        <option value="Frage zu Provision/Abrechnung" className="bg-slate-800">Frage zu Provision/Abrechnung</option>
+                        <option value="Problem mit Bauherr" className="bg-slate-800">Problem mit Bauherr</option>
+                        <option value="Problem mit Projekt/Auftrag" className="bg-slate-800">Problem mit Projekt/Auftrag</option>
+                        <option value="Dokumente/Verifizierung" className="bg-slate-800">Dokumente/Verifizierung</option>
+                        <option value="Feedback/Verbesserungsvorschlag" className="bg-slate-800">Feedback/Verbesserungsvorschlag</option>
+                        <option value="Sonstiges" className="bg-slate-800">Sonstiges</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-300 text-sm mb-1">Ihre Nachricht</label>
+                      <textarea
+                        placeholder="Beschreiben Sie Ihr Anliegen..."
+                        value={supportForm.message}
+                        onChange={(e) => setSupportForm({...supportForm, message: e.target.value})}
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                        disabled={supportLoading}
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={sendSupportRequest}
+                      disabled={supportLoading || !supportForm.subject || !supportForm.message.trim()}
+                      className="px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                      </svg>
+                      {supportLoading ? 'Wird gesendet...' : 'Anfrage senden'}
+                    </button>
                   </div>
                 </div>
 
                 {/* Feedback senden */}
                 <div className="bg-white/5 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Feedback senden</h3>
-                  <p className="text-gray-300 text-sm mb-4">
-                    Ihre Meinung ist uns wichtig! Teilen Sie uns mit, wie wir byndl für Sie verbessern können.
+                  <h3 className="text-lg font-semibold text-white mb-4">Feedback & Verbesserungsvorschläge</h3>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Ihre Meinung ist uns wichtig! Helfen Sie uns, byndl für Handwerker noch besser zu machen.
                   </p>
                   <textarea
-                    placeholder="Ihr Feedback hilft uns, byndl zu verbessern..."
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="Was gefällt Ihnen? Was können wir verbessern?"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
                     value={feedbackText}
                     onChange={(e) => setFeedbackText(e.target.value)}
                     disabled={feedbackLoading}
@@ -1917,15 +2317,18 @@ const getPasswordStrengthClass = (password) => {
                 <div className="bg-white/5 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Nützliche Links</h3>
                   <div className="space-y-2">
-                    <a href="/agb" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
+                    <Link to="/agb" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
                       → Allgemeine Geschäftsbedingungen
-                    </a>
-                    <a href="/datenschutz" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
+                    </Link>
+                    <Link to="/nutzungsbedingungen" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
+                      → Nutzungsbedingungen
+                    </Link>
+                    <Link to="/datenschutz" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
                       → Datenschutzerklärung
-                    </a>
-                    <a href="/impressum" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
+                    </Link>
+                    <Link to="/impressum" target="_blank" className="block text-teal-400 hover:text-teal-300 transition-colors">
                       → Impressum
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>
