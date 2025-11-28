@@ -390,18 +390,31 @@ const changeEmail = async () => {
     
     try {
       setSupportLoading(true);
+      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
       
-      // Mailto als Fallback
-      const mailtoLink = `mailto:support@byndl.de?subject=${encodeURIComponent(supportForm.subject)}&body=${encodeURIComponent(
-        `Support-Anfrage von: ${personalData.firstName} ${personalData.lastName}\nE-Mail: ${personalData.email}\n\n${supportForm.message}`
-      )}`;
-      window.location.href = mailtoLink;
+      const res = await fetch(apiUrl('/api/feedback'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userData?.id,
+          userType: 'bauherr',
+          userName: `${personalData.firstName} ${personalData.lastName}`,
+          userEmail: personalData.email,
+          subject: supportForm.subject,
+          message: supportForm.message,
+          type: 'support'
+        })
+      });
       
-      setSupportForm({ subject: '', message: '' });
-      setMessage('✅ Support-Anfrage wurde geöffnet');
-      setTimeout(() => setMessage(''), 3000);
+      if (res.ok) {
+        setSupportForm({ subject: '', message: '' });
+        setMessage('✅ Support-Anfrage erfolgreich gesendet! Wir melden uns innerhalb von 24 Stunden.');
+        setTimeout(() => setMessage(''), 5000);
+      } else {
+        throw new Error('Senden fehlgeschlagen');
+      }
     } catch (err) {
-      setError('Fehler beim Senden der Anfrage');
+      setError('Fehler beim Senden der Anfrage. Bitte versuchen Sie es erneut.');
       setTimeout(() => setError(''), 3000);
     } finally {
       setSupportLoading(false);
