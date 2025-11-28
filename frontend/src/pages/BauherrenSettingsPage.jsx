@@ -400,9 +400,7 @@ const changeEmail = async () => {
           userType: 'bauherr',
           userName: `${personalData.firstName} ${personalData.lastName}`,
           userEmail: personalData.email,
-          subject: supportForm.subject,
-          message: supportForm.message,
-          type: 'support'
+          feedbackText: `[${supportForm.subject}]\n\n${supportForm.message}`
         })
       });
       
