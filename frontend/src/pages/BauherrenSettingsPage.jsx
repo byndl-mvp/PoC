@@ -1558,6 +1558,7 @@ const changeEmail = async () => {
                           <ul className="list-disc list-inside ml-2">
                             <li>Kreditkarte (Visa, Mastercard, American Express)</li>
                             <li>SEPA-Lastschrift</li>
+                            <li>PayPal</li>
                             <li>Apple Pay & Google Pay</li>
                             <li>Klarna (Sofortüberweisung)</li>
                             <li>giropay</li>
