@@ -199,13 +199,9 @@ export default function TradeConfirmationPage() {
     const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
     
     if (!userData.id) {
-      // Nicht eingeloggt - zur Registrierung
-      navigate('/bauherr/register', {
-        state: {
-          projectId: projectId,
-          fromTradeConfirmation: true
-        }
-      });
+      // Nicht eingeloggt - sollte nicht passieren, da Projekt nur über Dashboard erreichbar
+      // Sicherheitshalber zur Registrierung umleiten
+      navigate('/bauherr/register');
       return;
     }
     
@@ -511,8 +507,10 @@ if (loading) return (
                 </svg>
                 Speichern...
               </span>
+            ) : priceInfo ? (
+              `Jetzt bezahlen & LVs erstellen (${priceInfo.totalPrice.toFixed(2)} €) →`
             ) : (
-              `Weiter zur Registrierung →`
+              `Weiter →`
             )}
           </button>
         </div>
