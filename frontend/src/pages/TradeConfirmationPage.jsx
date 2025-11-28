@@ -27,8 +27,8 @@ export default function TradeConfirmationPage() {
   
   // Hilfsfunktion für Gesamtzahl
   const getTotalSelectedCount = () => {
-    const manualCount = detectedTrades.filter(t => t.source === 'manuell').length;
-    return selectedRequired.length + selectedRecommended.length + manualCount;
+    const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
+    return selectedRequired.length + selectedRecommended.length + manualTrades.length;
   };
 
   // Berechne Preis basierend auf Anzahl der Gewerke (Preis pro LV × Anzahl LVs)
@@ -174,6 +174,16 @@ export default function TradeConfirmationPage() {
     }
   };
 
+  const removeManualTrade = (tradeId) => {
+    const trade = detectedTrades.find(t => t.id === tradeId);
+    if (trade) {
+      // Aus detectedTrades entfernen
+      setDetectedTrades(prev => prev.filter(t => t.id !== tradeId));
+      // Zurück zu allTrades hinzufügen
+      setAllTrades(prev => [...prev, { id: trade.id, name: trade.name, code: trade.code }]);
+    }
+  };
+  
   const handleContinue = async () => {
     const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
     const manualTradeIds = manualTrades.map(t => t.id);
@@ -424,6 +434,15 @@ if (loading) return (
                     </div>
                     <p className="text-gray-200 text-sm mt-1">{trade.reason}</p>
                   </div>
+                  <button
+                    onClick={() => removeManualTrade(trade.id)}
+                    className="ml-3 p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                    title="Gewerk entfernen"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>
