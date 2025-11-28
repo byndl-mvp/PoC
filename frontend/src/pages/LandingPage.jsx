@@ -663,7 +663,7 @@ export default function LandingPage() {
               <h4 className="text-white font-semibold mb-4">Plattform</h4>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/start" className="text-gray-400 hover:text-teal-400 transition-colors">
+                  <Link to="/bauherr/register" className="text-gray-400 hover:text-teal-400 transition-colors">
                     Für Bauherren
                   </Link>
                 </li>
