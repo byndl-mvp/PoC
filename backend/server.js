@@ -10514,16 +10514,10 @@ if (lv.vorbemerkungen && lv.vorbemerkungen.length > 0) {
         
         doc.moveDown(0.5);
         
-        const planningCosts = grandTotal * 0.10;
         const contingency = grandTotal * 0.05;
-        const subtotal = grandTotal + planningCosts + contingency;
+        const subtotal = grandTotal + contingency;
         const vat = subtotal * 0.19;
         const finalTotal = subtotal + vat;
-        
-        doc.fontSize(11)
-           .font('Helvetica')
-           .text('Planungskosten (10%):', 70, doc.y)
-           .text(formatCurrency(planningCosts), 400, doc.y - 11, { width: 100, align: 'right' });
         
         doc.text('Unvorhergesehenes (5%):', 70, doc.y)
            .text(formatCurrency(contingency), 400, doc.y - 11, { width: 100, align: 'right' });
