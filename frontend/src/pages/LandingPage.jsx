@@ -635,7 +635,7 @@ export default function LandingPage() {
             In nur 5 Minuten zur professionellen Ausschreibung
           </p>
           <Link
-            to="/start"
+            to="/bauherr/register"
             className="inline-block bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold px-12 py-5 rounded-xl shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-200 text-lg"
           >
             Projekt starten →
