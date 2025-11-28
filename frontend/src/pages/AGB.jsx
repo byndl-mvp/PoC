@@ -452,9 +452,9 @@ export default function AGB() {
 
               <h3 className="text-lg font-semibold text-white mb-3 mt-6">6.3 Berechnungsgrundlage</h3>
               <p className="mb-4 leading-relaxed">
-                Die Provision wird auf Basis der im Werkvertrag vereinbarten Gesamtvergütung (netto, ohne 
-                Umsatzsteuer) berechnet. Bei Nachträgen, die im Verlauf des Projekts vereinbart werden, 
-                wird die Provision entsprechend auf den erhöhten Auftragswert angepasst.
+                Die Provision wird ausschließlich auf Basis der im Werkvertrag vereinbarten Gesamtvergütung (netto, ohne 
+                Umsatzsteuer) berechnet. Nachträge, die im Verlauf des Projekts vereinbart werden, 
+                haben keinen Einfluss auf die Provision.
               </p>
 
               <h3 className="text-lg font-semibold text-white mb-3 mt-6">6.4 Fälligkeit und Rechnungsstellung</h3>
