@@ -360,7 +360,7 @@ export default function AGB() {
 
               <h3 className="text-lg font-semibold text-white mb-3 mt-6">5.2 Projektvermittlung</h3>
               <p className="mb-4 leading-relaxed">
-                Handwerker erhalten Benachrichtigungen über passende Projekte in ihrem Einsatzgebiet. 
+                Handwerker erhalten Benachrichtigungen über passende Ausschreibungen in ihrem Einsatzgebiet. 
                 Sie können Angebote abgeben, die den Bauherren zur Verfügung gestellt werden. Es besteht 
                 kein Anspruch auf Vermittlung bestimmter oder einer Mindestanzahl von Projekten.
               </p>
