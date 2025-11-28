@@ -376,7 +376,7 @@ export default function LandingPage() {
             Faire Gebühren pro Gewerk – je mehr Gewerke Ihr Projekt benötigt, desto günstiger wird es pro Leistungsverzeichnis.
           </p>
           <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
-            Die KI analysiert Ihr Projekt und ermittelt automatisch die benötigten Gewerke. Sie zahlen erst, wenn Sie mit der Ausschreibung zufrieden sind.
+            Die KI analysiert Ihr Projekt und ermittelt automatisch die benötigten Gewerke. Preise je Leistungsverzeichnis:
           </p>
           
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -415,17 +415,12 @@ export default function LandingPage() {
               </div>
             </div>
             
-            {/* 3-5 Gewerke - Beliebt */}
-            <div className="bg-gradient-to-br from-teal-600/30 to-blue-600/30 backdrop-blur rounded-2xl p-8 border-2 border-teal-400/70 transform md:scale-105 shadow-2xl relative">
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <span className="bg-gradient-to-r from-teal-500 to-teal-400 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">
-                  MEISTGEWÄHLT
-                </span>
-              </div>
-              <div className="flex items-center justify-between mb-4 mt-2">
-                <h3 className="text-lg font-semibold text-gray-200">3-5 Gewerke</h3>
-                <div className="w-10 h-10 bg-teal-500/30 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-teal-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* 3-5 Gewerke */}
+            <div className="bg-gradient-to-br from-white/5 to-white/10 backdrop-blur rounded-2xl p-8 border border-white/20 hover:border-teal-500/50 transition-all duration-300 hover:shadow-xl group">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-300">3-5 Gewerke</h3>
+                <div className="w-10 h-10 bg-teal-500/20 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                   </svg>
                 </div>
@@ -434,29 +429,29 @@ export default function LandingPage() {
                 <span className="text-4xl font-bold text-white">8,90 €</span>
                 <span className="text-gray-300 ml-2">pro LV</span>
               </div>
-              <div className="space-y-3 text-gray-200">
+              <div className="space-y-3 text-gray-300">
                 <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-teal-300 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                   </svg>
                   <span>Für typische Sanierungen</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-teal-300 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                   </svg>
                   <span>z.B. Badsanierung, Küche</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-teal-300 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                   </svg>
-                  <span className="text-teal-300 font-medium">Über 10% Ersparnis pro LV</span>
+                  <span className="text-teal-400 font-medium">Über 10% Ersparnis pro LV</span>
                 </div>
               </div>
-              <div className="mt-6 pt-4 border-t border-white/20">
-                <p className="text-sm text-gray-300">
-                  <span className="text-teal-300 font-medium">Beispiel:</span> 4 Gewerke = 35,60 € gesamt
+              <div className="mt-6 pt-4 border-t border-white/10">
+                <p className="text-sm text-gray-400">
+                  <span className="text-teal-400 font-medium">Beispiel:</span> 4 Gewerke = 35,60 € gesamt
                 </p>
               </div>
             </div>
