@@ -333,9 +333,8 @@ export default function AGB() {
 
               <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.3 Fälligkeit</h3>
               <p className="mb-4 leading-relaxed">
-                Die Servicegebühr wird fällig, sobald der Bauherr die erstellten Leistungsverzeichnisse 
-                freigibt und die Ausschreibung aktiviert. Die Zahlung erfolgt über die in der Plattform 
-                angebotenen Zahlungsmethoden.
+                Die Servicegebühr wird fällig, bevor die Leistungsverzeichnisse erstellt werden.
+                Die Zahlung erfolgt über die in der Plattform angebotenen Zahlungsmethoden.
               </p>
 
               <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.4 Keine weiteren Gebühren für Bauherren</h3>
