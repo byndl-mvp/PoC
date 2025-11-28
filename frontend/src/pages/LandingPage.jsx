@@ -366,50 +366,161 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing Preview */}
+      {/* Pricing - Neues Gebührenmodell pro Gewerk */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold text-center text-white mb-6">
-            Transparente Preise
+            Transparente Preise für Bauherren
           </h2>
-          <p className="text-xl text-center text-gray-300 mb-12 max-w-2xl mx-auto">
-            Einmalige Gebühr für die KI-gestützte Ausschreibung. 
-            Keine versteckten Kosten, keine Provisionen für Bauherren.
+          <p className="text-xl text-center text-gray-300 mb-4 max-w-3xl mx-auto">
+            Faire Gebühren pro Gewerk – je mehr Gewerke Ihr Projekt benötigt, desto günstiger wird es pro Leistungsverzeichnis.
+          </p>
+          <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
+            Die KI analysiert Ihr Projekt und ermittelt automatisch die benötigten Gewerke. Sie zahlen erst, wenn Sie mit der Ausschreibung zufrieden sind.
           </p>
           
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="bg-gradient-to-br from-white/5 to-white/10 backdrop-blur rounded-2xl p-8 border border-white/20 hover:border-teal-500/50 transition-all duration-300 hover:shadow-xl">
-              <h3 className="text-lg font-semibold text-gray-300 mb-2">Kleine Projekte</h3>
-              <div className="text-4xl font-bold text-white mb-1">29,90 €</div>
-              <p className="text-teal-400 mb-6 font-medium">einmalig</p>
-              <div className="space-y-3">
-                <p className="text-gray-200 font-medium">1-2 Gewerke</p>
-                <p className="text-sm text-gray-400">z.B. Malerarbeiten, Bodenbelagsarbeiten</p>
+            {/* 1-2 Gewerke */}
+            <div className="bg-gradient-to-br from-white/5 to-white/10 backdrop-blur rounded-2xl p-8 border border-white/20 hover:border-teal-500/50 transition-all duration-300 hover:shadow-xl group">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-300">1-2 Gewerke</h3>
+                <div className="w-10 h-10 bg-teal-500/20 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-white">9,90 €</span>
+                <span className="text-gray-400 ml-2">pro LV</span>
+              </div>
+              <div className="space-y-3 text-gray-300">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Ideal für kleinere Projekte</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>z.B. Malerarbeiten, Bodenbelag</span>
+                </div>
+              </div>
+              <div className="mt-6 pt-4 border-t border-white/10">
+                <p className="text-sm text-gray-400">
+                  <span className="text-teal-400 font-medium">Beispiel:</span> 2 Gewerke = 19,80 € gesamt
+                </p>
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-teal-600/30 to-blue-600/30 backdrop-blur rounded-2xl p-8 border-2 border-teal-400/70 transform scale-105 shadow-2xl relative">
+            {/* 3-5 Gewerke - Beliebt */}
+            <div className="bg-gradient-to-br from-teal-600/30 to-blue-600/30 backdrop-blur rounded-2xl p-8 border-2 border-teal-400/70 transform md:scale-105 shadow-2xl relative">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <span className="bg-gradient-to-r from-teal-500 to-teal-400 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">
-                  BELIEBT
+                  MEISTGEWÄHLT
                 </span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-200 mb-2 mt-2">Mittlere Projekte</h3>
-              <div className="text-4xl font-bold text-white mb-1">59,90 €</div>
-              <p className="text-teal-300 mb-6 font-medium">einmalig</p>
-              <div className="space-y-3">
-                <p className="text-gray-100 font-medium">3-5 Gewerke</p>
-                <p className="text-sm text-gray-300">z.B. Badsanierung, Fassadensanierung</p>
+              <div className="flex items-center justify-between mb-4 mt-2">
+                <h3 className="text-lg font-semibold text-gray-200">3-5 Gewerke</h3>
+                <div className="w-10 h-10 bg-teal-500/30 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-teal-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-white">8,90 €</span>
+                <span className="text-gray-300 ml-2">pro LV</span>
+              </div>
+              <div className="space-y-3 text-gray-200">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-teal-300 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Für typische Sanierungen</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-teal-300 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>z.B. Badsanierung, Küche</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-teal-300 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span className="text-teal-300 font-medium">Über 10% Ersparnis pro LV</span>
+                </div>
+              </div>
+              <div className="mt-6 pt-4 border-t border-white/20">
+                <p className="text-sm text-gray-300">
+                  <span className="text-teal-300 font-medium">Beispiel:</span> 4 Gewerke = 35,60 € gesamt
+                </p>
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-white/5 to-white/10 backdrop-blur rounded-2xl p-8 border border-white/20 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl">
-              <h3 className="text-lg font-semibold text-gray-300 mb-2">Große Projekte</h3>
-              <div className="text-4xl font-bold text-white mb-1">99,90 €</div>
-              <p className="text-blue-400 mb-6 font-medium">einmalig</p>
-              <div className="space-y-3">
-                <p className="text-gray-200 font-medium">Ab 6 Gewerken</p>
-                <p className="text-sm text-gray-400">z.B. Kernsanierung, Anbau</p>
+            {/* Ab 6 Gewerke */}
+            <div className="bg-gradient-to-br from-white/5 to-white/10 backdrop-blur rounded-2xl p-8 border border-white/20 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl group">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-300">Ab 6 Gewerke</h3>
+                <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-white">7,90 €</span>
+                <span className="text-gray-400 ml-2">pro LV</span>
+              </div>
+              <div className="space-y-3 text-gray-300">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Für umfangreiche Projekte</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>z.B. Kernsanierung, Anbau</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span className="text-blue-400 font-medium">Über 20% Ersparnis pro LV</span>
+                </div>
+              </div>
+              <div className="mt-6 pt-4 border-t border-white/10">
+                <p className="text-sm text-gray-400">
+                  <span className="text-blue-400 font-medium">Beispiel:</span> 8 Gewerke = 63,20 € gesamt
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Hinweis-Box */}
+          <div className="max-w-3xl mx-auto mt-12">
+            <div className="bg-gradient-to-r from-teal-900/30 to-blue-900/30 rounded-xl p-6 border border-teal-500/20">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-teal-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-white font-semibold mb-2">So funktioniert die Abrechnung</h4>
+                  <p className="text-gray-300 text-sm leading-relaxed">
+                    Sie beschreiben Ihr Projekt, unsere KI analysiert es und ermittelt die benötigten Gewerke. 
+                    <span className="text-teal-400"> Für jedes Gewerk wird ein professionelles Leistungsverzeichnis (LV) erstellt.</span> 
+                    {' '}Die Gebühr richtet sich nach der Gesamtanzahl der Gewerke in Ihrem Projekt. 
+                    Keine versteckten Kosten, keine Provisionen für Bauherren.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -608,6 +719,11 @@ export default function LandingPage() {
                 <li>
                   <Link to="/agb" className="text-gray-400 hover:text-teal-400 transition-colors">
                     AGB
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/nutzungsbedingungen" className="text-gray-400 hover:text-teal-400 transition-colors">
+                    Nutzungsbedingungen
                   </Link>
                 </li>
                 <li>
