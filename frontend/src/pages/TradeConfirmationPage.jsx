@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../api';
 
-// Preismodell
-const PRICING = {
-  small: { price: 29.90, label: '1-2 Gewerke', min: 1, max: 2 },
-  medium: { price: 59.90, label: '3-5 Gewerke', min: 3, max: 5 },
-  large: { price: 99.90, label: 'Ab 6 Gewerken', min: 6, max: 20 }
+// Preismodell - Preis pro Leistungsverzeichnis (LV)
+const PRICING_PER_LV = {
+  small: { pricePerLV: 9.90, label: '1-2 Gewerke', min: 1, max: 2 },
+  medium: { pricePerLV: 8.90, label: '3-5 Gewerke', min: 3, max: 5 },
+  large: { pricePerLV: 7.90, label: 'Ab 6 Gewerke', min: 6, max: Infinity }
 };
 
 export default function TradeConfirmationPage() {
@@ -31,13 +31,22 @@ export default function TradeConfirmationPage() {
     return selectedRequired.length + selectedRecommended.length + manualCount;
   };
 
-  // Berechne Preis basierend auf Anzahl der Gewerke
+  // Berechne Preis basierend auf Anzahl der Gewerke (Preis pro LV × Anzahl LVs)
   const calculatePrice = () => {
     const count = getTotalSelectedCount();
     if (count === 0) return null;
-    if (count <= 2) return PRICING.small;
-    if (count <= 5) return PRICING.medium;
-    return PRICING.large;
+    
+    let tier;
+    if (count <= 2) tier = PRICING_PER_LV.small;
+    else if (count <= 5) tier = PRICING_PER_LV.medium;
+    else tier = PRICING_PER_LV.large;
+    
+    return {
+      pricePerLV: tier.pricePerLV,
+      count: count,
+      totalPrice: tier.pricePerLV * count,
+      label: tier.label
+    };
   };
 
   useEffect(() => {
@@ -464,13 +473,18 @@ if (loading) return (
               <p className="text-teal-300 text-2xl font-bold mt-1">
                 {getTotalSelectedCount()} {getTotalSelectedCount() === 1 ? 'Gewerk' : 'Gewerke'}
               </p>
+              {priceInfo && (
+                <p className="text-gray-400 text-sm mt-1">
+                  × {priceInfo.pricePerLV.toFixed(2)} € pro LV
+                </p>
+              )}
             </div>
             <div className="text-right">
-              <p className="text-gray-400 text-sm">Gebühr für KI-Ausschreibung:</p>
+              <p className="text-gray-400 text-sm">Gebühr für LV-Erstellung:</p>
               <p className="text-white text-2xl font-bold">
-                {priceInfo ? `${priceInfo.price.toFixed(2)} €` : '-'}
+                {priceInfo ? `${priceInfo.totalPrice.toFixed(2)} €` : '-'}
               </p>
-              <p className="text-gray-400 text-xs mt-1">einmalig</p>
+              <p className="text-gray-400 text-xs mt-1">einmalig, inkl. MwSt.</p>
             </div>
           </div>
         </div>
