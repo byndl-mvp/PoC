@@ -820,20 +820,20 @@ const TradeOptimizationDisplay = ({
   
   // Budget-Komponenten
   const BudgetSuccess = ({ totalSum, budget }) => (
-    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-6 shadow-lg">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-4 sm:p-6 shadow-lg">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
         <div>
-          <h3 className="text-xl font-bold text-green-800">Budget eingehalten!</h3>
-          <p className="text-green-700">
-            Die Gesamtkosten von {formatCurrency(totalSum)} liegen innerhalb Ihres Budgets von {formatCurrency(budget)}
+          <h3 className="text-lg sm:text-xl font-bold text-green-800">Budget eingehalten!</h3>
+          <p className="text-sm sm:text-base text-green-700">
+            Gesamtkosten {formatCurrency(totalSum)} innerhalb Budget {formatCurrency(budget)}
           </p>
-          <p className="text-sm text-green-600 mt-1">
-            Verbleibender Spielraum: {formatCurrency(parseFloat(budget) - totalSum)}
+          <p className="text-xs sm:text-sm text-green-600 mt-1">
+            Spielraum: {formatCurrency(parseFloat(budget) - totalSum)}
           </p>
         </div>
       </div>
@@ -848,19 +848,19 @@ const TradeOptimizationDisplay = ({
     showOptimizations, 
     optimizations 
   }) => (
-    <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-6 shadow-lg">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-4 sm:p-6 shadow-lg">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <div className="flex-1">
-          <h3 className="text-xl font-bold text-red-800">Budget überschritten</h3>
-          <p className="text-red-700">
-            Die Gesamtkosten von {formatCurrency(totalSum)} überschreiten Ihr Budget von {formatCurrency(budget)}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg sm:text-xl font-bold text-red-800">Budget überschritten</h3>
+          <p className="text-sm sm:text-base text-red-700">
+            Gesamtkosten {formatCurrency(totalSum)} überschreiten Budget {formatCurrency(budget)}
           </p>
-          <p className="text-sm text-red-600 mt-1">
+          <p className="text-xs sm:text-sm text-red-600 mt-1">
             Überschreitung: {formatCurrency(totalSum - parseFloat(budget))} 
             ({((totalSum - parseFloat(budget)) / parseFloat(budget) * 100).toFixed(1)}%)
           </p>
@@ -869,19 +869,21 @@ const TradeOptimizationDisplay = ({
             <button
               onClick={onLoadOptimizations}
               disabled={loadingOptimizations}
-              className="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="mt-3 sm:mt-4 bg-red-600 text-white px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
             >
               {loadingOptimizations ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  Analysiere Einsparmöglichkeiten...
+                  <span className="hidden sm:inline">Analysiere Einsparmöglichkeiten...</span>
+                  <span className="sm:hidden">Analysiere...</span>
                 </>
               ) : (
                 <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
-                  Einsparmöglichkeiten anzeigen
+                  <span className="hidden sm:inline">Einsparmöglichkeiten anzeigen</span>
+                  <span className="sm:hidden">Einsparungen</span>
                 </>
               )}
             </button>
@@ -902,36 +904,39 @@ const TradeOptimizationDisplay = ({
   if (isNewStructure) {
     // Neue Struktur von der Übersichts-Route
     return (
-      <div className="mt-6 bg-white rounded-lg p-6">
-        <h4 className="text-lg font-bold text-gray-800 mb-4">
-          Einsparpotenzial-Übersicht (Geschätzt: {formatCurrency(optimizations.totalEstimatedPotential || 0)})
+      <div className="mt-4 sm:mt-6 bg-white rounded-lg p-4 sm:p-6">
+        <h4 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">
+          Einsparpotenzial-Übersicht
+          <span className="block sm:inline sm:ml-1 text-sm font-normal text-gray-600">
+            (Geschätzt: {formatCurrency(optimizations.totalEstimatedPotential || 0)})
+          </span>
         </h4>
         
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-          <p className="text-sm text-blue-700">
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-3 sm:p-4 mb-3 sm:mb-4">
+          <p className="text-xs sm:text-sm text-blue-700">
             <strong>{optimizations.summary?.message || 'Budget-Status'}</strong>
           </p>
-          <p className="text-sm text-gray-600 mt-2">{optimizations.recommendation}</p>
+          <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2">{optimizations.recommendation}</p>
         </div>
         
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {optimizations.tradesPotential?.map((trade, idx) => (
-            <div key={idx} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-gray-800">{trade.tradeName}</span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                      ~{trade.potentialPercent}% Einsparpotenzial
+            <div key={idx} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="font-semibold text-gray-800 text-sm sm:text-base">{trade.tradeName}</span>
+                    <span className="text-xs px-2 py-0.5 sm:py-1 rounded-full bg-blue-100 text-blue-700">
+                      ~{trade.potentialPercent}% Potenzial
                     </span>
                   </div>
-                  <p className="text-gray-700 text-sm">{trade.hint}</p>
+                  <p className="text-gray-700 text-xs sm:text-sm">{trade.hint}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Aktuell: {formatCurrency(trade.currentCost)}
                   </p>
                 </div>
-                <div className="text-right ml-4">
-                  <p className="font-bold text-green-600">
+                <div className="text-left sm:text-right flex sm:block items-center gap-2 sm:gap-0">
+                  <p className="font-bold text-green-600 text-sm sm:text-base">
                     bis zu {formatCurrency(trade.estimatedPotential)}
                   </p>
                   <p className="text-xs text-gray-500">möglich</p>
@@ -941,10 +946,10 @@ const TradeOptimizationDisplay = ({
           ))}
         </div>
         
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded">
-          <p className="text-sm text-yellow-800">
+        <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-yellow-50 border border-yellow-300 rounded">
+          <p className="text-xs sm:text-sm text-yellow-800">
             💡 <strong>Tipp:</strong> Klicken Sie bei einzelnen Gewerken auf "Einsparpotenzial prüfen" 
-            für detaillierte Vorschläge zu konkreten LV-Positionen.
+            für detaillierte Vorschläge.
           </p>
         </div>
       </div>
@@ -954,35 +959,37 @@ const TradeOptimizationDisplay = ({
   // Alte Struktur (falls noch verwendet) - Fallback
   if (!optimizations?.optimizations) {
     return (
-      <div className="mt-6 bg-white rounded-lg p-6">
-        <p className="text-gray-600">Keine Optimierungsdaten verfügbar</p>
+      <div className="mt-4 sm:mt-6 bg-white rounded-lg p-4 sm:p-6">
+        <p className="text-gray-600 text-sm">Keine Optimierungsdaten verfügbar</p>
       </div>
     );
   }
   
   // Alte detaillierte Struktur
   return (
-    <div className="mt-6 bg-white rounded-lg p-6">
-      <h4 className="text-lg font-bold text-gray-800 mb-4">
-        Einsparmöglichkeiten (Potenzial: {formatCurrency(optimizations.totalPossibleSaving || 0)})
+    <div className="mt-4 sm:mt-6 bg-white rounded-lg p-4 sm:p-6">
+      <h4 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">
+        Einsparmöglichkeiten
+        <span className="block sm:inline sm:ml-1 text-sm font-normal text-gray-600">
+          (Potenzial: {formatCurrency(optimizations.totalPossibleSaving || 0)})
+        </span>
       </h4>
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-        <p className="text-sm text-blue-700">
+      <div className="bg-blue-50 border-l-4 border-blue-400 p-3 sm:p-4 mb-3 sm:mb-4">
+        <p className="text-xs sm:text-sm text-blue-700">
           <strong>Hinweis:</strong> Diese Vorschläge sind Richtwerte zur Kostensenkung. 
           Die konkreten Einsparungen können im Rahmen der Auftragsvergabe mit den jeweiligen 
-          Fachbetrieben individuell abgestimmt werden. Alternativ können Sie die entsprechenden 
-          Positionen direkt in den Leistungsverzeichnissen über die Bearbeitungsfunktion anpassen.
+          Fachbetrieben individuell abgestimmt werden.
         </p>
       </div>
       
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {optimizations.optimizations.map((opt, idx) => (
-          <div key={idx} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-gray-800">{opt.tradeName || opt.trade || 'Allgemein'}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
+          <div key={idx} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1">
+                  <span className="font-semibold text-gray-800 text-sm sm:text-base">{opt.tradeName || opt.trade || 'Allgemein'}</span>
+                  <span className={`text-xs px-2 py-0.5 sm:py-1 rounded-full ${
                     opt.type === 'eigenleistung' ? 'bg-blue-100 text-blue-700' :
                     opt.type === 'material' ? 'bg-yellow-100 text-yellow-700' :
                     opt.type === 'verschiebung' ? 'bg-purple-100 text-purple-700' :
@@ -992,7 +999,7 @@ const TradeOptimizationDisplay = ({
                      opt.type === 'material' ? 'Material' :
                      opt.type === 'verschiebung' ? 'Verschiebung' : 'Reduzierung'}
                   </span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
+                  <span className={`text-xs px-2 py-0.5 sm:py-1 rounded-full ${
                     opt.difficulty === 'einfach' ? 'bg-green-100 text-green-700' :
                     opt.difficulty === 'mittel' ? 'bg-orange-100 text-orange-700' :
                     'bg-red-100 text-red-700'
@@ -1000,14 +1007,14 @@ const TradeOptimizationDisplay = ({
                     {opt.difficulty}
                   </span>
                 </div>
-                <p className="text-gray-700">{opt.measure}</p>
+                <p className="text-gray-700 text-xs sm:text-sm">{opt.measure}</p>
                 {opt.impact && (
-                  <p className="text-sm text-gray-500 mt-1">⚠️ {opt.impact}</p>
+                  <p className="text-xs text-gray-500 mt-1">⚠️ {opt.impact}</p>
                 )}
               </div>
-              <div className="text-right ml-4">
-                <p className="font-bold text-green-600">- {formatCurrency(opt.savingAmount)}</p>
-                <p className="text-sm text-gray-500">({opt.savingPercent}%)</p>
+              <div className="text-left sm:text-right flex sm:block items-center gap-2 sm:gap-0">
+                <p className="font-bold text-green-600 text-sm sm:text-base">- {formatCurrency(opt.savingAmount)}</p>
+                <p className="text-xs text-gray-500">({opt.savingPercent}%)</p>
               </div>
             </div>
           </div>
@@ -1942,44 +1949,23 @@ const TradeOptimizationDisplay = ({
           </div>
         )}
         
-        {/* ÄNDERUNG: Erweiterte Action Buttons */}
-        <div className="flex flex-wrap gap-2 sm:gap-4 justify-center mt-8 sm:mt-12">
-          <button
-            onClick={() => window.print()}
-            className="px-4 sm:px-8 py-3 sm:py-4 bg-white/10 backdrop-blur border border-white/30 text-white text-sm sm:text-base rounded-lg hover:bg-white/20 transition-all"
-          >
-            🖨 Drucken
-          </button>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mt-8 sm:mt-12 max-w-3xl mx-auto">
+          {/* PDF speichern - Primär */}
           <button
             onClick={() => {
               const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${exportMode === 'with-prices'}`);
               window.open(url, '_blank');
             }}
-            className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+            className="flex-1 px-6 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
           >
-            💾 PDF speichern
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Gesamt-PDF speichern
           </button>
-          <button
-            onClick={() => {
-              const mailtoLink = `mailto:?subject=Leistungsverzeichnis&body=Bitte finden Sie anbei das Leistungsverzeichnis`;
-              window.location.href = mailtoLink;
-            }}
-            className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-          >
-            ✉️ E-Mail
-          </button>
-          
-          {/* NEU: Zurück zur Übersicht Button */}
-          {!projectComplete && (
-            <button
-              onClick={() => navigate(`/project/${projectId}/lv-review`)}
-              className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-            >
-              ← <span className="hidden sm:inline">Zurück zur </span>Bearbeitung
-            </button>
-          )}
         
-          {/* ERWEITERT: Weiteres Gewerk Button mit besserem Context */}
+          {/* Weiteres Gewerk hinzufügen */}
           <button
             onClick={() => {
               if (!projectComplete) {
@@ -1990,14 +1976,15 @@ const TradeOptimizationDisplay = ({
                 handleAddAdditionalTrade();
               }
             }}
-            className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+            className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
           >
-            <span className="text-lg sm:text-xl mr-1 sm:mr-2">+</span> 
-            <span className="hidden sm:inline">{projectComplete ? 'Weiteres Gewerk hinzufügen' : 'Zusätzliches Gewerk hinzufügen'}</span>
-            <span className="sm:hidden">Gewerk</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Gewerk hinzufügen
           </button>
 
-          {/* NEU: Zurück zum Dashboard Button */}
+          {/* Zurück zum Dashboard */}
           <button
             onClick={() => {
               const userData = sessionStorage.getItem('userData');
@@ -2007,10 +1994,12 @@ const TradeOptimizationDisplay = ({
                 navigate('/bauherr/login');
               }
             }}
-            className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-gray-600 to-slate-700 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+            className="flex-1 px-6 py-4 bg-gradient-to-r from-gray-600 to-slate-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
           >
-            <span className="text-lg sm:text-xl mr-1 sm:mr-2">🏠</span>
-            <span className="hidden sm:inline">Zurück zum </span>Dashboard
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            Zum Dashboard
           </button>
         </div>
         
