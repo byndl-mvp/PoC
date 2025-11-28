@@ -257,7 +257,7 @@ export default function Nutzungsbedingungen() {
 
               <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.3 Kontolöschung</h3>
               <p className="mb-4 leading-relaxed">
-                Sie können Ihr Konto jederzeit löschen, indem Sie uns kontaktieren. Beachten Sie, dass 
+                Sie können Ihr Konto jederzeit löschen. Beachten Sie, dass 
                 bestimmte Daten aus rechtlichen Gründen aufbewahrt werden müssen und dass bereits 
                 eingegangene Verpflichtungen bestehen bleiben.
               </p>
