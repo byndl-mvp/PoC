@@ -1379,43 +1379,6 @@ const TradeOptimizationDisplay = ({
           </div>
         )}
 
-        {/* Export Options */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20 mb-8">
-          <h3 className="text-lg font-semibold text-white mb-4">Export-Optionen</h3>
-          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-6">
-              <label className="flex items-center text-white cursor-pointer">
-                <input
-                  type="radio"
-                  name="exportMode"
-                  value="with-prices"
-                  checked={exportMode === 'with-prices'}
-                  onChange={(e) => setExportMode(e.target.value)}
-                  className="mr-2 w-4 h-4 text-teal-500"
-                />
-                <span>Mit Preisen <span className="text-gray-400 text-sm">(interne Kalkulation)</span></span>
-              </label>
-              <label className="flex items-center text-white cursor-pointer">
-                <input
-                  type="radio"
-                  name="exportMode"
-                  value="without-prices"
-                  checked={exportMode === 'without-prices'}
-                  onChange={(e) => setExportMode(e.target.value)}
-                  className="mr-2 w-4 h-4 text-teal-500"
-                />
-                <span>Ohne Preise <span className="text-gray-400 text-sm">(für Angebotsanfrage)</span></span>
-              </label>
-            </div>
-            <button
-              onClick={handleExportCompletePDF}
-              className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
-            >
-              📄 Alle LVs als PDF exportieren
-            </button>
-          </div>
-        </div>
-
         {/* LV Cards */}
         {lvs.length === 0 ? (
           <div className="text-center text-white">
@@ -1791,21 +1754,21 @@ const TradeOptimizationDisplay = ({
         )}
 
         {/* Cost Summary */}
-        <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-          <h3 className="text-2xl font-bold text-white mb-6">Kostenzusammenfassung</h3>
+        <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 border border-white/20">
+          <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Kostenzusammenfassung</h3>
           
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {lvs.map((lv, idx) => (
-              <div key={idx} className="flex justify-between text-white">
-                <span className="text-gray-300">
+              <div key={idx} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 text-white py-1">
+                <span className="text-gray-300 text-sm sm:text-base">
                   {lv.trade_name || lv.name || lv.trade_code}
                   {lv.content?.nepSum > 0 && (
                     <span className="text-xs text-yellow-400 ml-2">
-                      (enthält NEP-Positionen)
+                      (enthält NEP)
                     </span>
                   )}
                 </span>
-                <span className="font-medium">
+                <span className="font-medium text-sm sm:text-base">
                   {formatCurrency(calculateTotal(lv))}
                   {lv.content?.nepSum > 0 && (
                     <span className="text-xs text-gray-400 ml-2">
@@ -1816,7 +1779,7 @@ const TradeOptimizationDisplay = ({
               </div>
             ))}
             
-            <div className="border-t border-white/20 pt-4 mt-4 space-y-2">
+            <div className="border-t border-white/20 pt-3 sm:pt-4 mt-3 sm:mt-4 space-y-2">
               {(() => {
                 const nettoSum = lvs.reduce((acc, lv) => acc + calculateTotal(lv), 0);
                 const contingency = nettoSum * 0.05;
@@ -1826,22 +1789,22 @@ const TradeOptimizationDisplay = ({
                 
                 return (
                   <>
-                    <div className="flex justify-between text-xl font-semibold text-white">
+                    <div className="flex justify-between text-base sm:text-xl font-semibold text-white">
                       <span>Netto-Summe:</span>
                       <span>{formatCurrency(nettoSum)}</span>
                     </div>
                     
-                    <div className="flex justify-between text-gray-300">
+                    <div className="flex justify-between text-sm sm:text-base text-gray-300">
                       <span>Unvorhergesehenes (5%):</span>
                       <span>{formatCurrency(contingency)}</span>
                     </div>
                     
-                    <div className="flex justify-between text-gray-300">
+                    <div className="flex justify-between text-sm sm:text-base text-gray-300">
                       <span>MwSt. (19%):</span>
                       <span>{formatCurrency(vat)}</span>
                     </div>
                     
-                    <div className="flex justify-between text-2xl font-bold text-teal-400 border-t border-white/20 pt-4 mt-4">
+                    <div className="flex justify-between text-xl sm:text-2xl font-bold text-teal-400 border-t border-white/20 pt-3 sm:pt-4 mt-3 sm:mt-4">
                       <span>Gesamtsumme:</span>
                       <span>{formatCurrency(grandTotal)}</span>
                     </div>
@@ -1853,11 +1816,11 @@ const TradeOptimizationDisplay = ({
         </div>
 
         {/* NEUE SEKTION: Ausschreibungs-Buttons */}
-<div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20 mt-8">
-  <h3 className="text-2xl font-bold text-white mb-6">Ausschreibung starten</h3>
+<div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 border border-white/20 mt-8">
+  <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Ausschreibung starten</h3>
   
-  <div className="mb-6 bg-blue-50/10 border border-blue-400/30 rounded-lg p-4">
-    <p className="text-blue-200 text-sm">
+  <div className="mb-4 sm:mb-6 bg-blue-50/10 border border-blue-400/30 rounded-lg p-3 sm:p-4">
+    <p className="text-blue-200 text-xs sm:text-sm leading-relaxed">
       <strong>ℹ️ So funktioniert's:</strong> Wir senden Ihre Leistungsverzeichnisse automatisch an passende, 
       verifizierte Handwerker in Ihrer Region. Diese können dann direkt Angebote abgeben, 
       die Sie in Ihrem Dashboard vergleichen können.
@@ -1865,7 +1828,7 @@ const TradeOptimizationDisplay = ({
   </div>
   
   {/* Gesamt-Ausschreibung Button */}
-  <div className="mb-6">
+  <div className="mb-4 sm:mb-6">
     <button
       onClick={async () => {
         if (!window.confirm('Möchten Sie alle Gewerke an passende Handwerker ausschreiben?')) return;
@@ -1895,22 +1858,23 @@ const TradeOptimizationDisplay = ({
           alert('Fehler: ' + error.message);
         }
       }}
-      className="w-full px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-lg font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+      className="w-full px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-base sm:text-lg font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
     >
-      🚀 Alle Gewerke jetzt an geeignete Handwerker ausschreiben
+      <span className="hidden sm:inline">🚀 Alle Gewerke jetzt an geeignete Handwerker ausschreiben</span>
+      <span className="sm:hidden">🚀 Alle Gewerke ausschreiben</span>
     </button>
   </div>
   
   {/* Einzelne Gewerke */}
-  <div className="border-t border-white/20 pt-6">
-    <h4 className="text-lg font-semibold text-white mb-4">Oder einzelne Gewerke ausschreiben:</h4>
-    <div className="space-y-3">
+  <div className="border-t border-white/20 pt-4 sm:pt-6">
+    <h4 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Oder einzelne Gewerke ausschreiben:</h4>
+    <div className="space-y-2 sm:space-y-3">
       {lvs.map((lv, idx) => (
-        <div key={idx} className="flex justify-between items-center bg-white/5 rounded-lg p-4">
-          <div>
-            <span className="text-white font-medium">{lv.trade_name || lv.name}</span>
-            <span className="text-gray-400 ml-3">
-              (~{formatCurrency(calculateTotal(lv))})
+        <div key={idx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 bg-white/5 rounded-lg p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+            <span className="text-white font-medium text-sm sm:text-base">{lv.trade_name || lv.name}</span>
+            <span className="text-gray-400 text-sm">
+              ~{formatCurrency(calculateTotal(lv))}
             </span>
           </div>
           <button
@@ -1945,7 +1909,7 @@ const TradeOptimizationDisplay = ({
                 alert('Fehler: ' + error.message);
               }
             }}
-            className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+            className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-teal-500 text-white text-sm sm:text-base rounded-lg hover:bg-teal-600 transition-colors whitespace-nowrap"
           >
             Ausschreiben →
           </button>
@@ -1989,10 +1953,10 @@ const TradeOptimizationDisplay = ({
         )}
         
         {/* ÄNDERUNG: Erweiterte Action Buttons */}
-        <div className="flex flex-wrap gap-4 justify-center mt-12">
+        <div className="flex flex-wrap gap-2 sm:gap-4 justify-center mt-8 sm:mt-12">
           <button
             onClick={() => window.print()}
-            className="px-8 py-4 bg-white/10 backdrop-blur border border-white/30 text-white rounded-lg hover:bg-white/20 transition-all"
+            className="px-4 sm:px-8 py-3 sm:py-4 bg-white/10 backdrop-blur border border-white/30 text-white text-sm sm:text-base rounded-lg hover:bg-white/20 transition-all"
           >
             🖨 Drucken
           </button>
@@ -2001,27 +1965,27 @@ const TradeOptimizationDisplay = ({
               const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${exportMode === 'with-prices'}`);
               window.open(url, '_blank');
             }}
-            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+            className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
           >
-            💾 Als PDF speichern
+            💾 PDF speichern
           </button>
           <button
             onClick={() => {
               const mailtoLink = `mailto:?subject=Leistungsverzeichnis&body=Bitte finden Sie anbei das Leistungsverzeichnis`;
               window.location.href = mailtoLink;
             }}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+            className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
           >
-            ✉️ Per E-Mail versenden
+            ✉️ E-Mail
           </button>
           
           {/* NEU: Zurück zur Übersicht Button */}
           {!projectComplete && (
             <button
               onClick={() => navigate(`/project/${projectId}/lv-review`)}
-              className="px-8 py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+              className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
             >
-              ← Zurück zur Bearbeitung
+              ← <span className="hidden sm:inline">Zurück zur </span>Bearbeitung
             </button>
           )}
         
@@ -2036,50 +2000,51 @@ const TradeOptimizationDisplay = ({
                 handleAddAdditionalTrade();
               }
             }}
-            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+            className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
           >
-            <span className="text-xl mr-2">+</span> 
-            {projectComplete ? 'Weiteres Gewerk hinzufügen' : 'Zusätzliches Gewerk hinzufügen'}
+            <span className="text-lg sm:text-xl mr-1 sm:mr-2">+</span> 
+            <span className="hidden sm:inline">{projectComplete ? 'Weiteres Gewerk hinzufügen' : 'Zusätzliches Gewerk hinzufügen'}</span>
+            <span className="sm:hidden">Gewerk</span>
           </button>
 
           {/* NEU: Zurück zum Dashboard Button */}
-  <button
-    onClick={() => {
-      const userData = sessionStorage.getItem('userData');
-      if (userData) {
-        navigate('/bauherr/dashboard');
-      } else {
-        navigate('/bauherr/login');
-      }
-    }}
-    className="px-8 py-4 bg-gradient-to-r from-gray-600 to-slate-700 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
-  >
-    <span className="text-xl mr-2">🏠</span>
-    Zurück zum Dashboard
-  </button>
-</div>
+          <button
+            onClick={() => {
+              const userData = sessionStorage.getItem('userData');
+              if (userData) {
+                navigate('/bauherr/dashboard');
+              } else {
+                navigate('/bauherr/login');
+              }
+            }}
+            className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-gray-600 to-slate-700 text-white text-sm sm:text-base rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+          >
+            <span className="text-lg sm:text-xl mr-1 sm:mr-2">🏠</span>
+            <span className="hidden sm:inline">Zurück zum </span>Dashboard
+          </button>
+        </div>
         
         {/* ÄNDERUNG: Footer mit mehr Optionen */}
-        <div className="mt-16 text-center">
-          <Link to="/" className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors">
+        <div className="mt-10 sm:mt-16 text-center flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-0">
+          <Link to="/" className="text-teal-400 hover:text-teal-300 text-sm sm:text-lg sm:mx-4 transition-colors">
             ← Zur Startseite
           </Link>
-          <span className="text-white/30">|</span>
+          <span className="hidden sm:inline text-white/30">|</span>
           
           {/* NEU: Link zur Review-Page */}
           {!projectComplete && (
             <>
               <Link 
                 to={`/project/${projectId}/lv-review`} 
-                className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors"
+                className="text-teal-400 hover:text-teal-300 text-sm sm:text-lg sm:mx-4 transition-colors"
               >
                 Zur Übersicht
               </Link>
-              <span className="text-white/30">|</span>
+              <span className="hidden sm:inline text-white/30">|</span>
             </>
           )}
           
-          <Link to="/start" className="text-teal-400 hover:text-teal-300 text-lg mx-4 transition-colors">
+          <Link to="/start" className="text-teal-400 hover:text-teal-300 text-sm sm:text-lg sm:mx-4 transition-colors">
             Neues Projekt starten →
           </Link>
         </div>
