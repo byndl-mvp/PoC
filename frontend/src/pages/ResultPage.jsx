@@ -18,7 +18,7 @@ export default function ResultPage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
-  const [exportMode, setExportMode] = useState('with-prices');
+  const [exportMode] = useState('with-prices');
   const [selectedLv, setSelectedLv] = useState(null);
   const [editingPosition, setEditingPosition] = useState(null);
   const [editedValues, setEditedValues] = useState({});
@@ -1023,16 +1023,6 @@ const TradeOptimizationDisplay = ({
       window.open(url, '_blank');
     } catch (err) {
       alert('PDF-Export fehlgeschlagen: ' + err.message);
-    }
-  };
-
-  const handleExportCompletePDF = async () => {
-    try {
-      const withPrices = exportMode === 'with-prices';
-      const url = apiUrl(`/api/projects/${projectId}/lv-complete.pdf?withPrices=${withPrices}`);
-      window.open(url, '_blank');
-    } catch (err) {
-      alert('Gesamt-PDF-Export fehlgeschlagen: ' + err.message);
     }
   };
 
