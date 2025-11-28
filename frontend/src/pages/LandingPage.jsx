@@ -91,7 +91,7 @@ export default function LandingPage() {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
               <Link
-                to="/start"
+                to="/bauherr/register"
                 className="group relative bg-gradient-to-r from-teal-500 to-teal-400 text-white font-bold px-10 py-5 rounded-xl shadow-2xl transform hover:scale-105 transition-all duration-200 text-lg"
               >
                 <span className="flex items-center justify-center">
@@ -101,7 +101,7 @@ export default function LandingPage() {
                   Für Bauherren
                 </span>
                 <span className="block text-sm font-normal mt-1 opacity-90">
-                  Projekt starten & Angebote erhalten
+                  Jetzt als Bauherr registrieren und Projekt starten
                 </span>
               </Link>
               
