@@ -46,6 +46,9 @@ export default function BauherrenSettingsPage() {
   const [createdAt, setCreatedAt] = useState(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [faqSearchTerm, setFaqSearchTerm] = useState('');
+  const [supportForm, setSupportForm] = useState({ subject: '', message: '' });
+  const [supportLoading, setSupportLoading] = useState(false);
   const [showEmailChange, setShowEmailChange] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [confirmNewEmail, setConfirmNewEmail] = useState('');
@@ -376,6 +379,35 @@ const changeEmail = async () => {
     setFeedbackLoading(false);
   }
 };
+
+// Support-Anfrage senden
+  const sendSupportRequest = async () => {
+    if (!supportForm.subject.trim() || !supportForm.message.trim()) {
+      setError('Bitte füllen Sie Betreff und Nachricht aus.');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+    
+    try {
+      setSupportLoading(true);
+      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
+      
+      // Mailto als Fallback
+      const mailtoLink = `mailto:support@byndl.de?subject=${encodeURIComponent(supportForm.subject)}&body=${encodeURIComponent(
+        `Support-Anfrage von: ${personalData.firstName} ${personalData.lastName}\nE-Mail: ${personalData.email}\n\n${supportForm.message}`
+      )}`;
+      window.location.href = mailtoLink;
+      
+      setSupportForm({ subject: '', message: '' });
+      setMessage('✅ Support-Anfrage wurde geöffnet');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Fehler beim Senden der Anfrage');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setSupportLoading(false);
+    }
+  };
   
   // ============ PAYMENT FUNKTIONEN ============
   
