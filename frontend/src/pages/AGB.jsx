@@ -27,658 +27,843 @@ export default function AGB() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-white/20">
-          <h1 className="text-4xl font-bold text-white mb-8">Allgemeine Geschäftsbedingungen (AGB)</h1>
+          <h1 className="text-4xl font-bold text-white mb-4">Allgemeine Geschäftsbedingungen (AGB)</h1>
+          <p className="text-gray-400 mb-8">der byndl UG (haftungsbeschränkt)</p>
           
-          <div className="text-gray-200 space-y-8">
+          {/* Inhaltsverzeichnis */}
+          <nav className="bg-white/5 rounded-xl p-6 mb-10 border border-white/10">
+            <h2 className="text-lg font-semibold text-teal-400 mb-4">Inhaltsübersicht</h2>
+            <div className="grid md:grid-cols-2 gap-2 text-sm">
+              <a href="#p1" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 1 Geltungsbereich und Vertragsgegenstand</a>
+              <a href="#p2" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 2 Registrierung und Vertragsschluss</a>
+              <a href="#p3" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 3 Leistungen für Bauherren</a>
+              <a href="#p4" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 4 Gebührenmodell für Bauherren</a>
+              <a href="#p5" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 5 Leistungen für Handwerker</a>
+              <a href="#p6" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 6 Gebührenmodell für Handwerker</a>
+              <a href="#p7" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 7 Zweistufige Vergabe</a>
+              <a href="#p8" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 8 Umgehungsverbot</a>
+              <a href="#p9" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 9 Pflichten der Nutzer</a>
+              <a href="#p10" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 10 Haftung und Gewährleistung</a>
+              <a href="#p11" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 11 Datenschutz</a>
+              <a href="#p12" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 12 Änderungen der AGB</a>
+              <a href="#p13" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 13 Laufzeit und Kündigung</a>
+              <a href="#p14" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 14 Streitbeilegung</a>
+              <a href="#p15" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 15 Schlussbestimmungen</a>
+            </div>
+          </nav>
+
+          <div className="text-gray-200 space-y-10">
             <section>
-              <p className="text-sm text-gray-400 mb-4">Stand: Januar 2025</p>
-              <p className="mb-4">
+              <p className="text-sm text-gray-400 mb-6">Stand: Januar 2025</p>
+              <p className="mb-4 leading-relaxed">
                 Für die Nutzung der Plattform byndl (nachfolgend „Plattform") der byndl UG (haftungsbeschränkt) 
                 (nachfolgend „byndl" oder „Betreiber") gelten ausschließlich die nachfolgenden Allgemeinen 
                 Geschäftsbedingungen in ihrer zum Zeitpunkt der Nutzung gültigen Fassung.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 1 Geltungsbereich und Vertragsgegenstand</h2>
+            {/* § 1 */}
+            <section id="p1">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§1</span>
+                Geltungsbereich und Vertragsgegenstand
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">1.1 Geltungsbereich</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">1.1 Geltungsbereich</h3>
+              <p className="mb-4 leading-relaxed">
                 Diese AGB gelten für alle Verträge zwischen byndl und den Nutzern der Plattform. Nutzer sind 
                 sowohl private Bauherren (nachfolgend „Bauherren" oder „Auftraggeber") als auch Handwerksbetriebe 
                 (nachfolgend „Handwerker" oder „Auftragnehmer").
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">1.2 Rolle von byndl als Vermittler</h3>
-              <div className="bg-teal-900/30 border-l-4 border-teal-400 p-4 mb-4">
-                <p className="font-semibold text-teal-300 mb-2">WICHTIG: Reine Vermittlerrolle</p>
-                <p className="mb-3">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">1.2 Rolle von byndl als Vermittler</h3>
+              <div className="bg-teal-900/30 border-l-4 border-teal-400 p-5 mb-4 rounded-r-lg">
+                <p className="font-semibold text-teal-300 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  WICHTIG: Reine Vermittlerrolle
+                </p>
+                <p className="mb-3 leading-relaxed">
                   byndl tritt ausschließlich als Vermittler auf und stellt lediglich eine technische Plattform 
                   zur Verfügung, über die Bauherren und Handwerker zusammengebracht werden. byndl wird zu keinem 
                   Zeitpunkt Vertragspartei der zwischen Bauherren und Handwerkern geschlossenen Werkverträge. 
                   Das Vertragsverhältnis besteht ausschließlich zwischen dem Bauherrn (Auftraggeber) und dem 
                   Handwerker (Auftragnehmer).
                 </p>
-                <p className="mb-3">
+                <p className="mb-3 leading-relaxed">
                   byndl übernimmt keine Gewährleistung für die Ausführung, Qualität oder Vollständigkeit der 
                   vermittelten Bauleistungen. Ebenso übernimmt byndl keine Gewähr für die Richtigkeit oder 
                   Vollständigkeit der durch KI-Software generierten Leistungsverzeichnisse und Kostenschätzungen, 
                   die lediglich als erste Orientierung dienen.
                 </p>
-                <p className="text-sm">
+                <p className="text-sm text-gray-300">
                   byndl tritt weder als Bauträger, Generalunternehmer noch als Erfüllungsgehilfe einer der 
                   Vertragsparteien auf. Alle Rechte und Pflichten aus dem Werkvertrag bestehen ausschließlich 
-                  zwischen Bauherr und Handwerker. Die Plattform dient ausschließlich der Vermittlung und 
-                  Bereitstellung digitaler Werkzeuge zur Projektabwicklung.
+                  zwischen Bauherr und Handwerker.
                 </p>
               </div>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">1.3 Leistungen von byndl</h3>
-              <p className="mb-2">Die Plattform bietet folgende Leistungen:</p>
-              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
-                <li>KI-gestützte Erfassung und Strukturierung von Bauprojekten</li>
-                <li>Automatisierte Erstellung von Leistungsverzeichnissen</li>
-                <li>KI-basierte Kostenschätzungen</li>
-                <li>Vermittlung zwischen Bauherren und registrierten Handwerksbetrieben</li>
-                <li>Regionale und zeitliche Bündelung von Projekten</li>
-                <li>Digitale Kommunikations- und Projektmanagement-Tools</li>
-                <li>Unterstützung bei der Vertragsanbahnung</li>
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">1.3 Leistungen von byndl</h3>
+              <p className="mb-3">Die Plattform bietet folgende Leistungen:</p>
+              <ul className="space-y-2 ml-4 mb-4">
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>KI-gestützte Erfassung und Strukturierung von Bauprojekten</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Automatisierte Erstellung von Leistungsverzeichnissen</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>KI-basierte Kostenschätzungen</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Vermittlung zwischen Bauherren und registrierten Handwerksbetrieben</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Regionale und zeitliche Bündelung von Projekten</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Digitale Kommunikations- und Projektmanagement-Tools</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Unterstützung bei der Vertragsanbahnung</span>
+                </li>
               </ul>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">1.4 Abweichende Bedingungen</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">1.4 Abweichende Bedingungen</h3>
+              <p className="mb-4 leading-relaxed">
                 Abweichende, entgegenstehende oder ergänzende AGB des Nutzers werden nicht Vertragsbestandteil, 
                 es sei denn, byndl stimmt ihrer Geltung ausdrücklich schriftlich zu.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 2 Registrierung und Vertragsschluss</h2>
+            {/* § 2 */}
+            <section id="p2">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§2</span>
+                Registrierung und Vertragsschluss
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">2.1 Registrierung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">2.1 Registrierung</h3>
+              <p className="mb-4 leading-relaxed">
                 Die Nutzung der Plattform erfordert eine Registrierung. Mit der Registrierung gibt der Nutzer 
                 ein verbindliches Angebot zum Abschluss eines Nutzungsvertrags ab. Der Vertrag kommt durch die 
                 Bestätigung der Registrierung durch byndl (Freischaltung des Zugangs) zustande.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">2.2 Voraussetzungen</h3>
-              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
-                <li>Der Nutzer muss volljährig und voll geschäftsfähig sein</li>
-                <li>Handwerksbetriebe müssen über eine gültige Gewerbeanmeldung verfügen</li>
-                <li>Alle Angaben bei der Registrierung müssen wahrheitsgemäß und vollständig sein</li>
-                <li>Der Nutzer verpflichtet sich, Änderungen seiner Daten unverzüglich mitzuteilen</li>
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">2.2 Voraussetzungen</h3>
+              <ul className="space-y-2 ml-4 mb-4">
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Der Nutzer muss volljährig und voll geschäftsfähig sein</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Handwerksbetriebe müssen über eine gültige Gewerbeanmeldung verfügen</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Alle Angaben bei der Registrierung müssen wahrheitsgemäß und vollständig sein</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Der Nutzer verpflichtet sich, Änderungen seiner Daten unverzüglich mitzuteilen</span>
+                </li>
               </ul>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">2.3 Zugangsdaten</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">2.3 Zugangsdaten</h3>
+              <p className="mb-4 leading-relaxed">
                 Der Nutzer ist verpflichtet, seine Zugangsdaten geheim zu halten und vor dem Zugriff Dritter 
                 zu schützen. Bei Verdacht auf Missbrauch ist byndl unverzüglich zu informieren.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 3 Leistungen für Bauherren</h2>
+            {/* § 3 */}
+            <section id="p3">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§3</span>
+                Leistungen für Bauherren
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">3.1 Projekterfassung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">3.1 Projekterfassung</h3>
+              <p className="mb-4 leading-relaxed">
                 Bauherren können ihre Bauprojekte über die Plattform erfassen. Die KI-gestützte Software 
                 erstellt auf Basis der Angaben des Bauherrn ein strukturiertes Leistungsverzeichnis und 
                 eine Kostenschätzung. Diese dienen ausschließlich der Orientierung und stellen keine 
                 verbindliche Zusage dar.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">3.2 Ausschreibung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">3.2 Automatische Gewerkeermittlung</h3>
+              <p className="mb-4 leading-relaxed">
+                Die KI-Software analysiert das vom Bauherrn beschriebene Projekt und ermittelt automatisch 
+                die für die Umsetzung erforderlichen Gewerke. Für jedes ermittelte Gewerk wird ein separates 
+                Leistungsverzeichnis (LV) erstellt. Der Bauherr hat vor Freigabe der Ausschreibung die 
+                Möglichkeit, die ermittelten Gewerke und Leistungsverzeichnisse zu überprüfen.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">3.3 Ausschreibung</h3>
+              <p className="mb-4 leading-relaxed">
                 Nach Freigabe durch den Bauherrn wird das Projekt an geeignete, registrierte Handwerksbetriebe 
                 vermittelt. Der Bauherr erhält Angebote, die er vergleichen und bewerten kann. Die Entscheidung 
                 über die Auftragsvergabe liegt ausschließlich beim Bauherrn.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">3.3 Haftungsbeschränkung für KI-generierte Inhalte</h3>
-              <div className="bg-amber-900/30 border-l-4 border-amber-400 p-4 mb-4">
-                <p className="font-semibold text-amber-300 mb-2">Wichtiger Haftungshinweis</p>
-                <p className="mb-3">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">3.4 Haftungsbeschränkung für KI-generierte Inhalte</h3>
+              <div className="bg-amber-900/30 border-l-4 border-amber-400 p-5 mb-4 rounded-r-lg">
+                <p className="font-semibold text-amber-300 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                  Wichtiger Haftungshinweis
+                </p>
+                <p className="mb-3 leading-relaxed">
                   Die von byndl bereitgestellten KI-generierten Leistungsverzeichnisse und Kostenschätzungen 
                   werden nach bestem Wissen und auf Grundlage der vom Bauherrn bereitgestellten Informationen 
                   erstellt. Sie dienen jedoch ausschließlich als erste, unverbindliche Orientierungshilfe für 
                   die Vertragsanbahnung und stellen keine Gewährleistung für Richtigkeit, Vollständigkeit oder 
                   Durchführbarkeit dar.
                 </p>
-                <p className="mb-3">
+                <p className="mb-3 leading-relaxed">
                   Der Bauherr wird ausdrücklich darauf hingewiesen, dass automatisiert erstellte Unterlagen 
                   technisch bedingt Ungenauigkeiten, Abweichungen von tatsächlichen Gegebenheiten oder 
                   unvollständige Erfassungen enthalten können. Der Bauherr ist daher verpflichtet, die 
                   KI-generierten Angaben eigenverantwortlich zu prüfen und bei Bedarf durch Fachleute 
                   (z.B. Architekten, Sachverständige) überprüfen zu lassen.
                 </p>
-                <p className="mb-3">
-                  <span className="font-semibold text-white">Haftungsbegrenzung:</span> Die Haftung von byndl 
-                  für die Richtigkeit oder Vollständigkeit der KI-generierten Ausschreibungsunterlagen ist auf 
-                  Vorsatz und grobe Fahrlässigkeit beschränkt. Für leichte Fahrlässigkeit haftet byndl nicht, 
-                  es sei denn, es handelt sich um die Verletzung wesentlicher Vertragspflichten oder um Schäden 
-                  aus der Verletzung des Lebens, des Körpers oder der Gesundheit. Bei Verletzung wesentlicher 
-                  Vertragspflichten durch leichte Fahrlässigkeit ist die Haftung auf den vorhersehbaren, 
-                  vertragstypischen Schaden begrenzt.
-                </p>
-                <p className="text-sm">
-                  <span className="font-semibold">Wichtiger Schutzmechanismus:</span> Für das verbindliche 
+                <p className="text-sm text-gray-300">
+                  <span className="font-semibold text-white">Wichtiger Schutzmechanismus:</span> Für das verbindliche 
                   Angebot ist ausschließlich der Handwerker verantwortlich, der im Rahmen der zweistufigen 
-                  Vergabe (§ 5.1) die Pflicht zur eigenständigen Prüfung und Verifizierung der Projektgegebenheiten 
-                  hat, bevor er sein finales Angebot bestätigt. Ansprüche wegen fehlerhafter Leistungsbeschreibungen 
-                  oder Kalkulationen sind vorrangig gegenüber dem Handwerker geltend zu machen.
+                  Vergabe (§ 7) die Pflicht zur eigenständigen Prüfung und Verifizierung der Projektgegebenheiten 
+                  hat, bevor er sein finales Angebot bestätigt.
+                </p>
+              </div>
+            </section>
+
+            {/* § 4 - Gebührenmodell Bauherren */}
+            <section id="p4">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§4</span>
+                Gebührenmodell für Bauherren
+              </h2>
+              
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.1 Servicegebühr für Leistungsverzeichnisse</h3>
+              <p className="mb-4 leading-relaxed">
+                Für die KI-gestützte Erstellung von Leistungsverzeichnissen erhebt byndl eine einmalige 
+                Servicegebühr pro erstelltem Leistungsverzeichnis (LV). Die Gebühr richtet sich nach der 
+                Gesamtanzahl der für das Projekt ermittelten Gewerke und ist gestaffelt:
+              </p>
+              
+              <div className="bg-gradient-to-br from-teal-900/30 to-blue-900/30 border border-teal-500/30 rounded-xl p-6 mb-6">
+                <h4 className="text-white font-semibold mb-4">Gebührenstaffelung pro Leistungsverzeichnis</h4>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                    <div>
+                      <span className="text-white font-medium">1-2 Gewerke im Projekt</span>
+                      <p className="text-sm text-gray-400 mt-1">z.B. Malerarbeiten, Bodenbelag</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-teal-400">9,90 €</span>
+                      <p className="text-sm text-gray-400">pro LV</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-teal-500/30">
+                    <div>
+                      <span className="text-white font-medium">3-5 Gewerke im Projekt</span>
+                      <p className="text-sm text-gray-400 mt-1">z.B. Badsanierung, Küche</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-teal-400">8,90 €</span>
+                      <p className="text-sm text-gray-400">pro LV</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                    <div>
+                      <span className="text-white font-medium">Ab 6 Gewerke im Projekt</span>
+                      <p className="text-sm text-gray-400 mt-1">z.B. Kernsanierung, Anbau</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-teal-400">7,90 €</span>
+                      <p className="text-sm text-gray-400">pro LV</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.2 Berechnung der Gesamtgebühr</h3>
+              <p className="mb-4 leading-relaxed">
+                Die Gesamtgebühr ergibt sich aus der Anzahl der erstellten Leistungsverzeichnisse multipliziert 
+                mit dem jeweiligen Stückpreis gemäß der Staffelung. Maßgeblich für die Einordnung in die 
+                Preisstufe ist die Gesamtanzahl der im Projekt ermittelten Gewerke.
+              </p>
+              <div className="bg-white/5 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-300">
+                  <span className="text-teal-400 font-medium">Beispiel:</span> Ein Badsanierungsprojekt erfordert 
+                  4 Gewerke (Sanitär, Fliesen, Elektro, Trockenbau). Die Gesamtgebühr beträgt: 4 × 8,90 € = 35,60 €
                 </p>
               </div>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">3.4 Gebühren</h3>
-              <p className="mb-4">
-                Für die Nutzung der Ausschreibungsfunktion erhebt byndl eine einmalige Servicegebühr gemäß 
-                der jeweils gültigen Preisliste. Die Gebühr ist vor Veröffentlichung der Ausschreibung fällig.
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.3 Fälligkeit</h3>
+              <p className="mb-4 leading-relaxed">
+                Die Servicegebühr wird fällig, sobald der Bauherr die erstellten Leistungsverzeichnisse 
+                freigibt und die Ausschreibung aktiviert. Die Zahlung erfolgt über die in der Plattform 
+                angebotenen Zahlungsmethoden.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.4 Keine weiteren Gebühren für Bauherren</h3>
+              <p className="mb-4 leading-relaxed">
+                Bauherren zahlen ausschließlich die Servicegebühr für die Erstellung der Leistungsverzeichnisse. 
+                Es fallen keine Vermittlungsprovisionen, Erfolgsgebühren oder sonstigen Kosten für Bauherren an.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 4 Leistungen für Handwerker</h2>
+            {/* § 5 - Leistungen für Handwerker */}
+            <section id="p5">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§5</span>
+                Leistungen für Handwerker
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.1 Profilerstellung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">5.1 Profilerstellung</h3>
+              <p className="mb-4 leading-relaxed">
                 Handwerksbetriebe erstellen ein Profil mit Angaben zu ihren Gewerken, Kapazitäten, 
                 Einsatzradius und Referenzen. byndl behält sich vor, die Angaben zu überprüfen und 
                 gegebenenfalls Nachweise zu verlangen.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.2 Projektvermittlung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">5.2 Projektvermittlung</h3>
+              <p className="mb-4 leading-relaxed">
                 Handwerker erhalten Benachrichtigungen über passende Projekte in ihrem Einsatzgebiet. 
                 Sie können Angebote abgeben, die den Bauherren zur Verfügung gestellt werden. Es besteht 
                 kein Anspruch auf Vermittlung bestimmter oder einer Mindestanzahl von Projekten.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.3 Vermittlungsprovision</h3>
-              <p className="mb-4">
-                Bei erfolgreicher Vermittlung und verbindlichem Vertragsschluss zwischen Handwerker und 
-                Bauherr ist eine Vermittlungsprovision an byndl zu zahlen. Die Provision wird ausschließlich 
-                im Erfolgsfall erhoben – das heißt nur dann, wenn in Stufe 2 der zweistufigen Vergabe 
-                (siehe § 5.1) beide Parteien die verbindliche Beauftragung bestätigen und der Werkvertrag 
-                tatsächlich zustande kommt.
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">5.3 Projektbündelung</h3>
+              <p className="mb-4 leading-relaxed">
+                byndl bietet Handwerkern die Möglichkeit, gebündelte Projekte zu übernehmen. Bei der 
+                Projektbündelung werden mehrere ähnliche Projekte in derselben Region zeitlich koordiniert 
+                vermittelt, wodurch Handwerker Fahrt- und Rüstzeiten optimieren können.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.4 Provisionsstaffelung</h3>
-              <p className="mb-4">
-                Die Höhe der Vermittlungsprovision richtet sich nach der Netto-Auftragssumme und wird wie 
-                folgt gestaffelt berechnet:
-              </p>
-              <div className="bg-white/5 border border-white/20 rounded-lg p-4 mb-4">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-white/20">
-                      <th className="pb-2 pr-4 font-semibold text-teal-300">Netto-Auftragssumme</th>
-                      <th className="pb-2 font-semibold text-teal-300">Provisionssatz</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-gray-200">
-                    <tr className="border-b border-white/10">
-                      <td className="py-2 pr-4">bis 10.000 EUR</td>
-                      <td className="py-2">5%</td>
-                    </tr>
-                    <tr className="border-b border-white/10">
-                      <td className="py-2 pr-4">10.001 EUR bis 20.000 EUR</td>
-                      <td className="py-2">4%</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 pr-4">ab 20.001 EUR</td>
-                      <td className="py-2">3%</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="mb-4">
-                Die Provision wird auf Basis der im Werkvertrag vereinbarten Gesamtvergütung (netto) 
-                berechnet und ist mit Zustandekommen des verbindlichen Werkvertrags (Stufe 2) fällig. 
-                Die Rechnungsstellung durch byndl erfolgt nach Bestätigung der verbindlichen Beauftragung 
-                durch beide Parteien.
-              </p>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">4.5 Verifizierungspflicht und Qualitätsstandards</h3>
-              <div className="bg-blue-900/30 border-l-4 border-blue-400 p-4 mb-4">
-                <p className="font-semibold text-blue-300 mb-2">Unternehmerische Sorgfaltspflicht bei Angebotserstellung</p>
-                <p className="mb-3 text-sm">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">5.4 Verifizierungspflicht und Qualitätsstandards</h3>
+              <div className="bg-blue-900/30 border-l-4 border-blue-400 p-5 mb-4 rounded-r-lg">
+                <p className="font-semibold text-blue-300 mb-3">Unternehmerische Sorgfaltspflicht bei Angebotserstellung</p>
+                <p className="mb-3 text-sm leading-relaxed">
                   Der Handwerker ist als Unternehmer (§ 14 BGB) verpflichtet, im Rahmen der Stufe 1 der 
-                  zweistufigen Vergabe (§ 5.1) das durch die KI-Software erstellte Leistungsverzeichnis 
+                  zweistufigen Vergabe (§ 7) das durch die KI-Software erstellte Leistungsverzeichnis 
                   mit der im Geschäftsverkehr erforderlichen Sorgfalt eigenverantwortlich zu prüfen. 
                   Hierzu hat er insbesondere durch Vor-Ort-Besichtigung, Videocall oder auf anderem geeigneten 
                   Wege die tatsächlichen Gegebenheiten des Projekts zu verifizieren und zu dokumentieren.
                 </p>
-                <p className="mb-3 text-sm">
+                <p className="mb-3 text-sm leading-relaxed">
                   Der Handwerker trägt als Fachunternehmer die alleinige Verantwortung dafür, dass sein in 
                   Stufe 2 bestätigtes finales Angebot fachlich korrekt, vollständig, kalkulatorisch richtig 
-                  und realisierbar ist. Dies umfasst insbesondere die Verantwortung für zutreffende Mengenansätze, 
-                  vollständige Leistungspositionen und realistische Preise.
-                </p>
-                <p className="text-sm">
-                  Eine Berufung auf unzutreffende oder unvollständige Angaben in der KI-generierten Ausschreibung 
-                  ist nach Bestätigung des Angebots in Stufe 2 grundsätzlich ausgeschlossen, da dem Handwerker 
-                  als Fachunternehmer ausreichend Gelegenheit zur sachkundigen Prüfung, Korrektur und Ergänzung 
-                  eingeräumt wurde. Etwaige Nachforderungen oder Nachträge aufgrund von Differenzen zwischen 
-                  KI-Ausschreibung und tatsächlichem Leistungsumfang sind zwischen Handwerker und Bauherr zu 
-                  klären; byndl ist insoweit nicht Ansprechpartner.
+                  und realisierbar ist.
                 </p>
               </div>
-              <p className="mb-4">
-                Darüber hinaus verpflichten sich Handwerker zur fachgerechten und termingerechten Ausführung 
-                der übernommenen Aufträge sowie zur Einhaltung aller gesetzlichen und berufsrechtlichen 
-                Vorschriften. Bei wiederholten Beschwerden oder mangelhafter Leistung kann byndl den Nutzer 
-                von der Plattform ausschließen.
+              <p className="mb-4 leading-relaxed">
+                Handwerker verpflichten sich zur fachgerechten und termingerechten Ausführung der übernommenen 
+                Aufträge sowie zur Einhaltung aller gesetzlichen und berufsrechtlichen Vorschriften. Bei 
+                wiederholten Beschwerden oder mangelhafter Leistung kann byndl den Nutzer von der Plattform 
+                ausschließen.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 5 Vertragsabschluss zwischen Bauherr und Handwerker</h2>
+            {/* § 6 - Gebührenmodell Handwerker */}
+            <section id="p6">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§6</span>
+                Gebührenmodell für Handwerker
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.1 Zweistufige Vergabe</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">6.1 Erfolgsprovision</h3>
+              <p className="mb-4 leading-relaxed">
+                Handwerker zahlen eine Vermittlungsprovision ausschließlich im Erfolgsfall – das heißt nur dann, 
+                wenn in Stufe 2 der zweistufigen Vergabe (siehe § 7) beide Parteien die verbindliche Beauftragung 
+                bestätigen und der Werkvertrag tatsächlich zustande kommt. Die Registrierung, Profilerstellung 
+                und Angebotsabgabe sind für Handwerker kostenlos.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">6.2 Provisionsstaffelung</h3>
+              <p className="mb-4 leading-relaxed">
+                Die Höhe der Vermittlungsprovision richtet sich nach der Netto-Auftragssumme und wird wie 
+                folgt gestaffelt berechnet:
+              </p>
+              
+              <div className="bg-gradient-to-br from-blue-900/30 to-slate-900/30 border border-blue-500/30 rounded-xl p-6 mb-6">
+                <h4 className="text-white font-semibold mb-4">Provisionsstaffelung nach Auftragswert</h4>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                    <div>
+                      <span className="text-white font-medium">Aufträge bis 10.000 € netto</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-blue-400">3,0 %</span>
+                      <p className="text-sm text-gray-400">der Auftragssumme</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                    <div>
+                      <span className="text-white font-medium">Aufträge 10.001 € bis 20.000 € netto</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-blue-400">2,0 %</span>
+                      <p className="text-sm text-gray-400">der Auftragssumme</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                    <div>
+                      <span className="text-white font-medium">Aufträge ab 20.001 € netto</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-blue-400">1,5 %</span>
+                      <p className="text-sm text-gray-400">der Auftragssumme</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">6.3 Berechnungsgrundlage</h3>
+              <p className="mb-4 leading-relaxed">
+                Die Provision wird auf Basis der im Werkvertrag vereinbarten Gesamtvergütung (netto, ohne 
+                Umsatzsteuer) berechnet. Bei Nachträgen, die im Verlauf des Projekts vereinbart werden, 
+                wird die Provision entsprechend auf den erhöhten Auftragswert angepasst.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">6.4 Fälligkeit und Rechnungsstellung</h3>
+              <p className="mb-4 leading-relaxed">
+                Die Vermittlungsprovision wird mit Zustandekommen des verbindlichen Werkvertrags (Stufe 2) 
+                fällig. byndl stellt dem Handwerker nach Bestätigung der verbindlichen Beauftragung durch 
+                beide Parteien eine Rechnung über die Provision. Die Rechnung ist innerhalb von 14 Tagen 
+                nach Rechnungsdatum zur Zahlung fällig.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">6.5 Zahlungsverzug</h3>
+              <p className="mb-4 leading-relaxed">
+                Bei Zahlungsverzug ist byndl berechtigt, Verzugszinsen in gesetzlicher Höhe zu berechnen. 
+                Darüber hinaus kann byndl den Zugang des Handwerkers zur Plattform sperren, bis die 
+                offenen Forderungen beglichen sind.
+              </p>
+            </section>
+
+            {/* § 7 - Zweistufige Vergabe */}
+            <section id="p7">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§7</span>
+                Zweistufige Vergabe
+              </h2>
+              
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">7.1 Vergabeverfahren</h3>
+              <p className="mb-4 leading-relaxed">
                 Die Auftragsvergabe erfolgt in einem zweistufigen Verfahren, das sowohl dem Schutz beider 
                 Vertragsparteien als auch der rechtlichen Klarstellung der Verantwortlichkeiten dient:
               </p>
-              <div className="bg-white/5 border border-white/20 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-white mb-2">Stufe 1: Vorläufige Beauftragung (Vertragsanbahnung)</p>
-                <p className="mb-3">
-                  Nach Auswahl eines Angebots durch den Bauherrn werden in Stufe 1 die Kontaktdaten zwischen 
-                  Bauherr und Handwerker freigegeben und eine Kennenlern- und Prüfphase eingeleitet. Die 
-                  Vermittlung gilt ab diesem Zeitpunkt rechtlich als erfolgt und die Nachwirkfrist von 24 Monaten 
-                  greift (siehe § 5.2). Die Vermittlungsprovision gemäß § 4.3 und § 4.4 wird jedoch erst in 
-                  Stufe 2 bei verbindlicher Beauftragung und Zustandekommen des Werkvertrags fällig. Dies 
-                  gewährleistet eine reine Erfolgsprovision ohne unproduktive Gebühren für Kontaktaufnahmen, 
-                  die nicht zu einem Vertragsabschluss führen.
-                </p>
-                <p className="mb-3 font-semibold text-teal-300">Prüf- und Verifizierungsphase:</p>
-                <p className="mb-4">
-                  Während der Kennenlernphase sind beide Parteien ausdrücklich aufgefordert, das durch die 
-                  KI-gestützte Plattform erstellte Leistungsverzeichnis und die Kostenschätzung eigenverantwortlich 
-                  zu überprüfen. Der Handwerker erhält die Möglichkeit und ist verpflichtet, durch eine 
-                  Vor-Ort-Besichtigung, einen Videocall oder auf anderem geeigneten Wege die tatsächlichen 
-                  Gegebenheiten des Projekts zu prüfen und sein Angebot entsprechend zu verifizieren, anzupassen 
-                  oder zu bestätigen. Der Bauherr kann seinerseits Änderungswünsche einbringen und die Eignung 
-                  des Handwerkers prüfen. Beide Seiten haben faire Ausstiegsmöglichkeiten, falls sich herausstellt, 
-                  dass eine Zusammenarbeit nicht zustande kommen soll.
-                </p>
-                
-                <p className="font-semibold text-white mb-2">Stufe 2: Verbindliche Beauftragung (Werkvertrag)</p>
-                <p className="mb-3">
-                  Nach Abschluss der Prüfungsphase und eventueller Feinabstimmung (z.B. Vor-Ort-Besichtigung, 
-                  Anpassung der Leistungsbeschreibung, Präzisierung der Mengen und Preise) bestätigt der Handwerker 
-                  sein finales, verbindliches Angebot durch Klick auf die entsprechende Schaltfläche in der 
-                  Plattform. Anschließend erteilt der Bauherr durch Klick auf „verbindlich beauftragen" die 
-                  Auftragserteilung. Mit diesem Bestätigungsvorgang kommt der Werkvertrag ausschließlich zwischen 
-                  Bauherr und Handwerker zustande.
-                </p>
-                <p className="mb-3">
-                  Der Werkvertrag regelt alle Details der Leistungserbringung, Vergütung, Termine und Gewährleistung. 
-                  Mit Zustandekommen des Werkvertrags wird die Vermittlungsprovision an byndl fällig und die 
-                  Premium-Plattform-Features werden freigeschaltet (Kosten- und Terminkontrolle, Nachtragsschutz, 
-                  Rechnungslauf, Projekt-Chat etc.).
-                </p>
-                
-                <div className="bg-amber-900/40 border border-amber-500/50 rounded p-3 mt-3">
-                  <p className="font-semibold text-amber-300 mb-2">Eigenverantwortung und Haftungsübernahme des Handwerkers</p>
-                  <p className="text-sm text-amber-100 mb-2">
-                    Mit der Bestätigung seines finalen Angebots in Stufe 2 übernimmt der Handwerker (als 
-                    Unternehmer im Sinne von § 14 BGB) die ausschließliche und vollständige Verantwortung für 
-                    die Richtigkeit, Vollständigkeit und Durchführbarkeit seines Angebots. Die durch byndl 
-                    bereitgestellte KI-gestützte Ausschreibung dient lediglich als erste, unverbindliche Orientierung.
+              
+              <div className="bg-white/5 border border-white/20 rounded-xl p-6 mb-6">
+                <div className="mb-6">
+                  <p className="font-semibold text-teal-400 mb-3 text-lg">Stufe 1: Vorläufige Beauftragung (Vertragsanbahnung)</p>
+                  <p className="mb-3 leading-relaxed">
+                    Nach Auswahl eines Angebots durch den Bauherrn werden in Stufe 1 die Kontaktdaten zwischen 
+                    Bauherr und Handwerker freigegeben und eine Kennenlern- und Prüfphase eingeleitet. Die 
+                    Vermittlung gilt ab diesem Zeitpunkt rechtlich als erfolgt und die Nachwirkfrist von 24 Monaten 
+                    greift (siehe § 7.2).
                   </p>
-                  <p className="text-sm text-amber-100 mb-2">
-                    Durch die in Stufe 1 eingeräumte Möglichkeit zur eigenständigen Prüfung und Verifizierung 
-                    der Projektgegebenheiten (insbesondere durch Ortsbesichtigung oder Videocall) trägt der 
-                    Handwerker das ausschließliche unternehmerische Risiko für Fehlkalkulationen, unzutreffende 
-                    Mengenansätze oder unvollständige Leistungsbeschreibungen in seinem finalen Angebot.
+                  <p className="text-sm text-gray-400 mb-4">
+                    Die Vermittlungsprovision gemäß § 6 wird jedoch erst in Stufe 2 bei verbindlicher Beauftragung fällig.
                   </p>
-                  <p className="text-sm text-amber-100">
-                    Die Haftung von byndl gegenüber dem Handwerker für die Richtigkeit oder Vollständigkeit 
-                    der in Stufe 1 bereitgestellten Ausschreibungsunterlagen ist - soweit rechtlich zulässig - 
-                    auf Vorsatz und grobe Fahrlässigkeit beschränkt. Für leichte Fahrlässigkeit haftet byndl 
-                    nicht, es sei denn, es handelt sich um die Verletzung wesentlicher Vertragspflichten. 
-                    In diesem Fall ist die Haftung auf den vorhersehbaren, vertragstypischen Schaden begrenzt. 
-                    Die Haftung für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit 
-                    bleibt unberührt.
+                </div>
+                
+                <div className="mb-6 p-4 bg-teal-900/20 rounded-lg">
+                  <p className="font-semibold text-teal-300 mb-2">Prüf- und Verifizierungsphase</p>
+                  <p className="text-sm leading-relaxed">
+                    Während der Kennenlernphase sind beide Parteien ausdrücklich aufgefordert, das durch die 
+                    KI-gestützte Plattform erstellte Leistungsverzeichnis und die Kostenschätzung eigenverantwortlich 
+                    zu überprüfen. Der Handwerker erhält die Möglichkeit und ist verpflichtet, durch eine 
+                    Vor-Ort-Besichtigung, einen Videocall oder auf anderem geeigneten Wege die tatsächlichen 
+                    Gegebenheiten des Projekts zu prüfen.
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="font-semibold text-blue-400 mb-3 text-lg">Stufe 2: Verbindliche Beauftragung (Werkvertrag)</p>
+                  <p className="mb-3 leading-relaxed">
+                    Nach Abschluss der Prüfungsphase bestätigt der Handwerker sein finales, verbindliches Angebot. 
+                    Anschließend erteilt der Bauherr durch Klick auf „verbindlich beauftragen" die Auftragserteilung. 
+                    Mit diesem Bestätigungsvorgang kommt der Werkvertrag ausschließlich zwischen Bauherr und 
+                    Handwerker zustande.
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    Mit Zustandekommen des Werkvertrags wird die Vermittlungsprovision an byndl fällig und die 
+                    Premium-Plattform-Features werden freigeschaltet.
                   </p>
                 </div>
               </div>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.2 Nachwirkfrist (24 Monate)</h3>
-              <div className="bg-blue-900/30 border-l-4 border-blue-400 p-4 mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">7.2 Nachwirkfrist (24 Monate)</h3>
+              <div className="bg-blue-900/30 border-l-4 border-blue-400 p-5 mb-4 rounded-r-lg">
                 <p className="font-semibold text-blue-300 mb-3">Schutz der Vermittlungsleistung</p>
-                <p className="mb-3">
-                  Ab dem Zeitpunkt der Kontaktfreigabe in Stufe 1 (Vorläufige Beauftragung) greift eine 
-                  Nachwirkfrist von 24 Monaten. Diese Frist schützt die Vermittlungsleistung von byndl und 
-                  stellt sicher, dass die Plattform für die erfolgreiche Zusammenführung von Bauherr und 
-                  Handwerker angemessen vergütet wird.
+                <p className="mb-3 leading-relaxed">
+                  Ab dem Zeitpunkt der Kontaktfreigabe in Stufe 1 greift eine Nachwirkfrist von 24 Monaten. 
+                  Kommt innerhalb dieses Zeitraums ein Vertrag zwischen dem Bauherrn und dem vermittelten 
+                  Handwerker zustande – unabhängig davon, ob über die Plattform oder außerhalb – gilt dieser 
+                  als durch byndl vermittelt und die Provision bleibt fällig.
                 </p>
-                <p className="mb-3 font-semibold text-white">Was bedeutet die Nachwirkfrist konkret?</p>
-                <p className="mb-3">
-                  Kommt innerhalb von 24 Monaten nach der Kontaktfreigabe ein Vertrag zwischen dem Bauherrn 
-                  und dem vermittelten Handwerker zustande – unabhängig davon, ob dieser Vertrag über die 
-                  Plattform oder außerhalb der Plattform geschlossen wird – gilt dieser Vertrag als durch 
-                  byndl vermittelt. Die Vermittlungsprovision gemäß § 4.3 und § 4.4 bleibt in diesem Fall fällig.
-                </p>
-                <p className="mb-3">
+                <p className="text-sm text-gray-300">
                   Dies gilt für dasselbe Projekt sowie für vergleichbare oder Folgeprojekte zwischen denselben 
                   Vertragsparteien.
                 </p>
-                <p className="font-semibold text-white mb-2">Zweck und Fairness:</p>
-                <p>
-                  Die Nachwirkfrist verhindert eine Umgehung der Plattform und schützt byndl vor dem Szenario, 
-                  dass Nutzer die Plattform lediglich zur kostenlosen Kontaktaufnahme nutzen und anschließend 
-                  „offline" einen Vertrag schließen, um die Provision zu vermeiden. Gleichzeitig wird durch 
-                  das zweistufige Modell sichergestellt, dass nur tatsächlich zustande gekommene Aufträge 
-                  provisionspflichtig sind – es entstehen keine Kosten für bloße Kontaktaufnahmen ohne 
-                  Vertragsabschluss.
-                </p>
               </div>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">5.3 Direktes Vertragsverhältnis</h3>
-              <div className="bg-teal-900/30 border-l-4 border-teal-400 p-4 mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">7.3 Direktes Vertragsverhältnis</h3>
+              <div className="bg-teal-900/30 border-l-4 border-teal-400 p-5 mb-4 rounded-r-lg">
                 <p className="font-semibold text-teal-300 mb-2">Wichtig</p>
                 <p>
                   Der Werkvertrag kommt ausschließlich zwischen Bauherr und Handwerker zustande. byndl ist 
                   nicht Vertragspartei und übernimmt keine Haftung für die Erfüllung, Qualität oder sonstige 
-                  Aspekte des Werkvertrags. Alle Ansprüche aus dem Werkvertrag sind direkt zwischen Bauherr 
-                  und Handwerker geltend zu machen.
+                  Aspekte des Werkvertrags.
                 </p>
               </div>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 6 Umgehungsverbot</h2>
+            {/* § 8 - Umgehungsverbot */}
+            <section id="p8">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§8</span>
+                Umgehungsverbot
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">6.1 Verbot der Plattformumgehung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">8.1 Verbot der Plattformumgehung</h3>
+              <p className="mb-4 leading-relaxed">
                 Es ist untersagt, die Plattform zu umgehen, indem Bauherr und Handwerker nach erfolgtem 
                 Erstkontakt über byndl direkt außerhalb der Plattform einen Vertrag schließen, um die 
-                Vermittlungsprovision zu vermeiden. Die Nachwirkfrist gemäß § 5.2 bleibt in jedem Fall 
+                Vermittlungsprovision zu vermeiden. Die Nachwirkfrist gemäß § 7.2 bleibt in jedem Fall 
                 bestehen.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">6.2 Vertragsstrafe</h3>
-              <p className="mb-4">
-                Bei vorsätzlicher Umgehung der Plattform verpflichtet sich der Handwerker zur Zahlung einer 
-                Vertragsstrafe in Höhe der doppelten entgangenen Vermittlungsprovision, mindestens jedoch 
-                2.500 Euro. Die Geltendmachung weitergehender Schadensersatzansprüche bleibt vorbehalten.
-              </p>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">6.3 Monitoring und Nachweis</h3>
-              <p className="mb-4">
-                byndl behält sich vor, Verstöße gegen das Umgehungsverbot durch technische und organisatorische 
-                Maßnahmen zu überwachen. Die Kontaktfreigabe wird protokolliert und beide Parteien erhalten 
-                Erinnerungen über ihre Verpflichtungen. Bei begründetem Verdacht auf Umgehung kann byndl 
-                Nachforschungen anstellen und entsprechende Nachweise verlangen.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 7 Pflichten der Nutzer</h2>
-              
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">7.1 Allgemeine Pflichten</h3>
-              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
-                <li>Wahrheitsgemäße und vollständige Angaben bei Registrierung und Projekterfassung</li>
-                <li>Einhaltung aller gesetzlichen Vorschriften</li>
-                <li>Keine missbräuchliche Nutzung der Plattform</li>
-                <li>Respektvoller Umgang mit anderen Nutzern</li>
-                <li>Schutz der Zugangsdaten vor unbefugtem Zugriff</li>
-              </ul>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">7.2 Verbotene Handlungen</h3>
-              <p className="mb-2">Untersagt sind insbesondere:</p>
-              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
-                <li>Verbreitung rechtswidriger Inhalte</li>
-                <li>Verletzung von Rechten Dritter</li>
-                <li>Manipulation oder Sabotage der Plattform</li>
-                <li>Automatisiertes Auslesen von Daten (Scraping)</li>
-                <li>Erstellung von Fake-Profilen oder Fake-Projekten</li>
-                <li>Spam oder unerwünschte Werbung</li>
-              </ul>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">7.3 Besondere Pflichten der Handwerker</h3>
-              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
-                <li>Nachweis erforderlicher Qualifikationen und Genehmigungen</li>
-                <li>Bestehen einer Betriebshaftpflichtversicherung</li>
-                <li>Sorgfältige Prüfung und Verifizierung der KI-generierten Ausschreibungsunterlagen in Stufe 1 der zweistufigen Vergabe</li>
-                <li>Eigenverantwortliche Überprüfung der Projektgegebenheiten (insbesondere durch Vor-Ort-Besichtigung oder Videocall)</li>
-                <li>Fachgerechte Ausführung übernommener Aufträge</li>
-                <li>Einhaltung zugesagter Termine</li>
-                <li>Sachgerechte Kalkulation und realistische Angebote</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 8 Haftung und Gewährleistung</h2>
-              
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.1 Haftungsbeschränkung für byndl</h3>
-              <div className="bg-amber-900/30 border-l-4 border-amber-400 p-4 mb-4">
-                <p className="font-semibold text-amber-300 mb-2">Wichtiger Haftungshinweis</p>
-                
-                <p className="mb-3 text-sm font-semibold text-white">a) Unbeschränkte Haftung</p>
-                <p className="mb-3 text-sm">
-                  byndl haftet unbeschränkt für Schäden aus der Verletzung des Lebens, des Körpers oder der 
-                  Gesundheit, die auf einer vorsätzlichen oder fahrlässigen Pflichtverletzung von byndl oder 
-                  deren gesetzlichen Vertretern oder Erfüllungsgehilfen beruhen. byndl haftet ferner unbeschränkt 
-                  bei Vorsatz und grober Fahrlässigkeit sowie bei Ansprüchen nach dem Produkthaftungsgesetz.
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">8.2 Vertragsstrafe</h3>
+              <div className="bg-red-900/20 border-l-4 border-red-400 p-5 mb-4 rounded-r-lg">
+                <p className="mb-3 leading-relaxed">
+                  Bei vorsätzlicher Umgehung der Plattform verpflichtet sich der Handwerker zur Zahlung einer 
+                  Vertragsstrafe in Höhe der doppelten entgangenen Vermittlungsprovision, mindestens jedoch 
+                  2.500 Euro.
                 </p>
-                
-                <p className="mb-3 text-sm font-semibold text-white">b) Haftung bei Verletzung wesentlicher Vertragspflichten</p>
-                <p className="mb-3 text-sm">
-                  Bei leicht fahrlässiger Verletzung wesentlicher Vertragspflichten (Kardinalpflichten), deren 
-                  Erfüllung die ordnungsgemäße Durchführung des Vertrags überhaupt erst ermöglicht und auf deren 
-                  Einhaltung der Vertragspartner regelmäßig vertrauen darf, ist die Haftung von byndl der Höhe 
-                  nach auf den bei Vertragsschluss vorhersehbaren, vertragstypischen Schaden begrenzt. Dies gilt 
-                  nicht für Schäden gemäß lit. a).
-                </p>
-                
-                <p className="mb-3 text-sm font-semibold text-white">c) Ausschluss der Haftung für leichte Fahrlässigkeit</p>
-                <p className="mb-3 text-sm">
-                  Im Übrigen ist die Haftung von byndl für leicht fahrlässige Pflichtverletzungen ausgeschlossen, 
-                  soweit nicht Schäden gemäß lit. a) oder lit. b) betroffen sind.
-                </p>
-                
-                <p className="mb-3 text-sm font-semibold text-white">d) Besondere Haftungsbegrenzung bei KI-gestützten Inhalten</p>
-                <p className="text-sm">
-                  Die Haftung von byndl für die Richtigkeit, Vollständigkeit oder Eignung der durch KI-Software 
-                  erstellten Leistungsverzeichnisse und Kostenschätzungen ist - soweit rechtlich zulässig und 
-                  vorbehaltlich der Regelungen in lit. a) bis c) - auf Vorsatz und grobe Fahrlässigkeit beschränkt. 
-                  Dies gilt insbesondere, da durch die zweistufige Vergabe (§ 5.1) beiden Vertragsparteien 
-                  ausdrücklich die Möglichkeit und Pflicht zur eigenverantwortlichen Prüfung und Verifizierung 
-                  eingeräumt wird.
+                <p className="text-sm text-gray-300">
+                  Die Geltendmachung weitergehender Schadensersatzansprüche bleibt vorbehalten.
                 </p>
               </div>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.2 Keine Haftung für Werkleistungen</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">8.3 Monitoring und Nachweis</h3>
+              <p className="mb-4 leading-relaxed">
+                byndl behält sich vor, Verstöße gegen das Umgehungsverbot durch technische und organisatorische 
+                Maßnahmen zu überwachen. Die Kontaktfreigabe wird protokolliert und beide Parteien erhalten 
+                Erinnerungen über ihre Verpflichtungen.
+              </p>
+            </section>
+
+            {/* § 9 - Pflichten der Nutzer */}
+            <section id="p9">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§9</span>
+                Pflichten der Nutzer
+              </h2>
+              
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">9.1 Allgemeine Pflichten</h3>
+              <ul className="space-y-2 ml-4 mb-4">
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Wahrheitsgemäße und vollständige Angaben bei Registrierung und Projekterfassung</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Einhaltung aller gesetzlichen Vorschriften</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Keine missbräuchliche Nutzung der Plattform</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Respektvoller Umgang mit anderen Nutzern</span>
+                </li>
+              </ul>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">9.2 Verbotene Handlungen</h3>
+              <p className="mb-3">Untersagt sind insbesondere:</p>
+              <ul className="space-y-2 ml-4 mb-4">
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                  <span>Verbreitung rechtswidriger Inhalte</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                  <span>Verletzung von Rechten Dritter</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                  <span>Manipulation oder Sabotage der Plattform</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                  <span>Automatisiertes Auslesen von Daten (Scraping)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                  <span>Erstellung von Fake-Profilen oder Fake-Projekten</span>
+                </li>
+              </ul>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">9.3 Besondere Pflichten der Handwerker</h3>
+              <ul className="space-y-2 ml-4 mb-4">
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Nachweis erforderlicher Qualifikationen und Genehmigungen</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Bestehen einer Betriebshaftpflichtversicherung</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Sorgfältige Prüfung der Ausschreibungsunterlagen vor Angebotsabgabe</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Fachgerechte Ausführung übernommener Aufträge</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Einhaltung zugesagter Termine</span>
+                </li>
+              </ul>
+            </section>
+
+            {/* § 10 - Haftung */}
+            <section id="p10">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§10</span>
+                Haftung und Gewährleistung
+              </h2>
+              
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">10.1 Haftungsbeschränkung</h3>
+              <div className="bg-amber-900/30 border-l-4 border-amber-400 p-5 mb-4 rounded-r-lg">
+                <p className="font-semibold text-amber-300 mb-3">Wichtiger Haftungshinweis</p>
+                <p className="mb-3 text-sm leading-relaxed">
+                  <span className="font-semibold text-white">a) Unbeschränkte Haftung:</span> byndl haftet unbeschränkt 
+                  für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit, bei Vorsatz und 
+                  grober Fahrlässigkeit sowie bei Ansprüchen nach dem Produkthaftungsgesetz.
+                </p>
+                <p className="mb-3 text-sm leading-relaxed">
+                  <span className="font-semibold text-white">b) Haftung bei Verletzung wesentlicher Vertragspflichten:</span> Bei 
+                  leicht fahrlässiger Verletzung wesentlicher Vertragspflichten ist die Haftung auf den 
+                  vorhersehbaren, vertragstypischen Schaden begrenzt.
+                </p>
+                <p className="text-sm leading-relaxed">
+                  <span className="font-semibold text-white">c) Ausschluss weiterer Haftung:</span> Im Übrigen ist die 
+                  Haftung für leicht fahrlässige Pflichtverletzungen ausgeschlossen.
+                </p>
+              </div>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">10.2 Keine Haftung für Werkleistungen</h3>
+              <p className="mb-4 leading-relaxed">
                 byndl übernimmt ausdrücklich keine Haftung für die Qualität, Vollständigkeit, Termintreue 
                 oder sonstige Aspekte der von Handwerkern erbrachten Werkleistungen. Alle entsprechenden 
                 Ansprüche sind ausschließlich gegenüber dem Handwerker geltend zu machen.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.3 Haftungsbeschränkung für Nutzerinhalte und KI-generierte Ausschreibungen</h3>
-              <p className="mb-3">
-                byndl übernimmt keine Haftung für von Nutzern eingestellte Inhalte, Angaben oder Angebote. 
-                Die Nutzer sind selbst für die Richtigkeit und Rechtmäßigkeit ihrer Angaben verantwortlich.
-              </p>
-              <div className="bg-amber-900/30 border-l-4 border-amber-400 p-3 mb-4">
-                <p className="font-semibold text-amber-300 mb-2">Besondere Haftungsbegrenzung für KI-Ausschreibungen</p>
-                <p className="text-sm mb-3">
-                  Die Haftung von byndl für die Richtigkeit, Vollständigkeit oder Eignung der durch die 
-                  KI-Software erstellten Leistungsverzeichnisse und Kostenschätzungen richtet sich nach § 8.1 
-                  dieser AGB und ist - vorbehaltlich zwingender gesetzlicher Haftungstatbestände - auf Vorsatz 
-                  und grobe Fahrlässigkeit beschränkt. Diese dienen ausschließlich als erste, unverbindliche 
-                  Orientierung für die Vertragsanbahnung.
-                </p>
-                <p className="text-sm mb-3">
-                  Durch die in § 5.1 geregelte zweistufige Vergabe mit obligatorischer Prüf- und Verifizierungsphase 
-                  wird sowohl dem Bauherrn als auch dem Handwerker ausdrücklich die Möglichkeit und Pflicht 
-                  eingeräumt, die KI-generierten Unterlagen eigenverantwortlich zu überprüfen, zu korrigieren 
-                  und zu ergänzen. Der Handwerker als Fachunternehmer übernimmt mit Bestätigung seines finalen 
-                  Angebots in Stufe 2 die ausschließliche fachliche und kalkulatorische Verantwortung für dessen 
-                  Richtigkeit und Vollständigkeit.
-                </p>
-                <p className="text-sm mb-3">
-                  Ansprüche aus fehlerhaften oder unvollständigen Leistungsbeschreibungen, Mengenansätzen oder 
-                  Kalkulationen, die nach erfolgter Verifizierungsphase in das finale Angebot übernommen wurden, 
-                  sind vorrangig zwischen Bauherr und Handwerker zu klären. Der Handwerker kann sich gegenüber 
-                  dem Bauherrn nicht auf Unrichtigkeit der KI-generierten Ausschreibung berufen, wenn er die 
-                  Möglichkeit zur Prüfung und Korrektur hatte.
-                </p>
-                <p className="text-sm">
-                  byndl haftet nicht für mittelbare Schäden, entgangenen Gewinn oder Folgeschäden, die aus der 
-                  Nutzung der KI-generierten Inhalte entstehen, es sei denn, diese beruhen auf Vorsatz oder 
-                  grober Fahrlässigkeit von byndl. Die Haftung für Schäden aus der Verletzung des Lebens, 
-                  des Körpers oder der Gesundheit bleibt hiervon unberührt.
-                </p>
-              </div>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.4 Technische Verfügbarkeit</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">10.3 Technische Verfügbarkeit</h3>
+              <p className="mb-4 leading-relaxed">
                 byndl bemüht sich um eine hohe Verfügbarkeit der Plattform, kann diese aber nicht garantieren. 
-                Insbesondere Wartungsarbeiten, technische Störungen oder höhere Gewalt können zu 
-                vorübergehenden Ausfällen führen. Ein Anspruch auf jederzeitige Verfügbarkeit besteht nicht.
+                Ein Anspruch auf jederzeitige Verfügbarkeit besteht nicht.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">8.5 Freistellung</h3>
-              <p className="mb-3">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">10.4 Freistellung</h3>
+              <p className="mb-4 leading-relaxed">
                 Der Nutzer stellt byndl von allen Ansprüchen Dritter frei, die auf einer rechtswidrigen oder 
-                vertragswidrigen Nutzung der Plattform durch den Nutzer beruhen. Dies umfasst auch die 
-                angemessenen Kosten der Rechtsverteidigung.
+                vertragswidrigen Nutzung der Plattform durch den Nutzer beruhen.
               </p>
-              <div className="bg-blue-900/20 border-l-4 border-blue-400 p-3 mb-4">
-                <p className="font-semibold text-blue-300 mb-2 text-sm">Besondere Freistellung für Handwerker</p>
-                <p className="text-sm">
-                  Der Handwerker stellt byndl insbesondere von allen Ansprüchen des Bauherrn frei, die auf 
-                  unzutreffenden, unvollständigen oder fehlerhaften Angaben in seinem finalen Angebot beruhen, 
-                  wenn diese Fehler durch sorgfältige Prüfung und Verifizierung in Stufe 1 der zweistufigen 
-                  Vergabe hätten erkannt und korrigiert werden können. Der Handwerker verpflichtet sich, byndl 
-                  von sämtlichen Regressansprüchen freizuhalten, die sich aus mangelhafter Prüfung der 
-                  KI-generierten Ausschreibungsunterlagen ergeben.
-                </p>
-              </div>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 9 Datenschutz</h2>
+            {/* § 11 - Datenschutz */}
+            <section id="p11">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§11</span>
+                Datenschutz
+              </h2>
               
-              <p className="mb-4">
+              <p className="mb-4 leading-relaxed">
                 byndl verarbeitet personenbezogene Daten im Einklang mit der Datenschutz-Grundverordnung (DSGVO) 
-                und dem Bundesdatenschutzgesetz (BDSG). Nähere Informationen sind in der 
-                <Link to="/datenschutz" className="text-teal-400 hover:text-teal-300 underline mx-1">
+                und dem Bundesdatenschutzgesetz (BDSG). Nähere Informationen sind in der{' '}
+                <Link to="/datenschutz" className="text-teal-400 hover:text-teal-300 underline">
                   Datenschutzerklärung
-                </Link>
+                </Link>{' '}
                 zu finden.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 10 Änderungen der AGB</h2>
+            {/* § 12 - Änderungen */}
+            <section id="p12">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§12</span>
+                Änderungen der AGB
+              </h2>
               
-              <p className="mb-4">
+              <p className="mb-4 leading-relaxed">
                 byndl behält sich vor, diese AGB mit Wirkung für die Zukunft zu ändern. Registrierte Nutzer 
                 werden über Änderungen per E-Mail informiert. Widerspricht der Nutzer der Geltung der neuen 
                 AGB nicht innerhalb von vier Wochen nach Zugang der Änderungsmitteilung, gelten die neuen 
-                AGB als akzeptiert. byndl wird in der Änderungsmitteilung auf die Widerspruchsmöglichkeit 
-                und die Bedeutung der Widerspruchsfrist hinweisen.
+                AGB als akzeptiert.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 11 Laufzeit und Kündigung</h2>
+            {/* § 13 - Laufzeit */}
+            <section id="p13">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§13</span>
+                Laufzeit und Kündigung
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">11.1 Laufzeit</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.1 Laufzeit</h3>
+              <p className="mb-4 leading-relaxed">
                 Der Nutzungsvertrag wird auf unbestimmte Zeit geschlossen.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">11.2 Ordentliche Kündigung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.2 Ordentliche Kündigung</h3>
+              <p className="mb-4 leading-relaxed">
                 Beide Parteien können den Vertrag jederzeit mit einer Frist von 14 Tagen zum Monatsende kündigen. 
                 Die Kündigung bedarf der Textform (E-Mail ausreichend).
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">11.3 Außerordentliche Kündigung</h3>
-              <p className="mb-4">
-                Das Recht zur außerordentlichen Kündigung aus wichtigem Grund bleibt unberührt. Ein wichtiger 
-                Grund liegt insbesondere vor bei schwerwiegenden Verstößen gegen diese AGB, missbräuchlicher 
-                Nutzung der Plattform oder Zahlungsverzug trotz Mahnung.
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.3 Außerordentliche Kündigung</h3>
+              <p className="mb-4 leading-relaxed">
+                Das Recht zur außerordentlichen Kündigung aus wichtigem Grund bleibt unberührt.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">11.4 Folgen der Beendigung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.4 Folgen der Beendigung</h3>
+              <p className="mb-4 leading-relaxed">
                 Mit Beendigung des Nutzungsvertrags wird der Zugang zur Plattform gesperrt. Bereits begonnene 
                 Vermittlungen werden zu Ende geführt. Noch offene Zahlungsverpflichtungen bleiben bestehen.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 12 Streitbeilegung</h2>
+            {/* § 14 - Streitbeilegung */}
+            <section id="p14">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§14</span>
+                Streitbeilegung
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">12.1 Interne Streitbeilegung</h3>
-              <p className="mb-4">
-                Bei Streitigkeiten zwischen Nutzern (insbesondere zwischen Bauherr und Handwerker) bietet 
-                byndl ein optionales Schlichtungsverfahren an. Die Teilnahme ist freiwillig und kostenpflichtig 
-                gemäß gesonderter Gebührenordnung.
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">14.1 Interne Streitbeilegung</h3>
+              <p className="mb-4 leading-relaxed">
+                Bei Streitigkeiten zwischen Nutzern bietet byndl ein optionales Schlichtungsverfahren an. 
+                Die Teilnahme ist freiwillig.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">12.2 Online-Streitbeilegung</h3>
-              <p className="mb-4">
-                Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: 
-                <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" 
-                   className="text-teal-400 hover:text-teal-300 underline ml-1">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">14.2 Online-Streitbeilegung</h3>
+              <p className="mb-4 leading-relaxed">
+                Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{' '}
+                <a 
+                  href="https://ec.europa.eu/consumers/odr" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-teal-400 hover:text-teal-300 underline"
+                >
                   https://ec.europa.eu/consumers/odr
                 </a>
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">12.3 Verbraucherschlichtung</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">14.3 Verbraucherschlichtung</h3>
+              <p className="mb-4 leading-relaxed">
                 byndl ist weder bereit noch verpflichtet, an Streitbeilegungsverfahren vor einer 
                 Verbraucherschlichtungsstelle teilzunehmen.
               </p>
             </section>
 
-            <section>
-              <h2 className="text-2xl font-bold text-teal-400 mb-4">§ 13 Schlussbestimmungen</h2>
+            {/* § 15 - Schlussbestimmungen */}
+            <section id="p15">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§15</span>
+                Schlussbestimmungen
+              </h2>
               
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">13.1 Anwendbares Recht</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">15.1 Anwendbares Recht</h3>
+              <p className="mb-4 leading-relaxed">
                 Für diese AGB und alle Rechtsbeziehungen zwischen byndl und dem Nutzer gilt das Recht der 
-                Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts (CISG). Bei Verbrauchern gilt 
-                diese Rechtswahl nur insoweit, als nicht der gewährte Schutz durch zwingene Bestimmungen des 
-                Rechts des Staates, in dem der Verbraucher seinen gewöhnlichen Aufenthalt hat, entzogen wird.
+                Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts (CISG).
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">13.2 Gerichtsstand</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">15.2 Gerichtsstand</h3>
+              <p className="mb-4 leading-relaxed">
                 Ist der Nutzer Kaufmann, juristische Person des öffentlichen Rechts oder öffentlich-rechtliches 
-                Sondervermögen, ist ausschließlicher Gerichtsstand für alle Streitigkeiten aus diesem Vertrag 
-                der Sitz von byndl. Dasselbe gilt, wenn der Nutzer keinen allgemeinen Gerichtsstand in Deutschland 
-                hat oder Wohnsitz oder gewöhnlicher Aufenthalt im Zeitpunkt der Klageerhebung nicht bekannt sind.
+                Sondervermögen, ist ausschließlicher Gerichtsstand der Sitz von byndl.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">13.3 Salvatorische Klausel</h3>
-              <p className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">15.3 Salvatorische Klausel</h3>
+              <p className="mb-4 leading-relaxed">
                 Sollten einzelne Bestimmungen dieser AGB unwirksam sein oder werden, berührt dies die 
-                Wirksamkeit der übrigen Bestimmungen nicht. An die Stelle der unwirksamen Bestimmung tritt 
-                eine Regelung, die dem wirtschaftlichen Zweck der unwirksamen Bestimmung am nächsten kommt.
+                Wirksamkeit der übrigen Bestimmungen nicht.
               </p>
 
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">13.4 Abtretung</h3>
-              <p className="mb-4">
-                Der Nutzer darf seine Rechte und Pflichten aus dem Nutzungsvertrag nur mit vorheriger 
-                schriftlicher Zustimmung von byndl auf Dritte übertragen.
-              </p>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-4">13.5 Kontakt</h3>
-              <p className="mb-4">
-                Bei Fragen zu diesen AGB wenden Sie sich bitte an:
-              </p>
-              <div className="bg-white/5 border border-white/20 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">15.4 Kontakt</h3>
+              <p className="mb-4">Bei Fragen zu diesen AGB wenden Sie sich bitte an:</p>
+              <div className="bg-white/5 border border-white/20 rounded-lg p-5">
                 <p className="font-semibold text-white">byndl UG (haftungsbeschränkt)</p>
-                <p className="text-gray-300">E-Mail: info@byndl.de</p>
+                <p className="text-gray-300 mt-2">E-Mail: info@byndl.de</p>
               </div>
             </section>
           </div>
@@ -700,10 +885,23 @@ export default function AGB() {
 
       {/* Footer */}
       <footer className="bg-black/30 py-8 border-t border-white/10 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-gray-400 text-sm">
-            © 2025 byndl UG (haftungsbeschränkt) - Alle Rechte vorbehalten
-          </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-gray-400 text-sm">
+              © 2025 byndl UG (haftungsbeschränkt) - Alle Rechte vorbehalten
+            </p>
+            <div className="flex gap-6 text-sm">
+              <Link to="/nutzungsbedingungen" className="text-gray-400 hover:text-teal-400 transition-colors">
+                Nutzungsbedingungen
+              </Link>
+              <Link to="/datenschutz" className="text-gray-400 hover:text-teal-400 transition-colors">
+                Datenschutz
+              </Link>
+              <Link to="/impressum" className="text-gray-400 hover:text-teal-400 transition-colors">
+                Impressum
+              </Link>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
