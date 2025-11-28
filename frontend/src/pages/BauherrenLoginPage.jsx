@@ -290,14 +290,8 @@ export default function BauherrenLoginPage() {
 
               <div className="mt-4 text-center">
                 <p className="text-gray-400 text-sm">
-                  Oder starten Sie direkt ein neues Projekt:
+                  Registrierung ist kostenlos – Sie zahlen erst bei der LV-Erstellung.
                 </p>
-                <Link
-                  to="/start"
-                  className="inline-block mt-2 text-teal-400 hover:text-teal-300 text-sm transition-colors"
-                >
-                  Projekt starten →
-                </Link>
               </div>
             </>
           )}
