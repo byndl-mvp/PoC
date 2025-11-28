@@ -390,7 +390,6 @@ const changeEmail = async () => {
     
     try {
       setSupportLoading(true);
-      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
       
       // Mailto als Fallback
       const mailtoLink = `mailto:support@byndl.de?subject=${encodeURIComponent(supportForm.subject)}&body=${encodeURIComponent(
