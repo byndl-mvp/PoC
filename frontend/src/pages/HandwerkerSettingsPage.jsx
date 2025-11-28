@@ -663,9 +663,7 @@ const sendFeedback = async () => {
           userType: 'handwerker',
           userName: formData.companyName || `${formData.contactFirstName} ${formData.contactLastName}`,
           userEmail: formData.email,
-          subject: supportForm.subject,
-          message: supportForm.message,
-          type: 'support'
+          feedbackText: `[${supportForm.subject}]\n\n${supportForm.message}`
         })
       });
       
