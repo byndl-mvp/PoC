@@ -304,7 +304,7 @@ export default function AGB() {
               <a href="#p10" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 10 Haftung und Gewährleistung</a>
               <a href="#p11" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 11 Datenschutz</a>
               <a href="#p12" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 12 Änderungen der AGB</a>
-              <a href="#p13" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 13 Laufzeit und Kündigung</a>
+              <a href="#p13" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 13 Accountlöschung und Vertragsbeendigung</a>
               <a href="#p14" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 14 Streitbeilegung</a>
               <a href="#p15" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 15 Schlussbestimmungen</a>
             </div>
