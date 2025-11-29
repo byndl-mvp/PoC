@@ -1,9 +1,266 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+// Muster-Werkvertrag Komponente
+const MusterWerkvertragModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-white/20">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-teal-600 to-blue-600 px-6 py-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white">Muster-Werkvertrag nach VOB/B</h2>
+          <button 
+            onClick={onClose}
+            className="text-white/80 hover:text-white transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4 mb-6">
+            <p className="text-blue-300 text-sm">
+              <strong>Hinweis:</strong> Dies ist eine Mustervorlage. Bei Vertragsabschluss werden die konkreten 
+              Projekt- und Parteiendaten automatisch eingefügt.
+            </p>
+          </div>
+          
+          <pre className="text-gray-300 text-sm whitespace-pre-wrap font-mono bg-slate-900/50 p-6 rounded-lg border border-white/10">
+{`WERKVERTRAG
+nach VOB/B (Vergabe- und Vertragsordnung für Bauleistungen Teil B)
+
+Vertragsnummer: WV-[ID]-[JAHR]
+Datum: [DATUM]
+
+================================================================
+
+§ 1 VERTRAGSPARTEIEN
+
+AUFTRAGGEBER (AG):
+[Name des Bauherrn]
+[Adresse]
+Tel: [Telefon]
+E-Mail: [E-Mail]
+
+AUFTRAGNEHMER (AN):
+[Firmenname]
+[Adresse]
+Tel: [Telefon]
+E-Mail: [E-Mail]
+Ansprechpartner: [Name]
+
+================================================================
+
+§ 2 VERTRAGSGEGENSTAND
+
+Gewerk: [Gewerk-Name] (Code: [Gewerk-Code])
+
+Ausführungsort:
+[Straße] [Hausnummer]
+[PLZ] [Stadt]
+
+Projektbeschreibung:
+[Beschreibung wie im Leistungsverzeichnis]
+
+================================================================
+
+§ 3 LEISTUNGSUMFANG
+
+Die zu erbringenden Leistungen ergeben sich aus dem diesem Vertrag 
+als Anlage beigefügten Leistungsverzeichnis (LV).
+
+Das Leistungsverzeichnis ist Bestandteil dieses Vertrags und 
+beschreibt Art und Umfang der zu erbringenden Leistungen im Detail.
+
+Der AN verpflichtet sich, alle im LV aufgeführten Positionen 
+fachgerecht und nach den anerkannten Regeln der Technik sowie 
+den einschlägigen DIN-Normen auszuführen.
+
+================================================================
+
+§ 4 VERGÜTUNG
+
+Vertragssumme (Netto): [BETRAG] €
+zzgl. gesetzlicher MwSt. (19%): [MWST] €
+----------------------------------------------------------------
+Gesamtsumme (Brutto): [GESAMT] €
+
+Die Vergütung erfolgt nach tatsächlich erbrachter und abgenommener 
+Leistung gemäß den Mengen und Einheitspreisen des Leistungsverzeichnisses.
+
+Zahlungsbedingungen:
+- Abschlagszahlungen nach Baufortschritt möglich (max. 90% vor Abnahme)
+- Schlusszahlung innerhalb von 30 Tagen nach Abnahme und 
+  Erhalt einer prüffähigen Rechnung
+- Einbehalt von 5% als Sicherheit bis zum Ablauf der Gewährleistungsfrist,
+  alternativ kann der AN eine Bürgschaft in gleicher Höhe stellen
+
+================================================================
+
+§ 5 AUSFÜHRUNGSFRISTEN
+
+Beginn der Ausführung: [STARTDATUM]
+Fertigstellung bis: [ENDDATUM]
+
+Bei Verzug durch Verschulden des AN ist der AG berechtigt, eine 
+Vertragsstrafe in Höhe von 0,2% der Auftragssumme pro Werktag zu 
+verlangen, maximal jedoch 5% der Gesamtauftragssumme.
+
+Verlängerungen der Ausführungsfrist sind bei Behinderungen gemäß 
+§ 6 VOB/B (z.B. höhere Gewalt, Witterung, Vorleistungen anderer 
+Gewerke) zulässig.
+
+================================================================
+
+§ 6 ÄNDERUNGEN UND ZUSATZLEISTUNGEN
+
+Änderungen des Leistungsumfangs oder Zusatzleistungen bedürfen 
+der schriftlichen Vereinbarung vor Ausführungsbeginn.
+
+Beide Parteien vereinbaren, bei notwendigen Änderungen kooperativ 
+und lösungsorientiert zusammenzuarbeiten.
+
+================================================================
+
+§ 7 ABNAHME
+
+Die Abnahme erfolgt nach Fertigstellung der Leistungen durch 
+den AG oder dessen Bevollmächtigten.
+
+Über die Abnahme ist ein gemeinsames Protokoll zu erstellen.
+
+Mit der Abnahme geht die Gefahr auf den AG über und die 
+Gewährleistungsfrist beginnt.
+
+================================================================
+
+§ 8 GEWÄHRLEISTUNG
+
+Gewährleistungsfrist:
+- 4 Jahre für Arbeiten an Bauwerken (gemäß VOB/B § 13 Abs. 4)
+- 2 Jahre für andere Arbeiten
+
+Bei berechtigten Mängelrügen hat der AN das Recht zur Nacherfüllung 
+durch Nachbesserung innerhalb angemessener Frist.
+
+================================================================
+
+§ 9 VERSICHERUNG UND HAFTUNG
+
+Der AN verpflichtet sich, für die Dauer der Ausführung eine 
+ausreichende Betriebshaftpflichtversicherung zu unterhalten 
+(mind. 1 Mio. € für Personenschäden, 500.000 € für Sachschäden).
+
+================================================================
+
+§ 10 SICHERHEITSVORSCHRIFTEN
+
+Der AN verpflichtet sich zur Einhaltung aller einschlägigen 
+Arbeitsschutz- und Sicherheitsvorschriften.
+
+================================================================
+
+§ 11 KOMMUNIKATION UND ZUSAMMENARBEIT
+
+Beide Parteien verpflichten sich zu einer partnerschaftlichen 
+Zusammenarbeit und zeitnaher Kommunikation.
+
+================================================================
+
+§ 12 KÜNDIGUNG
+
+Beide Parteien können den Vertrag aus wichtigem Grund kündigen.
+
+Der AG kann den Vertrag jederzeit bis zur Vollendung der Leistung 
+gemäß § 8 VOB/B kündigen. In diesem Fall erhält der AN die 
+Vergütung für bereits erbrachte Leistungen.
+
+================================================================
+
+§ 13 DATENSCHUTZ
+
+Die Parteien verpflichten sich, personenbezogene Daten nur für 
+vertragliche Zwecke zu verwenden.
+
+================================================================
+
+§ 14 SCHLUSSBESTIMMUNGEN
+
+Es gilt das Recht der Bundesrepublik Deutschland.
+
+Als Vertragsgrundlage gilt die VOB in der aktuellen Fassung.
+
+Änderungen und Ergänzungen dieses Vertrages bedürfen der Schriftform.
+
+================================================================
+
+ANLAGEN (Vertragsbestandteile):
+- Anlage 1: Leistungsverzeichnis (LV) mit Positionsbeschreibung
+- Anlage 2: Planunterlagen (falls vorhanden)
+- Anlage 3: Fotodokumentation des Ist-Zustands (falls vorhanden)
+
+================================================================
+
+DIGITALE VERTRAGSBESTÄTIGUNG
+
+Dieser Vertrag wurde über die Plattform byndl.de digital bestätigt.
+
+Hinweis: Für eine vollständige Rechtssicherheit empfehlen wir, 
+diesen Vertrag auszudrucken und von beiden Parteien händisch 
+unterschreiben zu lassen.
+
+================================================================
+
+UNTERSCHRIFTEN
+(Für die händische Unterzeichnung nach Ausdruck)
+
+
+AUFTRAGGEBER                          AUFTRAGNEHMER
+
+[Name Bauherr]                        [Firmenname]
+                                      [Ansprechpartner]
+
+
+_____________________________          _____________________________
+Ort, Datum                             Ort, Datum
+
+
+_____________________________          _____________________________
+Unterschrift                           Unterschrift / Firmenstempel
+
+================================================================
+
+Vertrag erstellt über byndl.de`}
+          </pre>
+        </div>
+        
+        {/* Footer */}
+        <div className="border-t border-white/10 px-6 py-4 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+          >
+            Schließen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AGB() {
+  const [showContractModal, setShowContractModal] = useState(false);
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      {/* Contract Modal */}
+      <MusterWerkvertragModal isOpen={showContractModal} onClose={() => setShowContractModal(false)} />
+      
       {/* Header */}
       <header className="relative z-10 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -41,6 +298,7 @@ export default function AGB() {
               <a href="#p5" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 5 Leistungen für Handwerker</a>
               <a href="#p6" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 6 Gebührenmodell für Handwerker</a>
               <a href="#p7" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 7 Zweistufige Vergabe</a>
+              <a href="#p7a" className="text-gray-300 hover:text-teal-400 transition-colors py-1 font-medium">§ 7a Muster-Werkvertrag</a>
               <a href="#p8" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 8 Umgehungsverbot</a>
               <a href="#p9" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 9 Pflichten der Nutzer</a>
               <a href="#p10" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 10 Haftung und Gewährleistung</a>
@@ -343,7 +601,21 @@ export default function AGB() {
                 Die Zahlung erfolgt über die in der Plattform angebotenen Zahlungsmethoden.
               </p>
 
-              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.4 Keine weiteren Gebühren für Bauherren</h3>
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.4 Nachträgliches Hinzufügen von Gewerken</h3>
+              <p className="mb-4 leading-relaxed">
+                Bauherren haben nach der initialen Projekterstellung die Möglichkeit, weitere Gewerke zu ihrem 
+                Projekt hinzuzufügen. Für jedes nachträglich hinzugefügte Gewerk wird eine separate Servicegebühr 
+                für die LV-Erstellung fällig.
+              </p>
+              <div className="bg-white/5 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-300">
+                  <span className="text-teal-400 font-medium">Gebühr für zusätzliche Gewerke:</span> Pro nachträglich 
+                  hinzugefügtem Leistungsverzeichnis wird der Standardpreis von <span className="text-white font-semibold">9,90 €</span> (inkl. MwSt.) berechnet, 
+                  unabhängig von der ursprünglichen Staffelung des Projekts.
+                </p>
+              </div>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4.5 Keine weiteren Gebühren für Bauherren</h3>
               <p className="mb-4 leading-relaxed">
                 Bauherren zahlen ausschließlich die Servicegebühr für die Erstellung der Leistungsverzeichnisse. 
                 Es fallen keine Vermittlungsprovisionen, Erfolgsgebühren oder sonstigen Kosten für Bauherren an.
@@ -556,6 +828,197 @@ export default function AGB() {
                   Aspekte des Werkvertrags.
                 </p>
               </div>
+            </section>
+
+            {/* § 7a - Muster-Werkvertrag */}
+            <section id="p7a">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§7a</span>
+                Muster-Werkvertrag
+              </h2>
+              
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">7a.1 Zweck und Bedeutung des Muster-Werkvertrags</h3>
+              <p className="mb-4 leading-relaxed">
+                Bei verbindlicher Beauftragung (Stufe 2 gemäß § 7) generiert die Plattform automatisch einen 
+                Werkvertrag nach VOB/B (Vergabe- und Vertragsordnung für Bauleistungen Teil B). Dieser 
+                Mustervertrag wurde entwickelt, um beide Vertragsparteien – sowohl Bauherr als auch 
+                Handwerker – gleichermaßen fair zu behandeln und rechtliche Klarheit zu schaffen.
+              </p>
+
+              <div className="bg-gradient-to-br from-green-900/30 to-teal-900/30 border border-green-500/30 rounded-xl p-6 mb-6">
+                <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  Vorteile für beide Vertragsparteien
+                </h4>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="font-medium text-teal-300 mb-2">Für Bauherren (Auftraggeber):</p>
+                    <ul className="space-y-2 text-sm text-gray-300">
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Klare Gewährleistungsfristen (4 Jahre nach VOB/B)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Schutz durch Sicherheitseinbehalt (5%)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Vertragsstrafe bei Verzug des Handwerkers</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Versicherungsnachweis des Handwerkers</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Abnahmeprotokoll zur Dokumentation</span>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="font-medium text-blue-300 mb-2">Für Handwerker (Auftragnehmer):</p>
+                    <ul className="space-y-2 text-sm text-gray-300">
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Klare Zahlungsbedingungen (30 Tage nach Abnahme)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Abschlagszahlungen nach Baufortschritt möglich</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Schutz bei Behinderungen (Fristverlängerung)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Nacherfüllungsrecht bei Mängelrügen</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Recht auf Arbeitseinstellung bei Zahlungsverzug</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">7a.2 Vertragsgrundlage VOB/B</h3>
+              <p className="mb-4 leading-relaxed">
+                Der Muster-Werkvertrag basiert auf der Vergabe- und Vertragsordnung für Bauleistungen Teil B 
+                (VOB/B), die als bewährtes Regelwerk im deutschen Bauwesen gilt. Die VOB/B enthält ausgewogene 
+                Regelungen, die über Jahrzehnte von Vertretern der Bauindustrie, des Handwerks und öffentlicher 
+                Auftraggeber gemeinsam entwickelt wurden. Sie schafft einen fairen Interessenausgleich zwischen 
+                den Vertragsparteien.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">7a.3 Akzeptanz bei Registrierung</h3>
+              <div className="bg-amber-900/30 border-l-4 border-amber-400 p-5 mb-4 rounded-r-lg">
+                <p className="font-semibold text-amber-300 mb-2 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                  Wichtiger Hinweis
+                </p>
+                <p className="mb-3 leading-relaxed">
+                  Mit der Registrierung auf der Plattform und der Akzeptanz dieser AGB erklärt sich der Nutzer 
+                  (sowohl Bauherr als auch Handwerker) mit dem hier beschriebenen Muster-Werkvertrag einverstanden. 
+                  Bei verbindlicher Beauftragung in Stufe 2 wird dieser Vertragstext automatisch mit den konkreten 
+                  Projekt- und Parteiendaten befüllt und beiden Parteien bereitgestellt.
+                </p>
+              </div>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">7a.4 Rechtssicherheit durch händische Unterschrift</h3>
+              <div className="bg-blue-900/30 border-l-4 border-blue-400 p-5 mb-4 rounded-r-lg">
+                <p className="font-semibold text-blue-300 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  Empfehlung zur vollständigen Rechtssicherheit
+                </p>
+                <p className="mb-3 leading-relaxed">
+                  Die digitale Bestätigung des Werkvertrags über die Plattform dokumentiert die Willensübereinstimmung 
+                  beider Parteien und ist rechtlich wirksam. Werkverträge nach deutschem Recht bedürfen grundsätzlich 
+                  keiner besonderen Form und können auch mündlich oder durch konkludentes Handeln geschlossen werden.
+                </p>
+                <p className="mb-3 leading-relaxed">
+                  <strong className="text-white">Dennoch empfehlen wir ausdrücklich:</strong> Für eine vollständige und 
+                  uneingeschränkte Rechtssicherheit sollten beide Vertragsparteien den generierten Werkvertrag 
+                  <strong className="text-blue-300"> ausdrucken und händisch unterschreiben</strong>. Die Unterschriftenfelder 
+                  am Ende des Vertrags sind hierfür vorgesehen.
+                </p>
+                <p className="text-sm text-gray-300">
+                  Ein händisch unterschriebener Vertrag bietet im Streitfall den höchsten Beweiswert und schließt 
+                  jegliche Zweifel an der Authentizität der Willenserklärungen aus. Dies ist eine Empfehlung, keine Pflicht – 
+                  der Vertrag ist auch ohne händische Unterschrift gültig.
+                </p>
+              </div>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">7a.5 Einsichtnahme in den Muster-Werkvertrag</h3>
+              <p className="mb-4 leading-relaxed">
+                Der vollständige Muster-Werkvertrag kann jederzeit eingesehen werden. Er enthält Regelungen zu:
+              </p>
+              <ul className="space-y-2 ml-4 mb-6">
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Vertragsparteien, Leistungsumfang und Vergütung</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Ausführungsfristen und Zahlungsbedingungen</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Abnahme, Gewährleistung und Haftung</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span>Änderungen, Kündigung und Schlussbestimmungen</span>
+                </li>
+              </ul>
+              
+              <button
+                onClick={() => setShowContractModal(true)}
+                className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Muster-Werkvertrag vollständig anzeigen
+              </button>
             </section>
 
             {/* § 8 - Umgehungsverbot */}
