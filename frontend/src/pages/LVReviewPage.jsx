@@ -1722,11 +1722,18 @@ const handleGenerateAllQuestions = async () => {
   )}
           
           <button
-            onClick={handleAddAdditionalTrade}
-            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+            onClick={() => {
+              if (window.confirm('Möchten Sie ein weiteres Gewerk hinzufügen?\n\nKosten: 9,90 € für die LV-Erstellung')) {
+                handleAddAdditionalTrade();
+              }
+            }}
+            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all flex flex-col items-center"
           >
-            <span className="text-xl mr-2">+</span>
-            Weiteres Gewerk hinzufügen
+            <span className="flex items-center">
+              <span className="text-xl mr-2">+</span>
+              Weiteres Gewerk hinzufügen
+            </span>
+            <span className="text-xs text-purple-200 font-normal mt-1">9,90 € pro LV</span>
           </button>
           
           <button
