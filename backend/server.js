@@ -21632,7 +21632,7 @@ UNTERSCHRIFTEN
 AUFTRAGGEBER                          AUFTRAGNEHMER
 
 ${offer.bauherr_name.padEnd(30)}      ${offer.company_name}
-${offer.contact_person ? `            ${offer.contact_person}` : ''}
+${offer.contact_person ? `                                ${offer.contact_person}` : ''}
 
 
 _____________________________          _____________________________
