@@ -861,7 +861,7 @@ export default function AGB() {
                         <svg className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        <span>Klare Gewährleistungsfristen (4 Jahre nach VOB/B)</span>
+                        <span>Klare Gewährleistungsfristen (5 Jahre nach BGB)</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <svg className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
