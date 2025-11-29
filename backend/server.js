@@ -21713,19 +21713,19 @@ app.get('/api/orders/:orderId/lv-pdf', async (req, res) => {
     const order = orderResult.rows[0];
     
     // Parse LV-Daten - KORRIGIERT für Array-Format
-let lvData = null;
-if (order.lv_data) {
-  let parsed = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
-  
-  // Wenn es direkt ein Array ist (wie in der DB), wrappe es
-  if (Array.isArray(parsed)) {
-    lvData = { positions: parsed };
-  } else if (parsed.positions) {
-    lvData = parsed;
-  } else {
-    lvData = { positions: [] };
-  }
-}
+    let lvData = null;
+    if (order.lv_data) {
+      let parsed = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
+      
+      // Wenn es direkt ein Array ist (wie in der DB), wrappe es
+      if (Array.isArray(parsed)) {
+        lvData = { positions: parsed };
+      } else if (parsed.positions) {
+        lvData = parsed;
+      } else {
+        lvData = { positions: [] };
+      }
+    }
     
     if (!lvData || !lvData.positions || lvData.positions.length === 0) {
       return res.status(404).json({ error: 'Keine LV-Daten gefunden' });
@@ -21796,40 +21796,40 @@ if (order.lv_data) {
     let totalSum = 0;
     
     lvData.positions.forEach((pos, index) => {
-  if (doc.y > 700) {
-    doc.addPage();
-    doc.fontSize(8).font('Helvetica');
-  }
-  
-  const startY = doc.y;
-  const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
-  totalSum += posTotal; 
+      if (doc.y > 700) {
+        doc.addPage();
+        doc.fontSize(8).font('Helvetica');
+      }
       
-  // Position
-  xPos = 50;
-  doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
-  
-  // Bezeichnung (mit Umbruch)
-  xPos += colWidths.pos;
-  const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
-  doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
-  
-  // Menge - MIT parseFloat!
-  xPos += colWidths.title;
-  doc.text((parseFloat(pos.quantity) || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
-  
-  // Einheit
-  xPos += colWidths.quantity;
-  doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
-  
-  // EP - MIT parseFloat!
-  xPos += colWidths.unit;
-  doc.text((parseFloat(pos.unitPrice) || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
-  
-  // GP - MIT parseFloat!
-  xPos += colWidths.unitPrice;
-  doc.text(posTotal.toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
+      const startY = doc.y;
+      const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
+      totalSum += posTotal; 
+          
+      // Position
+      xPos = 50;
+      doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
       
+      // Bezeichnung (mit Umbruch)
+      xPos += colWidths.pos;
+      const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
+      doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
+      
+      // Menge
+      xPos += colWidths.title;
+      doc.text((parseFloat(pos.quantity) || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
+      
+      // Einheit
+      xPos += colWidths.quantity;
+      doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
+      
+      // EP
+      xPos += colWidths.unit;
+      doc.text((parseFloat(pos.unitPrice) || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
+      
+      // GP
+      xPos += colWidths.unitPrice;
+      doc.text(posTotal.toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
+          
       doc.moveDown(Math.max(1, titleHeight / 12));
       
       if (pos.description) {
@@ -21892,7 +21892,7 @@ if (order.lv_data) {
   }
 });
 
-// Werkvertrag als PDF generieren
+// Werkvertrag als PDF generieren - AKTUALISIERT mit allen neuen Paragraphen
 app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -21934,20 +21934,19 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     
     const order = orderResult.rows[0];
     
-    // Parse LV-Daten - KORRIGIERT für Array-Format
-let lvData = null;
-if (order.lv_data) {
-  let parsed = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
-  
-  // Wenn es direkt ein Array ist (wie in der DB), wrappe es
-  if (Array.isArray(parsed)) {
-    lvData = { positions: parsed };
-  } else if (parsed.positions) {
-    lvData = parsed;
-  } else {
-    lvData = { positions: [] };
-  }
-}
+    // Parse LV-Daten
+    let lvData = null;
+    if (order.lv_data) {
+      let parsed = typeof order.lv_data === 'string' ? JSON.parse(order.lv_data) : order.lv_data;
+      
+      if (Array.isArray(parsed)) {
+        lvData = { positions: parsed };
+      } else if (parsed.positions) {
+        lvData = parsed;
+      } else {
+        lvData = { positions: [] };
+      }
+    }
     
     // PDF erstellen
     const doc = new PDFDocument({
@@ -21955,7 +21954,7 @@ if (order.lv_data) {
       margins: { top: 50, bottom: 50, left: 50, right: 50 },
       info: {
         Title: `Werkvertrag ${orderId}`,
-        Author: 'byndl GmbH',
+        Author: 'byndl UG (haftungsbeschränkt)',
         Subject: 'Werkvertrag nach VOB/B',
         Creator: 'byndl Platform'
       }
@@ -21967,6 +21966,20 @@ if (order.lv_data) {
     
     // PDF-Stream an Response pipen
     doc.pipe(res);
+    
+    // Berechnungen für Vergütung
+    const netto = parseFloat(order.amount);
+    const bundleDiscount = order.bundle_discount || 0;
+    const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
+    const nettoAfterDiscount = netto - discountAmount;
+    const mwst = nettoAfterDiscount * 0.19;
+    const brutto = nettoAfterDiscount + mwst;
+    
+    const contractDate = new Date().toLocaleDateString('de-DE', { 
+      day: '2-digit', 
+      month: 'long', 
+      year: 'numeric' 
+    });
     
     // === TITELSEITE ===
     doc.fontSize(24).font('Helvetica-Bold').text('WERKVERTRAG', { align: 'center' });
@@ -22006,8 +22019,8 @@ if (order.lv_data) {
     // === § 2 VERTRAGSGEGENSTAND ===
     addSection(doc, '§ 2 VERTRAGSGEGENSTAND');
     
-    doc.font('Helvetica-Bold').text(`Gewerk: `);
-    doc.font('Helvetica').text(`${order.trade_name} (Code: ${order.trade_code})`, { continued: false });
+    doc.font('Helvetica-Bold').text('Gewerk: ', { continued: true });
+    doc.font('Helvetica').text(`${order.trade_name} (Code: ${order.trade_code})`);
     
     doc.moveDown(0.5);
     doc.font('Helvetica-Bold').text('Ausführungsort:');
@@ -22041,13 +22054,6 @@ if (order.lv_data) {
     // === § 4 VERGÜTUNG ===
     addSection(doc, '§ 4 VERGÜTUNG');
     
-    const netto = parseFloat(order.amount);
-    const bundleDiscount = order.bundle_discount || 0;
-    const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
-    const nettoAfterDiscount = netto - discountAmount;
-    const mwst = nettoAfterDiscount * 0.19;
-    const brutto = nettoAfterDiscount + mwst;
-    
     doc.fontSize(11).font('Helvetica-Bold');
     doc.text(`Vertragssumme (Netto): ${formatCurrency(netto)}`);
 
@@ -22071,94 +22077,286 @@ if (order.lv_data) {
     doc.font('Helvetica-Bold').text('Zahlungsbedingungen:');
     doc.font('Helvetica');
     doc.list([
-      'Abschlagszahlungen nach Baufortschritt möglich',
-      'Schlusszahlung innerhalb von 30 Tagen nach Abnahme',
-      'Einbehalt von 5% als Sicherheit bis zum Ablauf der Gewährleistungsfrist'
+      'Abschlagszahlungen nach Baufortschritt möglich (max. 90% vor Abnahme)',
+      'Schlusszahlung innerhalb von 30 Tagen nach Abnahme und Erhalt einer prüffähigen Rechnung',
+      'Einbehalt von 5% als Sicherheit bis zum Ablauf der Gewährleistungsfrist, alternativ kann der AN eine Bürgschaft in gleicher Höhe stellen'
     ]);
     
     // === § 5 AUSFÜHRUNGSFRISTEN ===
     addSection(doc, '§ 5 AUSFÜHRUNGSFRISTEN');
     
-    doc.font('Helvetica-Bold').text('Beginn der Ausführung: ');
-    doc.font('Helvetica').text(new Date(order.execution_start).toLocaleDateString('de-DE'), { continued: false });
+    doc.font('Helvetica-Bold').text('Beginn der Ausführung: ', { continued: true });
+    doc.font('Helvetica').text(new Date(order.execution_start).toLocaleDateString('de-DE'));
     
-    doc.font('Helvetica-Bold').text('Fertigstellung bis: ');
-    doc.font('Helvetica').text(new Date(order.execution_end).toLocaleDateString('de-DE'), { continued: false });
+    doc.font('Helvetica-Bold').text('Fertigstellung bis: ', { continued: true });
+    doc.font('Helvetica').text(new Date(order.execution_end).toLocaleDateString('de-DE'));
     
     doc.moveDown(0.5);
     doc.text(
-      'Bei Verzug ist der AN verpflichtet, eine Vertragsstrafe in Höhe von 0,2% der Auftragssumme pro Werktag zu zahlen, maximal jedoch 5% der Gesamtauftragssumme.',
+      'Bei Verzug durch Verschulden des AN ist der AG berechtigt, eine Vertragsstrafe in Höhe von 0,2% der Auftragssumme pro Werktag zu verlangen, maximal jedoch 5% der Gesamtauftragssumme.',
       { width: 500 }
     );
     
-    // === § 6 ABNAHME ===
-    addSection(doc, '§ 6 ABNAHME');
+    doc.moveDown(0.5);
+    doc.text(
+      'Verlängerungen der Ausführungsfrist sind bei Behinderungen gemäß § 6 VOB/B (z.B. höhere Gewalt, Witterung, Vorleistungen anderer Gewerke) zulässig. Der AN hat Behinderungen unverzüglich schriftlich anzuzeigen.',
+      { width: 500 }
+    );
+    
+    // === § 6 ÄNDERUNGEN UND ZUSATZLEISTUNGEN (NEU) ===
+    addSection(doc, '§ 6 ÄNDERUNGEN UND ZUSATZLEISTUNGEN');
+    
+    doc.text(
+      'Änderungen des Leistungsumfangs oder Zusatzleistungen bedürfen der schriftlichen Vereinbarung vor Ausführungsbeginn (Nachtragsvereinbarung).',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text(
+      'Der AN ist verpflichtet, auf notwendige Änderungen oder erkannte Zusatzleistungen unverzüglich hinzuweisen.',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text(
+      'Beide Parteien vereinbaren, bei notwendigen Änderungen kooperativ und lösungsorientiert zusammenzuarbeiten.',
+      { width: 500 }
+    );
+    
+    // === § 7 ABNAHME ===
+    addSection(doc, '§ 7 ABNAHME');
     
     doc.text(
       'Die Abnahme erfolgt nach Fertigstellung der Leistungen durch den AG oder dessen Bevollmächtigten.',
       { width: 500 }
     );
     doc.moveDown(0.5);
-    doc.text('Der AN hat den AG rechtzeitig zur Abnahme aufzufordern.', { width: 500 });
+    doc.text(
+      'Der AN hat den AG rechtzeitig (mind. 5 Werktage vorher) zur Abnahme aufzufordern.',
+      { width: 500 }
+    );
     doc.moveDown(0.5);
     doc.text(
-      'Die Abnahme darf nur verweigert werden, wenn wesentliche Mängel vorliegen, die die Gebrauchsfähigkeit beeinträchtigen.',
+      'Über die Abnahme ist ein gemeinsames Protokoll zu erstellen, in dem festgestellte Mängel und Vorbehalte festgehalten werden.',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text(
+      'Die Abnahme darf nur verweigert werden, wenn wesentliche Mängel vorliegen, die die Gebrauchsfähigkeit erheblich beeinträchtigen.',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text(
+      'Mit der Abnahme geht die Gefahr auf den AG über und die Gewährleistungsfrist beginnt.',
       { width: 500 }
     );
     
-    // === § 7 GEWÄHRLEISTUNG ===
-    addSection(doc, '§ 7 GEWÄHRLEISTUNG');
+    // === § 8 GEWÄHRLEISTUNG ===
+    addSection(doc, '§ 8 GEWÄHRLEISTUNG');
     
     doc.font('Helvetica-Bold').text('Gewährleistungsfrist:');
     doc.font('Helvetica');
     doc.list([
-      '4 Jahre für Arbeiten an Bauwerken (§ 634a Abs. 1 Nr. 2 BGB)',
+      '5 Jahre für Arbeiten an Bauwerken (§ 634a Abs. 1 Nr. 2 BGB)',
       '2 Jahre für andere Arbeiten'
     ]);
+    
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Oblique').fontSize(9);
+    doc.text(
+      'Hinweis: Dieser Vertrag orientiert sich an der VOB/B, wendet jedoch bei der Gewährleistungsfrist die verbraucherfreundlichere Regelung des BGB an.',
+      { width: 500 }
+    );
+    doc.font('Helvetica').fontSize(10);
     
     doc.moveDown(0.5);
     doc.text('Die Gewährleistungsfrist beginnt mit der Abnahme der Leistung.', { width: 500 });
     doc.moveDown(0.5);
     doc.text(
-      'Bei berechtigten Mängelrügen hat der AN nach seiner Wahl das Recht zur Nacherfüllung durch Nachbesserung oder Neuherstellung.',
+      'Der AN haftet für Mängel, die bei Abnahme vorhanden waren oder während der Gewährleistungsfrist auftreten und auf seine Leistung zurückzuführen sind.',
       { width: 500 }
     );
-    
-    // === § 8-11 (Kurz) ===
-    addSection(doc, '§ 8 VERSICHERUNG');
+    doc.moveDown(0.5);
     doc.text(
-      'Der AN verpflichtet sich, für die Dauer der Ausführung eine ausreichende Betriebshaftpflichtversicherung zu unterhalten.',
+      'Bei berechtigten Mängelrügen hat der AN das Recht zur Nacherfüllung durch Nachbesserung innerhalb angemessener Frist. Erst nach erfolglosem Ablauf dieser Frist stehen dem AG weitergehende Mängelrechte zu.',
       { width: 500 }
     );
     
-    addSection(doc, '§ 9 SICHERHEITSVORSCHRIFTEN');
+    // === § 9 VERSICHERUNG UND HAFTUNG ===
+    addSection(doc, '§ 9 VERSICHERUNG UND HAFTUNG');
+    
+    doc.text(
+      'Der AN verpflichtet sich, für die Dauer der Ausführung eine ausreichende Betriebshaftpflichtversicherung zu unterhalten (mind. 1 Mio. € für Personenschäden, 500.000 € für Sachschäden).',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text('Der Nachweis ist auf Verlangen vorzulegen.', { width: 500 });
+    doc.moveDown(0.5);
+    doc.text(
+      'Die Haftung für leichte Fahrlässigkeit ist auf vertragstypische, vorhersehbare Schäden begrenzt, sofern keine wesentlichen Vertragspflichten verletzt werden.',
+      { width: 500 }
+    );
+    
+    // === § 10 SICHERHEITSVORSCHRIFTEN UND BAUSTELLENORDNUNG ===
+    addSection(doc, '§ 10 SICHERHEITSVORSCHRIFTEN UND BAUSTELLENORDNUNG');
+    
     doc.text(
       'Der AN verpflichtet sich zur Einhaltung aller einschlägigen Arbeitsschutz-, Unfallverhütungs- und Sicherheitsvorschriften.',
       { width: 500 }
     );
+    doc.moveDown(0.5);
+    doc.text(
+      'Der AN sorgt für Ordnung und Sauberkeit an der Baustelle und entfernt anfallenden Bauschutt und Verpackungsmaterial regelmäßig.',
+      { width: 500 }
+    );
     
-    addSection(doc, '§ 10 KÜNDIGUNG');
+    // === § 11 KOMMUNIKATION UND ZUSAMMENARBEIT (NEU) ===
+    addSection(doc, '§ 11 KOMMUNIKATION UND ZUSAMMENARBEIT');
+    
+    doc.text(
+      'Beide Parteien verpflichten sich zu einer partnerschaftlichen Zusammenarbeit und zeitnaher Kommunikation.',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text(
+      'Ansprechpartner und Erreichbarkeiten sind vor Arbeitsbeginn auszutauschen. Wesentliche Abstimmungen sind schriftlich (E-Mail ausreichend) zu dokumentieren.',
+      { width: 500 }
+    );
+    
+    // === § 12 KÜNDIGUNG ===
+    addSection(doc, '§ 12 KÜNDIGUNG');
+    
     doc.text('Beide Parteien können den Vertrag aus wichtigem Grund kündigen.', { width: 500 });
     doc.moveDown(0.5);
-    doc.text('Der AG kann den Vertrag jederzeit bis zur Vollendung der Leistung kündigen (§ 8 VOB/B).', { width: 500 });
+    doc.text(
+      'Der AG kann den Vertrag jederzeit bis zur Vollendung der Leistung gemäß § 8 VOB/B kündigen. In diesem Fall erhält der AN die Vergütung für bereits erbrachte Leistungen.',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text(
+      'Der AN kann bei Zahlungsverzug des AG von mehr als 30 Tagen nach schriftlicher Mahnung die Arbeiten einstellen.',
+      { width: 500 }
+    );
     
-    addSection(doc, '§ 11 SCHLUSSBESTIMMUNGEN');
+    // === § 13 DATENSCHUTZ (NEU) ===
+    addSection(doc, '§ 13 DATENSCHUTZ');
+    
+    doc.text(
+      'Die Parteien verpflichten sich, personenbezogene Daten, die sie im Rahmen dieses Vertrags erhalten, nur für vertragliche Zwecke zu verwenden und nicht an Dritte weiterzugeben.',
+      { width: 500 }
+    );
+    
+    // === § 14 SCHLUSSBESTIMMUNGEN ===
+    addSection(doc, '§ 14 SCHLUSSBESTIMMUNGEN');
+    
     doc.text('Es gilt das Recht der Bundesrepublik Deutschland.', { width: 500 });
     doc.moveDown(0.5);
-    doc.text(`Erfüllungsort und Gerichtsstand ist ${order.city}.`, { width: 500 });
+    doc.text(
+      'Als Vertragsgrundlage gilt die VOB in der zum Vertragsschluss aktuellen Fassung (derzeit VOB 2019).',
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.text('Erfüllungsort ist der Ausführungsort der Leistung.', { width: 500 });
+    doc.text(`Gerichtsstand ist ${order.city}, sofern der AG Kaufmann ist.`, { width: 500 });
     doc.moveDown(0.5);
     doc.text('Änderungen und Ergänzungen dieses Vertrages bedürfen der Schriftform.', { width: 500 });
+    doc.moveDown(0.5);
+    doc.text(
+      'Sollten einzelne Bestimmungen unwirksam sein oder werden, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt. Die Parteien verpflichten sich, unwirksame Bestimmungen durch solche zu ersetzen, die dem wirtschaftlichen Zweck am nächsten kommen.',
+      { width: 500 }
+    );
     
+    // === ANLAGEN ===
     doc.moveDown(2);
     doc.fontSize(10).font('Helvetica-Bold');
-    doc.text('='.repeat(80));
+    doc.text('='.repeat(70));
     doc.moveDown(0.5);
-    doc.text(`Elektronisch bestätigt am: ${new Date(order.created_at).toLocaleDateString('de-DE')}`);
+    doc.text('ANLAGEN (Vertragsbestandteile):');
+    doc.font('Helvetica');
+    doc.list([
+      'Anlage 1: Leistungsverzeichnis (LV) mit detaillierter Positionsbeschreibung',
+      'Anlage 2: Planunterlagen (falls vorhanden)',
+      'Anlage 3: Fotodokumentation des Ist-Zustands (falls vorhanden)'
+    ]);
+    
+    // === DIGITALE VERTRAGSBESTÄTIGUNG ===
+    doc.moveDown(2);
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text('='.repeat(70));
     doc.moveDown(0.5);
-    doc.text(`Auftraggeber: ${order.bauherr_name}`);
-    doc.text(`Auftragnehmer: ${order.company_name}`);
+    doc.text('DIGITALE VERTRAGSBESTÄTIGUNG');
     doc.moveDown(0.5);
-    doc.fontSize(8).font('Helvetica-Oblique').text('Über byndl.de digital abgeschlossen', { align: 'center' });
+    doc.font('Helvetica');
+    doc.text(
+      `Dieser Vertrag wurde am ${contractDate} über die Plattform byndl.de digital bestätigt. Die elektronische Bestätigung dokumentiert die Willensübereinstimmung beider Parteien.`,
+      { width: 500 }
+    );
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Bold');
+    doc.text(
+      'Hinweis: Für eine vollständige Rechtssicherheit empfehlen wir, diesen Vertrag auszudrucken und von beiden Parteien händisch unterschreiben zu lassen.',
+      { width: 500 }
+    );
+    
+    // === UNTERSCHRIFTEN ===
+    doc.addPage();
+    doc.fontSize(12).font('Helvetica-Bold');
+    doc.text('UNTERSCHRIFTEN', { align: 'center' });
+    doc.fontSize(10).font('Helvetica');
+    doc.text('(Für die händische Unterzeichnung nach Ausdruck)', { align: 'center' });
+    
+    doc.moveDown(3);
+    
+    // Linke Spalte - Auftraggeber
+    const leftCol = 50;
+    const rightCol = 300;
+    const lineWidth = 200;
+    
+    doc.font('Helvetica-Bold');
+    doc.text('AUFTRAGGEBER', leftCol, doc.y);
+    doc.text('AUFTRAGNEHMER', rightCol, doc.y);
+    
+    doc.moveDown(1.5);
+    const nameY = doc.y;
+    
+    doc.font('Helvetica');
+    doc.text(order.bauherr_name, leftCol, nameY);
+    doc.text(order.company_name, rightCol, nameY);
+    
+    if (order.contact_person) {
+      doc.moveDown(0.5);
+      doc.text('', leftCol); // Platzhalter für Bauherr
+      doc.text(order.contact_person, rightCol, doc.y);
+    }
+    
+    doc.moveDown(3);
+    const lineY1 = doc.y;
+    
+    // Ort, Datum Linien
+    doc.moveTo(leftCol, lineY1).lineTo(leftCol + lineWidth, lineY1).stroke();
+    doc.moveTo(rightCol, lineY1).lineTo(rightCol + lineWidth, lineY1).stroke();
+    
+    doc.moveDown(0.3);
+    doc.fontSize(9);
+    doc.text('Ort, Datum', leftCol, doc.y);
+    doc.text('Ort, Datum', rightCol, doc.y);
+    
+    doc.moveDown(3);
+    const lineY2 = doc.y;
+    
+    // Unterschrift Linien
+    doc.moveTo(leftCol, lineY2).lineTo(leftCol + lineWidth, lineY2).stroke();
+    doc.moveTo(rightCol, lineY2).lineTo(rightCol + lineWidth, lineY2).stroke();
+    
+    doc.moveDown(0.3);
+    doc.text('Unterschrift', leftCol, doc.y);
+    doc.text('Unterschrift / Firmenstempel', rightCol, doc.y);
+    
+    // Footer
+    doc.moveDown(4);
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text('='.repeat(70), { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(8).font('Helvetica');
+    doc.text('Vertrag erstellt über byndl.de', { align: 'center' });
     
     // === NEUE SEITE: LEISTUNGSVERZEICHNIS ===
     if (lvData && lvData.positions && lvData.positions.length > 0) {
@@ -22205,39 +22403,39 @@ if (order.lv_data) {
       doc.fontSize(8).font('Helvetica');
       
       lvData.positions.forEach((pos, index) => {
-  if (doc.y > 700) {
-    doc.addPage();
-    doc.fontSize(8).font('Helvetica');
-  }
-  
-  const startY = doc.y;
-  const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
-  
-  // Position
-  xPos = 50;
-  doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
-  
-  // Bezeichnung (mit Umbruch)
-  xPos += colWidths.pos;
-  const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
-  doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
-  
-  // Menge - MIT parseFloat!
-  xPos += colWidths.title;
-  doc.text((parseFloat(pos.quantity) || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
-  
-  // Einheit
-  xPos += colWidths.quantity;
-  doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
-  
-  // EP - MIT parseFloat!
-  xPos += colWidths.unit;
-  doc.text((parseFloat(pos.unitPrice) || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
-  
-  // GP - MIT parseFloat!
-  xPos += colWidths.unitPrice;
-  doc.text(posTotal.toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
+        if (doc.y > 700) {
+          doc.addPage();
+          doc.fontSize(8).font('Helvetica');
+        }
         
+        const startY = doc.y;
+        const posTotal = (parseFloat(pos.quantity) || 0) * (parseFloat(pos.unitPrice) || 0);
+        
+        // Position
+        xPos = 50;
+        doc.text(pos.pos || index + 1, xPos, startY, { width: colWidths.pos, align: 'left' });
+        
+        // Bezeichnung (mit Umbruch)
+        xPos += colWidths.pos;
+        const titleHeight = doc.heightOfString(pos.title, { width: colWidths.title - 5 });
+        doc.text(pos.title, xPos, startY, { width: colWidths.title - 5, align: 'left' });
+        
+        // Menge
+        xPos += colWidths.title;
+        doc.text((parseFloat(pos.quantity) || 0).toFixed(2), xPos, startY, { width: colWidths.quantity, align: 'right' });
+        
+        // Einheit
+        xPos += colWidths.quantity;
+        doc.text(pos.unit || 'Stk', xPos, startY, { width: colWidths.unit, align: 'center' });
+        
+        // EP
+        xPos += colWidths.unit;
+        doc.text((parseFloat(pos.unitPrice) || 0).toFixed(2), xPos, startY, { width: colWidths.unitPrice, align: 'right' });
+        
+        // GP
+        xPos += colWidths.unitPrice;
+        doc.text(posTotal.toFixed(2), xPos, startY, { width: colWidths.total, align: 'right' });
+            
         doc.moveDown(Math.max(1, titleHeight / 12));
         
         // Beschreibung (falls vorhanden)
@@ -22256,67 +22454,62 @@ if (order.lv_data) {
       });
       
       // Summen
-doc.moveDown(1);
-doc.fontSize(10).font('Helvetica-Bold');
-doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke();
-doc.moveDown(0.5);
+      doc.moveDown(1);
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(2).stroke();
+      doc.moveDown(0.5);
 
-const bundleDiscountLV = order.bundle_discount || 0;
-const discountAmountLV = bundleDiscountLV > 0 ? (netto * bundleDiscountLV / 100) : 0;
-const nettoAfterDiscountLV = netto - discountAmountLV;
+      xPos = 370;
+      doc.text('Netto-Summe:', xPos, doc.y, { width: 100, align: 'left' });
+      doc.text(formatCurrency(netto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
 
-xPos = 370;
-doc.text('Netto-Summe:', xPos, doc.y, { width: 100, align: 'left' });
-doc.text(formatCurrency(netto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+      if (bundleDiscount > 0) {
+        doc.moveDown(0.5);
+        doc.fontSize(9).font('Helvetica');
+        doc.text(`Bündelrabatt (${bundleDiscount}%):`, xPos, doc.y, { width: 100, align: 'left' });
+        doc.text(`-${formatCurrency(discountAmount)}`, xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+        
+        doc.moveDown(0.5);
+        doc.text('Netto nach Rabatt:', xPos, doc.y, { width: 100, align: 'left' });
+        doc.text(formatCurrency(nettoAfterDiscount), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+      }
 
-if (bundleDiscountLV > 0) {
-  doc.moveDown(0.5);
-  doc.fontSize(9).font('Helvetica');
-  doc.text(`Bündelrabatt (${bundleDiscountLV}%):`, xPos, doc.y, { width: 100, align: 'left' });
-  doc.text(`-${formatCurrency(discountAmountLV)}`, xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
-  
-  doc.moveDown(0.5);
-  doc.text('Netto nach Rabatt:', xPos, doc.y, { width: 100, align: 'left' });
-  doc.text(formatCurrency(nettoAfterDiscountLV), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
-}
+      doc.moveDown(0.5);
+      doc.fontSize(9).font('Helvetica');
+      doc.text('zzgl. 19% MwSt:', xPos, doc.y, { width: 100, align: 'left' });
+      doc.text(formatCurrency(mwst), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
 
-doc.moveDown(0.5);
-doc.fontSize(9).font('Helvetica');
-doc.text('zzgl. 19% MwSt:', xPos, doc.y, { width: 100, align: 'left' });
-doc.text(formatCurrency(mwst), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
-
-doc.moveDown(0.5);
-doc.fontSize(11).font('Helvetica-Bold');
-doc.moveTo(xPos, doc.y).lineTo(xPos + 180, doc.y).stroke();
-doc.moveDown(0.3);
-doc.text('Gesamt (Brutto):', xPos, doc.y, { width: 100, align: 'left' });
-doc.text(formatCurrency(brutto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica-Bold');
+      doc.moveTo(xPos, doc.y).lineTo(xPos + 180, doc.y).stroke();
+      doc.moveDown(0.3);
+      doc.text('Gesamt (Brutto):', xPos, doc.y, { width: 100, align: 'left' });
+      doc.text(formatCurrency(brutto), xPos + 100, doc.y, { width: 80, align: 'right', continued: false });
     }
     
-    // Footer auf allen Seiten - KORRIGIERT (verhindert leere Seiten)
-const range = doc.bufferedPageRange();
-for (let i = 0; i < range.count; i++) {
-  doc.switchToPage(range.start + i);
-  
-  // Footer am unteren Rand
-  const bottomY = doc.page.height - 50;
-  
-  doc.fontSize(8).font('Helvetica');
-  doc.text(
-    `Seite ${i + 1} von ${range.count}`,
-    50,
-    bottomY,
-    { align: 'center', width: doc.page.width - 100 }
-  );
-  
-  doc.fontSize(7).font('Helvetica-Oblique');
-  doc.text(
-    'byndl GmbH - Die digitale Handwerkerplattform',
-    50,
-    bottomY + 15,
-    { align: 'center', width: doc.page.width - 100 }
-  );
-}
+    // Footer auf allen Seiten
+    const range = doc.bufferedPageRange();
+    for (let i = 0; i < range.count; i++) {
+      doc.switchToPage(range.start + i);
+      
+      const bottomY = doc.page.height - 50;
+      
+      doc.fontSize(8).font('Helvetica');
+      doc.text(
+        `Seite ${i + 1} von ${range.count}`,
+        50,
+        bottomY,
+        { align: 'center', width: doc.page.width - 100 }
+      );
+      
+      doc.fontSize(7).font('Helvetica-Oblique');
+      doc.text(
+        'byndl UG (haftungsbeschränkt) - Die digitale Handwerkerplattform',
+        50,
+        bottomY + 15,
+        { align: 'center', width: doc.page.width - 100 }
+      );
+    }
     
     // PDF abschließen
     doc.end();
@@ -22335,11 +22528,19 @@ function addSection(doc, title) {
   
   doc.moveDown(1);
   doc.fontSize(11).font('Helvetica-Bold');
-  doc.text('-'.repeat(80));
+  doc.text('-'.repeat(70));
   doc.moveDown(0.3);
   doc.text(title);
   doc.moveDown(0.3);
   doc.fontSize(10).font('Helvetica');
+}
+
+// Hilfsfunktion für Währungsformatierung
+function formatCurrency(value) {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value || 0);
 }
 
 // ============================================================================
