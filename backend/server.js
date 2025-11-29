@@ -22289,12 +22289,6 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
       `Dieser Vertrag wurde am ${contractDate} über die Plattform byndl.de digital bestätigt. Die elektronische Bestätigung dokumentiert die Willensübereinstimmung beider Parteien.`,
       { width: 500 }
     );
-    doc.moveDown(0.5);
-    doc.font('Helvetica-Bold');
-    doc.text(
-      'Hinweis: Für eine vollständige Rechtssicherheit empfehlen wir, diesen Vertrag auszudrucken und von beiden Parteien händisch unterschreiben zu lassen.',
-      { width: 500 }
-    );
     
     // === UNTERSCHRIFTEN ===
     doc.addPage();
