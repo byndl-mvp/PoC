@@ -21388,6 +21388,7 @@ if (transporter && otherOffers.rows.length > 0) {
 // Hilfsfunktion: VOB-konformen Werkvertrag generieren
 function generateVOBContract(offer) {
   const today = new Date().toLocaleDateString('de-DE');
+  const contractDate = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
   
   return `
 WERKVERTRAG
@@ -21455,9 +21456,11 @@ Die Vergütung erfolgt nach tatsächlich erbrachter und abgenommener Leistung
 gemäß den Mengen und Einheitspreisen des Leistungsverzeichnisses.
 
 Zahlungsbedingungen:
-- Abschlagszahlungen nach Baufortschritt möglich
-- Schlusszahlung innerhalb von 30 Tagen nach Abnahme
-- Einbehalt von 5% als Sicherheit bis zum Ablauf der Gewährleistungsfrist
+- Abschlagszahlungen nach Baufortschritt möglich (max. 90% vor Abnahme)
+- Schlusszahlung innerhalb von 30 Tagen nach Abnahme und 
+  Erhalt einer prüffähigen Rechnung
+- Einbehalt von 5% als Sicherheit bis zum Ablauf der Gewährleistungsfrist,
+  alternativ kann der AN eine Bürgschaft in gleicher Höhe stellen
 
 ================================================================
 
@@ -21466,100 +21469,182 @@ Zahlungsbedingungen:
 Beginn der Ausführung: ${new Date(offer.execution_start).toLocaleDateString('de-DE')}
 Fertigstellung bis: ${new Date(offer.execution_end).toLocaleDateString('de-DE')}
 
-Bei Verzug ist der AN verpflichtet, eine Vertragsstrafe in Höhe von 
-0,2% der Auftragssumme pro Werktag zu zahlen, maximal jedoch 5% 
-der Gesamtauftragssumme.
+Bei Verzug durch Verschulden des AN ist der AG berechtigt, eine 
+Vertragsstrafe in Höhe von 0,2% der Auftragssumme pro Werktag zu 
+verlangen, maximal jedoch 5% der Gesamtauftragssumme.
 
-Verlängerungen der Ausführungsfrist sind nur bei Behinderungen 
-gemäß § 6 VOB/B zulässig und bedürfen der schriftlichen Vereinbarung.
+Verlängerungen der Ausführungsfrist sind bei Behinderungen gemäß 
+§ 6 VOB/B (z.B. höhere Gewalt, Witterung, Vorleistungen anderer 
+Gewerke) zulässig. Der AN hat Behinderungen unverzüglich schriftlich 
+anzuzeigen.
 
 ================================================================
 
-§ 6 ABNAHME
+§ 6 ÄNDERUNGEN UND ZUSATZLEISTUNGEN
+
+Änderungen des Leistungsumfangs oder Zusatzleistungen bedürfen 
+der schriftlichen Vereinbarung vor Ausführungsbeginn (Nachtragsvereinbarung).
+
+Der AN ist verpflichtet, auf notwendige Änderungen oder erkannte 
+Zusatzleistungen unverzüglich hinzuweisen.
+
+Beide Parteien vereinbaren, bei notwendigen Änderungen kooperativ 
+und lösungsorientiert zusammenzuarbeiten.
+
+================================================================
+
+§ 7 ABNAHME
 
 Die Abnahme erfolgt nach Fertigstellung der Leistungen durch 
 den AG oder dessen Bevollmächtigten.
 
-Der AN hat den AG rechtzeitig zur Abnahme aufzufordern.
+Der AN hat den AG rechtzeitig (mind. 5 Werktage vorher) zur 
+Abnahme aufzufordern.
+
+Über die Abnahme ist ein gemeinsames Protokoll zu erstellen, 
+in dem festgestellte Mängel und Vorbehalte festgehalten werden.
 
 Die Abnahme darf nur verweigert werden, wenn wesentliche Mängel 
-vorliegen, die die Gebrauchsfähigkeit beeinträchtigen.
+vorliegen, die die Gebrauchsfähigkeit erheblich beeinträchtigen.
 
 Mit der Abnahme geht die Gefahr auf den AG über und die 
 Gewährleistungsfrist beginnt.
 
 ================================================================
 
-§ 7 GEWÄHRLEISTUNG
+§ 8 GEWÄHRLEISTUNG
 
 Gewährleistungsfrist:
-- 5 Jahre für Arbeiten an Bauwerken (§ 634a Abs. 1 Nr. 2 BGB)
+- 4 Jahre für Arbeiten an Bauwerken (gemäß VOB/B § 13 Abs. 4)
 - 2 Jahre für andere Arbeiten
 
 Die Gewährleistungsfrist beginnt mit der Abnahme der Leistung.
 
 Der AN haftet für Mängel, die bei Abnahme vorhanden waren oder 
-während der Gewährleistungsfrist auftreten.
+während der Gewährleistungsfrist auftreten und auf seine Leistung 
+zurückzuführen sind.
 
-Bei berechtigten Mängelrügen hat der AN nach seiner Wahl das 
-Recht zur Nacherfüllung durch Nachbesserung oder Neuherstellung.
+Bei berechtigten Mängelrügen hat der AN das Recht zur Nacherfüllung 
+durch Nachbesserung innerhalb angemessener Frist. Erst nach 
+erfolglosem Ablauf dieser Frist stehen dem AG weitergehende 
+Mängelrechte zu.
 
 ================================================================
 
-§ 8 VERSICHERUNG
+§ 9 VERSICHERUNG UND HAFTUNG
 
 Der AN verpflichtet sich, für die Dauer der Ausführung eine 
-ausreichende Betriebshaftpflichtversicherung zu unterhalten.
+ausreichende Betriebshaftpflichtversicherung zu unterhalten 
+(mind. 1 Mio. € für Personenschäden, 500.000 € für Sachschäden).
 
 Der Nachweis ist auf Verlangen vorzulegen.
 
+Die Haftung für leichte Fahrlässigkeit ist auf vertragstypische, 
+vorhersehbare Schäden begrenzt, sofern keine wesentlichen 
+Vertragspflichten verletzt werden.
+
 ================================================================
 
-§ 9 SICHERHEITSVORSCHRIFTEN
+§ 10 SICHERHEITSVORSCHRIFTEN UND BAUSTELLENORDNUNG
 
 Der AN verpflichtet sich zur Einhaltung aller einschlägigen 
 Arbeitsschutz-, Unfallverhütungs- und Sicherheitsvorschriften.
 
+Der AN sorgt für Ordnung und Sauberkeit an der Baustelle und 
+entfernt anfallenden Bauschutt und Verpackungsmaterial regelmäßig.
+
 ================================================================
 
-§ 10 KÜNDIGUNG
+§ 11 KOMMUNIKATION UND ZUSAMMENARBEIT
+
+Beide Parteien verpflichten sich zu einer partnerschaftlichen 
+Zusammenarbeit und zeitnaher Kommunikation.
+
+Ansprechpartner und Erreichbarkeiten sind vor Arbeitsbeginn 
+auszutauschen. Wesentliche Abstimmungen sind schriftlich 
+(E-Mail ausreichend) zu dokumentieren.
+
+================================================================
+
+§ 12 KÜNDIGUNG
 
 Beide Parteien können den Vertrag aus wichtigem Grund kündigen.
 
 Der AG kann den Vertrag jederzeit bis zur Vollendung der Leistung 
-kündigen (§ 8 VOB/B).
+gemäß § 8 VOB/B kündigen. In diesem Fall erhält der AN die 
+Vergütung für bereits erbrachte Leistungen.
+
+Der AN kann bei Zahlungsverzug des AG von mehr als 30 Tagen 
+nach schriftlicher Mahnung die Arbeiten einstellen.
 
 ================================================================
 
-§ 11 SCHLUSSBESTIMMUNGEN
+§ 13 DATENSCHUTZ
+
+Die Parteien verpflichten sich, personenbezogene Daten, die sie 
+im Rahmen dieses Vertrags erhalten, nur für vertragliche Zwecke 
+zu verwenden und nicht an Dritte weiterzugeben.
+
+================================================================
+
+§ 14 SCHLUSSBESTIMMUNGEN
 
 Es gilt das Recht der Bundesrepublik Deutschland.
 
-Erfüllungsort und Gerichtsstand ist ${offer.city}.
+Als Vertragsgrundlage gilt die VOB in der zum Vertragsschluss 
+aktuellen Fassung (derzeit VOB 2019).
 
-Änderungen und Ergänzungen dieses Vertrages bedürfen der 
-Schriftform.
+Erfüllungsort ist der Ausführungsort der Leistung.
+Gerichtsstand ist ${offer.city}, sofern der AG Kaufmann ist.
 
-Sollten einzelne Bestimmungen unwirksam sein, bleibt die 
-Wirksamkeit der übrigen Bestimmungen unberührt.
+Änderungen und Ergänzungen dieses Vertrages bedürfen der Schriftform.
 
-Dieser Vertrag wurde auf elektronischem Wege über die 
-Plattform byndl.de geschlossen und ist rechtsgültig.
-
-================================================================
-
-ANLAGEN:
-- Leistungsverzeichnis (LV) mit detaillierter Positionsbeschreibung
-- Planunterlagen (falls vorhanden)
+Sollten einzelne Bestimmungen unwirksam sein oder werden, bleibt 
+die Wirksamkeit der übrigen Bestimmungen unberührt. Die Parteien 
+verpflichten sich, unwirksame Bestimmungen durch solche zu ersetzen, 
+die dem wirtschaftlichen Zweck am nächsten kommen.
 
 ================================================================
 
-Elektronisch bestätigt am: ${today}
+ANLAGEN (Vertragsbestandteile):
+- Anlage 1: Leistungsverzeichnis (LV) mit detaillierter Positionsbeschreibung
+- Anlage 2: Planunterlagen (falls vorhanden)
+- Anlage 3: Fotodokumentation des Ist-Zustands (falls vorhanden)
 
-Auftraggeber: ${offer.bauherr_name}
-Auftragnehmer: ${offer.company_name}
+================================================================
 
-Über byndl.de digital abgeschlossen
+DIGITALE VERTRAGSBESTÄTIGUNG
+
+Dieser Vertrag wurde am ${contractDate} über die Plattform byndl.de 
+digital bestätigt. Die elektronische Bestätigung dokumentiert die 
+Willensübereinstimmung beider Parteien.
+
+Hinweis: Für eine vollständige Rechtssicherheit empfehlen wir, 
+diesen Vertrag auszudrucken und von beiden Parteien händisch 
+unterschreiben zu lassen.
+
+================================================================
+
+UNTERSCHRIFTEN
+(Für die händische Unterzeichnung nach Ausdruck)
+
+
+AUFTRAGGEBER                          AUFTRAGNEHMER
+
+${offer.bauherr_name.padEnd(30)}      ${offer.company_name}
+${offer.contact_person ? `            ${offer.contact_person}` : ''}
+
+
+_____________________________          _____________________________
+Ort, Datum                             Ort, Datum
+
+
+_____________________________          _____________________________
+Unterschrift                           Unterschrift / Firmenstempel
+
+================================================================
+
+Vertrag erstellt über byndl.de
   `.trim();
 }
 
