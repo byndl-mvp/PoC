@@ -21632,7 +21632,6 @@ UNTERSCHRIFTEN
 AUFTRAGGEBER                          AUFTRAGNEHMER
 
 ${offer.bauherr_name.padEnd(30)}      ${offer.company_name}
-${offer.contact_person ? `                                ${offer.contact_person}` : ''}
 
 
 _____________________________          _____________________________
@@ -22314,12 +22313,6 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     doc.font('Helvetica');
     doc.text(order.bauherr_name, leftCol, nameY);
     doc.text(order.company_name, rightCol, nameY);
-    
-    if (order.contact_person) {
-      doc.moveDown(0.5);
-      doc.text('', leftCol); // Platzhalter für Bauherr
-      doc.text(order.contact_person, rightCol, doc.y);
-    }
     
     doc.moveDown(3);
     const lineY1 = doc.y;
