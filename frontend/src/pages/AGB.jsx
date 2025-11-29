@@ -295,6 +295,7 @@ export default function AGB() {
               <a href="#p2" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 2 Registrierung und Vertragsschluss</a>
               <a href="#p3" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 3 Leistungen für Bauherren</a>
               <a href="#p4" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 4 Gebührenmodell für Bauherren</a>
+              <a href="#p4a" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 4a Widerrufsrecht und dessen Erlöschen</a>
               <a href="#p5" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 5 Leistungen für Handwerker</a>
               <a href="#p6" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 6 Gebührenmodell für Handwerker</a>
               <a href="#p7" className="text-gray-300 hover:text-teal-400 transition-colors py-1">§ 7 Zweistufige Vergabe</a>
@@ -622,6 +623,59 @@ export default function AGB() {
               </p>
             </section>
 
+            {/* § 4a - Widerrufsrecht und dessen Erlöschen */}
+            <section id="p4a">
+              <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§4a</span>
+                Widerrufsrecht und dessen Erlöschen
+              </h2>
+              
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4a.1 Grundsätzliches Widerrufsrecht</h3>
+              <p className="mb-4 leading-relaxed">
+                Verbrauchern steht bei Fernabsatzverträgen grundsätzlich ein Widerrufsrecht von 14 Tagen 
+                gemäß § 355 BGB zu.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4a.2 Erlöschen des Widerrufsrechts</h3>
+              <div className="bg-amber-900/30 border-l-4 border-amber-400 p-5 mb-4 rounded-r-lg">
+                <p className="font-semibold text-amber-300 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                  Wichtiger Hinweis
+                </p>
+                <p className="mb-3 leading-relaxed">
+                  Das Widerrufsrecht erlischt bei Verträgen über die Erbringung von Dienstleistungen, wenn 
+                  der Unternehmer die Dienstleistung vollständig erbracht hat und mit der Ausführung der 
+                  Dienstleistung erst begonnen hat, nachdem der Verbraucher ausdrücklich zugestimmt und 
+                  gleichzeitig seine Kenntnis davon bestätigt hat, dass er sein Widerrufsrecht bei 
+                  vollständiger Vertragserfüllung verliert (§ 356 Abs. 4 BGB).
+                </p>
+              </div>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4a.3 Zustimmung zur sofortigen Ausführung</h3>
+              <p className="mb-4 leading-relaxed">
+                Mit dem Klick auf „Jetzt bezahlen & LVs erstellen" (oder vergleichbare Schaltflächen) erklärt 
+                der Nutzer ausdrücklich seine Zustimmung, dass byndl mit der Erstellung der Leistungsverzeichnisse 
+                sofort beginnt. Der Nutzer bestätigt gleichzeitig seine Kenntnis darüber, dass sein Widerrufsrecht 
+                mit vollständiger Erbringung der Dienstleistung (Erstellung und Bereitstellung der Leistungsverzeichnisse) 
+                erlischt.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4a.4 Zeitpunkt des Erlöschens</h3>
+              <p className="mb-4 leading-relaxed">
+                Da die KI-gestützte Erstellung der Leistungsverzeichnisse unmittelbar nach Zahlungseingang 
+                erfolgt und die digitalen Dokumente sofort bereitgestellt werden, erlischt das Widerrufsrecht 
+                mit Abschluss des Erstellungsprozesses – in der Regel innerhalb weniger Minuten nach Beauftragung.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">4a.5 Keine Erstattung nach Leistungserbringung</h3>
+              <p className="mb-4 leading-relaxed">
+                Nach Erlöschen des Widerrufsrechts besteht kein Anspruch auf Erstattung der Servicegebühr, 
+                da die beauftragte Leistung vollständig erbracht wurde.
+              </p>
+            </section>
+            
             {/* § 5 - Leistungen für Handwerker */}
             <section id="p5">
               <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
