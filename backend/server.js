@@ -21515,7 +21515,7 @@ Gewährleistungsfrist beginnt.
 § 8 GEWÄHRLEISTUNG
 
 Gewährleistungsfrist:
-- 4 Jahre für Arbeiten an Bauwerken (gemäß VOB/B § 13 Abs. 4)
+- 5 Jahre für Arbeiten an Bauwerken (§ 634a Abs. 1 Nr. 2 BGB)
 - 2 Jahre für andere Arbeiten
 
 Die Gewährleistungsfrist beginnt mit der Abnahme der Leistung.
