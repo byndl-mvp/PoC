@@ -1239,33 +1239,36 @@ export default function AGB() {
               </p>
             </section>
 
-            {/* § 13 - Laufzeit */}
+           {/* § 13 - Accountlöschung und Vertragsbeendigung */}
             <section id="p13">
               <h2 className="text-2xl font-bold text-teal-400 mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-sm">§13</span>
-                Laufzeit und Kündigung
+                Accountlöschung und Vertragsbeendigung
               </h2>
               
-              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.1 Laufzeit</h3>
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.1 Accountlöschung</h3>
               <p className="mb-4 leading-relaxed">
-                Der Nutzungsvertrag wird auf unbestimmte Zeit geschlossen.
+                Der Nutzer kann seinen Account jederzeit ohne Angabe von Gründen löschen. Die Löschung kann über die Kontoeinstellungen oder per E-Mail an info@byndl.de erfolgen.
               </p>
 
-              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.2 Ordentliche Kündigung</h3>
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.2 Bereits erbrachte Leistungen</h3>
               <p className="mb-4 leading-relaxed">
-                Beide Parteien können den Vertrag jederzeit mit einer Frist von 14 Tagen zum Monatsende kündigen. 
-                Die Kündigung bedarf der Textform (E-Mail ausreichend).
+                Bereits gezahlte Servicegebühren für erstellte Leistungsverzeichnisse werden nicht erstattet, da die Leistung mit Erstellung des LV vollständig erbracht wurde.
               </p>
 
-              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.3 Außerordentliche Kündigung</h3>
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.3 Offene Forderungen</h3>
               <p className="mb-4 leading-relaxed">
-                Das Recht zur außerordentlichen Kündigung aus wichtigem Grund bleibt unberührt.
+                Offene Zahlungsverpflichtungen (insbesondere Vermittlungsprovisionen nach § 6) bleiben von der Accountlöschung unberührt und sind weiterhin fällig.
               </p>
 
-              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.4 Folgen der Beendigung</h3>
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.4 Laufende Vermittlungen</h3>
               <p className="mb-4 leading-relaxed">
-                Mit Beendigung des Nutzungsvertrags wird der Zugang zur Plattform gesperrt. Bereits begonnene 
-                Vermittlungen werden zu Ende geführt. Noch offene Zahlungsverpflichtungen bleiben bestehen.
+                Bei Löschung während einer laufenden Vermittlung (nach Stufe 1) bleibt die Nachwirkfrist gemäß § 7.2 bestehen.
+              </p>
+
+              <h3 className="text-lg font-semibold text-white mb-3 mt-6">13.5 Sperrung durch byndl</h3>
+              <p className="mb-4 leading-relaxed">
+                byndl behält sich vor, Accounts bei Verstoß gegen diese AGB oder bei Verdacht auf Missbrauch zu sperren oder zu löschen.
               </p>
             </section>
 
