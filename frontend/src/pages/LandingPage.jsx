@@ -122,7 +122,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          VORTEILE FÜR BAUHERREN - ERWEITERT MIT ALLEN KI-FUNKTIONEN
+          VORTEILE FÜR BAUHERREN UND HANDWERKER
           ═══════════════════════════════════════════════════════════════════════ */}
       <section className="bg-white/5 backdrop-blur-lg py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -150,12 +150,7 @@ export default function LandingPage() {
               <div className="space-y-6 sm:space-y-8">
                 {/* KI-gestützte Projekterfassung */}
                 <div className="bg-white/5 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">🤖</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-teal-300">KI-gestützte Projekterfassung</h4>
-                  </div>
+                  <h4 className="text-lg sm:text-xl font-semibold text-teal-300 mb-3">KI-gestützte Projekterfassung</h4>
                   <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,12 +175,7 @@ export default function LandingPage() {
 
                 {/* KI-Angebotsauswertung */}
                 <div className="bg-white/5 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">📊</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-teal-300">KI-Angebotsauswertung & Vergabeempfehlung</h4>
-                  </div>
+                  <h4 className="text-lg sm:text-xl font-semibold text-teal-300 mb-3">KI-Angebotsauswertung & Vergabeempfehlung</h4>
                   <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,48 +200,38 @@ export default function LandingPage() {
 
                 {/* KI-Terminplanung */}
                 <div className="bg-white/5 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">📅</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-teal-300">KI-Terminplanung</h4>
-                  </div>
+                  <h4 className="text-lg sm:text-xl font-semibold text-teal-300 mb-3">KI-Terminplanung</h4>
                   <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Automatische Koordination aller Gewerke</span>
+                      <span>Automatische Koordination aller Gewerke in der richtigen Reihenfolge</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Intelligente Reihenfolgeplanung (z.B. Elektriker vor Maler)</span>
+                      <span>Klarer Terminplan – Sie wissen jederzeit, was wann passiert</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Keine zeitintensiven Ortstermine vor Auftragsvergabe</span>
+                      <span>Die KI erstellt einen Terminplan für alle Gewerke – Alle Beteiligten wissen jederzeit, was wann passiert</span>
                     </li>
                   </ul>
                 </div>
 
                 {/* KI-Nachtragsprüfung */}
                 <div className="bg-white/5 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">🔍</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-teal-300">KI-Nachtragsprüfung</h4>
-                  </div>
+                  <h4 className="text-lg sm:text-xl font-semibold text-teal-300 mb-3">KI-Nachtragsprüfung</h4>
                   <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Automatische Prüfung von Nachtragsangeboten</span>
+                      <span>Ki gestützte Prüfung von Nachtragsangeboten</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,31 +243,32 @@ export default function LandingPage() {
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Volle Kostenkontrolle über gesamte Projektlaufzeit</span>
+                      <span>Volle Kostenkontrolle über die gesamte Projektlaufzeit</span>
                     </li>
                   </ul>
                 </div>
 
                 {/* Projektbündelung für Bauherren */}
                 <div className="bg-white/5 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">💰</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-teal-300">Kostenoptimierung durch Projektbündelung</h4>
-                  </div>
+                  <h4 className="text-lg sm:text-xl font-semibold text-teal-300 mb-3">Kostenvorteile durch Projektbündelung</h4>
                   <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Bündelung mit ähnlichen Projekten in Ihrer Region</span>
+                      <span>byndl bündelt ähnliche Projekte in Ihrer Region zu attraktiven Auftragspaketen</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                       </svg>
-                      <span>Profitieren von Mengenrabatten und Synergieeffekten</span>
+                      <span>Handwerker sparen Fahrtzeiten – diesen Vorteil geben sie als günstigere Angebote weiter</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      <span>Kürzere Wartezeiten, da gebündelte Aufträge für Handwerker attraktiver sind</span>
                     </li>
                   </ul>
                 </div>
@@ -308,12 +289,7 @@ export default function LandingPage() {
               <div className="space-y-6 sm:space-y-8">
                 {/* Qualifizierte Ausschreibungen */}
                 <div className="bg-white/5 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">✅</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-blue-300">Qualifizierte Ausschreibungen</h4>
-                  </div>
+                  <h4 className="text-lg sm:text-xl font-semibold text-blue-300 mb-3">Qualifizierte Ausschreibungen</h4>
                   <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,12 +314,7 @@ export default function LandingPage() {
 
                 {/* Klare Kalkulationsgrundlage */}
                 <div className="bg-white/5 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">📋</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-blue-300">Klare Kalkulationsgrundlage</h4>
-                  </div>
+                  <h4 className="text-lg sm:text-xl font-semibold text-blue-300 mb-3">Klare Kalkulationsgrundlage</h4>
                   <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -366,57 +337,44 @@ export default function LandingPage() {
                   </ul>
                 </div>
 
-                {/* Projektbündelung USP */}
+                {/* Projektbündelung - Das Herzstück */}
                 <div className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 rounded-xl p-4 sm:p-5 border border-blue-400/30">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500/30 to-teal-500/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">🎯</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-blue-300">Projektbündelung – Unser USP</h4>
-                  </div>
-                  <p className="text-gray-300 text-sm mb-4">
-                    Mehrere Projekte in einer Region werden zeitlich und räumlich koordiniert – das bedeutet für Sie:
+                  <h4 className="text-lg sm:text-xl font-semibold text-blue-300 mb-3">Projektbündelung – Mehr Umsatz, weniger Aufwand</h4>
+                  <p className="text-gray-300 text-sm sm:text-base mb-4">
+                    byndl erkennt automatisch, wenn mehrere Bauherren in Ihrer Region ähnliche Arbeiten benötigen, und bündelt diese intelligent zu Auftragspaketen. 
+                    Das ermöglicht Ihnen eine effiziente Tourenplanung mit kurzen Wegen zwischen den einzelnen Baustellen.
                   </p>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">📈</span>
-                        <span className="font-semibold text-green-400">Umsatzsteigerung</span>
-                      </div>
-                      <p className="text-gray-300 text-sm">Größere, zusammenhängende Auftragsvolumen statt vieler Kleinaufträge</p>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">🚗</span>
-                        <span className="font-semibold text-green-400">Weniger Fahrzeiten</span>
-                      </div>
-                      <p className="text-gray-300 text-sm">Projekte in derselben Region – minimale Leerfahrten und Anfahrtskosten</p>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">📊</span>
-                        <span className="font-semibold text-green-400">Planbare Auslastung</span>
-                      </div>
-                      <p className="text-gray-300 text-sm">Sichere Arbeitsabläufe, einfachere Personal- und Materialplanung</p>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">⚡</span>
-                        <span className="font-semibold text-green-400">Weniger Verwaltung</span>
-                      </div>
-                      <p className="text-gray-300 text-sm">Gebündelte Projekte = weniger Einzelaufträge = weniger Papierkram</p>
-                    </div>
-                  </div>
+                  <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
+                    <li className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      <span><strong className="text-green-400">Optimierte Logistik:</strong> Gebündelte Aufträge in direkter Nähe zueinander – für kurze Wege und eine effiziente Abwicklung</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      <span><strong className="text-green-400">Höhere Rentabilität:</strong> Größere Auftragsvolumen statt vieler unrentabler Einzelfahrten</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      <span><strong className="text-green-400">Bessere Planbarkeit:</strong> Zusammenhängende Aufträge erleichtern die Personal- und Materialplanung</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      <span><strong className="text-green-400">Weniger Verwaltung:</strong> Ein koordiniertes Auftragspaket statt mehrerer Einzelvorgänge</span>
+                    </li>
+                  </ul>
                 </div>
 
                 {/* Zeitersparnis */}
                 <div className="bg-white/5 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">⏱️</span>
-                    </div>
-                    <h4 className="text-lg sm:text-xl font-semibold text-blue-300">Zeitersparnis & Effizienz</h4>
-                  </div>
+                  <h4 className="text-lg sm:text-xl font-semibold text-blue-300 mb-3">Zeitersparnis & Effizienz</h4>
                   <ul className="space-y-2 text-gray-200 text-sm sm:text-base">
                     <li className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -445,22 +403,22 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          USP BÜNDELUNG - VISUALISIERUNG
+          PROJEKTBÜNDELUNG - VISUALISIERUNG
           ═══════════════════════════════════════════════════════════════════════ */}
       <section className="py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl sm:rounded-3xl p-6 sm:p-12 border border-white/20">
             <div className="text-center mb-8 sm:mb-12">
               <span className="inline-block px-4 py-2 bg-teal-500/20 rounded-full text-teal-400 text-sm font-semibold mb-4">
-                ✨ Unser Alleinstellungsmerkmal
+                Das Herzstück von byndl
               </span>
               <h2 className="text-2xl sm:text-4xl font-bold text-white mb-4">
                 Intelligente Projektbündelung
               </h2>
               <p className="text-base sm:text-xl text-gray-200 max-w-3xl mx-auto">
-                Mehrere Projekte in einer Region werden zeitlich koordiniert – 
-                <span className="text-teal-400 font-semibold"> Handwerker sparen Fahrtkosten und Zeit</span>, 
-                <span className="text-teal-400 font-semibold"> Bauherren profitieren von besseren Preisen</span>
+                Unsere Plattform erkennt automatisch, wenn in einer Region mehrere Bauherren ähnliche Arbeiten benötigen. 
+                Diese Projekte werden zeitlich und räumlich koordiniert, sodass Handwerker gebündelte Auftragspakete erhalten 
+                und ihre Ressourcen optimal einsetzen können.
               </p>
             </div>
             
@@ -472,8 +430,8 @@ export default function LandingPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                   </svg>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Regional gebündelt</h3>
-                <p className="text-gray-300 text-sm sm:text-base">Projekte in derselben Region werden intelligent zusammengefasst</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Regionale Bündelung</h3>
+                <p className="text-gray-300 text-sm sm:text-base">Aufträge in geografischer Nähe werden zu effizienten Paketen zusammengefasst</p>
               </div>
               
               <div className="text-center">
@@ -482,8 +440,8 @@ export default function LandingPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Zeitlich koordiniert</h3>
-                <p className="text-gray-300 text-sm sm:text-base">Optimale Terminplanung für maximale Effizienz</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Zeitliche Koordination</h3>
+                <p className="text-gray-300 text-sm sm:text-base">Ausschreibungsfristen werden synchronisiert, damit Handwerker Paketangebote abgeben können</p>
               </div>
               
               <div className="text-center">
@@ -492,8 +450,8 @@ export default function LandingPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Win-Win für alle</h3>
-                <p className="text-gray-300 text-sm sm:text-base">Bessere Preise durch Synergieeffekte</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Beiderseitiger Nutzen</h3>
+                <p className="text-gray-300 text-sm sm:text-base">Bauherren profitieren von günstigeren Konditionen, Handwerker von höherer Rentabilität</p>
               </div>
             </div>
           </div>
