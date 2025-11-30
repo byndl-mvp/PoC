@@ -1345,16 +1345,16 @@ const LVEditButton = ({ project }) => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
 <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-    <div className="flex justify-between items-center">
-      <div className="flex items-center gap-4">
-        <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <Link to="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-400 transition-colors">
           byndl
         </Link>
-        <span className="text-gray-400">|</span>
-        <h1 className="text-xl text-white">Bauherren-Dashboard</h1>
+        <span className="text-gray-400 hidden sm:inline">|</span>
+        <h1 className="text-sm sm:text-xl text-white truncate">Dashboard</h1>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* ═══ HIER DAS NOTIFICATION CENTER EINFÜGEN ═══ */}
         <NotificationCenter 
   userType="bauherr"
@@ -1382,34 +1382,37 @@ const LVEditButton = ({ project }) => {
 />     
         <Link 
           to="/bauherr/settings"
-          className="text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+          className="text-gray-300 hover:text-white transition-colors flex items-center gap-1 sm:gap-2 text-sm"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
           </svg>
-          {userData?.name || userData?.email}
+          <span className="hidden sm:inline">{userData?.name || userData?.email}</span>
         </Link>
         <button
           onClick={handleLogout}
-          className="px-4 py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
+          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all text-sm"
         >
-          Abmelden
+          <span className="hidden sm:inline">Abmelden</span>
+          <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
         </button>
       </div>
     </div>
   </div>
 </header>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">  
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">  
   {/* Projekt-Karten Grid - Hauptübersicht */}
   {!selectedProject ? (
     <div>
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-white mb-2">Meine Projekte</h2>
-        <p className="text-gray-400">Wählen Sie ein Projekt zur Bearbeitung</p>
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Meine Projekte</h2>
+        <p className="text-gray-400 text-sm sm:text-base">Wählen Sie ein Projekt zur Bearbeitung</p>
       </div>
       
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {projects.map((project) => {
           const progress = ((project.completedLvs || 0) / (project.totalTrades || 1)) * 100;
           const isPending = pendingLvProjectId && project.id === parseInt(pendingLvProjectId);
@@ -1585,24 +1588,24 @@ const LVEditButton = ({ project }) => {
       )}
       
       {/* Projekt-Header */}
-<div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 rounded-xl p-6 mb-6">
-  <div className="flex justify-between items-start">
-    <div>
-      <h1 className="text-3xl font-bold text-white mb-2">
+<div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 rounded-xl p-4 sm:p-6 mb-6">
+  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+    <div className="min-w-0">
+      <h1 className="text-xl sm:text-3xl font-bold text-white mb-2 truncate">
         {selectedProject.category}
       </h1>
-      <p className="text-lg text-gray-300 mb-3">
+      <p className="text-sm sm:text-lg text-gray-300 mb-2 sm:mb-3 line-clamp-2">
         {truncateWords(selectedProject.description || selectedProject.sub_category, 10)}
       </p>
-      <p className="text-gray-400">
+      <p className="text-xs sm:text-sm text-gray-400">
         Status: {selectedProject.status} | 
         Erstellt: {new Date(selectedProject.created_at).toLocaleDateString('de-DE')}
       </p>
     </div>
-    <div className="text-right">
-  <p className="text-sm text-gray-400">Geschätzte Kosten</p>
-  <p className="text-2xl font-bold text-teal-400">{formatCurrency(selectedProject.totalCost)}</p>
-  <p className="text-sm text-gray-300">inkl. MwSt</p>
+    <div className="text-left sm:text-right flex-shrink-0">
+  <p className="text-xs sm:text-sm text-gray-400">Geschätzte Kosten</p>
+  <p className="text-xl sm:text-2xl font-bold text-teal-400">{formatCurrency(selectedProject.totalCost)}</p>
+  <p className="text-xs sm:text-sm text-gray-300">inkl. MwSt</p>
 </div>
   </div>
 </div>
@@ -1646,7 +1649,7 @@ const LVEditButton = ({ project }) => {
       <ProjectWizard project={selectedProject} />
       
         {/* Tabs */}
-<div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto relative pt-2">
+<div className="flex gap-1 sm:gap-2 mb-6 sm:mb-8 border-b border-white/20 overflow-x-auto relative pt-2 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
   {['overview', 'tenders', 'offers', 'contracts', 'orders', 'budget', 'schedule'].map((tab) => {
     // Berechne neue Items pro Tab
     let newCount = 0;
@@ -1719,23 +1722,23 @@ const LVEditButton = ({ project }) => {
             }
           }
         }}
-        className={`px-4 py-2 pt-3 text-sm font-medium transition-colors whitespace-nowrap relative ${
+        className={`px-2 sm:px-4 py-2 pt-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap relative flex-shrink-0 ${
           activeTab === tab
             ? 'text-teal-400 border-b-2 border-teal-400'
             : 'text-gray-400 hover:text-white'
         }`}
       >
-        {tab === 'overview' && 'Übersicht'}
-        {tab === 'tenders' && 'Ausschreibungen'}
+        {tab === 'overview' && <><span className="sm:hidden">Start</span><span className="hidden sm:inline">Übersicht</span></>}
+        {tab === 'tenders' && <><span className="sm:hidden">Ausschr.</span><span className="hidden sm:inline">Ausschreibungen</span></>}
         {tab === 'offers' && 'Angebote'}
-        {tab === 'contracts' && 'Vertragsanbahnung'}
+        {tab === 'contracts' && <><span className="sm:hidden">Verträge</span><span className="hidden sm:inline">Vertragsanbahnung</span></>}
         {tab === 'orders' && 'Aufträge'}
-        {tab === 'budget' && 'Kostenübersicht'}
-        {tab === 'schedule' && 'Terminplan'}
+        {tab === 'budget' && <><span className="sm:hidden">Kosten</span><span className="hidden sm:inline">Kostenübersicht</span></>}
+        {tab === 'schedule' && <><span className="sm:hidden">Termine</span><span className="hidden sm:inline">Terminplan</span></>}
         
         {/* Badge nur wenn neue Items vorhanden */}
         {newCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold z-50">
+          <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-[10px] sm:text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold z-50">
             {newCount}
           </span>
         )}
@@ -1745,7 +1748,7 @@ const LVEditButton = ({ project }) => {
 </div>
 
         {/* Content */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 sm:p-6 border border-white/20">
           {/* Übersicht Tab - AKTUALISIERT mit LVEditButton */}
           {activeTab === 'overview' && selectedProject && (
   <div>
@@ -1772,7 +1775,7 @@ const LVEditButton = ({ project }) => {
       </div>
       
       {/* Status Steps */}
-      <div className="grid grid-cols-4 gap-2 mt-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-6">
         <div className={`text-center p-3 rounded-lg ${
           selectedProject.trades?.length > 0 ? 'bg-green-500/20 border-green-500' : 'bg-white/10'
         } border`}>
@@ -1801,7 +1804,7 @@ const LVEditButton = ({ project }) => {
     </div>
     
     {/* Action Buttons - MIT AKTUALISIERTEM LVEditButton */}
-    <div className="grid md:grid-cols-2 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
       {/* LV-Bearbeitung Button - ERSETZT */}
       <LVEditButton project={selectedProject} />
       
@@ -2236,10 +2239,10 @@ if (selectedProject) {
     <h2 className="text-2xl font-bold text-white mb-6">Eingegangene Angebote</h2>
     
    {/* Status-Übersicht */}
-<div className="grid md:grid-cols-4 gap-4 mb-6">
-  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-    <p className="text-gray-400 text-sm">Neue Angebote</p>
-    <p className="text-2xl font-bold text-teal-400">
+<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+  <div className="bg-white/10 backdrop-blur rounded-lg p-3 sm:p-4 border border-white/20">
+    <p className="text-gray-400 text-xs sm:text-sm">Neue Angebote</p>
+    <p className="text-xl sm:text-2xl font-bold text-teal-400">
       {offers.filter(o => 
         o.status === 'submitted' && 
         o.status !== 'preliminary' && 
@@ -2249,9 +2252,9 @@ if (selectedProject) {
       ).length}
     </p>
   </div>
-  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-    <p className="text-gray-400 text-sm">In Prüfung</p>
-    <p className="text-2xl font-bold text-yellow-400">
+  <div className="bg-white/10 backdrop-blur rounded-lg p-3 sm:p-4 border border-white/20">
+    <p className="text-gray-400 text-xs sm:text-sm">In Prüfung</p>
+    <p className="text-xl sm:text-2xl font-bold text-yellow-400">
       {offers.filter(o => 
         o.status === 'submitted' && 
         o.viewed &&
@@ -2263,17 +2266,17 @@ if (selectedProject) {
       ).length}
     </p>
   </div>
-  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-    <p className="text-gray-400 text-sm">Vertragsanbahnung</p>
-    <p className="text-2xl font-bold text-blue-400">
+  <div className="bg-white/10 backdrop-blur rounded-lg p-3 sm:p-4 border border-white/20">
+    <p className="text-gray-400 text-xs sm:text-sm">Vertragsanbahnung</p>
+    <p className="text-xl sm:text-2xl font-bold text-blue-400">
       {offers.filter(o => 
         o.status === 'preliminary' || o.status === 'confirmed'
       ).length}
     </p>
   </div>
-  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-    <p className="text-gray-400 text-sm">Beauftragt</p>
-    <p className="text-2xl font-bold text-green-400">
+  <div className="bg-white/10 backdrop-blur rounded-lg p-3 sm:p-4 border border-white/20">
+    <p className="text-gray-400 text-xs sm:text-sm">Beauftragt</p>
+    <p className="text-xl sm:text-2xl font-bold text-green-400">
       {offers.filter(o => o.status === 'accepted').length}
     </p>
   </div>
@@ -2408,11 +2411,11 @@ if (selectedProject) {
               <div className="space-y-3">
                 {tradeOffers.map((offer, idx) => (
                   <React.Fragment key={idx}>
-                    <div className="bg-white/10 rounded-lg p-4 border border-white/20">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="font-semibold text-white">
+                    <div className="bg-white/10 rounded-lg p-3 sm:p-4 border border-white/20">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h4 className="font-semibold text-white text-sm sm:text-base">
                               {offer.companyName || offer.company_name}
                             </h4>
                             {/* NEU: Bewertungs-Anzeige HIER einfügen */}
@@ -2430,25 +2433,25 @@ if (selectedProject) {
       setSelectedBundleOffer(offer);
       setBundleModalOpen(true);
     }}
-    className="bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs px-3 py-1 rounded-full font-semibold shadow-lg hover:from-green-600 hover:to-teal-600 transition-all flex items-center gap-1"
+    className="bg-gradient-to-r from-green-500 to-teal-500 text-white text-xs px-2 sm:px-3 py-1 rounded-full font-semibold shadow-lg hover:from-green-600 hover:to-teal-600 transition-all flex items-center gap-1"
   >
-    📦 Bündelangebot: {offer.bundle_discount}% Rabatt - Was heißt das?
+    📦 <span className="hidden sm:inline">Bündelangebot:</span> {offer.bundle_discount}% <span className="hidden sm:inline">Rabatt - Was heißt das?</span>
   </button>
 )}
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400">
                             <div>
                               <p>📅 Eingegangen: {new Date(offer.created_at || offer.date).toLocaleDateString('de-DE')}</p>
-                              <p>⏱️ Ausführung: {
+                              <p className="truncate">⏱️ Ausführung: {
                                 offer.execution_start && offer.execution_end 
                                   ? `${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}`
                                   : offer.executionTime || 'Nach Absprache'
                               }</p>
                             </div>
-                            <div>
+                            <div className="hidden sm:block">
                               <p>📞 Tel: {offer.phone || 'Wird nach Beauftragung mitgeteilt'}</p>
-                              <p>✉️ Email: {offer.email || 'Wird nach Beauftragung mitgeteilt'}</p>
+                              <p className="truncate">✉️ Email: {offer.email || 'Wird nach Beauftragung mitgeteilt'}</p>
                             </div>
                           </div>
                           
@@ -2460,7 +2463,7 @@ if (selectedProject) {
 )}
 </div>
 
-<div className="text-right ml-4">
+<div className="text-left sm:text-right flex-shrink-0">
   {(() => {
     // Berechne Rabatt innerhalb einer IIFE
     const bundleDiscount = offer.bundle_discount || 0;
@@ -2469,16 +2472,16 @@ if (selectedProject) {
     const bruttoAmount = nettoAfterDiscount * 1.19;
     
     return (
-      <div className="space-y-2">
+      <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2">
         <div>
-          <p className="text-2xl font-bold text-white">
+          <p className="text-lg sm:text-2xl font-bold text-white">
             {formatCurrency(offer.amount)}
           </p>
           <p className="text-xs text-gray-400">Netto</p>
         </div>
         
         {bundleDiscount > 0 && (
-          <div className="text-sm">
+          <div className="text-sm hidden sm:block">
             <p className="text-green-400 font-semibold">
               📦 -{bundleDiscount}% Rabatt
             </p>
@@ -2489,8 +2492,8 @@ if (selectedProject) {
           </div>
         )}
         
-        <div className="pt-2 border-t border-white/20">
-          <p className="text-lg font-bold text-teal-400">
+        <div className="sm:pt-2 sm:border-t sm:border-white/20">
+          <p className="text-base sm:text-lg font-bold text-teal-400">
             {formatCurrency(bruttoAmount)}
           </p>
           <p className="text-xs text-gray-400">Brutto</p>
@@ -3738,22 +3741,26 @@ if (extensionType === 'days') {
   </div>
 </div>
 
-<div className="flex items-center justify-center gap-6 text-sm text-gray-400 pb-2">
-  <div className="flex items-center gap-2">
-    <span className="text-lg">🚗</span>
-    <span>Geringere Fahrtkosten</span>
+<div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-400 pb-2">
+  <div className="flex items-center gap-1 sm:gap-2">
+    <span className="text-base sm:text-lg">🚗</span>
+    <span className="hidden sm:inline">Geringere Fahrtkosten</span>
+    <span className="sm:hidden">Fahrtkosten</span>
   </div>
-  <div className="flex items-center gap-2">
-    <span className="text-lg">⚡</span>
-    <span>Schnellere Umsetzung</span>
+  <div className="flex items-center gap-1 sm:gap-2">
+    <span className="text-base sm:text-lg">⚡</span>
+    <span className="hidden sm:inline">Schnellere Umsetzung</span>
+    <span className="sm:hidden">Schneller</span>
   </div>
-  <div className="flex items-center gap-2">
-    <span className="text-lg">💰</span>
-    <span>Kosteneinsparung</span>
+  <div className="flex items-center gap-1 sm:gap-2">
+    <span className="text-base sm:text-lg">💰</span>
+    <span className="hidden sm:inline">Kosteneinsparung</span>
+    <span className="sm:hidden">Sparen</span>
   </div>
-  <div className="flex items-center gap-2">
-    <span className="text-lg">🔄</span>
-    <span>Koordinierte Abwicklung</span>
+  <div className="flex items-center gap-1 sm:gap-2">
+    <span className="text-base sm:text-lg">🔄</span>
+    <span className="hidden sm:inline">Koordinierte Abwicklung</span>
+    <span className="sm:hidden">Koordiniert</span>
   </div>
 </div>
       </div>
