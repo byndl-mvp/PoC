@@ -398,17 +398,17 @@ const checkVerificationAndNavigate = (callback) => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
 <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-    <div className="flex justify-between items-center">
-      <div className="flex items-center gap-4">
-        <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <Link to="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-400 transition-colors">
           byndl
         </Link>
-        <span className="text-gray-400">|</span>
-        <h1 className="text-xl text-white">Handwerker-Dashboard</h1>
+        <span className="text-gray-400 hidden sm:inline">|</span>
+        <h1 className="text-sm sm:text-xl text-white truncate">Dashboard</h1>
       </div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
         {/* Notification Center */}
         <NotificationCenter 
           userType="handwerker"
@@ -435,9 +435,9 @@ const checkVerificationAndNavigate = (callback) => {
         /> 
         
         {/* NEU: Firmenname + Bewertungs-Badge */}
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <div className="text-right">
-            <p className="text-white font-semibold text-lg">
+            <p className="text-white font-semibold text-base lg:text-lg truncate max-w-[200px]">
               {handwerkerData?.company_name || handwerkerData?.companyName}
             </p>
             <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
@@ -453,17 +453,24 @@ const checkVerificationAndNavigate = (callback) => {
         {/* Einstellungen Button */}
         <Link 
           to="/handwerker/settings" 
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors flex items-center gap-2"
+          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors flex items-center gap-1 sm:gap-2 text-sm"
         >
-          ⚙️ Einstellungen
+          <span className="hidden sm:inline">⚙️ Einstellungen</span>
+          <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
         </Link>
         
         {/* Abmelden Button */}
         <button
           onClick={handleLogout}
-          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors"
+          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors text-sm"
         >
-          Abmelden
+          <span className="hidden sm:inline">Abmelden</span>
+          <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
         </button>
       </div>
     </div>
@@ -489,35 +496,35 @@ const checkVerificationAndNavigate = (callback) => {
         </div>
       )}
   
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Statistik-Cards */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
-  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-    <p className="text-gray-400 text-sm">Neue Ausschreibungen</p>
-    <p className="text-2xl font-bold text-teal-400">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+  <div className="bg-white/10 backdrop-blur rounded-lg p-3 sm:p-4 border border-white/20">
+    <p className="text-gray-400 text-xs sm:text-sm">Neue Ausschreibungen</p>
+    <p className="text-xl sm:text-2xl font-bold text-teal-400">
       {tenders.filter(t => !t.viewed_at).length}
     </p>
   </div>
-  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-    <p className="text-gray-400 text-sm">Verfügbare Bündel</p>
-    <p className="text-2xl font-bold text-blue-400">{bundles.length}</p>
+  <div className="bg-white/10 backdrop-blur rounded-lg p-3 sm:p-4 border border-white/20">
+    <p className="text-gray-400 text-xs sm:text-sm">Verfügbare Bündel</p>
+    <p className="text-xl sm:text-2xl font-bold text-blue-400">{bundles.length}</p>
   </div>
-  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-    <p className="text-gray-400 text-sm">In Vertragsanbahnung</p>
-    <p className="text-2xl font-bold text-yellow-400">
+  <div className="bg-white/10 backdrop-blur rounded-lg p-3 sm:p-4 border border-white/20">
+    <p className="text-gray-400 text-xs sm:text-sm">In Vertragsanbahnung</p>
+    <p className="text-xl sm:text-2xl font-bold text-yellow-400">
       {offers.filter(o => o.status === 'preliminary' || o.status === 'confirmed').length}
     </p>
   </div>
-  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-  <p className="text-gray-400 text-sm">Aktive Aufträge</p>
-  <p className="text-2xl font-bold text-green-400">
+  <div className="bg-white/10 backdrop-blur rounded-lg p-3 sm:p-4 border border-white/20">
+  <p className="text-gray-400 text-xs sm:text-sm">Aktive Aufträge</p>
+  <p className="text-xl sm:text-2xl font-bold text-green-400">
     {orders.filter(o => o.status !== 'completed' && o.status !== 'abgeschlossen').length}
   </p>
 </div>
 </div>
 
         {/* Tabs */}
-<div className="flex gap-2 mb-8 border-b border-white/20 overflow-x-auto">
+<div className="flex gap-1 sm:gap-2 mb-6 sm:mb-8 border-b border-white/20 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
   {['ausschreibungen', 'bundles', 'angebote', 'vertragsanbahnung', 'auftraege', 'termine'].map((tab) => {
     // Berechne Badge-Zahlen
     // Berechne Badge-Zahlen
@@ -558,22 +565,22 @@ const badgeCounts = {
     loadDashboardData(handwerkerData);
   }
 }}
-        className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+        className={`px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1 sm:gap-2 flex-shrink-0 ${
           activeTab === tab
             ? 'text-teal-400 border-b-2 border-teal-400'
             : 'text-gray-400 hover:text-white'
         }`}
       >
         <span>
-          {tab === 'ausschreibungen' && 'Ausschreibungen'}
-          {tab === 'bundles' && 'Projektbündel'}
-          {tab === 'angebote' && 'Meine Angebote'}
-          {tab === 'vertragsanbahnung' && 'Vertragsanbahnung'}
+          {tab === 'ausschreibungen' && <><span className="sm:hidden">Ausschr.</span><span className="hidden sm:inline">Ausschreibungen</span></>}
+          {tab === 'bundles' && <><span className="sm:hidden">Bündel</span><span className="hidden sm:inline">Projektbündel</span></>}
+          {tab === 'angebote' && <><span className="sm:hidden">Angebote</span><span className="hidden sm:inline">Meine Angebote</span></>}
+          {tab === 'vertragsanbahnung' && <><span className="sm:hidden">Verträge</span><span className="hidden sm:inline">Vertragsanbahnung</span></>}
           {tab === 'auftraege' && 'Aufträge'}
-          {tab === 'termine' && 'Terminplan'}
+          {tab === 'termine' && <><span className="sm:hidden">Termine</span><span className="hidden sm:inline">Terminplan</span></>}
         </span>
         {badgeCount > 0 && (
-          <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold min-w-[20px] text-center">
+          <span className="bg-red-500 text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-semibold min-w-[16px] sm:min-w-[20px] text-center">
             {badgeCount}
           </span>
         )}
@@ -583,102 +590,103 @@ const badgeCounts = {
 </div>
 
         {/* Content */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 sm:p-6 border border-white/20">
           
           {/* Ausschreibungen Tab */}
           {activeTab === 'ausschreibungen' && (
             <div>
-              <h2 className="text-2xl font-bold text-white mb-6">Passende Ausschreibungen</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Passende Ausschreibungen</h2>
               
               {tenders.length === 0 ? (
                 <p className="text-gray-400">Aktuell keine passenden Ausschreibungen verfügbar.</p>
               ) : (
                 <div className="space-y-4">
                   {tenders.map((tender) => (
-                    <div key={tender.id} className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-white">
+                    <div key={tender.id} className="bg-white/5 rounded-lg p-3 sm:p-4 hover:bg-white/10 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-white">
                               {tender.trade_name}
                             </h3>
-                            <span className="text-sm bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
-                              {tender.category} - {tender.sub_category}
+                            <span className="text-xs sm:text-sm bg-blue-500/20 text-blue-300 px-2 py-0.5 sm:py-1 rounded truncate max-w-[150px] sm:max-w-none">
+                              {tender.category}
                             </span>
                             {/* Status Badge direkt inline */}
                             {tender.offer_status === 'submitted' && (
-                              <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs">
-                                ✓ Angebot abgegeben
+                              <span className="bg-green-500/20 text-green-400 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs">
+                                ✓ Angebot
                               </span>
                             )}
                             {tender.offer_status === 'preliminary' && (
-                              <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs">
-                                Vorläufig angeboten
+                              <span className="bg-yellow-500/20 text-yellow-400 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs">
+                                Vorläufig
                               </span>
                             )}
                             {tender.tender_status === 'in_progress' && !tender.offer_status && (
-                              <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-xs">
-                                In Bearbeitung
+                              <span className="bg-blue-500/20 text-blue-400 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs">
+                                In Bearb.
                               </span>
                             )}
                             {!tender.viewed_at && !tender.offer_status && (
-                              <span className="bg-teal-500 text-white px-2 py-1 rounded-full text-xs">
+                              <span className="bg-teal-500 text-white px-2 py-0.5 sm:py-1 rounded-full text-xs">
                                 NEU
                               </span>
                             )}
                           </div>
                           
-                          <p className="text-gray-300 mb-2">{tender.project_description}</p>
+                          <p className="text-gray-300 mb-2 text-sm line-clamp-2">{tender.project_description}</p>
                           
-                          <div className="grid grid-cols-2 gap-4 mt-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-3">
                             <div className="space-y-1">
-                              <p className="text-sm text-gray-400">
-                                📍 Ort: {tender.project_zip} {tender.project_city}
+                              <p className="text-xs sm:text-sm text-gray-400">
+                                📍 {tender.project_zip} {tender.project_city}
                               </p>
-                              <p className="text-sm text-gray-400">
-                                📅 Zeitraum: {tender.timeframe || 'Nach Absprache'}
+                              <p className="text-xs sm:text-sm text-gray-400">
+                                📅 {tender.timeframe || 'Nach Absprache'}
                               </p>
                             </div>
                             <div className="space-y-1">
-                              <p className="text-sm text-gray-400">
-                                💰 Volumen: ca. {formatCurrency(Math.round(tender.estimated_value / 1000) * 1000)}
+                              <p className="text-xs sm:text-sm text-gray-400">
+                                💰 ca. {formatCurrency(Math.round(tender.estimated_value / 1000) * 1000)}
                               </p>
-                              <p className="text-sm text-gray-400">
+                              <p className="text-xs sm:text-sm text-gray-400">
                                 ⏰ Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
                               </p>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="text-right">
+                        <div className="w-full sm:w-auto sm:text-right mt-3 sm:mt-0">
                           {!tender.offer_status ? (
-                            <div className="flex gap-2">  
+                            <div className="flex flex-col sm:flex-row gap-2">  
                               <button
   onClick={() => checkVerificationAndNavigate(() => handleOpenTender(tender))}
-  className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+  className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all text-sm sm:text-base"
 >
                                 <div>
-                                  <div className="font-semibold">Angebot vorläufig abgeben</div>
-                                  <div className="text-xs mt-1">Mit Vertragsanbahnung</div>
+                                  <div className="font-semibold">Angebot abgeben</div>
+                                  <div className="text-xs mt-1 hidden sm:block">Mit Vertragsanbahnung</div>
                                 </div>
                               </button>
                               <button
                                 onClick={() => handleRejectTender(tender.id)}
-                                className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-all"
+                                className="w-full sm:w-auto px-4 py-2 sm:py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-all text-sm"
                                 title="Ausschreibung ablehnen"
                               >
-                                ❌
+                                <span className="sm:hidden">Ablehnen</span>
+                                <span className="hidden sm:inline">❌</span>
                               </button>
                             </div>  
                           ) : (
                             <div>
-                              <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2">
+                              <span className="block bg-green-500/20 text-green-400 px-3 py-2 rounded mb-2 text-sm">
                                 ✓ Angebot abgegeben
                               </span>
                               {tender.handwerker_status === 'preliminary' && (
                                 <button
                                   onClick={() => handleOpenTender(tender)}
-                                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
+                                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded text-sm"
                                 >
                                   Angebot anpassen
                                 </button>
@@ -697,18 +705,18 @@ const badgeCounts = {
           {/* Projektbündel Tab */}
           {activeTab === 'bundles' && (
   <div>
-    <h2 className="text-2xl font-bold text-white mb-6">Verfügbare Projektbündel</h2>
+    <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Verfügbare Projektbündel</h2>
     
-    <div className="mb-6 bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 rounded-lg p-6">
+    <div className="mb-4 sm:mb-6 bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 rounded-lg p-4 sm:p-6">
       <div className="flex items-start gap-3">
-        <span className="text-3xl">💡</span>
+        <span className="text-2xl sm:text-3xl">💡</span>
         <div>
-          <h3 className="text-lg font-semibold text-green-300 mb-2">Vorteile von Projektbündeln:</h3>
-          <ul className="text-green-200 text-sm space-y-1">
-            <li>✓ Optimierte Fahrtrouten - weniger Fahrzeit zwischen Projekten</li>
-            <li>✓ Höhere Auslastung durch mehrere Projekte gleichzeitig</li>
-            <li>✓ Attraktive Bündelrabatte möglich - höhere Gewinnchancen</li>
-            <li>✓ Bessere Planbarkeit durch gebündelte Aufträge</li>
+          <h3 className="text-base sm:text-lg font-semibold text-green-300 mb-2">Vorteile von Projektbündeln:</h3>
+          <ul className="text-green-200 text-xs sm:text-sm space-y-1">
+            <li>✓ Optimierte Fahrtrouten - weniger Fahrzeit</li>
+            <li>✓ Höhere Auslastung durch mehrere Projekte</li>
+            <li>✓ Attraktive Bündelrabatte möglich</li>
+            <li className="hidden sm:block">✓ Bessere Planbarkeit durch gebündelte Aufträge</li>
           </ul>
         </div>
       </div>
@@ -736,53 +744,53 @@ const badgeCounts = {
               className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-white/20 overflow-hidden shadow-xl"
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 p-6 border-b border-white/10">
-                <div className="flex justify-between items-start mb-4">
+              <div className="bg-gradient-to-r from-blue-600/20 to-teal-600/20 p-4 sm:p-6 border-b border-white/10">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-4">
                   <div>
-                    <h3 className="text-2xl font-bold text-white mb-2">
+                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-1 sm:mb-2">
                       {bundle.trade} - Bündel
                     </h3>
-                    <p className="text-gray-300 text-sm">Mehrere Projekte in Ihrer Region</p>
+                    <p className="text-gray-300 text-xs sm:text-sm">Mehrere Projekte in Ihrer Region</p>
                   </div>
-                  <div className="text-right">
-                    <span className="inline-block px-4 py-2 bg-green-500/20 text-green-300 rounded-full font-semibold">
+                  <div className="sm:text-right">
+                    <span className="inline-block px-3 sm:px-4 py-1 sm:py-2 bg-green-500/20 text-green-300 rounded-full font-semibold text-sm">
                       {bundle.projectCount} Projekte
                     </span>
                   </div>
                 </div>
                 
                 {/* Kennzahlen */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-white/5 rounded-lg p-4">
-                    <p className="text-gray-400 text-sm mb-1">Geschätztes Volumen</p>
-                    <p className="text-2xl font-bold text-teal-400">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="bg-white/5 rounded-lg p-2 sm:p-4">
+                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Volumen</p>
+                    <p className="text-lg sm:text-2xl font-bold text-teal-400">
                       {formatCurrency(roundedVolume)}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">ca. Netto (gerundet)</p>
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">ca. Netto (gerundet)</p>
                   </div>
                   
-                  <div className="bg-white/5 rounded-lg p-4">
-                    <p className="text-gray-400 text-sm mb-1">Max. Entfernung</p>
-                    <p className="text-2xl font-bold text-blue-400">
+                  <div className="bg-white/5 rounded-lg p-2 sm:p-4">
+                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Entfernung</p>
+                    <p className="text-lg sm:text-2xl font-bold text-blue-400">
                       {bundle.maxDistance} km
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Zwischen Projekten</p>
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">Zwischen Projekten</p>
                   </div>
                   
-                  <div className="bg-white/5 rounded-lg p-4">
-                   <p className="text-gray-400 text-sm mb-1">Fahrzeit</p>
-<p className="text-2xl font-bold text-purple-400">
+                  <div className="bg-white/5 rounded-lg p-2 sm:p-4">
+                   <p className="text-gray-400 text-xs sm:text-sm mb-1">Fahrzeit</p>
+<p className="text-lg sm:text-2xl font-bold text-purple-400">
   {bundle.totalTravelTime} Min.
 </p>
-<p className="text-xs text-gray-500 mt-1">Zwischen allen Projekten</p>
+<p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">Zwischen allen Projekten</p>
                   </div>
                 </div>
               </div>
               
               {/* Projekte Liste */}
-              <div className="p-6">
-                <h4 className="text-lg font-semibold text-white mb-4">Enthaltene Projekte:</h4>
-                <div className="space-y-3 mb-6">
+              <div className="p-4 sm:p-6">
+                <h4 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Enthaltene Projekte:</h4>
+                <div className="space-y-3 mb-4 sm:mb-6">
                   {bundle.projects?.map((project, idx) => {
                     // Runde Projektvolumen auf 500 Euro
                     const roundedProjectVolume = Math.round((project.volume || 0) / 500) * 500;
@@ -790,32 +798,32 @@ const badgeCounts = {
                     return (
                       <div 
                         key={idx} 
-                        className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-teal-500/50 transition-all"
+                        className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10 hover:border-teal-500/50 transition-all"
                       >
-                        <div className="flex justify-between items-start">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="w-8 h-8 bg-teal-500/20 rounded-full flex items-center justify-center text-teal-300 font-bold text-sm">
+                              <span className="w-6 h-6 sm:w-8 sm:h-8 bg-teal-500/20 rounded-full flex items-center justify-center text-teal-300 font-bold text-xs sm:text-sm">
                                 {idx + 1}
                               </span>
-                              <h5 className="text-white font-semibold">{project.type}</h5>
+                              <h5 className="text-white font-semibold text-sm sm:text-base">{project.type}</h5>
                             </div>
-                            <p className="text-gray-400 text-sm mb-2">
+                            <p className="text-gray-400 text-xs sm:text-sm mb-2">
                               📍 PLZ: {project.zip}
                             </p>
-                            <div className="flex gap-4 text-sm">
+                            <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
                               <span className="text-gray-500">
-                                💰 Volumen: <span className="text-teal-400 font-semibold">{formatCurrency(roundedProjectVolume)}</span>
+                                💰 <span className="text-teal-400 font-semibold">{formatCurrency(roundedProjectVolume)}</span>
                               </span>
                               <span className="text-gray-500">
-                                ⏱️ Termin: <span className="text-white">{project.timeframe || 'Nach Absprache'}</span>
+                                ⏱️ <span className="text-white">{project.timeframe || 'Nach Absprache'}</span>
                               </span>
                             </div>
                           </div>
                           {project.deadline && (
-                            <div className="text-right">
-                              <p className="text-xs text-gray-500">Frist bis:</p>
-                              <p className="text-sm text-orange-400 font-semibold">
+                            <div className="text-left sm:text-right mt-2 sm:mt-0">
+                              <p className="text-[10px] sm:text-xs text-gray-500">Frist bis:</p>
+                              <p className="text-xs sm:text-sm text-orange-400 font-semibold">
                                 {new Date(project.deadline).toLocaleDateString('de-DE')}
                               </p>
                             </div>
@@ -827,17 +835,16 @@ const badgeCounts = {
                 </div>
                 
                 {/* Hinweise */}
-                <div className="space-y-3 mb-6">
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                    <p className="text-yellow-300 text-sm">
-                      <strong>ℹ️ Hinweis:</strong> Genaue Adressen und Kontaktdaten werden nach vorläufiger Beauftragung freigegeben.
+                <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2 sm:p-3">
+                    <p className="text-yellow-300 text-xs sm:text-sm">
+                      <strong>ℹ️</strong> Genaue Adressen und Kontaktdaten werden nach vorläufiger Beauftragung freigegeben.
                     </p>
                   </div>
                   
-                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                    <p className="text-blue-300 text-sm">
-                      <strong>💡 Tipp:</strong> Mit einem Bündelrabatt erhöhen Sie Ihre Chancen, alle Projekte zu erhalten. 
-                      Die Bauherren sehen den Mehrwert der koordinierten Abwicklung.
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-3">
+                    <p className="text-blue-300 text-xs sm:text-sm">
+                      <strong>💡</strong> Mit einem Bündelrabatt erhöhen Sie Ihre Chancen, alle Projekte zu erhalten.
                     </p>
                   </div>
                 </div>
@@ -1447,20 +1454,20 @@ const badgeCounts = {
 
          {activeTab === 'auftraege' && (
   <div>
-    <h2 className="text-2xl font-bold text-white mb-6">Meine Aufträge</h2>
+    <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Meine Aufträge</h2>
     
     {/* AKTIVE AUFTRÄGE */}
     <div>
-      <h3 className="text-lg font-semibold text-white mb-4">Aktive Aufträge</h3>
+      <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Aktive Aufträge</h3>
       {orders.filter(order => order.status !== 'completed').length === 0 ? (
-        <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20 text-center">
-          <p className="text-gray-400 mb-4">Noch keine aktiven Aufträge erhalten.</p>
-          <p className="text-gray-500 text-sm">
+        <div className="bg-white/10 backdrop-blur rounded-lg p-6 sm:p-8 border border-white/20 text-center">
+          <p className="text-gray-400 mb-4 text-sm sm:text-base">Noch keine aktiven Aufträge erhalten.</p>
+          <p className="text-gray-500 text-xs sm:text-sm">
             Aufträge erscheinen hier, sobald ein Bauherr Ihr Angebot verbindlich beauftragt.
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {orders.filter(order => order.status !== 'completed').map((order, idx) => {
   // ✅ NEU: Verwende Totals inkl. Nachträge falls vorhanden
   const totals = orderTotals[order.id];
@@ -1478,66 +1485,64 @@ const badgeCounts = {
   const approvedNachtraege = totals ? totals.approvedCount : 0;
   
   return (
-    <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
+    <div key={idx} className="bg-white/5 rounded-lg p-4 sm:p-6 border border-white/10">
       {/* Header */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
-            <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
-              Werkvertrag nach VOB/B
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">{order.trade_name}</h3>
+            <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-green-500/20 text-green-300 text-xs sm:text-sm rounded-full">
+              VOB/B
             </span>
             {/* ✅ NEU: Nachtrags-Badge */}
             {(approvedNachtraege > 0 || pendingNachtraege > 0) && (
-              <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded-full">
-                {approvedNachtraege > 0 && `${approvedNachtraege} NT beauftragt`}
+              <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
+                {approvedNachtraege > 0 && `${approvedNachtraege} NT`}
                 {approvedNachtraege > 0 && pendingNachtraege > 0 && ' • '}
-                {pendingNachtraege > 0 && `${pendingNachtraege} NT in Prüfung`}
+                {pendingNachtraege > 0 && `${pendingNachtraege} offen`}
               </span>
             )}
           </div>
           
-          <p className="text-gray-300 mb-2">
+          <p className="text-gray-300 mb-2 text-sm sm:text-base">
             Auftraggeber: <strong>{order.bauherr_name}</strong>
           </p>
           
-          <div className="flex gap-4 text-sm text-gray-400">
-            <p>📋 Auftrags-Nr: <strong className="text-white">#{order.id}</strong></p>
-            <p>📅 Erteilt: <strong className="text-white">{new Date(order.created_at).toLocaleDateString('de-DE')}</strong></p>
+          <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400">
+            <p>📋 <strong className="text-white">#{order.id}</strong></p>
+            <p>📅 <strong className="text-white">{new Date(order.created_at).toLocaleDateString('de-DE')}</strong></p>
           </div>
           
           {/* Projektadresse */}
-          <div className="mt-3 p-3 bg-blue-500/10 rounded">
-            <p className="text-blue-300 text-sm">
+          <div className="mt-3 p-2 sm:p-3 bg-blue-500/10 rounded">
+            <p className="text-blue-300 text-xs sm:text-sm">
               <strong>🏗️ Ausführungsort:</strong><br />
-              {order.project_street} {order.project_house_number}<br />
-              {order.project_zip} {order.project_city}
+              {order.project_street} {order.project_house_number}, {order.project_zip} {order.project_city}
             </p>
           </div>
           
           {/* Ausführungstermine */}
-          <div className="mt-3 p-3 bg-purple-500/10 rounded">
-            <p className="text-purple-300 text-sm">
-              <strong>📅 Ausführungszeitraum:</strong><br />
-              {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
+          <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-purple-500/10 rounded">
+            <p className="text-purple-300 text-xs sm:text-sm">
+              <strong>📅 Zeitraum:</strong> {new Date(order.execution_start).toLocaleDateString('de-DE')} - {new Date(order.execution_end).toLocaleDateString('de-DE')}
             </p>
           </div>
         </div>
         
         {/* Vergütung - ✅ ANGEPASST mit Nachträgen */}
-        <div className="text-right ml-6">
-          <p className="text-sm text-gray-400 mb-1">Auftragssumme</p>
+        <div className="text-left sm:text-right flex-shrink-0">
+          <p className="text-xs sm:text-sm text-gray-400 mb-1">Auftragssumme</p>
           
           {/* Original ohne Nachträge */}
-          <p className="text-lg font-semibold text-gray-300">
+          <p className="text-base sm:text-lg font-semibold text-gray-300">
             {formatCurrency(parseFloat(order.amount) || 0)}
           </p>
-          <p className="text-xs text-gray-400">Ursprungsauftrag (Netto)</p>
+          <p className="text-[10px] sm:text-xs text-gray-400">Ursprungsauftrag (Netto)</p>
           
           {/* ✅ NEU: Nachträge anzeigen falls vorhanden */}
           {nachtraegeSum > 0 && (
             <div className="mt-2 pt-2 border-t border-white/20">
-              <p className="text-xs text-teal-400">+ Nachträge</p>
+              <p className="text-[10px] sm:text-xs text-teal-400">+ Nachträge</p>
               <p className="text-sm font-semibold text-teal-400">
                 {formatCurrency(nachtraegeSum)}
               </p>
@@ -1587,15 +1592,15 @@ const badgeCounts = {
       </div>
       
       {/* Kontaktdaten Bauherr */}
-      <div className="bg-white/10 rounded-lg p-4 mb-4">
-        <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Auftraggeber</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="bg-white/10 rounded-lg p-3 sm:p-4 mb-4">
+        <h4 className="text-xs sm:text-sm font-semibold text-white mb-2 sm:mb-3">📞 Kontaktdaten</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
           <div className="text-gray-300">
-            <p><strong className="text-white">Name:</strong> {order.bauherr_name || order.clientName || 'Nicht verfügbar'}</p>
-            <p className="mt-1"><strong className="text-white">Tel:</strong> {order.bauherr_phone || order.clientPhone || 'Nicht verfügbar'}</p>
+            <p><strong className="text-white">Name:</strong> {order.bauherr_name || order.clientName || 'N/A'}</p>
+            <p className="mt-1"><strong className="text-white">Tel:</strong> {order.bauherr_phone || order.clientPhone || 'N/A'}</p>
           </div>
           <div className="text-gray-300">
-            <p><strong className="text-white">E-Mail:</strong> {order.bauherr_email || order.clientEmail || 'Nicht verfügbar'}</p>
+            <p><strong className="text-white">E-Mail:</strong> <span className="break-all">{order.bauherr_email || order.clientEmail || 'N/A'}</span></p>
             <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.project_street} {order.project_house_number}, {order.project_zip} {order.project_city}</p>
           </div>
         </div>
@@ -1603,16 +1608,17 @@ const badgeCounts = {
       
       {/* Werkvertrag-Aktionen - ✅ MIT NACHTRAGS-BUTTONS */}
       <div className="border-t border-white/10 pt-4 mt-4">
-        <div className="flex gap-3 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3">
           {/* PDF Export */}
           <button
             onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Werkvertrag als PDF
+            <span className="hidden sm:inline">Werkvertrag als PDF</span>
+            <span className="sm:hidden">PDF</span>
           </button>
           
           {/* Vertrag ansehen */}
@@ -1621,23 +1627,25 @@ const badgeCounts = {
               setSelectedOrderId(order.id);
               setShowContractView(true);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Vertrag ansehen
+            <span className="hidden sm:inline">Vertrag ansehen</span>
+            <span className="sm:hidden">Vertrag</span>
           </button>
           
           {/* LV Details */}
           <button
             onClick={() => navigate(`/handwerker/order/${order.id}/lv-details`)}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
-            LV-Details ansehen
+            <span className="hidden sm:inline">LV-Details ansehen</span>
+            <span className="sm:hidden">LV</span>
           </button>
           
           {/* ✅ NEU: Nachtrag einreichen */}
@@ -1655,12 +1663,13 @@ const badgeCounts = {
           {(approvedNachtraege > 0 || pendingNachtraege > 0) && (
             <button
               onClick={() => navigate(`/handwerker/auftrag/${order.id}/nachtraege`)}
-              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm flex items-center gap-2"
+              className="col-span-2 sm:col-span-1 px-3 sm:px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Eingereichte Nachträge ({approvedNachtraege + pendingNachtraege})
+              <span className="hidden sm:inline">Eingereichte Nachträge</span>
+              <span className="sm:hidden">Nachträge</span> ({approvedNachtraege + pendingNachtraege})
             </button>
           )}
         </div>
@@ -1668,18 +1677,18 @@ const badgeCounts = {
       
       {/* Status-Infos */}
       {order.status === 'active' && (
-        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-          <p className="text-blue-300 text-sm">
-            <strong>ℹ️ Status:</strong> Auftrag in Ausführung. Nach Fertigstellung erfolgt die Abnahme durch den Bauherrn.
+        <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-blue-500/10 border border-blue-500/30 rounded">
+          <p className="text-blue-300 text-xs sm:text-sm">
+            <strong>ℹ️</strong> Auftrag in Ausführung. Nach Fertigstellung erfolgt die Abnahme.
           </p>
         </div>
       )}
       
       {/* Anmerkungen */}
       {order.notes && (
-        <div className="mt-4 p-3 bg-white/5 rounded">
-          <p className="text-gray-400 text-xs mb-1">Anmerkungen:</p>
-          <p className="text-gray-300 text-sm">{order.notes}</p>
+        <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-white/5 rounded">
+          <p className="text-gray-400 text-[10px] sm:text-xs mb-1">Anmerkungen:</p>
+          <p className="text-gray-300 text-xs sm:text-sm">{order.notes}</p>
         </div>
       )}
     </div>
@@ -1690,11 +1699,11 @@ const badgeCounts = {
     </div>
 
     {/* ABGESCHLOSSENE AUFTRÄGE */}
-    <div className="mt-8 pt-8 border-t border-white/20">
-      <h3 className="text-lg font-semibold text-white mb-4">Abgeschlossene Aufträge</h3>
+    <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-white/20">
+      <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Abgeschlossene Aufträge</h3>
       {orders.filter(order => order.status === 'completed').length === 0 ? (
-        <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20 text-center">
-          <p className="text-gray-400">Noch keine abgeschlossenen Aufträge</p>
+        <div className="bg-white/10 backdrop-blur rounded-lg p-4 sm:p-6 border border-white/20 text-center">
+          <p className="text-gray-400 text-sm">Noch keine abgeschlossenen Aufträge</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -1706,17 +1715,17 @@ const badgeCounts = {
             const brutto = nettoAfterDiscount * 1.19;
             
             return (
-              <div key={idx} className="bg-white/5 rounded-lg p-5 border border-white/10 opacity-60 cursor-not-allowed">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-medium text-gray-300">{order.trade_name}</h3>
-                      <span className="text-sm text-gray-500">#{order.id}</span>
+              <div key={idx} className="bg-white/5 rounded-lg p-4 sm:p-5 border border-white/10 opacity-60">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h3 className="text-base sm:text-lg font-medium text-gray-300">{order.trade_name}</h3>
+                      <span className="text-xs sm:text-sm text-gray-500">#{order.id}</span>
                       <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-300 rounded">
                         ✓ Abgeschlossen
                       </span>
                     </div>
-                    <div className="grid md:grid-cols-3 gap-4 text-sm text-gray-400">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 text-xs sm:text-sm text-gray-400">
                       <div>
                         <span className="text-gray-500">Abnahme:</span> {new Date(order.accepted_at || order.updated_at).toLocaleDateString('de-DE')}
                       </div>
@@ -1730,17 +1739,17 @@ const badgeCounts = {
                     
                     {/* Gewährleistungshinweis - HIER RICHTIG PLATZIERT */}
                     {order.accepted_at && (
-                      <div className="mt-3 p-2 bg-green-500/10 border border-green-500/30 rounded">
-                        <p className="text-green-300 text-xs">
+                      <div className="mt-2 sm:mt-3 p-2 bg-green-500/10 border border-green-500/30 rounded">
+                        <p className="text-green-300 text-[10px] sm:text-xs">
                           <strong>✅ Gewährleistung:</strong> {order.warranty_period || 4} Jahre bis {new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 4))).toLocaleDateString('de-DE')}
                         </p>
                       </div>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-500">Schlussrechnung</p>
-                    <p className="text-xl font-bold text-green-400">{formatCurrency(brutto)}</p>
-                    <p className="text-xs text-gray-500">Brutto</p>
+                  <div className="text-left sm:text-right mt-2 sm:mt-0">
+                    <p className="text-xs sm:text-sm text-gray-500">Schlussrechnung</p>
+                    <p className="text-lg sm:text-xl font-bold text-green-400">{formatCurrency(brutto)}</p>
+                    <p className="text-[10px] sm:text-xs text-gray-500">Brutto</p>
                   </div>
                 </div>
               </div>
@@ -1853,4 +1862,4 @@ const badgeCounts = {
 )}
     </div>
   );
-}         
+}
