@@ -951,13 +951,13 @@ const handleGenerateAllQuestions = async () => {
     };
     
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-6 rounded-t-2xl">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+          <div className="bg-gradient-to-r from-blue-600 to-teal-600 text-white p-4 sm:p-6 rounded-t-2xl sticky top-0 z-10">
             <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-2xl font-bold">Position {selectedPosition.pos}</h3>
-                <p className="text-blue-100 mt-1">{lv.trade_name || lv.name}</p>
+              <div className="min-w-0 flex-1 mr-4">
+                <h3 className="text-xl sm:text-2xl font-bold truncate">Position {selectedPosition.pos}</h3>
+                <p className="text-blue-100 mt-1 text-sm sm:text-base truncate">{lv.trade_name || lv.name}</p>
               </div>
               <button
                 onClick={() => {
@@ -967,16 +967,16 @@ const handleGenerateAllQuestions = async () => {
                   setEditingPosition(null);
                   setEditedValues({});
                 }}
-                className="text-white/80 hover:text-white transition-colors"
+                className="text-white/80 hover:text-white transition-colors flex-shrink-0"
               >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
           </div>
           
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {isEditing ? (
               <form id="position-edit-form" className="space-y-4">
                 <div>
@@ -999,7 +999,7 @@ const handleGenerateAllQuestions = async () => {
                   />
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Menge</label>
                     <input
@@ -1057,7 +1057,7 @@ const handleGenerateAllQuestions = async () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4 bg-blue-50 rounded-lg p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-blue-50 rounded-lg p-4">
                   <div>
                     <p className="text-sm text-gray-600">Menge</p>
                     <p className="text-lg font-semibold">
@@ -1090,8 +1090,8 @@ const handleGenerateAllQuestions = async () => {
             )}
           </div>
           
-          <div className="border-t bg-gray-50 px-6 py-4 rounded-b-2xl">
-            <div className="flex justify-between">
+          <div className="border-t bg-gray-50 px-4 sm:px-6 py-4 rounded-b-2xl">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
               <button
                 onClick={() => {
                   if (window.confirm('Diese Position wirklich löschen?')) {
@@ -1101,18 +1101,18 @@ const handleGenerateAllQuestions = async () => {
                     setModalPosIndex(null);
                   }
                 }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
               >
                 🗑 Löschen
               </button>
               
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 {isEditing ? (
                   <>
                     <button
                       type="button"
                       onClick={handleSave}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      className="w-full sm:w-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                     >
                       ✔ Speichern
                     </button>
@@ -1121,7 +1121,7 @@ const handleGenerateAllQuestions = async () => {
                         setEditingPosition(null);
                         setEditedValues({});
                       }}
-                      className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      className="w-full sm:w-auto px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
                     >
                       ✗ Abbrechen
                     </button>
@@ -1129,7 +1129,7 @@ const handleGenerateAllQuestions = async () => {
                 ) : (
                   <button
                     onClick={() => setEditingPosition(`${modalLvIndex}-${modalPosIndex}`)}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                   >
                     ✎ Bearbeiten
                   </button>
@@ -1235,7 +1235,7 @@ const handleGenerateAllQuestions = async () => {
       <div className="relative max-w-7xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
             Leistungsverzeichnis-Übersicht
           </h1>
           {/* NEU: Projekttitel-Sektion */}
@@ -1251,18 +1251,18 @@ const handleGenerateAllQuestions = async () => {
   )}
           
           {/* Progress Info */}
-          <div className="mt-6 flex justify-center gap-8">
+          <div className="mt-6 flex flex-col sm:flex-row justify-center gap-4 sm:gap-8">
             <div className="text-center">
-              <div className="text-3xl font-bold text-teal-400">{completedTrades.length}</div>
-              <div className="text-sm text-gray-400">LVs erstellt</div>
+              <div className="text-2xl sm:text-3xl font-bold text-teal-400">{completedTrades.length}</div>
+              <div className="text-xs sm:text-sm text-gray-400">LVs erstellt</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-yellow-400">{pendingTrades.length}</div>
-              <div className="text-sm text-gray-400">Ausstehend</div>
+              <div className="text-2xl sm:text-3xl font-bold text-yellow-400">{pendingTrades.length}</div>
+              <div className="text-xs sm:text-sm text-gray-400">Ausstehend</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-white">{formatCurrency(totalNetSum)}</div>
-              <div className="text-sm text-gray-400">Bisherige Netto-Summe</div>
+              <div className="text-2xl sm:text-3xl font-bold text-white">{formatCurrency(totalNetSum)}</div>
+              <div className="text-xs sm:text-sm text-gray-400">Bisherige Netto-Summe</div>
             </div>
           </div>
         </div>
@@ -1296,34 +1296,34 @@ const handleGenerateAllQuestions = async () => {
                 }`}>
                 
                 {/* Trade Header */}
-                <div className={`px-6 py-4 flex justify-between items-center ${
+                <div className={`px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 ${
                   trade.hasLV 
                     ? 'bg-gradient-to-r from-teal-600/20 to-blue-600/20' 
                     : 'bg-gradient-to-r from-yellow-600/20 to-orange-600/20'
                 }`}>
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                       trade.hasLV ? 'bg-teal-500' : 'bg-yellow-500'
                     }`}>
                       {trade.hasLV ? (
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       ) : (
-                        <span className="text-white font-bold">{idx + 1}</span>
+                        <span className="text-white font-bold text-sm sm:text-base">{idx + 1}</span>
                       )}
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">{trade.name}</h3>
-                      <p className="text-sm text-gray-300">
+                    <div className="min-w-0">
+                      <h3 className="text-lg sm:text-xl font-bold text-white truncate">{trade.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-300">
                         {trade.hasLV ? `${lv?.content?.positions?.length || 0} Positionen` : 'Noch keine Fragen beantwortet'}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex gap-2 items-center">
+                  <div className="flex flex-wrap gap-2 items-center justify-between sm:justify-end">
                     {trade.hasLV && (
-                      <span className="text-2xl font-bold text-teal-400 mr-4">
+                      <span className="text-xl sm:text-2xl font-bold text-teal-400 sm:mr-4">
                         {formatCurrency(trade.totalCost)}
                       </span>
                     )}
@@ -1458,8 +1458,9 @@ const handleGenerateAllQuestions = async () => {
                 
                 {/* LV Details (wenn ausgewählt und vorhanden) */}
                 {selectedLv === idx && lv && (
-                  <div className="px-6 pb-6">
-                    <div className="overflow-x-auto mt-4">
+                  <div className="px-4 sm:px-6 pb-6">
+                    {/* Desktop: Tabelle */}
+                    <div className="hidden sm:block overflow-x-auto mt-4">
                       <table className="w-full text-sm text-white">
                         <thead className="bg-white/10">
                           <tr>
@@ -1585,67 +1586,132 @@ const handleGenerateAllQuestions = async () => {
                       </table>
                     </div>
                     
+                    {/* Mobile: Card-Layout */}
+                    <div className="sm:hidden mt-4 space-y-3">
+                      {lv.content.positions.map((pos, pidx) => (
+                        <div 
+                          key={pidx}
+                          onClick={() => {
+                            setSelectedPosition(pos);
+                            setModalLvIndex(idx);
+                            setModalPosIndex(pidx);
+                          }}
+                          className={`bg-white/5 rounded-lg p-4 cursor-pointer active:bg-white/10 ${
+                            pos.isNEP ? 'border-l-4 border-yellow-500' : 'border-l-4 border-teal-500'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400">{pos.pos || `${idx+1}.${pidx+1}`}</span>
+                                {pos.isNEP && <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">NEP</span>}
+                              </div>
+                              <h4 className="text-white font-medium mt-1 truncate">{pos.title}</h4>
+                            </div>
+                            <div className="flex gap-2 ml-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedPosition(pos);
+                                  setModalLvIndex(idx);
+                                  setModalPosIndex(pidx);
+                                  setEditingPosition(`${idx}-${pidx}`);
+                                }}
+                                className="p-1.5 text-blue-400 hover:bg-blue-500/20 rounded"
+                              >
+                                ✎
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeletePosition(idx, pidx);
+                                }}
+                                className="p-1.5 text-red-400 hover:bg-red-500/20 rounded"
+                              >
+                                🗑
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {pos.description && (
+                            <p className="text-xs text-gray-400 mb-3 line-clamp-2">{pos.description}</p>
+                          )}
+                          
+                          <div className="flex justify-between items-center text-sm">
+                            <div className="text-gray-300">
+                              {safeToFixed(pos.quantity)} {pos.unit}
+                              <span className="text-gray-500 mx-1">×</span>
+                              {formatCurrency(pos.unitPrice)}
+                            </div>
+                            <div className="font-bold text-teal-400">
+                              {formatCurrency(pos.totalPrice)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
                     {/* Add Position Button */}
                     <div className="mt-4">
                       {addingPosition !== idx ? (
                         <button
                           onClick={() => setAddingPosition(idx)}
-                          className="w-full py-2 bg-green-600/20 border border-green-500/50 text-green-400 rounded-lg hover:bg-green-600/30 transition-all"
+                          className="w-full py-3 bg-green-600/20 border border-green-500/50 text-green-400 rounded-lg hover:bg-green-600/30 transition-all text-sm sm:text-base"
                         >
                           + Position hinzufügen
                         </button>
                       ) : (
                         <div className="bg-white/10 rounded-lg p-4 space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <input
                               type="text"
                               placeholder="Bezeichnung *"
-                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400 text-sm"
                               value={newPosition.title}
                               onChange={(e) => setNewPosition({...newPosition, title: e.target.value})}
                             />
                             <input
                               type="text"
                               placeholder="Einheit"
-                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400 text-sm"
                               value={newPosition.unit}
                               onChange={(e) => setNewPosition({...newPosition, unit: e.target.value})}
                             />
                             <input
                               type="number"
                               placeholder="Menge"
-                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400 text-sm"
                               value={newPosition.quantity}
                               onChange={(e) => setNewPosition({...newPosition, quantity: parseFloat(e.target.value) || 1})}
                             />
                             <input
                               type="number"
                               placeholder="Einzelpreis (€)"
-                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                              className="bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400 text-sm"
                               value={newPosition.unitPrice}
                               onChange={(e) => setNewPosition({...newPosition, unitPrice: parseFloat(e.target.value) || 0})}
                             />
                           </div>
                           <textarea
                             placeholder="Beschreibung (optional)"
-                            className="w-full bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400"
+                            className="w-full bg-white/20 border border-white/30 rounded px-3 py-2 text-white placeholder-gray-400 text-sm"
                             rows="2"
                             value={newPosition.description}
                             onChange={(e) => setNewPosition({...newPosition, description: e.target.value})}
                           />
-                          <label className="flex items-center text-white cursor-pointer">
+                          <label className="flex items-start sm:items-center text-white cursor-pointer text-sm">
                             <input
                               type="checkbox"
                               checked={newPosition.isNEP}
                               onChange={(e) => setNewPosition({...newPosition, isNEP: e.target.checked})}
-                              className="mr-2 w-4 h-4 text-teal-500"
+                              className="mr-2 w-4 h-4 text-teal-500 mt-0.5 sm:mt-0"
                             />
-                            <span>NEP (Nur-Einheits-Preis) - Position wird nicht zur Gesamtsumme addiert</span>
+                            <span className="leading-tight">NEP (Nur-Einheits-Preis) - <span className="text-gray-400">Position wird nicht zur Gesamtsumme addiert</span></span>
                           </label>
-                          <div className="flex gap-2 justify-end">
+                          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                             <button
                               onClick={() => handleAddPosition(idx)}
-                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                              className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-sm"
                             >
                               Speichern
                             </button>
@@ -1661,7 +1727,7 @@ const handleGenerateAllQuestions = async () => {
                                   isNEP: false
                                 });
                               }}
-                              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all"
+                              className="w-full sm:w-auto px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all text-sm"
                             >
                               Abbrechen
                             </button>
@@ -1678,17 +1744,17 @@ const handleGenerateAllQuestions = async () => {
         
         {/* Summary Box */}
         {completedTrades.length > 0 && (
-          <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20 mb-8">
-            <h3 className="text-2xl font-bold text-white mb-4">Zwischensumme</h3>
+          <div className="bg-gradient-to-r from-teal-600/20 to-blue-600/20 backdrop-blur-lg rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 border border-white/20 mb-8">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Zwischensumme</h3>
             <div className="space-y-2">
               {completedTrades.map(trade => (
-                <div key={trade.id} className="flex justify-between text-white">
-                  <span className="text-gray-300">{trade.name}</span>
-                  <span>{formatCurrency(trade.totalCost)}</span>
+                <div key={trade.id} className="flex justify-between text-white text-sm sm:text-base">
+                  <span className="text-gray-300 truncate mr-4">{trade.name}</span>
+                  <span className="flex-shrink-0">{formatCurrency(trade.totalCost)}</span>
                 </div>
               ))}
               <div className="border-t border-white/20 pt-3 mt-3">
-                <div className="flex justify-between text-xl font-bold text-teal-400">
+                <div className="flex justify-between text-lg sm:text-xl font-bold text-teal-400">
                   <span>Gesamt (Netto)</span>
                   <span>{formatCurrency(totalNetSum)}</span>
                 </div>
@@ -1698,15 +1764,17 @@ const handleGenerateAllQuestions = async () => {
         )}
         
         {/* Action Buttons */}
-<div className="flex flex-wrap gap-4 justify-center mt-12">
+<div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 justify-center mt-12 px-2">
   {/* NEU: Alle Fragen generieren */}
   {pendingTrades.length > 0 && (
     <button
       onClick={handleGenerateAllQuestions}
-      className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+      className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all text-sm sm:text-base"
     >
-      <span className="text-xl mr-2">⚡</span>
-      Alle Fragen im Hintergrund laden ({pendingTrades.length})
+      <span className="mr-2">⚡</span>
+      <span className="hidden sm:inline">Alle Fragen im Hintergrund laden</span>
+      <span className="sm:hidden">Alle Fragen laden</span>
+      <span className="ml-1">({pendingTrades.length})</span>
     </button>
   )}
   
@@ -1714,10 +1782,12 @@ const handleGenerateAllQuestions = async () => {
   {pendingTrades.length > 0 && questionsStatus[pendingTrades[0].id]?.ready && (
     <button
       onClick={() => handleStartQuestions(pendingTrades[0].id)}
-      className="px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+      className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all text-sm sm:text-base"
     >
-      <span className="text-xl mr-2">▶</span>
-      Nächstes Gewerk starten ({pendingTrades[0].name})
+      <span className="mr-2">▶</span>
+      <span className="hidden sm:inline">Nächstes Gewerk starten</span>
+      <span className="sm:hidden">Nächstes Gewerk</span>
+      <span className="ml-1">({pendingTrades[0].name})</span>
     </button>
   )}
           
@@ -1727,10 +1797,10 @@ const handleGenerateAllQuestions = async () => {
                 handleAddAdditionalTrade();
               }
             }}
-            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all flex flex-col items-center"
+            className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all flex flex-col items-center text-sm sm:text-base"
           >
             <span className="flex items-center">
-              <span className="text-xl mr-2">+</span>
+              <span className="mr-2">+</span>
               Weiteres Gewerk hinzufügen
             </span>
             <span className="text-xs text-purple-200 font-normal mt-1">9,90 € pro LV</span>
@@ -1738,7 +1808,7 @@ const handleGenerateAllQuestions = async () => {
           
           <button
             onClick={handleContinueToResult}
-            className={`px-8 py-4 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all ${
+            className={`w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all text-sm sm:text-base ${
               completedTrades.length === 0 
                 ? 'bg-gray-600 cursor-not-allowed opacity-50' 
                 : 'bg-gradient-to-r from-teal-500 to-blue-600'
@@ -1758,9 +1828,9 @@ const handleGenerateAllQuestions = async () => {
         navigate('/bauherr/login');
       }
     }}
-    className="px-8 py-4 bg-gradient-to-r from-gray-600 to-slate-700 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
+    className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-gray-600 to-slate-700 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all text-sm sm:text-base"
   >
-    <span className="text-xl mr-2">🏠</span>
+    <span className="mr-2">🏠</span>
     Zurück zum Dashboard
   </button>
 </div>
