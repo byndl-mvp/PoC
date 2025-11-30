@@ -1346,57 +1346,118 @@ const LVEditButton = ({ project }) => {
       {/* Header */}
 <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
-      <div className="flex items-center gap-2 sm:gap-4">
-        <Link to="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-400 transition-colors">
-          byndl
-        </Link>
-        <span className="text-gray-400 hidden sm:inline">|</span>
-        <h1 className="text-sm sm:text-xl text-white truncate">Dashboard</h1>
-      </div>
-      <div className="flex items-center gap-2 sm:gap-4">
-        {/* ═══ HIER DAS NOTIFICATION CENTER EINFÜGEN ═══ */}
-        <NotificationCenter 
-  userType="bauherr"
-  userId={userData?.id}
-  apiUrl={apiUrl}
-  onTabChange={(tab) => {
-    setActiveTab(tab);
-    if (selectedProject) {
-      loadProjectDetails(selectedProject.id);
-    }
-  }}
-  onScheduleReload={() => {
-    setScheduleReloadTrigger(prev => prev + 1);
-  }}
-  onMessageCenterOpen={() => {  
-    messageCenterRef.current?.setIsOpen(true);
-  }}
-/>
-<MessageCenter
-  ref={messageCenterRef}
-  userType="bauherr"
-  userId={userData?.id}
-  userName={userData?.name}
-  apiUrl={apiUrl}
-/>     
+    {/* Mobile: Logo links, Logout rechts, Rest mittig */}
+    <div className="flex items-center justify-between sm:hidden relative">
+      {/* Logo links */}
+      <Link to="/" className="text-xl font-bold text-white hover:text-teal-400 transition-colors">
+        byndl
+      </Link>
+      
+      {/* Notification + Message Center - MITTIG mit fixiertem Dropdown */}
+      <div className="flex items-center gap-3">
+        <div className="mobile-dropdown-wrapper">
+          <NotificationCenter 
+            userType="bauherr"
+            userId={userData?.id}
+            apiUrl={apiUrl}
+            onTabChange={(tab) => {
+              setActiveTab(tab);
+              if (selectedProject) {
+                loadProjectDetails(selectedProject.id);
+              }
+            }}
+            onScheduleReload={() => {
+              setScheduleReloadTrigger(prev => prev + 1);
+            }}
+            onMessageCenterOpen={() => {  
+              messageCenterRef.current?.setIsOpen(true);
+            }}
+            mobileCenter={true}
+          />
+        </div>
+        <div className="mobile-dropdown-wrapper">
+          <MessageCenter
+            ref={messageCenterRef}
+            userType="bauherr"
+            userId={userData?.id}
+            userName={userData?.name}
+            apiUrl={apiUrl}
+            mobileCenter={true}
+          />
+        </div>
+        
+        {/* Settings Icon - mit mehr Abstand */}
         <Link 
           to="/bauherr/settings"
-          className="text-gray-300 hover:text-white transition-colors flex items-center gap-1 sm:gap-2 text-sm"
+          className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors ml-1"
+          title="Einstellungen"
         >
-          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
           </svg>
-          <span className="hidden sm:inline">{userData?.name || userData?.email}</span>
+        </Link>
+      </div>
+      
+      {/* Logout rechts */}
+      <button
+        onClick={handleLogout}
+        className="p-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all"
+        title="Abmelden"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+      </button>
+    </div>
+    
+    {/* Desktop Layout (ab sm) */}
+    <div className="hidden sm:flex sm:justify-between sm:items-center">
+      <div className="flex items-center gap-4">
+        <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+          byndl
+        </Link>
+        <span className="text-gray-400">|</span>
+        <h1 className="text-xl text-white truncate">Dashboard</h1>
+      </div>
+      <div className="flex items-center gap-4">
+        <NotificationCenter 
+          userType="bauherr"
+          userId={userData?.id}
+          apiUrl={apiUrl}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            if (selectedProject) {
+              loadProjectDetails(selectedProject.id);
+            }
+          }}
+          onScheduleReload={() => {
+            setScheduleReloadTrigger(prev => prev + 1);
+          }}
+          onMessageCenterOpen={() => {  
+            messageCenterRef.current?.setIsOpen(true);
+          }}
+        />
+        <MessageCenter
+          ref={messageCenterRef}
+          userType="bauherr"
+          userId={userData?.id}
+          userName={userData?.name}
+          apiUrl={apiUrl}
+        />     
+        <Link 
+          to="/bauherr/settings"
+          className="text-gray-300 hover:text-white transition-colors flex items-center gap-2 text-sm"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          <span>{userData?.name || userData?.email}</span>
         </Link>
         <button
           onClick={handleLogout}
-          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all text-sm"
+          className="px-4 py-2 bg-white/10 backdrop-blur border border-white/30 rounded-lg text-white hover:bg-white/20 transition-all text-sm"
         >
-          <span className="hidden sm:inline">Abmelden</span>
-          <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
+          Abmelden
         </button>
       </div>
     </div>
