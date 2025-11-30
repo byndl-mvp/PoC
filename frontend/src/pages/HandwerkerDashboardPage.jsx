@@ -399,16 +399,79 @@ const checkVerificationAndNavigate = (callback) => {
       {/* Header */}
 <header className="bg-black/20 backdrop-blur-lg border-b border-white/10">
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
-      <div className="flex items-center gap-2 sm:gap-4">
-        <Link to="/" className="text-xl sm:text-2xl font-bold text-white hover:text-teal-400 transition-colors">
-          byndl
+    {/* Mobile: Logo links, Logout rechts, Rest mittig */}
+    <div className="flex items-center justify-between sm:hidden relative">
+      {/* Logo links */}
+      <Link to="/" className="text-xl font-bold text-white hover:text-teal-400 transition-colors">
+        byndl
+      </Link>
+      
+      {/* Notification + Message Center + Settings - MITTIG mit fixiertem Dropdown */}
+      <div className="flex items-center gap-3">
+        <div className="mobile-dropdown-wrapper">
+          <NotificationCenter 
+            userType="handwerker"
+            userId={handwerkerData?.id}
+            apiUrl={apiUrl}
+            onTabChange={(tab) => {
+              setActiveTab(tab);
+              if (handwerkerData) {
+                loadDashboardData(handwerkerData);
+              }
+            }}
+            onMessageCenterOpen={() => {  
+              messageCenterRef.current?.setIsOpen(true);
+            }}
+            mobileCenter={true}
+          />
+        </div>
+        <div className="mobile-dropdown-wrapper">
+          <MessageCenter
+            ref={messageCenterRef} 
+            userType="handwerker"
+            userId={handwerkerData?.id}
+            userName={handwerkerData?.company_name}
+            apiUrl={apiUrl}
+            mobileCenter={true}
+          />
+        </div>
+        
+        {/* Settings Icon - mit Abstand */}
+        <Link 
+          to="/handwerker/settings" 
+          className="p-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors ml-1"
+          title="Einstellungen"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
         </Link>
-        <span className="text-gray-400 hidden sm:inline">|</span>
-        <h1 className="text-sm sm:text-xl text-white truncate">Dashboard</h1>
       </div>
       
-      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+      {/* Logout rechts */}
+      <button
+        onClick={handleLogout}
+        className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors"
+        title="Abmelden"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+      </button>
+    </div>
+    
+    {/* Desktop Layout (ab sm) */}
+    <div className="hidden sm:flex sm:justify-between sm:items-center">
+      <div className="flex items-center gap-4">
+        <Link to="/" className="text-2xl font-bold text-white hover:text-teal-400 transition-colors">
+          byndl
+        </Link>
+        <span className="text-gray-400">|</span>
+        <h1 className="text-xl text-white truncate">Dashboard</h1>
+      </div>
+      
+      <div className="flex items-center gap-4">
         {/* Notification Center */}
         <NotificationCenter 
           userType="handwerker"
@@ -434,8 +497,8 @@ const checkVerificationAndNavigate = (callback) => {
           apiUrl={apiUrl}
         /> 
         
-        {/* NEU: Firmenname + Bewertungs-Badge */}
-        <div className="hidden sm:flex items-center gap-3">
+        {/* Firmenname + Bewertungs-Badge */}
+        <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="text-white font-semibold text-base lg:text-lg truncate max-w-[200px]">
               {handwerkerData?.company_name || handwerkerData?.companyName}
@@ -443,7 +506,7 @@ const checkVerificationAndNavigate = (callback) => {
             <p className="text-gray-400 text-xs">ID: {handwerkerData?.companyId}</p>
           </div>
           
-          {/* NEU: Bewertungs-Badge */}
+          {/* Bewertungs-Badge */}
           <RatingBadge 
             handwerkerId={handwerkerData?.id}
             companyName={handwerkerData?.company_name || handwerkerData?.companyName}
@@ -453,24 +516,17 @@ const checkVerificationAndNavigate = (callback) => {
         {/* Einstellungen Button */}
         <Link 
           to="/handwerker/settings" 
-          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors flex items-center gap-1 sm:gap-2 text-sm"
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm"
         >
-          <span className="hidden sm:inline">⚙️ Einstellungen</span>
-          <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+          ⚙️ Einstellungen
         </Link>
         
         {/* Abmelden Button */}
         <button
           onClick={handleLogout}
-          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors text-sm"
+          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 rounded-lg transition-colors text-sm"
         >
-          <span className="hidden sm:inline">Abmelden</span>
-          <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
+          Abmelden
         </button>
       </div>
     </div>
