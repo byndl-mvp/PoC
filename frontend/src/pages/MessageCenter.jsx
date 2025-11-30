@@ -175,8 +175,8 @@ const totalUnreadCount = conversations.reduce((sum, conv) => {
 
       {/* Message Center Panel - MIT PORTAL */}
       {isOpen && ReactDOM.createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 999999 }}>
-          <div className="bg-gray-900 rounded-lg border border-white/20 shadow-2xl w-full max-w-6xl h-[80vh] flex overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4" style={{ zIndex: 999999 }}>
+          <div className="bg-gray-900 rounded-lg border border-white/20 shadow-2xl w-full max-w-6xl h-[90vh] sm:h-[80vh] flex overflow-hidden">
             
             {/* Sidebar - Conversations List */}
             <div className={`${selectedConversation ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 border-r border-white/20`}>
