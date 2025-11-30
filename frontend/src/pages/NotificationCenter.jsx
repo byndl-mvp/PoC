@@ -457,19 +457,35 @@ case 'appointment_request':
     if (!buttonRef.current) return {};
     const rect = buttonRef.current.getBoundingClientRect();
     const dropdownHeight = 600;
+    const dropdownWidth = 384; // w-96 = 24rem = 384px
     const spaceBelow = window.innerHeight - rect.bottom;
+    const isMobile = window.innerWidth < 640; // sm breakpoint
     
-    // Position above if not enough space below
+    // Mobile: Zentriert mit voller Breite
+    if (isMobile) {
+      const mobileWidth = Math.min(window.innerWidth - 32, 400); // 16px padding auf jeder Seite
+      return {
+        top: rect.bottom + 8,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: mobileWidth,
+        maxHeight: window.innerHeight - rect.bottom - 24
+      };
+    }
+    
+    // Desktop: Position above if not enough space below
     if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
       return {
         bottom: window.innerHeight - rect.top + 8,
-        right: window.innerWidth - rect.right
+        right: Math.max(16, window.innerWidth - rect.right),
+        width: dropdownWidth
       };
     }
     
     return {
       top: rect.bottom + 8,
-      right: window.innerWidth - rect.right
+      right: Math.max(16, window.innerWidth - rect.right),
+      width: dropdownWidth
     };
   };
 
@@ -496,7 +512,7 @@ case 'appointment_request':
       {isOpen && ReactDOM.createPortal(
         <div 
           ref={dropdownRef}
-          className="fixed w-96 max-h-[600px] bg-gray-900 rounded-lg border border-white/20 shadow-2xl overflow-hidden flex flex-col animate-fadeIn"
+          className="fixed max-h-[600px] bg-gray-900 rounded-lg border border-white/20 shadow-2xl overflow-hidden flex flex-col animate-fadeIn"
           style={{
             ...getDropdownPosition(),
             zIndex: 999999
