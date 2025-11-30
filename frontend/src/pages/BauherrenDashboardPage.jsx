@@ -1372,7 +1372,6 @@ const LVEditButton = ({ project }) => {
             onMessageCenterOpen={() => {  
               messageCenterRef.current?.setIsOpen(true);
             }}
-            mobileCenter={true}
           />
         </div>
         <div className="mobile-dropdown-wrapper">
@@ -1382,7 +1381,6 @@ const LVEditButton = ({ project }) => {
             userId={userData?.id}
             userName={userData?.name}
             apiUrl={apiUrl}
-            mobileCenter={true}
           />
         </div>
         
