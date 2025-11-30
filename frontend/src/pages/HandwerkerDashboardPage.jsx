@@ -422,7 +422,6 @@ const checkVerificationAndNavigate = (callback) => {
             onMessageCenterOpen={() => {  
               messageCenterRef.current?.setIsOpen(true);
             }}
-            mobileCenter={true}
           />
         </div>
         <div className="mobile-dropdown-wrapper">
@@ -432,7 +431,6 @@ const checkVerificationAndNavigate = (callback) => {
             userId={handwerkerData?.id}
             userName={handwerkerData?.company_name}
             apiUrl={apiUrl}
-            mobileCenter={true}
           />
         </div>
         
