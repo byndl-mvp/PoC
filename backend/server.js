@@ -33378,64 +33378,139 @@ const orderCheck = await query(
         to: order.handwerker_email,
         subject: `${starRating} Neue Bewertung erhalten - Auftrag #${orderId}`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-              <h1>${starRating} Neue Bewertung!</h1>
-            </div>
-            
-            <div style="padding: 30px; background: #f7f7f7;">
-              <p>Sehr geehrtes Team von ${order.company_name},</p>
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
               
-              <p>Sie haben eine neue Bewertung für Ihren abgeschlossenen Auftrag erhalten.</p>
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
+              </div>
               
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #f59e0b;">Bewertungsdetails:</h3>
-                <table style="width: 100%;">
-                  <tr>
-  <td style="padding: 8px 0;"><strong>Projekt & Gewerk:</strong></td>
-  <td style="text-align: right;">${order.project_description ? order.project_description + ' - ' : ''}${order.trade_name}</td>
-</tr>
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Gesamtbewertung:</strong></td>
-                    <td style="text-align: right; font-size: 20px;">${starRating} ${overall_rating.toFixed(1)}/5.0</td>
-                  </tr>
-                </table>
+              <!-- Content -->
+              <div style="padding: 40px 30px;">
                 
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                  <h4 style="margin-bottom: 10px;">Einzelbewertungen:</h4>
-                  <div style="display: grid; gap: 10px;">
-                    <div style="padding: 10px; background: #f3f4f6; border-radius: 4px;">
-                      <strong>💰 Kosten:</strong> ${'⭐'.repeat(cost_rating)} ${cost_rating}/5
+                <!-- Icon -->
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <div style="display: inline-block; background: rgba(251, 191, 36, 0.2); border-radius: 50%; padding: 20px;">
+                    <span style="font-size: 48px;">⭐</span>
+                  </div>
+                </div>
+                
+                <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 10px;">
+                  Neue Bewertung erhalten!
+                </h2>
+                <p style="color: #fbbf24; font-size: 16px; text-align: center; margin: 0 0 30px;">
+                  Ein Bauherr hat Ihre Arbeit bewertet
+                </p>
+                
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  Sehr geehrtes Team von <strong style="color: #ffffff;">${order.company_name}</strong>,
+                </p>
+                
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  Sie haben eine neue Bewertung für Ihren abgeschlossenen Auftrag erhalten.
+                </p>
+                
+                <!-- Gesamtbewertung prominent -->
+                <div style="background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center;">
+                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.6); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Gesamtbewertung
+                  </p>
+                  <p style="margin: 0 0 5px; font-size: 36px;">
+                    ${starRating}
+                  </p>
+                  <p style="margin: 0; color: #fbbf24; font-size: 24px; font-weight: 700;">
+                    ${overall_rating.toFixed(1)} / 5.0
+                  </p>
+                </div>
+                
+                <!-- Projekt-Info -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px 20px; margin: 25px 0;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Projekt & Gewerk</span>
+                    <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${order.project_description ? order.project_description + ' – ' : ''}${order.trade_name}</span>
+                  </div>
+                </div>
+                
+                <!-- Einzelbewertungen -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin: 25px 0;">
+                  <p style="margin: 0 0 20px; color: rgba(255,255,255,0.5); font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📊 Einzelbewertungen
+                  </p>
+                  
+                  <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: rgba(255,255,255,0.8); font-size: 14px;">💰 Kosten</span>
+                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(cost_rating)} <span style="color: rgba(255,255,255,0.6);">${cost_rating}/5</span></span>
                     </div>
-                    <div style="padding: 10px; background: #f3f4f6; border-radius: 4px;">
-                      <strong>📅 Termine:</strong> ${'⭐'.repeat(schedule_rating)} ${schedule_rating}/5
+                  </div>
+                  
+                  <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: rgba(255,255,255,0.8); font-size: 14px;">📅 Termine</span>
+                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(schedule_rating)} <span style="color: rgba(255,255,255,0.6);">${schedule_rating}/5</span></span>
                     </div>
-                    <div style="padding: 10px; background: #f3f4f6; border-radius: 4px;">
-                      <strong>✨ Qualität:</strong> ${'⭐'.repeat(quality_rating)} ${quality_rating}/5
+                  </div>
+                  
+                  <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: rgba(255,255,255,0.8); font-size: 14px;">✨ Qualität</span>
+                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(quality_rating)} <span style="color: rgba(255,255,255,0.6);">${quality_rating}/5</span></span>
                     </div>
                   </div>
                 </div>
                 
                 ${communication_notes ? `
-                  <div style="margin-top: 20px; padding: 15px; background: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px;">
-                    <strong>💬 Anmerkungen zur Kommunikation:</strong><br>
-                    <p style="margin-top: 8px; color: #1e40af;">${communication_notes}</p>
-                  </div>
+                <!-- Anmerkungen -->
+                <div style="background: rgba(14, 165, 233, 0.15); border-left: 4px solid #0ea5e9; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+                  <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
+                    💬 Anmerkungen des Bauherrn
+                  </p>
+                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; font-style: italic;">
+                    "${communication_notes}"
+                  </p>
+                </div>
                 ` : ''}
+                
+                <!-- Info -->
+                <div style="background: rgba(34, 197, 94, 0.15); border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+                  <p style="margin: 0 0 8px; color: #22c55e; font-weight: 600; font-size: 14px;">
+                    🎯 Warum sind Bewertungen wichtig?
+                  </p>
+                  <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6;">
+                    Gute Bewertungen verbessern Ihr Profil und helfen Ihnen, mehr Aufträge über byndl zu erhalten!
+                  </p>
+                </div>
+                
+                <!-- CTA Button -->
+                <div style="text-align: center; margin: 35px 0;">
+                  <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                    Bewertungen ansehen →
+                  </a>
+                </div>
+                
               </div>
               
-              <div style="background: #d1fae5; padding: 15px; border-left: 4px solid #10b981; border-radius: 4px; margin: 20px 0;">
-                <strong>🎯 Warum sind Bewertungen wichtig?</strong><br>
-                Gute Bewertungen helfen Ihnen, mehr Aufträge über byndl zu erhalten!
+              <!-- Footer -->
+              <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                  Diese E-Mail wurde automatisch von byndl versendet.
+                </p>
+                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                  © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                </p>
               </div>
               
-              <p>Melden Sie sich an, um Ihre vollständige Bewertungsübersicht zu sehen.</p>
             </div>
-            
-            <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
-              <p>© 2025 byndl - Die digitale Handwerkerplattform</p>
-            </div>
-          </div>
+          </body>
+          </html>
         `
       });
     }
