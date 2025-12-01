@@ -121,7 +121,7 @@ export default function BauherrenNachtraegeUebersichtPage() {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-400">Firma</p>
-              <p className="text-lg font-semibold text-white">{nachtrag.company_name}</p>
+              <p className="text-lg font-semibold text-white">{order?.company_name}</p>
             </div>
           </div>
         </div>
