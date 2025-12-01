@@ -37,7 +37,13 @@ export default function AdminDashboardPage() {
   const [offers, setOffers] = useState([]);
   const [nachtraege, setNachtraege] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedTender, setSelectedTender] = useState(null);
   const [pendingHandwerker, setPendingHandwerker] = useState([]);
+  
+  // Datumsfilter States
+  const [dateFilterFrom, setDateFilterFrom] = useState('');
+  const [dateFilterTo, setDateFilterTo] = useState('');
+  
   const [rejectDialogs, setRejectDialogs] = useState({});
   const [deleteDialogs, setDeleteDialogs] = useState({});
   const [rejectReasons, setRejectReasons] = useState({});
@@ -2007,8 +2013,33 @@ const verifyHandwerker = async (id, action, reason = '') => {
             {/* Orders Tab */}
             {activeTab === 'orders' && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-2xl font-bold text-white">Aufträge ({orders.length})</h2>
+                  
+                  {/* Datumsfilter */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={dateFilterFrom}
+                      onChange={(e) => setDateFilterFrom(e.target.value)}
+                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                    />
+                    <span className="text-white/50">bis</span>
+                    <input
+                      type="date"
+                      value={dateFilterTo}
+                      onChange={(e) => setDateFilterTo(e.target.value)}
+                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                    />
+                    {(dateFilterFrom || dateFilterTo) && (
+                      <button
+                        onClick={() => { setDateFilterFrom(''); setDateFilterTo(''); }}
+                        className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm"
+                      >
+                        ✕ Reset
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Statistik-Karten */}
@@ -2055,7 +2086,15 @@ const verifyHandwerker = async (id, action, reason = '') => {
                         </tr>
                       </thead>
                       <tbody>
-                        {orders.map(order => (
+                        {orders
+                          .filter(order => {
+                            if (!dateFilterFrom && !dateFilterTo) return true;
+                            const orderDate = new Date(order.created_at);
+                            if (dateFilterFrom && orderDate < new Date(dateFilterFrom)) return false;
+                            if (dateFilterTo && orderDate > new Date(dateFilterTo + 'T23:59:59')) return false;
+                            return true;
+                          })
+                          .map(order => (
                           <tr key={order.id} className="border-b border-white/10 hover:bg-white/5">
                             <td className="px-4 py-3 text-sm text-white">#{order.id}</td>
                             <td className="px-4 py-3 text-sm text-white">{order.trade_name}</td>
@@ -2228,6 +2267,49 @@ const verifyHandwerker = async (id, action, reason = '') => {
                             </div>
                           </div>
                         </div>
+
+                        {/* LV-Details */}
+                        {selectedOrder.lv_data && (
+                          <div className="bg-white/5 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-3">📋 Leistungsverzeichnis</h3>
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                              {(() => {
+                                const lvData = typeof selectedOrder.lv_data === 'string' ? JSON.parse(selectedOrder.lv_data) : selectedOrder.lv_data;
+                                const positions = lvData?.positions || [];
+                                return positions.length > 0 ? positions.map((pos, idx) => (
+                                  <div key={idx} className="bg-white/5 rounded p-3">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <p className="text-white font-medium">
+                                          {pos.positionNumber || idx + 1}. {pos.title || 'Position'}
+                                        </p>
+                                        <p className="text-white/70 text-sm mt-1">{pos.description}</p>
+                                        <div className="flex gap-4 mt-2 text-xs text-white/50">
+                                          <span>Menge: {pos.quantity} {pos.unit}</span>
+                                          <span>EP: {pos.unitPrice ? `${Number(pos.unitPrice).toFixed(2)} €` : 'N/A'}</span>
+                                        </div>
+                                      </div>
+                                      <p className="text-teal-400 font-semibold">
+                                        {pos.totalPrice ? formatCurrency(pos.totalPrice) : 'N/A'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )) : (
+                                  <p className="text-white/50">Keine LV-Positionen vorhanden</p>
+                                );
+                              })()}
+                            </div>
+                            {(() => {
+                              const lvData = typeof selectedOrder.lv_data === 'string' ? JSON.parse(selectedOrder.lv_data) : selectedOrder.lv_data;
+                              return lvData?.totalSum && (
+                                <div className="mt-4 pt-4 border-t border-white/20 flex justify-between">
+                                  <span className="text-white font-semibold">Gesamtsumme (Netto)</span>
+                                  <span className="text-teal-400 font-bold text-lg">{formatCurrency(lvData.totalSum)}</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2238,7 +2320,34 @@ const verifyHandwerker = async (id, action, reason = '') => {
             {/* Offers Tab */}
             {activeTab === 'offers' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white">Angebote ({offers.length})</h2>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold text-white">Angebote ({offers.length})</h2>
+                  
+                  {/* Datumsfilter */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={dateFilterFrom}
+                      onChange={(e) => setDateFilterFrom(e.target.value)}
+                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                    />
+                    <span className="text-white/50">bis</span>
+                    <input
+                      type="date"
+                      value={dateFilterTo}
+                      onChange={(e) => setDateFilterTo(e.target.value)}
+                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                    />
+                    {(dateFilterFrom || dateFilterTo) && (
+                      <button
+                        onClick={() => { setDateFilterFrom(''); setDateFilterTo(''); }}
+                        className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm"
+                      >
+                        ✕ Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 {/* KI-Genauigkeit Übersicht */}
                 <div className="grid md:grid-cols-4 gap-4">
@@ -2290,7 +2399,15 @@ const verifyHandwerker = async (id, action, reason = '') => {
                         </tr>
                       </thead>
                       <tbody>
-                        {offers.map(offer => (
+                        {offers
+                          .filter(offer => {
+                            if (!dateFilterFrom && !dateFilterTo) return true;
+                            const offerDate = new Date(offer.created_at);
+                            if (dateFilterFrom && offerDate < new Date(dateFilterFrom)) return false;
+                            if (dateFilterTo && offerDate > new Date(dateFilterTo + 'T23:59:59')) return false;
+                            return true;
+                          })
+                          .map(offer => (
                           <tr key={offer.id} className="border-b border-white/10 hover:bg-white/5">
                             <td className="px-4 py-3 text-sm text-white">#{offer.id}</td>
                             <td className="px-4 py-3 text-sm text-white">{offer.trade_name}</td>
@@ -2361,7 +2478,34 @@ const verifyHandwerker = async (id, action, reason = '') => {
             {/* Nachtraege Tab */}
             {activeTab === 'nachtraege' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-white">Nachträge ({nachtraege.length})</h2>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold text-white">Nachträge ({nachtraege.length})</h2>
+                  
+                  {/* Datumsfilter */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={dateFilterFrom}
+                      onChange={(e) => setDateFilterFrom(e.target.value)}
+                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                    />
+                    <span className="text-white/50">bis</span>
+                    <input
+                      type="date"
+                      value={dateFilterTo}
+                      onChange={(e) => setDateFilterTo(e.target.value)}
+                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                    />
+                    {(dateFilterFrom || dateFilterTo) && (
+                      <button
+                        onClick={() => { setDateFilterFrom(''); setDateFilterTo(''); }}
+                        className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm"
+                      >
+                        ✕ Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 {/* Statistiken */}
                 <div className="grid md:grid-cols-4 gap-4">
@@ -2407,7 +2551,15 @@ const verifyHandwerker = async (id, action, reason = '') => {
                         </tr>
                       </thead>
                       <tbody>
-                        {nachtraege.map(nt => (
+                        {nachtraege
+                          .filter(nt => {
+                            if (!dateFilterFrom && !dateFilterTo) return true;
+                            const ntDate = new Date(nt.created_at);
+                            if (dateFilterFrom && ntDate < new Date(dateFilterFrom)) return false;
+                            if (dateFilterTo && ntDate > new Date(dateFilterTo + 'T23:59:59')) return false;
+                            return true;
+                          })
+                          .map(nt => (
                           <tr key={nt.id} className="border-b border-white/10 hover:bg-white/5">
                             <td className="px-4 py-3 text-sm text-white">
                               NT-{String(nt.nachtrag_number).padStart(2, '0')}
@@ -2461,42 +2613,136 @@ const verifyHandwerker = async (id, action, reason = '') => {
               </div>
             )}
 
-            {/* Tenders Tab - ERWEITERT */}
+            {/* Tenders Tab - ERWEITERT mit LV-Anzeige */}
 {activeTab === 'tenders' && (
-  <div>
-    <h2 className="text-2xl font-bold text-white mb-4">Ausschreibungen</h2>
+  <div className="space-y-6">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <h2 className="text-2xl font-bold text-white">Ausschreibungen ({tenders.length})</h2>
+      
+      {/* Datumsfilter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="date"
+          value={dateFilterFrom}
+          onChange={(e) => setDateFilterFrom(e.target.value)}
+          className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+        />
+        <span className="text-white/50">bis</span>
+        <input
+          type="date"
+          value={dateFilterTo}
+          onChange={(e) => setDateFilterTo(e.target.value)}
+          className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+        />
+        {(dateFilterFrom || dateFilterTo) && (
+          <button
+            onClick={() => { setDateFilterFrom(''); setDateFilterTo(''); }}
+            className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm"
+          >
+            ✕ Reset
+          </button>
+        )}
+      </div>
+    </div>
     
     <div className="space-y-4">
-      {tenders.map(tender => (
-        <div key={tender.id} className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="font-semibold text-white">
-                {tender.project_description} - {tender.trade_name}
-              </h3>
-              <p className="text-gray-400 text-sm mt-1">
-                Projekt #{tender.project_id} | Erstellt: {new Date(tender.created_at).toLocaleDateString('de-DE')}
-              </p>
-              <p className="text-gray-400 text-sm">
-                Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-teal-400 font-semibold">
-                {formatCurrency(tender.estimated_value)}
-              </p>
-              <p className="text-sm text-gray-400">
-                {tender.offer_count || 0} Angebote
-              </p>
-              <span className={`text-xs px-2 py-1 rounded mt-2 inline-block ${
-                tender.status === 'open' ? 'bg-green-600 text-green-200' :
-                tender.status === 'closed' ? 'bg-gray-600 text-gray-300' :
-                'bg-yellow-600 text-yellow-200'
-              }`}>
-                {tender.status}
-              </span>
+      {tenders
+        .filter(tender => {
+          if (!dateFilterFrom && !dateFilterTo) return true;
+          const tenderDate = new Date(tender.created_at);
+          if (dateFilterFrom && tenderDate < new Date(dateFilterFrom)) return false;
+          if (dateFilterTo && tenderDate > new Date(dateFilterTo + 'T23:59:59')) return false;
+          return true;
+        })
+        .map(tender => (
+        <div key={tender.id} className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+          <div 
+            className="p-4 cursor-pointer hover:bg-white/5 transition-colors"
+            onClick={() => setSelectedTender(selectedTender?.id === tender.id ? null : tender)}
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  {tender.project_description} - {tender.trade_name}
+                  <span className="text-white/50 text-sm">
+                    {selectedTender?.id === tender.id ? '▼' : '▶'}
+                  </span>
+                </h3>
+                <p className="text-gray-400 text-sm mt-1">
+                  Projekt #{tender.project_id} | Bauherr: {tender.bauherr_name} | Erstellt: {new Date(tender.created_at).toLocaleDateString('de-DE')}
+                </p>
+                <p className="text-gray-400 text-sm">
+                  Frist: {tender.deadline ? new Date(tender.deadline).toLocaleDateString('de-DE') : '-'} | Eingeladen: {tender.invited_handwerker || 0} Handwerker
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-teal-400 font-semibold">
+                  {formatCurrency(tender.estimated_value)}
+                </p>
+                <p className="text-sm text-gray-400">
+                  {tender.offer_count || 0} Angebote
+                </p>
+                {tender.min_offer && (
+                  <p className="text-xs text-white/50">
+                    Range: {formatCurrency(tender.min_offer)} - {formatCurrency(tender.max_offer)}
+                  </p>
+                )}
+                <span className={`text-xs px-2 py-1 rounded mt-2 inline-block ${
+                  tender.status === 'open' ? 'bg-green-600 text-green-200' :
+                  tender.status === 'closed' ? 'bg-gray-600 text-gray-300' :
+                  tender.status === 'withdrawn' ? 'bg-red-600 text-red-200' :
+                  'bg-yellow-600 text-yellow-200'
+                }`}>
+                  {tender.status === 'open' ? 'Offen' :
+                   tender.status === 'closed' ? 'Geschlossen' :
+                   tender.status === 'withdrawn' ? 'Zurückgezogen' : tender.status}
+                </span>
+              </div>
             </div>
           </div>
+          
+          {/* LV-Details anzeigen wenn ausgewählt */}
+          {selectedTender?.id === tender.id && tender.lv_data && (
+            <div className="border-t border-white/20 p-4 bg-white/5">
+              <h4 className="text-white font-semibold mb-3">📋 Leistungsverzeichnis</h4>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {(() => {
+                  const lvData = typeof tender.lv_data === 'string' ? JSON.parse(tender.lv_data) : tender.lv_data;
+                  const positions = lvData?.positions || [];
+                  return positions.length > 0 ? positions.map((pos, idx) => (
+                    <div key={idx} className="bg-white/5 rounded p-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="text-white font-medium">
+                            {pos.positionNumber || idx + 1}. {pos.title || 'Position'}
+                          </p>
+                          <p className="text-white/70 text-sm mt-1">{pos.description}</p>
+                          <div className="flex gap-4 mt-2 text-xs text-white/50">
+                            <span>Menge: {pos.quantity} {pos.unit}</span>
+                            <span>EP: {pos.unitPrice ? `${Number(pos.unitPrice).toFixed(2)} €` : 'N/A'}</span>
+                          </div>
+                        </div>
+                        <p className="text-teal-400 font-semibold">
+                          {pos.totalPrice ? formatCurrency(pos.totalPrice) : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-white/50">Keine LV-Positionen vorhanden</p>
+                  );
+                })()}
+              </div>
+              {(() => {
+                const lvData = typeof tender.lv_data === 'string' ? JSON.parse(tender.lv_data) : tender.lv_data;
+                return lvData?.totalSum && (
+                  <div className="mt-4 pt-4 border-t border-white/20 flex justify-between">
+                    <span className="text-white font-semibold">Gesamtsumme (Netto)</span>
+                    <span className="text-teal-400 font-bold text-lg">{formatCurrency(lvData.totalSum)}</span>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       ))}
       
