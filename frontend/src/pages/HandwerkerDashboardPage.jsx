@@ -702,8 +702,8 @@ const badgeCounts = {
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs sm:text-sm text-gray-400">
-                                💰 ca. {formatCurrency(Math.round(tender.estimated_value / 1000) * 1000)}
-                              </p>
+  💰 ca. {formatCurrency(Math.round(tender.estimated_value * 0.8 / 1000) * 1000)} – {formatCurrency(Math.round(tender.estimated_value * 1.2 / 1000) * 1000)}
+</p>
                               <p className="text-xs sm:text-sm text-gray-400">
                                 ⏰ Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
                               </p>
