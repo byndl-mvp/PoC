@@ -23845,7 +23845,7 @@ async function createProjectTenders(req, res) {
                           
                           <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
                             <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Geschätztes Volumen</span>
-                            <span style="color: #22c55e; font-size: 15px; font-weight: 600;">${formatCurrency(Math.round(estimatedValue * 0.8 / 100) * 100)} – ${formatCurrency(Math.round(estimatedValue * 1.2 / 100) * 100)}</span>
+                            <span style="color: #22c55e; font-size: 15px; font-weight: 600;">${formatCurrency(Math.round(estimatedValue * 0.8 / 1000) * 1000)} – ${formatCurrency(Math.round(estimatedValue * 1.2 / 1000) * 1000)}</span>
                           </div>
                           
                           <div style="padding: 12px 0; display: flex; justify-content: space-between;">
