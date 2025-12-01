@@ -789,8 +789,6 @@ const badgeCounts = {
     ) : (
       <div className="space-y-6">
         {bundles.map((bundle) => {
-          // Runde Volumen auf 500 Euro
-          const roundedVolume = Math.round((bundle.totalVolume || 0) / 500) * 500;
           
           return (
             <div 
