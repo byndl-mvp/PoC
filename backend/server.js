@@ -30,6 +30,7 @@ const { parseSpreadsheetContent } = require('./spreadsheetParser');
 const { analyzePdfWithClaude } = require('./pdfAnalyzer');
 const nodemailer = require('nodemailer');
 const emailService = require('./emailService');
+const cron = require('node-cron');
 const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
 
@@ -32675,6 +32676,220 @@ app.get('/api/ratings/:ratingId', async (req, res) => {
     
   } catch (error) {
     console.error('Error fetching rating:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Täglich um 8:00 Uhr ausführen
+cron.schedule('0 8 * * *', async () => {
+  console.log('[CRON] 🔔 Checking for orders starting tomorrow...');
+  await sendOrderReminders();
+});
+
+// Kann auch manuell aufgerufen werden (z.B. zum Testen)
+async function sendOrderReminders() {
+  try {
+    // Finde alle Aufträge die morgen starten
+    const result = await query(`
+      SELECT 
+        o.id AS order_id,
+        o.execution_start,
+        o.execution_end,
+        o.amount,
+        t.name AS trade_name,
+        h.id AS handwerker_id,
+        h.email AS handwerker_email,
+        h.company_name,
+        h.contact_person,
+        p.id AS project_id,
+        p.description AS project_description,
+        p.street,
+        p.house_number,
+        p.zip_code,
+        p.city,
+        b.name AS bauherr_name,
+        b.phone AS bauherr_phone,
+        b.email AS bauherr_email
+      FROM orders o
+      JOIN handwerker h ON o.handwerker_id = h.id
+      JOIN trades t ON o.trade_id = t.id
+      JOIN projects p ON o.project_id = p.id
+      JOIN bauherren b ON o.bauherr_id = b.id
+      WHERE o.status = 'active'
+        AND DATE(o.execution_start) = CURRENT_DATE + INTERVAL '1 day'
+        AND (o.reminder_sent IS NULL OR o.reminder_sent = false)
+    `);
+
+    console.log(`[CRON] 📋 Found ${result.rows.length} orders starting tomorrow`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const order of result.rows) {
+      try {
+        // 1. E-Mail senden
+        if (typeof transporter !== 'undefined' && transporter && order.handwerker_email) {
+          await transporter.sendMail({
+            from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+            to: order.handwerker_email,
+            subject: `🔔 Erinnerung: Auftrag "${order.trade_name}" startet morgen`,
+            html: `
+              <!doctype html>
+              <html>
+              <head>
+                <style>
+                  body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                  .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                  .header { background: linear-gradient(135deg, #14b8a6, #0ea5e9); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
+                  .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+                  .info-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                  .info-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+                  .info-table td:first-child { font-weight: bold; color: #64748b; width: 40%; }
+                  .highlight { background: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+                  .btn { display: inline-block; background: #14b8a6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; }
+                  .footer { background: #1e293b; color: #94a3b8; padding: 20px; text-align: center; border-radius: 0 0 12px 12px; font-size: 14px; }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <div class="header">
+                    <h1 style="margin:0;">📅 Auftrag startet morgen!</h1>
+                  </div>
+                  <div class="content">
+                    <p>Guten Tag ${order.contact_person || order.company_name},</p>
+                    
+                    <div class="highlight">
+                      <strong>⏰ Ihr Auftrag startet morgen am ${new Date(order.execution_start).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</strong>
+                    </div>
+                    
+                    <table class="info-table">
+                      <tr>
+                        <td>Gewerk:</td>
+                        <td><strong>${order.trade_name}</strong></td>
+                      </tr>
+                      <tr>
+                        <td>Projekt:</td>
+                        <td>${order.project_description || 'Bauprojekt'}</td>
+                      </tr>
+                      <tr>
+                        <td>Adresse:</td>
+                        <td>${order.street} ${order.house_number}<br>${order.zip_code} ${order.city}</td>
+                      </tr>
+                      <tr>
+                        <td>Bauherr:</td>
+                        <td>${order.bauherr_name}</td>
+                      </tr>
+                      <tr>
+                        <td>Telefon Bauherr:</td>
+                        <td>${order.bauherr_phone || 'Nicht angegeben'}</td>
+                      </tr>
+                      <tr>
+                        <td>Ausführungszeitraum:</td>
+                        <td>${new Date(order.execution_start).toLocaleDateString('de-DE')} - ${new Date(order.execution_end).toLocaleDateString('de-DE')}</td>
+                      </tr>
+                      <tr>
+                        <td>Auftragswert:</td>
+                        <td><strong>${formatCurrency(order.amount)}</strong> (Netto)</td>
+                      </tr>
+                    </table>
+                    
+                    <p>Bitte stellen Sie sicher, dass Sie pünktlich vor Ort sind und alle notwendigen Materialien und Werkzeuge dabei haben.</p>
+                    
+                    <center>
+                      <a href="https://byndl.de/handwerker/order/${order.order_id}/lv-details" class="btn">
+                        📋 Auftragsdetails ansehen
+                      </a>
+                    </center>
+                    
+                    <p style="margin-top: 30px;">Viel Erfolg bei der Ausführung!</p>
+                  </div>
+                  <div class="footer">
+                    <p>Diese E-Mail wurde automatisch von byndl versendet.</p>
+                    <p>© ${new Date().getFullYear()} byndl - Ihre Handwerker-Plattform</p>
+                  </div>
+                </div>
+              </body>
+              </html>
+            `
+          });
+
+          // E-Mail-Log erstellen
+          await query(
+            `INSERT INTO email_logs (recipient_email, email_type, status, sent_at, handwerker_id, metadata)
+             VALUES ($1, 'order_reminder', 'sent', NOW(), $2, $3)`,
+            [
+              order.handwerker_email, 
+              order.handwerker_id, 
+              JSON.stringify({ 
+                order_id: order.order_id, 
+                execution_start: order.execution_start,
+                trade_name: order.trade_name
+              })
+            ]
+          );
+
+          console.log(`[CRON] 📧 E-Mail sent to ${order.handwerker_email} for order ${order.order_id}`);
+        }
+
+        // 2. In-App Notification erstellen
+        await query(
+          `INSERT INTO notifications (
+            handwerker_id, 
+            type, 
+            title, 
+            message, 
+            link, 
+            order_id,
+            read,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, false, NOW())`,
+          [
+            order.handwerker_id,
+            'order_reminder',
+            '📅 Auftrag startet morgen',
+            `Ihr Auftrag "${order.trade_name}" bei ${order.bauherr_name} (${order.zip_code} ${order.city}) startet morgen am ${new Date(order.execution_start).toLocaleDateString('de-DE')}.`,
+            `/handwerker/order/${order.order_id}/lv-details`,
+            order.order_id
+          ]
+        );
+
+        console.log(`[CRON] 🔔 Notification created for handwerker ${order.handwerker_id}`);
+
+        // 3. Markiere als gesendet
+        await query(
+          `UPDATE orders SET reminder_sent = true WHERE id = $1`,
+          [order.order_id]
+        );
+
+        successCount++;
+        console.log(`[CRON] ✅ Reminder sent for order ${order.order_id} (${order.trade_name})`);
+
+      } catch (orderErr) {
+        errorCount++;
+        console.error(`[CRON] ❌ Error processing order ${order.order_id}:`, orderErr?.message || orderErr);
+      }
+    }
+
+    console.log(`[CRON] 📊 Summary: ${successCount} reminders sent, ${errorCount} errors`);
+    
+    return { success: true, sent: successCount, errors: errorCount };
+
+  } catch (error) {
+    console.error('[CRON] ❌ Fatal error in sendOrderReminders:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============= API ROUTE ZUM MANUELLEN TESTEN =============
+// Optional: Route zum manuellen Auslösen (z.B. für Tests)
+
+app.post('/api/admin/trigger-order-reminders', async (req, res) => {
+  try {
+    // Optional: Admin-Auth prüfen
+    const result = await sendOrderReminders();
+    res.json(result);
+  } catch (error) {
+    console.error('Error triggering reminders:', error);
     res.status(500).json({ error: error.message });
   }
 });
