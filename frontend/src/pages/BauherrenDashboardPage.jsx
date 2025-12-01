@@ -1857,7 +1857,7 @@ const LVEditButton = ({ project }) => {
         {tab === 'overview' && <><span className="sm:hidden">Start</span><span className="hidden sm:inline">Übersicht</span></>}
         {tab === 'tenders' && <><span className="sm:hidden">Ausschr.</span><span className="hidden sm:inline">Ausschreibungen</span></>}
         {tab === 'offers' && 'Angebote'}
-        {tab === 'contracts' && <><span className="sm:hidden">Verträge</span><span className="hidden sm:inline">Vertragsanbahnung</span></>}
+        {tab === 'contracts' && <><span className="sm:hidden">Verhandlung</span><span className="hidden sm:inline">Vertragsanbahnung</span></>}
         {tab === 'orders' && 'Aufträge'}
         {tab === 'budget' && <><span className="sm:hidden">Kosten</span><span className="hidden sm:inline">Kostenübersicht</span></>}
         {tab === 'schedule' && <><span className="sm:hidden">Termine</span><span className="hidden sm:inline">Terminplan</span></>}
@@ -3392,13 +3392,14 @@ if (selectedProject) {
         {/* ABGESCHLOSSENE AUFTRÄGE */}
 {orders.filter(o => o.status === 'completed').length > 0 && (
   <div>
-    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-      <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <h3 className="text-lg sm:text-xl font-semibold text-white mb-4 flex items-center gap-2">
+      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      Abgeschlossene Aufträge (Leistung abgenommen)
+      <span className="hidden sm:inline">Abgeschlossene Aufträge (Leistung abgenommen)</span>
+      <span className="sm:hidden">Abgeschlossen</span>
     </h3>
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {orders.filter(o => o.status === 'completed').map((order, idx) => {
         // Berechne mit Rabatt
         const netto = parseFloat(order.amount) || 0;
@@ -3408,77 +3409,75 @@ if (selectedProject) {
         const brutto = nettoAfterDiscount * 1.19;
         
         return (
-          <div key={idx} className="bg-white/5 rounded-lg p-6 border border-green-500/30">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2 flex-wrap">
-                  <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
-                    Werkvertrag nach VOB/B
+          <div key={idx} className="bg-white/5 rounded-lg p-4 sm:p-6 border border-green-500/30">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <h3 className="text-lg sm:text-xl font-semibold text-white">{order.trade_name}</h3>
+                  <span className="px-2 sm:px-3 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+                    VOB/B
                   </span>
                   {/* NEU: Bewertungs-Badge */}
                   <RatingBadge orderId={order.id} />
                 </div>
-                <p className="text-gray-300 mb-2">{order.company_name}</p>
-                <p className="text-sm text-gray-400">
-                  Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | 
-                  Auftrags-Nr: #{order.id}
+                <p className="text-gray-300 text-sm sm:text-base mb-2">{order.company_name}</p>
+                <p className="text-xs sm:text-sm text-gray-400">
+                  Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | Nr: #{order.id}
                 </p>
                 {order.accepted_at && (
-                  <p className="text-sm text-green-400 mt-1">
+                  <p className="text-xs sm:text-sm text-green-400 mt-1">
                     ✓ Abgenommen: {new Date(order.accepted_at).toLocaleDateString('de-DE')}
                   </p>
                 )}
                 
                 {/* Ausführungstermine */}
-                <div className="mt-3 p-3 bg-blue-500/10 rounded">
-                  <p className="text-blue-300 text-sm">
-                    <strong>📅 Ausführungszeitraum:</strong><br />
-                    {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
+                <div className="mt-3 p-2 sm:p-3 bg-blue-500/10 rounded">
+                  <p className="text-blue-300 text-xs sm:text-sm">
+                    <strong>📅 Ausführung:</strong> {new Date(order.execution_start).toLocaleDateString('de-DE')} - {new Date(order.execution_end).toLocaleDateString('de-DE')}
                   </p>
                 </div>
               </div>
               
-              <div className="text-right ml-6 min-w-[200px]">
+              <div className="text-left lg:text-right flex-shrink-0 w-full lg:w-auto lg:min-w-[180px]">
                 {/* Netto */}
-                <div className="mb-3 p-3 bg-white/5 rounded-lg">
+                <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-white/5 rounded-lg">
                   <p className="text-xs text-gray-400 mb-1">Netto</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-xl sm:text-2xl font-bold text-white">
                     {formatCurrency(netto)}
                   </p>
                 </div>
                 
                 {bundleDiscount > 0 && (
-                  <div className="mb-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                    <p className="text-xs text-green-400 mb-1">📦 Bündelrabatt ({bundleDiscount}%)</p>
+                  <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-xs text-green-400 mb-1">📦 Rabatt ({bundleDiscount}%)</p>
                     <p className="text-sm font-semibold text-green-400">
                       - {formatCurrency(discountAmount)}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">Netto nach Rabatt</p>
-                    <p className="text-lg font-bold text-white">
+                    <p className="text-base sm:text-lg font-bold text-white">
                       {formatCurrency(nettoAfterDiscount)}
                     </p>
                   </div>
                 )}
                 
                 {/* Brutto */}
-                <div className="mb-3 p-3 bg-white/5 rounded-lg">
+                <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-white/5 rounded-lg">
                   <p className="text-xs text-gray-400 mb-1">Brutto (inkl. 19% MwSt.)</p>
-                  <p className="text-lg font-semibold text-green-300">
+                  <p className="text-base sm:text-lg font-semibold text-green-300">
                     {formatCurrency(brutto)}
                   </p>
                 </div>
                 
-                <span className="text-xs px-3 py-1 rounded inline-block bg-green-600 text-green-200">
+                <span className="text-xs px-2 sm:px-3 py-1 rounded inline-block bg-green-600 text-green-200">
                   Abgeschlossen
                 </span>
               </div>
             </div>
             
             {/* Gewährleistungshinweis */}
-            <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <p className="text-yellow-300 text-sm flex items-start gap-2">
-                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <p className="text-yellow-300 text-xs sm:text-sm flex items-start gap-2">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <span>
@@ -3493,26 +3492,28 @@ if (selectedProject) {
             </div>
             
             {/* Werkvertrag-Aktionen */}
-            <div className="border-t border-white/10 pt-4 mt-4">
-              <div className="flex flex-wrap gap-3">
+            <div className="border-t border-white/10 pt-3 sm:pt-4 mt-3 sm:mt-4">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
                 <button
                   onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
+                  className="px-2 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
-                  Werkvertrag als PDF
+                  <span className="hidden sm:inline">Werkvertrag PDF</span>
+                  <span className="sm:hidden">PDF</span>
                 </button>
                 
                 <button
                   onClick={() => navigate(`/bauherr/order/${order.id}/lv-details`)}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+                  className="px-2 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  LV-Details ansehen
+                  <span className="hidden sm:inline">LV-Details</span>
+                  <span className="sm:hidden">LV</span>
                 </button>
                 
                 <button
@@ -3520,12 +3521,13 @@ if (selectedProject) {
                     setSelectedOrderId(order.id);
                     setShowContractView(true);
                   }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+                  className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Vertrag ansehen
+                  <span className="hidden sm:inline">Vertrag</span>
+                  <span className="sm:hidden">Vertrag</span>
                 </button>
                 
                 {/* NEU: Bewertungs-Button - Pulsierend wenn noch nicht bewertet */}
