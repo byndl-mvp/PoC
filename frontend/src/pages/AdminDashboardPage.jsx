@@ -94,9 +94,13 @@ export default function AdminDashboardPage() {
     }
   }, [token]);
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (fromDate = null, toDate = null) => {
     try {
-      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/projects/detailed', {
+      let url = 'https://poc-rvrj.onrender.com/api/admin/projects/detailed?limit=10';
+      if (fromDate) url += `&from=${fromDate}`;
+      if (toDate) url += `&to=${toDate}`;
+      
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Fehler beim Laden der Projekte');
@@ -839,7 +843,10 @@ const verifyHandwerker = async (id, action, reason = '') => {
   <div className="space-y-6">
     {/* Header mit Datumsfilter */}
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h2 className="text-2xl font-bold text-white">Projekte ({projects.length})</h2>
+      <div>
+        <h2 className="text-2xl font-bold text-white">Projekte ({projects.length})</h2>
+        <p className="text-white/50 text-sm">Zeigt die letzten 10 Projekte. Nutze den Datumsfilter für ältere.</p>
+      </div>
       
       {/* Datumsfilter */}
       <div className="flex flex-wrap items-center gap-2">
@@ -856,9 +863,19 @@ const verifyHandwerker = async (id, action, reason = '') => {
           onChange={(e) => setDateFilterTo(e.target.value)}
           className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
         />
+        <button
+          onClick={() => fetchProjects(dateFilterFrom || null, dateFilterTo || null)}
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium"
+        >
+          🔍 Suchen
+        </button>
         {(dateFilterFrom || dateFilterTo) && (
           <button
-            onClick={() => { setDateFilterFrom(''); setDateFilterTo(''); }}
+            onClick={() => { 
+              setDateFilterFrom(''); 
+              setDateFilterTo(''); 
+              fetchProjects(null, null);
+            }}
             className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm"
           >
             ✕ Reset
@@ -870,15 +887,7 @@ const verifyHandwerker = async (id, action, reason = '') => {
     <div className="grid lg:grid-cols-2 gap-6">
       <div>
         <div className="space-y-3 max-h-[600px] overflow-y-auto">
-          {projects
-            .filter(project => {
-              if (!dateFilterFrom && !dateFilterTo) return true;
-              const projectDate = new Date(project.created_at);
-              if (dateFilterFrom && projectDate < new Date(dateFilterFrom)) return false;
-              if (dateFilterTo && projectDate > new Date(dateFilterTo + 'T23:59:59')) return false;
-              return true;
-            })
-            .map((project) => (
+          {projects.map((project) => (
             <div
               key={project.id}
               className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20 hover:bg-white/15 transition-colors"
