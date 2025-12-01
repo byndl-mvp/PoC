@@ -20808,15 +20808,110 @@ if (has_schedule_changes) {
   await transporter.sendMail({
     from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
     to: offer.email,
-    subject: `Angebot bestätigt - ${offer.trade_name}`,
+    subject: `✅ Angebot bestätigt - ${offer.trade_name}`,
     html: `
-      <h2>Angebot wurde bestätigt</h2>
-      <p>Gute Nachrichten! <strong>${offer.company_name}</strong> hat das Angebot für <strong>${offer.trade_name}</strong> nach dem Ortstermin verbindlich bestätigt.</p>
-      <p><strong>Angebotssumme:</strong> ${amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</p>
-      <p><strong>Ausführung:</strong> ${new Date(finalExecutionStart).toLocaleDateString('de-DE')} bis ${new Date(finalExecutionEnd).toLocaleDateString('de-DE')}</p>
-      ${notes ? `<p><strong>Anmerkungen:</strong> ${notes}</p>` : ''}
-      <p>Sie können das Angebot nun verbindlich beauftragen.</p>
-      <a href="https://byndl.de/bauherr/dashboard">Zum Dashboard</a>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+        <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+            <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            
+            <!-- Icon -->
+            <div style="text-align: center; margin-bottom: 30px;">
+              <div style="display: inline-block; background: rgba(34, 197, 94, 0.2); border-radius: 50%; padding: 20px;">
+                <span style="font-size: 48px;">✅</span>
+              </div>
+            </div>
+            
+            <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 10px;">
+              Angebot bestätigt
+            </h2>
+            <p style="color: #22c55e; font-size: 16px; text-align: center; margin: 0 0 30px;">
+              Der Handwerker hat verbindlich bestätigt
+            </p>
+            
+            <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+              Gute Nachrichten! <strong style="color: #ffffff;">${offer.company_name}</strong> hat das Angebot für <strong style="color: #14b8a6;">${offer.trade_name}</strong> nach dem Ortstermin verbindlich bestätigt.
+            </p>
+            
+            <!-- Angebots-Details Box -->
+            <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px; margin: 25px 0;">
+              <p style="margin: 0 0 15px; color: #22c55e; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                📋 Angebotsdetails
+              </p>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Angebotssumme</span>
+                <span style="color: #22c55e; font-size: 20px; font-weight: 700;">${amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</span>
+              </div>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${offer.trade_name}</span>
+              </div>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+                <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Ausführungszeitraum</span>
+                <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${new Date(finalExecutionStart).toLocaleDateString('de-DE')} – ${new Date(finalExecutionEnd).toLocaleDateString('de-DE')}</span>
+              </div>
+            </div>
+            
+            ${notes ? `
+            <!-- Anmerkungen Box -->
+            <div style="background: rgba(14, 165, 233, 0.15); border-left: 4px solid #0ea5e9; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+              <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
+                💬 Anmerkungen des Handwerkers
+              </p>
+              <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; font-style: italic;">
+                "${notes}"
+              </p>
+            </div>
+            ` : ''}
+            
+            <!-- Nächster Schritt -->
+            <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
+              <p style="margin: 0 0 5px; color: rgba(255,255,255,0.5); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                Nächster Schritt
+              </p>
+              <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 500;">
+                Sie können das Angebot nun verbindlich beauftragen
+              </p>
+            </div>
+            
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="https://byndl.de/bauherr/dashboard" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                Jetzt beauftragen →
+              </a>
+            </div>
+            
+          </div>
+          
+          <!-- Footer -->
+          <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+            <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+              Diese E-Mail wurde automatisch von byndl versendet.
+            </p>
+            <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+              © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+            </p>
+          </div>
+          
+        </div>
+      </body>
+      </html>
     `
   });
 }
