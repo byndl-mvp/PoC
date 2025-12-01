@@ -1029,7 +1029,8 @@ const verifyHandwerker = async (id, action, reason = '') => {
                   )}
                 </div>
               </div>
-            )}
+            </div>
+)}
 
             {/* Prompts Tab */}
             {activeTab === 'prompts' && (
