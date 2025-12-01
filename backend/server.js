@@ -33001,59 +33001,59 @@ app.post('/api/admin/logout', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
-    // Get total users
-    const userStats = await query(`
+    const stats = await query(`
       SELECT 
         (SELECT COUNT(*) FROM bauherren) as bauherren_count,
-        (SELECT COUNT(*) FROM handwerker) as handwerker_count
+        (SELECT COUNT(*) FROM handwerker) as handwerker_count,
+        (SELECT COUNT(*) FROM projects) as total_projects,
+        (SELECT COUNT(*) FROM projects WHERE status = 'active') as active_projects,
+        (SELECT COUNT(*) FROM orders) as total_orders,
+        (SELECT COUNT(*) FROM orders WHERE status = 'active') as active_orders,
+        (SELECT COUNT(*) FROM orders WHERE status = 'completed') as completed_orders,
+        (SELECT COUNT(*) FROM offers) as total_offers,
+        (SELECT COUNT(*) FROM offers WHERE status = 'accepted') as accepted_offers,
+        (SELECT COUNT(*) FROM tenders) as total_tenders,
+        (SELECT COUNT(*) FROM tenders WHERE status = 'open') as open_tenders,
+        (SELECT COUNT(*) FROM nachtraege) as total_nachtraege,
+        (SELECT COUNT(*) FROM nachtraege WHERE status = 'approved') as approved_nachtraege,
+        (SELECT COUNT(*) FROM nachtraege WHERE status = 'submitted') as pending_nachtraege,
+        (SELECT COALESCE(SUM(amount), 0) FROM orders WHERE status IN ('active', 'completed')) as total_order_volume,
+        (SELECT COALESCE(SUM(amount), 0) FROM offers WHERE status = 'accepted') as total_offer_volume,
+        (SELECT COALESCE(SUM(amount), 0) FROM nachtraege WHERE status = 'approved') as total_nachtraege_volume,
+        (SELECT COUNT(*) FROM handwerker WHERE verified = false OR verification_status = 'pending') as verification_queue,
+        (SELECT COUNT(*) FROM lvs) as total_lvs
     `);
-    
-    // Get project stats
-    const projectStats = await query(`
-      SELECT 
-        COUNT(*) as total_projects,
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_projects,
-        SUM(budget) as total_value
-      FROM projects
-    `);
-    
-    // Get payment stats
-    const paymentStats = await query(`
-      SELECT 
-        SUM(CASE WHEN status = 'completed' THEN amount END) as total_revenue,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_payments
-      FROM payments
-    `);
-    
-    // Get order stats
-    const orderStats = await query(`
-      SELECT COUNT(CASE WHEN status = 'active' THEN 1 END) as active_orders
-      FROM orders
-    `);
-    
-    // Get verification queue
-    const verificationStats = await query(`
-      SELECT COUNT(*) as verification_queue
-      FROM handwerker
-      WHERE verified = false OR verification_status = 'pending'
-    `);
-    
-    const totalUsers = parseInt(userStats.rows[0].bauherren_count || 0) + 
-                      parseInt(userStats.rows[0].handwerker_count || 0);
+
+    const s = stats.rows[0];
     
     res.json({
-      totalUsers: totalUsers,
-      totalProjects: parseInt(projectStats.rows[0].total_projects || 0),
-      totalRevenue: parseFloat(paymentStats.rows[0].total_revenue || 0),
-      activeOrders: parseInt(orderStats.rows[0].active_orders || 0),
-      pendingPayments: parseInt(paymentStats.rows[0].pending_payments || 0),
-      verificationQueue: parseInt(verificationStats.rows[0].verification_queue || 0)
+      totalUsers: parseInt(s.bauherren_count || 0) + parseInt(s.handwerker_count || 0),
+      bauherrenCount: parseInt(s.bauherren_count || 0),
+      handwerkerCount: parseInt(s.handwerker_count || 0),
+      totalProjects: parseInt(s.total_projects || 0),
+      activeProjects: parseInt(s.active_projects || 0),
+      totalOrders: parseInt(s.total_orders || 0),
+      activeOrders: parseInt(s.active_orders || 0),
+      completedOrders: parseInt(s.completed_orders || 0),
+      totalOffers: parseInt(s.total_offers || 0),
+      acceptedOffers: parseInt(s.accepted_offers || 0),
+      totalTenders: parseInt(s.total_tenders || 0),
+      openTenders: parseInt(s.open_tenders || 0),
+      totalNachtraege: parseInt(s.total_nachtraege || 0),
+      approvedNachtraege: parseInt(s.approved_nachtraege || 0),
+      pendingNachtraege: parseInt(s.pending_nachtraege || 0),
+      totalOrderVolume: parseFloat(s.total_order_volume || 0),
+      totalOfferVolume: parseFloat(s.total_offer_volume || 0),
+      totalNachtraegeVolume: parseFloat(s.total_nachtraege_volume || 0),
+      verificationQueue: parseInt(s.verification_queue || 0),
+      totalLVs: parseInt(s.total_lvs || 0)
     });
   } catch (err) {
     console.error('Failed to fetch stats:', err);
     res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });
+
 
 // ===========================================================================
 // USER MANAGEMENT
@@ -33387,27 +33387,50 @@ app.put('/api/admin/verifications/:id', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
   try {
-    // orders hat: id, offer_id, project_id, handwerker_id, status, progress, is_bundle, created_at, trade_id
     const result = await query(`
       SELECT 
         o.id,
         o.offer_id,
         o.project_id,
         o.handwerker_id,
-        o.status,
-        o.progress,
-        o.is_bundle,
-        o.created_at,
+        o.bauherr_id,
         o.trade_id,
-        pr.description as project_description,
+        o.status,
+        o.amount,
+        o.bundle_discount,
+        o.execution_start,
+        o.execution_end,
+        o.accepted_at,
+        o.created_at,
+        o.updated_at,
+        -- Projekt-Infos
+        p.description as project_description,
+        p.category as project_category,
+        p.street as project_street,
+        p.house_number as project_house_number,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        -- Handwerker-Infos
         h.company_name as handwerker_name,
+        h.email as handwerker_email,
+        h.phone as handwerker_phone,
+        -- Bauherr-Infos
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone,
+        -- Gewerk
         t.name as trade_name,
-        of.amount as total  -- Hole amount aus offers Tabelle
+        t.code as trade_code,
+        -- Nachträge-Summen
+        (SELECT COUNT(*) FROM nachtraege n WHERE n.order_id = o.id) as nachtraege_count,
+        (SELECT COUNT(*) FROM nachtraege n WHERE n.order_id = o.id AND n.status = 'approved') as nachtraege_approved,
+        (SELECT COUNT(*) FROM nachtraege n WHERE n.order_id = o.id AND n.status = 'submitted') as nachtraege_pending,
+        (SELECT COALESCE(SUM(amount), 0) FROM nachtraege n WHERE n.order_id = o.id AND n.status = 'approved') as nachtraege_sum
       FROM orders o
-      LEFT JOIN projects pr ON pr.id = o.project_id
+      LEFT JOIN projects p ON p.id = o.project_id
       LEFT JOIN handwerker h ON h.id = o.handwerker_id
+      LEFT JOIN bauherren b ON b.id = o.bauherr_id
       LEFT JOIN trades t ON t.id = o.trade_id
-      LEFT JOIN offers of ON of.id = o.offer_id
       ORDER BY o.created_at DESC
     `);
     
@@ -33418,54 +33441,346 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
   }
 });
 
+// Einzelner Order mit allen Details
+app.get('/api/admin/orders/:orderId', requireAdmin, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    // Order Details
+    const orderResult = await query(`
+      SELECT 
+        o.*,
+        p.description as project_description,
+        p.category as project_category,
+        p.street, p.house_number, p.zip_code, p.city,
+        h.company_name as handwerker_name,
+        h.email as handwerker_email,
+        h.phone as handwerker_phone,
+        h.contact_person as handwerker_contact,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        b.phone as bauherr_phone,
+        t.name as trade_name,
+        of.lv_data,
+        of.amount as offer_amount
+      FROM orders o
+      LEFT JOIN projects p ON p.id = o.project_id
+      LEFT JOIN handwerker h ON h.id = o.handwerker_id
+      LEFT JOIN bauherren b ON b.id = o.bauherr_id
+      LEFT JOIN trades t ON t.id = o.trade_id
+      LEFT JOIN offers of ON of.id = o.offer_id
+      WHERE o.id = $1
+    `, [orderId]);
+    
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    // Nachträge
+    const nachtraegeResult = await query(`
+      SELECT * FROM nachtraege WHERE order_id = $1 ORDER BY created_at DESC
+    `, [orderId]);
+    
+    res.json({
+      order: orderResult.rows[0],
+      nachtraege: nachtraegeResult.rows
+    });
+  } catch (err) {
+    console.error('Failed to fetch order details:', err);
+    res.status(500).json({ error: 'Failed to fetch order details' });
+  }
+});
+
 // ===========================================================================
-// TENDER MANAGEMENT
+// OFFERS - KOMPLETT mit Vergleich zur KI-Schätzung
+// ===========================================================================
+
+app.get('/api/admin/offers', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        o.id,
+        o.tender_id,
+        o.handwerker_id,
+        o.project_id,
+        o.trade_id,
+        o.status,
+        o.amount,
+        o.lv_data,
+        o.notes,
+        o.created_at,
+        o.updated_at,
+        -- Tender-Infos (KI-Schätzung)
+        t.estimated_value as ki_schaetzung,
+        t.deadline as tender_deadline,
+        t.status as tender_status,
+        -- Projekt-Infos
+        p.description as project_description,
+        p.category as project_category,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        -- Handwerker-Infos
+        h.company_name as handwerker_name,
+        h.email as handwerker_email,
+        -- Bauherr-Infos
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        -- Gewerk
+        tr.name as trade_name,
+        tr.code as trade_code,
+        -- Abweichung berechnen
+        CASE 
+          WHEN t.estimated_value > 0 THEN 
+            ROUND(((o.amount - t.estimated_value) / t.estimated_value * 100)::numeric, 2)
+          ELSE NULL 
+        END as abweichung_prozent
+      FROM offers o
+      LEFT JOIN tenders t ON t.id = o.tender_id
+      LEFT JOIN projects p ON p.id = o.project_id
+      LEFT JOIN handwerker h ON h.id = o.handwerker_id
+      LEFT JOIN bauherren b ON b.id = p.bauherr_id
+      LEFT JOIN trades tr ON tr.id = o.trade_id
+      ORDER BY o.created_at DESC
+    `);
+    
+    res.json({ offers: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch offers:', err);
+    res.status(500).json({ error: 'Failed to fetch offers' });
+  }
+});
+
+// ===========================================================================
+// NACHTRAEGE - ALLE mit Details
+// ===========================================================================
+
+app.get('/api/admin/nachtraege', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        n.id,
+        n.order_id,
+        n.nachtrag_number,
+        n.reason,
+        n.description,
+        n.amount,
+        n.status,
+        n.submitted_at,
+        n.reviewed_at,
+        n.review_notes,
+        n.created_at,
+        -- Order-Infos
+        o.amount as order_amount,
+        o.status as order_status,
+        -- Projekt-Infos
+        p.description as project_description,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        -- Handwerker
+        h.company_name as handwerker_name,
+        h.email as handwerker_email,
+        -- Bauherr
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        -- Gewerk
+        t.name as trade_name
+      FROM nachtraege n
+      LEFT JOIN orders o ON o.id = n.order_id
+      LEFT JOIN projects p ON p.id = o.project_id
+      LEFT JOIN handwerker h ON h.id = o.handwerker_id
+      LEFT JOIN bauherren b ON b.id = o.bauherr_id
+      LEFT JOIN trades t ON t.id = o.trade_id
+      ORDER BY n.created_at DESC
+    `);
+    
+    res.json({ nachtraege: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch nachtraege:', err);
+    res.status(500).json({ error: 'Failed to fetch nachtraege' });
+  }
+});
+
+// ===========================================================================
+// ANALYTICS - KI Genauigkeit und Statistiken
+// ===========================================================================
+
+app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
+  try {
+    // KI-Schätzung vs. tatsächliche Angebote
+    const accuracyResult = await query(`
+      SELECT 
+        tr.name as trade_name,
+        tr.code as trade_code,
+        COUNT(o.id) as offer_count,
+        AVG(t.estimated_value) as avg_ki_schaetzung,
+        AVG(o.amount) as avg_angebot,
+        AVG(CASE WHEN t.estimated_value > 0 THEN 
+          ((o.amount - t.estimated_value) / t.estimated_value * 100)
+        ELSE NULL END) as avg_abweichung_prozent,
+        MIN(CASE WHEN t.estimated_value > 0 THEN 
+          ((o.amount - t.estimated_value) / t.estimated_value * 100)
+        ELSE NULL END) as min_abweichung,
+        MAX(CASE WHEN t.estimated_value > 0 THEN 
+          ((o.amount - t.estimated_value) / t.estimated_value * 100)
+        ELSE NULL END) as max_abweichung
+      FROM offers o
+      JOIN tenders t ON t.id = o.tender_id
+      JOIN trades tr ON tr.id = o.trade_id
+      WHERE t.estimated_value > 0 AND o.amount > 0
+      GROUP BY tr.id, tr.name, tr.code
+      ORDER BY offer_count DESC
+    `);
+
+    // Gesamtstatistik
+    const overallResult = await query(`
+      SELECT 
+        COUNT(*) as total_comparisons,
+        AVG(CASE WHEN t.estimated_value > 0 THEN 
+          ((o.amount - t.estimated_value) / t.estimated_value * 100)
+        ELSE NULL END) as overall_avg_abweichung,
+        SUM(t.estimated_value) as total_ki_schaetzung,
+        SUM(o.amount) as total_angebote
+      FROM offers o
+      JOIN tenders t ON t.id = o.tender_id
+      WHERE t.estimated_value > 0 AND o.amount > 0
+    `);
+
+    // Monatliche Entwicklung
+    const monthlyResult = await query(`
+      SELECT 
+        TO_CHAR(o.created_at, 'YYYY-MM') as monat,
+        COUNT(*) as angebote_count,
+        AVG(o.amount) as avg_angebot,
+        AVG(t.estimated_value) as avg_schaetzung,
+        AVG(CASE WHEN t.estimated_value > 0 THEN 
+          ((o.amount - t.estimated_value) / t.estimated_value * 100)
+        ELSE NULL END) as avg_abweichung
+      FROM offers o
+      LEFT JOIN tenders t ON t.id = o.tender_id
+      WHERE o.created_at > NOW() - INTERVAL '12 months'
+      GROUP BY TO_CHAR(o.created_at, 'YYYY-MM')
+      ORDER BY monat DESC
+    `);
+
+    // Auftrags-Statistiken
+    const orderStats = await query(`
+      SELECT 
+        COUNT(*) as total_orders,
+        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_orders,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_orders,
+        SUM(amount) as total_volume,
+        AVG(amount) as avg_order_value,
+        SUM(CASE WHEN bundle_discount > 0 THEN (amount * bundle_discount / 100) ELSE 0 END) as total_rabatt
+      FROM orders
+    `);
+
+    // Nachtrags-Quote
+    const nachtraegeStats = await query(`
+      SELECT 
+        (SELECT COUNT(DISTINCT order_id) FROM nachtraege) as orders_with_nachtraege,
+        (SELECT COUNT(*) FROM orders) as total_orders,
+        (SELECT COALESCE(SUM(amount), 0) FROM nachtraege WHERE status = 'approved') as nachtraege_volume,
+        (SELECT COALESCE(SUM(amount), 0) FROM orders) as order_volume
+    `);
+
+    // Top Handwerker nach Auftragsvolumen
+    const topHandwerker = await query(`
+      SELECT 
+        h.id,
+        h.company_name,
+        COUNT(o.id) as order_count,
+        SUM(o.amount) as total_volume,
+        AVG(o.amount) as avg_order_value
+      FROM handwerker h
+      JOIN orders o ON o.handwerker_id = h.id
+      GROUP BY h.id, h.company_name
+      ORDER BY total_volume DESC
+      LIMIT 10
+    `);
+
+    // Conversion Rate: Tender -> Offer -> Order
+    const conversionResult = await query(`
+      SELECT 
+        (SELECT COUNT(*) FROM tenders) as total_tenders,
+        (SELECT COUNT(DISTINCT tender_id) FROM offers) as tenders_with_offers,
+        (SELECT COUNT(*) FROM offers) as total_offers,
+        (SELECT COUNT(*) FROM offers WHERE status = 'accepted') as accepted_offers,
+        (SELECT COUNT(*) FROM orders) as total_orders
+    `);
+
+    res.json({
+      kiAccuracy: {
+        byTrade: accuracyResult.rows,
+        overall: overallResult.rows[0],
+        monthly: monthlyResult.rows
+      },
+      orderStats: orderStats.rows[0],
+      nachtraegeStats: nachtraegeStats.rows[0],
+      topHandwerker: topHandwerker.rows,
+      conversion: conversionResult.rows[0]
+    });
+  } catch (err) {
+    console.error('Failed to fetch analytics:', err);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// ===========================================================================
+// WERKVERTRÄGE - PDF Download
+// ===========================================================================
+
+app.get('/api/admin/orders/:orderId/contract-pdf', requireAdmin, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    // Leite zum normalen Contract-PDF Endpoint weiter
+    // (oder implementiere hier eine Admin-spezifische Version)
+    res.redirect(`/api/orders/${orderId}/contract-pdf`);
+  } catch (err) {
+    console.error('Failed to get contract PDF:', err);
+    res.status(500).json({ error: 'Failed to get contract PDF' });
+  }
+});
+
+// ===========================================================================
+// TENDERS - ERWEITERT mit allen Details
 // ===========================================================================
 
 app.get('/api/admin/tenders', requireAdmin, async (req, res) => {
   try {
-    // Da tenders nicht in der Liste war, prüfen wir ob sie existiert
-    const tableCheck = await query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_name = 'tenders'
-      )
-    `);
-    
-    if (!tableCheck.rows[0].exists) {
-      // Erstelle tenders Tabelle
-      await query(`
-        CREATE TABLE tenders (
-          id SERIAL PRIMARY KEY,
-          project_id INTEGER REFERENCES projects(id),
-          trade_id INTEGER REFERENCES trades(id),
-          trade_code VARCHAR(10),
-          status VARCHAR(50) DEFAULT 'open',
-          deadline TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      console.log('Created tenders table');
-    }
-    
-    // Hole tenders mit offers count
     const result = await query(`
       SELECT 
         t.id,
         t.project_id,
         t.trade_id,
-        t.trade_code,
         t.status,
         t.deadline,
+        t.estimated_value,
+        t.timeframe,
         t.created_at,
-        pr.description as project_description,
+        -- Projekt-Infos
+        p.description as project_description,
+        p.category as project_category,
+        p.zip_code as project_zip,
+        p.city as project_city,
+        -- Bauherr
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        -- Gewerk
         tr.name as trade_name,
-        COUNT(o.id) as offer_count
+        tr.code as trade_code,
+        -- Counts
+        (SELECT COUNT(*) FROM offers o WHERE o.tender_id = t.id) as offer_count,
+        (SELECT COUNT(*) FROM offers o WHERE o.tender_id = t.id AND o.status = 'accepted') as accepted_count,
+        (SELECT COUNT(*) FROM tender_handwerker th WHERE th.tender_id = t.id) as invited_handwerker,
+        -- Angebots-Range
+        (SELECT MIN(amount) FROM offers o WHERE o.tender_id = t.id AND o.amount > 0) as min_offer,
+        (SELECT MAX(amount) FROM offers o WHERE o.tender_id = t.id AND o.amount > 0) as max_offer,
+        (SELECT AVG(amount) FROM offers o WHERE o.tender_id = t.id AND o.amount > 0) as avg_offer
       FROM tenders t
-      LEFT JOIN projects pr ON pr.id = t.project_id
-      LEFT JOIN trades tr ON tr.id = t.trade_id OR tr.code = t.trade_code
-      LEFT JOIN offers o ON o.tender_id = t.id
-      GROUP BY t.id, pr.description, tr.name
+      LEFT JOIN projects p ON p.id = t.project_id
+      LEFT JOIN bauherren b ON b.id = p.bauherr_id
+      LEFT JOIN trades tr ON tr.id = t.trade_id
       ORDER BY t.created_at DESC
     `);
     
@@ -33473,6 +33788,43 @@ app.get('/api/admin/tenders', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch tenders:', err);
     res.status(500).json({ error: 'Failed to fetch tenders' });
+  }
+});
+
+// ===========================================================================
+// PAYMENTS - Falls Stripe integriert
+// ===========================================================================
+
+app.get('/api/admin/payments', requireAdmin, async (req, res) => {
+  try {
+    // Prüfe ob payments Tabelle existiert
+    const tableCheck = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'payments'
+      )
+    `);
+    
+    if (!tableCheck.rows[0].exists) {
+      return res.json({ payments: [], message: 'Payments table not yet created' });
+    }
+    
+    const result = await query(`
+      SELECT 
+        p.*,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        pr.description as project_description
+      FROM payments p
+      LEFT JOIN bauherren b ON b.id = p.bauherr_id
+      LEFT JOIN projects pr ON pr.id = p.project_id
+      ORDER BY p.created_at DESC
+    `);
+    
+    res.json({ payments: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch payments:', err);
+    res.status(500).json({ error: 'Failed to fetch payments' });
   }
 });
 
