@@ -35024,7 +35024,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
     [id, finalId]
   );
   
-  // ✅ VERBESSERTE BESTÄTIGUNGS-E-MAIL
+ // ✅ VERBESSERTE BESTÄTIGUNGS-E-MAIL
   if (transporter) {
     try {
       await transporter.sendMail({
@@ -35035,90 +35035,161 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
           <!DOCTYPE html>
           <html>
           <head>
-            <meta charset="UTF-8">
+            <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4;">
-            <div style="max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
               
               <!-- Header -->
-              <div style="background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; padding: 40px 30px; text-align: center;">
-                <h1 style="margin: 0; font-size: 28px; font-weight: 700;">🎉 Willkommen bei byndl!</h1>
+              <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
               </div>
               
               <!-- Content -->
               <div style="padding: 40px 30px;">
-                <div style="text-align: center; font-size: 64px; margin-bottom: 20px;">✅</div>
                 
-                <p style="font-size: 18px; color: #0891b2; font-weight: 600; margin-bottom: 10px;">
-                  Hallo ${handwerker.contact_person},
+                <!-- Icon -->
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <div style="display: inline-block; background: rgba(34, 197, 94, 0.2); border-radius: 50%; padding: 20px;">
+                    <span style="font-size: 48px;">🎉</span>
+                  </div>
+                </div>
+                
+                <h2 style="color: #ffffff; font-size: 28px; font-weight: 700; text-align: center; margin: 0 0 10px;">
+                  Willkommen bei byndl!
+                </h2>
+                <p style="color: #22c55e; font-size: 16px; text-align: center; margin: 0 0 30px;">
+                  Ihr Account wurde erfolgreich verifiziert
                 </p>
                 
-                <p style="color: #555; margin-bottom: 30px; font-size: 16px;">
-                  großartige Neuigkeiten! Ihr Account <strong>${handwerker.company_name}</strong> wurde erfolgreich verifiziert 
-                  und ist jetzt vollständig freigeschaltet.
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
+                  Hallo <strong style="color: #14b8a6;">${handwerker.contact_person}</strong>,
                 </p>
                 
-                <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-                  <strong>🚀 Sie können ab sofort Angebote auf Ausschreibungen abgeben!</strong>
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  großartige Neuigkeiten! Ihr Account <strong style="color: #ffffff;">${handwerker.company_name}</strong> wurde erfolgreich verifiziert und ist jetzt vollständig freigeschaltet.
+                </p>
+                
+                <!-- Highlight Box -->
+                <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
+                  <p style="margin: 0; color: #22c55e; font-size: 16px; font-weight: 600;">
+                    🚀 Sie können ab sofort Angebote auf Ausschreibungen abgeben!
+                  </p>
                 </div>
                 
-                <div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 25px 0; border-radius: 4px;">
-                  <h3 style="margin: 0 0 15px 0; color: #0891b2; font-size: 16px;">📋 Was Sie jetzt tun können:</h3>
-                  <ul style="margin: 0; padding-left: 20px;">
-                    <li style="margin: 8px 0; color: #555;"><strong>Ausschreibungen durchsuchen</strong> – Finden Sie passende Projekte in Ihrer Region</li>
-                    <li style="margin: 8px 0; color: #555;"><strong>Angebote erstellen</strong> – Geben Sie Ihre Preise und Leistungen an</li>
-                    <li style="margin: 8px 0; color: #555;"><strong>Projektbündel nutzen</strong> – Kombinieren Sie mehrere Aufträge und sparen Sie Fahrzeit</li>
-                    <li style="margin: 8px 0; color: #555;"><strong>Aufträge erhalten</strong> – Nach vorläufiger Beauftragung erhalten Sie alle Kontaktdaten</li>
-                  </ul>
+                <!-- Was Sie jetzt tun können -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin: 25px 0;">
+                  <p style="margin: 0 0 20px; color: #14b8a6; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📋 Was Sie jetzt tun können
+                  </p>
+                  
+                  <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
+                    <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">✓</span>
+                    <div>
+                      <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">Ausschreibungen durchsuchen</p>
+                      <p style="margin: 3px 0 0; color: rgba(255,255,255,0.6); font-size: 13px;">Finden Sie passende Projekte in Ihrer Region</p>
+                    </div>
+                  </div>
+                  
+                  <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
+                    <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">✓</span>
+                    <div>
+                      <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">Angebote erstellen</p>
+                      <p style="margin: 3px 0 0; color: rgba(255,255,255,0.6); font-size: 13px;">Geben Sie Ihre Preise und Leistungen an</p>
+                    </div>
+                  </div>
+                  
+                  <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
+                    <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">✓</span>
+                    <div>
+                      <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">Projektbündel nutzen</p>
+                      <p style="margin: 3px 0 0; color: rgba(255,255,255,0.6); font-size: 13px;">Kombinieren Sie mehrere Aufträge und sparen Sie Fahrzeit</p>
+                    </div>
+                  </div>
+                  
+                  <div style="display: flex; align-items: flex-start;">
+                    <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">✓</span>
+                    <div>
+                      <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">Aufträge erhalten</p>
+                      <p style="margin: 3px 0 0; color: rgba(255,255,255,0.6); font-size: 13px;">Nach vorläufiger Beauftragung erhalten Sie alle Kontaktdaten</p>
+                    </div>
+                  </div>
                 </div>
                 
-                <div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 20px; margin: 25px 0; border-radius: 4px;">
-                  <h3 style="margin: 0 0 15px 0; color: #0891b2; font-size: 16px;">💡 So funktioniert byndl:</h3>
-                  <ul style="margin: 0; padding-left: 20px;">
-                    <li style="margin: 8px 0; color: #555;"><strong>1.</strong> Passende Ausschreibungen werden Ihnen automatisch angezeigt</li>
-                    <li style="margin: 8px 0; color: #555;"><strong>2.</strong> Sie erstellen ein vorläufiges Angebot mit Ihrer Preiskalkulation</li>
-                    <li style="margin: 8px 0; color: #555;"><strong>3.</strong> Der Bauherr wählt das beste Angebot aus</li>
-                    <li style="margin: 8px 0; color: #555;"><strong>4.</strong> Bei Beauftragung erhalten Sie alle Details und können loslegen</li>
-                  </ul>
+                <!-- So funktioniert byndl -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin: 25px 0;">
+                  <p style="margin: 0 0 20px; color: #14b8a6; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    💡 So funktioniert byndl
+                  </p>
+                  
+                  <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
+                    <span style="background: rgba(20, 184, 166, 0.2); color: #14b8a6; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">1</span>
+                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Passende Ausschreibungen werden Ihnen automatisch angezeigt</p>
+                  </div>
+                  
+                  <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
+                    <span style="background: rgba(20, 184, 166, 0.2); color: #14b8a6; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">2</span>
+                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Sie erstellen ein vorläufiges Angebot mit Ihrer Preiskalkulation</p>
+                  </div>
+                  
+                  <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
+                    <span style="background: rgba(20, 184, 166, 0.2); color: #14b8a6; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">3</span>
+                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Der Bauherr wählt das beste Angebot aus</p>
+                  </div>
+                  
+                  <div style="display: flex; align-items: flex-start;">
+                    <span style="background: rgba(20, 184, 166, 0.2); color: #14b8a6; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">4</span>
+                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Bei Beauftragung erhalten Sie alle Details und können loslegen</p>
+                  </div>
                 </div>
                 
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                    🎯 Jetzt Ausschreibungen ansehen
+                <!-- CTA Button -->
+                <div style="text-align: center; margin: 35px 0;">
+                  <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                    🎯 Jetzt Ausschreibungen ansehen →
                   </a>
                 </div>
                 
-                <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 30px 0; border-left: 4px solid #f59e0b;">
-                  <strong>⭐ Tipp:</strong> Aktivieren Sie Benachrichtigungen in Ihren Einstellungen, 
-                  um keine passenden Ausschreibungen zu verpassen!
+                <!-- Tipp -->
+                <div style="background: rgba(251, 191, 36, 0.15); border-left: 4px solid #fbbf24; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6;">
+                    <strong style="color: #fbbf24;">⭐ Tipp:</strong> Aktivieren Sie Benachrichtigungen in Ihren Einstellungen, um keine passenden Ausschreibungen zu verpassen!
+                  </p>
                 </div>
                 
-                <p style="color: #555; margin-top: 30px; font-size: 16px;">
-                  <strong>Ihre Handwerker-ID:</strong> ${finalId}
-                </p>
+                <!-- Handwerker-ID -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin: 25px 0; text-align: center;">
+                  <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Ihre Handwerker-ID</span>
+                  <p style="margin: 5px 0 0; color: #ffffff; font-size: 16px; font-weight: 600; font-family: monospace;">${finalId}</p>
+                </div>
                 
-                <p style="color: #555; margin-top: 30px; font-size: 16px;">
+                <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; margin: 25px 0;">
                   Bei Fragen oder Problemen steht Ihnen unser Support-Team jederzeit zur Verfügung.
                 </p>
                 
-                <p style="color: #555; font-size: 16px;">
+                <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
                   Viel Erfolg und gute Aufträge wünscht Ihnen<br>
-                  <strong>Ihr byndl-Team</strong>
+                  <strong style="color: #14b8a6;">Ihr byndl-Team</strong>
                 </p>
+                
               </div>
               
               <!-- Footer -->
-              <div style="background: #f9fafb; padding: 30px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0 0 10px 0;">
-                  <strong>byndl</strong> – Die smarte Plattform für Handwerker und Bauherren<br>
-                  <a href="https://byndl.de" style="color: #0891b2; text-decoration: none;">www.byndl.de</a> | 
-                  <a href="mailto:support@byndl.de" style="color: #0891b2; text-decoration: none;">support@byndl.de</a>
+              <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                <p style="margin: 0 0 15px; color: rgba(255,255,255,0.6); font-size: 13px;">
+                  <a href="https://byndl.de" style="color: #14b8a6; text-decoration: none;">www.byndl.de</a> · 
+                  <a href="mailto:support@byndl.de" style="color: #14b8a6; text-decoration: none;">support@byndl.de</a>
                 </p>
-                <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
                   Sie erhalten diese E-Mail, weil Sie sich bei byndl registriert haben.
                 </p>
+                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                  © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                </p>
               </div>
+              
             </div>
           </body>
           </html>
