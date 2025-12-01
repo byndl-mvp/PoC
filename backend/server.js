@@ -35044,7 +35044,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
+                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -35186,7 +35186,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                   Sie erhalten diese E-Mail, weil Sie sich bei byndl registriert haben.
                 </p>
                 <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
-                  © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                  © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
               
