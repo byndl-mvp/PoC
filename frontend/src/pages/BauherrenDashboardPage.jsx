@@ -2132,27 +2132,27 @@ const deadlineDate = tender.deadline
           const daysRemaining = Math.ceil((deadlineDate - new Date()) / (1000 * 60 * 60 * 24));
           
           return (
-            <div key={tender.id} className="bg-white/5 rounded-lg p-6 border border-white/10">
+            <div key={tender.id} className="bg-white/5 rounded-lg p-4 sm:p-6 border border-white/10">
               {/* Header mit Status */}
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-semibold text-white">{tender.trade_name}</h3>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4 mb-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <h3 className="text-lg sm:text-xl font-semibold text-white">{tender.trade_name}</h3>
                     {isExpired ? (
-                      <span className="px-3 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">
+                      <span className="px-2 sm:px-3 py-1 bg-red-500/20 text-red-300 text-xs rounded-full">
                         Frist abgelaufen
                       </span>
                     ) : daysRemaining <= 3 ? (
-                      <span className="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full animate-pulse">
+                      <span className="px-2 sm:px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full animate-pulse">
                         Läuft bald ab
                       </span>
                     ) : (
-                      <span className="px-3 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+                      <span className="px-2 sm:px-3 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
                         Aktiv
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-xs sm:text-sm text-gray-400">
                     Ausgeschrieben am {new Date(tender.created_at).toLocaleDateString('de-DE', { 
                       day: '2-digit', 
                       month: '2-digit', 
@@ -2161,19 +2161,19 @@ const deadlineDate = tender.deadline
                   </p>
                 </div>
                 
-                <div className="text-right">
-                  <p className="text-sm text-gray-400 mb-1">Geschätzte Kosten</p>
-                  <p className="text-2xl font-bold text-teal-400">
+                <div className="text-left sm:text-right flex-shrink-0">
+                  <p className="text-xs sm:text-sm text-gray-400 mb-1">Geschätzte Kosten</p>
+                  <p className="text-xl sm:text-2xl font-bold text-teal-400">
                     {formatCurrency(tender.estimated_value)}
                   </p>
                 </div>
               </div>
               
               {/* Projektdetails */}
-              <div className="grid md:grid-cols-3 gap-4 mb-4 p-4 bg-white/5 rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 p-3 sm:p-4 bg-white/5 rounded-lg">
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Angebotsfrist</p>
-                  <p className="text-white font-semibold">
+                  <p className="text-white font-semibold text-sm sm:text-base">
                     {deadlineDate.toLocaleDateString('de-DE', { 
                       day: '2-digit', 
                       month: '2-digit', 
@@ -2187,17 +2187,17 @@ const deadlineDate = tender.deadline
                 
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Projektadresse</p>
-                  <p className="text-white text-sm">
+                  <p className="text-white text-xs sm:text-sm">
                     {selectedProject.street || 'N/A'}
                   </p>
-                  <p className="text-white text-sm">
+                  <p className="text-white text-xs sm:text-sm">
                     {selectedProject.zip} {selectedProject.city}
                   </p>
                 </div>
                 
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Eingereichte Angebote</p>
-                  <p className="text-white font-semibold text-2xl">
+                  <p className="text-white font-semibold text-xl sm:text-2xl">
                     {tender.handwerkers?.filter(hw => hw.offer_id).length || 0}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
@@ -2207,15 +2207,16 @@ const deadlineDate = tender.deadline
               </div>
               
               {/* Aktionsbuttons */}
-              <div className="flex flex-wrap gap-3 mb-4">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-4">
                 <button
                   onClick={() => navigate(`/project/${selectedProject.id}/tender/${tender.id}/lv-preview`)}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+                  className="px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  LV-Details ansehen
+                  <span className="hidden sm:inline">LV-Details ansehen</span>
+                  <span className="sm:hidden">LV</span>
                 </button>
                 
                 <button
@@ -2225,12 +2226,13 @@ if (selectedProject) {
   loadProjectDetails(selectedProject.id);
 }
                   }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+                  className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
-                  Angebote prüfen
+                  <span className="hidden sm:inline">Angebote prüfen</span>
+                  <span className="sm:hidden">Angebote</span>
                 </button>
 
                 <button
@@ -2238,12 +2240,13 @@ if (selectedProject) {
                     setSelectedTenderForExtension(tender);
                     setShowExtensionModal(true);
                   }}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm flex items-center gap-2"
+                  className="px-3 sm:px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Frist verlängern
+                  <span className="hidden sm:inline">Frist verlängern</span>
+                  <span className="sm:hidden">Frist</span>
                 </button>
                 
                 <button
@@ -2278,19 +2281,20 @@ if (selectedProject) {
                       setLoading(false);
                     }
                   }}
-                  className="px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-sm flex items-center gap-2"
+                  className="px-3 sm:px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 col-span-2 sm:col-span-1"
                   disabled={loading}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  {loading ? 'Wird zurückgezogen...' : 'Ausschreibung zurückziehen'}
+                  <span className="hidden sm:inline">{loading ? 'Wird zurückgezogen...' : 'Ausschreibung zurückziehen'}</span>
+                  <span className="sm:hidden">{loading ? 'Läuft...' : 'Zurückziehen'}</span>
                 </button>
               </div>
               
               {/* Handwerker-Liste */}
               <div className="border-t border-white/10 pt-4">
-                <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
@@ -2299,41 +2303,41 @@ if (selectedProject) {
                 
                 <div className="space-y-2">
                   {tender.handwerkers?.map((hw, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                    <div key={idx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3 bg-white/5 rounded-lg p-2 sm:p-3 hover:bg-white/10 transition-colors">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
                           {hw.company_name?.charAt(0) || '?'}
                         </div>
-                        <div>
-                          <span className="text-white font-medium block">{hw.company_name}</span>
-                          <span className="text-xs text-gray-400">{hw.email}</span>
+                        <div className="min-w-0">
+                          <span className="text-white font-medium block text-sm sm:text-base truncate">{hw.company_name}</span>
+                          <span className="text-xs text-gray-400 truncate block">{hw.email}</span>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap pl-10 sm:pl-0">
                         {hw.offer_id && (
-                          <span className="text-xs bg-green-600 text-green-200 px-3 py-1 rounded-full font-semibold">
-                            ✔ Angebot abgegeben
+                          <span className="text-xs bg-green-600 text-green-200 px-2 sm:px-3 py-1 rounded-full font-semibold">
+                            ✔ Angebot
                           </span>
                         )}
                         {!hw.offer_id && hw.status === 'in_progress' && (
-                          <span className="text-xs bg-yellow-600 text-yellow-200 px-3 py-1 rounded-full">
+                          <span className="text-xs bg-yellow-600 text-yellow-200 px-2 sm:px-3 py-1 rounded-full">
                             In Bearbeitung
                           </span>
                         )}
                         {!hw.offer_id && hw.status === 'viewed' && (
-                          <span className="text-xs bg-blue-600 text-blue-200 px-3 py-1 rounded-full">
+                          <span className="text-xs bg-blue-600 text-blue-200 px-2 sm:px-3 py-1 rounded-full">
                             Angesehen
                           </span>
                         )}
                         {!hw.offer_id && hw.status === 'sent' && (
-                          <span className="text-xs bg-gray-600 text-gray-200 px-3 py-1 rounded-full">
+                          <span className="text-xs bg-gray-600 text-gray-200 px-2 sm:px-3 py-1 rounded-full">
                             Versendet
                           </span>
                         )}
                         
                         {hw.viewed_at && (
-                          <span className="text-xs text-gray-400 ml-2">
+                          <span className="text-xs text-gray-400">
                             📅 {new Date(hw.viewed_at).toLocaleDateString('de-DE')}
                           </span>
                         )}
@@ -2851,15 +2855,15 @@ if (selectedProject) {
     ) : (
       <div className="space-y-6">
        {offers.filter(o => (o.status === 'preliminary' || o.status === 'confirmed') && o.status !== 'accepted').map((offer, idx) => (
-          <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-white mb-2">
+          <div key={idx} className="bg-white/5 rounded-lg p-4 sm:p-6 border border-white/10">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4 mb-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
                   {offer.tradeName || offer.trade_name || offer.trade}
                 </h3>
                 
-                <div className="flex items-center gap-3 mb-2">
-                <p className="text-gray-300">{offer.companyName || offer.company_name}</p>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                <p className="text-gray-300 text-sm sm:text-base">{offer.companyName || offer.company_name}</p>
 
                  {/* NEU: Bewertungs-Anzeige HIER einfügen */}
       <HandwerkerRatingDisplay 
@@ -2871,20 +2875,20 @@ if (selectedProject) {
                 {/* Status Badge */}
                 <div className="mt-2">
                   {offer.status === 'preliminary' && !offer.offer_confirmed_at && (
-                    <span className="inline-block px-3 py-1 bg-yellow-500/20 text-yellow-300 text-sm rounded-full">
-                      ⏳ Warte auf Angebotsbestätigung nach Ortstermin
+                    <span className="inline-block px-2 sm:px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs sm:text-sm rounded-full">
+                      ⏳ Warte auf Angebotsbestätigung
                     </span>
                   )}
                   {offer.status === 'confirmed' && (
-                    <span className="inline-block px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
+                    <span className="inline-block px-2 sm:px-3 py-1 bg-green-500/20 text-green-300 text-xs sm:text-sm rounded-full">
                       ✓ Angebot verbindlich bestätigt 
                     </span>
                   )}
                 </div>
               </div>
               
-              <div className="text-right ml-6">
-  <p className="text-sm text-gray-400 mb-1">
+              <div className="text-left sm:text-right flex-shrink-0">
+  <p className="text-xs sm:text-sm text-gray-400 mb-1">
     {offer.bundle_discount > 0 ? (
   <>
     Netto: {formatCurrency(offer.amount)}
@@ -2899,7 +2903,7 @@ if (selectedProject) {
   </>
 )}
   </p>
-  <p className="text-xs text-gray-400 mb-3">
+  <p className="text-xs text-gray-400 mb-2 sm:mb-3">
     Brutto (inkl. 19% MwSt.)
   </p>
                 <p className="text-xs text-gray-400">
@@ -2910,9 +2914,9 @@ if (selectedProject) {
             </div>
             
             {/* Kontaktdaten */}
-            <div className="bg-white/10 rounded-lg p-4 mb-4">
-              <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Handwerker</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-white/10 rounded-lg p-3 sm:p-4 mb-4">
+              <h4 className="text-xs sm:text-sm font-semibold text-white mb-2 sm:mb-3">📞 Kontaktdaten Handwerker</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                 <div className="text-gray-300">
                   <p><strong className="text-white">Firma:</strong> {offer.companyName || offer.company_name}</p>
                   <p className="mt-1"><strong className="text-white">Telefon:</strong> {offer.phone || offer.handwerker_phone || 'Nicht verfügbar'}</p>
@@ -2925,17 +2929,17 @@ if (selectedProject) {
             </div>
             
             {/* Ortstermin-Sektion */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
-              <div className="flex justify-between items-center">
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 sm:p-4 mb-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div className="flex-1">
-                  <h4 className="text-white font-semibold mb-2">📅 Ortstermin vereinbaren</h4>
-                  <p className="text-blue-200 text-sm">
-                    Vereinbaren Sie einen Ortstermin mit dem Handwerker zur Angebotsfinalisierung
+                  <h4 className="text-white font-semibold text-sm sm:text-base mb-1 sm:mb-2">📅 Ortstermin vereinbaren</h4>
+                  <p className="text-blue-200 text-xs sm:text-sm">
+                    Vereinbaren Sie einen Ortstermin mit dem Handwerker
                   </p>
                 </div>
                 <button
                   onClick={() => navigate(`/ortstermin/${offer.id}`)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold whitespace-nowrap ml-4"
+                  className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold whitespace-nowrap text-sm sm:text-base"
                 >
                   Zur Terminvereinbarung →
                 </button>
@@ -2975,13 +2979,13 @@ if (selectedProject) {
             />
             
             {/* Aktionsbuttons */}
-<div className="flex flex-wrap gap-3">
+<div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
   {/* Angebot ansehen */}
   <button
     onClick={() => navigate(`/project/${selectedProject.id}/offer/${offer.id}`)}
-    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+    className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm"
   >
-    📋 Angebot im Detail ansehen
+    📋 Angebot ansehen
   </button>
   
   {/* PHASE 2: Verbindlich beauftragen - nur wenn bestätigt */}
@@ -3074,13 +3078,13 @@ if (selectedProject) {
     <h2 className="text-2xl font-bold text-white mb-6">Erteilte Aufträge / Werkverträge</h2>
 
     {orders.length > 0 && (
-  <div className="mb-8 p-6 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-lg">
-    <div className="flex justify-between items-center">
+  <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-lg">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
       <div>
-        <h3 className="text-white font-semibold text-lg mb-1">Gesamtsumme aller Aufträge</h3>
-        <p className="text-gray-400 text-sm">{orders.length} Auftrag{orders.length !== 1 ? 'e' : ''} insgesamt</p>
+        <h3 className="text-white font-semibold text-base sm:text-lg mb-1">Gesamtsumme aller Aufträge</h3>
+        <p className="text-gray-400 text-xs sm:text-sm">{orders.length} Auftrag{orders.length !== 1 ? 'e' : ''}</p>
       </div>
-      <div className="text-right">
+      <div className="text-left sm:text-right">
         {/* ✅ NEU: Berechne mit Nachträgen */}
         {(() => {
           const totalNetto = orders.reduce((sum, o) => {
@@ -3092,11 +3096,11 @@ if (selectedProject) {
           
           return (
             <>
-              <p className="text-sm text-gray-400 mb-1">Netto (inkl. Nachträge): {formatCurrency(totalNetto)}</p>
-              <p className="text-3xl font-bold text-purple-300">
+              <p className="text-xs sm:text-sm text-gray-400 mb-1">Netto (inkl. NT): {formatCurrency(totalNetto)}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-purple-300">
                 {formatCurrency(totalBrutto)}
               </p>
-              <p className="text-xs text-gray-400 mt-1">Brutto (inkl. 19% MwSt. & Nachträge)</p>
+              <p className="text-xs text-gray-400 mt-1">Brutto (inkl. MwSt. & NT)</p>
             </>
           );
         })()}
@@ -3158,92 +3162,91 @@ if (selectedProject) {
   const approvedNachtraege = totalsData ? totalsData.approvedCount : 0;
   
   return (
-  <div key={idx} className="bg-white/5 rounded-lg p-6 border border-white/10">
-    <div className="flex justify-between items-start mb-4">
-      <div className="flex-1">
-        <div className="flex items-center gap-3 mb-2">
-          <h3 className="text-xl font-semibold text-white">{order.trade_name}</h3>
-          <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full">
-            Werkvertrag nach VOB/B
+  <div key={idx} className="bg-white/5 rounded-lg p-4 sm:p-6 border border-white/10">
+    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <h3 className="text-lg sm:text-xl font-semibold text-white">{order.trade_name}</h3>
+          <span className="px-2 sm:px-3 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+            VOB/B
           </span>
           {/* Badges */}
           {pendingCount > 0 && (
-            <span className="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-sm rounded-full animate-pulse">
-              {pendingCount} Nachtrag{pendingCount > 1 ? 'e' : ''} zu prüfen
+            <span className="px-2 sm:px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full animate-pulse">
+              {pendingCount} NT zu prüfen
             </span>
           )}
           {approvedNachtraege > 0 && (
-            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded-full">
+            <span className="px-2 sm:px-3 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
               {approvedNachtraege} NT beauftragt
             </span>
           )}
         </div>
         
-        <div className="flex items-center gap-3 mb-2">
-          <p className="text-gray-300">{order.company_name}</p>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+          <p className="text-gray-300 text-sm sm:text-base">{order.company_name}</p>
           <HandwerkerRatingDisplay 
             handwerkerId={order.handwerker_id}
             companyName={order.company_name}
           />
         </div>
         
-        <p className="text-sm text-gray-400">
+        <p className="text-xs sm:text-sm text-gray-400">
           Beauftragt: {new Date(order.created_at).toLocaleDateString('de-DE')} | 
-          Auftrags-Nr: #{order.id}
+          Nr: #{order.id}
         </p>
         
         {/* NEU: Kontaktdaten Handwerker */}
-        <div className="mt-4 bg-white/10 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-white mb-3">📞 Kontaktdaten Handwerker</h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="mt-3 sm:mt-4 bg-white/10 rounded-lg p-3 sm:p-4">
+          <h4 className="text-xs sm:text-sm font-semibold text-white mb-2 sm:mb-3">📞 Kontaktdaten</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
             <div className="text-gray-300">
               <p><strong className="text-white">Firma:</strong> {order.company_name}</p>
-              <p className="mt-1"><strong className="text-white">Telefon:</strong> {order.handwerker_phone || 'Nicht verfügbar'}</p>
+              <p className="mt-1"><strong className="text-white">Tel:</strong> {order.handwerker_phone || 'N/A'}</p>
             </div>
             <div className="text-gray-300">
-              <p><strong className="text-white">E-Mail:</strong> {order.handwerker_email || 'Nicht verfügbar'}</p>
-              <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.handwerker_address || 'Auf Anfrage'}</p>
+              <p><strong className="text-white">E-Mail:</strong> {order.handwerker_email || 'N/A'}</p>
+              <p className="mt-1"><strong className="text-white">Adresse:</strong> {order.handwerker_address || 'N/A'}</p>
             </div>
           </div>
         </div>
         
         {/* Ausführungstermine */}
-        <div className="mt-3 p-3 bg-teal-500/10 rounded border border-teal-500/30">
-          <p className="text-teal-300 text-sm">
-            <strong>📅 Ausführungszeitraum:</strong><br />
-            {new Date(order.execution_start).toLocaleDateString('de-DE')} bis {new Date(order.execution_end).toLocaleDateString('de-DE')}
+        <div className="mt-3 p-2 sm:p-3 bg-teal-500/10 rounded border border-teal-500/30">
+          <p className="text-teal-300 text-xs sm:text-sm">
+            <strong>📅 Ausführung:</strong> {new Date(order.execution_start).toLocaleDateString('de-DE')} - {new Date(order.execution_end).toLocaleDateString('de-DE')}
           </p>
         </div>
       </div>
         
         {/* ✅ ANGEPASST: Preisanzeige mit Nachträgen */}
-        <div className="text-right ml-6 min-w-[200px]">
+        <div className="text-left lg:text-right flex-shrink-0 w-full lg:w-auto lg:min-w-[180px]">
           {/* Original-Auftrag */}
-          <div className="mb-3 p-3 bg-white/5 rounded-lg">
+          <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-white/5 rounded-lg">
             <p className="text-xs text-gray-400 mb-1">Ursprungsauftrag Netto</p>
-            <p className="text-lg font-semibold text-gray-300">
+            <p className="text-base sm:text-lg font-semibold text-gray-300">
               {formatCurrency(parseFloat(order.amount) || 0)}
             </p>
           </div>
           
           {/* ✅ NEU: Nachträge falls vorhanden */}
           {nachtraegeSum > 0 && (
-            <div className="mb-3 p-3 bg-teal-500/10 border border-teal-500/30 rounded-lg">
+            <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-teal-500/10 border border-teal-500/30 rounded-lg">
               <p className="text-xs text-teal-400 mb-1">+ Nachträge</p>
-              <p className="text-lg font-semibold text-teal-400">
+              <p className="text-base sm:text-lg font-semibold text-teal-400">
                 {formatCurrency(nachtraegeSum)}
               </p>
             </div>
           )}
           
           {bundleDiscount > 0 && (
-            <div className="mb-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-              <p className="text-xs text-green-400 mb-1">📦 Bündelrabatt ({bundleDiscount}%)</p>
+            <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <p className="text-xs text-green-400 mb-1">📦 Rabatt ({bundleDiscount}%)</p>
               <p className="text-sm font-semibold text-green-400">
                 - {formatCurrency(discountAmount)}
               </p>
               <p className="text-xs text-gray-400 mt-1">Netto nach Rabatt</p>
-              <p className="text-lg font-bold text-white">
+              <p className="text-base sm:text-lg font-bold text-white">
                 {formatCurrency(nettoAfterDiscount)}
               </p>
             </div>
@@ -3281,26 +3284,28 @@ if (selectedProject) {
       )}
       
       {/* Werkvertrag-Aktionen - ✅ MIT NACHTRAGS-BUTTONS */}
-      <div className="border-t border-white/10 pt-4 mt-4">
-        <div className="flex gap-3 flex-wrap">
+      <div className="border-t border-white/10 pt-3 sm:pt-4 mt-3 sm:mt-4">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
           <button
             onClick={() => window.open(apiUrl(`/api/orders/${order.id}/contract-pdf`), '_blank')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center gap-2"
+            className="px-2 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
-            Werkvertrag als PDF
+            <span className="hidden sm:inline">Werkvertrag PDF</span>
+            <span className="sm:hidden">PDF</span>
           </button>
           
           <button
             onClick={() => navigate(`/bauherr/order/${order.id}/lv-details`)}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+            className="px-2 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            LV-Details ansehen
+            <span className="hidden sm:inline">LV-Details</span>
+            <span className="sm:hidden">LV</span>
           </button>
           
           <button
@@ -3308,24 +3313,26 @@ if (selectedProject) {
               setSelectedOrderId(order.id);
               setShowContractView(true);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+            className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Vertrag ansehen
+            <span className="hidden sm:inline">Vertrag</span>
+            <span className="sm:hidden">Vertrag</span>
           </button>
           
           {/* ✅ NEU: Nachträge einsehen Button (nur wenn Nachträge existieren) */}
           {(approvedNachtraege > 0 || pendingCount > 0) && (
             <button
               onClick={() => navigate(`/bauherr/auftrag/${order.id}/nachtraege`)}
-              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm flex items-center gap-2"
+              className="px-2 sm:px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Nachträge einsehen ({approvedNachtraege + pendingCount})
+              <span className="hidden sm:inline">Nachträge ({approvedNachtraege + pendingCount})</span>
+              <span className="sm:hidden">NT ({approvedNachtraege + pendingCount})</span>
             </button>
           )}
           
