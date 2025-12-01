@@ -26812,73 +26812,137 @@ await query(
       await transporter.sendMail({
         from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
         to: recipient_email,
-        subject: `Terminvorschlag für Ortstermin - ${offer.trade_name}`,
+        subject: `📅 Terminvorschlag für Ortstermin - ${offer.trade_name}`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-              <h1>Neuer Terminvorschlag</h1>
-            </div>
-            
-            <div style="padding: 30px; background: #f7f7f7;">
-              <p>Hallo ${recipient_name},</p>
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
               
-              <p><strong>${sender_name}</strong> hat einen Terminvorschlag für einen Ortstermin gemacht:</p>
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
+              </div>
               
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #667eea;">Termindetails:</h3>
-                <table style="width: 100%;">
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Datum/Zeit:</strong></td>
-                    <td>${new Date(proposed_date).toLocaleString('de-DE', {
+              <!-- Content -->
+              <div style="padding: 40px 30px;">
+                
+                <!-- Icon -->
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <div style="display: inline-block; background: rgba(20, 184, 166, 0.2); border-radius: 50%; padding: 20px;">
+                    <span style="font-size: 48px;">📅</span>
+                  </div>
+                </div>
+                
+                <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 10px;">
+                  Neuer Terminvorschlag
+                </h2>
+                <p style="color: #14b8a6; font-size: 16px; text-align: center; margin: 0 0 30px;">
+                  für Ihren Ortstermin
+                </p>
+                
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  Hallo <strong style="color: #ffffff;">${recipient_name}</strong>,
+                </p>
+                
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  <strong style="color: #ffffff;">${sender_name}</strong> hat einen Terminvorschlag für einen Ortstermin gemacht.
+                </p>
+                
+                <!-- Termin-Details Box -->
+                <div style="background: rgba(20, 184, 166, 0.1); border: 1px solid rgba(20, 184, 166, 0.3); border-radius: 12px; padding: 25px; margin: 25px 0;">
+                  <p style="margin: 0 0 20px; color: #14b8a6; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📋 Termindetails
+                  </p>
+                  
+                  <!-- Datum prominent -->
+                  <div style="text-align: center; padding: 15px; background: rgba(20, 184, 166, 0.15); border-radius: 8px; margin-bottom: 20px;">
+                    <span style="color: rgba(255,255,255,0.6); font-size: 13px; display: block; margin-bottom: 5px;">Datum & Uhrzeit</span>
+                    <span style="color: #ffffff; font-size: 18px; font-weight: 600;">${new Date(proposed_date).toLocaleString('de-DE', {
                       weekday: 'long',
-                      year: 'numeric',
+                      day: '2-digit',
                       month: 'long',
-                      day: 'numeric',
+                      year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Dauer:</strong></td>
-                    <td>${duration} Minuten</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
-                    <td>${offer.trade_name}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0;"><strong>Adresse:</strong></td>
-                    <td>${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</td>
-                  </tr>
-                  ${message ? `
-                  <tr>
-                    <td style="padding: 8px 0; vertical-align: top;"><strong>Nachricht:</strong></td>
-                    <td>${message}</td>
-                  </tr>
-                  ` : ''}
-                </table>
+                    })} Uhr</span>
+                  </div>
+                  
+                  <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Dauer</span>
+                    <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${duration} Minuten</span>
+                  </div>
+                  
+                  <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                    <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${offer.trade_name}</span>
+                  </div>
+                  
+                  <div style="padding: 12px 0;">
+                    <span style="color: rgba(255,255,255,0.6); font-size: 14px; display: block; margin-bottom: 5px;">Adresse</span>
+                    <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</span>
+                  </div>
+                </div>
+                
+                ${message ? `
+                <!-- Nachricht Box -->
+                <div style="background: rgba(14, 165, 233, 0.15); border-left: 4px solid #0ea5e9; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+                  <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
+                    💬 Nachricht
+                  </p>
+                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; font-style: italic;">
+                    "${message}"
+                  </p>
+                </div>
+                ` : ''}
+                
+                <!-- Aktion erforderlich -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
+                  <p style="margin: 0 0 5px; color: rgba(255,255,255,0.5); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Aktion erforderlich
+                  </p>
+                  <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 500;">
+                    Bestätigen Sie den Termin oder schlagen Sie eine Alternative vor
+                  </p>
+                </div>
+                
+                <!-- CTA Button -->
+                <div style="text-align: center; margin: 35px 0;">
+                  <a href="https://byndl.de/${recipient_type}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                    Termin beantworten →
+                  </a>
+                </div>
+                
+                <!-- Hinweis -->
+                <div style="background: rgba(251, 191, 36, 0.15); border-left: 4px solid #fbbf24; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+                  <p style="margin: 0 0 8px; color: #fbbf24; font-weight: 600; font-size: 14px;">
+                    ℹ️ Hinweis zur Vertragsanbahnung
+                  </p>
+                  <p style="margin: 0; color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.6;">
+                    Sie befinden sich in der Vertragsanbahnung. Die Kontaktdaten wurden bereits freigegeben und die 24-monatige Nachwirkfrist gemäß unseren AGB ist aktiv.
+                  </p>
+                </div>
+                
               </div>
               
-              <p><strong>Was möchten Sie tun?</strong></p>
-              <p>Bitte melden Sie sich in Ihrem Dashboard an, um den Termin zu bestätigen oder einen alternativen Termin vorzuschlagen.</p>
-              
-              <div style="text-align: center; margin-top: 30px;">
-                <a href="https://byndl.de/${recipient_type}/dashboard" 
-                   style="display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px;">
-                  Zum Dashboard →
-                </a>
+              <!-- Footer -->
+              <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                  Diese E-Mail wurde automatisch von byndl versendet.
+                </p>
+                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                  © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                </p>
               </div>
               
-              <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-                <strong>Hinweis:</strong> Sie befinden sich in der Vertragsanbahnung. 
-                Die Kontaktdaten wurden bereits freigegeben und die 24-monatige Nachwirkfrist gemäß unseren AGB ist aktiv.
-              </div>
             </div>
-            
-            <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; background: #e9ecef;">
-              <p>© 2025 byndl - Die digitale Handwerkerplattform</p>
-            </div>
-          </div>
+          </body>
+          </html>
         `
       });
       
