@@ -836,68 +836,109 @@ const verifyHandwerker = async (id, action, reason = '') => {
 
             {/* Projects Tab */}
 {activeTab === 'projects' && (
-  <div className="grid lg:grid-cols-2 gap-6">
-    <div>
-      <h2 className="text-2xl font-bold text-white mb-4">Projekte</h2>
-      <div className="space-y-3 max-h-[600px] overflow-y-auto">
-        {projects.map((project) => (
-          <div
-            key={project.id}
-            className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20 hover:bg-white/15 transition-colors"
+  <div className="space-y-6">
+    {/* Header mit Datumsfilter */}
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <h2 className="text-2xl font-bold text-white">Projekte ({projects.length})</h2>
+      
+      {/* Datumsfilter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="date"
+          value={dateFilterFrom}
+          onChange={(e) => setDateFilterFrom(e.target.value)}
+          className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+        />
+        <span className="text-white/50">bis</span>
+        <input
+          type="date"
+          value={dateFilterTo}
+          onChange={(e) => setDateFilterTo(e.target.value)}
+          className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+        />
+        {(dateFilterFrom || dateFilterTo) && (
+          <button
+            onClick={() => { setDateFilterFrom(''); setDateFilterTo(''); }}
+            className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm"
           >
-            <div 
-              className="flex justify-between items-start cursor-pointer"
-              onClick={() => fetchProjectDetails(project.id)}
-            >
-              <div className="flex-1">
-                <h3 className="font-semibold text-white">Projekt #{project.id}</h3>
-                <p className="text-white/70 text-sm mt-1">
-                  {project.category} {project.sub_category && `- ${project.sub_category}`}
-                </p>
-                <p className="text-white/50 text-xs mt-2">
-                  {project.trade_names || 'Keine Gewerke'}
-                </p>
-                {/* Zeitstempel hinzufügen */}
-                <p className="text-white/40 text-xs mt-1">
-                  Erstellt: {new Date(project.created_at).toLocaleDateString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-teal-400 text-sm">
-                  {project.budget ? `${project.budget.toLocaleString()} €` : 'Kein Budget'}
-                </span>
-                <div className="flex gap-2 mt-2 text-xs">
-                  <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
-                    {project.trade_count || 0} Gewerke
-                  </span>
-                  <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded">
-                    {project.lv_count || 0} LVs
-                  </span>
-                </div>
-              </div>
-            </div>
-            {/* Lösch-Button */}
-            <div className="mt-3 pt-3 border-t border-white/10">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteProject(project.id, project.description || 'Kein Beschreibung');
-                }}
-                className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded text-sm transition-colors"
-              >
-                🗑️ Projekt löschen
-              </button>
-            </div>
-          </div>
-        ))}
+            ✕ Reset
+          </button>
+        )}
       </div>
     </div>
+
+    <div className="grid lg:grid-cols-2 gap-6">
+      <div>
+        <div className="space-y-3 max-h-[600px] overflow-y-auto">
+          {projects
+            .filter(project => {
+              if (!dateFilterFrom && !dateFilterTo) return true;
+              const projectDate = new Date(project.created_at);
+              if (dateFilterFrom && projectDate < new Date(dateFilterFrom)) return false;
+              if (dateFilterTo && projectDate > new Date(dateFilterTo + 'T23:59:59')) return false;
+              return true;
+            })
+            .map((project) => (
+            <div
+              key={project.id}
+              className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20 hover:bg-white/15 transition-colors"
+            >
+              <div 
+                className="flex justify-between items-start cursor-pointer"
+                onClick={() => fetchProjectDetails(project.id)}
+              >
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white">Projekt #{project.id}</h3>
+                  <p className="text-white/70 text-sm mt-1">
+                    {project.category} {project.sub_category && `- ${project.sub_category}`}
+                  </p>
+                  <p className="text-white/50 text-xs mt-2">
+                    {project.trade_names || 'Keine Gewerke'}
+                  </p>
+                  {/* Zeitstempel hinzufügen */}
+                  <p className="text-white/40 text-xs mt-1">
+                    Erstellt: {new Date(project.created_at).toLocaleDateString('de-DE', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-teal-400 text-sm">
+                    {project.budget ? `${project.budget.toLocaleString()} €` : 'Kein Budget'}
+                  </span>
+                  <div className="flex gap-2 mt-2 text-xs">
+                    <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+                      {project.trade_count || 0} Gewerke
+                    </span>
+                    <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded">
+                      {project.lv_count || 0} LVs
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {/* Lösch-Button */}
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteProject(project.id, project.description || 'Kein Beschreibung');
+                  }}
+                  className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded text-sm transition-colors"
+                >
+                  🗑️ Projekt löschen
+                </button>
+              </div>
+            </div>
+          ))}
+          {projects.length === 0 && (
+            <p className="text-white/50 text-center py-8">Keine Projekte vorhanden</p>
+          )}
+        </div>
+      </div>
 
     <div>
       {projectDetails ? (
@@ -1068,10 +1109,46 @@ const verifyHandwerker = async (id, action, reason = '') => {
 
             {/* LVs Tab */}
             {activeTab === 'lvs' && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Leistungsverzeichnisse</h2>
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold text-white">Leistungsverzeichnisse ({lvs.length})</h2>
+                  
+                  {/* Datumsfilter */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={dateFilterFrom}
+                      onChange={(e) => setDateFilterFrom(e.target.value)}
+                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                    />
+                    <span className="text-white/50">bis</span>
+                    <input
+                      type="date"
+                      value={dateFilterTo}
+                      onChange={(e) => setDateFilterTo(e.target.value)}
+                      className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+                    />
+                    {(dateFilterFrom || dateFilterTo) && (
+                      <button
+                        onClick={() => { setDateFilterFrom(''); setDateFilterTo(''); }}
+                        className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm"
+                      >
+                        ✕ Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid gap-4">
-                  {lvs.map((lv) => (
+                  {lvs
+                    .filter(lv => {
+                      if (!dateFilterFrom && !dateFilterTo) return true;
+                      const lvDate = new Date(lv.created_at);
+                      if (dateFilterFrom && lvDate < new Date(dateFilterFrom)) return false;
+                      if (dateFilterTo && lvDate > new Date(dateFilterTo + 'T23:59:59')) return false;
+                      return true;
+                    })
+                    .map((lv) => (
                     <details key={`${lv.project_id}-${lv.trade_id}`} className="bg-white/10 backdrop-blur rounded-lg border border-white/20">
                       <summary className="p-4 cursor-pointer hover:bg-white/5 transition-colors">
                         <div className="flex justify-between items-start">
@@ -1080,6 +1157,9 @@ const verifyHandwerker = async (id, action, reason = '') => {
                               {lv.trade_name} - Projekt #{lv.project_id}
                             </h3>
                             <p className="text-white/70 text-sm mt-1">{lv.project_description}</p>
+                            <p className="text-white/50 text-xs mt-1">
+                              Erstellt: {lv.created_at ? new Date(lv.created_at).toLocaleDateString('de-DE') : '-'}
+                            </p>
                           </div>
                           <div className="text-right">
                             <p className="text-teal-400 font-semibold">
@@ -1118,6 +1198,9 @@ const verifyHandwerker = async (id, action, reason = '') => {
                       </div>
                     </details>
                   ))}
+                  {lvs.length === 0 && (
+                    <p className="text-white/50 text-center py-8">Keine LVs vorhanden</p>
+                  )}
                 </div>
               </div>
             )}
