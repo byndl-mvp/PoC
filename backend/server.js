@@ -18599,13 +18599,84 @@ app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
         await transporter.sendMail({
           from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
           to: offer.handwerker_email,
-          subject: `Verbindliches Angebot abgelehnt - ${offer.trade_name}`,
+          subject: `Verbindliches Angebot nicht angenommen - ${offer.trade_name}`,
           html: `
-            <h2>Ihr verbindliches Angebot wurde abgelehnt</h2>
-            <p>Sehr geehrte Damen und Herren,</p>
-            <p>Der Bauherr hat Ihr verbindliches Angebot für <strong>${offer.trade_name}</strong> leider abgelehnt.</p>
-            <p>Vielen Dank für Ihre Mühe und die Zeit, die Sie in dieses Projekt investiert haben.</p>
-            <p>Mit freundlichen Grüßen<br>Ihr byndl-Team</p>
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                  <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 40px 30px;">
+                  
+                  <!-- Icon -->
+                  <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="display: inline-block; background: rgba(239, 68, 68, 0.2); border-radius: 50%; padding: 20px;">
+                      <span style="font-size: 48px;">📋</span>
+                    </div>
+                  </div>
+                  
+                  <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 30px;">
+                    Verbindliches Angebot nicht angenommen
+                  </h2>
+                  
+                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                    Sehr geehrte Damen und Herren,
+                  </p>
+                  
+                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                    der Bauherr hat Ihr verbindliches Angebot für <strong style="color: #14b8a6;">${offer.trade_name}</strong> leider nicht angenommen.
+                  </p>
+                  
+                  <!-- Info Box -->
+                  <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0;">
+                    <div style="padding: 8px 0;">
+                      <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Gewerk</span>
+                      <p style="margin: 5px 0 0; color: #ffffff; font-size: 15px;">${offer.trade_name}</p>
+                    </div>
+                  </div>
+                  
+                  <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0;">
+                    Vielen Dank für Ihre Mühe und die Zeit, die Sie in dieses Projekt investiert haben.
+                  </p>
+                  
+                  <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
+                    Mit freundlichen Grüßen<br>
+                    <strong style="color: #14b8a6;">Ihr byndl-Team</strong>
+                  </p>
+                  
+                  <!-- CTA Button -->
+                  <div style="text-align: center; margin: 35px 0;">
+                    <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                      Zum Dashboard →
+                    </a>
+                  </div>
+                  
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                    Diese E-Mail wurde automatisch von byndl versendet.
+                  </p>
+                  <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                    © ${new Date().getFullYear()} byndl . einfach . bauen
+                  </p>
+                </div>
+                
+              </div>
+            </body>
+            </html>
           `
         });
       } catch (emailError) {
