@@ -1326,32 +1326,32 @@ const LVEditButton = ({ project }) => {
       { 
         step: 1, 
         label: 'Gewerke wählen', 
-        done: true,  // Immer grün
-        current: false 
+        done: true,
+        partial: false 
       },
       { 
         step: 2, 
         label: 'LVs erstellen', 
         done: allLvsDone,
-        current: completedLvs > 0 && !allLvsDone
+        partial: completedLvs > 0 && !allLvsDone
       },
       { 
         step: 3, 
         label: 'Ausschreiben', 
         done: allTendersDone,
-        current: hasTenders && !allTendersDone
+        partial: hasTenders && !allTendersDone
       },
       { 
         step: 4, 
         label: 'Angebote prüfen', 
         done: allOffersDone,
-        current: hasOffers && !allOffersDone
+        partial: hasOffers && !allOffersDone
       },
       { 
         step: 5, 
         label: 'Beauftragen', 
         done: allOrdersDone,
-        current: hasOrders && !allOrdersDone
+        partial: hasOrders && !allOrdersDone
       }
     ];
     
@@ -1365,20 +1365,36 @@ const LVEditButton = ({ project }) => {
             <div key={idx} className="flex flex-col items-center">
               <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-sm sm:text-base ${
                 step.done ? 'bg-green-500 text-white' :
-                step.current ? 'bg-yellow-500 text-white animate-pulse' :
+                step.partial ? 'bg-yellow-500 text-white' :
                 'bg-gray-600 text-gray-400'
               }`}>
                 {step.done ? '✔' : step.step}
               </div>
               <span className={`text-[9px] sm:text-xs mt-1 sm:mt-2 text-center leading-tight max-w-[60px] sm:max-w-none ${
                 step.done ? 'text-green-400' :
-                step.current ? 'text-yellow-400' :
+                step.partial ? 'text-yellow-400' :
                 'text-gray-500'
               }`}>
                 {step.label}
               </span>
             </div>
           ))}
+        </div>
+        
+        {/* Legende */}
+        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4 pt-4 border-t border-white/10">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span className="text-[10px] sm:text-xs text-gray-400">Abgeschlossen</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <span className="text-[10px] sm:text-xs text-gray-400">In Bearbeitung</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-gray-600"></div>
+            <span className="text-[10px] sm:text-xs text-gray-400">Ausstehend</span>
+          </div>
         </div>
         
         {completedLvs === 0 && (
