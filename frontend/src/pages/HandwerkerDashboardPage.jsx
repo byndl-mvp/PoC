@@ -1769,7 +1769,7 @@ const badgeCounts = {
           {orders.filter(order => order.status === 'completed').map((order, idx) => {
             // Nachträge-Daten für diesen Auftrag
             const totalsData = orderTotals[order.id];
-            const pendingCount = pendingNachtraege[order.id] || 0;
+            const pendingCount = totalsData?.pendingCount || 0;
             const approvedCount = totalsData?.approvedCount || 0;
             
             const netto = totalsData ? totalsData.totalNetto : (parseFloat(order.amount) || 0);
