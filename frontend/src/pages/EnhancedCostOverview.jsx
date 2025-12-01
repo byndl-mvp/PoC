@@ -107,8 +107,7 @@ export function EnhancedCostOverview({ projectId, apiUrl }) {
                   : 'bg-white/10 text-gray-400 hover:bg-white/20'
               }`}
             >
-              <span className="hidden sm:inline">Nachträge</span>
-              <span className="sm:hidden">NT</span>
+              Nachträge
               {pendingCount > 0 && (
                 <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-[10px] sm:text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                   {pendingCount}
