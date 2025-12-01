@@ -33270,12 +33270,13 @@ app.get('/api/admin/projects', requireAdmin, async (req, res) => {
 
 app.get('/api/admin/projects/detailed', requireAdmin, async (req, res) => {
   try {
-    const { from, to, limit = 10 } = req.query;
+    const { from, to } = req.query;
     
     let dateFilter = '';
     const params = [];
     let paramIndex = 1;
     
+    // Wenn Datumsfilter gesetzt, diese anwenden
     if (from) {
       dateFilter += ` AND p.created_at >= $${paramIndex}`;
       params.push(from);
@@ -33287,7 +33288,13 @@ app.get('/api/admin/projects/detailed', requireAdmin, async (req, res) => {
       paramIndex++;
     }
     
-    params.push(parseInt(limit) || 10);
+    // Limit nur wenn KEIN Datumsfilter gesetzt ist
+    const hasDateFilter = from || to;
+    let limitClause = '';
+    if (!hasDateFilter) {
+      params.push(10);
+      limitClause = `LIMIT $${paramIndex}`;
+    }
     
     const result = await query(`
       SELECT 
@@ -33323,7 +33330,7 @@ app.get('/api/admin/projects/detailed', requireAdmin, async (req, res) => {
       ) lc ON true
       WHERE 1=1 ${dateFilter}
       ORDER BY p.created_at DESC
-      LIMIT $${paramIndex}
+      ${limitClause}
     `, params);
     
     res.json({ projects: result.rows });
