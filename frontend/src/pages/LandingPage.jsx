@@ -549,8 +549,11 @@ export default function LandingPage() {
                 <div className="bg-white/10 rounded-xl p-4 sm:p-6 text-left">
                   <h4 className="text-white font-semibold mb-3 text-center">Was ist ein Leistungsverzeichnis (LV)?</h4>
                   <p className="text-gray-300 text-sm sm:text-base">
-                    Für jedes Gewerk Ihres Projekts erstellt unsere KI ein professionelles Leistungsverzeichnis. 
-                    Ein typisches Badezimmer-Projekt könnte z.B. 3-4 LVs umfassen: Sanitär, Fliesen, Elektro, Maler.
+                    Ein LV ist eine detaillierte Auflistung aller Arbeiten, die durchgeführt werden sollen. 
+                    Jede Position beschreibt eine konkrete Leistung mit Menge, Einheit und Preis. 
+                    Unsere KI analysiert Ihre Eingaben und generiert für jedes Gewerk einen spezifischen Fragenkatalog, 
+                    um alle wesentlichen Details zu erfassen, die für ein technisch fachgerechtes LV erforderlich sind. 
+                    Sie benötigen dabei keinerlei Fachwissen, um Ihr Bauvorhaben professionell auszuschreiben und vergleichbare Angebote zu erhalten.
                   </p>
                 </div>
               </div>
