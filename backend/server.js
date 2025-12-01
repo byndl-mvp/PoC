@@ -33265,6 +33265,75 @@ app.get('/api/admin/projects', requireAdmin, async (req, res) => {
 });
 
 // ===========================================================================
+// PROJECTS - OPTIMIERT mit Pagination und Datumsfilter
+// ===========================================================================
+
+app.get('/api/admin/projects/detailed', requireAdmin, async (req, res) => {
+  try {
+    const { from, to, limit = 10 } = req.query;
+    
+    let dateFilter = '';
+    const params = [];
+    let paramIndex = 1;
+    
+    if (from) {
+      dateFilter += ` AND p.created_at >= $${paramIndex}`;
+      params.push(from);
+      paramIndex++;
+    }
+    if (to) {
+      dateFilter += ` AND p.created_at <= $${paramIndex}::date + INTERVAL '1 day'`;
+      params.push(to);
+      paramIndex++;
+    }
+    
+    params.push(parseInt(limit) || 10);
+    
+    const result = await query(`
+      SELECT 
+        p.id,
+        p.bauherr_id,
+        p.description,
+        p.category,
+        p.sub_category,
+        p.status,
+        p.budget,
+        p.zip_code,
+        p.city,
+        p.created_at,
+        b.name as bauherr_name,
+        b.email as bauherr_email,
+        COALESCE(tc.trade_count, 0) as trade_count,
+        COALESCE(lc.lv_count, 0) as lv_count,
+        tc.trade_names
+      FROM projects p
+      LEFT JOIN bauherren b ON b.id = p.bauherr_id
+      LEFT JOIN LATERAL (
+        SELECT 
+          COUNT(DISTINCT pt.trade_id) as trade_count,
+          STRING_AGG(DISTINCT t.name, ', ') as trade_names
+        FROM project_trades pt
+        LEFT JOIN trades t ON t.id = pt.trade_id
+        WHERE pt.project_id = p.id
+      ) tc ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) as lv_count
+        FROM lvs l
+        WHERE l.project_id = p.id
+      ) lc ON true
+      WHERE 1=1 ${dateFilter}
+      ORDER BY p.created_at DESC
+      LIMIT $${paramIndex}
+    `, params);
+    
+    res.json({ projects: result.rows });
+  } catch (err) {
+    console.error('Failed to fetch projects:', err);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+// ===========================================================================
 // PAYMENT MANAGEMENT
 // ===========================================================================
 
