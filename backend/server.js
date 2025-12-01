@@ -33385,6 +33385,10 @@ app.put('/api/admin/verifications/:id', requireAdmin, async (req, res) => {
 // ORDER MANAGEMENT
 // ===========================================================================
 
+// ===========================================================================
+// ORDERS - KOMPLETT mit allen Details inkl. LV
+// ===========================================================================
+
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
   try {
     const result = await query(`
@@ -33421,6 +33425,8 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
         -- Gewerk
         t.name as trade_name,
         t.code as trade_code,
+        -- LV-Daten aus dem Offer
+        of.lv_data,
         -- Nachträge-Summen
         (SELECT COUNT(*) FROM nachtraege n WHERE n.order_id = o.id) as nachtraege_count,
         (SELECT COUNT(*) FROM nachtraege n WHERE n.order_id = o.id AND n.status = 'approved') as nachtraege_approved,
@@ -33431,6 +33437,7 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
       LEFT JOIN handwerker h ON h.id = o.handwerker_id
       LEFT JOIN bauherren b ON b.id = o.bauherr_id
       LEFT JOIN trades t ON t.id = o.trade_id
+      LEFT JOIN offers of ON of.id = o.offer_id
       ORDER BY o.created_at DESC
     `);
     
@@ -33502,8 +33509,6 @@ app.get('/api/admin/offers', requireAdmin, async (req, res) => {
         o.id,
         o.tender_id,
         o.handwerker_id,
-        o.project_id,
-        o.trade_id,
         o.status,
         o.amount,
         o.lv_data,
@@ -33514,6 +33519,8 @@ app.get('/api/admin/offers', requireAdmin, async (req, res) => {
         t.estimated_value as ki_schaetzung,
         t.deadline as tender_deadline,
         t.status as tender_status,
+        t.project_id,
+        t.trade_id,
         -- Projekt-Infos
         p.description as project_description,
         p.category as project_category,
@@ -33536,10 +33543,10 @@ app.get('/api/admin/offers', requireAdmin, async (req, res) => {
         END as abweichung_prozent
       FROM offers o
       LEFT JOIN tenders t ON t.id = o.tender_id
-      LEFT JOIN projects p ON p.id = o.project_id
+      LEFT JOIN projects p ON p.id = t.project_id
       LEFT JOIN handwerker h ON h.id = o.handwerker_id
       LEFT JOIN bauherren b ON b.id = p.bauherr_id
-      LEFT JOIN trades tr ON tr.id = o.trade_id
+      LEFT JOIN trades tr ON tr.id = t.trade_id
       ORDER BY o.created_at DESC
     `);
     
@@ -33562,7 +33569,6 @@ app.get('/api/admin/nachtraege', requireAdmin, async (req, res) => {
         n.order_id,
         n.nachtrag_number,
         n.reason,
-        n.description,
         n.amount,
         n.status,
         n.submitted_at,
@@ -33572,6 +33578,8 @@ app.get('/api/admin/nachtraege', requireAdmin, async (req, res) => {
         -- Order-Infos
         o.amount as order_amount,
         o.status as order_status,
+        o.trade_id,
+        o.project_id,
         -- Projekt-Infos
         p.description as project_description,
         p.zip_code as project_zip,
@@ -33743,7 +33751,7 @@ app.get('/api/admin/orders/:orderId/contract-pdf', requireAdmin, async (req, res
 });
 
 // ===========================================================================
-// TENDERS - ERWEITERT mit allen Details
+// TENDERS - ERWEITERT mit allen Details inkl. LV
 // ===========================================================================
 
 app.get('/api/admin/tenders', requireAdmin, async (req, res) => {
@@ -33757,6 +33765,7 @@ app.get('/api/admin/tenders', requireAdmin, async (req, res) => {
         t.deadline,
         t.estimated_value,
         t.timeframe,
+        t.lv_data,
         t.created_at,
         -- Projekt-Infos
         p.description as project_description,
