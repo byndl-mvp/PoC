@@ -33571,6 +33571,7 @@ app.get('/api/admin/nachtraege', requireAdmin, async (req, res) => {
         n.reason,
         n.amount,
         n.status,
+        n.lv_data,
         n.submitted_at,
         n.created_at,
         -- Order-Infos
