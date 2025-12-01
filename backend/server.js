@@ -33632,7 +33632,7 @@ app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
         ELSE NULL END) as max_abweichung
       FROM offers o
       JOIN tenders t ON t.id = o.tender_id
-      JOIN trades tr ON tr.id = o.trade_id
+      JOIN trades tr ON tr.id = t.trade_id
       WHERE t.estimated_value > 0 AND o.amount > 0
       GROUP BY tr.id, tr.name, tr.code
       ORDER BY offer_count DESC
