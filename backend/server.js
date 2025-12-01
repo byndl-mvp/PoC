@@ -33696,79 +33696,127 @@ async function sendOrderReminders() {
             to: order.handwerker_email,
             subject: `🔔 Erinnerung: Auftrag "${order.trade_name}" startet morgen`,
             html: `
-              <!doctype html>
+              <!DOCTYPE html>
               <html>
               <head>
-                <style>
-                  body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                  .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                  .header { background: linear-gradient(135deg, #14b8a6, #0ea5e9); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
-                  .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-                  .info-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                  .info-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
-                  .info-table td:first-child { font-weight: bold; color: #64748b; width: 40%; }
-                  .highlight { background: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0; }
-                  .btn { display: inline-block; background: #14b8a6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; }
-                  .footer { background: #1e293b; color: #94a3b8; padding: 20px; text-align: center; border-radius: 0 0 12px 12px; font-size: 14px; }
-                </style>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
               </head>
-              <body>
-                <div class="container">
-                  <div class="header">
-                    <h1 style="margin:0;">📅 Auftrag startet morgen!</h1>
+              <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+                <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                  
+                  <!-- Header -->
+                  <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                    <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
                   </div>
-                  <div class="content">
-                    <p>Guten Tag ${order.contact_person || order.company_name},</p>
+                  
+                  <!-- Content -->
+                  <div style="padding: 40px 30px;">
                     
-                    <div class="highlight">
-                      <strong>⏰ Ihr Auftrag startet morgen am ${new Date(order.execution_start).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</strong>
+                    <!-- Icon -->
+                    <div style="text-align: center; margin-bottom: 30px;">
+                      <div style="display: inline-block; background: rgba(251, 191, 36, 0.2); border-radius: 50%; padding: 20px;">
+                        <span style="font-size: 48px;">🔔</span>
+                      </div>
                     </div>
                     
-                    <table class="info-table">
-                      <tr>
-                        <td>Gewerk:</td>
-                        <td><strong>${order.trade_name}</strong></td>
-                      </tr>
-                      <tr>
-                        <td>Projekt:</td>
-                        <td>${order.project_description || 'Bauprojekt'}</td>
-                      </tr>
-                      <tr>
-                        <td>Adresse:</td>
-                        <td>${order.street} ${order.house_number}<br>${order.zip_code} ${order.city}</td>
-                      </tr>
-                      <tr>
-                        <td>Bauherr:</td>
-                        <td>${order.bauherr_name}</td>
-                      </tr>
-                      <tr>
-                        <td>Telefon Bauherr:</td>
-                        <td>${order.bauherr_phone || 'Nicht angegeben'}</td>
-                      </tr>
-                      <tr>
-                        <td>Ausführungszeitraum:</td>
-                        <td>${new Date(order.execution_start).toLocaleDateString('de-DE')} - ${new Date(order.execution_end).toLocaleDateString('de-DE')}</td>
-                      </tr>
-                      <tr>
-                        <td>Auftragswert:</td>
-                        <td><strong>${formatCurrency(order.amount)}</strong> (Netto)</td>
-                      </tr>
-                    </table>
+                    <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 10px;">
+                      Auftrag startet morgen!
+                    </h2>
+                    <p style="color: #fbbf24; font-size: 16px; text-align: center; margin: 0 0 30px;">
+                      Erinnerung an Ihren anstehenden Auftrag
+                    </p>
                     
-                    <p>Bitte stellen Sie sicher, dass Sie pünktlich vor Ort sind und alle notwendigen Materialien und Werkzeuge dabei haben.</p>
+                    <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                      Guten Tag <strong style="color: #ffffff;">${order.contact_person || order.company_name}</strong>,
+                    </p>
                     
-                    <center>
-                      <a href="https://byndl.de/handwerker/order/${order.order_id}/lv-details" class="btn">
-                        📋 Auftragsdetails ansehen
+                    <!-- Datum prominent -->
+                    <div style="background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
+                      <p style="margin: 0 0 5px; color: rgba(255,255,255,0.6); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        ⏰ Starttermin
+                      </p>
+                      <p style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">
+                        ${new Date(order.execution_start).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                    
+                    <!-- Auftragsdetails Box -->
+                    <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin: 25px 0;">
+                      <p style="margin: 0 0 20px; color: #14b8a6; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        📋 Auftragsdetails
+                      </p>
+                      
+                      <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                        <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${order.trade_name}</span>
+                      </div>
+                      
+                      <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Projekt</span>
+                        <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.project_description || 'Bauprojekt'}</span>
+                      </div>
+                      
+                      <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 14px; display: block; margin-bottom: 5px;">Adresse</span>
+                        <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.street} ${order.house_number}, ${order.zip_code} ${order.city}</span>
+                      </div>
+                      
+                      <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Bauherr</span>
+                        <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.bauherr_name}</span>
+                      </div>
+                      
+                      <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Telefon Bauherr</span>
+                        <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.bauherr_phone || 'Nicht angegeben'}</span>
+                      </div>
+                      
+                      <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Ausführungszeitraum</span>
+                        <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${new Date(order.execution_start).toLocaleDateString('de-DE')} – ${new Date(order.execution_end).toLocaleDateString('de-DE')}</span>
+                      </div>
+                      
+                      <div style="padding: 12px 0; display: flex; justify-content: space-between;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Auftragswert</span>
+                        <span style="color: #22c55e; font-size: 18px; font-weight: 700;">${formatCurrency(order.amount)} <span style="font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.5);">(Netto)</span></span>
+                      </div>
+                    </div>
+                    
+                    <!-- Hinweis -->
+                    <div style="background: rgba(14, 165, 233, 0.15); border-left: 4px solid #0ea5e9; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+                      <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
+                        💡 Zur Erinnerung
+                      </p>
+                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6;">
+                        Bitte stellen Sie sicher, dass Sie pünktlich vor Ort sind und alle notwendigen Materialien und Werkzeuge dabei haben.
+                      </p>
+                    </div>
+                    
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin: 35px 0;">
+                      <a href="https://byndl.de/handwerker/order/${order.order_id}/lv-details" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                        📋 Auftragsdetails ansehen →
                       </a>
-                    </center>
+                    </div>
                     
-                    <p style="margin-top: 30px;">Viel Erfolg bei der Ausführung!</p>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0 0; text-align: center;">
+                      Viel Erfolg bei der Ausführung!
+                    </p>
+                    
                   </div>
-                  <div class="footer">
-                    <p>Diese E-Mail wurde automatisch von byndl versendet.</p>
-                    <p>© ${new Date().getFullYear()} byndl - Ihre Handwerker-Plattform</p>
+                  
+                  <!-- Footer -->
+                  <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                    <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                      Diese E-Mail wurde automatisch von byndl versendet.
+                    </p>
+                    <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                      © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                    </p>
                   </div>
+                  
                 </div>
               </body>
               </html>
