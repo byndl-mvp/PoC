@@ -21654,48 +21654,123 @@ for (const otherOffer of otherOffers.rows) {
         await transporter.sendMail({
           from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
           to: offer.handwerker_email,
-          subject: `Auftrag erteilt - ${offer.trade_name}`,
+          subject: `🎉 Auftrag erteilt - ${offer.trade_name}`,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-                <h1>🎉 Auftrag erteilt!</h1>
-              </div>
-              
-              <div style="padding: 30px; background: #f7f7f7;">
-                <p>Sehr geehrte Damen und Herren,</p>
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
                 
-                <p><strong>${offer.bauherr_name}</strong> hat Ihnen den Auftrag für <strong>${offer.trade_name}</strong> verbindlich erteilt.</p>
-                
-                <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <h3 style="color: #10b981;">Auftragsdetails:</h3>
-                  <table style="width: 100%;">
-                    <tr>
-                      <td style="padding: 8px 0;"><strong>Auftragssumme:</strong></td>
-                      <td style="text-align: right;">${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0;"><strong>Ausführung:</strong></td>
-                      <td style="text-align: right;">${new Date(offer.execution_start).toLocaleDateString('de-DE')} - ${new Date(offer.execution_end).toLocaleDateString('de-DE')}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0;"><strong>Projekt:</strong></td>
-                      <td style="text-align: right;">${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0;"><strong>Auftrags-Nr:</strong></td>
-                      <td style="text-align: right;">#${orderId}</td>
-                    </tr>
-                  </table>
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                  <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
                 </div>
                 
-                <div style="text-align: center; margin-top: 30px;">
-                  <a href="https://byndl.de/handwerker/dashboard" 
-                     style="display: inline-block; padding: 12px 30px; background: #10b981; color: white; text-decoration: none; border-radius: 5px;">
-                    Zum Dashboard →
-                  </a>
+                <!-- Content -->
+                <div style="padding: 40px 30px;">
+                  
+                  <!-- Icon -->
+                  <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="display: inline-block; background: rgba(34, 197, 94, 0.2); border-radius: 50%; padding: 20px;">
+                      <span style="font-size: 48px;">🎉</span>
+                    </div>
+                  </div>
+                  
+                  <h2 style="color: #ffffff; font-size: 28px; font-weight: 700; text-align: center; margin: 0 0 10px;">
+                    Auftrag erteilt!
+                  </h2>
+                  <p style="color: #22c55e; font-size: 16px; text-align: center; margin: 0 0 30px;">
+                    Herzlichen Glückwunsch zum neuen Auftrag
+                  </p>
+                  
+                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
+                    Sehr geehrte Damen und Herren,
+                  </p>
+                  
+                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                    <strong style="color: #ffffff;">${offer.bauherr_name}</strong> hat Ihnen den Auftrag für <strong style="color: #14b8a6;">${offer.trade_name}</strong> verbindlich erteilt.
+                  </p>
+                  
+                  <!-- Auftragsdetails Box -->
+                  <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 25px; margin: 25px 0;">
+                    <p style="margin: 0 0 20px; color: #22c55e; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                      📋 Auftragsdetails
+                    </p>
+                    
+                    <!-- Auftragssumme prominent -->
+                    <div style="text-align: center; padding: 15px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; margin-bottom: 20px;">
+                      <span style="color: rgba(255,255,255,0.6); font-size: 13px; display: block; margin-bottom: 5px;">Auftragssumme</span>
+                      <span style="color: #22c55e; font-size: 28px; font-weight: 700;">${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</span>
+                    </div>
+                    
+                    <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                      <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Auftrags-Nr.</span>
+                      <span style="color: #ffffff; font-size: 15px; font-weight: 600;">#${orderId}</span>
+                    </div>
+                    
+                    <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                      <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                      <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${offer.trade_name}</span>
+                    </div>
+                    
+                    <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                      <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Ausführungszeitraum</span>
+                      <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${new Date(offer.execution_start).toLocaleDateString('de-DE')} – ${new Date(offer.execution_end).toLocaleDateString('de-DE')}</span>
+                    </div>
+                    
+                    <div style="padding: 12px 0;">
+                      <span style="color: rgba(255,255,255,0.6); font-size: 14px; display: block; margin-bottom: 5px;">Projektadresse</span>
+                      <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Nächste Schritte -->
+                  <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0;">
+                    <p style="margin: 0 0 15px; color: rgba(255,255,255,0.5); font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                      Nächste Schritte
+                    </p>
+                    
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
+                      <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">1</span>
+                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Kontaktieren Sie den Bauherren zur Terminabstimmung</p>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
+                      <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">2</span>
+                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Führen Sie die Arbeiten gemäß Leistungsverzeichnis aus</p>
+                    </div>
+                    <div style="display: flex; align-items: flex-start;">
+                      <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">3</span>
+                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Dokumentieren Sie Ihren Fortschritt im Dashboard</p>
+                    </div>
+                  </div>
+                  
+                  <!-- CTA Button -->
+                  <div style="text-align: center; margin: 35px 0;">
+                    <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                      Zum Auftrag →
+                    </a>
+                  </div>
+                  
                 </div>
+                
+                <!-- Footer -->
+                <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                    Diese E-Mail wurde automatisch von byndl versendet.
+                  </p>
+                  <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                    © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                  </p>
+                </div>
+                
               </div>
-            </div>
+            </body>
+            </html>
           `
         });
       }
