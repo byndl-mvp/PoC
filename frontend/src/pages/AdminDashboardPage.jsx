@@ -34,6 +34,9 @@ export default function AdminDashboardPage() {
   const [payments, setPayments] = useState([]);
   const [orders, setOrders] = useState([]);
   const [tenders, setTenders] = useState([]);
+  const [offers, setOffers] = useState([]);
+  const [nachtraege, setNachtraege] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [pendingHandwerker, setPendingHandwerker] = useState([]);
   const [rejectDialogs, setRejectDialogs] = useState({});
   const [deleteDialogs, setDeleteDialogs] = useState({});
@@ -246,6 +249,32 @@ const downloadDocument = async (handwerkerId, docId, fileName) => {
     }
   }, [token]);
 
+  const fetchOffers = useCallback(async () => {
+    try {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/offers', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Angebote');
+      const data = await res.json();
+      setOffers(data.offers || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [token]);
+
+  const fetchNachtraege = useCallback(async () => {
+    try {
+      const res = await fetch('https://poc-rvrj.onrender.com/api/admin/nachtraege', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Fehler beim Laden der Nachträge');
+      const data = await res.json();
+      setNachtraege(data.nachtraege || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [token]);
+
   // Main Data Fetching Effect
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -283,6 +312,12 @@ const downloadDocument = async (handwerkerId, docId, fileName) => {
             break;
           case 'tenders':
             await fetchTenders();
+            break;
+          case 'offers':
+            await fetchOffers();
+            break;
+          case 'nachtraege':
+            await fetchNachtraege();
             break;
           default:
             break;
@@ -614,8 +649,10 @@ const verifyHandwerker = async (id, action, reason = '') => {
     { id: 'lvs', label: 'LVs', icon: '📋' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
     { id: 'handwerker-verify', label: 'Verifizierungen', icon: '✅' },
-    { id: 'payments', label: 'Zahlungsverwaltung', icon: '💳' },
+    { id: 'payments', label: 'Zahlungen', icon: '💳' },
     { id: 'orders', label: 'Aufträge', icon: '📦' },
+    { id: 'offers', label: 'Angebote', icon: '💰' },
+    { id: 'nachtraege', label: 'Nachträge', icon: '📝' },
     { id: 'tenders', label: 'Ausschreibungen', icon: '📄' },
   ];
 
@@ -1080,58 +1117,227 @@ const verifyHandwerker = async (id, action, reason = '') => {
 
             {/* Analytics Tab */}
             {activeTab === 'analytics' && analytics && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Analytics Dashboard</h2>
-                
-                <div className="grid md:grid-cols-4 gap-4 mb-8">
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-white mb-4">Analytics & KI-Genauigkeit</h2>
+
+                {/* Gesamt-Übersicht */}
+                <div className="grid md:grid-cols-5 gap-4">
                   <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                    <h3 className="text-white/70 text-sm">Gesamt Projekte</h3>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      {analytics.projects?.total_projects || 0}
+                    <p className="text-xs text-white/70">Vergleiche</p>
+                    <p className="text-2xl font-bold text-white">{analytics.kiAccuracy?.overall?.total_comparisons || 0}</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-purple-500/30">
+                    <p className="text-xs text-white/70">Ø Abweichung KI</p>
+                    <p className="text-2xl font-bold text-purple-400">
+                      {analytics.kiAccuracy?.overall?.overall_avg_abweichung 
+                        ? `${parseFloat(analytics.kiAccuracy.overall.overall_avg_abweichung).toFixed(1)}%` 
+                        : '-'}
                     </p>
                   </div>
-                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                    <h3 className="text-white/70 text-sm">Durchschn. Budget</h3>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      {analytics.projects?.avg_budget ? `${Math.round(analytics.projects.avg_budget).toLocaleString()} €` : 'N/A'}
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-blue-500/30">
+                    <p className="text-xs text-white/70">KI-Schätzungen Summe</p>
+                    <p className="text-xl font-bold text-blue-400">
+                      {formatCurrency(analytics.kiAccuracy?.overall?.total_ki_schaetzung || 0)}
                     </p>
                   </div>
-                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                    <h3 className="text-white/70 text-sm">Aktive Gewerke</h3>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      {analytics.trades?.length || 0}
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-teal-500/30">
+                    <p className="text-xs text-white/70">Angebote Summe</p>
+                    <p className="text-xl font-bold text-teal-400">
+                      {formatCurrency(analytics.kiAccuracy?.overall?.total_angebote || 0)}
                     </p>
                   </div>
-                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
-                    <h3 className="text-white/70 text-sm">Prompts</h3>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      {analytics.prompts?.length || 0}
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-green-500/30">
+                    <p className="text-xs text-white/70">Auftragsvolumen</p>
+                    <p className="text-xl font-bold text-green-400">
+                      {formatCurrency(analytics.orderStats?.total_volume || 0)}
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
-                  <h3 className="text-xl font-bold text-white mb-4">Gewerke Statistiken</h3>
-                  <div className="space-y-2">
-                    {analytics.trades?.map((trade) => (
-                      <div key={trade.code} className="bg-white/5 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-white font-medium">{trade.name}</span>
-                          <div className="flex gap-8 text-sm">
-                            <div className="text-center">
-                              <p className="text-white/50">Projekte</p>
-                              <p className="text-white font-semibold">{trade.usage_count || 0}</p>
+                {/* KI-Genauigkeit nach Gewerk */}
+                {analytics.kiAccuracy?.byTrade?.length > 0 && (
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                    <h3 className="text-xl font-bold text-white mb-4">KI-Genauigkeit nach Gewerk</h3>
+                    <div className="space-y-3">
+                      {analytics.kiAccuracy.byTrade.map((trade) => (
+                        <div key={trade.trade_code} className="bg-white/5 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-white font-medium">{trade.trade_name}</span>
+                              <span className="text-white/50 text-sm ml-2">({trade.offer_count} Angebote)</span>
                             </div>
-                            <div className="text-center">
-                              <p className="text-white/50">LVs</p>
-                              <p className="text-white font-semibold">{trade.lv_count || 0}</p>
+                            <div className="flex gap-8 text-sm">
+                              <div className="text-center">
+                                <p className="text-white/50">Ø KI-Schätzung</p>
+                                <p className="text-purple-400 font-semibold">{formatCurrency(trade.avg_ki_schaetzung)}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-white/50">Ø Angebot</p>
+                                <p className="text-teal-400 font-semibold">{formatCurrency(trade.avg_angebot)}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-white/50">Ø Abweichung</p>
+                                <p className={`font-semibold ${
+                                  parseFloat(trade.avg_abweichung_prozent) > 10 ? 'text-red-400' :
+                                  parseFloat(trade.avg_abweichung_prozent) < -10 ? 'text-green-400' :
+                                  'text-yellow-400'
+                                }`}>
+                                  {trade.avg_abweichung_prozent 
+                                    ? `${parseFloat(trade.avg_abweichung_prozent) >= 0 ? '+' : ''}${parseFloat(trade.avg_abweichung_prozent).toFixed(1)}%`
+                                    : '-'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Progress Bar für Genauigkeit */}
+                          <div className="mt-3">
+                            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full ${
+                                  Math.abs(parseFloat(trade.avg_abweichung_prozent || 0)) < 5 ? 'bg-green-500' :
+                                  Math.abs(parseFloat(trade.avg_abweichung_prozent || 0)) < 15 ? 'bg-yellow-500' :
+                                  'bg-red-500'
+                                }`}
+                                style={{ width: `${Math.max(10, 100 - Math.abs(parseFloat(trade.avg_abweichung_prozent || 0)))}%` }}
+                              ></div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
+                )}
+
+                {/* Conversion Funnel */}
+                {analytics.conversion && (
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                    <h3 className="text-xl font-bold text-white mb-4">Conversion Funnel</h3>
+                    <div className="flex items-center justify-between">
+                      <div className="text-center flex-1">
+                        <p className="text-3xl font-bold text-white">{analytics.conversion?.total_tenders || 0}</p>
+                        <p className="text-white/50 text-sm">Ausschreibungen</p>
+                      </div>
+                      <div className="text-2xl text-white/30">→</div>
+                      <div className="text-center flex-1">
+                        <p className="text-3xl font-bold text-blue-400">{analytics.conversion?.total_offers || 0}</p>
+                        <p className="text-white/50 text-sm">Angebote</p>
+                        <p className="text-xs text-blue-400">
+                          ({analytics.conversion?.total_tenders > 0 
+                            ? ((analytics.conversion?.tenders_with_offers / analytics.conversion?.total_tenders) * 100).toFixed(0) 
+                            : 0}% mit Angeboten)
+                        </p>
+                      </div>
+                      <div className="text-2xl text-white/30">→</div>
+                      <div className="text-center flex-1">
+                        <p className="text-3xl font-bold text-green-400">{analytics.conversion?.accepted_offers || 0}</p>
+                        <p className="text-white/50 text-sm">Angenommen</p>
+                        <p className="text-xs text-green-400">
+                          ({analytics.conversion?.total_offers > 0 
+                            ? ((analytics.conversion?.accepted_offers / analytics.conversion?.total_offers) * 100).toFixed(0) 
+                            : 0}% Annahmequote)
+                        </p>
+                      </div>
+                      <div className="text-2xl text-white/30">→</div>
+                      <div className="text-center flex-1">
+                        <p className="text-3xl font-bold text-teal-400">{analytics.conversion?.total_orders || 0}</p>
+                        <p className="text-white/50 text-sm">Aufträge</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nachtrags-Quote und Top Handwerker */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {analytics.nachtraegeStats && (
+                    <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                      <h3 className="text-xl font-bold text-white mb-4">Nachtrags-Statistik</h3>
+                      <div className="space-y-4">
+                        <div className="flex justify-between">
+                          <span className="text-white/70">Aufträge mit Nachträgen</span>
+                          <span className="text-white font-semibold">
+                            {analytics.nachtraegeStats?.orders_with_nachtraege || 0} / {analytics.nachtraegeStats?.total_orders || 0}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-white/70">Nachtrags-Quote</span>
+                          <span className="text-teal-400 font-semibold">
+                            {analytics.nachtraegeStats?.total_orders > 0 
+                              ? ((analytics.nachtraegeStats?.orders_with_nachtraege / analytics.nachtraegeStats?.total_orders) * 100).toFixed(1) 
+                              : 0}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-white/70">Nachtrags-Volumen</span>
+                          <span className="text-teal-400 font-semibold">
+                            {formatCurrency(analytics.nachtraegeStats?.nachtraege_volume || 0)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-white/70">Anteil am Auftragsvolumen</span>
+                          <span className="text-white font-semibold">
+                            {analytics.nachtraegeStats?.order_volume > 0 
+                              ? ((analytics.nachtraegeStats?.nachtraege_volume / analytics.nachtraegeStats?.order_volume) * 100).toFixed(1) 
+                              : 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top Handwerker */}
+                  {analytics.topHandwerker?.length > 0 && (
+                    <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                      <h3 className="text-xl font-bold text-white mb-4">Top 10 Handwerker (Volumen)</h3>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {analytics.topHandwerker.map((hw, idx) => (
+                          <div key={hw.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                idx === 0 ? 'bg-yellow-500 text-black' :
+                                idx === 1 ? 'bg-gray-300 text-black' :
+                                idx === 2 ? 'bg-orange-600 text-white' :
+                                'bg-white/20 text-white'
+                              }`}>
+                                {idx + 1}
+                              </span>
+                              <span className="text-white">{hw.company_name}</span>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-teal-400 font-semibold">{formatCurrency(hw.total_volume)}</p>
+                              <p className="text-white/50 text-xs">{hw.order_count} Aufträge</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Alte Gewerke Stats als Fallback */}
+                {!analytics.kiAccuracy && analytics.trades?.length > 0 && (
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-6 border border-white/20">
+                    <h3 className="text-xl font-bold text-white mb-4">Gewerke Statistiken</h3>
+                    <div className="space-y-2">
+                      {analytics.trades.map((trade) => (
+                        <div key={trade.code} className="bg-white/5 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-white font-medium">{trade.name}</span>
+                            <div className="flex gap-8 text-sm">
+                              <div className="text-center">
+                                <p className="text-white/50">Projekte</p>
+                                <p className="text-white font-semibold">{trade.usage_count || 0}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-white/50">LVs</p>
+                                <p className="text-white font-semibold">{trade.lv_count || 0}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1800,12 +2006,457 @@ const verifyHandwerker = async (id, action, reason = '') => {
 
             {/* Orders Tab */}
             {activeTab === 'orders' && (
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-4">Aufträge</h2>
-                <div className="bg-white/10 backdrop-blur rounded-lg p-8 border border-white/20">
-                  <p className="text-white/50 text-center">
-                    {orders.length > 0 ? `${orders.length} Aufträge vorhanden` : 'Keine Aufträge vorhanden'}
-                  </p>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-white">Aufträge ({orders.length})</h2>
+                </div>
+
+                {/* Statistik-Karten */}
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <p className="text-xs text-white/70">Gesamt Aufträge</p>
+                    <p className="text-2xl font-bold text-white">{orders.length}</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-green-500/30">
+                    <p className="text-xs text-white/70">Aktive Aufträge</p>
+                    <p className="text-2xl font-bold text-green-400">
+                      {orders.filter(o => o.status === 'active').length}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-blue-500/30">
+                    <p className="text-xs text-white/70">Abgeschlossen</p>
+                    <p className="text-2xl font-bold text-blue-400">
+                      {orders.filter(o => o.status === 'completed').length}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-teal-500/30">
+                    <p className="text-xs text-white/70">Gesamtvolumen</p>
+                    <p className="text-2xl font-bold text-teal-400">
+                      {formatCurrency(orders.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0))}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Orders Tabelle */}
+                <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                  <div className="max-h-[600px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-slate-800/95">
+                        <tr className="border-b border-white/20">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">ID</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Gewerk</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Bauherr</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Handwerker</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Betrag</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Nachträge</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Erstellt</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orders.map(order => (
+                          <tr key={order.id} className="border-b border-white/10 hover:bg-white/5">
+                            <td className="px-4 py-3 text-sm text-white">#{order.id}</td>
+                            <td className="px-4 py-3 text-sm text-white">{order.trade_name}</td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="text-sm text-white">{order.bauherr_name}</p>
+                                <p className="text-xs text-white/50">{order.bauherr_email}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="text-sm text-white">{order.handwerker_name}</p>
+                                <p className="text-xs text-white/50">{order.handwerker_email}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="text-sm text-teal-400 font-semibold">{formatCurrency(order.amount)}</p>
+                                {order.bundle_discount > 0 && (
+                                  <p className="text-xs text-green-400">-{order.bundle_discount}% Rabatt</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              {order.nachtraege_count > 0 ? (
+                                <div>
+                                  <p className="text-sm text-white">{order.nachtraege_approved || 0}/{order.nachtraege_count}</p>
+                                  <p className="text-xs text-teal-400">+{formatCurrency(order.nachtraege_sum || 0)}</p>
+                                </div>
+                              ) : (
+                                <span className="text-white/50 text-sm">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                order.status === 'active' ? 'bg-green-500/20 text-green-300' :
+                                order.status === 'completed' ? 'bg-blue-500/20 text-blue-300' :
+                                'bg-gray-500/20 text-gray-300'
+                              }`}>
+                                {order.status === 'active' ? 'Aktiv' : 
+                                 order.status === 'completed' ? 'Abgeschlossen' : order.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white/70">
+                              {new Date(order.created_at).toLocaleDateString('de-DE')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => window.open(`https://poc-rvrj.onrender.com/api/orders/${order.id}/contract-pdf`, '_blank')}
+                                  className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
+                                  title="Werkvertrag PDF"
+                                >
+                                  📄 PDF
+                                </button>
+                                <button
+                                  onClick={() => setSelectedOrder(order)}
+                                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
+                                >
+                                  Details
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {orders.length === 0 && (
+                    <p className="text-white/50 text-center py-8">Keine Aufträge vorhanden</p>
+                  )}
+                </div>
+
+                {/* Order Detail Modal */}
+                {selectedOrder && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-slate-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                      <div className="sticky top-0 bg-slate-800 border-b border-white/20 p-6 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-white">
+                          Auftrag #{selectedOrder.id} - {selectedOrder.trade_name}
+                        </h2>
+                        <button
+                          onClick={() => setSelectedOrder(null)}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+                        >
+                          Schließen
+                        </button>
+                      </div>
+                      
+                      <div className="p-6 space-y-6">
+                        {/* Projekt */}
+                        <div className="bg-white/5 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-white mb-3">Projekt</h3>
+                          <div className="grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-white/50">Beschreibung</p>
+                              <p className="text-white">{selectedOrder.project_description}</p>
+                            </div>
+                            <div>
+                              <p className="text-white/50">Adresse</p>
+                              <p className="text-white">
+                                {selectedOrder.project_street} {selectedOrder.project_house_number}, {selectedOrder.project_zip} {selectedOrder.project_city}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Parteien */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="bg-white/5 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-3">Bauherr</h3>
+                            <p className="text-white">{selectedOrder.bauherr_name}</p>
+                            <p className="text-white/70 text-sm">{selectedOrder.bauherr_email}</p>
+                            <p className="text-white/70 text-sm">{selectedOrder.bauherr_phone}</p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-3">Handwerker</h3>
+                            <p className="text-white">{selectedOrder.handwerker_name}</p>
+                            <p className="text-white/70 text-sm">{selectedOrder.handwerker_email}</p>
+                            <p className="text-white/70 text-sm">{selectedOrder.handwerker_phone}</p>
+                          </div>
+                        </div>
+
+                        {/* Finanzen */}
+                        <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-white mb-3">Finanzen</h3>
+                          <div className="grid md:grid-cols-4 gap-4">
+                            <div>
+                              <p className="text-white/50 text-sm">Auftragssumme</p>
+                              <p className="text-xl font-bold text-white">{formatCurrency(selectedOrder.amount)}</p>
+                            </div>
+                            {selectedOrder.bundle_discount > 0 && (
+                              <div>
+                                <p className="text-white/50 text-sm">Bündelrabatt</p>
+                                <p className="text-xl font-bold text-green-400">-{selectedOrder.bundle_discount}%</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-white/50 text-sm">Nachträge</p>
+                              <p className="text-xl font-bold text-teal-400">+{formatCurrency(selectedOrder.nachtraege_sum || 0)}</p>
+                            </div>
+                            <div>
+                              <p className="text-white/50 text-sm">Gesamt Netto</p>
+                              <p className="text-xl font-bold text-white">
+                                {formatCurrency((parseFloat(selectedOrder.amount) || 0) + (parseFloat(selectedOrder.nachtraege_sum) || 0))}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Zeitraum */}
+                        <div className="bg-white/5 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-white mb-3">Zeitraum</h3>
+                          <div className="grid md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="text-white/50">Erstellt</p>
+                              <p className="text-white">{new Date(selectedOrder.created_at).toLocaleDateString('de-DE')}</p>
+                            </div>
+                            <div>
+                              <p className="text-white/50">Ausführung Start</p>
+                              <p className="text-white">
+                                {selectedOrder.execution_start ? new Date(selectedOrder.execution_start).toLocaleDateString('de-DE') : '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-white/50">Ausführung Ende</p>
+                              <p className="text-white">
+                                {selectedOrder.execution_end ? new Date(selectedOrder.execution_end).toLocaleDateString('de-DE') : '-'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Offers Tab */}
+            {activeTab === 'offers' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-white">Angebote ({offers.length})</h2>
+
+                {/* KI-Genauigkeit Übersicht */}
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <p className="text-xs text-white/70">Gesamt Angebote</p>
+                    <p className="text-2xl font-bold text-white">{offers.length}</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-green-500/30">
+                    <p className="text-xs text-white/70">Angenommen</p>
+                    <p className="text-2xl font-bold text-green-400">
+                      {offers.filter(o => o.status === 'accepted').length}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-teal-500/30">
+                    <p className="text-xs text-white/70">Gesamtvolumen</p>
+                    <p className="text-2xl font-bold text-teal-400">
+                      {formatCurrency(offers.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0))}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-purple-500/30">
+                    <p className="text-xs text-white/70">Ø Abweichung KI</p>
+                    <p className="text-2xl font-bold text-purple-400">
+                      {(() => {
+                        const withDeviation = offers.filter(o => o.abweichung_prozent !== null);
+                        if (withDeviation.length === 0) return '-';
+                        const avg = withDeviation.reduce((sum, o) => sum + parseFloat(o.abweichung_prozent), 0) / withDeviation.length;
+                        return `${avg >= 0 ? '+' : ''}${avg.toFixed(1)}%`;
+                      })()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Offers Tabelle */}
+                <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                  <div className="max-h-[600px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-slate-800/95">
+                        <tr className="border-b border-white/20">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">ID</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Gewerk</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Projekt</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Handwerker</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Bauherr</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">KI-Schätzung</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Angebot</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Abweichung</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Datum</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {offers.map(offer => (
+                          <tr key={offer.id} className="border-b border-white/10 hover:bg-white/5">
+                            <td className="px-4 py-3 text-sm text-white">#{offer.id}</td>
+                            <td className="px-4 py-3 text-sm text-white">{offer.trade_name}</td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="text-sm text-white truncate max-w-[150px]">{offer.project_description}</p>
+                                <p className="text-xs text-white/50">{offer.project_zip} {offer.project_city}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="text-sm text-white">{offer.handwerker_name}</p>
+                                <p className="text-xs text-white/50">{offer.handwerker_email}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="text-sm text-white">{offer.bauherr_name}</p>
+                                <p className="text-xs text-white/50">{offer.bauherr_email}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-purple-400">
+                              {offer.ki_schaetzung ? formatCurrency(offer.ki_schaetzung) : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-teal-400 font-semibold">
+                              {formatCurrency(offer.amount)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {offer.abweichung_prozent !== null ? (
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  parseFloat(offer.abweichung_prozent) > 10 ? 'bg-red-500/20 text-red-300' :
+                                  parseFloat(offer.abweichung_prozent) < -10 ? 'bg-green-500/20 text-green-300' :
+                                  'bg-yellow-500/20 text-yellow-300'
+                                }`}>
+                                  {parseFloat(offer.abweichung_prozent) >= 0 ? '+' : ''}{parseFloat(offer.abweichung_prozent).toFixed(1)}%
+                                </span>
+                              ) : (
+                                <span className="text-white/50 text-sm">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                offer.status === 'accepted' ? 'bg-green-500/20 text-green-300' :
+                                offer.status === 'rejected' ? 'bg-red-500/20 text-red-300' :
+                                offer.status === 'submitted' ? 'bg-yellow-500/20 text-yellow-300' :
+                                'bg-gray-500/20 text-gray-300'
+                              }`}>
+                                {offer.status === 'accepted' ? 'Angenommen' :
+                                 offer.status === 'rejected' ? 'Abgelehnt' :
+                                 offer.status === 'submitted' ? 'Eingereicht' : offer.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white/70">
+                              {new Date(offer.created_at).toLocaleDateString('de-DE')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {offers.length === 0 && (
+                    <p className="text-white/50 text-center py-8">Keine Angebote vorhanden</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Nachtraege Tab */}
+            {activeTab === 'nachtraege' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-white">Nachträge ({nachtraege.length})</h2>
+
+                {/* Statistiken */}
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-white/20">
+                    <p className="text-xs text-white/70">Gesamt</p>
+                    <p className="text-2xl font-bold text-white">{nachtraege.length}</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-yellow-500/30">
+                    <p className="text-xs text-white/70">In Prüfung</p>
+                    <p className="text-2xl font-bold text-yellow-400">
+                      {nachtraege.filter(n => n.status === 'submitted').length}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-green-500/30">
+                    <p className="text-xs text-white/70">Beauftragt</p>
+                    <p className="text-2xl font-bold text-green-400">
+                      {nachtraege.filter(n => n.status === 'approved').length}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur rounded-lg p-4 border border-teal-500/30">
+                    <p className="text-xs text-white/70">Volumen (beauftragt)</p>
+                    <p className="text-2xl font-bold text-teal-400">
+                      {formatCurrency(nachtraege.filter(n => n.status === 'approved').reduce((sum, n) => sum + (parseFloat(n.amount) || 0), 0))}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Nachträge Tabelle */}
+                <div className="bg-white/10 backdrop-blur rounded-lg border border-white/20 overflow-hidden">
+                  <div className="max-h-[600px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-slate-800/95">
+                        <tr className="border-b border-white/20">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Nr.</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Order</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Gewerk</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Grund</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Handwerker</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Bauherr</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Betrag</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Eingereicht</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {nachtraege.map(nt => (
+                          <tr key={nt.id} className="border-b border-white/10 hover:bg-white/5">
+                            <td className="px-4 py-3 text-sm text-white">
+                              NT-{String(nt.nachtrag_number).padStart(2, '0')}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white">#{nt.order_id}</td>
+                            <td className="px-4 py-3 text-sm text-white">{nt.trade_name}</td>
+                            <td className="px-4 py-3">
+                              <p className="text-sm text-white truncate max-w-[200px]" title={nt.reason}>
+                                {nt.reason}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="text-sm text-white">{nt.handwerker_name}</p>
+                                <p className="text-xs text-white/50">{nt.handwerker_email}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="text-sm text-white">{nt.bauherr_name}</p>
+                                <p className="text-xs text-white/50">{nt.bauherr_email}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-teal-400 font-semibold">
+                              {formatCurrency(nt.amount)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                nt.status === 'approved' ? 'bg-green-500/20 text-green-300' :
+                                nt.status === 'rejected' ? 'bg-red-500/20 text-red-300' :
+                                nt.status === 'submitted' ? 'bg-yellow-500/20 text-yellow-300' :
+                                'bg-gray-500/20 text-gray-300'
+                              }`}>
+                                {nt.status === 'approved' ? 'Beauftragt' :
+                                 nt.status === 'rejected' ? 'Abgelehnt' :
+                                 nt.status === 'submitted' ? 'In Prüfung' : nt.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white/70">
+                              {nt.submitted_at ? new Date(nt.submitted_at).toLocaleDateString('de-DE') : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {nachtraege.length === 0 && (
+                    <p className="text-white/50 text-center py-8">Keine Nachträge vorhanden</p>
+                  )}
                 </div>
               </div>
             )}
