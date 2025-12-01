@@ -38,6 +38,7 @@ export default function AdminDashboardPage() {
   const [nachtraege, setNachtraege] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedTender, setSelectedTender] = useState(null);
+  const [selectedNachtrag, setSelectedNachtrag] = useState(null);
   const [pendingHandwerker, setPendingHandwerker] = useState([]);
   
   // Datumsfilter States
@@ -2548,6 +2549,7 @@ const verifyHandwerker = async (id, action, reason = '') => {
                           <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Betrag</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Status</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Eingereicht</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-white/70">Aktionen</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2601,6 +2603,14 @@ const verifyHandwerker = async (id, action, reason = '') => {
                             <td className="px-4 py-3 text-sm text-white/70">
                               {nt.submitted_at ? new Date(nt.submitted_at).toLocaleDateString('de-DE') : '-'}
                             </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => setSelectedNachtrag(nt)}
+                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
+                              >
+                                Details
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -2610,6 +2620,132 @@ const verifyHandwerker = async (id, action, reason = '') => {
                     <p className="text-white/50 text-center py-8">Keine Nachträge vorhanden</p>
                   )}
                 </div>
+
+                {/* Nachtrag Detail Modal */}
+                {selectedNachtrag && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-slate-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                      <div className="sticky top-0 bg-slate-800 border-b border-white/20 p-6 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-white">
+                          Nachtrag NT-{String(selectedNachtrag.nachtrag_number).padStart(2, '0')} - {selectedNachtrag.trade_name}
+                        </h2>
+                        <button
+                          onClick={() => setSelectedNachtrag(null)}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
+                        >
+                          Schließen
+                        </button>
+                      </div>
+                      
+                      <div className="p-6 space-y-6">
+                        {/* Status & Betrag */}
+                        <div className="flex justify-between items-center">
+                          <span className={`px-3 py-1 text-sm rounded-full ${
+                            selectedNachtrag.status === 'approved' ? 'bg-green-500/20 text-green-300' :
+                            selectedNachtrag.status === 'rejected' ? 'bg-red-500/20 text-red-300' :
+                            selectedNachtrag.status === 'submitted' ? 'bg-yellow-500/20 text-yellow-300' :
+                            'bg-gray-500/20 text-gray-300'
+                          }`}>
+                            {selectedNachtrag.status === 'approved' ? 'Beauftragt' :
+                             selectedNachtrag.status === 'rejected' ? 'Abgelehnt' :
+                             selectedNachtrag.status === 'submitted' ? 'In Prüfung' : selectedNachtrag.status}
+                          </span>
+                          <p className="text-2xl font-bold text-teal-400">{formatCurrency(selectedNachtrag.amount)}</p>
+                        </div>
+
+                        {/* Begründung */}
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-white mb-2">📝 Begründung</h3>
+                          <p className="text-white/90 whitespace-pre-wrap">{selectedNachtrag.reason}</p>
+                        </div>
+
+                        {/* Parteien */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="bg-white/5 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-3">Handwerker</h3>
+                            <p className="text-white">{selectedNachtrag.handwerker_name}</p>
+                            <p className="text-white/70 text-sm">{selectedNachtrag.handwerker_email}</p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-3">Bauherr</h3>
+                            <p className="text-white">{selectedNachtrag.bauherr_name}</p>
+                            <p className="text-white/70 text-sm">{selectedNachtrag.bauherr_email}</p>
+                          </div>
+                        </div>
+
+                        {/* Projekt-Info */}
+                        <div className="bg-white/5 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-white mb-3">Projekt</h3>
+                          <p className="text-white">{selectedNachtrag.project_description}</p>
+                          <p className="text-white/70 text-sm">{selectedNachtrag.project_zip} {selectedNachtrag.project_city}</p>
+                          <p className="text-white/50 text-sm mt-2">Order #{selectedNachtrag.order_id} | Auftragswert: {formatCurrency(selectedNachtrag.order_amount)}</p>
+                        </div>
+
+                        {/* LV-Details */}
+                        {selectedNachtrag.lv_data && (
+                          <div className="bg-white/5 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-white mb-3">📋 Nachtrags-Leistungsverzeichnis</h3>
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                              {(() => {
+                                const lvData = typeof selectedNachtrag.lv_data === 'string' ? JSON.parse(selectedNachtrag.lv_data) : selectedNachtrag.lv_data;
+                                const positions = lvData?.positions || [];
+                                return positions.length > 0 ? positions.map((pos, idx) => (
+                                  <div key={idx} className="bg-white/5 rounded p-3">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <p className="text-white font-medium">
+                                          {pos.positionNumber || idx + 1}. {pos.title || 'Position'}
+                                        </p>
+                                        <p className="text-white/70 text-sm mt-1">{pos.description}</p>
+                                        <div className="flex gap-4 mt-2 text-xs text-white/50">
+                                          <span>Menge: {pos.quantity} {pos.unit}</span>
+                                          <span>EP: {pos.unitPrice ? `${Number(pos.unitPrice).toFixed(2)} €` : 'N/A'}</span>
+                                        </div>
+                                      </div>
+                                      <p className="text-teal-400 font-semibold">
+                                        {pos.totalPrice ? formatCurrency(pos.totalPrice) : 'N/A'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )) : (
+                                  <p className="text-white/50">Keine LV-Positionen vorhanden</p>
+                                );
+                              })()}
+                            </div>
+                            {(() => {
+                              const lvData = typeof selectedNachtrag.lv_data === 'string' ? JSON.parse(selectedNachtrag.lv_data) : selectedNachtrag.lv_data;
+                              return lvData?.totalSum && (
+                                <div className="mt-4 pt-4 border-t border-white/20 flex justify-between">
+                                  <span className="text-white font-semibold">Gesamtsumme (Netto)</span>
+                                  <span className="text-teal-400 font-bold text-lg">{formatCurrency(lvData.totalSum)}</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+
+                        {/* Zeitstempel */}
+                        <div className="bg-white/5 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-white mb-3">Zeitstempel</h3>
+                          <div className="grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-white/50">Eingereicht</p>
+                              <p className="text-white">
+                                {selectedNachtrag.submitted_at ? new Date(selectedNachtrag.submitted_at).toLocaleString('de-DE') : '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-white/50">Erstellt</p>
+                              <p className="text-white">
+                                {new Date(selectedNachtrag.created_at).toLocaleString('de-DE')}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
