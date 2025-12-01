@@ -18670,7 +18670,7 @@ app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
                     Diese E-Mail wurde automatisch von byndl versendet.
                   </p>
                   <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
-                    © ${new Date().getFullYear()} byndl . einfach . bauen
+                    © ${new Date().getFullYear()} byndl · einfach . bauen
                   </p>
                 </div>
                 
