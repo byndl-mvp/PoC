@@ -23874,7 +23874,7 @@ async function createProjectTenders(req, res) {
                           Sie erhalten diese E-Mail, weil Ihr Profil zur Ausschreibung passt.
                         </p>
                         <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
-                          © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                          © ${new Date().getFullYear()} byndl · einfach . bauen
                         </p>
                       </div>
                       
