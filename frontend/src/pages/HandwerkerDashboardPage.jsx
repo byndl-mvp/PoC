@@ -702,7 +702,7 @@ const badgeCounts = {
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs sm:text-sm text-gray-400">
-  💰 ca. {formatCurrency(Math.round(tender.estimated_value * 0.8 / 1000) * 1000)} – {formatCurrency(Math.round(tender.estimated_value * 1.2 / 1000) * 1000)}
+  💰 ca. {formatCurrency(Math.round(tender.estimated_value * 0.8 / 500) * 500)} – {formatCurrency(Math.round(tender.estimated_value * 1.2 / 500) * 500)}
 </p>
                               <p className="text-xs sm:text-sm text-gray-400">
                                 ⏰ Frist: {new Date(tender.deadline).toLocaleDateString('de-DE')}
@@ -816,7 +816,7 @@ const badgeCounts = {
                   <div className="bg-white/5 rounded-lg p-2 sm:p-4">
                     <p className="text-gray-400 text-xs sm:text-sm mb-1">Volumen</p>
                     <p className="text-sm sm:text-lg font-bold text-teal-400">
-  {formatCurrency(Math.round(bundle.totalVolume * 0.8 / 1000) * 1000)} – {formatCurrency(Math.round(bundle.totalVolume * 1.2 / 1000) * 1000)}
+  {formatCurrency(Math.round(bundle.totalVolume * 0.8 / 500) * 500)} – {formatCurrency(Math.round(bundle.totalVolume * 1.2 / 500) * 500)}
 </p>
                     <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">ca. Netto (gerundet)</p>
                   </div>
@@ -863,7 +863,7 @@ const badgeCounts = {
                             </p>
                             <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
                               <span className="text-gray-500">
-                                💰 <span className="text-teal-400 font-semibold">{formatCurrency(Math.round(project.volume * 0.8 / 1000) * 1000)} – {formatCurrency(Math.round(project.volume * 1.2 / 1000) * 1000)}</span>
+                                💰 <span className="text-teal-400 font-semibold">{formatCurrency(Math.round(project.volume * 0.8 / 500) * 500)} – {formatCurrency(Math.round(project.volume * 1.2 / 500) * 500)}</span>
                               </span>
                               <span className="text-gray-500">
                                 ⏱️ <span className="text-white">{project.timeframe || 'Nach Absprache'}</span>
