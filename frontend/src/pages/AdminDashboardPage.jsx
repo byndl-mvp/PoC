@@ -1226,12 +1226,22 @@ const verifyHandwerker = async (id, action, reason = '') => {
                       </div>
                       <div className="text-2xl text-white/30">→</div>
                       <div className="text-center flex-1">
-                        <p className="text-3xl font-bold text-blue-400">{analytics.conversion?.total_offers || 0}</p>
-                        <p className="text-white/50 text-sm">Angebote</p>
+                        <p className="text-3xl font-bold text-blue-400">{analytics.conversion?.tenders_with_offers || 0}</p>
+                        <p className="text-white/50 text-sm">mit Angeboten</p>
                         <p className="text-xs text-blue-400">
                           ({analytics.conversion?.total_tenders > 0 
                             ? ((analytics.conversion?.tenders_with_offers / analytics.conversion?.total_tenders) * 100).toFixed(0) 
-                            : 0}% mit Angeboten)
+                            : 0}% der Ausschreibungen)
+                        </p>
+                      </div>
+                      <div className="text-2xl text-white/30">→</div>
+                      <div className="text-center flex-1">
+                        <p className="text-3xl font-bold text-purple-400">{analytics.conversion?.total_offers || 0}</p>
+                        <p className="text-white/50 text-sm">Angebote gesamt</p>
+                        <p className="text-xs text-purple-400">
+                          (Ø {analytics.conversion?.tenders_with_offers > 0 
+                            ? (analytics.conversion?.total_offers / analytics.conversion?.tenders_with_offers).toFixed(1) 
+                            : 0} pro Ausschreibung)
                         </p>
                       </div>
                       <div className="text-2xl text-white/30">→</div>
