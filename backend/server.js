@@ -21787,31 +21787,90 @@ if (transporter && otherOffers.rows.length > 0) {
         to: otherOffer.email,
         subject: `Information zu Ihrer Angebotsabgabe - ${offer.trade_name}`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: #f8f9fa; padding: 30px; border-radius: 10px;">
-              <h2 style="color: #333;">Information zu Ihrem Angebot</h2>
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
               
-              <p>Sehr geehrte/r ${otherOffer.contact_person || 'Damen und Herren'},</p>
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
+              </div>
               
-              <p>im Namen von <strong>${offer.bauherr_name}</strong> möchten wir uns herzlich für Ihr 
-              detailliertes Angebot für das Gewerk <strong>${offer.trade_name}</strong> bedanken.</p>
+              <!-- Content -->
+              <div style="padding: 40px 30px;">
+                
+                <!-- Icon -->
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <div style="display: inline-block; background: rgba(148, 163, 184, 0.2); border-radius: 50%; padding: 20px;">
+                    <span style="font-size: 48px;">📄</span>
+                  </div>
+                </div>
+                
+                <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 30px;">
+                  Information zu Ihrem Angebot
+                </h2>
+                
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                  Sehr geehrte/r ${otherOffer.contact_person || 'Damen und Herren'},
+                </p>
+                
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                  im Namen von <strong style="color: #ffffff;">${offer.bauherr_name}</strong> möchten wir uns herzlich für Ihr detailliertes Angebot für das Gewerk <strong style="color: #14b8a6;">${offer.trade_name}</strong> bedanken.
+                </p>
+                
+                <!-- Info Box -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0;">
+                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.7; margin: 0;">
+                    ${offer.bauherr_name} hat nach eingehender Prüfung aller eingegangenen Angebote eine Entscheidung getroffen. Leider müssen wir Ihnen mitteilen, dass die Wahl in diesem Fall auf einen anderen Anbieter gefallen ist.
+                  </p>
+                </div>
+                
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                  Diese Entscheidung basiert auf den spezifischen Projektanforderungen und stellt keine Bewertung Ihrer fachlichen Kompetenz dar. ${offer.bauherr_name} schätzt die Zeit und Mühe, die Sie in die Angebotserstellung investiert haben.
+                </p>
+                
+                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 30px;">
+                  ${offer.bauherr_name} würde sich freuen, Sie bei zukünftigen Projekten wieder in Betracht ziehen zu können.
+                </p>
+                
+                <!-- Absender -->
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px; margin-top: 25px;">
+                  <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 0;">
+                    Mit freundlichen Grüßen
+                  </p>
+                  <p style="color: #ffffff; font-size: 16px; font-weight: 600; margin: 10px 0 0;">
+                    ${offer.bauherr_name}
+                  </p>
+                </div>
+                
+                <!-- CTA Button -->
+                <div style="text-align: center; margin: 35px 0;">
+                  <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                    Zum Dashboard →
+                  </a>
+                </div>
+                
+              </div>
               
-              <p>${offer.bauherr_name} hat nach eingehender Prüfung aller eingegangenen Angebote 
-              eine Entscheidung getroffen. Leider müssen wir Ihnen mitteilen, dass die Wahl in 
-              diesem Fall auf einen anderen Anbieter gefallen ist.</p>
+              <!-- Footer -->
+              <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                  Diese Nachricht wurde im Auftrag des Bauherrn über byndl versendet.
+                </p>
+                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                  © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                </p>
+              </div>
               
-              <p>Diese Entscheidung basiert auf den spezifischen Projektanforderungen und stellt 
-              keine Bewertung Ihrer fachlichen Kompetenz dar. ${offer.bauherr_name} schätzt die 
-              Zeit und Mühe, die Sie in die Angebotserstellung investiert haben.</p>
-              
-              <p>${offer.bauherr_name} würde sich freuen, Sie bei zukünftigen Projekten wieder 
-              in Betracht ziehen zu können.</p>
-              
-              <p>Mit freundlichen Grüßen<br>
-              <strong>${offer.bauherr_name}</strong><br>
-              <em style="font-size: 12px; color: #666;">Diese Nachricht wurde über die byndl-Plattform versendet</em></p>
             </div>
-          </div>
+          </body>
+          </html>
         `
       });
       console.log(`Absage-Email gesendet an: ${otherOffer.company_name}`);
