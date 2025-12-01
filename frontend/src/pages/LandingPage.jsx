@@ -553,8 +553,8 @@ export default function LandingPage() {
                     Jede Position beschreibt eine konkrete Leistung mit Menge, Einheit und Preis. 
                     Unsere KI analysiert Ihre Eingaben und generiert für jedes Gewerk einen spezifischen Fragenkatalog, 
                     um alle wesentlichen Details zu erfassen, die für ein technisch fachgerechtes LV erforderlich sind. 
-                    Sie benötigen dabei keinerlei Fachwissen, um eine realistische Kostenschätzung für Ihr Bauvorhaben
-                    auf aktuellen Marktdaten zu erhalten und Ihr professionell auszuschreiben zu können.
+                    Sie benötigen dabei keinerlei Fachwissen, um eine realistische Kostenschätzung auf aktuellen Marktdaten 
+                    zu erhalten und Ihr Bauvorhaben professionell auszuschreiben zu können.
                   </p>
                 </div>
               </div>
