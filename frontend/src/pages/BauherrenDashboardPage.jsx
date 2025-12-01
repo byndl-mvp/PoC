@@ -1301,82 +1301,76 @@ const LVEditButton = ({ project }) => {
   );
 
   const ProjectWizard = ({ project }) => {
-    // Berechne die Status für jeden Schritt
+    // Einfache Logik basierend auf dem was bereits existiert
     const totalTrades = project.totalTrades || 0;
     const completedLvs = project.completedLvs || 0;
-    const tenders = project.tenders || [];
-    const projectOffers = project.offers || offers || [];
-    const projectOrders = project.orders || orders || [];
+    const hasTenders = project.tenders?.length > 0;
+    const hasOffers = offers.length > 0;
+    const hasOrders = orders.length > 0;
     
-    // Schritt 1: Gewerke wählen - Immer grün (da Projektansicht erst nach TradeConfirmation existiert)
-    const step1Done = true;
-    
-    // Schritt 2: LVs erstellen - Grün nur wenn ALLE LVs erstellt sind
-    const step2Done = totalTrades > 0 && completedLvs >= totalTrades;
-    const step2Current = totalTrades > 0 && completedLvs < totalTrades;
-    
-    // Schritt 3: Ausschreiben - Grün nur wenn ALLE Gewerke ausgeschrieben sind
-    const activeTendersCount = tenders.filter(t => t.status === 'active' || t.status === 'closed').length;
-    const step3Done = totalTrades > 0 && activeTendersCount >= totalTrades;
-    const step3Current = step2Done && !step3Done && activeTendersCount > 0;
-    
-    // Schritt 4: Angebote prüfen - Grün wenn für JEDES Gewerk mindestens ein Angebot vorliegt/vorlag
-    // Zähle wie viele Gewerke mindestens ein Angebot haben
+    // Alle LVs fertig?
+    const allLvsDone = totalTrades > 0 && completedLvs >= totalTrades;
+    // Alle Gewerke ausgeschrieben?
+    const allTendersDone = totalTrades > 0 && (project.tenders?.length || 0) >= totalTrades;
+    // Alle Gewerke haben Angebote?
     const tradesWithOffers = new Set();
+    offers.forEach(o => { if (o.trade_id) tradesWithOffers.add(o.trade_id); });
+    orders.forEach(o => { if (o.trade_id) tradesWithOffers.add(o.trade_id); });
+    const allOffersDone = totalTrades > 0 && tradesWithOffers.size >= totalTrades;
+    // Alle Gewerke beauftragt?
     const tradesWithOrders = new Set();
-    
-    projectOffers.forEach(offer => {
-      if (offer.trade_id) tradesWithOffers.add(offer.trade_id);
-    });
-    // Auch Aufträge zählen (da diese aus Angeboten entstanden sind)
-    projectOrders.forEach(order => {
-      if (order.trade_id) {
-        tradesWithOffers.add(order.trade_id);
-        tradesWithOrders.add(order.trade_id);
-      }
-    });
-    const step4Done = totalTrades > 0 && tradesWithOffers.size >= totalTrades;
-    const step4Current = step3Done && !step4Done && tradesWithOffers.size > 0;
-    
-    // Schritt 5: Beauftragen - Grün nur wenn ALLE Gewerke beauftragt sind
-    const step5Done = totalTrades > 0 && tradesWithOrders.size >= totalTrades;
-    const step5Current = step4Done && !step5Done && tradesWithOrders.size > 0;
+    orders.forEach(o => { if (o.trade_id) tradesWithOrders.add(o.trade_id); });
+    const allOrdersDone = totalTrades > 0 && tradesWithOrders.size >= totalTrades;
     
     const steps = [
-      { step: 1, label: 'Gewerke wählen', done: step1Done, current: false },
-      { step: 2, label: 'LVs erstellen', done: step2Done, current: step2Current },
-      { step: 3, label: 'Ausschreiben', done: step3Done, current: step3Current },
-      { step: 4, label: 'Angebote prüfen', done: step4Done, current: step4Current },
-      { step: 5, label: 'Beauftragen', done: step5Done, current: step5Current }
+      { 
+        step: 1, 
+        label: 'Gewerke wählen', 
+        done: true,  // Immer grün
+        current: false 
+      },
+      { 
+        step: 2, 
+        label: 'LVs erstellen', 
+        done: allLvsDone,
+        current: completedLvs > 0 && !allLvsDone
+      },
+      { 
+        step: 3, 
+        label: 'Ausschreiben', 
+        done: allTendersDone,
+        current: hasTenders && !allTendersDone
+      },
+      { 
+        step: 4, 
+        label: 'Angebote prüfen', 
+        done: allOffersDone,
+        current: hasOffers && !allOffersDone
+      },
+      { 
+        step: 5, 
+        label: 'Beauftragen', 
+        done: allOrdersDone,
+        current: hasOrders && !allOrdersDone
+      }
     ];
-    
-    // Bestimme den nächsten Schritt für die Hinweisbox
-    const getNextStepHint = () => {
-      if (!step2Done) return `Erstellen Sie die Leistungsverzeichnisse für Ihre Gewerke (${completedLvs} von ${totalTrades} fertig)`;
-      if (!step3Done) return `Schreiben Sie Ihre Gewerke aus (${activeTendersCount} von ${totalTrades} ausgeschrieben)`;
-      if (!step4Done) return `Warten Sie auf Angebote für alle Gewerke (${tradesWithOffers.size} von ${totalTrades} haben Angebote)`;
-      if (!step5Done) return `Beauftragen Sie die Handwerker für alle Gewerke (${tradesWithOrders.size} von ${totalTrades} beauftragt)`;
-      return null;
-    };
-    
-    const nextStepHint = getNextStepHint();
     
     return (
       <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-4 sm:p-6 mb-8">
         <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Ihr Projekt-Fortschritt</h3>
         
-        {/* Desktop: flex, Mobile: grid für gleichmäßige Höhe */}
-        <div className="grid grid-cols-5 gap-2 sm:flex sm:items-center sm:justify-between">
+        {/* Grid auf Mobile für gleichmäßige Höhe, Flex auf Desktop */}
+        <div className="grid grid-cols-5 gap-1 sm:gap-2 sm:flex sm:items-start sm:justify-between">
           {steps.map((step, idx) => (
             <div key={idx} className="flex flex-col items-center">
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-sm sm:text-base ${
+              <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-sm sm:text-base ${
                 step.done ? 'bg-green-500 text-white' :
                 step.current ? 'bg-yellow-500 text-white animate-pulse' :
                 'bg-gray-600 text-gray-400'
               }`}>
                 {step.done ? '✔' : step.step}
               </div>
-              <span className={`text-[10px] sm:text-xs mt-2 text-center leading-tight ${
+              <span className={`text-[9px] sm:text-xs mt-1 sm:mt-2 text-center leading-tight max-w-[60px] sm:max-w-none ${
                 step.done ? 'text-green-400' :
                 step.current ? 'text-yellow-400' :
                 'text-gray-500'
@@ -1387,10 +1381,10 @@ const LVEditButton = ({ project }) => {
           ))}
         </div>
         
-        {nextStepHint && (
+        {completedLvs === 0 && (
           <div className="mt-4 sm:mt-6 bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-3 sm:p-4">
             <p className="text-yellow-300 text-sm sm:text-base">
-              <strong>Nächster Schritt:</strong> {nextStepHint}
+              <strong>Nächster Schritt:</strong> Erstellen Sie die Leistungsverzeichnisse für Ihre gewählten Gewerke
             </p>
           </div>
         )}
