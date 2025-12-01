@@ -17926,26 +17926,96 @@ const offerResult = await query(
         await transporter.sendMail({
           from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
           to: offer.email,
-          subject: 'Vorläufige Beauftragung erhalten - Kontaktdaten freigegeben',
+          subject: '🎉 Vorläufige Beauftragung erhalten - byndl',
           html: `
-            <h2>Glückwunsch! Sie haben eine vorläufige Beauftragung erhalten</h2>
-            <p>Der Bauherr hat Ihr Angebot vorläufig angenommen und möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.</p>
-            
-            <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 15px; margin: 20px 0;">
-              <strong>Status: Vertragsanbahnung</strong><br>
-              Sie befinden sich nun in der geschützten Kennenlernphase. 
-              Beide Seiten können das Angebot noch anpassen oder zurückziehen.
-            </div>
-            
-            <h3>Nächste Schritte:</h3>
-            <ul>
-              <li>Kontaktieren Sie den Bauherren für einen Ortstermin</li>
-              <li>Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</li>
-              <li>Nach Ihrer Bestätigung kann der Bauherr verbindlich beauftragen</li>
-            </ul>
-            
-            <p><strong>Projektdetails:</strong> ${offer.trade_name}</p>
-            <a href="https://byndl.de/handwerker/dashboard">Zum Dashboard</a>
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                  <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 40px 30px;">
+                  
+                  <!-- Success Badge -->
+                  <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="display: inline-block; background: rgba(20, 184, 166, 0.2); border-radius: 50%; padding: 20px;">
+                      <span style="font-size: 48px;">🎉</span>
+                    </div>
+                  </div>
+                  
+                  <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 10px;">
+                    Glückwunsch!
+                  </h2>
+                  <p style="color: #14b8a6; font-size: 16px; text-align: center; margin: 0 0 30px;">
+                    Sie haben eine vorläufige Beauftragung erhalten
+                  </p>
+                  
+                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                    Der Bauherr hat Ihr Angebot für <strong style="color: #ffffff;">${offer.trade_name}</strong> vorläufig angenommen und möchte Sie kennenlernen. Die Kontaktdaten wurden freigegeben.
+                  </p>
+                  
+                  <!-- Status Box -->
+                  <div style="background: rgba(14, 165, 233, 0.15); border-left: 4px solid #0ea5e9; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
+                    <p style="margin: 0 0 5px; color: #0ea5e9; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                      📋 Status: Vertragsanbahnung
+                    </p>
+                    <p style="margin: 0; color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.5;">
+                      Sie befinden sich nun in der geschützten Kennenlernphase. Beide Seiten können das Angebot noch anpassen oder zurückziehen.
+                    </p>
+                  </div>
+                  
+                  <!-- Next Steps -->
+                  <h3 style="color: #ffffff; font-size: 16px; font-weight: 600; margin: 30px 0 15px;">
+                    Nächste Schritte
+                  </h3>
+                  
+                  <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;">
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 15px;">
+                      <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">1</span>
+                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Kontaktieren Sie den Bauherren für einen Ortstermin</p>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 15px;">
+                      <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">2</span>
+                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Bestätigen oder passen Sie Ihr Angebot nach der Besichtigung an</p>
+                    </div>
+                    <div style="display: flex; align-items: flex-start;">
+                      <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">3</span>
+                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Nach Ihrer Bestätigung kann der Bauherr verbindlich beauftragen</p>
+                    </div>
+                  </div>
+                  
+                  <!-- CTA Button -->
+                  <div style="text-align: center; margin: 35px 0;">
+                    <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                      Zum Dashboard →
+                    </a>
+                  </div>
+                  
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                    Diese E-Mail wurde automatisch von byndl versendet.
+                  </p>
+                  <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                    © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                  </p>
+                </div>
+                
+              </div>
+            </body>
+            </html>
           `
         });
       } catch (emailError) {
