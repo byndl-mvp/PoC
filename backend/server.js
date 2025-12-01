@@ -21864,7 +21864,7 @@ if (transporter && otherOffers.rows.length > 0) {
                   Diese Nachricht wurde im Auftrag des Bauherrn über byndl versendet.
                 </p>
                 <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
-                  © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                  © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
               
