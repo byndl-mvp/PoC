@@ -139,38 +139,68 @@ export default function HandwerkerScheduleTab({ handwerkerId, apiUrl }) {
     };
   };
 
-  const isUpcoming = (date) => {
-    const today = new Date();
-    const entryDate = new Date(date);
-    return entryDate > today;
+  // Hilfsfunktionen für Datumsvergleiche
+  const normalizeDate = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
   };
 
+  const today = normalizeDate(new Date());
+
+  // Prüft ob Termin in der Zukunft liegt (Start nach heute)
+  const isUpcoming = (entry) => {
+    const startDate = normalizeDate(entry.planned_start);
+    return startDate > today && entry.status !== 'completed';
+  };
+
+  // Prüft ob Termin heute stattfindet
   const isToday = (date) => {
-    const today = new Date();
-    const entryDate = new Date(date);
-    return entryDate.toDateString() === today.toDateString();
+    const entryDate = normalizeDate(date);
+    return entryDate.getTime() === today.getTime();
+  };
+
+  // Prüft ob Termin gerade in Ausführung ist (heute zwischen Start und Ende)
+  const isInProgress = (entry) => {
+    if (entry.status === 'completed') return false;
+    const startDate = normalizeDate(entry.planned_start);
+    const endDate = normalizeDate(entry.planned_end);
+    return startDate <= today && endDate >= today;
+  };
+
+  // Prüft ob Termin abgelaufen/vergangen ist (Ende vor heute)
+  const isPast = (entry) => {
+    const endDate = normalizeDate(entry.planned_end);
+    return endDate < today || entry.status === 'completed';
   };
 
   const filteredSchedule = schedule.map(project => ({
     ...project,
     entries: project.entries.filter(entry => {
       if (filterStatus === 'upcoming') {
-        return isUpcoming(entry.planned_start) && entry.status !== 'completed';
+        // Anstehend: Start in der Zukunft, nicht abgeschlossen
+        return isUpcoming(entry);
       }
       if (filterStatus === 'in_progress') {
-        return entry.status === 'in_progress';
+        // In Ausführung: Heute zwischen Start und Ende, oder Status ist in_progress
+        return isInProgress(entry) || entry.status === 'in_progress';
       }
-      return true; // 'all'
+      // 'all' - zeigt alle NICHT abgeschlossenen und NICHT vergangenen Termine
+      // Falls du wirklich ALLE anzeigen willst (inkl. vergangene), entferne die isPast-Prüfung
+      return !isPast(entry);
     })
   })).filter(project => project.entries.length > 0);
 
   // Statistiken
-  const totalEntries = schedule.reduce((sum, p) => sum + p.entries.length, 0);
+  const totalEntries = schedule.reduce((sum, p) => sum + p.entries.filter(e => !isPast(e)).length, 0);
   const confirmedEntries = schedule.reduce((sum, p) => 
-    sum + p.entries.filter(e => e.confirmed).length, 0
+    sum + p.entries.filter(e => e.confirmed && !isPast(e)).length, 0
   );
   const upcomingEntries = schedule.reduce((sum, p) => 
-    sum + p.entries.filter(e => isUpcoming(e.planned_start) && e.status !== 'completed').length, 0
+    sum + p.entries.filter(e => isUpcoming(e)).length, 0
+  );
+  const inProgressEntries = schedule.reduce((sum, p) => 
+    sum + p.entries.filter(e => isInProgress(e) || e.status === 'in_progress').length, 0
   );
 
   if (loading) {
@@ -255,7 +285,7 @@ export default function HandwerkerScheduleTab({ handwerkerId, apiUrl }) {
               : 'bg-white/10 text-gray-300 hover:bg-white/20'
           }`}
         >
-          In Ausführung
+          In Ausführung ({inProgressEntries})
         </button>
       </div>
 
@@ -711,4 +741,3 @@ function RequestChangeModal({ entry, onClose, onSubmit }) {
     document.body
   );
 }
-
