@@ -3318,7 +3318,7 @@ if (selectedProject) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span className="hidden sm:inline">Vertrag ansehen</span>
+            <span className="hidden sm:inline">Vertrag</span>
             <span className="sm:hidden">Vertrag</span>
           </button>
           
@@ -3401,12 +3401,19 @@ if (selectedProject) {
     </h3>
     <div className="space-y-4 sm:space-y-6">
       {orders.filter(o => o.status === 'completed').map((order, idx) => {
-        // Berechne mit Rabatt
-        const netto = parseFloat(order.amount) || 0;
+        // ✅ Verwende Totals inkl. Nachträge falls vorhanden (wie bei aktiven Aufträgen)
+        const totalsData = orderTotals[order.id];
+        const pendingCount = pendingNachtraege[order.id] || 0;
+        
+        const netto = totalsData ? totalsData.totalNetto : (parseFloat(order.amount) || 0);
         const bundleDiscount = order.bundle_discount || 0;
-        const discountAmount = bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0;
-        const nettoAfterDiscount = netto - discountAmount;
-        const brutto = nettoAfterDiscount * 1.19;
+        const discountAmount = totalsData ? totalsData.discountAmount : (bundleDiscount > 0 ? (netto * bundleDiscount / 100) : 0);
+        const nettoAfterDiscount = totalsData ? totalsData.nettoAfterDiscount : (netto - discountAmount);
+        const brutto = totalsData ? totalsData.totalBrutto : (nettoAfterDiscount * 1.19);
+        
+        // Nachtrags-Info
+        const nachtraegeSum = totalsData ? totalsData.nachtraegeSum : 0;
+        const approvedNachtraege = totalsData ? totalsData.approvedCount : 0;
         
         return (
           <div key={idx} className="bg-white/5 rounded-lg p-4 sm:p-6 border border-green-500/30">
@@ -3417,6 +3424,17 @@ if (selectedProject) {
                   <span className="px-2 sm:px-3 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
                     VOB/B
                   </span>
+                  {/* Nachtrags-Badges */}
+                  {pendingCount > 0 && (
+                    <span className="px-2 sm:px-3 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">
+                      {pendingCount} NT offen
+                    </span>
+                  )}
+                  {approvedNachtraege > 0 && (
+                    <span className="px-2 sm:px-3 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
+                      {approvedNachtraege} NT beauftragt
+                    </span>
+                  )}
                   {/* NEU: Bewertungs-Badge */}
                   <RatingBadge orderId={order.id} />
                 </div>
@@ -3439,13 +3457,23 @@ if (selectedProject) {
               </div>
               
               <div className="text-left lg:text-right flex-shrink-0 w-full lg:w-auto lg:min-w-[180px]">
-                {/* Netto */}
+                {/* Ursprungsauftrag Netto */}
                 <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-white/5 rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Netto</p>
-                  <p className="text-xl sm:text-2xl font-bold text-white">
-                    {formatCurrency(netto)}
+                  <p className="text-xs text-gray-400 mb-1">Ursprungsauftrag Netto</p>
+                  <p className="text-lg sm:text-xl font-bold text-white">
+                    {formatCurrency(parseFloat(order.amount) || 0)}
                   </p>
                 </div>
+                
+                {/* Nachträge falls vorhanden */}
+                {nachtraegeSum > 0 && (
+                  <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-teal-500/10 border border-teal-500/30 rounded-lg">
+                    <p className="text-xs text-teal-400 mb-1">+ Nachträge</p>
+                    <p className="text-base sm:text-lg font-semibold text-teal-400">
+                      {formatCurrency(nachtraegeSum)}
+                    </p>
+                  </div>
+                )}
                 
                 {bundleDiscount > 0 && (
                   <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
@@ -3526,9 +3554,23 @@ if (selectedProject) {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span className="hidden sm:inline">Vertrag</span>
+                  <span className="hidden sm:inline">Vertrag ansehen</span>
                   <span className="sm:hidden">Vertrag</span>
                 </button>
+                
+                {/* Nachträge einsehen Button (nur wenn Nachträge existieren) */}
+                {(approvedNachtraege > 0 || pendingCount > 0) && (
+                  <button
+                    onClick={() => navigate(`/bauherr/auftrag/${order.id}/nachtraege`)}
+                    className="px-2 sm:px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="hidden sm:inline">Nachträge ({approvedNachtraege + pendingCount})</span>
+                    <span className="sm:hidden">NT ({approvedNachtraege + pendingCount})</span>
+                  </button>
+                )}
                 
                 {/* NEU: Bewertungs-Button - Pulsierend wenn noch nicht bewertet */}
                 <RatingButton orderId={order.id} />
