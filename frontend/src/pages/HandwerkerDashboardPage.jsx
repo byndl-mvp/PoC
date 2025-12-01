@@ -846,8 +846,6 @@ const badgeCounts = {
                 <h4 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Enthaltene Projekte:</h4>
                 <div className="space-y-3 mb-4 sm:mb-6">
                   {bundle.projects?.map((project, idx) => {
-                    // Runde Projektvolumen auf 500 Euro
-                    const roundedProjectVolume = Math.round((project.volume || 0) / 500) * 500;
                     
                     return (
                       <div 
