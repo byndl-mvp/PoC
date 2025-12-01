@@ -120,8 +120,8 @@ export default function BauherrenNachtraegeUebersichtPage() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-400">Handwerker</p>
-              <p className="text-lg font-semibold text-white">{order?.company_name || order?.handwerker_company}</p>
+              <p className="text-sm text-gray-400">Firma</p>
+              <p className="text-lg font-semibold text-white">{order?.company_name}</p>
             </div>
           </div>
         </div>
