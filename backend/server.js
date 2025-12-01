@@ -23780,21 +23780,108 @@ async function createProjectTenders(req, res) {
               await transporter.sendMail({
                 from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
                 to: hw.email,
-                subject: `Neue Ausschreibung: ${trade.name} - ${project.category || 'Bauprojekt'}`,
+                subject: `📋 Neue Ausschreibung: ${trade.name} - ${project.category || 'Bauprojekt'}`,
                 html: `
-                  <!doctype html>
-                  <html><body style="font-family:Arial,sans-serif;">
-                    <h2>Neue passende Ausschreibung</h2>
-                    <p>Guten Tag ${hw.company_name || hw.contact_person || ''},</p>
-                    <p>Es gibt eine neue Ausschreibung in Ihrer Region.</p>
-                    <table>
-                      <tr><td><strong>Gewerk:</strong></td><td>${trade.name}</td></tr>
-                      <tr><td><strong>Standort:</strong></td><td>${targetZip} (${Math.round(hw.distance_km || 0)} km)</td></tr>
-                      <tr><td><strong>Geschätztes Volumen:</strong></td><td>${formatCurrency(estimatedValue)}</td></tr>
-                      <tr><td><strong>Angebotsfrist:</strong></td><td>${tenderDeadline ? new Date(tenderDeadline).toLocaleDateString('de-DE') : 'Offen'}</td></tr>
-                    </table>
-                    <p><a href="https://byndl.de/handwerker/dashboard">Zum Dashboard →</a></p>
-                  </body></html>`
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  </head>
+                  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
+                    <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                      
+                      <!-- Header -->
+                      <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
+                        <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Bauprojekte einfach gemacht</p>
+                      </div>
+                      
+                      <!-- Content -->
+                      <div style="padding: 40px 30px;">
+                        
+                        <!-- Icon -->
+                        <div style="text-align: center; margin-bottom: 30px;">
+                          <div style="display: inline-block; background: rgba(20, 184, 166, 0.2); border-radius: 50%; padding: 20px;">
+                            <span style="font-size: 48px;">📋</span>
+                          </div>
+                        </div>
+                        
+                        <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 10px;">
+                          Neue Ausschreibung
+                        </h2>
+                        <p style="color: #14b8a6; font-size: 16px; text-align: center; margin: 0 0 30px;">
+                          passend zu Ihrem Profil in Ihrer Region
+                        </p>
+                        
+                        <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                          Guten Tag${hw.company_name ? ` <strong style="color: #ffffff;">${hw.company_name}</strong>` : (hw.contact_person ? ` <strong style="color: #ffffff;">${hw.contact_person}</strong>` : '')},
+                        </p>
+                        
+                        <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                          es gibt eine neue Ausschreibung in Ihrer Region, die zu Ihrem Leistungsprofil passt.
+                        </p>
+                        
+                        <!-- Ausschreibungs-Details Box -->
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin: 25px 0;">
+                          <p style="margin: 0 0 20px; color: #14b8a6; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            📄 Ausschreibungsdetails
+                          </p>
+                          
+                          <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                            <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${trade.name}</span>
+                          </div>
+                          
+                          <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Projekt</span>
+                            <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${project.category || 'Bauprojekt'}</span>
+                          </div>
+                          
+                          <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Standort</span>
+                            <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${targetZip} · ca. ${Math.round(hw.distance_km || 0)} km entfernt</span>
+                          </div>
+                          
+                          <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
+                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Geschätztes Volumen</span>
+                            <span style="color: #22c55e; font-size: 15px; font-weight: 600;">${formatCurrency(Math.round(estimatedValue * 0.8 / 100) * 100)} – ${formatCurrency(Math.round(estimatedValue * 1.2 / 100) * 100)}</span>
+                          </div>
+                          
+                          <div style="padding: 12px 0; display: flex; justify-content: space-between;">
+                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Angebotsfrist</span>
+                            <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${tenderDeadline ? new Date(tenderDeadline).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Offen'}</span>
+                          </div>
+                        </div>
+                        
+                        <!-- Hinweis -->
+                        <p style="color: rgba(255,255,255,0.5); font-size: 13px; line-height: 1.6; margin: 20px 0; text-align: center;">
+                          Das geschätzte Volumen basiert auf den Projektangaben und dient als grobe Orientierung.
+                        </p>
+                        
+                        <!-- CTA Button -->
+                        <div style="text-align: center; margin: 35px 0;">
+                          <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                            Ausschreibung ansehen →
+                          </a>
+                        </div>
+                        
+                      </div>
+                      
+                      <!-- Footer -->
+                      <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
+                        <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                          Sie erhalten diese E-Mail, weil Ihr Profil zur Ausschreibung passt.
+                        </p>
+                        <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                          © ${new Date().getFullYear()} byndl · Bauprojekte einfach gemacht
+                        </p>
+                      </div>
+                      
+                    </div>
+                  </body>
+                  </html>
+                `
               });
 
               await query(
