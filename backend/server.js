@@ -20829,12 +20829,14 @@ app.get('/api/orders/:orderId/lv-details', async (req, res) => {
         p.house_number,
         p.zip_code,
         p.city,
-        b.name as bauherr_name
+        b.name as bauherr_name,
+        h.company_name
        FROM orders o
        JOIN offers of ON o.offer_id = of.id
        JOIN trades t ON o.trade_id = t.id
        JOIN projects p ON o.project_id = p.id
        JOIN bauherren b ON o.bauherr_id = b.id
+       JOIN handwerker h ON o.handwerker_id = h.id
        WHERE o.id = $1`,
       [orderId]
     );
