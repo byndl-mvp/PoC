@@ -817,9 +817,9 @@ const badgeCounts = {
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   <div className="bg-white/5 rounded-lg p-2 sm:p-4">
                     <p className="text-gray-400 text-xs sm:text-sm mb-1">Volumen</p>
-                    <p className="text-lg sm:text-2xl font-bold text-teal-400">
-                      {formatCurrency(roundedVolume)}
-                    </p>
+                    <p className="text-sm sm:text-lg font-bold text-teal-400">
+  {formatCurrency(Math.round(bundle.totalVolume * 0.8 / 1000) * 1000)} – {formatCurrency(Math.round(bundle.totalVolume * 1.2 / 1000) * 1000)}
+</p>
                     <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">ca. Netto (gerundet)</p>
                   </div>
                   
