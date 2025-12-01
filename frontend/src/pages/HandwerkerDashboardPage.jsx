@@ -867,7 +867,7 @@ const badgeCounts = {
                             </p>
                             <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
                               <span className="text-gray-500">
-                                💰 <span className="text-teal-400 font-semibold">{formatCurrency(roundedProjectVolume)}</span>
+                                💰 <span className="text-teal-400 font-semibold">{formatCurrency(Math.round(project.volume * 0.8 / 1000) * 1000)} – {formatCurrency(Math.round(project.volume * 1.2 / 1000) * 1000)}</span>
                               </span>
                               <span className="text-gray-500">
                                 ⏱️ <span className="text-white">{project.timeframe || 'Nach Absprache'}</span>
