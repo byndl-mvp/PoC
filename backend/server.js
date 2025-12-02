@@ -22103,7 +22103,7 @@ Als Vertragsgrundlage gilt die VOB in der zum Vertragsschluss
 aktuellen Fassung (derzeit VOB 2019).
 
 Erfüllungsort ist der Ausführungsort der Leistung.
-Gerichtsstand ist ${offer.city}, sofern der AG Kaufmann ist.
+Gerichtsstand ist ${offer.city}, soweit rechtlich zulässig.
 
 Änderungen und Ergänzungen dieses Vertrages bedürfen der Schriftform.
 
