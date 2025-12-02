@@ -23785,7 +23785,7 @@ async function createProjectTenders(req, res) {
                     <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
                       
                       <!-- Header -->
-                      <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                      <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                         <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
                         <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
                       </div>
