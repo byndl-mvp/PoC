@@ -626,10 +626,10 @@ const findDependencies = (entries) => {
     <div className="space-y-6">
       {/* Header mit Status */}
       <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-2">Terminplan</h2>
-            <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+  <div>
+    <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Terminplan</h2>
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <StatusBadge status={schedule.status} />
               {schedule.complexity_level && (
                 <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm">
