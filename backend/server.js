@@ -21705,7 +21705,7 @@ for (const otherOffer of otherOffers.rows) {
                     <!-- Auftragssumme prominent -->
                     <div style="text-align: center; padding: 15px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; margin-bottom: 20px;">
                       <span style="color: rgba(255,255,255,0.6); font-size: 13px; display: block; margin-bottom: 5px;">Auftragssumme</span>
-                      <span style="color: #22c55e; font-size: 28px; font-weight: 700;">${offer.amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</span>
+                      <span style="color: #22c55e; font-size: 28px; font-weight: 700;">${Number(offer.amount).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})} € netto</span>
                     </div>
                     
                     <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
