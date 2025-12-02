@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
 import ExecutionTimesSection from './ExecutionTimesSection';
 
@@ -9,6 +9,28 @@ function formatCurrency(value) {
     style: 'currency',
     currency: 'EUR'
   }).format(value);
+}
+
+// ✅ NEU: Provisionsberechnung gemäß AGB § 6.2
+function calculateProvision(nettoAmount) {
+  if (nettoAmount <= 10000) {
+    return nettoAmount * 0.03; // 3%
+  } else if (nettoAmount <= 20000) {
+    return nettoAmount * 0.02; // 2%
+  } else {
+    return nettoAmount * 0.015; // 1.5%
+  }
+}
+
+// ✅ NEU: Provisionssatz als Text
+function getProvisionRate(nettoAmount) {
+  if (nettoAmount <= 10000) {
+    return '3,0%';
+  } else if (nettoAmount <= 20000) {
+    return '2,0%';
+  } else {
+    return '1,5%';
+  }
 }
 
 export default function HandwerkerOfferConfirmPage() {
@@ -32,6 +54,9 @@ export default function HandwerkerOfferConfirmPage() {
   const [editingPosition, setEditingPosition] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  
+  // ✅ NEU: Checkbox für Provisionsbestätigung
+  const [provisionAccepted, setProvisionAccepted] = useState(false);
 
    // ✅ FIX: Lade Handwerker-Daten beim Mount
 useEffect(() => {
@@ -109,6 +134,11 @@ setLvData(parsedLV);
   const nettoAfterDiscount = totalNetto - discountAmount;
   const totalBrutto = nettoAfterDiscount * 1.19;
   const mwst = totalBrutto - nettoAfterDiscount;
+  
+  // ✅ NEU: byndl Provision berechnen (auf Netto nach Rabatt)
+  const provisionNetto = calculateProvision(nettoAfterDiscount);
+  const provisionRate = getProvisionRate(nettoAfterDiscount);
+  const provisionBrutto = provisionNetto * 1.19;
   
   // Position bearbeiten öffnen
   const openEditPosition = (position, index) => {
@@ -754,6 +784,29 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
           <span className="text-white font-bold">Gesamt (Brutto):</span>
           <span className="text-teal-400 font-bold text-2xl">{formatCurrency(totalBrutto)}</span>
         </div>
+        
+        {/* ✅ NEU: byndl Provision Anzeige */}
+        <div className="mt-6 pt-4 border-t border-amber-500/30 bg-amber-500/5 -mx-4 px-4 pb-2 rounded-b-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-amber-400 text-lg">💼</span>
+            <span className="text-amber-300 font-semibold">byndl Vermittlungsprovision</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-400">Provision ({provisionRate} auf Netto):</span>
+            <span className="text-amber-300">{formatCurrency(provisionNetto)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-400">zzgl. 19% MwSt.:</span>
+            <span className="text-gray-400">{formatCurrency(provisionBrutto - provisionNetto)}</span>
+          </div>
+          <div className="flex justify-between mt-1 pt-1 border-t border-amber-500/20">
+            <span className="text-amber-200 font-medium">Provision Brutto:</span>
+            <span className="text-amber-400 font-bold">{formatCurrency(provisionBrutto)}</span>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Gemäß <Link to="/agb#p6" target="_blank" className="text-amber-400/70 hover:text-amber-400 underline">AGB § 6</Link> – fällig bei Zustandekommen des Werkvertrags
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -827,6 +880,32 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
   </div>
 )}
         
+        {/* ✅ NEU: Provisions-Bestätigung Checkbox */}
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 mb-6">
+          <div className="flex items-start gap-4">
+            <input
+              type="checkbox"
+              id="provisionAccepted"
+              checked={provisionAccepted}
+              onChange={(e) => setProvisionAccepted(e.target.checked)}
+              className="mt-1 w-5 h-5 rounded border-amber-500/50 bg-white/10 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 cursor-pointer"
+            />
+            <label htmlFor="provisionAccepted" className="cursor-pointer">
+              <span className="text-white font-medium block mb-1">
+                Ich akzeptiere die byndl Vermittlungsprovision
+              </span>
+              <span className="text-gray-400 text-sm block">
+                Bei verbindlicher Beauftragung durch den Bauherrn wird eine Vermittlungsprovision von{' '}
+                <span className="text-amber-400 font-semibold">{formatCurrency(provisionBrutto)}</span>{' '}
+                (brutto) fällig. Die Provision beträgt {provisionRate} der Netto-Auftragssumme gemäß{' '}
+                <Link to="/agb#p6" target="_blank" className="text-amber-400 hover:text-amber-300 underline">
+                  AGB § 6
+                </Link>.
+              </span>
+            </label>
+          </div>
+        </div>
+        
         {/* Hinweis */}
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
           <p className="text-yellow-300 text-sm">
@@ -839,8 +918,8 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
 {offer?.status === 'preliminary' ? (
   <button
     onClick={checkAppointmentBeforeConfirm}
-    disabled={loading || !lvData.positions || lvData.positions.length === 0}
-    className="w-full px-8 py-4 bg-gradient-to-r from-green-500 to-teal-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+    disabled={loading || !lvData.positions || lvData.positions.length === 0 || !provisionAccepted}
+    className="w-full px-8 py-4 bg-gradient-to-r from-green-500 to-teal-600 text-white text-lg font-bold rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
   >
     ✓ Angebot verbindlich bestätigen ({formatCurrency(totalBrutto)})
   </button>
