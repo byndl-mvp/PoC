@@ -872,10 +872,10 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
                 Ich akzeptiere die byndl Vermittlungsprovision
               </span>
               <span className="text-gray-400 text-sm block">
-  Erst bei verbindlicher Beauftragung durch den Bauherrn und Zustandekommen des Werkvertrags wird eine 
+  Erst bei verbindlicher Beauftragung durch den Bauherrn und Zustandekommen eines Werkvertrags wird eine 
   Vermittlungsprovision fällig. Diese beträgt{' '}
   <span className="text-amber-400 font-semibold">{formatCurrency(provisionBrutto)}</span>{' '}
-  (brutto) gemäß{' '}
+  (brutto, {provisionRate} der Netto-Auftragssumme) gemäß{' '}
   <Link to="/agb#p6" target="_blank" className="text-amber-400 hover:text-amber-300 underline">
     AGB § 6
   </Link>{' '}
