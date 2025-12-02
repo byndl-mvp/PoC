@@ -1637,7 +1637,6 @@ function EditEntryModal({ entry, onClose, onSave }) {
         }
       }}
     >
-      <div 
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl max-w-md w-full p-4 sm:p-6 border border-white/20 max-h-[90vh] overflow-y-auto mx-2 sm:mx-0"
         onClick={(e) => e.stopPropagation()}
       >
