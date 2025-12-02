@@ -27959,7 +27959,6 @@ WICHTIGE PRÜFPUNKTE:
 
 2. PREISLICHE PLAUSIBILITÄT
    - Vergleiche JEDEN Preis mit dem KI-Referenzpreis als Orientierung
-   - Die KI-Preise sind Schätzungen, keine verbindlichen Marktpreise
    - Regionale Unterschiede, Materialqualität und Auslastung beeinflussen Preise erheblich
    - Identifiziere Ausreißer (>40% Abweichung)
    - Bewerte ob Abweichungen nachvollziehbar sind
