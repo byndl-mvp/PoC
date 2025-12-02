@@ -1319,7 +1319,10 @@ const badgeCounts = {
       <p className="text-yellow-300 text-sm">
         <strong>⚠️ Exklusivitätsvereinbarung:</strong> In dieser Phase hat der Bauherr Ihr Angebot ausgewählt und möchte Sie kennenlernen. 
         Während dieser exklusiven Verhandlungsphase sind weitere Angebote für dieses Gewerk in byndl gesperrt. Nutzen Sie die Zeit für Ortstermine und finale Abstimmungen. 
-        Bitte beachten Sie auch die Regelungen zur zweistufigen Vergabe in unseren AGB.
+        Bitte beachten Sie auch die Regelungen zur zweistufigen Vergabe in unseren{' '}
+        <Link to="/agb#p7" className="font-semibold text-yellow-200 hover:text-white underline">
+          AGB
+        </Link>.
       </p>
     </div>
     
