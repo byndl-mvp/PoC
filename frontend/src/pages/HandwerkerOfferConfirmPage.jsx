@@ -784,29 +784,6 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
           <span className="text-white font-bold">Gesamt (Brutto):</span>
           <span className="text-teal-400 font-bold text-2xl">{formatCurrency(totalBrutto)}</span>
         </div>
-        
-        {/* ✅ NEU: byndl Provision Anzeige */}
-        <div className="mt-6 pt-4 border-t border-amber-500/30 bg-amber-500/5 -mx-4 px-4 pb-2 rounded-b-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-amber-400 text-lg">💼</span>
-            <span className="text-amber-300 font-semibold">byndl Vermittlungsprovision</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Provision ({provisionRate} auf Netto):</span>
-            <span className="text-amber-300">{formatCurrency(provisionNetto)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">zzgl. 19% MwSt.:</span>
-            <span className="text-gray-400">{formatCurrency(provisionBrutto - provisionNetto)}</span>
-          </div>
-          <div className="flex justify-between mt-1 pt-1 border-t border-amber-500/20">
-            <span className="text-amber-200 font-medium">Provision Brutto:</span>
-            <span className="text-amber-400 font-bold">{formatCurrency(provisionBrutto)}</span>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Gemäß <Link to="/agb#p6" target="_blank" className="text-amber-400/70 hover:text-amber-400 underline">AGB § 6</Link> – fällig bei Zustandekommen des Werkvertrags
-          </p>
-        </div>
       </div>
     </div>
   </div>
