@@ -22855,9 +22855,6 @@ doc.text('Unterschrift / Firmenstempel', rightCol, doc.y);
     doc.text('Ort, Datum', leftCol, doc.y);
     doc.text('Ort, Datum', rightCol, doc.y);
     
-    doc.moveDown(3);
-    const lineY2 = doc.y;
-    
     // Unterschrift Linien
     doc.moveTo(leftCol, lineY2).lineTo(leftCol + lineWidth, lineY2).stroke();
     doc.moveTo(rightCol, lineY2).lineTo(rightCol + lineWidth, lineY2).stroke();
