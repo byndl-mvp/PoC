@@ -629,7 +629,7 @@ const badgeCounts = {
           {tab === 'ausschreibungen' && <><span className="sm:hidden">Ausschr.</span><span className="hidden sm:inline">Ausschreibungen</span></>}
           {tab === 'bundles' && <><span className="sm:hidden">Bündel</span><span className="hidden sm:inline">Projektbündel</span></>}
           {tab === 'angebote' && <><span className="sm:hidden">Angebote</span><span className="hidden sm:inline">Meine Angebote</span></>}
-          {tab === 'vertragsanbahnung' && <><span className="sm:hidden">Verträge</span><span className="hidden sm:inline">Vertragsanbahnung</span></>}
+          {tab === 'vertragsanbahnung' && <><span className="sm:hidden">Verhandlung</span><span className="hidden sm:inline">Vertragsanbahnung</span></>}
           {tab === 'auftraege' && 'Aufträge'}
           {tab === 'termine' && <><span className="sm:hidden">Termine</span><span className="hidden sm:inline">Terminplan</span></>}
         </span>
