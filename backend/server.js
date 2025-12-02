@@ -27958,8 +27958,10 @@ WICHTIGE PRÜFPUNKTE:
    - Sind alle Einheitspreise angegeben?
 
 2. PREISLICHE PLAUSIBILITÄT
-   - Vergleiche JEDEN Preis mit dem KI-Referenzpreis
-   - Identifiziere Ausreißer (>20% Abweichung)
+   - Vergleiche JEDEN Preis mit dem KI-Referenzpreis als Orientierung
+   - Die KI-Preise sind Schätzungen, keine verbindlichen Marktpreise
+   - Regionale Unterschiede, Materialqualität und Auslastung beeinflussen Preise erheblich
+   - Identifiziere Ausreißer (>40% Abweichung)
    - Bewerte ob Abweichungen nachvollziehbar sind
    - Prüfe Gesamtsumme vs. KI-Schätzung
 
@@ -27982,21 +27984,21 @@ BEWERTUNGSSYSTEM (AMPEL):
 
 🟢 GRÜN = Gutes Angebot
 - Vollständig ausgefüllt
-- Preise im marktüblichen Rahmen (±15% vom KI-Preis)
+- Preise im marktüblichen Rahmen (±20% vom KI-Preis)
 - Keine gravierenden Auffälligkeiten
 - Klare und nachvollziehbare Positionen
 → Empfehlung: Kann beauftragt werden
 
 🟡 GELB = Angebot mit Auffälligkeiten
 - Kleinere Lücken oder Unklarheiten
-- Preise teilweise außerhalb Rahmen (±15-30%)
+- Preise teilweise außerhalb Rahmen (±20-50%)
 - Einzelne Positionen erklärungsbedürftig
 - Zusatzpositionen sollten hinterfragt werden
 → Empfehlung: Nachverhandlung empfohlen
 
 🔴 ROT = Problematisches Angebot
 - Wesentliche Positionen fehlen
-- Preise unrealistisch (>30% Abweichung)
+- Preise unrealistisch (>50% Abweichung)
 - Viele ungeklärte Zusatzpositionen
 - Unklare oder unfaire Vertragsbedingungen
 → Empfehlung: Vergabe nicht empfohlen
