@@ -17996,7 +17996,7 @@ const offerResult = await query(
                   
                   <!-- CTA Button -->
                   <div style="text-align: center; margin: 35px 0;">
-                    <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                    <a href="https://byndl.de/handwerker/dashboard" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 8px; font-weight: 600; font-size: 15px;">
                       Zum Dashboard →
                     </a>
                   </div>
