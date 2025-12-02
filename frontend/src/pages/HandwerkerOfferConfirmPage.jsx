@@ -867,27 +867,20 @@ const PositionModal = ({ position, isOpen, onClose, onSave, isNew }) => {
               onChange={(e) => setProvisionAccepted(e.target.checked)}
               className="mt-1 w-5 h-5 rounded border-amber-500/50 bg-white/10 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 cursor-pointer"
             />
-            <label htmlFor="provisionAccepted" className="cursor-pointer flex-1">
-              <span className="text-white font-medium block mb-3">
+            <label htmlFor="provisionAccepted" className="cursor-pointer">
+              <span className="text-white font-medium block mb-1">
                 Ich akzeptiere die byndl Vermittlungsprovision
               </span>
-              
-              {/* Zentrierter Provisionsbetrag */}
-              <div className="text-center py-3 mb-3 bg-amber-500/10 rounded-lg">
-                <span className="text-amber-400 font-bold text-2xl">{formatCurrency(provisionBrutto)}</span>
-                <span className="text-gray-400 text-sm block mt-1">
-                  (brutto, {provisionRate} der Netto-Auftragssumme)
-                </span>
-              </div>
-              
               <span className="text-gray-400 text-sm block">
-                Erst bei verbindlicher Beauftragung durch den Bauherrn und Zustandekommen des Werkvertrags wird diese 
-                Vermittlungsprovision fällig gemäß{' '}
-                <Link to="/agb#p6" target="_blank" className="text-amber-400 hover:text-amber-300 underline">
-                  AGB § 6
-                </Link>{' '}
-                und über Ihre hinterlegte Zahlungsmethode abgerechnet.
-              </span>
+  Erst bei verbindlicher Beauftragung durch den Bauherrn und Zustandekommen eines Werkvertrags wird eine 
+  Vermittlungsprovision fällig. Diese beträgt{' '}
+  <span className="text-amber-400 font-semibold">{formatCurrency(provisionBrutto)}</span>{' '}
+  (brutto, {provisionRate} der Netto-Auftragssumme) gemäß{' '}
+  <Link to="/agb#p6" target="_blank" className="text-amber-400 hover:text-amber-300 underline">
+    AGB § 6
+  </Link>{' '}
+  und wird über Ihre hinterlegte Zahlungsmethode abgerechnet.
+</span>
             </label>
           </div>
         </div>
