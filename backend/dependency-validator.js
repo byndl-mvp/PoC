@@ -2,6 +2,8 @@
 // DEPENDENCY VALIDATION & FIXING (nach LLM-Generate)
 // ============================================================================
 
+const { query } = require('./db');
+
 /**
  * Validiert und korrigiert Dependencies nach der LLM-Generierung
  * - Entfernt Dependencies auf nicht-vorhandene Gewerke
