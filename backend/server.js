@@ -22762,7 +22762,7 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     );
     doc.moveDown(0.5);
     doc.text('Erfüllungsort ist der Ausführungsort der Leistung.', { width: 500 });
-    doc.text(`Gerichtsstand ist ${order.city}, sofern der AG Kaufmann ist.`, { width: 500 });
+    doc.text(`Gerichtsstand ist ${order.city}, soweit rechtlich zulässig.`, { width: 500 });
     doc.moveDown(0.5);
     doc.text('Änderungen und Ergänzungen dieses Vertrages bedürfen der Schriftform.', { width: 500 });
     doc.moveDown(0.5);
