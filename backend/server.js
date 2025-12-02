@@ -22811,16 +22811,40 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     const rightCol = 300;
     const lineWidth = 200;
     
-    doc.font('Helvetica-Bold');
-    doc.text('AUFTRAGGEBER', leftCol, doc.y);
-    doc.text('AUFTRAGNEHMER', rightCol, doc.y);
-    
-    doc.moveDown(1.5);
-    const nameY = doc.y;
-    
-    doc.font('Helvetica');
-    doc.text(order.bauherr_name, leftCol, nameY);
-    doc.text(order.company_name, rightCol, nameY);
+    const headerY = doc.y;
+doc.font('Helvetica-Bold');
+doc.text('AUFTRAGGEBER', leftCol, headerY);
+doc.text('AUFTRAGNEHMER', rightCol, headerY);
+
+doc.y = headerY + 30; // Fixe Position nach Header
+const nameY = doc.y;
+
+doc.font('Helvetica');
+doc.text(order.bauherr_name, leftCol, nameY);
+doc.text(order.company_name, rightCol, nameY);
+
+doc.y = nameY + 60; // Fixe Position nach Namen
+const lineY1 = doc.y;
+
+// Ort, Datum Linien
+doc.moveTo(leftCol, lineY1).lineTo(leftCol + lineWidth, lineY1).stroke();
+doc.moveTo(rightCol, lineY1).lineTo(rightCol + lineWidth, lineY1).stroke();
+
+doc.y = lineY1 + 5;
+doc.fontSize(9);
+doc.text('Ort, Datum', leftCol, doc.y);
+doc.text('Ort, Datum', rightCol, doc.y);
+
+doc.y = lineY1 + 60; // Fixe Position für Unterschrift
+const lineY2 = doc.y;
+
+// Unterschrift Linien
+doc.moveTo(leftCol, lineY2).lineTo(leftCol + lineWidth, lineY2).stroke();
+doc.moveTo(rightCol, lineY2).lineTo(rightCol + lineWidth, lineY2).stroke();
+
+doc.y = lineY2 + 5;
+doc.text('Unterschrift', leftCol, doc.y);
+doc.text('Unterschrift / Firmenstempel', rightCol, doc.y);
     
     doc.moveDown(3);
     const lineY1 = doc.y;
