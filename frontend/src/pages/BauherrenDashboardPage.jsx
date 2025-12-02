@@ -2846,7 +2846,10 @@ if (selectedProject) {
       <p className="text-yellow-300 text-sm">
         <strong>⚠️ Exklusivitätsvereinbarung:</strong> In der Vertragsanbahnung haben Sie exklusiven Kontakt zum ausgewählten Handwerksbetrieb. Während dieser Verhandlungsphase sind weitere Angebote auf diese Ausschreibung in byndl gesperrt.         
         Nutzen Sie die Zeit für Ortstermine und finale Abstimmungen. Einen Auftrag können Sie in byndl erst nach verbindlicher Angebotsbestätigung durch den Handwerksbetrieb erteilen. Falls Sie sich doch für ein anderes Angebot entscheiden möchten, 
-        beenden Sie bitte zunächst diese Vertragsanbahnung. Wir verweisen hierzu auf die Regelungen zur zweistufigen Vergabe in unseren AGB.
+        beenden Sie bitte zunächst diese Vertragsanbahnung. Wir verweisen hierzu auf die Regelungen zur zweistufigen Vergabe in unseren{' '}
+        <Link to="/agb#p7" className="font-semibold text-yellow-200 hover:text-white underline">
+          AGB
+        </Link>.
       </p>
     </div>
     
