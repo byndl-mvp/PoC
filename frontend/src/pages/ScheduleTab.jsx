@@ -632,9 +632,9 @@ const findDependencies = (entries) => {
     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <StatusBadge status={schedule.status} />
               {schedule.complexity_level && (
-                <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm">
-                  Komplexität: {schedule.complexity_level}
-                </span>
+                <span className="px-2 sm:px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs sm:text-sm">
+  Komplexität: {schedule.complexity_level}
+</span>
               )}
               {schedule.total_duration_days && (
                 <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm flex items-center gap-1">
@@ -646,14 +646,14 @@ const findDependencies = (entries) => {
           </div>
           
           {schedule.status === 'pending_approval' && (
-  <div className="flex flex-col items-end">
+  <div className="flex flex-col items-stretch sm:items-end w-full sm:w-auto">
     <button
       onClick={() => setShowApprovalModal(true)}
-      className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold rounded-lg hover:shadow-xl transition-all"
+      className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold rounded-lg hover:shadow-xl transition-all text-sm sm:text-base"
     >
       Terminplan bearbeiten & freigeben
     </button>
-    <p className="text-gray-400 text-sm mt-2 max-w-md text-right">
+    <p className="text-gray-400 text-xs sm:text-sm mt-2 max-w-md text-center sm:text-right">
       Nach der Freigabe können Sie und Ihre Handwerker die Termine sehen. Sie können den Plan auch später jederzeit anpassen.
     </p>
   </div>
@@ -1160,10 +1160,10 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
   ];
 
   return (
-    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-bold text-white">Bauablauf-Zeitplan</h3>
-        <div className="flex items-center gap-4 text-sm">
+    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-3 sm:p-6 border border-white/20">
+  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+    <h3 className="text-lg sm:text-2xl font-bold text-white">Bauablauf-Zeitplan</h3>
+    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
           <span className="text-gray-300">
             <strong className="text-white">{new Date(minDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}</strong> bis <strong className="text-white">{new Date(maxDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
           </span>
@@ -1173,9 +1173,9 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
       </div>
 
       {/* Timeline Header */}
-      <div className="mb-2 pb-4 border-b border-white/10">
-        <div className="flex min-w-max">
-          <div className="w-64 flex-shrink-0"></div>
+      <div className="mb-2 pb-4 border-b border-white/10 overflow-x-auto">
+  <div className="flex min-w-max">
+    <div className="w-32 sm:w-64 flex-shrink-0"></div>
           <div className="flex-1 relative" style={{ height: '50px' }}>
             {dateMarkers.map((date, idx) => {
               const position = ((date - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
@@ -1342,7 +1342,7 @@ function GanttChart({ entries, groupedTrades, editMode, onUpdateEntry, onDeleteE
   </p>
 )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 text-xs sm:text-sm">
           {/* Normale Arbeit */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded shadow"></div>
@@ -1415,9 +1415,9 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
     <>
       <div className="flex items-start py-3 relative group pointer-events-auto">
         {/* Linke Spalte */}
-        <div className="w-64 flex-shrink-0 pl-14">
+        <div className="w-32 sm:w-64 flex-shrink-0 pl-2 sm:pl-14">
   <div className="pt-2">
-    <span className="text-white text-sm font-semibold block">
+    <span className="text-white text-xs sm:text-sm font-semibold block truncate">
       {isSummary ? 'Gesamtdauer' : entry.phase_name}
     </span>
     <span className="text-gray-400 text-xs">
@@ -1507,7 +1507,7 @@ function GanttBar({ entry, minDate, totalDays, editMode, onEdit, onDelete, isSum
         </div>
 
         {/* Status Badge & Action Buttons */}
-<div className="w-48 flex-shrink-0 flex justify-end items-center gap-2 pt-2">
+<div className="w-24 sm:w-48 flex-shrink-0 flex justify-end items-center gap-1 sm:gap-2 pt-2">
   {onDelete && scheduleStatus === 'pending_approval' && (
     <button
       onClick={(e) => {
@@ -1638,7 +1638,7 @@ function EditEntryModal({ entry, onClose, onSave }) {
       }}
     >
       <div 
-        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl max-w-md w-full p-6 border border-white/20 max-h-[90vh] overflow-y-auto"
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl max-w-md w-full p-4 sm:p-6 border border-white/20 max-h-[90vh] overflow-y-auto mx-2 sm:mx-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
@@ -1836,7 +1836,7 @@ function ChangeRequestCard({ request, onResolve }) {
       </div>
 
       {/* Kompakte Info immer sichtbar */}
-      <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-3 text-xs sm:text-sm">
         <div>
           <span className="text-gray-400">Alt:</span>
           <span className="text-white ml-2">
