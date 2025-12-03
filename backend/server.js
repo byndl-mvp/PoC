@@ -22801,7 +22801,6 @@ app.get('/api/orders/:orderId/contract-pdf', async (req, res) => {
     doc.fontSize(12).font('Helvetica-Bold');
     doc.text('UNTERSCHRIFTEN', { align: 'center' });
     doc.fontSize(10).font('Helvetica');
-    doc.text('(Für die händische Unterzeichnung nach Ausdruck)', { align: 'center' });
     
     doc.moveDown(3);
     
