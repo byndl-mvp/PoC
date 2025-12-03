@@ -3048,30 +3048,6 @@ useEffect(() => {
   loadEvaluations();
 }, [loadEvaluations]);
 
-  const loadEvaluations = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        type: selectedType,
-        from: dateFrom,
-        to: dateTo
-      });
-      
-      const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/ai-evaluations?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEvaluations(data.results || []);
-        setStats(data.stats);
-      }
-    } catch (err) {
-      console.error('Fehler beim Laden:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('de-DE', {
       day: '2-digit',
