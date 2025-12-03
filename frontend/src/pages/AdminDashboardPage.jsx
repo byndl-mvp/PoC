@@ -751,7 +751,7 @@ const verifyHandwerker = async (id, action, reason = '') => {
           </button>
         )}
         <button
-  onClick={handleLogout}
+  onClick={logout}
   className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
   title="Logout"
 >
