@@ -3020,9 +3020,33 @@ function KIAuswertungenSection({ token }) {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedEvaluation, setSelectedEvaluation] = useState(null);
 
-  useEffect(() => {
-    loadEvaluations();
-  }, [selectedType, dateFrom, dateTo]);
+ const loadEvaluations = useCallback(async () => {
+  try {
+    setLoading(true);
+    const params = new URLSearchParams({
+      type: selectedType,
+      from: dateFrom,
+      to: dateTo
+    });
+    
+    const res = await fetch(`https://poc-rvrj.onrender.com/api/admin/ai-evaluations?${params}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setEvaluations(data.results || []);
+      setStats(data.stats);
+    }
+  } catch (err) {
+    console.error('Fehler beim Laden:', err);
+  } finally {
+    setLoading(false);
+  }
+}, [selectedType, dateFrom, dateTo, token]);
+
+useEffect(() => {
+  loadEvaluations();
+}, [loadEvaluations]);
 
   const loadEvaluations = async () => {
     try {
