@@ -18161,7 +18161,7 @@ app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
       [offerId, JSON.stringify(proposedDates), message]
     );
     
-    // Email an Bauherr
+   // Email an Bauherr
     if (transporter) {
       await transporter.sendMail({
         from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
@@ -18180,7 +18180,7 @@ app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -18200,7 +18200,7 @@ app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
                   für Ihren Ortstermin
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   <strong style="color: #ffffff;">${contactData.rows[0].company_name}</strong> hat Ihnen Termine für einen Ortstermin zum Gewerk <strong style="color: #14b8a6;">${contactData.rows[0].trade_name}</strong> vorgeschlagen:
                 </p>
                 
@@ -18223,14 +18223,14 @@ app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
                   <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
                     💬 Nachricht des Handwerkers
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; font-style: italic;">
+                  <p style="margin: 0; color: #d9d9d9; font-size: 14px; line-height: 1.6; font-style: italic;">
                     "${message}"
                   </p>
                 </div>
                 ` : ''}
                 
                 <!-- Info -->
-                <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.6; margin: 25px 0; text-align: center;">
+                <p style="color: #999999; font-size: 14px; line-height: 1.6; margin: 25px 0; text-align: center;">
                   Bitte wählen Sie einen der vorgeschlagenen Termine aus oder schlagen Sie einen Alternativtermin vor.
                 </p>
                 
@@ -18245,10 +18245,10 @@ app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
               
               <!-- Footer -->
               <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                   Diese E-Mail wurde automatisch von byndl versendet.
                 </p>
-                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                <p style="margin: 0; color: #666666; font-size: 12px;">
                   © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
@@ -18416,7 +18416,7 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
       ]
     );
     
-   // E-Mail an Handwerker
+  // E-Mail an Handwerker
     if (offer.handwerker_email && transporter) {
       try {
         await transporter.sendMail({
@@ -18436,7 +18436,7 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                   <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                  <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                  <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
                 </div>
                 
                 <!-- Content -->
@@ -18452,48 +18452,48 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
                   <h2 style="color: #ffffff; font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 10px;">
                     Angebot nicht berücksichtigt
                   </h2>
-                  <p style="color: rgba(255,255,255,0.6); font-size: 16px; text-align: center; margin: 0 0 30px;">
+                  <p style="color: #999999; font-size: 16px; text-align: center; margin: 0 0 30px;">
                     Der Bauherr hat sich für ein anderes Angebot entschieden
                   </p>
                   
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                     Sehr geehrtes Team von <strong style="color: #ffffff;">${offer.company_name}</strong>,
                   </p>
                   
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                     leider müssen wir Ihnen mitteilen, dass Ihr Angebot für <strong style="color: #14b8a6;">${offer.trade_name}</strong> nicht berücksichtigt wurde.
                   </p>
                   
                   <!-- Details Box -->
                   <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0;">
-                    <p style="margin: 0 0 15px; color: rgba(255,255,255,0.5); font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <p style="margin: 0 0 15px; color: #808080; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
                       📄 Details
                     </p>
                     
                     <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0;">
-                      <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Projekt</span>
+                      <span style="color: #808080; font-size: 13px;">Projekt</span>
                       <p style="margin: 5px 0 0; color: #ffffff; font-size: 15px;">${offer.project_category}</p>
                     </div>
                     
                     <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0;">
-                      <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Gewerk</span>
+                      <span style="color: #808080; font-size: 13px;">Gewerk</span>
                       <p style="margin: 5px 0 0; color: #ffffff; font-size: 15px;">${offer.trade_name}</p>
                     </div>
                     
                     <div style="${notes ? 'border-bottom: 1px solid rgba(255,255,255,0.1);' : ''} padding: 12px 0;">
-                      <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Grund</span>
+                      <span style="color: #808080; font-size: 13px;">Grund</span>
                       <p style="margin: 5px 0 0; color: #f87171; font-size: 15px;">${reasonTexts[reason] || 'Nicht angegeben'}</p>
                     </div>
                     
                     ${notes ? `
                     <div style="padding: 12px 0;">
-                      <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Anmerkung des Bauherrn</span>
-                      <p style="margin: 5px 0 0; color: rgba(255,255,255,0.8); font-size: 15px; font-style: italic;">"${notes}"</p>
+                      <span style="color: #808080; font-size: 13px;">Anmerkung des Bauherrn</span>
+                      <p style="margin: 5px 0 0; color: #cccccc; font-size: 15px; font-style: italic;">"${notes}"</p>
                     </div>
                     ` : ''}
                   </div>
                   
-                  <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; margin: 25px 0; text-align: center;">
+                  <p style="color: #b3b3b3; font-size: 14px; line-height: 1.6; margin: 25px 0; text-align: center;">
                     Vielen Dank für Ihre Mühe und die investierte Zeit.
                   </p>
                   
@@ -18508,10 +18508,10 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
                 
                 <!-- Footer -->
                 <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                  <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                     Diese E-Mail wurde automatisch von byndl versendet.
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                  <p style="margin: 0; color: #666666; font-size: 12px;">
                     © ${new Date().getFullYear()} byndl · einfach . bauen
                   </p>
                 </div>
@@ -18593,7 +18593,7 @@ app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
       ]
     );
     
-    // Benachrichtige Handwerker per E-Mail
+   // Benachrichtige Handwerker per E-Mail
     if (offer.handwerker_email && transporter) {
       try {
         await transporter.sendMail({
@@ -18613,7 +18613,7 @@ app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                   <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                  <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                  <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
                 </div>
                 
                 <!-- Content -->
@@ -18630,27 +18630,27 @@ app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
                     Verbindliches Angebot nicht angenommen
                   </h2>
                   
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
                     Sehr geehrte Damen und Herren,
                   </p>
                   
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                     der Bauherr hat Ihr verbindliches Angebot für <strong style="color: #14b8a6;">${offer.trade_name}</strong> leider nicht angenommen.
                   </p>
                   
                   <!-- Info Box -->
                   <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0;">
                     <div style="padding: 8px 0;">
-                      <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Gewerk</span>
+                      <span style="color: #808080; font-size: 13px;">Gewerk</span>
                       <p style="margin: 5px 0 0; color: #ffffff; font-size: 15px;">${offer.trade_name}</p>
                     </div>
                   </div>
                   
-                  <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0;">
+                  <p style="color: #b3b3b3; font-size: 15px; line-height: 1.6; margin: 25px 0;">
                     Vielen Dank für Ihre Mühe und die Zeit, die Sie in dieses Projekt investiert haben.
                   </p>
                   
-                  <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
+                  <p style="color: #b3b3b3; font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
                     Mit freundlichen Grüßen<br>
                     <strong style="color: #14b8a6;">Ihr byndl-Team</strong>
                   </p>
@@ -18666,10 +18666,10 @@ app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
                 
                 <!-- Footer -->
                 <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                  <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                     Diese E-Mail wurde automatisch von byndl versendet.
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                  <p style="margin: 0; color: #666666; font-size: 12px;">
                     © ${new Date().getFullYear()} byndl · einfach . bauen
                   </p>
                 </div>
@@ -20822,7 +20822,7 @@ if (has_schedule_changes) {
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
             <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-            <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+            <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
           </div>
           
           <!-- Content -->
@@ -20842,7 +20842,7 @@ if (has_schedule_changes) {
               Der Handwerker hat verbindlich bestätigt
             </p>
             
-            <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+            <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
               Gute Nachrichten! <strong style="color: #ffffff;">${offer.company_name}</strong> hat das Angebot für <strong style="color: #14b8a6;">${offer.trade_name}</strong> nach dem Ortstermin verbindlich bestätigt.
             </p>
             
@@ -20853,17 +20853,17 @@ if (has_schedule_changes) {
               </p>
               
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Angebotssumme</span>
+                <span style="color: #999999; font-size: 14px;">Angebotssumme</span>
                 <span style="color: #22c55e; font-size: 20px; font-weight: 700;">${amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</span>
               </div>
               
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                <span style="color: #999999; font-size: 14px;">Gewerk</span>
                 <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${offer.trade_name}</span>
               </div>
               
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
-                <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Ausführungszeitraum</span>
+                <span style="color: #999999; font-size: 14px;">Ausführungszeitraum</span>
                 <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${new Date(finalExecutionStart).toLocaleDateString('de-DE')} – ${new Date(finalExecutionEnd).toLocaleDateString('de-DE')}</span>
               </div>
             </div>
@@ -20874,7 +20874,7 @@ if (has_schedule_changes) {
               <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
                 💬 Anmerkungen des Handwerkers
               </p>
-              <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; font-style: italic;">
+              <p style="margin: 0; color: #d9d9d9; font-size: 14px; line-height: 1.6; font-style: italic;">
                 "${notes}"
               </p>
             </div>
@@ -20882,7 +20882,7 @@ if (has_schedule_changes) {
             
             <!-- Nächster Schritt -->
             <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
-              <p style="margin: 0 0 5px; color: rgba(255,255,255,0.5); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+              <p style="margin: 0 0 5px; color: #808080; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
                 Nächster Schritt
               </p>
               <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 500;">
@@ -20901,10 +20901,10 @@ if (has_schedule_changes) {
           
           <!-- Footer -->
           <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-            <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+            <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
               Diese E-Mail wurde automatisch von byndl versendet.
             </p>
-            <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+            <p style="margin: 0; color: #666666; font-size: 12px;">
               © ${new Date().getFullYear()} byndl · einfach . bauen
             </p>
           </div>
@@ -21668,7 +21668,7 @@ for (const otherOffer of otherOffers.rows) {
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                   <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                  <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                  <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
                 </div>
                 
                 <!-- Content -->
@@ -21688,11 +21688,11 @@ for (const otherOffer of otherOffers.rows) {
                     Herzlichen Glückwunsch zum neuen Auftrag
                   </p>
                   
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
                     Sehr geehrte Damen und Herren,
                   </p>
                   
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                     <strong style="color: #ffffff;">${offer.bauherr_name}</strong> hat Ihnen den Auftrag für <strong style="color: #14b8a6;">${offer.trade_name}</strong> verbindlich erteilt.
                   </p>
                   
@@ -21704,48 +21704,48 @@ for (const otherOffer of otherOffers.rows) {
                     
                     <!-- Auftragssumme prominent -->
                     <div style="text-align: center; padding: 15px; background: rgba(34, 197, 94, 0.15); border-radius: 8px; margin-bottom: 20px;">
-                      <span style="color: rgba(255,255,255,0.6); font-size: 13px; display: block; margin-bottom: 5px;">Auftragssumme</span>
+                      <span style="color: #999999; font-size: 13px; display: block; margin-bottom: 5px;">Auftragssumme</span>
                       <span style="color: #22c55e; font-size: 28px; font-weight: 700;">${Number(offer.amount).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})} € netto</span>
                     </div>
                     
                     <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                      <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Auftrags-Nr.</span>
+                      <span style="color: #999999; font-size: 14px;">Auftrags-Nr.</span>
                       <span style="color: #ffffff; font-size: 15px; font-weight: 600;">#${orderId}</span>
                     </div>
                     
                     <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                      <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                      <span style="color: #999999; font-size: 14px;">Gewerk</span>
                       <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${offer.trade_name}</span>
                     </div>
                     
                     <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                      <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Ausführungszeitraum</span>
+                      <span style="color: #999999; font-size: 14px;">Ausführungszeitraum</span>
                       <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${new Date(offer.execution_start).toLocaleDateString('de-DE')} – ${new Date(offer.execution_end).toLocaleDateString('de-DE')}</span>
                     </div>
                     
                     <div style="padding: 12px 0;">
-                      <span style="color: rgba(255,255,255,0.6); font-size: 14px; display: block; margin-bottom: 5px;">Projektadresse</span>
+                      <span style="color: #999999; font-size: 14px; display: block; margin-bottom: 5px;">Projektadresse</span>
                       <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</span>
                     </div>
                   </div>
                   
                   <!-- Nächste Schritte -->
                   <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0;">
-                    <p style="margin: 0 0 15px; color: rgba(255,255,255,0.5); font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <p style="margin: 0 0 15px; color: #808080; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
                       Nächste Schritte
                     </p>
                     
                     <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
                       <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">1</span>
-                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Kontaktieren Sie den Bauherren zur Terminabstimmung</p>
+                      <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Kontaktieren Sie den Bauherren zur Terminabstimmung</p>
                     </div>
                     <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
                       <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">2</span>
-                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Führen Sie die Arbeiten gemäß Leistungsverzeichnis aus</p>
+                      <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Führen Sie die Arbeiten gemäß Leistungsverzeichnis aus</p>
                     </div>
                     <div style="display: flex; align-items: flex-start;">
                       <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">3</span>
-                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Dokumentieren Sie Ihren Fortschritt im Dashboard</p>
+                      <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Dokumentieren Sie Ihren Fortschritt im Dashboard</p>
                     </div>
                   </div>
                   
@@ -21760,10 +21760,10 @@ for (const otherOffer of otherOffers.rows) {
                 
                 <!-- Footer -->
                 <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                  <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                     Diese E-Mail wurde automatisch von byndl versendet.
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                  <p style="margin: 0; color: #666666; font-size: 12px;">
                     © ${new Date().getFullYear()} byndl · einfach . bauen
                   </p>
                 </div>
@@ -21778,7 +21778,7 @@ for (const otherOffer of otherOffers.rows) {
       console.error('⚠️ Non-critical: Email sending failed:', emailError.message);
     }
 
-    // NEUE ERGÄNZUNG: E-Mails an abgelehnte Bieter
+   // NEUE ERGÄNZUNG: E-Mails an abgelehnte Bieter
 if (transporter && otherOffers.rows.length > 0) {
   for (const otherOffer of otherOffers.rows) {
     try {
@@ -21799,7 +21799,7 @@ if (transporter && otherOffers.rows.length > 0) {
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -21816,32 +21816,32 @@ if (transporter && otherOffers.rows.length > 0) {
                   Information zu Ihrem Angebot
                 </h2>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
                   Sehr geehrte/r ${otherOffer.contact_person || 'Damen und Herren'},
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
                   im Namen von <strong style="color: #ffffff;">${offer.bauherr_name}</strong> möchten wir uns herzlich für Ihr detailliertes Angebot für das Gewerk <strong style="color: #14b8a6;">${offer.trade_name}</strong> bedanken.
                 </p>
                 
                 <!-- Info Box -->
                 <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0;">
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.7; margin: 0;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.7; margin: 0;">
                     ${offer.bauherr_name} hat nach eingehender Prüfung aller eingegangenen Angebote eine Entscheidung getroffen. Leider müssen wir Ihnen mitteilen, dass die Wahl in diesem Fall auf einen anderen Anbieter gefallen ist.
                   </p>
                 </div>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
                   Diese Entscheidung basiert auf den spezifischen Projektanforderungen und stellt keine Bewertung Ihrer fachlichen Kompetenz dar. ${offer.bauherr_name} schätzt die Zeit und Mühe, die Sie in die Angebotserstellung investiert haben.
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 30px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 30px;">
                   ${offer.bauherr_name} würde sich freuen, Sie bei zukünftigen Projekten wieder in Betracht ziehen zu können.
                 </p>
                 
                 <!-- Absender -->
                 <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px; margin-top: 25px;">
-                  <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 0;">
+                  <p style="color: #b3b3b3; font-size: 15px; line-height: 1.6; margin: 0;">
                     Mit freundlichen Grüßen
                   </p>
                   <p style="color: #ffffff; font-size: 16px; font-weight: 600; margin: 10px 0 0;">
@@ -21860,10 +21860,10 @@ if (transporter && otherOffers.rows.length > 0) {
               
               <!-- Footer -->
               <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                   Diese Nachricht wurde im Auftrag des Bauherrn über byndl versendet.
                 </p>
-                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                <p style="margin: 0; color: #666666; font-size: 12px;">
                   © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
@@ -23346,7 +23346,7 @@ await query(
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -23366,11 +23366,11 @@ await query(
                   Der Bauherr hat Ihre Arbeit erfolgreich abgenommen
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
                   Sehr geehrtes Team von <strong style="color: #ffffff;">${order.company_name}</strong>,
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   <strong style="color: #ffffff;">${order.bauherr_name}</strong> hat Ihre Leistung für <strong style="color: #14b8a6;">${order.trade_name}</strong> erfolgreich abgenommen.
                 </p>
                 
@@ -23381,22 +23381,22 @@ await query(
                   </p>
                   
                   <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Auftrag</span>
+                    <span style="color: #999999; font-size: 14px;">Auftrag</span>
                     <span style="color: #ffffff; font-size: 15px; font-weight: 600;">#${orderId}</span>
                   </div>
                   
                   <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                    <span style="color: #999999; font-size: 14px;">Gewerk</span>
                     <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.trade_name}</span>
                   </div>
                   
                   <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Abnahmedatum</span>
+                    <span style="color: #999999; font-size: 14px;">Abnahmedatum</span>
                     <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${new Date().toLocaleDateString('de-DE')}</span>
                   </div>
                   
                   <div style="padding: 12px 0; display: flex; justify-content: space-between;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Auftragssumme</span>
+                    <span style="color: #999999; font-size: 14px;">Auftragssumme</span>
                     <span style="color: #22c55e; font-size: 18px; font-weight: 700;">${formatCurrency(order.amount)}</span>
                   </div>
                 </div>
@@ -23409,19 +23409,19 @@ await query(
                   
                   <div style="display: flex; align-items: flex-start; margin-bottom: 10px;">
                     <span style="color: #0ea5e9; margin-right: 10px;">•</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Gewährleistungsfrist beginnt ab heute</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Gewährleistungsfrist beginnt ab heute</p>
                   </div>
                   <div style="display: flex; align-items: flex-start; margin-bottom: 10px;">
                     <span style="color: #0ea5e9; margin-right: 10px;">•</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Schlusszahlung erfolgt gemäß Vertrag</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Schlusszahlung erfolgt gemäß Vertrag</p>
                   </div>
                   <div style="display: flex; align-items: flex-start;">
                     <span style="color: #0ea5e9; margin-right: 10px;">•</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Dokumentation für Ihre Unterlagen verfügbar</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Dokumentation für Ihre Unterlagen verfügbar</p>
                   </div>
                 </div>
                 
-                <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0; text-align: center;">
+                <p style="color: #b3b3b3; font-size: 15px; line-height: 1.6; margin: 25px 0; text-align: center;">
                   Vielen Dank für die erfolgreiche Zusammenarbeit!
                 </p>
                 
@@ -23436,10 +23436,10 @@ await query(
               
               <!-- Footer -->
               <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                   Diese E-Mail wurde automatisch von byndl versendet.
                 </p>
-                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                <p style="margin: 0; color: #666666; font-size: 12px;">
                   © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
@@ -23770,7 +23770,7 @@ async function createProjectTenders(req, res) {
                 [tenderId]
               ).then(r => r.rows[0]?.estimated_value || 0));
 
-              await transporter.sendMail({
+             await transporter.sendMail({
                 from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
                 to: hw.email,
                 subject: `📋 Neue Ausschreibung: ${trade.name} - ${project.category || 'Bauprojekt'}`,
@@ -23787,7 +23787,7 @@ async function createProjectTenders(req, res) {
                       <!-- Header -->
                       <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                         <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                        <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                        <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
                       </div>
                       
                       <!-- Content -->
@@ -23807,11 +23807,11 @@ async function createProjectTenders(req, res) {
                           passend zu Ihrem Profil in Ihrer Region
                         </p>
                         
-                        <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                        <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                           Guten Tag${hw.company_name ? ` <strong style="color: #ffffff;">${hw.company_name}</strong>` : (hw.contact_person ? ` <strong style="color: #ffffff;">${hw.contact_person}</strong>` : '')},
                         </p>
                         
-                        <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                        <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                           es gibt eine neue Ausschreibung in Ihrer Region, die zu Ihrem Leistungsprofil passt.
                         </p>
                         
@@ -23822,33 +23822,33 @@ async function createProjectTenders(req, res) {
                           </p>
                           
                           <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                            <span style="color: #999999; font-size: 14px;">Gewerk</span>
                             <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${trade.name}</span>
                           </div>
                           
                           <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Projekt</span>
+                            <span style="color: #999999; font-size: 14px;">Projekt</span>
                             <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${project.category || 'Bauprojekt'}</span>
                           </div>
                           
                           <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Standort</span>
+                            <span style="color: #999999; font-size: 14px;">Standort</span>
                             <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${targetZip} · ca. ${Math.round(hw.distance_km || 0)} km entfernt</span>
                           </div>
                           
                           <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Geschätztes Volumen</span>
+                            <span style="color: #999999; font-size: 14px;">Geschätztes Volumen</span>
                             <span style="color: #22c55e; font-size: 15px; font-weight: 600;">${formatCurrency(Math.round(estimatedValue * 0.8 / 1000) * 1000)} – ${formatCurrency(Math.round(estimatedValue * 1.2 / 1000) * 1000)}</span>
                           </div>
                           
                           <div style="padding: 12px 0; display: flex; justify-content: space-between;">
-                            <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Angebotsfrist</span>
+                            <span style="color: #999999; font-size: 14px;">Angebotsfrist</span>
                             <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${tenderDeadline ? new Date(tenderDeadline).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Offen'}</span>
                           </div>
                         </div>
                         
                         <!-- Hinweis -->
-                        <p style="color: rgba(255,255,255,0.5); font-size: 13px; line-height: 1.6; margin: 20px 0; text-align: center;">
+                        <p style="color: #808080; font-size: 13px; line-height: 1.6; margin: 20px 0; text-align: center;">
                           Das geschätzte Volumen basiert auf den Projektangaben und dient als grobe Orientierung.
                         </p>
                         
@@ -23863,10 +23863,10 @@ async function createProjectTenders(req, res) {
                       
                       <!-- Footer -->
                       <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                        <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                        <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                           Sie erhalten diese E-Mail, weil Ihr Profil zur Ausschreibung passt.
                         </p>
-                        <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                        <p style="margin: 0; color: #666666; font-size: 12px;">
                           © ${new Date().getFullYear()} byndl · einfach . bauen
                         </p>
                       </div>
@@ -23876,7 +23876,7 @@ async function createProjectTenders(req, res) {
                   </html>
                 `
               });
-
+              
               await query(
                 `INSERT INTO email_logs (recipient_email, email_type, status, sent_at, handwerker_id, metadata)
                  VALUES ($1,'tender_notification','sent',NOW(),$2,$3)`,
@@ -23957,7 +23957,7 @@ async function createProjectTenders(req, res) {
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                   <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                  <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                  <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
                 </div>
                 
                 <!-- Content -->
@@ -23977,11 +23977,11 @@ async function createProjectTenders(req, res) {
                     Passende Handwerker wurden benachrichtigt
                   </p>
                   
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                     Hallo${project.bauherr_name ? ` <strong style="color: #ffffff;">${project.bauherr_name}</strong>` : ''},
                   </p>
                   
-                  <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                  <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                     wir haben Ihre Ausschreibung an passende Handwerker in Ihrer Region versendet. Hier die Übersicht:
                   </p>
                   
@@ -24001,7 +24001,7 @@ async function createProjectTenders(req, res) {
                   
                   <!-- Gesamt-Badge -->
                   <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
-                    <p style="margin: 0 0 5px; color: rgba(255,255,255,0.6); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <p style="margin: 0 0 5px; color: #999999; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
                       Insgesamt benachrichtigt
                     </p>
                     <p style="margin: 0; color: #22c55e; font-size: 32px; font-weight: 700;">
@@ -24014,7 +24014,7 @@ async function createProjectTenders(req, res) {
                     <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
                       💡 Wie geht es weiter?
                     </p>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6;">
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.6;">
                       Die Handwerker können nun Angebote abgeben. Sie werden benachrichtigt, sobald neue Angebote eingehen. Den aktuellen Status sehen Sie jederzeit in Ihrem Dashboard.
                     </p>
                   </div>
@@ -24030,10 +24030,10 @@ async function createProjectTenders(req, res) {
                 
                 <!-- Footer -->
                 <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                  <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                     Diese E-Mail wurde automatisch von byndl versendet.
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                  <p style="margin: 0; color: #666666; font-size: 12px;">
                     © ${new Date().getFullYear()} byndl · einfach . bauen
                   </p>
                 </div>
@@ -24233,7 +24233,7 @@ app.post('/api/admin/rematch-tenders', async (req, res) => {
                         <!-- Header -->
                         <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                           <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                          <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                          <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
                         </div>
                         
                         <!-- Content -->
@@ -24253,11 +24253,11 @@ app.post('/api/admin/rematch-tenders', async (req, res) => {
                             passend zu Ihrem Profil in Ihrer Region
                           </p>
                           
-                          <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                          <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                             Guten Tag${hw.company_name ? ` <strong style="color: #ffffff;">${hw.company_name}</strong>` : (hw.contact_person ? ` <strong style="color: #ffffff;">${hw.contact_person}</strong>` : '')},
                           </p>
                           
-                          <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                          <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                             eine Ausschreibung in Ihrer Nähe passt zu Ihrem Gewerk.
                           </p>
                           
@@ -24268,31 +24268,31 @@ app.post('/api/admin/rematch-tenders', async (req, res) => {
                             </p>
                             
                             <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                              <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                              <span style="color: #999999; font-size: 14px;">Gewerk</span>
                               <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${tender.trade_name}</span>
                             </div>
                             
                             <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                              <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Standort</span>
+                              <span style="color: #999999; font-size: 14px;">Standort</span>
                               <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${targetZip} · ca. ${Math.round(hw.distance_km || 0)} km entfernt</span>
                             </div>
                             
                             ${estimatedValue > 0 ? `
                             <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                              <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Geschätztes Volumen</span>
+                              <span style="color: #999999; font-size: 14px;">Geschätztes Volumen</span>
                               <span style="color: #22c55e; font-size: 15px; font-weight: 600;">${formatCurrency(Math.round(estimatedValue * 0.8 / 1000) * 1000)} – ${formatCurrency(Math.round(estimatedValue * 1.2 / 1000) * 1000)}</span>
                             </div>
                             ` : ''}
                             
                             <div style="padding: 12px 0; display: flex; justify-content: space-between;">
-                              <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Angebotsfrist</span>
+                              <span style="color: #999999; font-size: 14px;">Angebotsfrist</span>
                               <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${tender.deadline ? new Date(tender.deadline).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Offen'}</span>
                             </div>
                           </div>
                           
                           ${estimatedValue > 0 ? `
                           <!-- Hinweis -->
-                          <p style="color: rgba(255,255,255,0.5); font-size: 13px; line-height: 1.6; margin: 20px 0; text-align: center;">
+                          <p style="color: #808080; font-size: 13px; line-height: 1.6; margin: 20px 0; text-align: center;">
                             Das geschätzte Volumen basiert auf den Projektangaben und dient als grobe Orientierung.
                           </p>
                           ` : ''}
@@ -24308,10 +24308,10 @@ app.post('/api/admin/rematch-tenders', async (req, res) => {
                         
                         <!-- Footer -->
                         <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                          <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                          <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                             Sie erhalten diese E-Mail, weil Ihr Profil zur Ausschreibung passt.
                           </p>
-                          <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                          <p style="margin: 0; color: #666666; font-size: 12px;">
                             © ${new Date().getFullYear()} byndl · einfach . bauen
                           </p>
                         </div>
@@ -26819,7 +26819,7 @@ await query(
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -26839,11 +26839,11 @@ await query(
                   für Ihren Ortstermin
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   Hallo <strong style="color: #ffffff;">${recipient_name}</strong>,
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   <strong style="color: #ffffff;">${sender_name}</strong> hat einen Terminvorschlag für einen Ortstermin gemacht.
                 </p>
                 
@@ -26855,7 +26855,7 @@ await query(
                   
                   <!-- Datum prominent -->
                   <div style="text-align: center; padding: 15px; background: rgba(20, 184, 166, 0.15); border-radius: 8px; margin-bottom: 20px;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 13px; display: block; margin-bottom: 5px;">Datum & Uhrzeit</span>
+                    <span style="color: #999999; font-size: 13px; display: block; margin-bottom: 5px;">Datum & Uhrzeit</span>
                     <span style="color: #ffffff; font-size: 18px; font-weight: 600;">${new Date(proposed_date).toLocaleString('de-DE', {
                       weekday: 'long',
                       day: '2-digit',
@@ -26867,17 +26867,17 @@ await query(
                   </div>
                   
                   <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Dauer</span>
+                    <span style="color: #999999; font-size: 14px;">Dauer</span>
                     <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${duration} Minuten</span>
                   </div>
                   
                   <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                    <span style="color: #999999; font-size: 14px;">Gewerk</span>
                     <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${offer.trade_name}</span>
                   </div>
                   
                   <div style="padding: 12px 0;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 14px; display: block; margin-bottom: 5px;">Adresse</span>
+                    <span style="color: #999999; font-size: 14px; display: block; margin-bottom: 5px;">Adresse</span>
                     <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${offer.street} ${offer.house_number}, ${offer.zip_code} ${offer.city}</span>
                   </div>
                 </div>
@@ -26888,7 +26888,7 @@ await query(
                   <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
                     💬 Nachricht
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; font-style: italic;">
+                  <p style="margin: 0; color: #d9d9d9; font-size: 14px; line-height: 1.6; font-style: italic;">
                     "${message}"
                   </p>
                 </div>
@@ -26896,7 +26896,7 @@ await query(
                 
                 <!-- Aktion erforderlich -->
                 <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
-                  <p style="margin: 0 0 5px; color: rgba(255,255,255,0.5); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <p style="margin: 0 0 5px; color: #808080; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
                     Aktion erforderlich
                   </p>
                   <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 500;">
@@ -26916,7 +26916,7 @@ await query(
                   <p style="margin: 0 0 8px; color: #fbbf24; font-weight: 600; font-size: 14px;">
                     ℹ️ Hinweis zur Vertragsanbahnung
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.6;">
+                  <p style="margin: 0; color: #b3b3b3; font-size: 13px; line-height: 1.6;">
                     Sie befinden sich in der Vertragsanbahnung. Die Kontaktdaten wurden bereits freigegeben und die 24-monatige Nachwirkfrist gemäß unseren AGB ist aktiv.
                   </p>
                 </div>
@@ -26925,10 +26925,10 @@ await query(
               
               <!-- Footer -->
               <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                   Diese E-Mail wurde automatisch von byndl versendet.
                 </p>
-                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                <p style="margin: 0; color: #666666; font-size: 12px;">
                   © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
@@ -33363,7 +33363,7 @@ const orderCheck = await query(
       ]
     );
     
-    // E-Mail an Handwerker (optional, wenn transporter konfiguriert ist)
+   // E-Mail an Handwerker (optional, wenn transporter konfiguriert ist)
     if (transporter && order.handwerker_email) {
       const starRating = '⭐'.repeat(Math.round(overall_rating));
       
@@ -33384,7 +33384,7 @@ const orderCheck = await query(
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -33404,17 +33404,17 @@ const orderCheck = await query(
                   Ein Bauherr hat Ihre Arbeit bewertet
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   Sehr geehrtes Team von <strong style="color: #ffffff;">${order.company_name}</strong>,
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   Sie haben eine neue Bewertung für Ihren abgeschlossenen Auftrag erhalten.
                 </p>
                 
                 <!-- Gesamtbewertung prominent -->
                 <div style="background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center;">
-                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.6); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <p style="margin: 0 0 10px; color: #999999; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
                     Gesamtbewertung
                   </p>
                   <p style="margin: 0 0 5px; font-size: 36px;">
@@ -33428,35 +33428,35 @@ const orderCheck = await query(
                 <!-- Projekt-Info -->
                 <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px 20px; margin: 25px 0;">
                   <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Projekt & Gewerk</span>
+                    <span style="color: #999999; font-size: 14px;">Projekt & Gewerk</span>
                     <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${order.project_description ? order.project_description + ' – ' : ''}${order.trade_name}</span>
                   </div>
                 </div>
                 
                 <!-- Einzelbewertungen -->
                 <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin: 25px 0;">
-                  <p style="margin: 0 0 20px; color: rgba(255,255,255,0.5); font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <p style="margin: 0 0 20px; color: #808080; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
                     📊 Einzelbewertungen
                   </p>
                   
                   <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <span style="color: rgba(255,255,255,0.8); font-size: 14px;">💰 Kosten</span>
-                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(cost_rating)} <span style="color: rgba(255,255,255,0.6);">${cost_rating}/5</span></span>
+                      <span style="color: #cccccc; font-size: 14px;">💰 Kosten</span>
+                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(cost_rating)} <span style="color: #999999;">${cost_rating}/5</span></span>
                     </div>
                   </div>
                   
                   <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <span style="color: rgba(255,255,255,0.8); font-size: 14px;">📅 Termine</span>
-                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(schedule_rating)} <span style="color: rgba(255,255,255,0.6);">${schedule_rating}/5</span></span>
+                      <span style="color: #cccccc; font-size: 14px;">📅 Termine</span>
+                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(schedule_rating)} <span style="color: #999999;">${schedule_rating}/5</span></span>
                     </div>
                   </div>
                   
                   <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <span style="color: rgba(255,255,255,0.8); font-size: 14px;">✨ Qualität</span>
-                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(quality_rating)} <span style="color: rgba(255,255,255,0.6);">${quality_rating}/5</span></span>
+                      <span style="color: #cccccc; font-size: 14px;">✨ Qualität</span>
+                      <span style="color: #fbbf24; font-size: 14px;">${'⭐'.repeat(quality_rating)} <span style="color: #999999;">${quality_rating}/5</span></span>
                     </div>
                   </div>
                 </div>
@@ -33467,7 +33467,7 @@ const orderCheck = await query(
                   <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
                     💬 Anmerkungen des Bauherrn
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; font-style: italic;">
+                  <p style="margin: 0; color: #d9d9d9; font-size: 14px; line-height: 1.6; font-style: italic;">
                     "${communication_notes}"
                   </p>
                 </div>
@@ -33478,7 +33478,7 @@ const orderCheck = await query(
                   <p style="margin: 0 0 8px; color: #22c55e; font-weight: 600; font-size: 14px;">
                     🎯 Warum sind Bewertungen wichtig?
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6;">
+                  <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.6;">
                     Gute Bewertungen verbessern Ihr Profil und helfen Ihnen, mehr Aufträge über byndl zu erhalten!
                   </p>
                 </div>
@@ -33494,10 +33494,10 @@ const orderCheck = await query(
               
               <!-- Footer -->
               <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                   Diese E-Mail wurde automatisch von byndl versendet.
                 </p>
-                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                <p style="margin: 0; color: #666666; font-size: 12px;">
                   © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
@@ -33683,7 +33683,7 @@ async function sendOrderReminders() {
 
     for (const order of result.rows) {
       try {
-        // 1. E-Mail senden
+       // 1. E-Mail senden
         if (typeof transporter !== 'undefined' && transporter && order.handwerker_email) {
           await transporter.sendMail({
             from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
@@ -33702,7 +33702,7 @@ async function sendOrderReminders() {
                   <!-- Header -->
                   <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                     <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                    <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                    <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
                   </div>
                   
                   <!-- Content -->
@@ -33722,13 +33722,13 @@ async function sendOrderReminders() {
                       Erinnerung an Ihren anstehenden Auftrag
                     </p>
                     
-                    <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                    <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                       Guten Tag <strong style="color: #ffffff;">${order.contact_person || order.company_name}</strong>,
                     </p>
                     
                     <!-- Datum prominent -->
                     <div style="background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
-                      <p style="margin: 0 0 5px; color: rgba(255,255,255,0.6); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                      <p style="margin: 0 0 5px; color: #999999; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
                         ⏰ Starttermin
                       </p>
                       <p style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">
@@ -33743,38 +33743,38 @@ async function sendOrderReminders() {
                       </p>
                       
                       <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Gewerk</span>
+                        <span style="color: #999999; font-size: 14px;">Gewerk</span>
                         <span style="color: #14b8a6; font-size: 15px; font-weight: 600;">${order.trade_name}</span>
                       </div>
                       
                       <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Projekt</span>
+                        <span style="color: #999999; font-size: 14px;">Projekt</span>
                         <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.project_description || 'Bauprojekt'}</span>
                       </div>
                       
                       <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0;">
-                        <span style="color: rgba(255,255,255,0.6); font-size: 14px; display: block; margin-bottom: 5px;">Adresse</span>
+                        <span style="color: #999999; font-size: 14px; display: block; margin-bottom: 5px;">Adresse</span>
                         <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.street} ${order.house_number}, ${order.zip_code} ${order.city}</span>
                       </div>
                       
                       <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Bauherr</span>
+                        <span style="color: #999999; font-size: 14px;">Bauherr</span>
                         <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.bauherr_name}</span>
                       </div>
                       
                       <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Telefon Bauherr</span>
+                        <span style="color: #999999; font-size: 14px;">Telefon Bauherr</span>
                         <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${order.bauherr_phone || 'Nicht angegeben'}</span>
                       </div>
                       
                       <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 12px 0; display: flex; justify-content: space-between;">
-                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Ausführungszeitraum</span>
+                        <span style="color: #999999; font-size: 14px;">Ausführungszeitraum</span>
                         <span style="color: #ffffff; font-size: 15px; font-weight: 500;">${new Date(order.execution_start).toLocaleDateString('de-DE')} – ${new Date(order.execution_end).toLocaleDateString('de-DE')}</span>
                       </div>
                       
                       <div style="padding: 12px 0; display: flex; justify-content: space-between;">
-                        <span style="color: rgba(255,255,255,0.6); font-size: 14px;">Auftragswert</span>
-                        <span style="color: #22c55e; font-size: 18px; font-weight: 700;">${formatCurrency(order.amount)} <span style="font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.5);">(Netto)</span></span>
+                        <span style="color: #999999; font-size: 14px;">Auftragswert</span>
+                        <span style="color: #22c55e; font-size: 18px; font-weight: 700;">${formatCurrency(order.amount)} <span style="font-size: 13px; font-weight: 400; color: #808080;">(Netto)</span></span>
                       </div>
                     </div>
                     
@@ -33783,7 +33783,7 @@ async function sendOrderReminders() {
                       <p style="margin: 0 0 8px; color: #0ea5e9; font-weight: 600; font-size: 14px;">
                         💡 Zur Erinnerung
                       </p>
-                      <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6;">
+                      <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.6;">
                         Bitte stellen Sie sicher, dass Sie pünktlich vor Ort sind und alle notwendigen Materialien und Werkzeuge dabei haben.
                       </p>
                     </div>
@@ -33795,7 +33795,7 @@ async function sendOrderReminders() {
                       </a>
                     </div>
                     
-                    <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0 0; text-align: center;">
+                    <p style="color: #b3b3b3; font-size: 15px; line-height: 1.6; margin: 25px 0 0; text-align: center;">
                       Viel Erfolg bei der Ausführung!
                     </p>
                     
@@ -33803,10 +33803,10 @@ async function sendOrderReminders() {
                   
                   <!-- Footer -->
                   <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                    <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                    <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                       Diese E-Mail wurde automatisch von byndl versendet.
                     </p>
-                    <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                    <p style="margin: 0; color: #666666; font-size: 12px;">
                       © ${new Date().getFullYear()} byndl · einfach . bauen
                     </p>
                   </div>
@@ -35038,7 +35038,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -35058,11 +35058,11 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                   Ihr Account wurde erfolgreich verifiziert
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
                   Hallo <strong style="color: #14b8a6;">${handwerker.contact_person}</strong>,
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   großartige Neuigkeiten! Ihr Account <strong style="color: #ffffff;">${handwerker.company_name}</strong> wurde erfolgreich verifiziert und ist jetzt vollständig freigeschaltet.
                 </p>
                 
@@ -35083,7 +35083,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                     <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">✓</span>
                     <div>
                       <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">Ausschreibungen durchsuchen</p>
-                      <p style="margin: 3px 0 0; color: rgba(255,255,255,0.6); font-size: 13px;">Finden Sie passende Projekte in Ihrer Region</p>
+                      <p style="margin: 3px 0 0; color: #999999; font-size: 13px;">Finden Sie passende Projekte in Ihrer Region</p>
                     </div>
                   </div>
                   
@@ -35091,7 +35091,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                     <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">✓</span>
                     <div>
                       <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">Angebote erstellen</p>
-                      <p style="margin: 3px 0 0; color: rgba(255,255,255,0.6); font-size: 13px;">Geben Sie Ihre Preise und Leistungen an</p>
+                      <p style="margin: 3px 0 0; color: #999999; font-size: 13px;">Geben Sie Ihre Preise und Leistungen an</p>
                     </div>
                   </div>
                   
@@ -35099,7 +35099,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                     <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">✓</span>
                     <div>
                       <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">Projektbündel nutzen</p>
-                      <p style="margin: 3px 0 0; color: rgba(255,255,255,0.6); font-size: 13px;">Kombinieren Sie mehrere Aufträge und sparen Sie Fahrzeit</p>
+                      <p style="margin: 3px 0 0; color: #999999; font-size: 13px;">Kombinieren Sie mehrere Aufträge und sparen Sie Fahrzeit</p>
                     </div>
                   </div>
                   
@@ -35107,7 +35107,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                     <span style="background: #14b8a6; color: #0f172a; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">✓</span>
                     <div>
                       <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">Aufträge erhalten</p>
-                      <p style="margin: 3px 0 0; color: rgba(255,255,255,0.6); font-size: 13px;">Nach vorläufiger Beauftragung erhalten Sie alle Kontaktdaten</p>
+                      <p style="margin: 3px 0 0; color: #999999; font-size: 13px;">Nach vorläufiger Beauftragung erhalten Sie alle Kontaktdaten</p>
                     </div>
                   </div>
                 </div>
@@ -35120,22 +35120,22 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                   
                   <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
                     <span style="background: rgba(20, 184, 166, 0.2); color: #14b8a6; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">1</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Passende Ausschreibungen werden Ihnen automatisch angezeigt</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Passende Ausschreibungen werden Ihnen automatisch angezeigt</p>
                   </div>
                   
                   <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
                     <span style="background: rgba(20, 184, 166, 0.2); color: #14b8a6; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">2</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Sie erstellen ein vorläufiges Angebot mit Ihrer Preiskalkulation</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Sie erstellen ein vorläufiges Angebot mit Ihrer Preiskalkulation</p>
                   </div>
                   
                   <div style="margin-bottom: 15px; display: flex; align-items: flex-start;">
                     <span style="background: rgba(20, 184, 166, 0.2); color: #14b8a6; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">3</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Der Bauherr wählt das beste Angebot aus</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Der Bauherr wählt das beste Angebot aus</p>
                   </div>
                   
                   <div style="display: flex; align-items: flex-start;">
                     <span style="background: rgba(20, 184, 166, 0.2); color: #14b8a6; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">4</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Bei Beauftragung erhalten Sie alle Details und können loslegen</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Bei Beauftragung erhalten Sie alle Details und können loslegen</p>
                   </div>
                 </div>
                 
@@ -35148,22 +35148,22 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
                 
                 <!-- Tipp -->
                 <div style="background: rgba(251, 191, 36, 0.15); border-left: 4px solid #fbbf24; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
-                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6;">
+                  <p style="margin: 0; color: #d9d9d9; font-size: 14px; line-height: 1.6;">
                     <strong style="color: #fbbf24;">⭐ Tipp:</strong> Aktivieren Sie Benachrichtigungen in Ihren Einstellungen, um keine passenden Ausschreibungen zu verpassen!
                   </p>
                 </div>
                 
                 <!-- Handwerker-ID -->
                 <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin: 25px 0; text-align: center;">
-                  <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Ihre Handwerker-ID</span>
+                  <span style="color: #808080; font-size: 13px;">Ihre Handwerker-ID</span>
                   <p style="margin: 5px 0 0; color: #ffffff; font-size: 16px; font-weight: 600; font-family: monospace;">${finalId}</p>
                 </div>
                 
-                <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; margin: 25px 0;">
+                <p style="color: #b3b3b3; font-size: 14px; line-height: 1.6; margin: 25px 0;">
                   Bei Fragen oder Problemen steht Ihnen unser Support-Team jederzeit zur Verfügung.
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
+                <p style="color: #b3b3b3; font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
                   Viel Erfolg und gute Aufträge wünscht Ihnen<br>
                   <strong style="color: #14b8a6;">Ihr byndl-Team</strong>
                 </p>
@@ -35172,14 +35172,14 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
               
               <!-- Footer -->
               <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                <p style="margin: 0 0 15px; color: rgba(255,255,255,0.6); font-size: 13px;">
+                <p style="margin: 0 0 15px; color: #999999; font-size: 13px;">
                   <a href="https://byndl.de" style="color: #14b8a6; text-decoration: none;">www.byndl.de</a> · 
                   <a href="mailto:support@byndl.de" style="color: #14b8a6; text-decoration: none;">support@byndl.de</a>
                 </p>
-                <p style="margin: 0 0 10px; color: rgba(255,255,255,0.5); font-size: 13px;">
+                <p style="margin: 0 0 10px; color: #808080; font-size: 13px;">
                   Sie erhalten diese E-Mail, weil Sie sich bei byndl registriert haben.
                 </p>
-                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                <p style="margin: 0; color: #666666; font-size: 12px;">
                   © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
@@ -35218,7 +35218,7 @@ case 'reject':
     [id, reason]
   );
   
-  // ✅ VERBESSERTE NACHBESSERUNGS-E-MAIL
+ // ✅ VERBESSERTE NACHBESSERUNGS-E-MAIL
   if (transporter) {
     try {
       await transporter.sendMail({
@@ -35238,7 +35238,7 @@ case 'reject':
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -35258,15 +35258,15 @@ case 'reject':
                   Ihre Registrierung ist fast abgeschlossen
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
                   Hallo <strong style="color: #fbbf24;">${handwerker.contact_person}</strong>,
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
                   vielen Dank für Ihre Registrierung bei byndl als <strong style="color: #ffffff;">${handwerker.company_name}</strong>.
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   Bei der Prüfung Ihrer Unterlagen haben wir festgestellt, dass noch Informationen fehlen oder nachgebessert werden müssen.
                 </p>
                 
@@ -35275,7 +35275,7 @@ case 'reject':
                   <p style="margin: 0 0 10px; color: #f87171; font-weight: 600; font-size: 14px;">
                     📋 Was muss nachgebessert werden:
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; white-space: pre-line;">${reason}</p>
+                  <p style="margin: 0; color: #d9d9d9; font-size: 14px; line-height: 1.6; white-space: pre-line;">${reason}</p>
                 </div>
                 
                 <!-- Nächste Schritte -->
@@ -35286,22 +35286,22 @@ case 'reject':
                   
                   <div style="margin-bottom: 12px; display: flex; align-items: flex-start;">
                     <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">1</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Loggen Sie sich in Ihr Dashboard ein</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Loggen Sie sich in Ihr Dashboard ein</p>
                   </div>
                   
                   <div style="margin-bottom: 12px; display: flex; align-items: flex-start;">
                     <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">2</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Gehen Sie zu „Einstellungen" → „Dokumente"</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Gehen Sie zu „Einstellungen" → „Dokumente"</p>
                   </div>
                   
                   <div style="margin-bottom: 12px; display: flex; align-items: flex-start;">
                     <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">3</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Laden Sie die fehlenden oder korrigierten Dokumente hoch</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Laden Sie die fehlenden oder korrigierten Dokumente hoch</p>
                   </div>
                   
                   <div style="display: flex; align-items: flex-start;">
                     <span style="background: #14b8a6; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 12px; flex-shrink: 0;">4</span>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5;">Wir prüfen Ihre Unterlagen erneut innerhalb von 1–2 Werktagen</p>
+                    <p style="margin: 0; color: #cccccc; font-size: 14px; line-height: 1.5;">Wir prüfen Ihre Unterlagen erneut innerhalb von 1–2 Werktagen</p>
                   </div>
                 </div>
                 
@@ -35314,14 +35314,14 @@ case 'reject':
                 
                 <!-- Hinweis -->
                 <div style="background: rgba(251, 191, 36, 0.15); border-left: 4px solid #fbbf24; border-radius: 0 8px 8px 0; padding: 20px; margin: 25px 0;">
-                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6;">
+                  <p style="margin: 0; color: #d9d9d9; font-size: 14px; line-height: 1.6;">
                     <strong style="color: #fbbf24;">💡 Hinweis:</strong> Sobald Sie die Unterlagen nachgereicht haben, wird Ihr Account automatisch zur erneuten Prüfung vorgelegt.
                   </p>
                 </div>
                 
                 <!-- Kontakt -->
                 <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
-                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.7); font-size: 14px;">
+                  <p style="margin: 0 0 10px; color: #b3b3b3; font-size: 14px;">
                     Bei Fragen oder Unklarheiten können Sie uns gerne kontaktieren:
                   </p>
                   <a href="mailto:info@byndl.de" style="color: #14b8a6; text-decoration: none; font-size: 15px; font-weight: 600;">
@@ -35329,7 +35329,7 @@ case 'reject':
                   </a>
                 </div>
                 
-                <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
+                <p style="color: #b3b3b3; font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
                   Mit freundlichen Grüßen<br>
                   <strong style="color: #14b8a6;">Ihr byndl-Team</strong>
                 </p>
@@ -35338,11 +35338,11 @@ case 'reject':
               
               <!-- Footer -->
               <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                <p style="margin: 0 0 15px; color: rgba(255,255,255,0.6); font-size: 13px;">
+                <p style="margin: 0 0 15px; color: #999999; font-size: 13px;">
                   <a href="https://byndl.de" style="color: #14b8a6; text-decoration: none;">www.byndl.de</a> · 
                   <a href="mailto:support@byndl.de" style="color: #14b8a6; text-decoration: none;">support@byndl.de</a>
                 </p>
-                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                <p style="margin: 0; color: #666666; font-size: 12px;">
                   © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
@@ -35401,7 +35401,7 @@ case 'delete':
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">byndl</h1>
-                <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">einfach . bauen</p>
+                <p style="margin: 10px 0 0; color: #e5e5e5; font-size: 14px;">einfach . bauen</p>
               </div>
               
               <!-- Content -->
@@ -35418,15 +35418,15 @@ case 'delete':
                   Registrierung abgelehnt
                 </h2>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 10px;">
                   Hallo <strong style="color: #f87171;">${handwerker.contact_person}</strong>,
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
                   vielen Dank für Ihr Interesse an byndl.
                 </p>
                 
-                <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
+                <p style="color: #cccccc; font-size: 15px; line-height: 1.6; margin: 0 0 25px;">
                   Nach sorgfältiger Prüfung müssen wir Ihnen leider mitteilen, dass wir Ihre Registrierung für <strong style="color: #ffffff;">${handwerker.company_name}</strong> nicht genehmigen können.
                 </p>
                 
@@ -35436,20 +35436,20 @@ case 'delete':
                   <p style="margin: 0 0 10px; color: #f87171; font-weight: 600; font-size: 14px;">
                     Grund der Ablehnung:
                   </p>
-                  <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; white-space: pre-line;">${reason}</p>
+                  <p style="margin: 0; color: #d9d9d9; font-size: 14px; line-height: 1.6; white-space: pre-line;">${reason}</p>
                 </div>
                 ` : ''}
                 
                 <!-- Hinweis Box -->
                 <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px; margin: 25px 0;">
-                  <p style="margin: 0; color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
-                    <strong style="color: rgba(255,255,255,0.9);">ℹ️ Hinweis:</strong> Ihre Daten wurden vollständig aus unserem System entfernt.
+                  <p style="margin: 0; color: #b3b3b3; font-size: 14px; line-height: 1.6;">
+                    <strong style="color: #e5e5e5;">ℹ️ Hinweis:</strong> Ihre Daten wurden vollständig aus unserem System entfernt.
                   </p>
                 </div>
                 
                 <!-- Kontakt -->
                 <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
-                  <p style="margin: 0 0 10px; color: rgba(255,255,255,0.7); font-size: 14px;">
+                  <p style="margin: 0 0 10px; color: #b3b3b3; font-size: 14px;">
                     Bei Fragen zu dieser Entscheidung können Sie uns gerne kontaktieren:
                   </p>
                   <a href="mailto:support@byndl.de" style="color: #14b8a6; text-decoration: none; font-size: 15px; font-weight: 600;">
@@ -35457,7 +35457,7 @@ case 'delete':
                   </a>
                 </div>
                 
-                <p style="color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
+                <p style="color: #b3b3b3; font-size: 15px; line-height: 1.6; margin: 25px 0 0;">
                   Mit freundlichen Grüßen<br>
                   <strong style="color: #14b8a6;">Ihr byndl-Team</strong>
                 </p>
@@ -35466,11 +35466,11 @@ case 'delete':
               
               <!-- Footer -->
               <div style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center;">
-                <p style="margin: 0 0 15px; color: rgba(255,255,255,0.6); font-size: 13px;">
+                <p style="margin: 0 0 15px; color: #999999; font-size: 13px;">
                   <a href="https://byndl.de" style="color: #14b8a6; text-decoration: none;">www.byndl.de</a> · 
                   <a href="mailto:support@byndl.de" style="color: #14b8a6; text-decoration: none;">support@byndl.de</a>
                 </p>
-                <p style="margin: 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+                <p style="margin: 0; color: #666666; font-size: 12px;">
                   © ${new Date().getFullYear()} byndl · einfach . bauen
                 </p>
               </div>
