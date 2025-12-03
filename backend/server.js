@@ -17935,7 +17935,7 @@ const offerResult = await query(
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
             </head>
             <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f172a;">
-              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
                 
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
