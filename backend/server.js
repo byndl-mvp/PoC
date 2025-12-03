@@ -22134,7 +22134,6 @@ unterschreiben zu lassen.
 ================================================================
 
 UNTERSCHRIFTEN
-(Für die händische Unterzeichnung nach Ausdruck)
 
 
 AUFTRAGGEBER                          AUFTRAGNEHMER
