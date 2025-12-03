@@ -36411,57 +36411,84 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
     }
     
     // 4. TERMINPLÄNE
-    if (type === 'all' || type === 'schedule') {
-      const scheduleEvals = await query(
-        `SELECT 
-          ps.id,
-          ps.project_id,
-          ps.status,
-          ps.complexity_level,
-          ps.total_duration_days,
-          ps.critical_path,
-          ps.ai_response,
-          ps.created_at,
-          ps.updated_at,
-          p.description as project_name,
-          p.category as project_category,
-          b.name as bauherr_name,
-          (SELECT COUNT(*) FROM schedule_entries WHERE schedule_id = ps.id) as entry_count,
-          (SELECT COUNT(DISTINCT trade_id) FROM schedule_entries WHERE schedule_id = ps.id) as trade_count
-         FROM project_schedules ps
-         JOIN projects p ON ps.project_id = p.id
-         JOIN bauherren b ON p.bauherr_id = b.id
-         WHERE ps.ai_response IS NOT NULL
-           AND ps.created_at >= $1 AND ps.created_at <= $2
-         ORDER BY ps.created_at DESC`,
-        [dateFrom, dateTo]
-      );
-      
-      for (const s of scheduleEvals.rows) {
-        results.push({
-          id: `schedule-${s.id}`,
-          type: 'schedule',
-          type_label: 'Terminplan',
-          rating: null,
-          project_id: s.project_id,
-          project_name: s.project_name,
-          project_category: s.project_category,
-          bauherr_name: s.bauherr_name,
-          schedule_status: s.status,
-          complexity_level: s.complexity_level,
-          total_duration_days: s.total_duration_days,
-          critical_path: s.critical_path,
-          summary: s.ai_response?.general_explanation,
-          warnings: s.ai_response?.warnings,
-          recommendations: s.ai_response?.recommendations,
-          evaluation_data: s.ai_response,
-          entry_count: parseInt(s.entry_count),
-          trade_count: parseInt(s.trade_count),
-          related_items: [],
-          created_at: s.created_at
-        });
-      }
-    }
+if (type === 'all' || type === 'schedule') {
+  const scheduleEvals = await query(
+    `SELECT 
+      ps.id,
+      ps.project_id,
+      ps.status,
+      ps.complexity_level,
+      ps.total_duration_days,
+      ps.critical_path,
+      ps.ai_response,
+      ps.created_at,
+      ps.updated_at,
+      p.description as project_name,
+      p.category as project_category,
+      b.name as bauherr_name,
+      (SELECT COUNT(*) FROM schedule_entries WHERE schedule_id = ps.id) as entry_count,
+      (SELECT COUNT(DISTINCT trade_id) FROM schedule_entries WHERE schedule_id = ps.id) as trade_count
+     FROM project_schedules ps
+     JOIN projects p ON ps.project_id = p.id
+     JOIN bauherren b ON p.bauherr_id = b.id
+     WHERE ps.ai_response IS NOT NULL
+       AND ps.created_at >= $1 AND ps.created_at <= $2
+     ORDER BY ps.created_at DESC`,
+    [dateFrom, dateTo]
+  );
+  
+  for (const s of scheduleEvals.rows) {
+    // Lade die einzelnen Schedule-Entries (Gewerke-Termine)
+    const entriesResult = await query(
+      `SELECT 
+        se.id,
+        se.phase_name,
+        se.phase_number,
+        se.planned_start,
+        se.planned_end,
+        se.actual_start,
+        se.actual_end,
+        se.duration_days,
+        se.buffer_days,
+        se.status,
+        se.dependencies,
+        se.scheduling_reason,
+        se.buffer_reason,
+        se.risks,
+        t.name as trade_name,
+        t.code as trade_code
+       FROM schedule_entries se
+       JOIN trades t ON se.trade_id = t.id
+       WHERE se.schedule_id = $1
+       ORDER BY se.planned_start ASC, t.code ASC, se.phase_number ASC`,
+      [s.id]
+    );
+    
+    results.push({
+      id: `schedule-${s.id}`,
+      type: 'schedule',
+      type_label: 'Terminplan',
+      rating: null,
+      project_id: s.project_id,
+      project_name: s.project_name,
+      project_category: s.project_category,
+      bauherr_name: s.bauherr_name,
+      schedule_status: s.status,
+      complexity_level: s.complexity_level,
+      total_duration_days: s.total_duration_days,
+      critical_path: s.critical_path,
+      summary: s.ai_response?.general_explanation,
+      warnings: s.ai_response?.warnings,
+      recommendations: s.ai_response?.recommendations,
+      evaluation_data: s.ai_response,
+      schedule_entries: entriesResult.rows,  // NEU: Die einzelnen Gewerke-Termine
+      entry_count: parseInt(s.entry_count),
+      trade_count: parseInt(s.trade_count),
+      related_items: [],
+      created_at: s.created_at
+    });
+  }
+}
     
     // Sortiere nach Datum (neueste zuerst)
     results.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
