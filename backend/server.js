@@ -18175,7 +18175,7 @@ app.post('/api/offers/:offerId/propose-appointment', async (req, res) => {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -18431,7 +18431,7 @@ app.post('/api/offers/:offerId/reject', async (req, res) => {
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
             </head>
             <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
                 
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -18608,7 +18608,7 @@ app.post('/api/offers/:offerId/reject-confirmed', async (req, res) => {
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
             </head>
             <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
                 
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -20817,7 +20817,7 @@ if (has_schedule_changes) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
       </head>
       <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-        <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+        <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
           
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -21663,7 +21663,7 @@ for (const otherOffer of otherOffers.rows) {
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
             </head>
             <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
                 
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -21794,7 +21794,7 @@ if (transporter && otherOffers.rows.length > 0) {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -23341,7 +23341,7 @@ await query(
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -23782,7 +23782,7 @@ async function createProjectTenders(req, res) {
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                   </head>
                   <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-                    <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                    <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
                       
                       <!-- Header -->
                       <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -23952,7 +23952,7 @@ async function createProjectTenders(req, res) {
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
             </head>
             <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+              <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
                 
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -24228,7 +24228,7 @@ app.post('/api/admin/rematch-tenders', async (req, res) => {
                       <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
                     <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-                      <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                      <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
                         
                         <!-- Header -->
                         <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -26814,7 +26814,7 @@ await query(
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -33379,7 +33379,7 @@ const orderCheck = await query(
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -33697,7 +33697,7 @@ async function sendOrderReminders() {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
               </head>
               <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-                <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
                   
                   <!-- Header -->
                   <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -35033,7 +35033,7 @@ app.post('/api/admin/verify-handwerker/:id', requireAdmin, async (req, res) => {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -35233,7 +35233,7 @@ case 'reject':
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
@@ -35396,7 +35396,7 @@ case 'delete':
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #1e3a5f;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);">
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); padding: 30px; text-align: center;">
