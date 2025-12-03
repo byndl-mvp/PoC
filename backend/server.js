@@ -36218,7 +36218,7 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
     const results = [];
     
     // Datumsfilter vorbereiten
-    const dateFrom = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: letzte 30 Tage
+    const dateFrom = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const dateTo = to ? new Date(to) : new Date();
     dateTo.setHours(23, 59, 59, 999);
     
@@ -36235,7 +36235,7 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
           oe.recommendation,
           oe.evaluation_data,
           oe.created_at,
-          p.name as project_name,
+          p.description as project_name,
           p.category as project_category,
           t.name as trade_name,
           t.code as trade_code,
@@ -36250,9 +36250,8 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
         [dateFrom, dateTo]
       );
       
-      for (const eval of offerEvals.rows) {
-        // Lade zugehörige Angebote
-        const offerIds = eval.offer_ids || [];
+      for (const eval_ of offerEvals.rows) {
+        const offerIds = eval_.offer_ids || [];
         let offers = [];
         
         if (offerIds.length > 0) {
@@ -36267,20 +36266,20 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
         }
         
         results.push({
-          id: `offer-${eval.id}`,
+          id: `offer-${eval_.id}`,
           type: 'offer_evaluation',
           type_label: 'Angebotsauswertung',
-          rating: eval.rating,
-          project_id: eval.project_id,
-          project_name: eval.project_name,
-          project_category: eval.project_category,
-          trade_name: eval.trade_name,
-          trade_code: eval.trade_code,
-          bauherr_name: eval.bauherr_name,
-          summary: eval.evaluation_data?.summary || eval.recommendation,
-          evaluation_data: eval.evaluation_data,
+          rating: eval_.rating,
+          project_id: eval_.project_id,
+          project_name: eval_.project_name,
+          project_category: eval_.project_category,
+          trade_name: eval_.trade_name,
+          trade_code: eval_.trade_code,
+          bauherr_name: eval_.bauherr_name,
+          summary: eval_.evaluation_data?.summary || eval_.recommendation,
+          evaluation_data: eval_.evaluation_data,
           related_items: offers,
-          created_at: eval.created_at
+          created_at: eval_.created_at
         });
       }
     }
@@ -36297,7 +36296,7 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
           oe.recommendation,
           oe.evaluation_data,
           oe.created_at,
-          p.name as project_name,
+          p.description as project_name,
           p.category as project_category,
           t.name as trade_name,
           t.code as trade_code,
@@ -36312,8 +36311,8 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
         [dateFrom, dateTo]
       );
       
-      for (const eval of comparisonEvals.rows) {
-        const offerIds = eval.offer_ids || [];
+      for (const eval_ of comparisonEvals.rows) {
+        const offerIds = eval_.offer_ids || [];
         let offers = [];
         
         if (offerIds.length > 0) {
@@ -36328,22 +36327,22 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
         }
         
         results.push({
-          id: `comparison-${eval.id}`,
+          id: `comparison-${eval_.id}`,
           type: 'comparison',
           type_label: 'Vergabeempfehlung',
           rating: null,
-          project_id: eval.project_id,
-          project_name: eval.project_name,
-          project_category: eval.project_category,
-          trade_name: eval.trade_name,
-          trade_code: eval.trade_code,
-          bauherr_name: eval.bauherr_name,
-          summary: eval.evaluation_data?.summary || eval.recommendation,
-          recommended_company: eval.evaluation_data?.recommendation?.recommendedCompany,
-          evaluation_data: eval.evaluation_data,
+          project_id: eval_.project_id,
+          project_name: eval_.project_name,
+          project_category: eval_.project_category,
+          trade_name: eval_.trade_name,
+          trade_code: eval_.trade_code,
+          bauherr_name: eval_.bauherr_name,
+          summary: eval_.evaluation_data?.summary || eval_.recommendation,
+          recommended_company: eval_.evaluation_data?.recommendation?.recommendedCompany,
+          evaluation_data: eval_.evaluation_data,
           related_items: offers,
           offer_count: offers.length,
-          created_at: eval.created_at
+          created_at: eval_.created_at
         });
       }
     }
@@ -36363,7 +36362,7 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
           n.evaluation_data,
           n.submitted_at,
           n.created_at,
-          p.name as project_name,
+          p.description as project_name,
           p.category as project_category,
           t.name as trade_name,
           t.code as trade_code,
@@ -36424,7 +36423,7 @@ app.get('/api/admin/ai-evaluations', async (req, res) => {
           ps.ai_response,
           ps.created_at,
           ps.updated_at,
-          p.name as project_name,
+          p.description as project_name,
           p.category as project_category,
           b.name as bauherr_name,
           (SELECT COUNT(*) FROM schedule_entries WHERE schedule_id = ps.id) as entry_count,
