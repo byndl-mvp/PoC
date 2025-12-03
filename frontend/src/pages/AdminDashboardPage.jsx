@@ -3110,16 +3110,16 @@ useEffect(() => {
           <div className="flex-1">
             <label className="block text-sm text-gray-400 mb-2">Typ</label>
             <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="all">Alle Typen</option>
-              <option value="offer">Angebotsauswertungen</option>
-              <option value="comparison">Vergabeempfehlungen</option>
-              <option value="nachtrag">Nachtragsprüfungen</option>
-              <option value="schedule">Terminpläne</option>
-            </select>
+  value={selectedType}
+  onChange={(e) => setSelectedType(e.target.value)}
+  className="w-full px-4 py-2 bg-slate-700 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-teal-500"
+>
+  <option value="all" className="bg-slate-700 text-white">Alle Typen</option>
+  <option value="offer" className="bg-slate-700 text-white">Angebotsauswertungen</option>
+  <option value="comparison" className="bg-slate-700 text-white">Vergabeempfehlungen</option>
+  <option value="nachtrag" className="bg-slate-700 text-white">Nachtragsprüfungen</option>
+  <option value="schedule" className="bg-slate-700 text-white">Terminpläne</option>
+</select>
           </div>
           <div>
             <label className="block text-sm text-gray-400 mb-2">Von</label>
