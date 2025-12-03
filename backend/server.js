@@ -36207,6 +36207,288 @@ app.delete('/api/admin/prompts/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================================================
+// ADMIN: KI-AUSWERTUNGEN ÜBERSICHT
+// ============================================================================
+
+app.get('/api/admin/ai-evaluations', async (req, res) => {
+  try {
+    const { type = 'all', from, to } = req.query;
+    
+    const results = [];
+    
+    // Datumsfilter vorbereiten
+    const dateFrom = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: letzte 30 Tage
+    const dateTo = to ? new Date(to) : new Date();
+    dateTo.setHours(23, 59, 59, 999);
+    
+    // 1. ANGEBOTSAUSWERTUNGEN (single)
+    if (type === 'all' || type === 'offer') {
+      const offerEvals = await query(
+        `SELECT 
+          oe.id,
+          oe.project_id,
+          oe.trade_id,
+          oe.evaluation_type,
+          oe.offer_ids,
+          oe.rating,
+          oe.recommendation,
+          oe.evaluation_data,
+          oe.created_at,
+          p.name as project_name,
+          p.category as project_category,
+          t.name as trade_name,
+          t.code as trade_code,
+          b.name as bauherr_name
+         FROM offer_evaluations oe
+         JOIN projects p ON oe.project_id = p.id
+         JOIN trades t ON oe.trade_id = t.id
+         JOIN bauherren b ON p.bauherr_id = b.id
+         WHERE oe.evaluation_type = 'single'
+           AND oe.created_at >= $1 AND oe.created_at <= $2
+         ORDER BY oe.created_at DESC`,
+        [dateFrom, dateTo]
+      );
+      
+      for (const eval of offerEvals.rows) {
+        // Lade zugehörige Angebote
+        const offerIds = eval.offer_ids || [];
+        let offers = [];
+        
+        if (offerIds.length > 0) {
+          const offersResult = await query(
+            `SELECT o.id, o.amount, h.company_name 
+             FROM offers o 
+             JOIN handwerker h ON o.handwerker_id = h.id 
+             WHERE o.id = ANY($1)`,
+            [offerIds]
+          );
+          offers = offersResult.rows;
+        }
+        
+        results.push({
+          id: `offer-${eval.id}`,
+          type: 'offer_evaluation',
+          type_label: 'Angebotsauswertung',
+          rating: eval.rating,
+          project_id: eval.project_id,
+          project_name: eval.project_name,
+          project_category: eval.project_category,
+          trade_name: eval.trade_name,
+          trade_code: eval.trade_code,
+          bauherr_name: eval.bauherr_name,
+          summary: eval.evaluation_data?.summary || eval.recommendation,
+          evaluation_data: eval.evaluation_data,
+          related_items: offers,
+          created_at: eval.created_at
+        });
+      }
+    }
+    
+    // 2. VERGABEEMPFEHLUNGEN (comparison)
+    if (type === 'all' || type === 'comparison') {
+      const comparisonEvals = await query(
+        `SELECT 
+          oe.id,
+          oe.project_id,
+          oe.trade_id,
+          oe.evaluation_type,
+          oe.offer_ids,
+          oe.recommendation,
+          oe.evaluation_data,
+          oe.created_at,
+          p.name as project_name,
+          p.category as project_category,
+          t.name as trade_name,
+          t.code as trade_code,
+          b.name as bauherr_name
+         FROM offer_evaluations oe
+         JOIN projects p ON oe.project_id = p.id
+         JOIN trades t ON oe.trade_id = t.id
+         JOIN bauherren b ON p.bauherr_id = b.id
+         WHERE oe.evaluation_type = 'comparison'
+           AND oe.created_at >= $1 AND oe.created_at <= $2
+         ORDER BY oe.created_at DESC`,
+        [dateFrom, dateTo]
+      );
+      
+      for (const eval of comparisonEvals.rows) {
+        const offerIds = eval.offer_ids || [];
+        let offers = [];
+        
+        if (offerIds.length > 0) {
+          const offersResult = await query(
+            `SELECT o.id, o.amount, h.company_name 
+             FROM offers o 
+             JOIN handwerker h ON o.handwerker_id = h.id 
+             WHERE o.id = ANY($1)`,
+            [offerIds]
+          );
+          offers = offersResult.rows;
+        }
+        
+        results.push({
+          id: `comparison-${eval.id}`,
+          type: 'comparison',
+          type_label: 'Vergabeempfehlung',
+          rating: null,
+          project_id: eval.project_id,
+          project_name: eval.project_name,
+          project_category: eval.project_category,
+          trade_name: eval.trade_name,
+          trade_code: eval.trade_code,
+          bauherr_name: eval.bauherr_name,
+          summary: eval.evaluation_data?.summary || eval.recommendation,
+          recommended_company: eval.evaluation_data?.recommendation?.recommendedCompany,
+          evaluation_data: eval.evaluation_data,
+          related_items: offers,
+          offer_count: offers.length,
+          created_at: eval.created_at
+        });
+      }
+    }
+    
+    // 3. NACHTRAGSPRÜFUNGEN
+    if (type === 'all' || type === 'nachtrag') {
+      const nachtragEvals = await query(
+        `SELECT 
+          n.id,
+          n.nachtrag_number,
+          n.project_id,
+          n.trade_id,
+          n.order_id,
+          n.amount,
+          n.reason,
+          n.status,
+          n.evaluation_data,
+          n.submitted_at,
+          n.created_at,
+          p.name as project_name,
+          p.category as project_category,
+          t.name as trade_name,
+          t.code as trade_code,
+          h.company_name,
+          b.name as bauherr_name
+         FROM nachtraege n
+         JOIN projects p ON n.project_id = p.id
+         JOIN trades t ON n.trade_id = t.id
+         JOIN handwerker h ON n.handwerker_id = h.id
+         JOIN bauherren b ON p.bauherr_id = b.id
+         WHERE n.evaluation_data IS NOT NULL
+           AND n.created_at >= $1 AND n.created_at <= $2
+         ORDER BY n.created_at DESC`,
+        [dateFrom, dateTo]
+      );
+      
+      for (const n of nachtragEvals.rows) {
+        results.push({
+          id: `nachtrag-${n.id}`,
+          type: 'nachtrag',
+          type_label: 'Nachtragsprüfung',
+          rating: n.evaluation_data?.rating,
+          project_id: n.project_id,
+          project_name: n.project_name,
+          project_category: n.project_category,
+          trade_name: n.trade_name,
+          trade_code: n.trade_code,
+          bauherr_name: n.bauherr_name,
+          company_name: n.company_name,
+          nachtrag_number: n.nachtrag_number,
+          nachtrag_amount: n.amount,
+          nachtrag_reason: n.reason,
+          nachtrag_status: n.status,
+          summary: n.evaluation_data?.summary,
+          recommendation: n.evaluation_data?.recommendation?.action,
+          evaluation_data: n.evaluation_data,
+          related_items: [{
+            id: n.id,
+            type: 'nachtrag',
+            amount: n.amount,
+            reason: n.reason
+          }],
+          created_at: n.submitted_at || n.created_at
+        });
+      }
+    }
+    
+    // 4. TERMINPLÄNE
+    if (type === 'all' || type === 'schedule') {
+      const scheduleEvals = await query(
+        `SELECT 
+          ps.id,
+          ps.project_id,
+          ps.status,
+          ps.complexity_level,
+          ps.total_duration_days,
+          ps.critical_path,
+          ps.ai_response,
+          ps.created_at,
+          ps.updated_at,
+          p.name as project_name,
+          p.category as project_category,
+          b.name as bauherr_name,
+          (SELECT COUNT(*) FROM schedule_entries WHERE schedule_id = ps.id) as entry_count,
+          (SELECT COUNT(DISTINCT trade_id) FROM schedule_entries WHERE schedule_id = ps.id) as trade_count
+         FROM project_schedules ps
+         JOIN projects p ON ps.project_id = p.id
+         JOIN bauherren b ON p.bauherr_id = b.id
+         WHERE ps.ai_response IS NOT NULL
+           AND ps.created_at >= $1 AND ps.created_at <= $2
+         ORDER BY ps.created_at DESC`,
+        [dateFrom, dateTo]
+      );
+      
+      for (const s of scheduleEvals.rows) {
+        results.push({
+          id: `schedule-${s.id}`,
+          type: 'schedule',
+          type_label: 'Terminplan',
+          rating: null,
+          project_id: s.project_id,
+          project_name: s.project_name,
+          project_category: s.project_category,
+          bauherr_name: s.bauherr_name,
+          schedule_status: s.status,
+          complexity_level: s.complexity_level,
+          total_duration_days: s.total_duration_days,
+          critical_path: s.critical_path,
+          summary: s.ai_response?.general_explanation,
+          warnings: s.ai_response?.warnings,
+          recommendations: s.ai_response?.recommendations,
+          evaluation_data: s.ai_response,
+          entry_count: parseInt(s.entry_count),
+          trade_count: parseInt(s.trade_count),
+          related_items: [],
+          created_at: s.created_at
+        });
+      }
+    }
+    
+    // Sortiere nach Datum (neueste zuerst)
+    results.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    // Statistiken
+    const stats = {
+      total: results.length,
+      offer_evaluations: results.filter(r => r.type === 'offer_evaluation').length,
+      comparisons: results.filter(r => r.type === 'comparison').length,
+      nachtraege: results.filter(r => r.type === 'nachtrag').length,
+      schedules: results.filter(r => r.type === 'schedule').length,
+      ratings: {
+        green: results.filter(r => r.rating === 'green').length,
+        yellow: results.filter(r => r.rating === 'yellow').length,
+        red: results.filter(r => r.rating === 'red').length
+      }
+    };
+    
+    res.json({ results, stats });
+    
+  } catch (error) {
+    console.error('[ADMIN-AI-EVALS] Error:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der KI-Auswertungen' });
+  }
+});
+
 // Health check endpoint
 app.get('/api/admin/health', requireAdmin, async (req, res) => {
   try {
