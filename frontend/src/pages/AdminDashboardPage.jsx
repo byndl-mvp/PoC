@@ -2854,6 +2854,11 @@ const verifyHandwerker = async (id, action, reason = '') => {
               </div>
             )}
 
+            // Im Tab-Content rendern
+{activeTab === 'ki-auswertungen' && (
+  <KIAuswertungenTab apiUrl={apiUrl} />
+)}
+            
             {/* Tenders Tab - ERWEITERT mit LV-Anzeige */}
 {activeTab === 'tenders' && (
   <div className="space-y-6">
