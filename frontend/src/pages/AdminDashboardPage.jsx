@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import KIAuswertungenTab from './KIAuswertungenTab';
 
 function formatCurrency(amount) {
   if (!amount && amount !== 0) return '0 €';
