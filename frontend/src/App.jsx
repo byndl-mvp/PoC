@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
 // Landing & Auth Pages
 import LandingPage from './pages/LandingPage';
@@ -53,70 +53,9 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 // Protected Route Component
 import ProtectedRoute from './pages/ProtectedRoute.jsx';
 
-// Layout Component mit bedingtem Header
-function Layout({ children }) {
-  const location = useLocation();
-  
-  // Nur Admin-Seiten bekommen Header und Footer
-  const isAdminPage = location.pathname.startsWith('/admin');
-  
-  // Wenn keine Admin-Seite, nur children rendern
-  if (!isAdminPage) {
-    return <>{children}</>;
-  }
-  
-  // Nur für Admin-Seiten mit Header und Footer
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Navigation Header - nur für Admin */}
-      <nav className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link to="/admin/dashboard" className="flex items-center">
-                <span className="text-2xl font-bold text-indigo-600">BYNDL</span>
-                <span className="ml-2 text-sm text-gray-500">Admin Dashboard</span>
-              </Link>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link 
-                to="/" 
-                className="text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Zur Hauptseite
-              </Link>
-              <Link 
-                to="/admin/dashboard" 
-                className="text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Dashboard
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {children}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white mt-auto">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-sm text-gray-500">
-            © 2024 BYNDL - Admin Bereich
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
 function App() {
   return (
     <Router>
-      <Layout>
         <Routes>
           {/* ============= Öffentliche Routen ============= */}
           <Route path="/" element={<LandingPage />} />
@@ -298,7 +237,6 @@ function App() {
             </div>
           } />
         </Routes>
-      </Layout>
     </Router>
   );
 }
