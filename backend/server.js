@@ -20853,8 +20853,8 @@ if (has_schedule_changes) {
               </p>
               
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                <span style="color: #999999; font-size: 14px;">Angebotssumme</span>
-                <span style="color: #22c55e; font-size: 20px; font-weight: 700;">${amount.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</span>
+                <span style="color: #999999; font-size: 14px;">Angebotssumme (inkl. MwSt.)</span>
+                <span style="color: #22c55e; font-size: 20px; font-weight: 700;">${(amount * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</span>
               </div>
               
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
