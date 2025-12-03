@@ -666,6 +666,7 @@ const verifyHandwerker = async (id, action, reason = '') => {
     { id: 'offers', label: 'Angebote', icon: '💰' },
     { id: 'nachtraege', label: 'Nachträge', icon: '📝' },
     { id: 'tenders', label: 'Ausschreibungen', icon: '📄' },
+    { id: 'ki-auswertungen', label: 'KI-Auswertungen', icon: Brain },
   ];
 
   return (
