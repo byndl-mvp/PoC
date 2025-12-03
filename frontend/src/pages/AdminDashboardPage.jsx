@@ -3290,47 +3290,110 @@ useEffect(() => {
 
               {/* Typ-spezifische Details */}
               {selectedEvaluation.type === 'schedule' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                      <p className="text-gray-400 text-xs">Komplexität</p>
-                      <p className="text-white font-bold">{selectedEvaluation.complexity_level}</p>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                      <p className="text-gray-400 text-xs">Dauer</p>
-                      <p className="text-white font-bold">{selectedEvaluation.total_duration_days} Tage</p>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                      <p className="text-gray-400 text-xs">Gewerke</p>
-                      <p className="text-white font-bold">{selectedEvaluation.trade_count}</p>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                      <p className="text-gray-400 text-xs">Phasen</p>
-                      <p className="text-white font-bold">{selectedEvaluation.entry_count}</p>
-                    </div>
+  <div className="space-y-4">
+    {/* Übersicht */}
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+        <p className="text-gray-400 text-xs">Komplexität</p>
+        <p className="text-white font-bold">{selectedEvaluation.complexity_level}</p>
+      </div>
+      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+        <p className="text-gray-400 text-xs">Dauer</p>
+        <p className="text-white font-bold">{selectedEvaluation.total_duration_days} Tage</p>
+      </div>
+      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+        <p className="text-gray-400 text-xs">Gewerke</p>
+        <p className="text-white font-bold">{selectedEvaluation.trade_count}</p>
+      </div>
+      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+        <p className="text-gray-400 text-xs">Phasen</p>
+        <p className="text-white font-bold">{selectedEvaluation.entry_count}</p>
+      </div>
+    </div>
+    
+    {/* Kritischer Pfad */}
+    {selectedEvaluation.critical_path && (
+      <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/30">
+        <h4 className="text-red-300 font-semibold mb-2">⚠️ Kritischer Pfad</h4>
+        <p className="text-white">
+          {Array.isArray(selectedEvaluation.critical_path) 
+            ? selectedEvaluation.critical_path.join(' → ') 
+            : selectedEvaluation.critical_path}
+        </p>
+      </div>
+    )}
+    
+    {/* Gewerke-Termine */}
+    {selectedEvaluation.schedule_entries && selectedEvaluation.schedule_entries.length > 0 && (
+      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+        <h4 className="text-white font-semibold mb-3">📅 Gewerke-Termine</h4>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {selectedEvaluation.schedule_entries.map((entry, idx) => (
+            <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/10">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 bg-teal-500/20 text-teal-300 rounded text-xs font-medium">
+                      {entry.trade_code}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      entry.status === 'completed' ? 'bg-green-500/20 text-green-300' :
+                      entry.status === 'in_progress' ? 'bg-blue-500/20 text-blue-300' :
+                      entry.status === 'delayed' ? 'bg-red-500/20 text-red-300' :
+                      'bg-gray-500/20 text-gray-300'
+                    }`}>
+                      {entry.status === 'completed' ? 'Abgeschlossen' :
+                       entry.status === 'in_progress' ? 'In Arbeit' :
+                       entry.status === 'delayed' ? 'Verzögert' :
+                       'Ausstehend'}
+                    </span>
                   </div>
-                  {selectedEvaluation.critical_path && (
-                    <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/30">
-                      <h4 className="text-red-300 font-semibold mb-2">⚠️ Kritischer Pfad</h4>
-                      <p className="text-white">
-                        {Array.isArray(selectedEvaluation.critical_path) 
-                          ? selectedEvaluation.critical_path.join(' → ') 
-                          : selectedEvaluation.critical_path}
-                      </p>
-                    </div>
-                  )}
-                  {selectedEvaluation.warnings?.length > 0 && (
-                    <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-500/30">
-                      <h4 className="text-yellow-300 font-semibold mb-2">Warnungen</h4>
-                      <ul className="space-y-1">
-                        {selectedEvaluation.warnings.map((w, i) => (
-                          <li key={i} className="text-gray-300 text-sm">⚠️ {w}</li>
-                        ))}
-                      </ul>
-                    </div>
+                  <p className="text-white font-medium">
+                    {entry.trade_name} - {entry.phase_name}
+                  </p>
+                  <div className="flex gap-4 mt-1 text-xs text-gray-400">
+                    <span>📅 {new Date(entry.planned_start).toLocaleDateString('de-DE')} – {new Date(entry.planned_end).toLocaleDateString('de-DE')}</span>
+                    <span>⏱️ {entry.duration_days} Tage</span>
+                    {entry.buffer_days > 0 && (
+                      <span className="text-yellow-400">🛡️ +{entry.buffer_days} Puffer</span>
+                    )}
+                  </div>
+                  {entry.scheduling_reason && (
+                    <p className="text-gray-500 text-xs mt-1 line-clamp-2">{entry.scheduling_reason}</p>
                   )}
                 </div>
-              )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+    
+    {/* Warnungen */}
+    {selectedEvaluation.warnings?.length > 0 && (
+      <div className="bg-yellow-500/10 rounded-lg p-4 border border-yellow-500/30">
+        <h4 className="text-yellow-300 font-semibold mb-2">⚠️ Warnungen</h4>
+        <ul className="space-y-1">
+          {selectedEvaluation.warnings.map((w, i) => (
+            <li key={i} className="text-gray-300 text-sm">⚠️ {w}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    
+    {/* Empfehlungen */}
+    {selectedEvaluation.recommendations?.length > 0 && (
+      <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
+        <h4 className="text-blue-300 font-semibold mb-2">💡 Empfehlungen</h4>
+        <ul className="space-y-1">
+          {selectedEvaluation.recommendations.map((r, i) => (
+            <li key={i} className="text-gray-300 text-sm">💡 {r}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+)}
 
               {selectedEvaluation.type === 'nachtrag' && (
                 <div className="space-y-4">
