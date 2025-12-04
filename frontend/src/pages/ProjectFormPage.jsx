@@ -4,55 +4,97 @@ import { apiUrl } from '../api';
 
 // Kategorien-Struktur
 const CATEGORIES = {
+  'Neubau': [
+    'Einfamilienhaus (freistehend)',
+    'Doppelhaushälfte (einseitig angebaut)',
+    'Reihenhaus (beidseitig angebaut/Baulücke)',
+    'Bungalow',
+    'Tiny House / Minihaus',
+  ],
+  'Erweiterungsbau': [
+    'Anbau (Raumerweiterung)',
+    'Aufstockung (zusätzliche Etage)',
+    'Dachausbau (Wohnraum unterm Dach)',
+    'Wintergarten / Glasanbau',
+    'Einliegerwohnung',
+    'Kellerausbau zum Wohnraum',
+  ],
   'Sanierung': [
+    'Kernsanierung (Komplettsanierung)',
     'Teilsanierung',
-    'Kernsanierung',
+    'Altbausanierung',
     'Kellersanierung',
-    'Schadstoffsanierung (Asbest/Schimmel)'
+    'Dachsanierung',
+    'Fassadensanierung',
+    'Schadstoffsanierung (Asbest/Schimmel)',
+    'Feuchtigkeitssanierung / Trockenlegung',
   ],
   'Energetische Sanierung': [
-    'Komplettsanierung (Dach, Fassade, Fenster, Heizung)',
-    'Fassadendämmung',
-    'Dachdämmung / Dachsanierung',
+    'KfW-Effizienzhaus-Sanierung (Komplett)',
+    'Fassadendämmung (WDVS)',
+    'Dachsanierung mit Dämmung',
+    'Kellerdeckendämmung',
     'Fenstertausch',
-    'Heizungserneuerung (Wärmepumpe, Gas, Pellet)',
-    'Photovoltaik / Solarthermie'
+    'Heizungstausch (Wärmepumpe, Gas, Pellet)',
+    'Photovoltaikanlage / Solarthermie',
+    'Wallbox / E-Ladestation',
   ],
   'Innenausbau / Renovierung': [
-    'Badsanierung',
+    'Badsanierung (Komplett)',
+    'Badteilsanierung (z.B. Dusche/Wanne)',
     'Küchensanierung',
-    'Wand- und Bodenrenovierung',
-    'Türen, Zargen, Deckenverkleidungen',
-    'Trockenbau (Raumaufteilung, Schallschutz)'
+    'Bodenbeläge (Parkett/Fliesen/Vinyl)',
+    'Wandgestaltung (Putz/Tapete/Farbe)',
+    'Türen und Zargen',
+    'Trockenbau (Raumaufteilung, Abhangdecken, Schallschutz)',
+    'Treppensanierung / Neubau',
   ],
-  'Anbau / Umbau / Aufstockung': [
-    'Anbau (Raumerweiterung, Wintergarten)',
-    'Umbau (Grundrissänderungen)',
-    'Aufstockung (zusätzlicher Wohnraum)',
-    'Dachausbau (Gauben, Dachflächenfenster)'
+  'Umbau / Grundrissänderung': [
+    'Wanddurchbruch (nicht tragend)',
+    'Wanddurchbruch (tragend, mit Statik)',
+    'Raumzusammenlegung',
+    'Raumteilung',
+    'Türversetzung / neue Türöffnung',
+    'Barrierefreier Umbau',
   ],
-  'Rohbauarbeiten / Statisch relevante Eingriffe': [
-    'Mauer- und Betonarbeiten (Wände / Decken / Stützen)',
-    'Fundamentarbeiten',
-    'Statische Veränderungen (Wanddurchbrüche)',
+  'Rohbauarbeiten': [
+    'Erdarbeiten / Aushub',
+    'Mauer- und Betonarbeiten (Bodenplatte/Wände/Decken/Stützen)',
+    'Dachstuhl / Zimmererarbeiten',
+    'Drainage / Abdichtung',
   ],
-  'Rückbau / Abbrucharbeiten': [
-    'Abbrucharbeiten (Teil- oder Komplettabriss)',
-    'Entkernung'
+  'Rückbau / Abbruch': [
+    'Komplettabriss Gebäude',
+    'Teilabriss',
+    'Entkernung',
   ],
-  'Technische Gebäudeausrüstung (TGA)': [
-    'Heizung (Neuinstallation/Austausch)',
-    'Sanitärinstallation',
-    'Elektroinstallation (inkl. Smart Home)',
-    'Lüftungs- oder Klimaanlage'
+  'Haustechnik (TGA)': [
+    'Heizungsinstallation komplett',
+    'Sanitärinstallation komplett',
+    'Elektroinstallation komplett',
+    'Smart Home / Gebäudeautomation',
+    'Lüftungsanlage mit Wärmerückgewinnung',
+    'Klimaanlage',
   ],
-  'Außenanlagen / Garten- und Landschaftsbau': [
-    'Terrasse',
+  'Dach': [
+    'Dacheindeckung neu (Ziegel/Schiefer)',
+    'Flachdachsanierung',
+    'Dachrinnen und Fallrohre',
+    'Dachfenster / Dachflächenfenster',
+    'Gaube neu',
+    'Schornsteinsanierung',
+    'Dachbegrünung',
+  ],
+  'Außenanlagen': [
+    'Terrasse (Holz/WPC/Stein/Fliesen)',
+    'Pflasterarbeiten / Einfahrt/Gehwege',
     'Zaunbau / Sichtschutz',
+    'Carport',
+    'Gartenhaus',
+    'Pool / Schwimmteich',
     'Gartenneugestaltung',
-    'Wege / Pflasterarbeiten / Einfahrten',
-    'Carport / Garage / Gartenhaus'
-  ]
+  ],
+  'Sonstiges': [],
 };
 
 export default function ProjectFormPage() {
@@ -77,6 +119,7 @@ export default function ProjectFormPage() {
     // Projektdetails
     category: '',
     subCategories: [],
+    sonstigesText: '',
     description: '',
     timeframe: '',
     budget: '',
@@ -89,7 +132,7 @@ export default function ProjectFormPage() {
     const { name, value } = e.target;
     
     if (name === 'category') {
-      setForm(prev => ({ ...prev, category: value, subCategories: [] }));
+      setForm(prev => ({ ...prev, category: value, subCategories: [], sonstigesText: '' }));
     } else {
       setForm(prev => ({ ...prev, [name]: value }));
     }
@@ -138,8 +181,13 @@ export default function ProjectFormPage() {
       return;
     }
     
-    if (form.category && form.subCategories.length === 0) {
+    if (form.category && form.category !== 'Sonstiges' && form.subCategories.length === 0) {
       setError('Bitte wählen Sie mindestens eine Unterkategorie aus.');
+      return;
+    }
+    
+    if (form.category === 'Sonstiges' && !form.sonstigesText.trim()) {
+      setError('Bitte beschreiben Sie Ihr Vorhaben.');
       return;
     }
     
@@ -162,7 +210,7 @@ export default function ProjectFormPage() {
         },
         // Project details
         category: form.category,
-        subCategory: form.subCategories.join(', '),
+        subCategory: form.category === 'Sonstiges' ? form.sonstigesText : form.subCategories.join(', '),
         description: form.description,
         timeframe: form.timeframe,
         budget: form.budget ? Number(form.budget) : null,
@@ -525,7 +573,7 @@ export default function ProjectFormPage() {
                 </div>
 
                 {/* Unterkategorien */}
-                {form.category && (
+                {form.category && form.category !== 'Sonstiges' && (
                   <div>
                     <label className="block text-white font-medium mb-2">
                       Unterkategorien * 
@@ -552,6 +600,27 @@ export default function ProjectFormPage() {
                         Ausgewählt: {form.subCategories.length} Unterkategorie(n)
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Sonstiges - Freitextfeld */}
+                {form.category === 'Sonstiges' && (
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      Beschreiben Sie Ihr Vorhaben *
+                    </label>
+                    <textarea
+                      name="sonstigesText"
+                      value={form.sonstigesText}
+                      onChange={handleChange}
+                      required
+                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      rows={4}
+                      placeholder="Beschreiben Sie kurz, was Sie vorhaben. Die KI analysiert Ihre Eingabe und erkennt automatisch die benötigten Gewerke..."
+                    />
+                    <p className="mt-2 text-sm text-teal-400">
+                      💡 Die KI analysiert Ihre Beschreibung und erkennt automatisch die passenden Gewerke
+                    </p>
                   </div>
                 )}
 
@@ -623,15 +692,16 @@ export default function ProjectFormPage() {
                 </div>
 
                 {/* Hinweis bei genehmigungspflichtigen Arbeiten */}
-                {(form.category === 'Anbau / Umbau / Aufstockung' || 
-                  form.category === 'Rohbauarbeiten / Statisch relevante Eingriffe' ||
+                {(form.category === 'Neubau' ||
+                  form.category === 'Erweiterungsbau' || 
+                  form.category === 'Umbau / Grundrissänderung' ||
+                  form.category === 'Rohbauarbeiten' ||
                   form.subCategories.some(sc => 
                     sc.includes('Anbau') || 
-                    sc.includes('Umbau') || 
                     sc.includes('Aufstockung') || 
                     sc.includes('Dachausbau') ||
-                    sc.includes('Statische Veränderungen') ||
-                    sc.includes('Wanddurchbrüche')
+                    sc.includes('Wanddurchbruch') ||
+                    sc.includes('Einliegerwohnung')
                   )) && (
                   <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
                     <p className="text-yellow-200 text-sm">
@@ -651,7 +721,7 @@ export default function ProjectFormPage() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || (form.category && form.subCategories.length === 0)}
+                  disabled={loading || (form.category && form.category !== 'Sonstiges' && form.subCategories.length === 0) || (form.category === 'Sonstiges' && !form.sonstigesText.trim())}
                   className="w-full bg-gradient-to-r from-teal-500 to-blue-600 text-white font-semibold py-4 rounded-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
