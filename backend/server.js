@@ -3371,6 +3371,18 @@ if (istDachaufstockung) {
   console.log('[QUESTIONS] Dachaufstockung erkannt - Spezialbehandlung aktiviert');
   projectContext.istDachaufstockung = true;
 }
+
+// NEUBAU-ERKENNUNG
+const neubauKategorien = ['Neubau', 'Einfamilienhaus (freistehend)', 'Doppelhaushälfte (einseitig angebaut)', 
+  'Reihenhaus (beidseitig angebaut/Baulücke)', 'Bungalow', 'Tiny House/Minihaus'];
+
+const istNeubau = neubauKategorien.includes(projectContext.category) ||
+  (projectContext.description || '').toLowerCase().match(/neubau|hausbau|haus bauen|wir bauen|schlüsselfertig/);
+
+if (istNeubau) {
+  console.log('[QUESTIONS] NEUBAU erkannt - Spezialbehandlung aktiviert');
+  projectContext.istNeubau = true;
+}
   
   // NEU: Lade extrahierte Projektdaten
   let extractedData = null;
