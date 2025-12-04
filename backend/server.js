@@ -3377,7 +3377,7 @@ const neubauKategorien = ['Neubau', 'Einfamilienhaus (freistehend)', 'Doppelhaus
   'Reihenhaus (beidseitig angebaut/Baulücke)', 'Bungalow', 'Tiny House/Minihaus'];
 
 const istNeubau = neubauKategorien.includes(projectContext.category) ||
-  (projectContext.description || '').toLowerCase().match(/neubau|hausbau|haus bauen|wir bauen|schlüsselfertig/);
+  (projectContext.description || '').toLowerCase().match(/neubau|hausbau|haus bauen|schlüsselfertig/);
 
 if (istNeubau) {
   console.log('[QUESTIONS] NEUBAU erkannt - Spezialbehandlung aktiviert');
