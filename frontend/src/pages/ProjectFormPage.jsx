@@ -91,7 +91,6 @@ const CATEGORIES = {
     'Zaunbau / Sichtschutz',
     'Carport',
     'Gartenhaus',
-    'Pool / Schwimmteich',
     'Gartenneugestaltung',
   ],
   'Sonstiges': [],
