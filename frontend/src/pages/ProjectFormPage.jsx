@@ -87,10 +87,8 @@ const CATEGORIES = {
   ],
   'Außenanlagen': [
     'Terrasse (Holz/WPC/Stein/Fliesen)',
-    'Pflasterarbeiten / Einfahrt/Gehwege',
+    'Pflasterarbeiten / Einfahrten/ Gehwege',
     'Zaunbau / Sichtschutz',
-    'Carport',
-    'Gartenhaus',
     'Gartenneugestaltung',
   ],
   'Sonstiges': [],
