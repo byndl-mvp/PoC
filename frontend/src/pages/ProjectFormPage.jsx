@@ -119,7 +119,6 @@ export default function ProjectFormPage() {
     // Projektdetails
     category: '',
     subCategories: [],
-    sonstigesText: '',
     description: '',
     timeframe: '',
     budget: '',
@@ -132,7 +131,7 @@ export default function ProjectFormPage() {
     const { name, value } = e.target;
     
     if (name === 'category') {
-      setForm(prev => ({ ...prev, category: value, subCategories: [], sonstigesText: '' }));
+      setForm(prev => ({ ...prev, category: value, subCategories: [] }));
     } else {
       setForm(prev => ({ ...prev, [name]: value }));
     }
@@ -186,11 +185,6 @@ export default function ProjectFormPage() {
       return;
     }
     
-    if (form.category === 'Sonstiges' && !form.sonstigesText.trim()) {
-      setError('Bitte beschreiben Sie Ihr Vorhaben.');
-      return;
-    }
-    
     setLoading(true);
     setError('');
     
@@ -210,7 +204,7 @@ export default function ProjectFormPage() {
         },
         // Project details
         category: form.category,
-        subCategory: form.category === 'Sonstiges' ? form.sonstigesText : form.subCategories.join(', '),
+        subCategory: form.subCategories.join(', '),
         description: form.description,
         timeframe: form.timeframe,
         budget: form.budget ? Number(form.budget) : null,
@@ -264,10 +258,11 @@ export default function ProjectFormPage() {
 
       <div className="relative max-w-2xl mx-auto px-4 py-12">
         {/* Header */}
-        <div className="mb-8">
-          <a href="/" className="text-white text-2xl font-bold hover:text-teal-400 transition-colors">
+        <div className="text-center mb-8">
+          <a href="/" className="text-white text-3xl font-bold hover:text-teal-400 transition-colors">
             byndl
           </a>
+          <p className="text-gray-400 text-sm mt-1">einfach . bauen</p>
         </div>
 
         {/* Progress Indicator - nur zeigen wenn nicht eingeloggt */}
@@ -572,7 +567,7 @@ export default function ProjectFormPage() {
                   </select>
                 </div>
 
-                {/* Unterkategorien */}
+                {/* Unterkategorien - nicht bei Sonstiges */}
                 {form.category && form.category !== 'Sonstiges' && (
                   <div>
                     <label className="block text-white font-medium mb-2">
@@ -600,27 +595,6 @@ export default function ProjectFormPage() {
                         Ausgewählt: {form.subCategories.length} Unterkategorie(n)
                       </div>
                     )}
-                  </div>
-                )}
-
-                {/* Sonstiges - Freitextfeld */}
-                {form.category === 'Sonstiges' && (
-                  <div>
-                    <label className="block text-white font-medium mb-2">
-                      Beschreiben Sie Ihr Vorhaben *
-                    </label>
-                    <textarea
-                      name="sonstigesText"
-                      value={form.sonstigesText}
-                      onChange={handleChange}
-                      required
-                      className="w-full bg-white/20 backdrop-blur border border-white/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                      rows={4}
-                      placeholder="Beschreiben Sie kurz, was Sie vorhaben. Die KI analysiert Ihre Eingabe und erkennt automatisch die benötigten Gewerke..."
-                    />
-                    <p className="mt-2 text-sm text-teal-400">
-                      💡 Die KI analysiert Ihre Beschreibung und erkennt automatisch die passenden Gewerke
-                    </p>
                   </div>
                 )}
 
@@ -721,7 +695,7 @@ export default function ProjectFormPage() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || (form.category && form.category !== 'Sonstiges' && form.subCategories.length === 0) || (form.category === 'Sonstiges' && !form.sonstigesText.trim())}
+                  disabled={loading || (form.category && form.category !== 'Sonstiges' && form.subCategories.length === 0)}
                   className="w-full bg-gradient-to-r from-teal-500 to-blue-600 text-white font-semibold py-4 rounded-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
