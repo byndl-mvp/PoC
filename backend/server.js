@@ -3773,12 +3773,43 @@ ${projectContext.detectedTrades ? projectContext.detectedTrades.map(t => `- ${t.
 
 INTELLIGENTE FRAGENAUSWAHL BASIEREND AUF GEWERKEN:
 
+${projectContext.istNeubau ? `
+╔══════════════════════════════════════════════════════════════════╗
+║                     NEUBAU-MODUS AKTIV                            ║
+╚══════════════════════════════════════════════════════════════════╝
+PFLICHTFRAGEN BEI NEUBAU:
+1. Geplante Wohnfläche in m²?
+2. Anzahl Vollgeschosse (EG + OG)?
+3. Keller geplant (ja/nein/Teilkeller)?
+4. Dachform (Satteldach, Flachdach, Walmdach, Pultdach)?
+5. Bauweise (Massivbau, Holzrahmenbau, Fertighaus)?
+6. Energiestandard (GEG-Standard, KfW 55, KfW 40, Passivhaus)?
+7. Liegt Baugenehmigung vor?
+8. Liegen Baupläne/Architektenpläne vor?
+9. Ist ein Bodengutachten vorhanden?
+10. Grundstücksfläche in m²?
+
+VERBOTENE FRAGEN BEI NEUBAU (NIEMALS STELLEN!):
+- "Ist das Gebäude während der Bauzeit bewohnt?" 
+- "Steht das Gebäude unter Denkmalschutz?" 
+- "Wie ist der aktuelle Zustand?" 
+- "Gibt es Bestandspläne?" 
+- "Welches Baujahr?" 
+- Alle Fragen zu "bestehendem", "vorhandenem", "aktuellem" Zustand
+
+BAUSTELLENFRAGEN BEI NEUBAU:
+- LKW-Zufahrt möglich?
+- Platz für Materiallagerung?
+- Baustrom/Bauwasser vorhanden oder zu beantragen?
+- Container-Stellplatz?
+- Kranaufstellung möglich (bei mehrgeschossig)?
+` : `
+
 1. IMMER FRAGEN (für alle Projekte):
    - Zufahrt/Zugang (LKW-tauglich bei großen Projekten)
    - Lagerungsmöglichkeiten
    - Arbeitszeiten/Einschränkungen
    - Gewünschter Zeitraum
-   - Bewohnt während Bauzeit?
 
 2. BAUSTROM (immer fragen):
    - Alle Gewerke benötigen Strom
@@ -3790,6 +3821,7 @@ INTELLIGENTE FRAGENAUSWAHL BASIEREND AUF GEWERKEN:
 
 4. DENKMALSCHUTZ (NUR fragen bei):
    - FASS, DACH, FEN, AUSS
+   - NICHT bei: Neubau
    - NICHT bei: Bad-/Innensanierung ohne Außenarbeiten
 
 5. GEBÄUDEHÖHE/STOCKWERKE (NUR fragen bei):
