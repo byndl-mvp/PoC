@@ -4880,6 +4880,32 @@ questions = questions.map(q => {
 // SPEZIELLE INTAKE-VALIDIERUNG: Entferne gewerkespezifische Fragen
 if (tradeCode === 'INT') {
   const vorherAnzahl = questions.length;
+
+  // NEUBAU-FILTER: Entferne unsinnige Bestandsfragen
+if (projectContext.istNeubau) {
+  questions = questions.filter(q => {
+    const qText = (q.question || '').toLowerCase();
+    
+    const verboteneNeubauFragen = [
+      /bewohnt.*während|während.*bewohnt|genutzt.*bauzeit/,
+      /denkmalschutz|denkmal/,
+      /baujahr|gebäudealter|wie alt/,
+      /bestand|bestehend|aktuell.*zustand|vorhandene/,
+      /altbau|bestandsbau/,
+      /asbest|schadstoffe.*vorhanden/
+    ];
+    
+    const istVerboten = verboteneNeubauFragen.some(pattern => qText.match(pattern));
+    
+    if (istVerboten) {
+      console.log(`[NEUBAU-FILTER] Entfernt: "${q.question.substring(0,50)}..."`);
+      return false;
+    }
+    return true;
+  });
+  
+  console.log(`[NEUBAU-FILTER] ${vorherAnzahl - questions.length} Bestandsfragen entfernt`);
+}
   
   questions = questions.filter(q => {
     const qText = (q.question || '').toLowerCase();
