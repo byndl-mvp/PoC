@@ -25,17 +25,6 @@ export default function BauherrenSettingsPage() {
     city: ''
   });
   
-  const [billingAddressSameAsPersonal, setBillingAddressSameAsPersonal] = useState(true);
-  const [billingAddress, setBillingAddress] = useState({
-    companyName: '',
-    fullName: '',
-    street: '',
-    houseNumber: '',
-    zipCode: '',
-    city: '',
-    country: 'DE',
-    vatId: ''
-  });
   // Für spätere Stripe-Integration:
   // const [showPaymentModal, setShowPaymentModal] = useState(false);
   // const [selectedPaymentType, setSelectedPaymentType] = useState(null);
@@ -82,10 +71,7 @@ export default function BauherrenSettingsPage() {
             city: data.city || ''
           });
           
-          setBillingAddressSameAsPersonal(data.billing_address_same_as_personal !== false);
-          if (data.billing_address) {
-            setBillingAddress(data.billing_address);
-          }
+
           // E-Mail Verified Status - prüfe verschiedene mögliche Feldnamen
           const isVerified = data.email_verified || data.emailVerified || 
                             data.email_verified_at !== null || data.emailVerifiedAt !== null || false;
