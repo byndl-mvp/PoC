@@ -1798,13 +1798,13 @@ const badgeCounts = {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 text-xs sm:text-sm text-gray-400 mb-3">
                       <div>
-                        <span className="text-gray-500">Abnahme:</span> {new Date(order.accepted_at || order.updated_at).toLocaleDateString('de-DE')}
+                        <span className="text-gray-400">Abnahme:</span> {new Date(order.accepted_at || order.updated_at).toLocaleDateString('de-DE')}
                       </div>
                       <div>
-                        <span className="text-gray-500">Bauherr:</span> {order.bauherr_name}
+                        <span className="text-gray-400">Bauherr:</span> {order.bauherr_name}
                       </div>
                       <div>
-                        <span className="text-gray-500">Ort:</span> {order.project_zip} {order.project_city}
+                        <span className="text-gray-400">Ort:</span> {order.project_zip} {order.project_city}
                       </div>
                     </div>
                     
@@ -1813,17 +1813,17 @@ const badgeCounts = {
                       <h4 className="text-xs font-semibold text-gray-400 mb-2">📞 Kontaktdaten</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-3 text-xs text-gray-400">
                         <div>
-                          <span className="text-gray-500">Tel:</span> {order.bauherr_phone || 'N/A'}
+                          <span className="text-gray-400">Tel:</span> {order.bauherr_phone || 'N/A'}
                         </div>
                         <div>
-                          <span className="text-gray-500">E-Mail:</span> <span className="break-all">{order.bauherr_email || 'N/A'}</span>
+                          <span className="text-gray-400">E-Mail:</span> <span className="break-all">{order.bauherr_email || 'N/A'}</span>
                         </div>
                       </div>
                     </div>
                     
                     {/* Gewährleistungshinweis */}
                     {order.accepted_at && (
-                      <div className="p-2 bg-green-500/10 border border-green-500/30 rounded">
+                      <div className="p-2 bg-green-400/10 border border-green-500/30 rounded">
                         <p className="text-green-300 text-[10px] sm:text-xs">
                           <strong>✅ Gewährleistung:</strong> {order.warranty_period || 4} Jahre bis {new Date(new Date(order.accepted_at).setFullYear(new Date(order.accepted_at).getFullYear() + (order.warranty_period || 4))).toLocaleDateString('de-DE')}
                         </p>
@@ -1834,7 +1834,7 @@ const badgeCounts = {
                   {/* Preisbereich */}
                   <div className="text-left lg:text-right flex-shrink-0 w-full lg:w-auto lg:min-w-[160px]">
                     <div className="mb-2 p-2 bg-white/5 rounded-lg">
-                      <p className="text-xs text-gray-500">Ursprungsauftrag</p>
+                      <p className="text-xs text-gray-400">Ursprungsauftrag</p>
                       <p className="text-sm sm:text-base font-semibold text-gray-300">{formatCurrency(parseFloat(order.amount) || 0)}</p>
                     </div>
                     
