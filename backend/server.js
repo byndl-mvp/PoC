@@ -17816,23 +17816,42 @@ app.post('/api/projects/claim', async (req, res) => {
 // ----------------------------------------------------------------------------
 
 // Get user projects (for Bauherr Dashboard)
+// Projekte nach payment_status filtern
 app.get('/api/projects/user/:email', async (req, res) => {
   try {
     const { email } = req.params;
     
-    const result = await query(
-      `SELECT p.* 
-       FROM projects p
-       JOIN bauherren b ON p.bauherr_id = b.id
-       WHERE b.email = $1
-       ORDER BY p.created_at DESC`,
+    // Hole Bauherr
+    const bauherrResult = await query(
+      'SELECT id FROM bauherren WHERE email = $1',
       [email]
     );
     
-    res.json(result.rows);
+    if (bauherrResult.rows.length === 0) {
+      return res.json([]);
+    }
+    
+    const bauherrId = bauherrResult.rows[0].id;
+    
+    // Hole nur bezahlte Projekte ODER Projekte in Bearbeitung
+    const projectsResult = await query(
+      `SELECT p.*, 
+              COALESCE(p.payment_status, 'unpaid') as payment_status
+       FROM projects p
+       WHERE p.bauherr_id = $1
+       AND (
+         p.payment_status = 'paid' 
+         OR p.payment_status IS NULL  -- Legacy-Projekte
+         OR p.status IN ('draft', 'intake', 'trade_selection')  -- Noch in Bearbeitung
+       )
+       ORDER BY p.created_at DESC`,
+      [bauherrId]
+    );
+    
+    res.json(projectsResult.rows);
     
   } catch (error) {
-    console.error('Error fetching user projects:', error);
+    console.error('Error loading projects:', error);
     res.status(500).json({ error: 'Fehler beim Laden der Projekte' });
   }
 });
