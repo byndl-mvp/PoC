@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
-import InvoicesTab from '../InvoicesTab';
-import PaymentMethodsTab from '../PaymentMethodsTab';
+import InvoicesTab from './InvoicesTab';
+import PaymentMethodsTab from './PaymentMethodsTab';
 
 export default function BauherrenSettingsPage() {
   const navigate = useNavigate();
