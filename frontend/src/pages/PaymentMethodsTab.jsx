@@ -477,7 +477,7 @@ export default function PaymentMethodsTab({ userType, userId }) {
           </div>
         </div>
         
-        <p className="text-gray-500 text-xs mt-4">
+        <p className="text-gray-400 text-xs mt-4">
           💡 <strong>Empfehlung:</strong> SEPA-Lastschrift ermöglicht schnelle und unkomplizierte Abbuchungen ohne manuelle Freigabe.
         </p>
       </div>
