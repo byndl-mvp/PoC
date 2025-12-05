@@ -320,7 +320,9 @@ export default function HandwerkerRegisterPage() {
       companyId,
       registeredAt: new Date().toISOString(),
       acceptedTermsAt: new Date().toISOString(),
-      acceptedPrivacyAt: new Date().toISOString()
+      acceptedPrivacyAt: new Date().toISOString(),
+      acceptedCommission: true,
+      acceptedCommissionAt: new Date().toISOString()
     };
     
     // 1. REGISTRIERUNG
