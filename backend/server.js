@@ -11037,7 +11037,204 @@ doc.text(titleText, col2, yPosition, { width: 150 });
     }
   });
 }    
+
+// ============================================
+// HANDWERKER PROVISION - AUTOMATISCHER EINZUG
+// ============================================
+
+// Provision erstellen und einziehen (wird von create-contract aufgerufen)
+async function chargeHandwerkerCommission(orderId, offerData) {
+  try {
+    const amount = parseFloat(offerData.amount);
+    const commission = calculateCommission(amount);
+    const commissionRate = amount <= 10000 ? 3 : amount <= 20000 ? 2 : 1.5;
     
+    console.log(`💰 Berechne Provision für Order ${orderId}:`, {
+      auftragssumme: amount,
+      provision: commission,
+      rate: `${commissionRate}%`
+    });
+    
+    // Hole Stripe Customer ID
+    const handwerkerResult = await query(
+      'SELECT stripe_customer_id, default_payment_method_id, email, company_name FROM handwerker WHERE id = $1',
+      [offerData.handwerker_id]
+    );
+    
+    const handwerker = handwerkerResult.rows[0];
+    
+    if (!handwerker?.stripe_customer_id) {
+      console.error('❌ Handwerker hat keine Stripe Customer ID');
+      // Rechnung manuell erstellen
+      await createManualInvoice(orderId, offerData, commission, commissionRate);
+      return { success: false, reason: 'no_stripe_customer' };
+    }
+    
+    // Stripe Invoice erstellen
+    const invoice = await stripe.invoices.create({
+      customer: handwerker.stripe_customer_id,
+      collection_method: 'charge_automatically',
+      auto_advance: true,
+      metadata: {
+        order_id: orderId.toString(),
+        handwerker_id: offerData.handwerker_id.toString(),
+        type: 'commission'
+      }
+    });
+    
+    // Invoice Item hinzufügen
+    await stripe.invoiceItems.create({
+      customer: handwerker.stripe_customer_id,
+      invoice: invoice.id,
+      amount: Math.round(commission * 100), // Cents
+      currency: 'eur',
+      description: `byndl Vermittlungsprovision (${commissionRate}%) - Auftrag #${orderId} - ${offerData.trade_name}`,
+    });
+    
+    // Invoice finalisieren und senden
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+    
+    // In DB speichern
+    await query(
+      `INSERT INTO commissions 
+       (order_id, handwerker_id, order_amount, commission_rate, commission_amount, 
+        stripe_invoice_id, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW())`,
+      [orderId, offerData.handwerker_id, amount, commissionRate, commission, invoice.id]
+    );
+    
+    console.log(`✅ Stripe Invoice erstellt: ${invoice.id}`);
+    
+    return { 
+      success: true, 
+      invoiceId: invoice.id,
+      invoiceUrl: finalizedInvoice.hosted_invoice_url,
+      commission: commission
+    };
+    
+  } catch (error) {
+    console.error('❌ Fehler beim Erstellen der Provision:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Manuelle Rechnung erstellen (Fallback wenn kein Stripe)
+async function createManualInvoice(orderId, offerData, commission, commissionRate) {
+  try {
+    // Hole Handwerker-Daten
+    const handwerkerResult = await query(
+      'SELECT email, company_name, contact_person FROM handwerker WHERE id = $1',
+      [offerData.handwerker_id]
+    );
+    
+    const handwerker = handwerkerResult.rows[0];
+    
+    // In DB speichern
+    await query(
+      `INSERT INTO commissions 
+       (order_id, handwerker_id, order_amount, commission_rate, commission_amount, 
+        status, created_at)
+       VALUES ($1, $2, $3, $4, $5, 'pending_manual', NOW())`,
+      [orderId, offerData.handwerker_id, offerData.amount, commissionRate, commission]
+    );
+    
+    // E-Mail mit Rechnung senden
+    if (transporter) {
+      const invoiceNumber = `INV-${new Date().getFullYear()}-${orderId}`;
+      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: handwerker.email,
+        subject: `Rechnung ${invoiceNumber} - byndl Vermittlungsprovision`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+              <h1>Rechnung ${invoiceNumber}</h1>
+            </div>
+            
+            <div style="padding: 30px; background: #f7f7f7;">
+              <p>Sehr geehrte Damen und Herren,</p>
+              
+              <p>anbei erhalten Sie die Rechnung für die Vermittlungsprovision zu Ihrem Auftrag.</p>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Rechnungsnummer:</strong></td>
+                    <td style="text-align: right;">${invoiceNumber}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Rechnungsdatum:</strong></td>
+                    <td style="text-align: right;">${new Date().toLocaleDateString('de-DE')}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Fällig bis:</strong></td>
+                    <td style="text-align: right;">${dueDate.toLocaleDateString('de-DE')}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Gewerk:</strong></td>
+                    <td style="text-align: right;">${offerData.trade_name}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Auftragssumme:</strong></td>
+                    <td style="text-align: right;">${parseFloat(offerData.amount).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Provisionssatz:</strong></td>
+                    <td style="text-align: right;">${commissionRate}%</td>
+                  </tr>
+                  <tr style="background: #f0fdf4;">
+                    <td style="padding: 12px 0;"><strong>Rechnungsbetrag:</strong></td>
+                    <td style="text-align: right; font-size: 18px; font-weight: bold; color: #14b8a6;">
+                      ${commission.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #92400e;">
+                  <strong>Zahlungshinweis:</strong> Bitte hinterlegen Sie eine Zahlungsmethode in Ihrem 
+                  byndl-Konto für automatische Abbuchungen. Alternativ überweisen Sie den Betrag auf 
+                  unser Konto mit Angabe der Rechnungsnummer.
+                </p>
+              </div>
+              
+              <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <p style="margin: 0 0 10px 0;"><strong>Bankverbindung:</strong></p>
+                <p style="margin: 0;">
+                  byndl UG (haftungsbeschränkt)<br>
+                  IBAN: DE89 3704 0044 0532 0130 00<br>
+                  BIC: COBADEFFXXX<br>
+                  Verwendungszweck: ${invoiceNumber}
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://byndl.de/handwerker/settings" 
+                   style="display: inline-block; padding: 12px 30px; background: #14b8a6; color: white; text-decoration: none; border-radius: 5px;">
+                  Zahlungsmethode hinterlegen →
+                </a>
+              </div>
+            </div>
+            
+            <div style="padding: 20px; background: #f3f4f6; text-align: center; font-size: 12px; color: #6b7280;">
+              <p>byndl UG (haftungsbeschränkt) | Musterstraße 1 | 50667 Köln</p>
+              <p>Geschäftsführer: [Name] | HRB [Nummer] | USt-IdNr: DE[Nummer]</p>
+            </div>
+          </div>
+        `
+      });
+      
+      console.log(`📧 Manuelle Rechnung gesendet an ${handwerker.email}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Fehler bei manueller Rechnung:', error);
+  }
+}
+
 // ============================================
 // WEBHOOK - Stripe Events verarbeiten
 // ============================================
