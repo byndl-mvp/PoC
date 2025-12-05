@@ -11094,6 +11094,87 @@ async function chargeHandwerkerCommission(orderId, offerData) {
     // Invoice finalisieren und senden
     const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
     
+    // Zusätzlich Rechnung per E-Mail senden (für Buchhaltung)
+    if (transporter && handwerker.email) {
+      const invoiceNumber = `INV-${new Date().getFullYear()}-${orderId}`;
+      
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: handwerker.email,
+        subject: `Rechnung ${invoiceNumber} - byndl Vermittlungsprovision`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
+              <h1>Rechnung ${invoiceNumber}</h1>
+            </div>
+            
+            <div style="padding: 30px; background: #f7f7f7;">
+              <p>Sehr geehrte Damen und Herren,</p>
+              
+              <p>anbei erhalten Sie die Rechnung für die Vermittlungsprovision zu Ihrem Auftrag.</p>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Rechnungsnummer:</strong></td>
+                    <td style="text-align: right;">${invoiceNumber}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Rechnungsdatum:</strong></td>
+                    <td style="text-align: right;">${new Date().toLocaleDateString('de-DE')}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Auftrag:</strong></td>
+                    <td style="text-align: right;">#${orderId} - ${offerData.trade_name}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Auftragssumme (netto):</strong></td>
+                    <td style="text-align: right;">${parseFloat(offerData.amount).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0;"><strong>Provisionssatz:</strong></td>
+                    <td style="text-align: right;">${commissionRate}%</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0;"><strong>Netto-Provision:</strong></td>
+                    <td style="text-align: right;">${commission.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0;"><strong>USt. 19%:</strong></td>
+                    <td style="text-align: right;">${(commission * 0.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
+                  </tr>
+                  <tr style="background: #f0fdf4;">
+                    <td style="padding: 12px 0;"><strong>Brutto-Betrag:</strong></td>
+                    <td style="text-align: right; font-size: 18px; font-weight: bold; color: #14b8a6;">
+                      ${(commission * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="background: #dbeafe; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #1e40af;">
+                  <strong>Hinweis:</strong> Der Betrag wird gemäß Ihrer hinterlegten Zahlungsmethode automatisch eingezogen.
+                </p>
+              </div>
+              
+              <p style="color: #666; font-size: 12px;">
+                Sie können die Rechnung auch in Ihrem Stripe-Dashboard einsehen:<br>
+                <a href="${finalizedInvoice.hosted_invoice_url}" style="color: #14b8a6;">Rechnung online ansehen</a>
+              </p>
+            </div>
+            
+            <div style="padding: 20px; background: #f3f4f6; text-align: center; font-size: 12px; color: #6b7280;">
+              <p>byndl UG (haftungsbeschränkt) | Musterstraße 1 | 50667 Köln</p>
+              <p>Geschäftsführer: [Name] | HRB [Nummer] | USt-IdNr: DE[Nummer]</p>
+            </div>
+          </div>
+        `
+      });
+      
+      console.log(`📧 Rechnung gesendet an ${handwerker.email}`);
+    }
+    
     // In DB speichern
     await query(
       `INSERT INTO commissions 
