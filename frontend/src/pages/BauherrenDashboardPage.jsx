@@ -428,7 +428,8 @@ const totalCost = subtotal + vat;  // Brutto-Gesamtsumme
               totalCost: totalCost,
               tenders: tendersData,
               unreadOffers: unreadData.count,
-              status: determineProjectStatus(
+              paymentStatus: project.payment_status || 'unpaid',
+                status: determineProjectStatus(
                 project, 
                 relevantTrades, 
                 completedLvs,
