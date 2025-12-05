@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiUrl } from '../api';
+import InvoicesTab from '../pages/InvoicesTab';
 
 export default function BauherrenSettingsPage() {
   const navigate = useNavigate();
