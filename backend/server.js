@@ -2513,6 +2513,67 @@ if (hasKernsanierungKeyword) {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// NEUBAU-DETECTION
+// ═══════════════════════════════════════════════════════════════
+
+const neubauKategorien = ['Neubau', 'Einfamilienhaus (freistehend)', 'Doppelhaushälfte (einseitig angebaut)', 
+  'Reihenhaus (beidseitig angebaut/Baulücke)', 'Bungalow', 'Tiny House/Minihaus'];
+
+const isNeubau = neubauKategorien.includes(project.category) ||
+  neubauKategorien.some(k => (project.subCategory || '').includes(k)) ||
+  fullText.match(/neubau|hausbau|haus bauen|wir bauen|schlüsselfertig|neues haus bauen/);
+
+if (isNeubau) {
+  console.log('[DETECT] NEUBAU erkannt - füge alle Neubau-Gewerke hinzu');
+  
+  // Alle Gewerke für Neubau
+  const neubauTrades = [
+    'ROH',   // Rohbau
+    'GER',   // Gerüstbau
+    'ZIMM',  // Zimmerer/Holzbau
+    'DACH',  // Dacharbeiten
+    'FEN',   // Fenster
+    'FASS',  // Fassade
+    'ELEKT', // Elektroinstallation
+    'SAN',   // Sanitärinstallation
+    'HEI',   // Heizungsinstallation
+    'ESTR',  // Estricharbeiten
+    'TRO',   // Trockenbau
+    'FLI',   // Fliesenarbeiten
+    'MAL',   // Malerarbeiten
+    'BOD',   // Bodenbelagsarbeiten
+    'TIS',   // Tischler
+    'SCHL',  // Schlosser
+    'AUSS',  // Außenanlagen
+    'PV'     // Photovoltaik (als optional/AI-recommended)
+  ];
+  
+  for (const tradeCode of neubauTrades) {
+    const trade = availableTrades.find(t => t.code === tradeCode);
+    if (trade && !usedIds.has(trade.id)) {
+      // PV als optional markieren (nicht jeder Neubau hat PV)
+      if (tradeCode === 'PV') {
+        detectedTrades.push({
+          id: trade.id,
+          code: trade.code,
+          name: trade.name,
+          isAiRecommended: true,
+          reason: 'Bei Neubau empfohlen für Energieeffizienz und Fördermittel'
+        });
+      } else {
+        detectedTrades.push({
+          id: trade.id,
+          code: trade.code,
+          name: trade.name
+        });
+      }
+      usedIds.add(trade.id);
+      console.log(`[DETECT] Neubau: Added ${trade.code}`);
+    }
+  }
+}
     
     if (detectedTrades.length === 0) {
       throw new Error('No valid trades detected');
