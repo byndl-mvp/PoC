@@ -258,24 +258,19 @@ export default function PaymentMethodsTab({ userType, userId }) {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {/* Visa */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://cdn.brandfolder.io/KGT2DTA4/at/8vbr8k4mr5xjwk4hxq4t9vs/Visa_Brandmark_Blue_RGB.svg" 
-                alt="Visa" 
-                className="h-8 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">Visa</span>
+              <svg viewBox="0 0 750 471" className="h-8 mb-2" xmlns="http://www.w3.org/2000/svg">
+                <path d="M278.198 334.228l33.36-195.763h53.358l-33.384 195.763H278.198zm246.394-191.238c-10.57-3.966-27.135-8.222-47.822-8.222-52.725 0-89.863 26.551-90.18 64.604-.632 28.129 26.517 43.822 46.754 53.185 20.77 9.597 27.751 15.716 27.652 24.283-.133 13.123-16.586 19.116-31.924 19.116-21.357 0-32.688-2.967-50.205-10.277l-6.877-3.112-7.488 43.823c12.463 5.466 35.508 10.198 59.438 10.445 56.09 0 92.502-26.246 93.054-66.882.267-22.27-14.016-39.216-44.801-53.188-18.65-9.056-30.072-15.099-29.951-24.269 0-8.137 9.668-16.838 30.556-16.838 17.449-.271 30.088 3.534 39.936 7.5l4.781 2.259 7.233-42.427h-.156zm137.759-4.254h-41.231c-12.773 0-22.332 3.487-27.941 16.234l-79.244 179.402h56.031s9.159-24.121 11.231-29.418c6.123 0 60.555.083 68.336.083 1.596 6.854 6.492 29.335 6.492 29.335h49.512l-43.186-195.636zm-65.417 126.408c4.414-11.279 21.26-54.723 21.26-54.723-.316.521 4.381-11.334 7.074-18.684l3.607 16.878s10.217 46.729 12.352 56.529h-44.293zM209.394 138.465l-52.239 133.496-5.565-27.129c-9.726-31.274-40.025-65.157-73.898-82.12l47.767 171.204 56.455-.063 84.004-195.388h-56.524" fill="#1A1F71"/>
+                <path d="M131.92 138.465H47.391l-.682 4.073c66.939 16.204 111.232 55.363 129.618 102.415l-18.709-89.96c-3.229-12.396-12.597-16.095-25.698-16.528" fill="#F9A533"/>
+              </svg>
             </div>
             
             {/* Mastercard */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://brand.mastercard.com/content/dam/mccom/brandcenter/thumbnails/mastercard_vrt_pos_92px_2x.png" 
-                alt="Mastercard" 
-                className="h-10 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">Mastercard</span>
+              <svg viewBox="0 0 152 100" className="h-10 mb-2" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="45" fill="#EB001B"/>
+                <circle cx="102" cy="50" r="45" fill="#F79E1B"/>
+                <path d="M76 18.5c-10.5 8.5-17.2 21.5-17.2 36s6.7 27.5 17.2 36c10.5-8.5 17.2-21.5 17.2-36s-6.7-27.5-17.2-36z" fill="#FF5F00"/>
+              </svg>
             </div>
             
             {/* American Express */}
@@ -302,25 +297,19 @@ export default function PaymentMethodsTab({ userType, userId }) {
             
             {/* SEPA Lastschrift */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Sepa_logo.svg/200px-Sepa_logo.svg.png" 
-                alt="SEPA" 
-                className="h-8 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">SEPA</span>
+              <svg viewBox="0 0 200 60" className="h-8 mb-2" xmlns="http://www.w3.org/2000/svg">
+                <rect width="200" height="60" rx="4" fill="#2E4A9B"/>
+                <text x="100" y="38" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="24" fontWeight="bold">SEPA</text>
+              </svg>
               <p className="text-gray-400 text-xs">Lastschrift</p>
             </div>
             
             {/* Giropay */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://www.giropay.de/fileadmin/user_upload/logos/giropay_Logo.svg" 
-                alt="Giropay" 
-                className="h-8 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">Giropay</span>
+              <svg viewBox="0 0 200 60" className="h-8 mb-2" xmlns="http://www.w3.org/2000/svg">
+                <rect width="200" height="60" rx="4" fill="#003A7D"/>
+                <text x="100" y="38" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="22" fontWeight="bold">giropay</text>
+              </svg>
             </div>
             
             {/* Klarna */}
