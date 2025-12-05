@@ -5,12 +5,12 @@ export default function InvoicesTab({ userType, userId }) {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterYear, setFilterYear] = useState('all');
 
   useEffect(() => {
     loadInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userType, userId]);
 
   const loadInvoices = async () => {
