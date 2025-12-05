@@ -32,6 +32,7 @@ import OfferDetailPage from './pages/OfferDetailPage';
 import BauherrenNachtragsPruefungPage from './pages/BauherrenNachtragsPruefungPage';
 import BauherrenNachtraegeUebersichtPage from './pages/BauherrenNachtraegeUebersichtPage';
 import HandwerkerRatingPage from './pages/HandwerkerRatingPage';
+import LVGenerationPage from './pages/LVGenerationPage';
 
 // Handwerker Pages
 import HandwerkerDashboardPage from './pages/HandwerkerDashboardPage';
@@ -74,7 +75,8 @@ function App() {
           <Route path="/bauherr/register" element={<BauherrRegisterPage />} />
           <Route path="/bauherr/verify" element={<BauherrEmailVerification />} />
           <Route path="/bauherr/reset-password" element={<BauherrPasswordResetPage />} />
-
+          <Route path="/project/:projectId/lv-generation" element={<LVGenerationPage />} />
+          
           {/* NEUE ROUTE HIER */}
           <Route path="/project/:projectId/offer/:offerId" element={<OfferDetailPage />} />
 
