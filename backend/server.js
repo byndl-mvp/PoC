@@ -11492,6 +11492,30 @@ async function getTradeNames(tradeIds) {
   return result.rows.map(r => r.name).join(', ');
 }
 
+// ===========================================================================
+// EXPRESS APP
+// ===========================================================================
+
+const app = express();
+
+// CORS Configuration
+const allowedOrigins = [
+  'https://byndl-poc.netlify.app',
+  'https://byndl.de',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 
 // ============================================
 // WEBHOOK - Stripe Events verarbeiten
@@ -11660,31 +11684,6 @@ app.post('/api/stripe/webhook',
     res.json({ received: true });
   }
 );
-
-// ===========================================================================
-// EXPRESS APP
-// ===========================================================================
-
-const app = express();
-
-// CORS Configuration
-const allowedOrigins = [
-  'https://byndl-poc.netlify.app',
-  'https://byndl.de',
-  'http://localhost:3000',
-  'http://localhost:5173'
-];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
 
 app.use(express.json());
 app.use(bodyParser.json());
