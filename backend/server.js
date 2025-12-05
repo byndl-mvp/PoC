@@ -11039,10 +11039,318 @@ doc.text(titleText, col2, yPosition, { width: 150 });
 }    
 
 // ============================================
-// HANDWERKER PROVISION - AUTOMATISCHER EINZUG
+// RECHNUNGSSYSTEM - Für Bauherren und Handwerker
 // ============================================
 
-// Provision erstellen und einziehen (wird von create-contract aufgerufen)
+// Rechnungsnummer generieren
+async function generateInvoiceNumber() {
+  const year = new Date().getFullYear();
+  const result = await query("SELECT nextval('invoice_number_seq') as num");
+  const num = result.rows[0].num;
+  return `RE-${year}-${String(num).padStart(5, '0')}`;
+}
+
+// Rechnung erstellen und per E-Mail senden
+async function createAndSendInvoice({
+  userType,
+  userId,
+  projectId,
+  orderId,
+  invoiceType,
+  description,
+  netAmount,
+  stripePaymentIntentId,
+  stripeInvoiceId,
+  metadata
+}) {
+  try {
+    const invoiceNumber = await generateInvoiceNumber();
+    const vatRate = 19.00;
+    const vatAmount = netAmount * (vatRate / 100);
+    const grossAmount = netAmount + vatAmount;
+    
+    // Hole Nutzerdaten
+    let userData;
+    if (userType === 'bauherr') {
+      const result = await query(
+        `SELECT id, name, email, address, phone FROM bauherren WHERE id = $1`,
+        [userId]
+      );
+      userData = result.rows[0];
+    } else {
+      const result = await query(
+        `SELECT id, company_name as name, email, address, phone, 
+                contact_person, tax_id FROM handwerker WHERE id = $1`,
+        [userId]
+      );
+      userData = result.rows[0];
+    }
+    
+    if (!userData) {
+      throw new Error('Nutzer nicht gefunden');
+    }
+    
+    // Hole Projektdaten falls vorhanden
+    let projectData = null;
+    if (projectId) {
+      const result = await query(
+        `SELECT id, street, house_number, zip_code, city, description 
+         FROM projects WHERE id = $1`,
+        [projectId]
+      );
+      projectData = result.rows[0];
+    }
+    
+    // Rechnung in DB speichern
+    const invoiceResult = await query(
+      `INSERT INTO invoices 
+       (invoice_number, user_type, user_id, project_id, order_id, invoice_type,
+        description, net_amount, vat_rate, vat_amount, gross_amount,
+        stripe_payment_intent_id, stripe_invoice_id, status, paid_at, metadata, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'paid', NOW(), $14, NOW())
+       RETURNING id`,
+      [
+        invoiceNumber, userType, userId, projectId, orderId, invoiceType,
+        description, netAmount, vatRate, vatAmount, grossAmount,
+        stripePaymentIntentId, stripeInvoiceId, JSON.stringify(metadata || {})
+      ]
+    );
+    
+    const invoiceId = invoiceResult.rows[0].id;
+    
+    // E-Mail mit Rechnung senden
+    if (transporter && userData.email) {
+      const invoiceDate = new Date();
+      
+      // Rechnung als HTML für E-Mail
+      const invoiceHtml = generateInvoiceEmailHtml({
+        invoiceNumber,
+        invoiceDate,
+        userType,
+        userData,
+        projectData,
+        invoiceType,
+        description,
+        netAmount,
+        vatRate,
+        vatAmount,
+        grossAmount,
+        metadata
+      });
+      
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
+        to: userData.email,
+        subject: `Rechnung ${invoiceNumber} - byndl`,
+        html: invoiceHtml
+      });
+      
+      // Markiere als gesendet
+      await query(
+        'UPDATE invoices SET sent_at = NOW() WHERE id = $1',
+        [invoiceId]
+      );
+      
+      console.log(`📧 Rechnung ${invoiceNumber} gesendet an ${userData.email}`);
+    }
+    
+    return {
+      success: true,
+      invoiceId,
+      invoiceNumber,
+      grossAmount
+    };
+    
+  } catch (error) {
+    console.error('❌ Fehler beim Erstellen der Rechnung:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// HTML-Template für Rechnung
+function generateInvoiceEmailHtml({
+  invoiceNumber,
+  invoiceDate,
+  userType,
+  userData,
+  projectData,
+  invoiceType,
+  description,
+  netAmount,
+  vatRate,
+  vatAmount,
+  grossAmount,
+  metadata
+}) {
+  const formattedDate = invoiceDate.toLocaleDateString('de-DE');
+  const formattedNet = netAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+  const formattedVat = vatAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+  const formattedGross = grossAmount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+  
+  // Leistungsbeschreibung je nach Typ
+  let serviceDescription = description;
+  if (invoiceType === 'lv_creation' && metadata?.trade_count) {
+    serviceDescription = `Erstellung von ${metadata.trade_count} Leistungsverzeichnis${metadata.trade_count > 1 ? 'sen' : ''} (KI-gestützt)`;
+  } else if (invoiceType === 'commission' && metadata?.trade_name) {
+    serviceDescription = `Vermittlungsprovision für ${metadata.trade_name}`;
+  }
+  
+  // Projektadresse falls vorhanden
+  const projectAddress = projectData 
+    ? `${projectData.street} ${projectData.house_number}, ${projectData.zip_code} ${projectData.city}`
+    : '';
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 700px; margin: 0 auto; }
+    .header { background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%); color: white; padding: 30px; }
+    .header h1 { margin: 0 0 5px 0; font-size: 28px; }
+    .header p { margin: 0; opacity: 0.9; }
+    .content { padding: 30px; background: #fff; }
+    .addresses { display: flex; justify-content: space-between; margin-bottom: 30px; }
+    .address-block { width: 45%; }
+    .address-block h3 { color: #14b8a6; margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; }
+    .invoice-details { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+    .invoice-details table { width: 100%; }
+    .invoice-details td { padding: 8px 0; }
+    .invoice-details td:last-child { text-align: right; font-weight: 600; }
+    .line-items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .line-items th { background: #f1f5f9; padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+    .line-items td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+    .line-items .amount { text-align: right; }
+    .totals { width: 300px; margin-left: auto; }
+    .totals td { padding: 8px 0; }
+    .totals td:last-child { text-align: right; }
+    .totals .total-row { font-size: 18px; font-weight: bold; color: #14b8a6; border-top: 2px solid #14b8a6; }
+    .payment-info { background: #ecfdf5; border: 1px solid #a7f3d0; padding: 20px; border-radius: 8px; margin-top: 30px; }
+    .payment-info h3 { color: #059669; margin: 0 0 10px 0; }
+    .footer { background: #f8fafc; padding: 20px 30px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>byndl</h1>
+      <p>Rechnung ${invoiceNumber}</p>
+    </div>
+    
+    <div class="content">
+      <div class="addresses">
+        <div class="address-block">
+          <h3>Rechnungsempfänger</h3>
+          <strong>${userData.name}</strong><br>
+          ${userData.contact_person ? userData.contact_person + '<br>' : ''}
+          ${userData.address || 'Adresse nicht hinterlegt'}<br>
+          ${userData.email}
+        </div>
+        <div class="address-block" style="text-align: right;">
+          <h3>Rechnungssteller</h3>
+          <strong>byndl UG (haftungsbeschränkt)</strong><br>
+          Musterstraße 1<br>
+          50667 Köln<br>
+          rechnungen@byndl.de
+        </div>
+      </div>
+      
+      <div class="invoice-details">
+        <table>
+          <tr>
+            <td>Rechnungsnummer:</td>
+            <td>${invoiceNumber}</td>
+          </tr>
+          <tr>
+            <td>Rechnungsdatum:</td>
+            <td>${formattedDate}</td>
+          </tr>
+          <tr>
+            <td>Leistungsdatum:</td>
+            <td>${formattedDate}</td>
+          </tr>
+          ${projectAddress ? `
+          <tr>
+            <td>Projekt:</td>
+            <td>${projectAddress}</td>
+          </tr>
+          ` : ''}
+          ${metadata?.order_id ? `
+          <tr>
+            <td>Auftragsnummer:</td>
+            <td>#${metadata.order_id}</td>
+          </tr>
+          ` : ''}
+        </table>
+      </div>
+      
+      <table class="line-items">
+        <thead>
+          <tr>
+            <th>Beschreibung</th>
+            <th class="amount">Betrag</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              ${serviceDescription}
+              ${metadata?.trade_names ? `<br><small style="color: #64748b;">Gewerke: ${metadata.trade_names}</small>` : ''}
+              ${metadata?.commission_rate ? `<br><small style="color: #64748b;">Provisionssatz: ${metadata.commission_rate}%</small>` : ''}
+              ${metadata?.order_amount ? `<br><small style="color: #64748b;">Auftragssumme: ${parseFloat(metadata.order_amount).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</small>` : ''}
+            </td>
+            <td class="amount">${formattedNet}</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <table class="totals">
+        <tr>
+          <td>Nettobetrag:</td>
+          <td>${formattedNet}</td>
+        </tr>
+        <tr>
+          <td>USt. ${vatRate}%:</td>
+          <td>${formattedVat}</td>
+        </tr>
+        <tr class="total-row">
+          <td>Gesamtbetrag:</td>
+          <td>${formattedGross}</td>
+        </tr>
+      </table>
+      
+      <div class="payment-info">
+        <h3>✓ Zahlung erfolgreich</h3>
+        <p style="margin: 0;">
+          Der Betrag von <strong>${formattedGross}</strong> wurde erfolgreich über Ihre hinterlegte Zahlungsmethode abgebucht.
+        </p>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>
+        <strong>byndl UG (haftungsbeschränkt)</strong><br>
+        Musterstraße 1 | 50667 Köln | Deutschland<br>
+        Geschäftsführer: Christoph Keilbar, René Warzecha<br>
+        Amtsgericht Köln, HRB [Nummer] | USt-IdNr: DE[Nummer]
+      </p>
+      <p style="margin-top: 15px; font-size: 11px; color: #94a3b8;">
+        Diese Rechnung wurde maschinell erstellt und ist ohne Unterschrift gültig.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+// ============================================
+// HANDWERKER PROVISION - MIT RECHNUNG
+// ============================================
+
+// Aktualisierte chargeHandwerkerCommission Funktion
 async function chargeHandwerkerCommission(orderId, offerData) {
   try {
     const amount = parseFloat(offerData.amount);
@@ -11057,7 +11365,8 @@ async function chargeHandwerkerCommission(orderId, offerData) {
     
     // Hole Stripe Customer ID
     const handwerkerResult = await query(
-      'SELECT stripe_customer_id, default_payment_method_id, email, company_name FROM handwerker WHERE id = $1',
+      `SELECT stripe_customer_id, default_payment_method_id, email, company_name 
+       FROM handwerker WHERE id = $1`,
       [offerData.handwerker_id]
     );
     
@@ -11065,8 +11374,8 @@ async function chargeHandwerkerCommission(orderId, offerData) {
     
     if (!handwerker?.stripe_customer_id) {
       console.error('❌ Handwerker hat keine Stripe Customer ID');
-      // Rechnung manuell erstellen
-      await createManualInvoice(orderId, offerData, commission, commissionRate);
+      // Manuelle Rechnung erstellen (ohne automatischen Einzug)
+      await createManualInvoiceForHandwerker(orderId, offerData, commission, commissionRate);
       return { success: false, reason: 'no_stripe_customer' };
     }
     
@@ -11082,100 +11391,19 @@ async function chargeHandwerkerCommission(orderId, offerData) {
       }
     });
     
-    // Invoice Item hinzufügen
+    // Invoice Item hinzufügen (Brutto, Stripe rechnet ohne MwSt)
     await stripe.invoiceItems.create({
       customer: handwerker.stripe_customer_id,
       invoice: invoice.id,
-      amount: Math.round(commission * 100), // Cents
+      amount: Math.round(commission * 1.19 * 100), // Brutto in Cents
       currency: 'eur',
-      description: `byndl Vermittlungsprovision (${commissionRate}%) - Auftrag #${orderId} - ${offerData.trade_name}`,
+      description: `byndl Vermittlungsprovision - Auftrag #${orderId}`,
     });
     
-    // Invoice finalisieren und senden
+    // Invoice finalisieren
     const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
     
-    // Zusätzlich Rechnung per E-Mail senden (für Buchhaltung)
-    if (transporter && handwerker.email) {
-      const invoiceNumber = `INV-${new Date().getFullYear()}-${orderId}`;
-      
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-        to: handwerker.email,
-        subject: `Rechnung ${invoiceNumber} - byndl Vermittlungsprovision`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-              <h1>Rechnung ${invoiceNumber}</h1>
-            </div>
-            
-            <div style="padding: 30px; background: #f7f7f7;">
-              <p>Sehr geehrte Damen und Herren,</p>
-              
-              <p>anbei erhalten Sie die Rechnung für die Vermittlungsprovision zu Ihrem Auftrag.</p>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Rechnungsnummer:</strong></td>
-                    <td style="text-align: right;">${invoiceNumber}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Rechnungsdatum:</strong></td>
-                    <td style="text-align: right;">${new Date().toLocaleDateString('de-DE')}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Auftrag:</strong></td>
-                    <td style="text-align: right;">#${orderId} - ${offerData.trade_name}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Auftragssumme (netto):</strong></td>
-                    <td style="text-align: right;">${parseFloat(offerData.amount).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Provisionssatz:</strong></td>
-                    <td style="text-align: right;">${commissionRate}%</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 12px 0;"><strong>Netto-Provision:</strong></td>
-                    <td style="text-align: right;">${commission.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 12px 0;"><strong>USt. 19%:</strong></td>
-                    <td style="text-align: right;">${(commission * 0.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
-                  </tr>
-                  <tr style="background: #f0fdf4;">
-                    <td style="padding: 12px 0;"><strong>Brutto-Betrag:</strong></td>
-                    <td style="text-align: right; font-size: 18px; font-weight: bold; color: #14b8a6;">
-                      ${(commission * 1.19).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
-                    </td>
-                  </tr>
-                </table>
-              </div>
-              
-              <div style="background: #dbeafe; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0; color: #1e40af;">
-                  <strong>Hinweis:</strong> Der Betrag wird gemäß Ihrer hinterlegten Zahlungsmethode automatisch eingezogen.
-                </p>
-              </div>
-              
-              <p style="color: #666; font-size: 12px;">
-                Sie können die Rechnung auch in Ihrem Stripe-Dashboard einsehen:<br>
-                <a href="${finalizedInvoice.hosted_invoice_url}" style="color: #14b8a6;">Rechnung online ansehen</a>
-              </p>
-            </div>
-            
-            <div style="padding: 20px; background: #f3f4f6; text-align: center; font-size: 12px; color: #6b7280;">
-              <p>byndl UG (haftungsbeschränkt) | Musterstraße 1 | 50667 Köln</p>
-              <p>Geschäftsführer: [Name] | HRB [Nummer] | USt-IdNr: DE[Nummer]</p>
-            </div>
-          </div>
-        `
-      });
-      
-      console.log(`📧 Rechnung gesendet an ${handwerker.email}`);
-    }
-    
-    // In DB speichern
+    // In commissions Tabelle speichern
     await query(
       `INSERT INTO commissions 
        (order_id, handwerker_id, order_amount, commission_rate, commission_amount, 
@@ -11184,12 +11412,30 @@ async function chargeHandwerkerCommission(orderId, offerData) {
       [orderId, offerData.handwerker_id, amount, commissionRate, commission, invoice.id]
     );
     
+    // byndl-Rechnung erstellen und per E-Mail senden
+    await createAndSendInvoice({
+      userType: 'handwerker',
+      userId: offerData.handwerker_id,
+      projectId: offerData.project_id,
+      orderId: orderId,
+      invoiceType: 'commission',
+      description: `Vermittlungsprovision für ${offerData.trade_name}`,
+      netAmount: commission,
+      stripePaymentIntentId: null,
+      stripeInvoiceId: invoice.id,
+      metadata: {
+        order_id: orderId,
+        trade_name: offerData.trade_name,
+        order_amount: amount,
+        commission_rate: commissionRate
+      }
+    });
+    
     console.log(`✅ Stripe Invoice erstellt: ${invoice.id}`);
     
     return { 
       success: true, 
       invoiceId: invoice.id,
-      invoiceUrl: finalizedInvoice.hosted_invoice_url,
       commission: commission
     };
     
@@ -11199,122 +11445,53 @@ async function chargeHandwerkerCommission(orderId, offerData) {
   }
 }
 
-// Manuelle Rechnung erstellen (Fallback wenn kein Stripe)
-async function createManualInvoice(orderId, offerData, commission, commissionRate) {
-  try {
-    // Hole Handwerker-Daten
-    const handwerkerResult = await query(
-      'SELECT email, company_name, contact_person FROM handwerker WHERE id = $1',
-      [offerData.handwerker_id]
-    );
-    
-    const handwerker = handwerkerResult.rows[0];
-    
-    // In DB speichern
-    await query(
-      `INSERT INTO commissions 
-       (order_id, handwerker_id, order_amount, commission_rate, commission_amount, 
-        status, created_at)
-       VALUES ($1, $2, $3, $4, $5, 'pending_manual', NOW())`,
-      [orderId, offerData.handwerker_id, offerData.amount, commissionRate, commission]
-    );
-    
-    // E-Mail mit Rechnung senden
-    if (transporter) {
-      const invoiceNumber = `INV-${new Date().getFullYear()}-${orderId}`;
-      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-      
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"byndl" <info@byndl.de>',
-        to: handwerker.email,
-        subject: `Rechnung ${invoiceNumber} - byndl Vermittlungsprovision`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0;">
-              <h1>Rechnung ${invoiceNumber}</h1>
-            </div>
-            
-            <div style="padding: 30px; background: #f7f7f7;">
-              <p>Sehr geehrte Damen und Herren,</p>
-              
-              <p>anbei erhalten Sie die Rechnung für die Vermittlungsprovision zu Ihrem Auftrag.</p>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Rechnungsnummer:</strong></td>
-                    <td style="text-align: right;">${invoiceNumber}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Rechnungsdatum:</strong></td>
-                    <td style="text-align: right;">${new Date().toLocaleDateString('de-DE')}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Fällig bis:</strong></td>
-                    <td style="text-align: right;">${dueDate.toLocaleDateString('de-DE')}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Gewerk:</strong></td>
-                    <td style="text-align: right;">${offerData.trade_name}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Auftragssumme:</strong></td>
-                    <td style="text-align: right;">${parseFloat(offerData.amount).toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0;"><strong>Provisionssatz:</strong></td>
-                    <td style="text-align: right;">${commissionRate}%</td>
-                  </tr>
-                  <tr style="background: #f0fdf4;">
-                    <td style="padding: 12px 0;"><strong>Rechnungsbetrag:</strong></td>
-                    <td style="text-align: right; font-size: 18px; font-weight: bold; color: #14b8a6;">
-                      ${commission.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'})}
-                    </td>
-                  </tr>
-                </table>
-              </div>
-              
-              <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0; color: #92400e;">
-                  <strong>Zahlungshinweis:</strong> Bitte hinterlegen Sie eine Zahlungsmethode in Ihrem 
-                  byndl-Konto für automatische Abbuchungen. Alternativ überweisen Sie den Betrag auf 
-                  unser Konto mit Angabe der Rechnungsnummer.
-                </p>
-              </div>
-              
-              <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
-                <p style="margin: 0 0 10px 0;"><strong>Bankverbindung:</strong></p>
-                <p style="margin: 0;">
-                  byndl UG (haftungsbeschränkt)<br>
-                  IBAN: DE89 3704 0044 0532 0130 00<br>
-                  BIC: COBADEFFXXX<br>
-                  Verwendungszweck: ${invoiceNumber}
-                </p>
-              </div>
-              
-              <div style="text-align: center; margin-top: 30px;">
-                <a href="https://byndl.de/handwerker/settings" 
-                   style="display: inline-block; padding: 12px 30px; background: #14b8a6; color: white; text-decoration: none; border-radius: 5px;">
-                  Zahlungsmethode hinterlegen →
-                </a>
-              </div>
-            </div>
-            
-            <div style="padding: 20px; background: #f3f4f6; text-align: center; font-size: 12px; color: #6b7280;">
-              <p>byndl UG (haftungsbeschränkt) | Musterstraße 1 | 50667 Köln</p>
-              <p>Geschäftsführer: [Name] | HRB [Nummer] | USt-IdNr: DE[Nummer]</p>
-            </div>
-          </div>
-        `
-      });
-      
-      console.log(`📧 Manuelle Rechnung gesendet an ${handwerker.email}`);
+// Manuelle Rechnung falls kein Stripe (Fallback)
+async function createManualInvoiceForHandwerker(orderId, offerData, commission, commissionRate) {
+  // byndl-Rechnung erstellen (ohne Stripe-Referenz)
+  const result = await createAndSendInvoice({
+    userType: 'handwerker',
+    userId: offerData.handwerker_id,
+    projectId: offerData.project_id,
+    orderId: orderId,
+    invoiceType: 'commission',
+    description: `Vermittlungsprovision für ${offerData.trade_name}`,
+    netAmount: commission,
+    stripePaymentIntentId: null,
+    stripeInvoiceId: null,
+    metadata: {
+      order_id: orderId,
+      trade_name: offerData.trade_name,
+      order_amount: offerData.amount,
+      commission_rate: commissionRate,
+      manual_payment_required: true
     }
-    
-  } catch (error) {
-    console.error('❌ Fehler bei manueller Rechnung:', error);
+  });
+  
+  // Status auf "pending_manual" setzen
+  if (result.success) {
+    await query(
+      `UPDATE invoices SET status = 'pending' WHERE id = $1`,
+      [result.invoiceId]
+    );
   }
 }
+
+
+// ============================================
+// HELPER: Trade-Namen holen
+// ============================================
+
+async function getTradeNames(tradeIds) {
+  if (!tradeIds || tradeIds.length === 0) return '';
+  
+  const result = await query(
+    `SELECT name FROM trades WHERE id = ANY($1)`,
+    [tradeIds]
+  );
+  
+  return result.rows.map(r => r.name).join(', ');
+}
+
 
 // ============================================
 // WEBHOOK - Stripe Events verarbeiten
@@ -11354,6 +11531,8 @@ app.post('/api/stripe/webhook',
             const projectId = session.metadata.project_id;
             const bauherrId = session.metadata.bauherr_id;
             const tradeIds = JSON.parse(session.metadata.trade_ids);
+            const tradeCount = parseInt(session.metadata.trade_count);
+            const pricePerLV = parseFloat(session.metadata.price_per_lv);
             
             console.log(`✅ Zahlung erfolgreich für Projekt ${projectId}`);
             
@@ -11394,6 +11573,28 @@ app.post('/api/stripe/webhook',
                VALUES ('bauherr', $1, 'payment_success', 'Zahlung erfolgreich! Ihre Leistungsverzeichnisse werden jetzt erstellt.', 'project', $2, NOW())`,
               [bauherrId, projectId]
             );
+
+            
+          // NEU: Rechnung erstellen und senden
+            const tradeNames = await getTradeNames(tradeIds); // Helper-Funktion
+            
+            await createAndSendInvoice({
+              userType: 'bauherr',
+              userId: parseInt(bauherrId),
+              projectId: parseInt(projectId),
+              orderId: null,
+              invoiceType: 'lv_creation',
+              description: `Erstellung von ${tradeCount} Leistungsverzeichnissen`,
+              netAmount: session.amount_total / 100 / 1.19, // Netto aus Brutto
+              stripePaymentIntentId: session.payment_intent,
+              stripeInvoiceId: null,
+              metadata: {
+                trade_count: tradeCount,
+                trade_ids: tradeIds,
+                trade_names: tradeNames,
+                price_per_lv: pricePerLV
+              }
+            });
           }
           break;
         }
@@ -34829,6 +35030,86 @@ app.delete('/api/stripe/payment-method/:paymentMethodId', async (req, res) => {
   } catch (error) {
     console.error('Delete Payment Method Error:', error);
     res.status(500).json({ error: 'Fehler beim Löschen der Zahlungsmethode' });
+  }
+});
+
+// ============================================
+// API: Rechnungen abrufen (für Settings-Page)
+// ============================================
+
+app.get('/api/invoices/:userType/:userId', async (req, res) => {
+  try {
+    const { userType, userId } = req.params;
+    
+    const result = await query(
+      `SELECT i.*, p.street, p.house_number, p.zip_code, p.city
+       FROM invoices i
+       LEFT JOIN projects p ON i.project_id = p.id
+       WHERE i.user_type = $1 AND i.user_id = $2
+       ORDER BY i.created_at DESC`,
+      [userType, userId]
+    );
+    
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('Error loading invoices:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Rechnungen' });
+  }
+});
+
+// Einzelne Rechnung als PDF/HTML abrufen
+app.get('/api/invoices/:invoiceId/view', async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    
+    const result = await query(
+      `SELECT i.*, 
+              CASE WHEN i.user_type = 'bauherr' 
+                THEN (SELECT row_to_json(b) FROM bauherren b WHERE b.id = i.user_id)
+                ELSE (SELECT row_to_json(h) FROM handwerker h WHERE h.id = i.user_id)
+              END as user_data,
+              p.street, p.house_number, p.zip_code, p.city, p.description as project_description
+       FROM invoices i
+       LEFT JOIN projects p ON i.project_id = p.id
+       WHERE i.id = $1`,
+      [invoiceId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Rechnung nicht gefunden' });
+    }
+    
+    const invoice = result.rows[0];
+    const userData = invoice.user_data;
+    
+    const projectData = invoice.project_id ? {
+      street: invoice.street,
+      house_number: invoice.house_number,
+      zip_code: invoice.zip_code,
+      city: invoice.city
+    } : null;
+    
+    const html = generateInvoiceEmailHtml({
+      invoiceNumber: invoice.invoice_number,
+      invoiceDate: new Date(invoice.created_at),
+      userType: invoice.user_type,
+      userData: userData,
+      projectData: projectData,
+      invoiceType: invoice.invoice_type,
+      description: invoice.description,
+      netAmount: parseFloat(invoice.net_amount),
+      vatRate: parseFloat(invoice.vat_rate),
+      vatAmount: parseFloat(invoice.vat_amount),
+      grossAmount: parseFloat(invoice.gross_amount),
+      metadata: invoice.metadata
+    });
+    
+    res.send(html);
+    
+  } catch (error) {
+    console.error('Error loading invoice:', error);
+    res.status(500).json({ error: 'Fehler beim Laden der Rechnung' });
   }
 });
 
