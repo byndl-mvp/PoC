@@ -1,7 +1,7 @@
 // src/pages/PaymentMethodsTab.jsx
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, CardElement, IbanElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { apiUrl } from '../api';
 
 // Stripe Public Key aus Environment
@@ -21,13 +21,15 @@ const CardBrandLogo = ({ brand }) => {
   return <span>{logos[brand] || '💳 Karte'}</span>;
 };
 
-// Innere Komponente mit Stripe Hooks (für Handwerker)
+// Innere Komponente mit Stripe Hooks (für Handwerker) - MIT SEPA SUPPORT
 function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [cardComplete, setCardComplete] = useState(false);
+  const [formComplete, setFormComplete] = useState(false);
+  const [paymentType, setPaymentType] = useState('card'); // 'card' oder 'sepa'
+  const [accountHolderName, setAccountHolderName] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,14 +54,29 @@ function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
         throw new Error(setupError);
       }
       
-      const { error: stripeError, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-        }
-      });
+      let result;
       
-      if (stripeError) {
-        throw new Error(stripeError.message);
+      if (paymentType === 'card') {
+        result = await stripe.confirmCardSetup(clientSecret, {
+          payment_method: {
+            card: elements.getElement(CardElement),
+          }
+        });
+      } else {
+        // SEPA-Lastschrift
+        result = await stripe.confirmSepaDebitSetup(clientSecret, {
+          payment_method: {
+            sepa_debit: elements.getElement(IbanElement),
+            billing_details: {
+              name: accountHolderName,
+              email: '', // Optional - wird vom Backend geholt
+            },
+          }
+        });
+      }
+      
+      if (result.error) {
+        throw new Error(result.error.message);
       }
       
       if (userType === 'handwerker') {
@@ -68,7 +85,7 @@ function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             handwerkerId: userId,
-            paymentMethodId: setupIntent.payment_method
+            paymentMethodId: result.setupIntent.payment_method
           })
         });
       }
@@ -82,28 +99,98 @@ function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
     }
   };
 
+  const elementOptions = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: '#1f2937',
+        '::placeholder': { color: '#9ca3af' },
+      },
+      invalid: { color: '#ef4444' },
+    },
+  };
+
+  const ibanOptions = {
+    supportedCountries: ['SEPA'],
+    placeholderCountry: 'DE',
+    style: elementOptions.style,
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="bg-white/10 rounded-lg p-4 border border-white/20">
-        <label className="block text-white text-sm font-medium mb-3">
-          Kartendaten eingeben
-        </label>
-        <div className="bg-white rounded-lg p-3">
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#1f2937',
-                  '::placeholder': { color: '#9ca3af' },
-                },
-                invalid: { color: '#ef4444' },
-              },
-            }}
-            onChange={(e) => setCardComplete(e.complete)}
-          />
-        </div>
+      {/* Auswahl: Kreditkarte oder SEPA */}
+      <div className="flex gap-3 mb-4">
+        <button
+          type="button"
+          onClick={() => { setPaymentType('card'); setFormComplete(false); }}
+          className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+            paymentType === 'card' 
+              ? 'border-teal-500 bg-teal-500/20 text-teal-400' 
+              : 'border-white/20 bg-white/5 text-gray-400 hover:border-white/40'
+          }`}
+        >
+          💳 Kreditkarte
+        </button>
+        <button
+          type="button"
+          onClick={() => { setPaymentType('sepa'); setFormComplete(false); }}
+          className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+            paymentType === 'sepa' 
+              ? 'border-teal-500 bg-teal-500/20 text-teal-400' 
+              : 'border-white/20 bg-white/5 text-gray-400 hover:border-white/40'
+          }`}
+        >
+          🏦 SEPA-Lastschrift
+        </button>
       </div>
+
+      {paymentType === 'card' ? (
+        <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+          <label className="block text-white text-sm font-medium mb-3">
+            Kartendaten eingeben
+          </label>
+          <div className="bg-white rounded-lg p-3">
+            <CardElement
+              options={elementOptions}
+              onChange={(e) => setFormComplete(e.complete)}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <label className="block text-white text-sm font-medium mb-3">
+              Kontoinhaber
+            </label>
+            <input
+              type="text"
+              value={accountHolderName}
+              onChange={(e) => setAccountHolderName(e.target.value)}
+              placeholder="Max Mustermann"
+              className="w-full px-4 py-3 bg-white rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              required
+            />
+          </div>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <label className="block text-white text-sm font-medium mb-3">
+              IBAN eingeben
+            </label>
+            <div className="bg-white rounded-lg p-3">
+              <IbanElement
+                options={ibanOptions}
+                onChange={(e) => setFormComplete(e.complete && accountHolderName.length > 2)}
+              />
+            </div>
+          </div>
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+            <p className="text-blue-300 text-xs">
+              ℹ️ Mit der Angabe Ihrer IBAN ermächtigen Sie byndl, Zahlungen von Ihrem Konto 
+              mittels SEPA-Lastschrift einzuziehen. Sie können innerhalb von 8 Wochen ab 
+              Belastungsdatum die Erstattung verlangen.
+            </p>
+          </div>
+        </div>
+      )}
       
       {error && (
         <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3">
@@ -121,7 +208,7 @@ function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
         </button>
         <button
           type="submit"
-          disabled={!stripe || !cardComplete || loading}
+          disabled={!stripe || !formComplete || loading || (paymentType === 'sepa' && accountHolderName.length < 3)}
           className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
         >
           {loading ? 'Wird gespeichert...' : 'Speichern'}
@@ -129,7 +216,7 @@ function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
       </div>
       
       <p className="text-gray-400 text-xs text-center">
-        🔒 Ihre Kartendaten werden sicher über Stripe verarbeitet und nicht auf unseren Servern gespeichert.
+        🔒 Ihre Zahlungsdaten werden sicher über Stripe verarbeitet und nicht auf unseren Servern gespeichert.
       </p>
     </form>
   );
@@ -275,77 +362,65 @@ export default function PaymentMethodsTab({ userType, userId }) {
             
             {/* American Express */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://www.aexp-static.com/cdaas/one/statics/axp-static-assets/1.8.0/package/dist/img/logos/dls-logo-bluebox-solid.svg" 
-                alt="American Express" 
-                className="h-10 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">Amex</span>
+              <div className="bg-[#006FCF] rounded px-3 py-2">
+                <span className="text-white font-bold text-sm">AMEX</span>
+              </div>
             </div>
             
             {/* PayPal */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-200px.png" 
-                alt="PayPal" 
-                className="h-8 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">PayPal</span>
+              <svg className="h-6 mb-2" viewBox="0 0 100 26" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 3H7c-.3 0-.6.2-.6.5L4.5 17c0 .2.1.4.3.4h2.4c.3 0 .6-.2.6-.5l.5-3.5c0-.3.3-.5.6-.5h1.8c3.7 0 5.8-1.9 6.4-5.5.2-1.6 0-2.9-.8-3.8-.8-1-2.3-.8-4.2-.8zm.7 4.8c-.3 2.1-1.9 2.1-3.4 2.1h-.9l.7-4.3c0-.1.1-.2.3-.2h.4c1 0 2 0 2.5.6.3.4.5 1 .4 1.8z" fill="#003087"/>
+                <path d="M36 8h-2.4c-.2 0-.3.1-.3.2l-.1.6-.2-.3c-.6-.9-2-.8-3.4-.8-3.2 0-6 2.5-6.5 6-.3 1.7.1 3.4 1 4.5.9 1.1 2.2 1.5 3.7 1.5 2.4 0 3.8-1.5 3.8-1.5l-.1.6c0 .2.2.4.4.4h2.1c.3 0 .6-.2.6-.5l1.2-10c.1-.2-.1-.4-.3-.4zm-3.7 5.4c-.3 1.6-1.5 2.8-3.1 2.8-.8 0-1.5-.3-1.9-.8-.4-.5-.6-1.2-.4-2 .3-1.6 1.5-2.8 3.1-2.8.8 0 1.4.3 1.9.8.4.5.5 1.2.4 2z" fill="#003087"/>
+                <path d="M63 3h-5c-.3 0-.6.2-.6.5L55 17c0 .2.1.4.3.4h2.5c.2 0 .4-.1.4-.4l.6-3.4c0-.3.3-.5.6-.5h1.8c3.7 0 5.8-1.9 6.4-5.5.2-1.6 0-2.9-.8-3.8-.9-.9-2.3-.8-4.2-.8zm.7 4.8c-.3 2.1-1.9 2.1-3.4 2.1h-.9l.7-4.3c0-.1.1-.2.3-.2h.4c1 0 2 0 2.5.6.4.4.5 1 .4 1.8z" fill="#009CDE"/>
+                <path d="M86 8h-2.4c-.2 0-.3.1-.3.2l-.1.6-.2-.3c-.6-.9-2-.8-3.4-.8-3.2 0-6 2.5-6.5 6-.3 1.7.1 3.4 1 4.5.9 1.1 2.2 1.5 3.7 1.5 2.4 0 3.8-1.5 3.8-1.5l-.1.6c0 .2.2.4.4.4h2.1c.3 0 .6-.2.6-.5l1.2-10c.1-.2-.1-.4-.3-.4zm-3.7 5.4c-.3 1.6-1.5 2.8-3.1 2.8-.8 0-1.5-.3-1.9-.8-.4-.5-.6-1.2-.4-2 .3-1.6 1.5-2.8 3.1-2.8.8 0 1.4.3 1.9.8.4.5.5 1.2.4 2z" fill="#009CDE"/>
+              </svg>
             </div>
             
             {/* SEPA Lastschrift */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <svg viewBox="0 0 200 60" className="h-8 mb-2" xmlns="http://www.w3.org/2000/svg">
-                <rect width="200" height="60" rx="4" fill="#2E4A9B"/>
-                <text x="100" y="38" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="24" fontWeight="bold">SEPA</text>
-              </svg>
+              <div className="bg-white rounded px-3 py-1 mb-1">
+                <span className="text-[#2566AF] font-bold text-lg">SEPA</span>
+              </div>
               <p className="text-gray-400 text-xs">Lastschrift</p>
             </div>
             
             {/* Giropay */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <svg viewBox="0 0 200 60" className="h-8 mb-2" xmlns="http://www.w3.org/2000/svg">
-                <rect width="200" height="60" rx="4" fill="#003A7D"/>
-                <text x="100" y="38" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="22" fontWeight="bold">giropay</text>
-              </svg>
+              <div className="bg-[#000268] rounded px-3 py-2">
+                <span className="text-white font-bold text-sm">giropay</span>
+              </div>
             </div>
             
             {/* Klarna */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://x.klarnacdn.net/payment-method/assets/badges/generic/klarna.svg" 
-                alt="Klarna" 
-                className="h-8 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">Klarna</span>
+              <div className="bg-[#FFB3C7] rounded px-3 py-2">
+                <span className="text-[#0A0B09] font-bold text-sm">Klarna.</span>
+              </div>
             </div>
             
             {/* Apple Pay */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://developer.apple.com/assets/elements/icons/apple-pay/apple-pay.svg" 
-                alt="Apple Pay" 
-                className="h-10 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">Apple Pay</span>
+              <div className="bg-black rounded px-3 py-2 flex items-center gap-1">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="white">
+                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                </svg>
+                <span className="text-white font-medium text-sm">Pay</span>
+              </div>
             </div>
             
             {/* Google Pay */}
             <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
-              <img 
-                src="https://developers.google.com/static/pay/api/images/brand-guidelines/google-pay-mark.png" 
-                alt="Google Pay" 
-                className="h-8 mb-2"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
-              />
-              <span className="text-white font-medium text-sm hidden">Google Pay</span>
+              <div className="bg-white rounded px-3 py-2 flex items-center gap-1 border border-gray-200">
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                <span className="text-gray-700 font-medium text-sm">Pay</span>
+              </div>
             </div>
-            
-
           </div>
         </div>
 
@@ -396,8 +471,7 @@ export default function PaymentMethodsTab({ userType, userId }) {
               <p className="text-green-300 font-medium text-sm">100% Sichere Zahlung</p>
               <p className="text-green-200/70 text-xs mt-1">
                 Alle Zahlungen werden über Stripe abgewickelt – einem der weltweit führenden Zahlungsanbieter. 
-                Ihre Zahlungsdaten werden verschlüsselt übertragen und niemals auf unseren Servern gespeichert. 
-                Stripe ist PCI DSS Level 1 zertifiziert.
+                Ihre Zahlungsdaten werden verschlüsselt übertragen und niemals auf unseren Servern gespeichert.
               </p>
             </div>
           </div>
@@ -434,14 +508,13 @@ export default function PaymentMethodsTab({ userType, userId }) {
         </p>
       </div>
 
-      {/* Akzeptierte Zahlungsmethoden für Handwerker */}
-      <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-        <h3 className="text-lg font-semibold text-white mb-4">Akzeptierte Zahlungsmethoden</h3>
-        <p className="text-gray-400 text-sm mb-4">
+      {/* Verfügbare Methoden für Einzug */}
+      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+        <p className="text-gray-400 text-sm mb-3">
           Für den automatischen Provisionseinzug können Sie folgende Zahlungsmethoden hinterlegen:
         </p>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {/* Visa */}
           <div className="bg-white/5 rounded-lg p-3 border border-white/10 flex items-center justify-center min-h-[70px]">
             <svg viewBox="0 0 750 471" className="h-6" xmlns="http://www.w3.org/2000/svg">
@@ -461,19 +534,10 @@ export default function PaymentMethodsTab({ userType, userId }) {
           
           {/* SEPA */}
           <div className="bg-white/5 rounded-lg p-3 border border-white/10 flex flex-col items-center justify-center min-h-[70px]">
-            <svg viewBox="0 0 200 60" className="h-6" xmlns="http://www.w3.org/2000/svg">
-              <rect width="200" height="60" rx="4" fill="#2E4A9B"/>
-              <text x="100" y="38" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="24" fontWeight="bold">SEPA</text>
-            </svg>
+            <div className="bg-white rounded px-2 py-1">
+              <span className="text-[#2566AF] font-bold text-sm">SEPA</span>
+            </div>
             <p className="text-gray-400 text-xs mt-1">Lastschrift</p>
-          </div>
-          
-          {/* Giropay */}
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10 flex items-center justify-center min-h-[70px]">
-            <svg viewBox="0 0 200 60" className="h-6" xmlns="http://www.w3.org/2000/svg">
-              <rect width="200" height="60" rx="4" fill="#003A7D"/>
-              <text x="100" y="38" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="22" fontWeight="bold">giropay</text>
-            </svg>
           </div>
         </div>
         
