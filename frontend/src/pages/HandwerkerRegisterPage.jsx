@@ -359,36 +359,35 @@ export default function HandwerkerRegisterPage() {
 };
 
 // NEU: Funktion zum Hochladen der Dokumente bei Registrierung
-const uploadDocumentsForRegistration = async (handwerkerId, files) => {
-  const typeMapping = {
-    'gewerbeschein': 'gewerbeschein',
-    'handwerkskarte': 'handwerkskarte',
-    'versicherung': 'versicherungsnachweis',
-    'weitere': 'weitere'
-  };
-  
-  for (const [key, file] of Object.entries(files)) {
-    try {
-      const uploadFormData = new FormData();
-      uploadFormData.append('document', file);
-      uploadFormData.append('document_type', typeMapping[key] || key);
-      
-      const uploadRes = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/documents/upload`), {
-        method: 'POST',
-        body: uploadFormData
-      });
-      
-      if (uploadRes.ok) {
-        console.log(`✓ Dokument ${key} erfolgreich hochgeladen`);
-      } else {
-        console.error(`✗ Fehler beim Upload von ${key}`);
+  const uploadDocumentsForRegistration = async (handwerkerId, files) => {
+    const typeMapping = {
+      'gewerbeschein': 'gewerbeschein',
+      'handwerkskarte': 'handwerkskarte',
+      'versicherung': 'versicherungsnachweis',
+      'weitere': 'weitere'
+    };
+    
+    for (const [key, file] of Object.entries(files)) {
+      try {
+        const uploadFormData = new FormData();
+        uploadFormData.append('document', file);
+        uploadFormData.append('document_type', typeMapping[key] || key);
+        
+        const uploadRes = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/documents/upload`), {
+          method: 'POST',
+          body: uploadFormData
+        });
+        
+        if (uploadRes.ok) {
+          console.log(`✓ Dokument ${key} erfolgreich hochgeladen`);
+        } else {
+          console.error(`✗ Fehler beim Upload von ${key}`);
+        }
+      } catch (err) {
+        console.error(`Fehler beim Upload von ${key}:`, err);
       }
-    } catch (err) {
-      console.error(`Fehler beim Upload von ${key}:`, err);
-      // Nicht abbrechen, versuche nächstes Dokument
     }
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
