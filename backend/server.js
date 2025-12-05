@@ -34777,7 +34777,9 @@ app.post('/api/stripe/create-checkout-session', async (req, res) => {
     // Checkout Session erstellen
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      payment_method_types: ['card', 'sepa_debit', 'klarna', 'giropay'],
+      automatic_payment_methods: {
+  enabled: true,
+},
       mode: 'payment',
       line_items: [{
         price_data: {
