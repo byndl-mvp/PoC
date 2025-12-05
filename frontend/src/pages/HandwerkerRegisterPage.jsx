@@ -50,6 +50,7 @@ export default function HandwerkerRegisterPage() {
   // NEU: AGB und Datenschutz Akzeptanz
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [acceptedCommission, setAcceptedCommission] = useState(false);
   
   const [formData, setFormData] = useState({
     // Firmendaten
@@ -1065,6 +1066,28 @@ const uploadDocumentsForRegistration = async (handwerkerId, files) => {
           gelesen und stimme der Verarbeitung meiner Daten gemäß dieser Bestimmungen zu. *
         </span>
       </label>
+
+      <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptedCommission}
+                  onChange={(e) => setAcceptedCommission(e.target.checked)}
+                  className="w-5 h-5 min-w-[20px] min-h-[20px] flex-shrink-0 mt-0.5 rounded border-white/30 bg-white/20 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
+                />
+                <span className="text-gray-300 text-sm group-hover:text-white transition-colors">
+                  Ich stimme dem automatischen Einzug der{' '}
+                  <Link 
+                    to="/agb#gebuehren-handwerker" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-teal-400 hover:text-teal-300 underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Vermittlungsprovision
+                  </Link>{' '}
+                  bei verbindlicher Auftragserteilung zu. Die Provision beträgt 3% (bis 10.000€), 2% (10.001-20.000€) bzw. 1,5% (ab 20.001€) der Netto-Auftragssumme. *
+                </span>
+              </label>
       
       <p className="text-gray-500 text-xs mt-2">
         Weitere Informationen finden Sie auch in unserem{' '}
