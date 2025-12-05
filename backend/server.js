@@ -33,6 +33,8 @@ const emailService = require('./emailService');
 const cron = require('node-cron');
 const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ===========================================================================
 // FILE UPLOAD CONFIGURATION
