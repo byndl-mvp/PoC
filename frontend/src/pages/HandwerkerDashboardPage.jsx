@@ -1514,7 +1514,7 @@ const badgeCounts = {
       <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Aktive Aufträge</h3>
       {orders.filter(order => order.status !== 'completed').length === 0 ? (
         <div className="bg-white/10 backdrop-blur rounded-lg p-6 sm:p-8 border border-white/20 text-center">
-          <p className="text-gray-400 mb-4 text-sm sm:text-base">Noch keine aktiven Aufträge erhalten.</p>
+          <p className="text-gray-400 mb-4 text-sm sm:text-base">Derzeit keine aktiven Aufträge.</p>
           <p className="text-gray-500 text-xs sm:text-sm">
             Aufträge erscheinen hier, sobald ein Bauherr Ihr Angebot verbindlich beauftragt.
           </p>
