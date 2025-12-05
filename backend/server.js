@@ -11525,79 +11525,79 @@ app.post('/api/stripe/webhook',
         
         // ===== BAUHERR ZAHLUNG ERFOLGREICH =====
         case 'checkout.session.completed': {
-          const session = event.data.object;
-          
-          if (session.payment_status === 'paid') {
-            const projectId = session.metadata.project_id;
-            const bauherrId = session.metadata.bauherr_id;
-            const tradeIds = JSON.parse(session.metadata.trade_ids);
-            const tradeCount = parseInt(session.metadata.trade_count);
-            const pricePerLV = parseFloat(session.metadata.price_per_lv);
-            
-            console.log(`✅ Zahlung erfolgreich für Projekt ${projectId}`);
-            
-            // Payment Status updaten
-            await query(
-              `UPDATE payments 
-               SET status = 'completed', 
-                   stripe_payment_intent_id = $1,
-                   completed_at = NOW()
-               WHERE stripe_session_id = $2`,
-              [session.payment_intent, session.id]
-            );
-            
-            // Projekt Status updaten - LV-Erstellung freigeben
-            await query(
-              `UPDATE projects 
-               SET payment_status = 'paid',
-                   paid_at = NOW(),
-                   status = 'lv_generation'
-               WHERE id = $1`,
-              [projectId]
-            );
-            
-            // Tenders erstellen für ausgewählte Trades
-            for (const tradeId of tradeIds) {
-              await query(
-                `INSERT INTO tenders (project_id, trade_id, status, created_at)
-                 VALUES ($1, $2, 'pending_lv', NOW())
-                 ON CONFLICT (project_id, trade_id) DO UPDATE SET status = 'pending_lv'`,
-                [projectId, tradeId]
-              );
-            }
-            
-            // Notification an Bauherr
-            await query(
-              `INSERT INTO notifications 
-               (user_type, user_id, type, message, reference_type, reference_id, created_at)
-               VALUES ('bauherr', $1, 'payment_success', 'Zahlung erfolgreich! Ihre Leistungsverzeichnisse werden jetzt erstellt.', 'project', $2, NOW())`,
-              [bauherrId, projectId]
-            );
-
-            
-          // NEU: Rechnung erstellen und senden
-            const tradeNames = await getTradeNames(tradeIds); // Helper-Funktion
-            
-            await createAndSendInvoice({
-              userType: 'bauherr',
-              userId: parseInt(bauherrId),
-              projectId: parseInt(projectId),
-              orderId: null,
-              invoiceType: 'lv_creation',
-              description: `Erstellung von ${tradeCount} Leistungsverzeichnissen`,
-              netAmount: session.amount_total / 100 / 1.19, // Netto aus Brutto
-              stripePaymentIntentId: session.payment_intent,
-              stripeInvoiceId: null,
-              metadata: {
-                trade_count: tradeCount,
-                trade_ids: tradeIds,
-                trade_names: tradeNames,
-                price_per_lv: pricePerLV
-              }
-            });
-          }
-          break;
-        }
+  const session = event.data.object;
+  
+  if (session.payment_status === 'paid') {
+    const projectId = session.metadata.project_id;
+    const bauherrId = session.metadata.bauherr_id;
+    const tradeIds = JSON.parse(session.metadata.trade_ids);
+    const tradeCount = parseInt(session.metadata.trade_count);
+    const pricePerLV = parseFloat(session.metadata.price_per_lv);
+    
+    console.log(`✅ Zahlung erfolgreich für Projekt ${projectId}`);
+    
+    // Payment Status updaten
+    await query(
+      `UPDATE payments 
+       SET status = 'completed', 
+           stripe_payment_intent_id = $1,
+           completed_at = NOW()
+       WHERE stripe_session_id = $2`,
+      [session.payment_intent, session.id]
+    );
+    
+    // Projekt Status updaten - Zahlung abgeschlossen, LV-Erstellung freigeschaltet
+    await query(
+      `UPDATE projects 
+       SET payment_status = 'paid',
+           paid_at = NOW(),
+           status = 'paid_ready_for_lv'
+       WHERE id = $1`,
+      [projectId]
+    );
+    
+    // Tenders erstellen (Status: bereit für LV-Erstellung)
+    for (const tradeId of tradeIds) {
+      await query(
+        `INSERT INTO tenders (project_id, trade_id, status, created_at)
+         VALUES ($1, $2, 'ready_for_lv', NOW())
+         ON CONFLICT (project_id, trade_id) DO UPDATE SET status = 'ready_for_lv'`,
+        [projectId, tradeId]
+      );
+    }
+    
+    // Rechnung erstellen und senden
+    const tradeNames = await getTradeNames(tradeIds);
+    const netAmount = (session.amount_total / 100) / 1.19;
+    
+    await createAndSendInvoice({
+      userType: 'bauherr',
+      userId: parseInt(bauherrId),
+      projectId: parseInt(projectId),
+      orderId: null,
+      invoiceType: 'lv_creation',
+      description: `Erstellung von ${tradeCount} Leistungsverzeichnissen`,
+      netAmount: netAmount,
+      stripePaymentIntentId: session.payment_intent,
+      stripeInvoiceId: null,
+      metadata: {
+        trade_count: tradeCount,
+        trade_ids: tradeIds,
+        trade_names: tradeNames,
+        price_per_lv: pricePerLV
+      }
+    });
+    
+    // Notification an Bauherr
+    await query(
+      `INSERT INTO notifications 
+       (user_type, user_id, type, message, reference_type, reference_id, created_at)
+       VALUES ('bauherr', $1, 'payment_success', 'Zahlung erfolgreich! Sie können jetzt Ihre Leistungsverzeichnisse erstellen lassen.', 'project', $2, NOW())`,
+      [bauherrId, projectId]
+    );
+  }
+  break;
+}
         
         // ===== HANDWERKER RECHNUNG BEZAHLT =====
         case 'invoice.paid': {
