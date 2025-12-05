@@ -82,8 +82,6 @@ export default function BauherrenSettingsPage() {
             city: data.city || ''
           });
           
-          setPaymentMethods(data.payment_methods || []);
-          setPaymentHistory(data.payment_history || []);
           setBillingAddressSameAsPersonal(data.billing_address_same_as_personal !== false);
           if (data.billing_address) {
             setBillingAddress(data.billing_address);
