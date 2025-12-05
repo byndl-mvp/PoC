@@ -219,10 +219,14 @@ export default function HandwerkerRegisterPage() {
     }
     
      // Step 5: AGB, Datenschutz UND Pflichtdokumente prüfen
-  if (step === 5) {
-    if (!acceptedTerms || !acceptedPrivacy) {
+ if (!acceptedTerms || !acceptedPrivacy) {
       setError('Bitte akzeptieren Sie die AGB und Datenschutzbestimmungen.');
-      return false;
+      return;
+    }
+    
+    if (!acceptedCommission) {
+      setError('Bitte stimmen Sie dem automatischen Provisionseinzug zu.');
+      return;
     }
     
     // NEU: Pflichtdokumente prüfen
