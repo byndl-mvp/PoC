@@ -16520,8 +16520,10 @@ app.post('/api/handwerker/register', async (req, res) => {
       employees, 
       insurances, 
       certifications,
-      acceptedTermsAt,    // NEU
-      acceptedPrivacyAt   // NEU
+      acceptedTermsAt,    
+      acceptedPrivacyAt,
+      acceptedCommission,
+      acceptedCommissionAt
     } = req.body;
     
     // Verwende contactFirstName/contactLastName oder fallback auf contactPerson
@@ -16542,6 +16544,11 @@ app.post('/api/handwerker/register', async (req, res) => {
         error: 'AGB und Datenschutzbestimmungen müssen akzeptiert werden' 
       });
     }
+
+    // Validierung
+if (!acceptedCommission) {
+  return res.status(400).json({ error: 'Zustimmung zum Provisionseinzug erforderlich' });
+}
     
     // Check if email exists
     const existingCheck = await query(
@@ -16572,73 +16579,77 @@ app.post('/api/handwerker/register', async (req, res) => {
     await query('BEGIN');
     
     try {
-      // Insert handwerker mit E-Mail-Token - NEU: contact_first_name und contact_last_name
-      const result = await query(
-        `INSERT INTO handwerker (
-          company_id, 
-          email, 
-          password_hash,
-          company_name, 
-          contact_person,
-          contact_first_name,
-          contact_last_name,
-          phone,
-          street, 
-          house_number, 
-          zip_code, 
-          city, 
-          company_type,
-          registration_number,
-          tax_number,
-          website,
-          action_radius,
-          max_project_volume, 
-          available_from, 
-          employee_count, 
-          company_references,
-          verification_status,
-          email_verified,
-          email_verification_token,
-          email_verification_expires,
-          accepted_terms_at,
-          accepted_privacy_at,
-          active,
-          created_at,
-          updated_at
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
-          $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-          $21, 'pending', false, $22, $23, $24, $25, true, NOW(), NOW()
-        )
-        RETURNING id, company_id, company_name, email`,
-        [
-          companyId, 
-          email.toLowerCase(), 
-          hashedPassword,
-          companyName, 
-          fullContactPerson,
-          finalFirstName,
-          finalLastName,
-          phone,
-          street, 
-          houseNumber, 
-          zipCode,
-          city, 
-          companyType || null,
-          registrationNumber || null,
-          taxNumber || null,
-          website || null,
-          actionRadius || 25,
-          maxProjectVolume || 50000, 
-          availableFrom || null, 
-          employees || null,
-          references || null,
-          emailVerificationToken,
-          emailVerificationExpires,
-          acceptedTermsAt || new Date().toISOString(),
-          acceptedPrivacyAt || new Date().toISOString()
-        ]
-      );
+  // Insert handwerker mit E-Mail-Token
+  const result = await query(
+    `INSERT INTO handwerker (
+      company_id, 
+      email, 
+      password_hash,
+      company_name, 
+      contact_person,
+      contact_first_name,
+      contact_last_name,
+      phone,
+      street, 
+      house_number, 
+      zip_code, 
+      city, 
+      company_type,
+      registration_number,
+      tax_number,
+      website,
+      action_radius,
+      max_project_volume, 
+      available_from, 
+      employee_count, 
+      company_references,
+      verification_status,
+      email_verified,
+      email_verification_token,
+      email_verification_expires,
+      accepted_terms_at,
+      accepted_privacy_at,
+      accepted_commission,
+      accepted_commission_at,
+      active,
+      created_at,
+      updated_at
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
+      $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+      $21, 'pending', false, $22, $23, $24, $25, $26, $27, true, NOW(), NOW()
+    )
+    RETURNING id, company_id, company_name, email`,
+    [
+      companyId, 
+      email.toLowerCase(), 
+      hashedPassword,
+      companyName, 
+      fullContactPerson,
+      finalFirstName,
+      finalLastName,
+      phone,
+      street, 
+      houseNumber, 
+      zipCode,
+      city, 
+      companyType || null,
+      registrationNumber || null,
+      taxNumber || null,
+      website || null,
+      actionRadius || 25,
+      maxProjectVolume || 50000, 
+      availableFrom || null, 
+      employees || null,
+      references || null,
+      emailVerificationToken,
+      emailVerificationExpires,
+      acceptedTermsAt || new Date().toISOString(),
+      acceptedPrivacyAt || new Date().toISOString(),
+      acceptedCommission || false,
+      acceptedCommissionAt || new Date().toISOString()
+    ]
+  );
       
       const handwerkerId = result.rows[0].id;
       
