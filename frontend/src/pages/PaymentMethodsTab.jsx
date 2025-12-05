@@ -1,9 +1,10 @@
+// src/pages/PaymentMethodsTab.jsx
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { apiUrl } from '../api';
 
-// Stripe Public Key aus Environment (muss im Frontend verfügbar sein)
+// Stripe Public Key aus Environment
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_...');
 
 // Karten-Logos
@@ -20,7 +21,7 @@ const CardBrandLogo = ({ brand }) => {
   return <span>{logos[brand] || '💳 Karte'}</span>;
 };
 
-// Innere Komponente mit Stripe Hooks
+// Innere Komponente mit Stripe Hooks (für Handwerker)
 function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -37,7 +38,6 @@ function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
     setError('');
     
     try {
-      // Setup Intent vom Backend holen
       const setupRes = await fetch(apiUrl('/api/stripe/create-setup-intent'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,7 +52,6 @@ function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
         throw new Error(setupError);
       }
       
-      // Karte bestätigen
       const { error: stripeError, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -63,7 +62,6 @@ function PaymentMethodForm({ userType, userId, onSuccess, onCancel }) {
         throw new Error(stripeError.message);
       }
       
-      // Als Standard setzen (für Handwerker)
       if (userType === 'handwerker') {
         await fetch(apiUrl('/api/stripe/set-default-payment-method'), {
           method: 'POST',
@@ -147,7 +145,11 @@ export default function PaymentMethodsTab({ userType, userId }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadPaymentMethods();
+    if (userType === 'handwerker') {
+      loadPaymentMethods();
+    } else {
+      setLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userType, userId]);
 
@@ -222,6 +224,202 @@ export default function PaymentMethodsTab({ userType, userId }) {
     );
   }
 
+  // ============================================
+  // BAUHERREN: Informative Übersicht
+  // ============================================
+  if (userType === 'bauherr') {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white mb-6">Zahlungsmethoden</h2>
+        
+        {/* Info-Box */}
+        <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-5">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">💡</span>
+            <div>
+              <p className="text-teal-300 font-medium mb-2">
+                Flexible Zahlung bei der LV-Erstellung
+              </p>
+              <p className="text-teal-200/80 text-sm">
+                Sie wählen Ihre bevorzugte Zahlungsmethode direkt beim Bezahlvorgang. 
+                Es ist keine vorherige Hinterlegung einer Zahlungsmethode erforderlich.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Verfügbare Zahlungsmethoden */}
+        <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+          <h3 className="text-lg font-semibold text-white mb-4">Verfügbare Zahlungsmethoden</h3>
+          <p className="text-gray-400 text-sm mb-6">
+            Bei der Zahlung für Ihre Leistungsverzeichnisse stehen Ihnen folgende Optionen zur Verfügung:
+          </p>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* Visa */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://cdn.brandfolder.io/KGT2DTA4/at/8vbr8k4mr5xjwk4hxq4t9vs/Visa_Brandmark_Blue_RGB.svg" 
+                alt="Visa" 
+                className="h-8 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">Visa</span>
+            </div>
+            
+            {/* Mastercard */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://brand.mastercard.com/content/dam/mccom/brandcenter/thumbnails/mastercard_vrt_pos_92px_2x.png" 
+                alt="Mastercard" 
+                className="h-10 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">Mastercard</span>
+            </div>
+            
+            {/* American Express */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://www.aexp-static.com/cdaas/one/statics/axp-static-assets/1.8.0/package/dist/img/logos/dls-logo-bluebox-solid.svg" 
+                alt="American Express" 
+                className="h-10 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">Amex</span>
+            </div>
+            
+            {/* PayPal */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-200px.png" 
+                alt="PayPal" 
+                className="h-8 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">PayPal</span>
+            </div>
+            
+            {/* SEPA Lastschrift */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Sepa_logo.svg/200px-Sepa_logo.svg.png" 
+                alt="SEPA" 
+                className="h-8 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">SEPA</span>
+              <p className="text-gray-400 text-xs">Lastschrift</p>
+            </div>
+            
+            {/* Giropay */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://www.giropay.de/fileadmin/user_upload/logos/giropay_Logo.svg" 
+                alt="Giropay" 
+                className="h-8 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">Giropay</span>
+            </div>
+            
+            {/* Klarna */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://x.klarnacdn.net/payment-method/assets/badges/generic/klarna.svg" 
+                alt="Klarna" 
+                className="h-8 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">Klarna</span>
+            </div>
+            
+            {/* Apple Pay */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://developer.apple.com/assets/elements/icons/apple-pay/apple-pay.svg" 
+                alt="Apple Pay" 
+                className="h-10 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">Apple Pay</span>
+            </div>
+            
+            {/* Google Pay */}
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+              <img 
+                src="https://developers.google.com/static/pay/api/images/brand-guidelines/google-pay-mark.png" 
+                alt="Google Pay" 
+                className="h-8 mb-2"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span className="text-white font-medium text-sm hidden">Google Pay</span>
+            </div>
+            
+
+          </div>
+        </div>
+
+        {/* Ablauf */}
+        <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+          <h3 className="text-lg font-semibold text-white mb-4">So funktioniert die Zahlung</h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-teal-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-teal-400 font-bold text-sm">1</span>
+              </div>
+              <div>
+                <p className="text-white font-medium">Gewerke auswählen</p>
+                <p className="text-gray-400 text-sm">Wählen Sie die Gewerke für Ihr Projekt aus.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-teal-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-teal-400 font-bold text-sm">2</span>
+              </div>
+              <div>
+                <p className="text-white font-medium">Zahlungsmethode wählen</p>
+                <p className="text-gray-400 text-sm">Auf der sicheren Stripe-Zahlungsseite wählen Sie Ihre bevorzugte Methode.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-teal-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-teal-400 font-bold text-sm">3</span>
+              </div>
+              <div>
+                <p className="text-white font-medium">LVs erstellen lassen</p>
+                <p className="text-gray-400 text-sm">Nach erfolgreicher Zahlung werden Ihre Leistungsverzeichnisse erstellt.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sicherheitshinweis */}
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            <div>
+              <p className="text-green-300 font-medium text-sm">100% Sichere Zahlung</p>
+              <p className="text-green-200/70 text-xs mt-1">
+                Alle Zahlungen werden über Stripe abgewickelt – einem der weltweit führenden Zahlungsanbieter. 
+                Ihre Zahlungsdaten werden verschlüsselt übertragen und niemals auf unseren Servern gespeichert. 
+                Stripe ist PCI DSS Level 1 zertifiziert.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
+  // HANDWERKER: Zahlungsmethoden verwalten
+  // ============================================
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white mb-6">Zahlungsmethoden</h2>
@@ -239,19 +437,18 @@ export default function PaymentMethodsTab({ userType, userId }) {
       )}
 
       {/* Info-Box für Handwerker */}
-      {userType === 'handwerker' && (
-        <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-4">
-          <p className="text-teal-300 text-sm">
-            <strong>ℹ️ Automatischer Einzug:</strong> Die Vermittlungsprovision wird bei verbindlicher 
-            Auftragserteilung automatisch von Ihrer hinterlegten Zahlungsmethode eingezogen. 
-            Sie erhalten für jeden Einzug eine ordnungsgemäße Rechnung per E-Mail.
-          </p>
-        </div>
-      )}
+      <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-4">
+        <p className="text-teal-300 text-sm">
+          <strong>ℹ️ Automatischer Einzug:</strong> Die Vermittlungsprovision wird bei verbindlicher 
+          Auftragserteilung automatisch von Ihrer hinterlegten Zahlungsmethode eingezogen. 
+          Sie erhalten für jeden Einzug eine ordnungsgemäße Rechnung per E-Mail.
+        </p>
+      </div>
 
       {/* Gespeicherte Zahlungsmethoden */}
       {paymentMethods.length > 0 ? (
         <div className="space-y-3">
+          <h3 className="text-lg font-semibold text-white">Hinterlegte Zahlungsmethoden</h3>
           {paymentMethods.map((pm) => (
             <div 
               key={pm.id}
@@ -334,11 +531,9 @@ export default function PaymentMethodsTab({ userType, userId }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
           </svg>
           <p className="text-gray-400 mb-4">Keine Zahlungsmethode hinterlegt</p>
-          {userType === 'handwerker' && (
-            <p className="text-yellow-400 text-sm">
-              ⚠️ Bitte hinterlegen Sie eine Zahlungsmethode für den automatischen Provisionseinzug.
-            </p>
-          )}
+          <p className="text-yellow-400 text-sm">
+            ⚠️ Bitte hinterlegen Sie eine Zahlungsmethode für den automatischen Provisionseinzug.
+          </p>
         </div>
       )}
 
