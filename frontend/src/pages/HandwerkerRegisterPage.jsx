@@ -219,27 +219,28 @@ export default function HandwerkerRegisterPage() {
     }
     
      // Step 5: AGB, Datenschutz UND Pflichtdokumente prüfen
- if (!acceptedTerms || !acceptedPrivacy) {
-      setError('Bitte akzeptieren Sie die AGB und Datenschutzbestimmungen.');
-      return;
+    if (step === 5) {
+      if (!acceptedTerms || !acceptedPrivacy) {
+        setError('Bitte akzeptieren Sie die AGB und Datenschutzbestimmungen.');
+        return false;
+      }
+      
+      if (!acceptedCommission) {
+        setError('Bitte stimmen Sie dem automatischen Provisionseinzug zu.');
+        return false;
+      }
+      
+      // Pflichtdokumente prüfen
+      if (!uploadedFiles.gewerbeschein || !uploadedFiles.handwerkskarte) {
+        setError('Bitte laden Sie mindestens Gewerbeschein und Handwerkskarte hoch.');
+        return false;
+      }
     }
-    
-    if (!acceptedCommission) {
-      setError('Bitte stimmen Sie dem automatischen Provisionseinzug zu.');
-      return;
-    }
-    
-    // NEU: Pflichtdokumente prüfen
-    if (!uploadedFiles.gewerbeschein || !uploadedFiles.handwerkskarte) {
-      setError('Bitte laden Sie mindestens Gewerbeschein und Handwerkskarte hoch.');
-      return false;
-    }
-  }
     
     setError('');
     return true;
   };
-
+  
   const handleNext = () => {
     if (validateStep()) {
       setStep(step + 1);
