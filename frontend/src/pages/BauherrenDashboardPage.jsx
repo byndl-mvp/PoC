@@ -1605,6 +1605,35 @@ const LVEditButton = ({ project }) => {
                   </div>
                 )}
                 
+                {/* Zahlungsstatus-Hinweis */}
+                {project.paymentStatus === 'pending' && (
+                  <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 mb-4">
+                    <p className="text-yellow-300 text-xs flex items-center gap-2">
+                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                      </svg>
+                      Zahlung wird verarbeitet...
+                    </p>
+                  </div>
+                )}
+                
+                {project.paymentStatus === 'unpaid' && (project.status === 'trade_selection' || project.status === 'Gewerke auswählen') && (
+                  <div className="bg-amber-500/20 border border-amber-500/50 rounded-lg p-3 mb-4">
+                    <p className="text-amber-300 text-xs mb-2">
+                      ⚠️ Zahlung ausstehend
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/project/${project.id}/trades`);
+                      }}
+                      className="w-full px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs rounded transition-colors"
+                    >
+                      Zur Zahlung →
+                    </button>
+                  </div>
+                )}
+                
                 {/* Progress Bar */}
                 <div className="mb-4">
                   <div className="flex justify-between text-xs text-gray-400 mb-1">
