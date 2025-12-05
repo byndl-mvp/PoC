@@ -148,6 +148,7 @@ export default function PaymentMethodsTab({ userType, userId }) {
 
   useEffect(() => {
     loadPaymentMethods();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userType, userId]);
 
   const loadPaymentMethods = async () => {
