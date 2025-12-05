@@ -167,7 +167,7 @@ export default function PaymentMethodsTab({ userType, userId }) {
   };
 
   const deletePaymentMethod = async (paymentMethodId) => {
-    if (!confirm('Möchten Sie diese Zahlungsmethode wirklich entfernen?')) return;
+    if (!window.confirm('Möchten Sie diese Zahlungsmethode wirklich entfernen?')) return;
     
     try {
       setDeletingId(paymentMethodId);
