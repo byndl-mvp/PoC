@@ -11038,6 +11038,149 @@ doc.text(titleText, col2, yPosition, { width: 150 });
   });
 }    
     
+// ============================================
+// WEBHOOK - Stripe Events verarbeiten
+// ============================================
+
+// WICHTIG: Dieser Endpoint muss VOR express.json() Middleware registriert werden!
+// Oder nutze express.raw() nur für diesen Endpoint
+
+app.post('/api/stripe/webhook', 
+  express.raw({ type: 'application/json' }), 
+  async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    
+    let event;
+    
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err) {
+      console.error('⚠️ Webhook signature verification failed:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    
+    console.log(`📩 Stripe Webhook: ${event.type}`);
+    
+    try {
+      switch (event.type) {
+        
+        // ===== BAUHERR ZAHLUNG ERFOLGREICH =====
+        case 'checkout.session.completed': {
+          const session = event.data.object;
+          
+          if (session.payment_status === 'paid') {
+            const projectId = session.metadata.project_id;
+            const bauherrId = session.metadata.bauherr_id;
+            const tradeIds = JSON.parse(session.metadata.trade_ids);
+            
+            console.log(`✅ Zahlung erfolgreich für Projekt ${projectId}`);
+            
+            // Payment Status updaten
+            await query(
+              `UPDATE payments 
+               SET status = 'completed', 
+                   stripe_payment_intent_id = $1,
+                   completed_at = NOW()
+               WHERE stripe_session_id = $2`,
+              [session.payment_intent, session.id]
+            );
+            
+            // Projekt Status updaten - LV-Erstellung freigeben
+            await query(
+              `UPDATE projects 
+               SET payment_status = 'paid',
+                   paid_at = NOW(),
+                   status = 'lv_generation'
+               WHERE id = $1`,
+              [projectId]
+            );
+            
+            // Tenders erstellen für ausgewählte Trades
+            for (const tradeId of tradeIds) {
+              await query(
+                `INSERT INTO tenders (project_id, trade_id, status, created_at)
+                 VALUES ($1, $2, 'pending_lv', NOW())
+                 ON CONFLICT (project_id, trade_id) DO UPDATE SET status = 'pending_lv'`,
+                [projectId, tradeId]
+              );
+            }
+            
+            // Notification an Bauherr
+            await query(
+              `INSERT INTO notifications 
+               (user_type, user_id, type, message, reference_type, reference_id, created_at)
+               VALUES ('bauherr', $1, 'payment_success', 'Zahlung erfolgreich! Ihre Leistungsverzeichnisse werden jetzt erstellt.', 'project', $2, NOW())`,
+              [bauherrId, projectId]
+            );
+          }
+          break;
+        }
+        
+        // ===== HANDWERKER RECHNUNG BEZAHLT =====
+        case 'invoice.paid': {
+          const invoice = event.data.object;
+          
+          if (invoice.metadata?.type === 'commission') {
+            const orderId = invoice.metadata.order_id;
+            
+            console.log(`✅ Provision bezahlt für Order ${orderId}`);
+            
+            await query(
+              `UPDATE commissions 
+               SET status = 'paid', 
+                   paid_at = NOW()
+               WHERE stripe_invoice_id = $1`,
+              [invoice.id]
+            );
+          }
+          break;
+        }
+        
+        // ===== HANDWERKER ZAHLUNG FEHLGESCHLAGEN =====
+        case 'invoice.payment_failed': {
+          const invoice = event.data.object;
+          
+          if (invoice.metadata?.type === 'commission') {
+            const orderId = invoice.metadata.order_id;
+            const handwerkerId = invoice.metadata.handwerker_id;
+            
+            console.log(`❌ Provision Zahlung fehlgeschlagen für Order ${orderId}`);
+            
+            await query(
+              `UPDATE commissions 
+               SET status = 'failed', 
+                   failure_reason = $1
+               WHERE stripe_invoice_id = $2`,
+              [invoice.last_finalization_error?.message || 'Zahlung fehlgeschlagen', invoice.id]
+            );
+            
+            // Notification an Handwerker
+            await query(
+              `INSERT INTO notifications 
+               (user_type, user_id, type, message, reference_type, reference_id, created_at)
+               VALUES ('handwerker', $1, 'payment_failed', 'Zahlung fehlgeschlagen. Bitte aktualisieren Sie Ihre Zahlungsmethode.', 'order', $2, NOW())`,
+              [handwerkerId, orderId]
+            );
+          }
+          break;
+        }
+        
+        default:
+          console.log(`Unhandled event type: ${event.type}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Webhook processing error:', error);
+      return res.status(500).json({ error: 'Webhook processing failed' });
+    }
+    
+    res.json({ received: true });
+  }
+);
 
 // ===========================================================================
 // EXPRESS APP
@@ -34019,6 +34162,351 @@ app.post('/api/admin/trigger-order-reminders', async (req, res) => {
   } catch (error) {
     console.error('Error triggering reminders:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Preismodell
+const PRICING_PER_LV = {
+  small: { pricePerLV: 9.90, min: 1, max: 2 },
+  medium: { pricePerLV: 8.90, min: 3, max: 5 },
+  large: { pricePerLV: 7.90, min: 6, max: Infinity }
+};
+
+// Provisionsmodell Handwerker
+const COMMISSION_TIERS = {
+  small: { rate: 0.03, min: 0, max: 10000 },      // 3% bis 10.000€
+  medium: { rate: 0.02, min: 10001, max: 20000 }, // 2% 10.001-20.000€
+  large: { rate: 0.015, min: 20001, max: Infinity } // 1.5% ab 20.001€
+};
+
+function calculateCommission(amount) {
+  if (amount <= 10000) return amount * 0.03;
+  if (amount <= 20000) return amount * 0.02;
+  return amount * 0.015;
+}
+
+function calculateLVPrice(tradeCount) {
+  let pricePerLV;
+  if (tradeCount <= 2) pricePerLV = 9.90;
+  else if (tradeCount <= 5) pricePerLV = 8.90;
+  else pricePerLV = 7.90;
+  
+  return {
+    pricePerLV,
+    count: tradeCount,
+    totalPrice: pricePerLV * tradeCount
+  };
+}
+
+// ============================================
+// BAUHERREN - CHECKOUT SESSION
+// ============================================
+
+// Checkout Session erstellen (Bauherr zahlt für LV-Erstellung)
+app.post('/api/stripe/create-checkout-session', async (req, res) => {
+  try {
+    const { projectId, tradeIds, bauherrId } = req.body;
+    
+    if (!projectId || !tradeIds || !bauherrId) {
+      return res.status(400).json({ error: 'Fehlende Parameter' });
+    }
+    
+    const tradeCount = tradeIds.length;
+    const pricing = calculateLVPrice(tradeCount);
+    
+    // Hole Bauherr-Daten
+    const bauherrResult = await query(
+      'SELECT id, email, name FROM bauherren WHERE id = $1',
+      [bauherrId]
+    );
+    
+    if (bauherrResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Bauherr nicht gefunden' });
+    }
+    
+    const bauherr = bauherrResult.rows[0];
+    
+    // Stripe Customer erstellen oder holen
+    let customerId;
+    const existingCustomer = await query(
+      'SELECT stripe_customer_id FROM bauherren WHERE id = $1',
+      [bauherrId]
+    );
+    
+    if (existingCustomer.rows[0]?.stripe_customer_id) {
+      customerId = existingCustomer.rows[0].stripe_customer_id;
+    } else {
+      const customer = await stripe.customers.create({
+        email: bauherr.email,
+        name: bauherr.name,
+        metadata: {
+          bauherr_id: bauherrId.toString(),
+          type: 'bauherr'
+        }
+      });
+      customerId = customer.id;
+      
+      await query(
+        'UPDATE bauherren SET stripe_customer_id = $1 WHERE id = $2',
+        [customerId, bauherrId]
+      );
+    }
+    
+    // Checkout Session erstellen
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card', 'sepa_debit', 'klarna', 'giropay'],
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: {
+            name: `Leistungsverzeichnisse (${tradeCount} Gewerke)`,
+            description: `KI-gestützte Erstellung von ${tradeCount} professionellen Leistungsverzeichnissen`,
+          },
+          unit_amount: Math.round(pricing.totalPrice * 100), // Stripe erwartet Cents
+        },
+        quantity: 1,
+      }],
+      metadata: {
+        project_id: projectId.toString(),
+        bauherr_id: bauherrId.toString(),
+        trade_ids: JSON.stringify(tradeIds),
+        trade_count: tradeCount.toString(),
+        price_per_lv: pricing.pricePerLV.toString()
+      },
+      success_url: `${process.env.FRONTEND_URL || 'https://byndl.de'}/project/${projectId}/lv-generation?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'https://byndl.de'}/project/${projectId}/trades?cancelled=true`,
+      locale: 'de',
+      allow_promotion_codes: true,
+    });
+    
+    // Payment Intent in DB speichern
+    await query(
+      `INSERT INTO payments 
+       (user_type, user_id, project_id, stripe_session_id, amount, status, payment_type, metadata, created_at)
+       VALUES ('bauherr', $1, $2, $3, $4, 'pending', 'lv_creation', $5, NOW())`,
+      [bauherrId, projectId, session.id, pricing.totalPrice, JSON.stringify({
+        trade_ids: tradeIds,
+        trade_count: tradeCount,
+        price_per_lv: pricing.pricePerLV
+      })]
+    );
+    
+    res.json({ 
+      sessionId: session.id,
+      url: session.url 
+    });
+    
+  } catch (error) {
+    console.error('Stripe Checkout Error:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen der Checkout-Session' });
+  }
+});
+
+// Checkout Session Status prüfen
+app.get('/api/stripe/session-status/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    
+    res.json({
+      status: session.payment_status,
+      customerEmail: session.customer_details?.email,
+      amountTotal: session.amount_total / 100
+    });
+    
+  } catch (error) {
+    console.error('Session Status Error:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen des Status' });
+  }
+});
+
+// ============================================
+// HANDWERKER - SETUP & AUTOMATISCHER EINZUG
+// ============================================
+
+// Setup Intent erstellen (Handwerker speichert Zahlungsmethode)
+app.post('/api/stripe/create-setup-intent', async (req, res) => {
+  try {
+    const { handwerkerId } = req.body;
+    
+    if (!handwerkerId) {
+      return res.status(400).json({ error: 'Handwerker ID fehlt' });
+    }
+    
+    // Hole Handwerker-Daten
+    const handwerkerResult = await query(
+      'SELECT id, email, company_name, stripe_customer_id FROM handwerker WHERE id = $1',
+      [handwerkerId]
+    );
+    
+    if (handwerkerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Handwerker nicht gefunden' });
+    }
+    
+    const handwerker = handwerkerResult.rows[0];
+    
+    // Stripe Customer erstellen oder holen
+    let customerId = handwerker.stripe_customer_id;
+    
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: handwerker.email,
+        name: handwerker.company_name,
+        metadata: {
+          handwerker_id: handwerkerId.toString(),
+          type: 'handwerker'
+        }
+      });
+      customerId = customer.id;
+      
+      await query(
+        'UPDATE handwerker SET stripe_customer_id = $1 WHERE id = $2',
+        [customerId, handwerkerId]
+      );
+    }
+    
+    // Setup Intent erstellen
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ['card', 'sepa_debit'],
+      metadata: {
+        handwerker_id: handwerkerId.toString()
+      }
+    });
+    
+    res.json({ 
+      clientSecret: setupIntent.client_secret,
+      customerId: customerId
+    });
+    
+  } catch (error) {
+    console.error('Setup Intent Error:', error);
+    res.status(500).json({ error: 'Fehler beim Erstellen des Setup Intents' });
+  }
+});
+
+// Zahlungsmethode als Standard setzen
+app.post('/api/stripe/set-default-payment-method', async (req, res) => {
+  try {
+    const { handwerkerId, paymentMethodId } = req.body;
+    
+    const handwerkerResult = await query(
+      'SELECT stripe_customer_id FROM handwerker WHERE id = $1',
+      [handwerkerId]
+    );
+    
+    if (!handwerkerResult.rows[0]?.stripe_customer_id) {
+      return res.status(400).json({ error: 'Kein Stripe Customer gefunden' });
+    }
+    
+    const customerId = handwerkerResult.rows[0].stripe_customer_id;
+    
+    // Zahlungsmethode an Customer anhängen
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    });
+    
+    // Als Standard setzen
+    await stripe.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+    
+    // In DB speichern
+    await query(
+      'UPDATE handwerker SET default_payment_method_id = $1 WHERE id = $2',
+      [paymentMethodId, handwerkerId]
+    );
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Set Default Payment Method Error:', error);
+    res.status(500).json({ error: 'Fehler beim Setzen der Zahlungsmethode' });
+  }
+});
+
+// Gespeicherte Zahlungsmethoden abrufen
+app.get('/api/stripe/payment-methods/:userType/:userId', async (req, res) => {
+  try {
+    const { userType, userId } = req.params;
+    
+    let customerId;
+    
+    if (userType === 'handwerker') {
+      const result = await query(
+        'SELECT stripe_customer_id, default_payment_method_id FROM handwerker WHERE id = $1',
+        [userId]
+      );
+      customerId = result.rows[0]?.stripe_customer_id;
+    } else {
+      const result = await query(
+        'SELECT stripe_customer_id FROM bauherren WHERE id = $1',
+        [userId]
+      );
+      customerId = result.rows[0]?.stripe_customer_id;
+    }
+    
+    if (!customerId) {
+      return res.json({ paymentMethods: [] });
+    }
+    
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: 'card',
+    });
+    
+    const sepaPaymentMethods = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: 'sepa_debit',
+    });
+    
+    const allMethods = [...paymentMethods.data, ...sepaPaymentMethods.data];
+    
+    // Default Payment Method holen
+    const customer = await stripe.customers.retrieve(customerId);
+    const defaultMethodId = customer.invoice_settings?.default_payment_method;
+    
+    res.json({ 
+      paymentMethods: allMethods.map(pm => ({
+        id: pm.id,
+        type: pm.type,
+        isDefault: pm.id === defaultMethodId,
+        card: pm.card ? {
+          brand: pm.card.brand,
+          last4: pm.card.last4,
+          expMonth: pm.card.exp_month,
+          expYear: pm.card.exp_year
+        } : null,
+        sepaDebit: pm.sepa_debit ? {
+          last4: pm.sepa_debit.last4,
+          bankCode: pm.sepa_debit.bank_code
+        } : null
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Get Payment Methods Error:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Zahlungsmethoden' });
+  }
+});
+
+// Zahlungsmethode löschen
+app.delete('/api/stripe/payment-method/:paymentMethodId', async (req, res) => {
+  try {
+    const { paymentMethodId } = req.params;
+    
+    await stripe.paymentMethods.detach(paymentMethodId);
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('Delete Payment Method Error:', error);
+    res.status(500).json({ error: 'Fehler beim Löschen der Zahlungsmethode' });
   }
 });
 
