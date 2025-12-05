@@ -201,36 +201,20 @@ export default function TradeConfirmationPage() {
       return;
     }
     
-    // Direkt zur processPaymentAndContinue
-    processPaymentAndContinue();
-  };
-
-  const processPaymentAndContinue = async () => {
     const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
     
     if (!userData.id) {
-      // Nicht eingeloggt - sollte nicht passieren, da Projekt nur über Dashboard erreichbar
-      // Sicherheitshalber zur Registrierung umleiten
+      // Nicht eingeloggt - zur Registrierung umleiten
       navigate('/bauherr/register');
       return;
     }
     
-    // Eingeloggt - speichere Trades und weiter zu Dashboard
-    const manualTrades = detectedTrades.filter(t => t.source === 'manuell' || t.isManuallyAdded);
-    const manualTradeIds = manualTrades.map(t => t.id);
-    
-    const allSelectedTrades = [
-      ...selectedRequired,
-      ...selectedRecommended,
-      ...manualTradeIds
-    ];
-    
-    const uniqueSelectedTrades = [...new Set(allSelectedTrades)];
-    
+    // Eingeloggt - Trades speichern und zu Stripe Checkout weiterleiten
     try {
       setLoading(true);
       
-      const res = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
+      // 1. Trades im Backend speichern
+      const saveRes = await fetch(apiUrl(`/api/projects/${projectId}/trades/confirm`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -241,14 +225,31 @@ export default function TradeConfirmationPage() {
         })
       });
       
-      if (!res.ok) throw new Error('Fehler beim Speichern der Gewerke');
+      if (!saveRes.ok) throw new Error('Fehler beim Speichern der Gewerke');
       
-      sessionStorage.setItem('pendingLvProject', projectId.toString());
-      sessionStorage.setItem('pendingPayment', 'true');
-      navigate('/bauherr/dashboard');
+      // 2. Stripe Checkout Session erstellen
+      const checkoutRes = await fetch(apiUrl('/api/stripe/create-checkout-session'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: projectId,
+          tradeIds: uniqueSelectedTrades,
+          bauherrId: userData.id
+        })
+      });
+      
+      const checkoutData = await checkoutRes.json();
+      
+      if (checkoutData.url) {
+        // Zu Stripe Checkout weiterleiten
+        window.location.href = checkoutData.url;
+      } else {
+        throw new Error(checkoutData.error || 'Fehler beim Erstellen der Checkout-Session');
+      }
       
     } catch (err) {
-      setError(err.message);
+      console.error('Checkout Error:', err);
+      setError(err.message || 'Fehler bei der Zahlung. Bitte versuchen Sie es erneut.');
       setLoading(false);
     }
   };
