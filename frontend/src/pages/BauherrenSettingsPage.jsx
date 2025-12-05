@@ -25,8 +25,6 @@ export default function BauherrenSettingsPage() {
     city: ''
   });
   
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [paymentHistory, setPaymentHistory] = useState([]);
   const [billingAddressSameAsPersonal, setBillingAddressSameAsPersonal] = useState(true);
   const [billingAddress, setBillingAddress] = useState({
     companyName: '',
@@ -418,124 +416,6 @@ const changeEmail = async () => {
       setTimeout(() => setError(''), 3000);
     } finally {
       setSupportLoading(false);
-    }
-  };
-  
-  // ============ PAYMENT FUNKTIONEN ============
-  
-  const openPaymentModal = (type) => {
-    // Hier wird später Stripe Elements integriert
-    // Für jetzt zeigen wir eine Info-Meldung
-    const typeNames = {
-      card: 'Kreditkarte',
-      paypal: 'PayPal',
-      sepa: 'SEPA-Lastschrift',
-      giropay: 'Giropay',
-      sofort: 'Sofortüberweisung',
-      apple_pay: 'Apple Pay',
-      google_pay: 'Google Pay'
-    };
-    alert(`${typeNames[type] || type} wird in Kürze über Stripe verfügbar sein.`);
-  };
-  
-  const setDefaultPaymentMethod = async (methodId) => {
-    try {
-      setLoading(true);
-      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
-      
-      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/payment-methods/${methodId}/default`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (res.ok) {
-        // Update lokalen State
-        setPaymentMethods(prev => prev.map(method => ({
-          ...method,
-          isDefault: method.id === methodId
-        })));
-        setMessage('Standard-Zahlungsmethode aktualisiert');
-        setTimeout(() => setMessage(''), 3000);
-      }
-    } catch (err) {
-      setError('Fehler beim Setzen der Standard-Zahlungsmethode');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const removePaymentMethod = async (methodId) => {
-    const confirmed = window.confirm('Möchten Sie diese Zahlungsmethode wirklich entfernen?');
-    if (!confirmed) return;
-    
-    try {
-      setLoading(true);
-      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
-      
-      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/payment-methods/${methodId}`), {
-        method: 'DELETE'
-      });
-      
-      if (res.ok) {
-        setPaymentMethods(prev => prev.filter(method => method.id !== methodId));
-        setMessage('Zahlungsmethode entfernt');
-        setTimeout(() => setMessage(''), 3000);
-      }
-    } catch (err) {
-      setError('Fehler beim Entfernen der Zahlungsmethode');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const saveBillingAddress = async () => {
-    try {
-      setLoading(true);
-      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
-      
-      const addressToSave = billingAddressSameAsPersonal ? {
-        sameAsPersonal: true
-      } : {
-        sameAsPersonal: false,
-        ...billingAddress
-      };
-      
-      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/billing-address`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addressToSave)
-      });
-      
-      if (res.ok) {
-        setMessage('Rechnungsadresse gespeichert');
-        setTimeout(() => setMessage(''), 3000);
-      }
-    } catch (err) {
-      setError('Fehler beim Speichern der Rechnungsadresse');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const downloadInvoices = async () => {
-    try {
-      const userData = JSON.parse(sessionStorage.getItem('userData') || sessionStorage.getItem('bauherrData'));
-      
-      const res = await fetch(apiUrl(`/api/bauherr/${userData.id}/invoices/download-all`));
-      
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `rechnungen_${new Date().toISOString().split('T')[0]}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }
-    } catch (err) {
-      setError('Fehler beim Herunterladen der Rechnungen');
     }
   };
 
