@@ -361,21 +361,21 @@ export default function HandwerkerRegisterPage() {
 // NEU: Funktion zum Hochladen der Dokumente bei Registrierung
 const uploadDocumentsForRegistration = async (handwerkerId, files) => {
   const typeMapping = {
-    'gewerbeschein': 'gewerbeschein',        // Bleibt gleich
-    'handwerkskarte': 'handwerkskarte',      // Bleibt gleich
-    'versicherung': 'versicherungsnachweis', // Optional
-    'weitere': 'weitere'                      // Optional
+    'gewerbeschein': 'gewerbeschein',
+    'handwerkskarte': 'handwerkskarte',
+    'versicherung': 'versicherungsnachweis',
+    'weitere': 'weitere'
   };
   
   for (const [key, file] of Object.entries(files)) {
     try {
-      const formData = new FormData();
-      formData.append('document', file);
-      formData.append('document_type', typeMapping[key] || key);
+      const uploadFormData = new FormData();
+      uploadFormData.append('document', file);
+      uploadFormData.append('document_type', typeMapping[key] || key);
       
       const uploadRes = await fetch(apiUrl(`/api/handwerker/${handwerkerId}/documents/upload`), {
         method: 'POST',
-        body: formData
+        body: uploadFormData
       });
       
       if (uploadRes.ok) {
