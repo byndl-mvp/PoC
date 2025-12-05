@@ -344,84 +344,83 @@ export default function PaymentMethodsTab({ userType, userId }) {
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {/* Visa */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/cards/visa.svg" 
                 alt="Visa" 
-                className="h-8 mb-2"
+                className="h-12 w-auto"
               />
             </div>
             
             {/* Mastercard */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/cards/mastercard.svg" 
                 alt="Mastercard" 
-                className="h-10 mb-2"
+                className="h-12 w-auto"
               />
             </div>
             
             {/* American Express */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/cards/american-express.svg" 
                 alt="American Express" 
-                className="h-10 mb-2"
+                className="h-12 w-auto"
               />
             </div>
             
             {/* PayPal */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/apm/paypal.svg" 
                 alt="PayPal" 
-                className="h-8 mb-2"
+                className="h-12 w-auto"
               />
             </div>
             
             {/* SEPA Lastschrift */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/apm/sepa.svg" 
                 alt="SEPA" 
-                className="h-8 mb-2"
+                className="h-12 w-auto"
               />
-              <p className="text-gray-400 text-xs">Lastschrift</p>
             </div>
             
             {/* Giropay */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/apm/giropay.svg" 
                 alt="Giropay" 
-                className="h-8 mb-2"
+                className="h-12 w-auto"
               />
             </div>
             
             {/* Klarna */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/apm/klarna.svg" 
                 alt="Klarna" 
-                className="h-8 mb-2"
+                className="h-12 w-auto"
               />
             </div>
             
             {/* Apple Pay */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/wallets/apple-pay.svg" 
                 alt="Apple Pay" 
-                className="h-10 mb-2"
+                className="h-12 w-auto"
               />
             </div>
             
             {/* Google Pay */}
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex flex-col items-center justify-center min-h-[100px]">
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
               <img 
                 src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/wallets/google-pay.svg" 
                 alt="Google Pay" 
-                className="h-10 mb-2"
+                className="h-12 w-auto"
               />
             </div>
           </div>
@@ -517,33 +516,32 @@ export default function PaymentMethodsTab({ userType, userId }) {
           Für den automatischen Provisionseinzug können Sie folgende Zahlungsmethoden hinterlegen:
         </p>
         
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           {/* Visa */}
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10 flex items-center justify-center min-h-[70px]">
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
             <img 
               src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/cards/visa.svg" 
               alt="Visa" 
-              className="h-6"
+              className="h-10 w-auto"
             />
           </div>
           
           {/* Mastercard */}
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10 flex items-center justify-center min-h-[70px]">
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
             <img 
               src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/cards/mastercard.svg" 
               alt="Mastercard" 
-              className="h-8"
+              className="h-10 w-auto"
             />
           </div>
           
           {/* SEPA */}
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10 flex flex-col items-center justify-center min-h-[70px]">
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-center min-h-[80px]">
             <img 
               src="https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/apm/sepa.svg" 
               alt="SEPA" 
-              className="h-6"
+              className="h-10 w-auto"
             />
-            <p className="text-gray-400 text-xs mt-1">Lastschrift</p>
           </div>
         </div>
         
