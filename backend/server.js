@@ -22345,6 +22345,20 @@ if (transporter && otherOffers.rows.length > 0) {
     }
   }
 }
+
+// ===== PROVISION BERECHNEN UND EINZIEHEN =====
+    try {
+      const commissionResult = await chargeHandwerkerCommission(orderId, offer);
+      
+      if (commissionResult.success) {
+        console.log(`💰 Provision erstellt: ${commissionResult.commission}€, Invoice: ${commissionResult.invoiceId}`);
+      } else {
+        console.log(`⚠️ Provision-Fallback (manuelle Rechnung): ${commissionResult.reason || commissionResult.error}`);
+      }
+    } catch (commissionError) {
+      console.error('⚠️ Non-critical: Commission creation failed:', commissionError.message);
+      // Nicht kritisch - Auftrag wurde bereits erstellt
+    }
     
     res.json({ 
       success: true, 
