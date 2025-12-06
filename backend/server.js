@@ -12436,6 +12436,170 @@ app.post('/api/projects/:projectId/intake/questions', async (req, res) => {
   }
 });
 
+// NEU: Starte Intake-Fragen-Generierung im Hintergrund
+app.post('/api/projects/:projectId/intake/generate-questions', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    const project = projectResult.rows[0];
+
+    const intTrade = await query(`SELECT id FROM trades WHERE code = 'INT' LIMIT 1`);
+    if (intTrade.rows.length === 0) {
+      return res.status(500).json({ error: 'INT trade missing in DB' });
+    }
+    const tradeId = intTrade.rows[0].id;
+    
+    await ensureProjectTrade(projectId, tradeId, 'intake');
+    
+    // Prüfe ob bereits Fragen existieren
+    const existingQuestions = await query(
+      'SELECT COUNT(*) as count FROM questions WHERE project_id = $1 AND trade_id = $2',
+      [projectId, tradeId]
+    );
+    
+    if (parseInt(existingQuestions.rows[0].count) > 0) {
+      return res.json({ 
+        ok: true, 
+        started: false, 
+        alreadyExists: true,
+        message: 'Fragen existieren bereits' 
+      });
+    }
+    
+    // Markiere als "generating" in trade_progress
+    await query(
+      `INSERT INTO trade_progress (project_id, trade_id, status)
+       VALUES ($1, $2, 'generating')
+       ON CONFLICT (project_id, trade_id)
+       DO UPDATE SET status = 'generating', updated_at = NOW()`,
+      [projectId, tradeId]
+    );
+    
+    // Sofort zurück - Generierung läuft im Hintergrund
+    res.json({ ok: true, started: true, tradeId });
+    
+    // ===== AB HIER ASYNC IM HINTERGRUND =====
+    (async () => {
+      try {
+        console.log(`[INTAKE-ASYNC] Starting background generation for project ${projectId}`);
+        
+        // Lade erkannte Gewerke
+        const detectedTrades = await query(
+          `SELECT t.code, t.name 
+           FROM trades t 
+           JOIN project_trades pt ON t.id = pt.trade_id 
+           WHERE pt.project_id = $1 AND t.code != 'INT'`,
+          [projectId]
+        );
+
+        const projectContext = {
+          category: project.category,
+          subCategory: project.sub_category,
+          description: project.description,
+          timeframe: project.timeframe,
+          budget: project.budget,
+          detectedTrades: detectedTrades.rows
+        };
+        
+        // Berechne intelligente Fragenanzahl
+        const tradeCount = detectedTrades.rows.length;
+        let targetQuestionCount;
+        
+        if (tradeCount === 1) {
+          targetQuestionCount = 16;
+        } else if (tradeCount <= 3) {
+          targetQuestionCount = 18;
+        } else if (tradeCount <= 5) {
+          targetQuestionCount = 21;
+        } else {
+          targetQuestionCount = 25;
+        }
+        
+        const modifiedProjectContext = {
+          ...projectContext,
+          targetQuestionCount,
+          tradeCount
+        };
+        
+        let questions = await generateQuestions(tradeId, modifiedProjectContext);
+        
+        // Parse wenn String
+        if (typeof questions === 'string') {
+          questions = JSON.parse(questions);
+        }
+
+        if (!Array.isArray(questions)) {
+          throw new Error('Questions is not an array');
+        }
+        
+        // Speichere Fragen
+        let saved = 0;
+        for (const q of questions) {
+          const intakeQuestionResult = await query(
+            `INSERT INTO intake_questions (question_text, question_type, sort_order, is_required, options)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id`,
+            [
+              q.question || q.text,
+              q.type || 'text',
+              saved + 1,
+              q.required !== undefined ? q.required : true,
+              q.options ? JSON.stringify(q.options) : null
+            ]
+          );
+          
+          const intakeQuestionId = intakeQuestionResult.rows[0].id;
+          
+          await query(
+            `INSERT INTO questions (project_id, trade_id, question_id, text, type, required, options)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             ON CONFLICT (project_id, trade_id, question_id)
+             DO UPDATE SET text=$4, type=$5, required=$6, options=$7`,
+            [
+              projectId,
+              tradeId,
+              `INT-${intakeQuestionId}`,
+              q.question || q.text,
+              q.type || 'text',
+              q.required !== undefined ? q.required : true,
+              q.options ? JSON.stringify(q.options) : null
+            ]
+          );
+          saved++;
+        }
+        
+        // Markiere als fertig
+        await query(
+          `UPDATE trade_progress 
+           SET status = 'questions_ready', updated_at = NOW()
+           WHERE project_id = $1 AND trade_id = $2`,
+          [projectId, tradeId]
+        );
+        
+        console.log(`[INTAKE-ASYNC] ✅ Generated ${saved} questions for project ${projectId}`);
+        
+      } catch (err) {
+        console.error(`[INTAKE-ASYNC] ❌ Error for project ${projectId}:`, err);
+        // Markiere als Fehler
+        await query(
+          `UPDATE trade_progress 
+           SET status = 'error', updated_at = NOW()
+           WHERE project_id = $1 AND trade_id = $2`,
+          [projectId, tradeId]
+        );
+      }
+    })();
+    
+  } catch (err) {
+    console.error('[INTAKE] generate-questions failed:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // NEU: Status-Check für Intake-Fragen
 app.get('/api/projects/:projectId/intake/questions-status', async (req, res) => {
   try {
