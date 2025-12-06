@@ -13,13 +13,22 @@ export default function IntakeQuestionsPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [project, setProject] = useState(null);
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  // NEU: Progress aus sessionStorage laden (überlebt Seitenwechsel)
+  const [loadingProgress, setLoadingProgress] = useState(() => {
+    const saved = sessionStorage.getItem(`intakeProgress_${projectId}`);
+    return saved ? parseFloat(saved) : 0;
+  });
+  const [generatingQuestions, setGeneratingQuestions] = useState(() => {
+    const saved = sessionStorage.getItem(`intakeGenerating_${projectId}`);
+    return saved === 'true';
+  });
   const [analyzingAnswers, setAnalyzingAnswers] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   
   // Refs für Interval-Cleanup
   const loadingIntervalRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
+  const pollingIntervalRef = useRef(null); // NEU: Für Status-Polling
 
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [userQuestion, setUserQuestion] = useState('');
@@ -31,24 +40,36 @@ export default function IntakeQuestionsPage() {
   const [uploadedFiles, setUploadedFiles] = useState({});
   const [processingUploads, setProcessingUploads] = useState({});
   
-  // Fake Progress für initiales Laden (45 Sekunden)
+  // Fake Progress für initiales Laden (45 Sekunden) - MIT PERSISTENZ
   useEffect(() => {
-    if (loading && !error) {
-      setLoadingProgress(0);
-      const totalDuration = 45000; // 45 Sekunden
-      const interval = 100; // Update alle 100ms
-      const increment = (100 / (totalDuration / interval));
+    if ((loading || generatingQuestions) && !error && !questions.length) {
+      // ✅ NICHT auf 0 setzen - behalte gespeicherten Wert!
+      const currentProgress = loadingProgress;
       
-      loadingIntervalRef.current = setInterval(() => {
-        setLoadingProgress(prev => {
-          const next = prev + increment;
-          if (next >= 99) {
-            clearInterval(loadingIntervalRef.current);
-            return 99; // Bleibt bei 99% bis tatsächlich fertig
-          }
-          return next;
-        });
-      }, interval);
+      // Nur starten wenn noch nicht bei 99%
+      if (currentProgress < 99) {
+        const totalDuration = 45000; // 45 Sekunden
+        const interval = 100; // Update alle 100ms
+        
+        // Berechne verbleibende Zeit basierend auf aktuellem Progress
+        const remainingProgress = 99 - currentProgress;
+        const adjustedIncrement = remainingProgress / ((totalDuration * (remainingProgress / 100)) / interval);
+        
+        loadingIntervalRef.current = setInterval(() => {
+          setLoadingProgress(prev => {
+            const next = prev + adjustedIncrement;
+            
+            // ✅ NEU: In sessionStorage speichern
+            sessionStorage.setItem(`intakeProgress_${projectId}`, Math.min(next, 99).toString());
+            
+            if (next >= 99) {
+              clearInterval(loadingIntervalRef.current);
+              return 99; // Bleibt bei 99% bis tatsächlich fertig
+            }
+            return next;
+          });
+        }, interval);
+      }
       
       return () => {
         if (loadingIntervalRef.current) {
@@ -56,7 +77,7 @@ export default function IntakeQuestionsPage() {
         }
       };
     }
-  }, [loading, error]);
+  }, [loading, generatingQuestions, error, projectId, questions.length]);
 
   // Fake Progress für Antworten-Analyse (60 Sekunden)
   useEffect(() => {
@@ -90,46 +111,110 @@ export default function IntakeQuestionsPage() {
       try {
         setLoading(true);
         
+        // Lade Projekt-Daten
         const projectRes = await fetch(apiUrl(`/api/projects/${projectId}`));
         if (!projectRes.ok) throw new Error('Projekt nicht gefunden');
         const projectData = await projectRes.json();
         setProject(projectData);
         
-        const res = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
-          })
-        });
+        // ✅ NEU: Erst Status prüfen
+        const statusRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions-status`));
+        const status = await statusRes.json();
         
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Fehler beim Generieren der allgemeinen Projektfragen');
+        console.log('[INTAKE] Status check:', status);
+        
+        // FALL 1: Fragen sind bereits fertig → direkt laden
+        if (status.ready && status.questionCount > 0) {
+          console.log('[INTAKE] Questions ready, loading...');
+          const questionsRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`));
+          const questionsData = await questionsRes.json();
+          setQuestions(questionsData.questions || []);
+          
+          // Cleanup sessionStorage
+          sessionStorage.removeItem(`intakeGenerating_${projectId}`);
+          sessionStorage.removeItem(`intakeProgress_${projectId}`);
+          setGeneratingQuestions(false);
+          
+          if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+          setLoadingProgress(100);
+          setTimeout(() => setLoading(false), 200);
+          return;
         }
         
-        const data = await res.json();
-        setQuestions(data.questions || []);
+        // FALL 2: Generierung läuft noch NICHT → starten
+        if (!status.generating && !generatingQuestions) {
+          console.log('[INTAKE] Starting generation...');
+          setGeneratingQuestions(true);
+          sessionStorage.setItem(`intakeGenerating_${projectId}`, 'true');
+          
+          // Starte Generierung im Hintergrund (Fire & Forget)
+          fetch(apiUrl(`/api/projects/${projectId}/intake/generate-questions`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
+            })
+          }).catch(err => console.error('[INTAKE] Generate start error:', err));
+        } else {
+          // Generierung läuft bereits - setze State
+          setGeneratingQuestions(true);
+        }
+        
+        // FALL 2 & 3: Generierung läuft → Polling starten
+        console.log('[INTAKE] Starting polling...');
+        setLoading(false); // UI zeigt jetzt den Ladebalken über generatingQuestions
+        
+        pollingIntervalRef.current = setInterval(async () => {
+          try {
+            const pollRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions-status`));
+            const pollData = await pollRes.json();
+            
+            console.log('[INTAKE-POLL]', pollData);
+            
+            if (pollData.ready && pollData.questionCount > 0) {
+              // ✅ Fertig!
+              clearInterval(pollingIntervalRef.current);
+              clearInterval(loadingIntervalRef.current);
+              
+              const questionsRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`));
+              const questionsData = await questionsRes.json();
+              setQuestions(questionsData.questions || []);
+              
+              // Cleanup
+              sessionStorage.removeItem(`intakeGenerating_${projectId}`);
+              sessionStorage.removeItem(`intakeProgress_${projectId}`);
+              setGeneratingQuestions(false);
+              
+              setLoadingProgress(100);
+            }
+            
+            if (pollData.error) {
+              clearInterval(pollingIntervalRef.current);
+              clearInterval(loadingIntervalRef.current);
+              sessionStorage.removeItem(`intakeGenerating_${projectId}`);
+              sessionStorage.removeItem(`intakeProgress_${projectId}`);
+              setGeneratingQuestions(false);
+              setError('Fehler bei der Fragen-Generierung. Bitte Seite neu laden.');
+            }
+          } catch (err) {
+            console.error('[INTAKE-POLL] Error:', err);
+          }
+        }, 3000); // Alle 3 Sekunden
         
       } catch (err) {
         setError(err.message);
-      } finally {
-        // Cleanup interval und setze auf 100%
-        if (loadingIntervalRef.current) {
-          clearInterval(loadingIntervalRef.current);
-        }
-        setLoadingProgress(100);
-        setTimeout(() => {
-          setLoading(false);
-        }, 200); // Kurze Verzögerung für smooth transition
+        setLoading(false);
+        setGeneratingQuestions(false);
       }
     }
+    
     loadIntakeQuestions();
     
     // Cleanup on unmount
     return () => {
       if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
       if (analyzeIntervalRef.current) clearInterval(analyzeIntervalRef.current);
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     };
   }, [projectId]);
 
@@ -435,10 +520,10 @@ const handleFileUpload = async (questionId, file) => {
 }
 
   // Loading State mit Fortschrittsbalken
-  if (loading) {
+  if (loading || generatingQuestions) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto px-4">
   <h2 className="text-2xl font-bold text-white mb-6">
     Allgemeine Projektfragen werden vorbereitet...
   </h2>
@@ -451,6 +536,10 @@ const handleFileUpload = async (questionId, file) => {
              loadingProgress < 60 ? 'Analysiere Projektkategorie...' :
              loadingProgress < 90 ? 'Generiere angepasste Fragen...' :
              'Fast fertig...'}
+          </p>
+          {/* NEU: Info dass Hintergrund-Laden möglich */}
+          <p className="text-xs text-gray-500 mt-4">
+            💡 Sie können die Seite verlassen - die Generierung läuft im Hintergrund weiter
           </p>
         </div>
       </div>
