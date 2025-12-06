@@ -29,6 +29,10 @@ export default function IntakeQuestionsPage() {
   const loadingIntervalRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
   const pollingIntervalRef = useRef(null); // NEU: Für Status-Polling
+  
+  // NEU: Refs für initiale Werte (vermeidet ESLint warnings & infinite loops)
+  const initialProgressRef = useRef(loadingProgress);
+  const initialGeneratingRef = useRef(generatingQuestions);
 
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [userQuestion, setUserQuestion] = useState('');
@@ -43,8 +47,8 @@ export default function IntakeQuestionsPage() {
   // Fake Progress für initiales Laden (45 Sekunden) - MIT PERSISTENZ
   useEffect(() => {
     if ((loading || generatingQuestions) && !error && !questions.length) {
-      // ✅ NICHT auf 0 setzen - behalte gespeicherten Wert!
-      const currentProgress = loadingProgress;
+      // ✅ Verwende Ref für initialen Wert (vermeidet infinite loop)
+      const currentProgress = initialProgressRef.current;
       
       // Nur starten wenn noch nicht bei 99%
       if (currentProgress < 99) {
@@ -142,7 +146,7 @@ export default function IntakeQuestionsPage() {
         }
         
         // FALL 2: Generierung läuft noch NICHT → starten
-        if (!status.generating && !generatingQuestions) {
+        if (!status.generating && !initialGeneratingRef.current) {
           console.log('[INTAKE] Starting generation...');
           setGeneratingQuestions(true);
           sessionStorage.setItem(`intakeGenerating_${projectId}`, 'true');
