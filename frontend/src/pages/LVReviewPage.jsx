@@ -1362,12 +1362,12 @@ const handleGenerateAllQuestions = async () => {
         </p>
       </div>
     ) : questionsStatus[trade.id]?.questionCount > 0 ? (
-      // Fragen sind DA - zeige "Fragen starten"
+      // Fragen sind DA - zeige "Fragen starten" (GRÜN = bereit)
      <button
   onClick={() => {
     handleStartQuestions(trade.id);
   }}
-  className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
+  className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:shadow-lg transform hover:scale-[1.02] transition-all"
 >
   Fragen starten →
 </button>
