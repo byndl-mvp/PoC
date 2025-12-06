@@ -40,7 +40,8 @@ export default function IntakeQuestionsPage() {
   
   // Fake Progress für initiales Laden (45 Sekunden) - MIT PERSISTENZ
   useEffect(() => {
-    if (loading && !error && !questions.length) {
+    // Ladebalken läuft solange keine Fragen geladen und kein Fehler
+    if (!questions.length && !error) {
       // ✅ Verwende Ref für initialen Wert (vermeidet infinite loop)
       const currentProgress = initialProgressRef.current;
       
@@ -53,29 +54,25 @@ export default function IntakeQuestionsPage() {
         const remainingProgress = 99 - currentProgress;
         const adjustedIncrement = remainingProgress / ((totalDuration * (remainingProgress / 100)) / interval);
         
-        loadingIntervalRef.current = setInterval(() => {
+        const progressInterval = setInterval(() => {
           setLoadingProgress(prev => {
             const next = prev + adjustedIncrement;
             
-            // ✅ NEU: In sessionStorage speichern
+            // ✅ In sessionStorage speichern
             sessionStorage.setItem(`intakeProgress_${projectId}`, Math.min(next, 99).toString());
             
             if (next >= 99) {
-              clearInterval(loadingIntervalRef.current);
+              clearInterval(progressInterval);
               return 99; // Bleibt bei 99% bis tatsächlich fertig
             }
             return next;
           });
         }, interval);
+        
+        return () => clearInterval(progressInterval);
       }
-      
-      return () => {
-        if (loadingIntervalRef.current) {
-          clearInterval(loadingIntervalRef.current);
-        }
-      };
     }
-  }, [loading, error, projectId, questions.length]);
+  }, [questions.length, error, projectId]);
 
   // Fake Progress für Antworten-Analyse (60 Sekunden)
   useEffect(() => {
@@ -115,65 +112,83 @@ export default function IntakeQuestionsPage() {
         const projectData = await projectRes.json();
         setProject(projectData);
         
-        // ✅ Prüfe ob Fragen bereits existieren (für Seitenwechsel-Szenario)
-        let questionsExist = false;
-        try {
-          const statusRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions-status`));
-          if (statusRes.ok) {
-            const status = await statusRes.json();
-            questionsExist = status.ready && status.questionCount > 0;
-          }
-        } catch (e) {
-          console.log('[INTAKE] Status check failed, will generate:', e);
-        }
+        // ✅ Status prüfen
+        const statusRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions-status`));
+        const status = await statusRes.json();
         
-        if (questionsExist) {
-          // Fragen existieren bereits → direkt laden (GET)
-          console.log('[INTAKE] Questions already exist, loading...');
+        console.log('[INTAKE] Status:', status);
+        
+        // FALL 1: Fragen sind bereits fertig → direkt laden
+        if (status.ready && status.questionCount > 0) {
+          console.log('[INTAKE] Questions ready, loading...');
           const questionsRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`));
-          if (questionsRes.ok) {
-            const questionsData = await questionsRes.json();
-            setQuestions(questionsData.questions || []);
+          const questionsData = await questionsRes.json();
+          setQuestions(questionsData.questions || []);
+          
+          // Cleanup
+          sessionStorage.removeItem(`intakeProgress_${projectId}`);
+          if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+          setLoadingProgress(100);
+          setTimeout(() => setLoading(false), 200);
+          return;
+        }
+        
+        // FALL 2: Generierung läuft noch NICHT → starten
+        if (!status.generating) {
+          console.log('[INTAKE] Starting background generation...');
+          
+          // Starte Generierung im Hintergrund
+          fetch(apiUrl(`/api/projects/${projectId}/intake/generate-questions`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
+            })
+          }).catch(err => console.error('[INTAKE] Generate start error:', err));
+        }
+        
+        // FALL 2 & 3: Polling starten
+        console.log('[INTAKE] Starting polling...');
+        setLoading(false); // Zeige Ladebalken
+        
+        const pollInterval = setInterval(async () => {
+          try {
+            const pollRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions-status`));
+            const pollData = await pollRes.json();
             
-            // Cleanup
-            sessionStorage.removeItem(`intakeProgress_${projectId}`);
-            if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-            setLoadingProgress(100);
-            setTimeout(() => setLoading(false), 200);
-            return;
+            console.log('[INTAKE-POLL]', pollData);
+            
+            if (pollData.ready && pollData.questionCount > 0) {
+              // ✅ Fertig!
+              clearInterval(pollInterval);
+              if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+              
+              const questionsRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`));
+              const questionsData = await questionsRes.json();
+              setQuestions(questionsData.questions || []);
+              
+              // Cleanup
+              sessionStorage.removeItem(`intakeProgress_${projectId}`);
+              setLoadingProgress(100);
+            }
+            
+            if (pollData.error) {
+              clearInterval(pollInterval);
+              if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+              sessionStorage.removeItem(`intakeProgress_${projectId}`);
+              setError('Fehler bei der Fragen-Generierung. Bitte Seite neu laden.');
+            }
+          } catch (err) {
+            console.error('[INTAKE-POLL] Error:', err);
           }
-        }
+        }, 3000);
         
-        // Fragen existieren noch nicht → generieren (POST - synchron wie vorher)
-        console.log('[INTAKE] Generating questions...');
-        const res = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
-          })
-        });
-        
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Fehler beim Generieren der allgemeinen Projektfragen');
-        }
-        
-        const data = await res.json();
-        setQuestions(data.questions || []);
+        // Speichere für Cleanup
+        loadingIntervalRef.current = pollInterval;
         
       } catch (err) {
         setError(err.message);
-      } finally {
-        // Cleanup
-        sessionStorage.removeItem(`intakeProgress_${projectId}`);
-        if (loadingIntervalRef.current) {
-          clearInterval(loadingIntervalRef.current);
-        }
-        setLoadingProgress(100);
-        setTimeout(() => {
-          setLoading(false);
-        }, 200);
+        setLoading(false);
       }
     }
     
@@ -488,7 +503,7 @@ const handleFileUpload = async (questionId, file) => {
 }
 
   // Loading State mit Fortschrittsbalken
-  if (loading) {
+  if (loading || (!questions.length && !error)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
