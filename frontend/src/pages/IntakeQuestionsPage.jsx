@@ -18,21 +18,15 @@ export default function IntakeQuestionsPage() {
     const saved = sessionStorage.getItem(`intakeProgress_${projectId}`);
     return saved ? parseFloat(saved) : 0;
   });
-  const [generatingQuestions, setGeneratingQuestions] = useState(() => {
-    const saved = sessionStorage.getItem(`intakeGenerating_${projectId}`);
-    return saved === 'true';
-  });
   const [analyzingAnswers, setAnalyzingAnswers] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   
   // Refs für Interval-Cleanup
   const loadingIntervalRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
-  const pollingIntervalRef = useRef(null); // NEU: Für Status-Polling
   
-  // NEU: Refs für initiale Werte (vermeidet ESLint warnings & infinite loops)
+  // NEU: Ref für initialen Progress-Wert (vermeidet ESLint warning)
   const initialProgressRef = useRef(loadingProgress);
-  const initialGeneratingRef = useRef(generatingQuestions);
 
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
   const [userQuestion, setUserQuestion] = useState('');
@@ -46,7 +40,7 @@ export default function IntakeQuestionsPage() {
   
   // Fake Progress für initiales Laden (45 Sekunden) - MIT PERSISTENZ
   useEffect(() => {
-    if ((loading || generatingQuestions) && !error && !questions.length) {
+    if (loading && !error && !questions.length) {
       // ✅ Verwende Ref für initialen Wert (vermeidet infinite loop)
       const currentProgress = initialProgressRef.current;
       
@@ -81,7 +75,7 @@ export default function IntakeQuestionsPage() {
         }
       };
     }
-  }, [loading, generatingQuestions, error, projectId, questions.length]);
+  }, [loading, error, projectId, questions.length]);
 
   // Fake Progress für Antworten-Analyse (60 Sekunden)
   useEffect(() => {
@@ -121,94 +115,65 @@ export default function IntakeQuestionsPage() {
         const projectData = await projectRes.json();
         setProject(projectData);
         
-        // ✅ NEU: Erst Status prüfen
-        const statusRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions-status`));
-        const status = await statusRes.json();
-        
-        console.log('[INTAKE] Status check:', status);
-        
-        // FALL 1: Fragen sind bereits fertig → direkt laden
-        if (status.ready && status.questionCount > 0) {
-          console.log('[INTAKE] Questions ready, loading...');
-          const questionsRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`));
-          const questionsData = await questionsRes.json();
-          setQuestions(questionsData.questions || []);
-          
-          // Cleanup sessionStorage
-          sessionStorage.removeItem(`intakeGenerating_${projectId}`);
-          sessionStorage.removeItem(`intakeProgress_${projectId}`);
-          setGeneratingQuestions(false);
-          
-          if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-          setLoadingProgress(100);
-          setTimeout(() => setLoading(false), 200);
-          return;
-        }
-        
-        // FALL 2: Generierung läuft noch NICHT → starten
-        if (!status.generating && !initialGeneratingRef.current) {
-          console.log('[INTAKE] Starting generation...');
-          setGeneratingQuestions(true);
-          sessionStorage.setItem(`intakeGenerating_${projectId}`, 'true');
-          
-          // Starte Generierung im Hintergrund (Fire & Forget)
-          fetch(apiUrl(`/api/projects/${projectId}/intake/generate-questions`), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
-            })
-          }).catch(err => console.error('[INTAKE] Generate start error:', err));
-        } else {
-          // Generierung läuft bereits - setze State
-          setGeneratingQuestions(true);
-        }
-        
-        // FALL 2 & 3: Generierung läuft → Polling starten
-        console.log('[INTAKE] Starting polling...');
-        setLoading(false); // UI zeigt jetzt den Ladebalken über generatingQuestions
-        
-        pollingIntervalRef.current = setInterval(async () => {
-          try {
-            const pollRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions-status`));
-            const pollData = await pollRes.json();
-            
-            console.log('[INTAKE-POLL]', pollData);
-            
-            if (pollData.ready && pollData.questionCount > 0) {
-              // ✅ Fertig!
-              clearInterval(pollingIntervalRef.current);
-              clearInterval(loadingIntervalRef.current);
-              
-              const questionsRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`));
-              const questionsData = await questionsRes.json();
-              setQuestions(questionsData.questions || []);
-              
-              // Cleanup
-              sessionStorage.removeItem(`intakeGenerating_${projectId}`);
-              sessionStorage.removeItem(`intakeProgress_${projectId}`);
-              setGeneratingQuestions(false);
-              
-              setLoadingProgress(100);
-            }
-            
-            if (pollData.error) {
-              clearInterval(pollingIntervalRef.current);
-              clearInterval(loadingIntervalRef.current);
-              sessionStorage.removeItem(`intakeGenerating_${projectId}`);
-              sessionStorage.removeItem(`intakeProgress_${projectId}`);
-              setGeneratingQuestions(false);
-              setError('Fehler bei der Fragen-Generierung. Bitte Seite neu laden.');
-            }
-          } catch (err) {
-            console.error('[INTAKE-POLL] Error:', err);
+        // ✅ Prüfe ob Fragen bereits existieren (für Seitenwechsel-Szenario)
+        let questionsExist = false;
+        try {
+          const statusRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions-status`));
+          if (statusRes.ok) {
+            const status = await statusRes.json();
+            questionsExist = status.ready && status.questionCount > 0;
           }
-        }, 3000); // Alle 3 Sekunden
+        } catch (e) {
+          console.log('[INTAKE] Status check failed, will generate:', e);
+        }
+        
+        if (questionsExist) {
+          // Fragen existieren bereits → direkt laden (GET)
+          console.log('[INTAKE] Questions already exist, loading...');
+          const questionsRes = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`));
+          if (questionsRes.ok) {
+            const questionsData = await questionsRes.json();
+            setQuestions(questionsData.questions || []);
+            
+            // Cleanup
+            sessionStorage.removeItem(`intakeProgress_${projectId}`);
+            if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+            setLoadingProgress(100);
+            setTimeout(() => setLoading(false), 200);
+            return;
+          }
+        }
+        
+        // Fragen existieren noch nicht → generieren (POST - synchron wie vorher)
+        console.log('[INTAKE] Generating questions...');
+        const res = await fetch(apiUrl(`/api/projects/${projectId}/intake/questions`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            detectedTrades: projectData.trades ? projectData.trades.map(t => t.code) : []
+          })
+        });
+        
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Fehler beim Generieren der allgemeinen Projektfragen');
+        }
+        
+        const data = await res.json();
+        setQuestions(data.questions || []);
         
       } catch (err) {
         setError(err.message);
-        setLoading(false);
-        setGeneratingQuestions(false);
+      } finally {
+        // Cleanup
+        sessionStorage.removeItem(`intakeProgress_${projectId}`);
+        if (loadingIntervalRef.current) {
+          clearInterval(loadingIntervalRef.current);
+        }
+        setLoadingProgress(100);
+        setTimeout(() => {
+          setLoading(false);
+        }, 200);
       }
     }
     
@@ -218,7 +183,6 @@ export default function IntakeQuestionsPage() {
     return () => {
       if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
       if (analyzeIntervalRef.current) clearInterval(analyzeIntervalRef.current);
-      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     };
   }, [projectId]);
 
@@ -524,7 +488,7 @@ const handleFileUpload = async (questionId, file) => {
 }
 
   // Loading State mit Fortschrittsbalken
-  if (loading || generatingQuestions) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -540,10 +504,6 @@ const handleFileUpload = async (questionId, file) => {
              loadingProgress < 60 ? 'Analysiere Projektkategorie...' :
              loadingProgress < 90 ? 'Generiere angepasste Fragen...' :
              'Fast fertig...'}
-          </p>
-          {/* NEU: Info dass Hintergrund-Laden möglich */}
-          <p className="text-xs text-gray-500 mt-4">
-            💡 Sie können die Seite verlassen - die Generierung läuft im Hintergrund weiter
           </p>
         </div>
       </div>
